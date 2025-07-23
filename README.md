@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Tazama Case and Investigation Management System
 
 Tazama Case and Investigation Management System is a comprehensive solution for managing cases and investigations efficiently. This project aims to streamline workflows, improve collaboration, and provide robust tools for tracking, reporting, and analyzing case data.
@@ -213,3 +214,7 @@ If you see many TypeScript warnings about `any` usage, add proper types. If Pret
 ---
 
 
+=======
+# case-management-system
+Tazama Case and Investigation Management System
+>>>>>>> 088485b (Initial commit)
