@@ -45,4 +45,5 @@ describe('TriageService', () => {
   it('should throw BadRequestException for missing required fields', async () => {
     await expect(service.handleAlert({} as any)).rejects.toThrow('Missing required alert fields.');
   });
+  
 });
