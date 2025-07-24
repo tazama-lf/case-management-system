@@ -24,7 +24,6 @@ export class TriageService {
    * @throws BadRequestException if required fields are missing or invalid
    */
   async handleAlert(submitAlertDto: SubmitAlertDto) {
-    // Validate required fields
     if (
       !submitAlertDto ||
       !submitAlertDto.priority ||
@@ -44,8 +43,6 @@ export class TriageService {
     let caseStatus = CaseStatus.PENDING;
     let taskStatus = TaskStatus.IN_PROGRESS;
     let message = 'Alert received.';
-
-    // Business logic for auto-closing alert
     if (
       confidence_per > 90 &&
       !transaction &&
