@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
-import { UpdateAlertDto } from './dto/update-alert.dto';
-import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { v4 as uuidv4 } from 'uuid';
+
+export enum CaseStatus {
+  PENDING = 'PENDING',
+  AUTOCLOSED_CONFIRMED = '71 - AUTOCLOSED CONFIRMED',
+}
+
+export enum TaskStatus {
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = '30 - COMPLETED',
+}
 
 @Injectable()
 export class TriageService {
@@ -100,117 +107,21 @@ export class TriageService {
    * @throws BadRequestException if required fields are missing or invalid
    */
   async handleAlert(submitAlertDto: SubmitAlertDto) {
+    // Basic validation
     if (
-      !submitAlertDto ||
-      !submitAlertDto.priority ||
+      !submitAlertDto?.priority ||
       !submitAlertDto.tenant_id ||
       typeof submitAlertDto.confidence_per !== 'number'
     ) {
       throw new BadRequestException('Missing required alert fields.');
     }
-  }
 
-  async manualCloseAlert(alertId: string, status: AlertStatus, userId: string, tenantId: string) {
-    const alert = await this.prisma.alert.findUnique({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
-    }
-
-    try {
-      const updated = await this.prisma.alert.update({
-        where: {
-          alert_id: alertId,
-          tenant_id: tenantId,
-        },
-        data: { alert_status: status },
-      });
-
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_AUTO_CLOSED',
-        entityName: 'Alert',
-        actionPerformed: `Auto-closed alert ${alertId} with status ${status}`,
-        outcome: 'SUCCESS',
-      });
-
-      return updated;
-    } catch (error) {
-      this.logger.error(`Auto-close failed for alert ${alertId}`, error);
-      throw new InternalServerErrorException('Failed to auto-close alert');
-    }
-  }
-
-  async investigateAlert(alertId: string, caseType: CaseType, userId: string, tenantId: string) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
-    }
-
-    const casePriority = alert.priority ?? Priority.LOW;
-
-    try {
-      const createdCase = await this.prisma.case.create({
-        data: {
-          case_creator_user_id: userId,
-          case_owner_user_id: userId,
-          tenant_id: tenantId,
-          priority: casePriority,
-          status: CaseStatus.DRAFT,
-          parent_id: null,
-          case_type: caseType,
-          case_creation_type: CaseCreationType.MANUAL,
-        },
-      });
-
-      const updatedAlert = await this.prisma.alert.update({
-        where: { alert_id: alertId },
-        data: {
-          alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-          case_id: createdCase.case_id,
-        },
-      });
-
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_SENT_FOR_INVESTIGATION',
-        entityName: 'Alert',
-        actionPerformed: `Created case ${createdCase.case_id} for alert ${alertId}`,
-        outcome: 'SUCCESS',
-      });
-
-      return updatedAlert;
-    } catch (error) {
-      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
-      throw new InternalServerErrorException('Failed to update alert for investigation');
-    }
-
-    const {
-      confidence_per,
-      transaction,
-      alert_data,
-      ...rest
-    } = submitAlertDto;
+    const { confidence_per, transaction, alert_data } = submitAlertDto;
 
     let caseStatus = CaseStatus.PENDING;
     let taskStatus = TaskStatus.IN_PROGRESS;
     let message = 'Alert received.';
+
     if (
       confidence_per > 90 &&
       !transaction &&
@@ -220,21 +131,19 @@ export class TriageService {
       caseStatus = CaseStatus.AUTOCLOSED_CONFIRMED;
       taskStatus = TaskStatus.COMPLETED;
       message = 'Alert auto-closed with high confidence.';
-      console.log(`[AUDIT] Alert auto-closed:`, {
-        alert_id: 'to-be-generated',
+      console.log('[AUDIT] Alert auto-closed:', {
         outcome: message,
         closed_at: new Date().toISOString(),
       });
     }
 
+    // Return only the API spec fields
     return {
       alert_id: uuidv4(),
       priority: submitAlertDto.priority,
       confidence_per,
       message,
       created_at: new Date().toISOString(),
-      case_status: caseStatus,
-      task_status: taskStatus,
     };
   }
 }
