@@ -21,8 +21,11 @@ describe('TriageService', () => {
       confidence_per: 95,
     };
     const result = await service.handleAlert(dto);
-    expect(result.case_status).toBe('71 - AUTOCLOSED CONFIRMED');
-    expect(result.task_status).toBe('30 - COMPLETED');
+    expect(result.message).toBe('Alert auto-closed with high confidence.');
+    expect(result.priority).toBe('High');
+    expect(result.confidence_per).toBe(95);
+    expect(result.alert_id).toBeDefined();
+    expect(result.created_at).toBeDefined();
   });
 
   it('should not auto-close alert if confidence is low', async () => {
@@ -38,12 +41,14 @@ describe('TriageService', () => {
       confidence_per: 50,
     };
     const result = await service.handleAlert(dto);
-    expect(result.case_status).toBe('PENDING');
-    expect(result.task_status).toBe('IN_PROGRESS');
+    expect(result.message).toBe('Alert received.');
+    expect(result.priority).toBe('Low');
+    expect(result.confidence_per).toBe(50);
+    expect(result.alert_id).toBeDefined();
+    expect(result.created_at).toBeDefined();
   });
 
   it('should throw BadRequestException for missing required fields', async () => {
     await expect(service.handleAlert({} as any)).rejects.toThrow('Missing required alert fields.');
   });
-  
 });
