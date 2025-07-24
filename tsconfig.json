@@ -17,10 +17,5 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-<<<<<<< HEAD
-  },
-    "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
-=======
   }
->>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
 }

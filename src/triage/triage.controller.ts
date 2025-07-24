@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -16,21 +15,10 @@ export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
   @Post('submit-alert')
-<<<<<<< HEAD
-=======
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
->>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-<<<<<<< HEAD
-    console.log(
-      'JWT permissions/roles:',
-      req.user.role || req.user.permissions,
-    );
-    return this.triageService.handleNewAlert(dto, userId, tenantId);
-=======
 
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId);
 
@@ -48,7 +36,6 @@ export class TriageController {
     }
 
     return alert;
->>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
   }
 
   @Get('test')
@@ -57,55 +44,22 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-<<<<<<< HEAD
-=======
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
-<<<<<<< HEAD
->>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
-  async updateAlert(
-    @Param('alertId') alertId: string,
-    @Body() dto: UpdateAlertDto,
-    @Req() req,
-  ) {
-=======
   async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
->>>>>>> d4f84b0 (fix:jest.config.js to jest.config.ts)
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/auto-close')
-<<<<<<< HEAD
-=======
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
-<<<<<<< HEAD
->>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
-  async autoCloseAlert(
-    @Param('alertId') alertId: string,
-    @Body() dto: AutoCloseAlertDto,
-    @Req() req,
-  ) {
-=======
   async autoCloseAlert(@Param('alertId') alertId: string, @Body() dto: AutoCloseAlertDto, @Req() req) {
->>>>>>> d4f84b0 (fix:jest.config.js to jest.config.ts)
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-<<<<<<< HEAD
-    return this.triageService.manualCloseAlert(
-      alertId,
-      dto.status,
-      userId,
-      tenantId,
-    );
-=======
     return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
->>>>>>> df93bad (feat(triage): enforce tenant isolation for alert operations)
   }
-<<<<<<< HEAD
-=======
 
   @Patch(':alertId/investigate')
   @UseGuards(AuthGuard('jwt'))
@@ -115,19 +69,4 @@ export class TriageController {
     const tenantId = req.user.tenantId;
     return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
   }
->>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
-=======
-import { Body, Controller, Post } from '@nestjs/common';
-import { TriageService } from './triage.service';
-import { SubmitAlertDto } from './dto/submit-alert.dto';
-
-@Controller('api/v1/triage/alerts')
-export class TriageController {
-  constructor(private readonly triageService: TriageService) {}
-
-  @Post()
-  async submitAlert(@Body() submitAlertDto: SubmitAlertDto) {
-    return this.triageService.handleAlert(submitAlertDto);
-  }
->>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
 }
