@@ -1,7 +1,12 @@
+<<<<<<< HEAD
+=======
+// @ts-check
+>>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
 import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+<<<<<<< HEAD
 export default tseslint.config(
   {
     ignores: [
@@ -16,6 +21,12 @@ export default tseslint.config(
       '*.config.js',
       '*.config.mjs',
     ],
+=======
+
+export default tseslint.config(
+  {
+    ignores: ['eslint.config.mjs'],
+>>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -26,7 +37,11 @@ export default tseslint.config(
         ...globals.node,
         ...globals.jest,
       },
+<<<<<<< HEAD
       sourceType: 'module', // Changed to 'module' for NestJS ES modules compatibility
+=======
+      sourceType: 'commonjs',
+>>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
@@ -35,6 +50,7 @@ export default tseslint.config(
   },
   {
     rules: {
+<<<<<<< HEAD
       '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' for flexibility in NestJS/Prisma
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
@@ -58,6 +74,11 @@ export default tseslint.config(
       complexity: ['warn', { max: 25 }],
       'max-depth': ['warn', { max: 5 }],
       'no-console': 'warn', // Changed to warn for NestJS logging
+=======
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn'
+>>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
     },
   },
 );

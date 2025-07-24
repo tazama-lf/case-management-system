@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -115,4 +116,18 @@ export class TriageController {
     return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
   }
 >>>>>>> 8fcc943 (feat(triage): send alert for manual investigation)
+=======
+import { Body, Controller, Post } from '@nestjs/common';
+import { TriageService } from './triage.service';
+import { SubmitAlertDto } from './dto/submit-alert.dto';
+
+@Controller('api/v1/triage/alerts')
+export class TriageController {
+  constructor(private readonly triageService: TriageService) {}
+
+  @Post()
+  async submitAlert(@Body() submitAlertDto: SubmitAlertDto) {
+    return this.triageService.handleAlert(submitAlertDto);
+  }
+>>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
 }
