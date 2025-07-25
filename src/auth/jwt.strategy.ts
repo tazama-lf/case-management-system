@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+<<<<<<< HEAD
 import * as fs from 'fs';
 
 // Define the JWT payload interface
@@ -13,10 +14,13 @@ interface JwtPayload {
   clientId?: string;
   [key: string]: any;
 }
+=======
+>>>>>>> 63fc0de (feat:implementing the auth service)
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
+<<<<<<< HEAD
     const keyPath = process.env.AUTH_PUBLIC_KEY_PATH;
     if (!keyPath) {
       throw new Error('AUTH_PUBLIC_KEY_PATH environment variable is not set');
@@ -29,6 +33,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     if (!publicKey) {
       throw new Error('Public key for JWT verification is not set');
+=======
+    const publicKey = process.env.AUTH_PUBLIC_KEY;
+    if (!publicKey) {
+      throw new Error('AUTH_PUBLIC_KEY environment variable is not set');
+>>>>>>> 63fc0de (feat:implementing the auth service)
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -37,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       algorithms: ['RS256'],
     });
   }
+<<<<<<< HEAD
   /**
    * Validate the JWT payload and extract user information.
    * @param payload The JWT payload containing user information.
@@ -66,3 +76,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
+=======
+
+  async validate(payload: any) {
+    // payload: { sub, username, role, permissions, tenantId, ... }
+    return payload;
+  }
+}
+>>>>>>> 63fc0de (feat:implementing the auth service)

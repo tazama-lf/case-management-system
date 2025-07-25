@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
@@ -82,3 +84,22 @@ export class AuthService {
     }
   }
 }
+=======
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AuthService {}
+>>>>>>> 977af1c (feat(core): init NestJS with triage mock API)
+=======
+import { Injectable, Logger } from '@nestjs/common';
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  logAudit(action: string, user: any, details?: any) {
+    this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
+    // In production, persist to DB or external audit log
+  }
+}
+>>>>>>> 63fc0de (feat:implementing the auth service)

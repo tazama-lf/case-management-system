@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+<<<<<<< HEAD
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -64,4 +65,22 @@ export class RolesGuard implements CanActivate {
     return true;
   }
 }
+<<<<<<< HEAD
 
+=======
+=======
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private readonly allowedRoles: string[]) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const user = context.switchToHttp().getRequest().user;
+    if (!user || !this.allowedRoles.includes(user.role)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+    return true;
+  }
+}
+>>>>>>> 63fc0de (feat:implementing the auth service)
+>>>>>>> 40682cc (feat:implementing the auth service setup)
