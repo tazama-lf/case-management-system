@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 generator client {
   provider = "prisma-client-js"
 =======
@@ -12,6 +13,10 @@ generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 >>>>>>> c1f198e (feat: prisma)
+=======
+generator client {
+  provider = "prisma-client-js"
+>>>>>>> 9e1ce67 (feat: audit log)
 }
 
 datasource db {
@@ -19,6 +24,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9e1ce67 (feat: audit log)
 
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
@@ -28,6 +37,7 @@ model AuditLog {
   action_performed String   @db.VarChar(255)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
+<<<<<<< HEAD
 <<<<<<< HEAD
   details          Json?    
 
@@ -187,3 +197,8 @@ enum ReportType {
 >>>>>>> 114f374 (feat(prisma): complete initial schema setup)
 =======
 >>>>>>> c1f198e (feat: prisma)
+=======
+  
+  @@map("audit_log")
+}
+>>>>>>> 9e1ce67 (feat: audit log)

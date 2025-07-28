@@ -1,26 +1,40 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
+<<<<<<< HEAD
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { validate as isUuid } from 'uuid';
+=======
+import { PrismaService } from '../prisma.service';
+>>>>>>> 9e1ce67 (feat: audit log)
 
 @Injectable()
 export class AuditLogService {
   constructor(private prisma: PrismaService) {}
 
   async logAction(data: {
+<<<<<<< HEAD
     userId?: string;
+=======
+    userId: string;
+>>>>>>> 9e1ce67 (feat: audit log)
     operation: string;
     entityName: string;
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
   }) {
+<<<<<<< HEAD
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return this.prisma.auditLog.create({
       data: {
         user_id,
+=======
+    return this.prisma.auditLog.create({
+      data: {
+        user_id: data.userId,
+>>>>>>> 9e1ce67 (feat: audit log)
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -29,6 +43,7 @@ export class AuditLogService {
       },
     });
   }
+<<<<<<< HEAD
 
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
     return this.logAction({
@@ -47,4 +62,6 @@ export class AuditLogService {
       skip: offset,
     });
   }
+=======
+>>>>>>> 9e1ce67 (feat: audit log)
 }
