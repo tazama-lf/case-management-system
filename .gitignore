@@ -197,4 +197,9 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+<<<<<<< HEAD
 >>>>>>> 088485b (Initial commit)
+=======
+
+/generated/prisma
+>>>>>>> c1f198e (feat: prisma)
