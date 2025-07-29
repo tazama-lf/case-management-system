@@ -47,4 +47,13 @@ export class AuditLogService {
       details,
     });
   }
+
+  async getLogsForTenant(tenantId: string, limit = 50, offset = 0) {
+    return this.prisma.auditLog.findMany({
+      where: { tenantId },
+      orderBy: { performed_at: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+  }
 }
