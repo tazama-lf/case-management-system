@@ -19,11 +19,7 @@ export class AuthService {
     this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
     // In production, persist to DB or external audit log
   }
-    async getCasesForTenant(user: JwtPayload) {
-    return this.prisma.case.findMany({
-      where: { tenantId: user.tenantId },
-    });
-  }
+ 
 
     async login(username: string, password: string) {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
