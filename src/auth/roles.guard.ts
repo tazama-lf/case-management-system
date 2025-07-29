@@ -4,10 +4,13 @@ import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
+<<<<<<< HEAD
 =======
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
 >>>>>>> 0d49113 (feat:auth)
+=======
+>>>>>>> 9fad687 (feat:auth)
 
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
@@ -80,7 +83,10 @@ export class RolesGuard implements CanActivate {
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private auditLogService: AuditLogService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
@@ -91,19 +97,22 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    const { user } = context.switchToHttp().getRequest();
+    const { user, method, originalUrl } = context.switchToHttp().getRequest();
     if (!user) {
+      this.auditLogService.logPermissionDenied(null, originalUrl, method, { reason: 'No user in request' });
       throw new ForbiddenException('No user found in request');
     }
     // Role check
     if (requiredRoles && requiredRoles.length > 0) {
       if (!requiredRoles.includes(user.role)) {
+        this.auditLogService.logPermissionDenied(user, originalUrl, method, { reason: 'Insufficient role', requiredRoles });
         throw new ForbiddenException('Insufficient role');
       }
     }
     // Permissions check
     if (requiredPermissions && requiredPermissions.length > 0) {
       if (!user.permissions || !requiredPermissions.every(p => user.permissions.includes(p))) {
+        this.auditLogService.logPermissionDenied(user, originalUrl, method, { reason: 'Insufficient permissions', requiredPermissions });
         throw new ForbiddenException('Insufficient permissions');
       }
     }
