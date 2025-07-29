@@ -15,29 +15,29 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  logAudit(action: string, user: any, details?: any) {
-    this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
-    // In production, persist to DB or external audit log
-  }
+  // logAudit(action: string, user: any, details?: any) {
+  //   this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
+  //   // In production, persist to DB or external audit log
+  // }
  
 
-    async login(username: string, password: string) {
-    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
-    if (!authUrl) {
-      this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
-      throw new Error('Authentication service unavailable');
+      async login(username: string, password: string) {
+      const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+      if (!authUrl) {
+        this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
+        throw new Error('Authentication service unavailable');
+      }
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(authUrl, { username, password })
+        );
+        const token = typeof response.data === 'string'
+          ? response.data
+          : response.data?.token || response.data?.access_token || response.data?.jwt || response.data?.user?.token;
+        return { token };
+      } catch (error) {
+        this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
+        throw new Error('Authentication failed');
+      }
     }
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(authUrl, { username, password })
-      );
-      this.logger.log('Tazama Auth Service login response received');
-      // Always return the token at the top level
-      const token = response.data?.token || response.data?.access_token || response.data?.user?.token;
-      return { token };
-    } catch (error) {
-      this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
-      throw new Error('Authentication failed');
-    }
-  }
 }
