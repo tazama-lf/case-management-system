@@ -15,10 +15,6 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  // logAudit(action: string, user: any, details?: any) {
-  //   this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
-  //   // In production, persist to DB or external audit log
-  // }
  
 
       async login(username: string, password: string) {

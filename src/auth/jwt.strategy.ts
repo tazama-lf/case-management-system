@@ -7,11 +7,11 @@ import * as path from 'path';
 // Define the JWT payload interface
 interface JwtPayload {
   sub: string;
-  username: string;
-  role: string;
-  permissions: string[];
-  tenantId: string;
-  
+  username?: string;
+  realm_access?: { roles: string[] };
+  claims?: string[];
+  tenantId?: string;
+  [key: string]: any;
 }
 
 @Injectable()
@@ -37,12 +37,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       algorithms: ['RS256'],
     });
   }
+async validate(payload: JwtPayload) {
+  console.log('JWT payload:', payload);
 
-  async validate(payload: JwtPayload) {
-    // Validate required claims
-    if (!payload.role || !payload.permissions || !payload.tenantId) {
-      throw new Error('Invalid token: missing required claims');
-    }
-    return payload;
+  const roles = payload.realm_access?.roles || payload.claims || [];
+  const permissions = payload.claims || [];
+  const tenantId = payload.tenantId;
+  const username = payload.username || payload.preferred_username || payload.sub;
+
+  if (!tenantId) {
+    throw new Error('Invalid token: missing tenantId');
   }
+
+  if (!roles || roles.length === 0) {
+    throw new Error('Invalid token: missing roles');
+  }
+
+  return {
+    ...payload,
+    username,
+    role: roles,
+    permissions,
+    tenantId,
+  };
+}
+
+
 }
