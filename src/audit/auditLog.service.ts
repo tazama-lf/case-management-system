@@ -19,7 +19,7 @@ export class AuditLogService {
     return this.prisma.auditLog.create({
       data: {
         user_id: data.userId,
-        tenant_id: data.tenantId,
+        tenantId: data.tenantId,
         username: data.username,
         operation: data.operation,
         entity_name: data.entityName,
