@@ -45,9 +45,13 @@ export class AuditLogService {
       data: {
         user_id: data.userId,
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 9e1ce67 (feat: audit log)
 =======
         tenant_id: data.tenantId,
+=======
+        tenantId: data.tenantId,
+>>>>>>> dd9f997 (feat:auth)
         username: data.username,
 >>>>>>> fd5a237 (feat:auth)
         operation: data.operation,

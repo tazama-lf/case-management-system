@@ -116,6 +116,7 @@ export class AuthService {
     // In production, persist to DB or external audit log
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
 >>>>>>> 63fc0de (feat:implementing the auth service)
 =======
@@ -128,6 +129,9 @@ export class AuthService {
 }
 >>>>>>> 42b4601 (feat:auth)
 =======
+=======
+ 
+>>>>>>> dd9f997 (feat:auth)
 
     async login(username: string, password: string) {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
