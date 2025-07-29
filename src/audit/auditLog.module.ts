@@ -3,7 +3,7 @@ import { AuditLogService } from './auditLog.service';
 import { PrismaModule } from '../prisma.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule,],
   providers: [AuditLogService],
   controllers: [],
   exports: [AuditLogService],
