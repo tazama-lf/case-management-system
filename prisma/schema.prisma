@@ -27,16 +27,22 @@ datasource db {
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
 >>>>>>> 9e1ce67 (feat: audit log)
 
+=======
+>>>>>>> ea2f4e8 (feat:auth)
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
   user_id          String   @db.Uuid
+  tenantId         String   
+  username         String?  
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(255)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   details          Json?    
@@ -202,3 +208,9 @@ enum ReportType {
   @@map("audit_log")
 }
 >>>>>>> 9e1ce67 (feat: audit log)
+=======
+  details          Json?    
+
+  @@map("audit_log")
+}
+>>>>>>> ea2f4e8 (feat:auth)

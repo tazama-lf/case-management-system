@@ -14,6 +14,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 =======
 import { PrismaModule } from 'prisma/prisma.module';
 import { PrismaService } from 'prisma/prisma.service';
+import { AuthModule } from './auth/auth.module';
 
 >>>>>>> 34b27df (feat:auth)
 
@@ -27,6 +28,7 @@ import { PrismaService } from 'prisma/prisma.service';
     AuditLogModule,
     TriageModule,
 <<<<<<< HEAD
+<<<<<<< HEAD
     AuthModule,
   ],
   providers: [
@@ -35,6 +37,9 @@ import { PrismaService } from 'prisma/prisma.service';
       provide: APP_INTERCEPTOR,
       useClass: TokenExpiryInterceptor,
     },
+=======
+    AuthModule,
+>>>>>>> ea2f4e8 (feat:auth)
   ],
   providers: [PrismaService],
 })

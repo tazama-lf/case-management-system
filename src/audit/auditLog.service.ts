@@ -11,7 +11,13 @@ import { PrismaService } from '../prisma.service';
 >>>>>>> 9e1ce67 (feat: audit log)
 =======
 import { PrismaService } from 'prisma/prisma.service';
+<<<<<<< HEAD
 >>>>>>> fd5a237 (feat:auth)
+=======
+import { v4 as uuidv4 } from 'uuid';
+import { validate as isUuid } from 'uuid';
+
+>>>>>>> ea2f4e8 (feat:auth)
 
 @Injectable()
 export class AuditLogService {
@@ -19,12 +25,16 @@ export class AuditLogService {
 
   async logAction(data: {
 <<<<<<< HEAD
+<<<<<<< HEAD
     userId?: string;
 =======
     userId: string;
 <<<<<<< HEAD
 >>>>>>> 9e1ce67 (feat: audit log)
 =======
+=======
+    userId?: string;
+>>>>>>> ea2f4e8 (feat:auth)
     tenantId: string;
     username?: string;
 >>>>>>> fd5a237 (feat:auth)
@@ -35,6 +45,7 @@ export class AuditLogService {
     performedAt?: Date;
     details?: any;
   }) {
+<<<<<<< HEAD
 <<<<<<< HEAD
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return this.prisma.auditLog.create({
@@ -50,6 +61,12 @@ export class AuditLogService {
 =======
         tenant_id: data.tenantId,
 =======
+=======
+  const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+    return this.prisma.auditLog.create({
+      data: {
+        user_id,
+>>>>>>> ea2f4e8 (feat:auth)
         tenantId: data.tenantId,
 >>>>>>> dd9f997 (feat:auth)
         username: data.username,

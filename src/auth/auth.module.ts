@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { HttpModule } from '@nestjs/axios';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -18,11 +19,16 @@ import { Logger } from '@nestjs/common';
 })
 export class AuthModule {}
 =======
+=======
+import { HttpModule } from '@nestjs/axios';
+>>>>>>> ea2f4e8 (feat:auth)
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { PrismaModule } from 'prisma/prisma.module';
+import { AuditLogModule } from 'src/audit/auditLog.module';
 
 @Module({
-  imports: [PassportModule],
+  imports: [PassportModule, PrismaModule, HttpModule,AuditLogModule], 
   providers: [JwtStrategy, AuthService],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],

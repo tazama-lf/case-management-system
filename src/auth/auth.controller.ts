@@ -26,7 +26,11 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: 'success',
       });
-      return result;
+      return {
+        message: 'Login successful',
+        token: result.token,
+        user: result.user,
+      };
     } catch (error) {
       await this.auditLogService.logAction({
         userId: 'unknown',
