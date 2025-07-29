@@ -15,7 +15,142 @@ model AuditLog {
   action_performed String   @db.VarChar(255)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
-  details          Json?    
 
   @@map("audit_log")
+}
+
+model Alert {
+  alert_id       String   @id @default(uuid()) @db.Uuid
+  tenant_id      String   @db.Uuid
+  priority       Priority
+  source         String   @db.VarChar(50)
+  txtp           String   @db.VarChar(50)
+  message        String   @db.VarChar(100)
+  alert_data     Json
+  transaction    Json
+  network_map    Json
+  confidence_per Int
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  case_id        String   @db.Uuid
+  case           Case     @relation(fields: [case_id], references: [case_id])
+
+  @@map("alerts")
+}
+
+model Case {
+  case_id              String           @id @default(uuid()) @db.Uuid
+  case_creator_user_id String           @db.Uuid
+  case_owner_user_id   String           @db.Uuid
+  tenant_id            String           @db.Uuid
+  status               CaseStatus
+  priority             Priority
+  created_at           DateTime         @default(now()) @db.Timestamp(6)
+  updated_at           DateTime         @updatedAt @db.Timestamp(6)
+  parent_id            String?          @db.Uuid
+  case_type            CaseType
+  case_creation_type   CaseCreationType
+
+  alerts   Alert[]
+  tasks    Task[]
+  comments Comment[]
+
+  @@map("cases")
+}
+
+model Task {
+  task_id          String   @id @default(uuid()) @db.Uuid
+  case_id          String   @db.Uuid
+  status           String
+  assigned_user_id String   @db.Uuid
+  name             String?
+  description      String?
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @updatedAt @db.Timestamp(6)
+
+  case     Case       @relation(fields: [case_id], references: [case_id])
+  evidence Evidence[]
+  reports  Report[]
+  comments Comment[]
+
+  @@map("tasks")
+}
+
+model Comment {
+  comment_id String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  note       String
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  case_id String? @db.Uuid
+  case    Case?   @relation(fields: [case_id], references: [case_id])
+
+  task_id String? @db.Uuid
+  task    Task?   @relation(fields: [task_id], references: [task_id])
+
+  @@map("comments")
+}
+
+model Evidence {
+  evidence_id      String   @id @default(uuid()) @db.Uuid
+  task_id          String   @db.Uuid
+  uploader_user_id String   @db.Uuid
+  tenant_id        String   @db.Uuid
+  name             String   @db.VarChar(30)
+  description      String   @db.VarChar(100)
+  type             String   @db.VarChar(30)
+  file_path        String
+  evidence_hash    String
+  uploaded_at      DateTime @default(now()) @db.Timestamp(6)
+
+  task Task @relation(fields: [task_id], references: [task_id])
+
+  @@map("evidence")
+}
+
+model Report {
+  report_id        String     @id @default(uuid()) @db.Uuid
+  task_id          String     @db.Uuid
+  name             String
+  report_type      ReportType
+  report_file_path String
+  report_hash      String     @db.VarChar(255)
+  version          String
+  created_at       DateTime   @default(now()) @db.Timestamp(6)
+  updated_at       DateTime   @updatedAt @db.Timestamp(6)
+
+  task Task @relation(fields: [task_id], references: [task_id])
+
+  @@map("reports")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  CLOSED
+  REJECTED
+}
+
+enum CaseType {
+  FRAUD
+  MONEY_LAUNDERING
+}
+
+enum CaseCreationType {
+  MANUAL
+  SYSTEM
+}
+
+enum ReportType {
+  SUMMARY
+  DETAILED
+  FINAL
 }
