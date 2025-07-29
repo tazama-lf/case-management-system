@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, Logger, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Logger, Get, UseGuards, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
@@ -14,13 +14,14 @@ export class AuthController {
   ) {}
 
   @Post('login')
+  @HttpCode(200)
   async login(@Body() body: { username: string; password: string }) {
     try {
       const result = await this.authService.login(body.username, body.password);
       await this.auditLogService.logAction({
-        userId: result.user?.sub || 'unknown',
-        tenantId: result.user?.tenantId || 'unknown',
-        username: result.user?.username,
+        userId: 'unknown',
+        tenantId: 'unknown',
+        username: body.username,
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
@@ -29,7 +30,6 @@ export class AuthController {
       return {
         message: 'Login successful',
         token: result.token,
-        user: result.user,
       };
     } catch (error) {
       await this.auditLogService.logAction({

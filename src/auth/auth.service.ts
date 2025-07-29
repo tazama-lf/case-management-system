@@ -143,8 +143,10 @@ export class AuthService {
       const response = await firstValueFrom(
         this.httpService.post(authUrl, { username, password })
       );
-      const { token, user } = response.data;
-      return { token, user };
+      this.logger.log('Tazama Auth Service login response received');
+      // Always return the token at the top level
+      const token = response.data?.token || response.data?.access_token || response.data?.user?.token;
+      return { token };
     } catch (error) {
       this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
       throw new Error('Authentication failed');
