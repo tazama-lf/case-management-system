@@ -9,7 +9,7 @@ interface JwtPayload {
   role: string;
   permissions: string[];
   tenantId: string;
-  // ...other claims as needed
+  
 }
 
 @Injectable()
