@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtPayload } from 'jsonwebtoken';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from 'prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +12,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   logAudit(action: string, user: any, details?: any) {
@@ -24,8 +26,8 @@ export class AuthService {
   }
 
   async login(username: string, password: string) {
-    // Replace with your actual Tazama Auth Service endpoint
-    const authUrl = process.env.TAZAMA_AUTH_URL || 'https://tazama-auth.example.com/api/login';
+    // Use ConfigService to get the Tazama Auth Service endpoint
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL') || 'https://tazama-auth.example.com/api/login';
     try {
       const response = await firstValueFrom(
         this.httpService.post(authUrl, { username, password })
