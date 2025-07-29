@@ -106,11 +106,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 =======
 =======
 async validate(payload: JwtPayload) {
+<<<<<<< HEAD
   console.log('JWT payload:', payload);
 >>>>>>> 94c0713 (feat:Authentication & Authorization)
+=======
+  console.log('JWT payload:', JSON.stringify(payload, null, 2));
 
-  const roles = payload.realm_access?.roles || payload.claims || [];
-  const permissions = payload.claims || [];
+  const claims = payload.claims || [];
+>>>>>>> b0f731e (feat:Authentication & Authorization)
+
   const tenantId = payload.tenantId;
   const username = payload.username || payload.preferred_username || payload.sub;
 
@@ -122,19 +126,23 @@ async validate(payload: JwtPayload) {
 >>>>>>> 63fc0de (feat:implementing the auth service)
 =======
 
-  if (!roles || roles.length === 0) {
-    throw new Error('Invalid token: missing roles');
+  if (!claims.length) {
+    throw new Error('Invalid token: missing claims (used as roles)');
   }
 
   return {
-    ...payload,
     username,
-    role: roles,
-    permissions,
+    role: claims, // Using claims as roles
+    permissions: claims, // Optionally, treat them as both
     tenantId,
   };
 }
 
 
+<<<<<<< HEAD
 }
 >>>>>>> 94c0713 (feat:Authentication & Authorization)
+=======
+
+}
+>>>>>>> b0f731e (feat:Authentication & Authorization)

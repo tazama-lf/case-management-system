@@ -62,4 +62,5 @@ export class AuthController {
   ) {
     return this.auditLogService.getLogsForTenant(user.tenantId, Number(limit), Number(offset));
   }
+  
 }
