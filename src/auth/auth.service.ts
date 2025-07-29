@@ -112,6 +112,7 @@ export class AuthService {
   ) {}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   logAudit(action: string, user: any, details?: any) {
     this.logger.log(`[AUDIT] ${action} by user ${user?.sub || 'unknown'} (tenant: ${user?.tenantId || 'unknown'})`, details);
     // In production, persist to DB or external audit log
@@ -137,6 +138,8 @@ export class AuthService {
   //   // In production, persist to DB or external audit log
   // }
 >>>>>>> 37ef2af (feat:auth)
+=======
+>>>>>>> 94c0713 (feat:Authentication & Authorization)
  
 >>>>>>> dd9f997 (feat:auth)
 
