@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Define the JWT payload interface
 interface JwtPayload {
@@ -15,9 +17,18 @@ interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
-    const publicKey = process.env.AUTH_PUBLIC_KEY;
+    const keyPath = process.env.AUTH_PUBLIC_KEY_PATH;
+    if (!keyPath) {
+      throw new Error('AUTH_PUBLIC_KEY_PATH environment variable is not set');
+    }
+    let publicKey: string | undefined;
+    try {
+      publicKey = fs.readFileSync(keyPath, 'utf8');
+    } catch (err) {
+      throw new Error('Public key file not found or unreadable');
+    }
     if (!publicKey) {
-      throw new Error('AUTH_PUBLIC_KEY environment variable is not set');
+      throw new Error('Public key for JWT verification is not set');
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
