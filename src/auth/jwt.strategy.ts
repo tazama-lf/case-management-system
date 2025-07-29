@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import * as fs from 'fs';
 
 // Define the JWT payload interface
@@ -16,6 +17,10 @@ interface JwtPayload {
 }
 =======
 >>>>>>> 63fc0de (feat:implementing the auth service)
+=======
+import * as fs from 'fs';
+import * as path from 'path';
+>>>>>>> 8017cec (feat:auth)
 
 // Define the JWT payload interface
 interface JwtPayload {
@@ -31,6 +36,9 @@ interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8017cec (feat:auth)
     const keyPath = process.env.AUTH_PUBLIC_KEY_PATH;
     if (!keyPath) {
       throw new Error('AUTH_PUBLIC_KEY_PATH environment variable is not set');
@@ -38,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     let publicKey: string | undefined;
     try {
       publicKey = fs.readFileSync(keyPath, 'utf8');
+<<<<<<< HEAD
     } catch {
       throw new Error('Public key file not found or unreadable');
     }
@@ -48,6 +57,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!publicKey) {
       throw new Error('AUTH_PUBLIC_KEY environment variable is not set');
 >>>>>>> 63fc0de (feat:implementing the auth service)
+=======
+    } catch (err) {
+      throw new Error('Public key file not found or unreadable');
+    }
+    if (!publicKey) {
+      throw new Error('Public key for JWT verification is not set');
+>>>>>>> 8017cec (feat:auth)
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
