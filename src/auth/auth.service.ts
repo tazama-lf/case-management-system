@@ -129,15 +129,17 @@ export class AuthService {
 >>>>>>> 42b4601 (feat:auth)
 =======
 
-  async login(username: string, password: string) {
-    // Use ConfigService to get the Tazama Auth Service endpoint
-    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL') || 'https://tazama-auth.example.com/api/login';
+    async login(username: string, password: string) {
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+    if (!authUrl) {
+      this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
+      throw new Error('Authentication service unavailable');
+    }
     try {
       const response = await firstValueFrom(
         this.httpService.post(authUrl, { username, password })
       );
       const { token, user } = response.data;
-      // Optionally decode token to get claims if needed
       return { token, user };
     } catch (error) {
       this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
