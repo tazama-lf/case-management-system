@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   Controller,
   Post,
@@ -26,16 +27,39 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+=======
+import { Controller, Post, Body, UnauthorizedException, Logger } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { AuditLogService } from '../audit/auditLog.service';
+
+@Controller('auth')
+export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
+  constructor(
+    private readonly authService: AuthService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
+
+  @Post('login')
+>>>>>>> d139c1c (feat:auth)
   async login(@Body() body: { username: string; password: string }) {
     try {
       const result = await this.authService.login(body.username, body.password);
       await this.auditLogService.logAction({
+<<<<<<< HEAD
         userId: 'unknown',
+=======
+        userId: result.user?.sub || 'unknown',
+        tenantId: result.user?.tenantId || 'unknown',
+        username: result.user?.username,
+>>>>>>> d139c1c (feat:auth)
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
         outcome: 'success',
       });
+<<<<<<< HEAD
       const response: any = {
         message: 'Login successful',
         token: result.token,
@@ -47,15 +71,28 @@ export class AuthController {
     } catch (error) {
       await this.auditLogService.logAction({
         userId: 'unknown',
+=======
+      return result;
+    } catch (error) {
+      await this.auditLogService.logAction({
+        userId: 'unknown',
+        tenantId: 'unknown',
+        username: body.username,
+>>>>>>> d139c1c (feat:auth)
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
         outcome: 'failure',
+<<<<<<< HEAD
+=======
+        details: { error: error.message },
+>>>>>>> d139c1c (feat:auth)
       });
       this.logger.warn(`Login failed for user ${body.username}: ${error.message}`);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
+<<<<<<< HEAD
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
@@ -69,4 +106,6 @@ export class AuthController {
   async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
     return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
+=======
+>>>>>>> d139c1c (feat:auth)
 }

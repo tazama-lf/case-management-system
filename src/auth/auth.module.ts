@@ -19,11 +19,13 @@ import { Logger } from '@nestjs/common';
 export class AuthModule {}
 =======
 import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [PassportModule],
   providers: [JwtStrategy, AuthService],
   exports: [PassportModule, JwtStrategy, AuthService],
+  controllers: [AuthController],
 })
 export class AuthModule {}
 >>>>>>> 63fc0de (feat:implementing the auth service)
