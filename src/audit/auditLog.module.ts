@@ -3,11 +3,14 @@ import { AuditLogService } from './auditLog.service';
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { PrismaModule } from '../../prisma/prisma.module';
 =======
 import { AuditLogController } from './auditLog.controller';
 =======
 >>>>>>> a4489c4 (feat/prisma)
+=======
+>>>>>>> 3fd91ce (fix: remove invalid AuditLogController import)
 import { PrismaModule } from '../prisma.module';
 >>>>>>> 9e1ce67 (feat: audit log)
 =======
@@ -23,12 +26,15 @@ import { PassportModule } from '@nestjs/passport';
   providers: [AuditLogService],
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   controllers: [AuditLogController],
 >>>>>>> 9e1ce67 (feat: audit log)
 =======
   controllers: [],
 >>>>>>> a4489c4 (feat/prisma)
+=======
+>>>>>>> 3fd91ce (fix: remove invalid AuditLogController import)
   exports: [AuditLogService],
 })
 export class AuditLogModule {}
