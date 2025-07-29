@@ -2,12 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { validate as isUuid } from 'uuid';
 =======
 import { PrismaService } from '../prisma.service';
 >>>>>>> 9e1ce67 (feat: audit log)
+=======
+import { PrismaService } from 'prisma/prisma.service';
+>>>>>>> fd5a237 (feat:auth)
 
 @Injectable()
 export class AuditLogService {
@@ -18,12 +22,18 @@ export class AuditLogService {
     userId?: string;
 =======
     userId: string;
+<<<<<<< HEAD
 >>>>>>> 9e1ce67 (feat: audit log)
+=======
+    tenantId: string;
+    username?: string;
+>>>>>>> fd5a237 (feat:auth)
     operation: string;
     entityName: string;
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
+    details?: any;
   }) {
 <<<<<<< HEAD
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
@@ -34,24 +44,40 @@ export class AuditLogService {
     return this.prisma.auditLog.create({
       data: {
         user_id: data.userId,
+<<<<<<< HEAD
 >>>>>>> 9e1ce67 (feat: audit log)
+=======
+        tenant_id: data.tenantId,
+        username: data.username,
+>>>>>>> fd5a237 (feat:auth)
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
         outcome: data.outcome,
         performed_at: data.performedAt ?? new Date(),
+        details: data.details,
       },
     });
   }
+<<<<<<< HEAD
 <<<<<<< HEAD
 
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
     return this.logAction({
       userId: user?.sub || 'unknown',
+=======
+
+  async logPermissionDenied(user: any, entityName: string, action: string, details?: any) {
+    return this.logAction({
+      userId: user?.sub || 'unknown',
+      tenantId: user?.tenantId || 'unknown',
+      username: user?.username,
+>>>>>>> fd5a237 (feat:auth)
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,
       outcome: 'denied',
+<<<<<<< HEAD
     });
   }
 
@@ -64,4 +90,9 @@ export class AuditLogService {
   }
 =======
 >>>>>>> 9e1ce67 (feat: audit log)
+=======
+      details,
+    });
+  }
+>>>>>>> fd5a237 (feat:auth)
 }

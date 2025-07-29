@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './prisma.service';
 @Module({
@@ -8,6 +9,9 @@ import { PrismaService } from './prisma.service';
   exports: [PrismaService],
 =======
 import { PrismaService } from 'src/prisma.service';
+=======
+import { PrismaService } from './prisma.service';
+>>>>>>> fd5a237 (feat:auth)
 
 @Module({
     providers: [PrismaService],
