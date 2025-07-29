@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, Logger, Get, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Logger, Get, UseGuards, HttpCode, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
@@ -51,5 +51,15 @@ export class AuthController {
   @Get('me')
   getMe(@User() user: any) {
     return user;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('audit-logs')
+  async getAuditLogs(
+    @User() user: any,
+    @Query('limit') limit = 50,
+    @Query('offset') offset = 0,
+  ) {
+    return this.auditLogService.getLogsForTenant(user.tenantId, Number(limit), Number(offset));
   }
 }
