@@ -11,7 +11,7 @@ import { PrismaModule } from '../prisma.module';
 >>>>>>> 9e1ce67 (feat: audit log)
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule,],
   providers: [AuditLogService],
 <<<<<<< HEAD
 <<<<<<< HEAD
