@@ -7,15 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
   user_id          String   @db.Uuid
+  tenantId         String   
+  username         String?  
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(255)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
-  
+  details          Json?    
+
   @@map("audit_log")
 }

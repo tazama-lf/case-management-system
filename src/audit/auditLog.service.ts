@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
+import { v4 as uuidv4 } from 'uuid';
+import { validate as isUuid } from 'uuid';
+
 
 @Injectable()
 export class AuditLogService {
   constructor(private prisma: PrismaService) {}
 
   async logAction(data: {
-    userId: string;
+    userId?: string;
     tenantId: string;
     username?: string;
     operation: string;
@@ -16,9 +19,10 @@ export class AuditLogService {
     performedAt?: Date;
     details?: any;
   }) {
+  const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return this.prisma.auditLog.create({
       data: {
-        user_id: data.userId,
+        user_id,
         tenantId: data.tenantId,
         username: data.username,
         operation: data.operation,
