@@ -38,10 +38,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 async validate(payload: JwtPayload) {
-  console.log('JWT payload:', payload);
+  console.log('JWT payload:', JSON.stringify(payload, null, 2));
 
-  const roles = payload.realm_access?.roles || payload.claims || [];
-  const permissions = payload.claims || [];
+  const claims = payload.claims || [];
+
   const tenantId = payload.tenantId;
   const username = payload.username || payload.preferred_username || payload.sub;
 
@@ -49,18 +49,18 @@ async validate(payload: JwtPayload) {
     throw new Error('Invalid token: missing tenantId');
   }
 
-  if (!roles || roles.length === 0) {
-    throw new Error('Invalid token: missing roles');
+  if (!claims.length) {
+    throw new Error('Invalid token: missing claims (used as roles)');
   }
 
   return {
-    ...payload,
     username,
-    role: roles,
-    permissions,
+    role: claims, // Using claims as roles
+    permissions: claims, // Optionally, treat them as both
     tenantId,
   };
 }
+
 
 
 }
