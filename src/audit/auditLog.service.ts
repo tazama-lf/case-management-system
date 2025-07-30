@@ -27,6 +27,7 @@ export class AuditLogService {
 <<<<<<< HEAD
 <<<<<<< HEAD
     userId?: string;
+<<<<<<< HEAD
 =======
     userId: string;
 <<<<<<< HEAD
@@ -38,6 +39,8 @@ export class AuditLogService {
     tenantId: string;
     username?: string;
 >>>>>>> fd5a237 (feat:auth)
+=======
+>>>>>>> a522114 (feat:Authentication & Authorization)
     operation: string;
     entityName: string;
     actionPerformed: string;
@@ -45,6 +48,7 @@ export class AuditLogService {
     performedAt?: Date;
     details?: any;
   }) {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
@@ -71,6 +75,12 @@ export class AuditLogService {
 >>>>>>> dd9f997 (feat:auth)
         username: data.username,
 >>>>>>> fd5a237 (feat:auth)
+=======
+    const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+    return this.prisma.auditLog.create({
+      data: {
+        user_id,
+>>>>>>> a522114 (feat:Authentication & Authorization)
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -91,9 +101,12 @@ export class AuditLogService {
   async logPermissionDenied(user: any, entityName: string, action: string, details?: any) {
     return this.logAction({
       userId: user?.sub || 'unknown',
+<<<<<<< HEAD
       tenantId: user?.tenantId || 'unknown',
       username: user?.username,
 >>>>>>> fd5a237 (feat:auth)
+=======
+>>>>>>> a522114 (feat:Authentication & Authorization)
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,
@@ -119,9 +132,8 @@ export class AuditLogService {
 >>>>>>> fd5a237 (feat:auth)
 =======
 
-  async getLogsForTenant(tenantId: string, limit = 50, offset = 0) {
+  async getLogs(limit = 50, offset = 0) {
     return this.prisma.auditLog.findMany({
-      where: { tenantId },
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,

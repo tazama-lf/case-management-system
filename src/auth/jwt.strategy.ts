@@ -29,6 +29,7 @@ interface JwtPayload {
   realm_access?: { roles: string[] };
   claims?: string[];
   tenantId?: string;
+  clientId?: string;
   [key: string]: any;
 }
 
@@ -74,6 +75,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a522114 (feat:Authentication & Authorization)
   /**
    * Validate the JWT payload and extract user information.
    * @param payload The JWT payload containing user information.
@@ -81,6 +85,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    */
   async validate(payload: JwtPayload) {
     console.log('JWT payload:', JSON.stringify(payload, null, 2));
+<<<<<<< HEAD
     const user_id = payload.sub || payload.clientId;
     const tenantId = payload.tenant_id || payload.tenantId;
     const roles = payload.realm_access?.roles || payload.claims || [];
@@ -114,13 +119,32 @@ async validate(payload: JwtPayload) {
 
   const claims = payload.claims || [];
 >>>>>>> b0f731e (feat:Authentication & Authorization)
+=======
+    // Always assign user_id as sub if present, otherwise use clientId
+    const user_id = payload.sub || payload.clientId;
+    const tenantId = payload.tenant_id || payload.tenantId;
+    // Support both 'claims' and 'realm_access.roles' for roles
+    const roles = payload.realm_access?.roles || payload.claims || [];
 
-  const tenantId = payload.tenantId;
-  const username = payload.username || payload.preferred_username || payload.sub;
+    if (!user_id) {
+      throw new Error('Invalid token: missing sub (user_id) and clientId');
+    }
+    if (!tenantId) {
+      throw new Error('Invalid token: missing tenant_id or tenantId');
+    }
+    if (!roles.length) {
+      throw new Error('Invalid token: missing roles in realm_access or claims');
+    }
+>>>>>>> a522114 (feat:Authentication & Authorization)
 
-  if (!tenantId) {
-    throw new Error('Invalid token: missing tenantId');
+    return {
+      role: roles,
+      permissions: roles,
+      tenantId,
+      user_id,
+    };
   }
+<<<<<<< HEAD
 <<<<<<< HEAD
 }
 >>>>>>> 63fc0de (feat:implementing the auth service)
@@ -146,3 +170,6 @@ async validate(payload: JwtPayload) {
 
 }
 >>>>>>> b0f731e (feat:Authentication & Authorization)
+=======
+}
+>>>>>>> a522114 (feat:Authentication & Authorization)

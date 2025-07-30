@@ -113,8 +113,8 @@ export class RolesGuard implements CanActivate {
       requiredRoles,
     });
     throw new ForbiddenException('Insufficient role');
+    }
   }
-}
     // Permissions check
     if (requiredPermissions && requiredPermissions.length > 0) {
       if (!user.permissions || !requiredPermissions.every(p => user.permissions.includes(p))) {
