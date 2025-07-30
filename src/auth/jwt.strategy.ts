@@ -11,6 +11,7 @@ interface JwtPayload {
   realm_access?: { roles: string[] };
   claims?: string[];
   tenantId?: string;
+  clientId?: string;
   [key: string]: any;
 }
 
@@ -37,30 +38,34 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       algorithms: ['RS256'],
     });
   }
-async validate(payload: JwtPayload) {
-  console.log('JWT payload:', JSON.stringify(payload, null, 2));
+  /**
+   * Validate the JWT payload and extract user information.
+   * @param payload The JWT payload containing user information.
+   * @returns An object containing the username, roles, permissions, and tenantId.
+   */
+  async validate(payload: JwtPayload) {
+    console.log('JWT payload:', JSON.stringify(payload, null, 2));
+    // Always assign user_id as sub if present, otherwise use clientId
+    const user_id = payload.sub || payload.clientId;
+    const tenantId = payload.tenant_id || payload.tenantId;
+    // Support both 'claims' and 'realm_access.roles' for roles
+    const roles = payload.realm_access?.roles || payload.claims || [];
 
-  const claims = payload.claims || [];
+    if (!user_id) {
+      throw new Error('Invalid token: missing sub (user_id) and clientId');
+    }
+    if (!tenantId) {
+      throw new Error('Invalid token: missing tenant_id or tenantId');
+    }
+    if (!roles.length) {
+      throw new Error('Invalid token: missing roles in realm_access or claims');
+    }
 
-  const tenantId = payload.tenantId;
-  const username = payload.username || payload.preferred_username || payload.sub;
-
-  if (!tenantId) {
-    throw new Error('Invalid token: missing tenantId');
+    return {
+      role: roles,
+      permissions: roles,
+      tenantId,
+      user_id,
+    };
   }
-
-  if (!claims.length) {
-    throw new Error('Invalid token: missing claims (used as roles)');
-  }
-
-  return {
-    username,
-    role: claims, // Using claims as roles
-    permissions: claims, // Optionally, treat them as both
-    tenantId,
-  };
-}
-
-
-
 }
