@@ -45,14 +45,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    */
   async validate(payload: JwtPayload) {
     console.log('JWT payload:', JSON.stringify(payload, null, 2));
-    // Always assign user_id as sub if present, otherwise use clientId
     const user_id = payload.sub || payload.clientId;
     const tenantId = payload.tenant_id || payload.tenantId;
-    // Support both 'claims' and 'realm_access.roles' for roles
     const roles = payload.realm_access?.roles || payload.claims || [];
 
     if (!user_id) {
-      throw new Error('Invalid token: missing sub (user_id) and clientId');
+      throw new Error('Invalid token: missing sub user_id or clientId');
     }
     if (!tenantId) {
       throw new Error('Invalid token: missing tenant_id or tenantId');
