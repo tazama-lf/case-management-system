@@ -10,8 +10,6 @@ datasource db {
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
   user_id          String   @db.Uuid
-  tenantId         String   
-  username         String?  
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(255)

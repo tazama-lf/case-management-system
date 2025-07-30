@@ -20,8 +20,6 @@ export class AuthController {
       const result = await this.authService.login(body.username, body.password);
       await this.auditLogService.logAction({
         userId: 'unknown',
-        tenantId: 'unknown',
-        username: body.username,
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
@@ -34,8 +32,6 @@ export class AuthController {
     } catch (error) {
       await this.auditLogService.logAction({
         userId: 'unknown',
-        tenantId: 'unknown',
-        username: body.username,
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
@@ -56,11 +52,11 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('audit-logs')
   async getAuditLogs(
-    @User() user: any,
     @Query('limit') limit = 50,
     @Query('offset') offset = 0,
   ) {
-    return this.auditLogService.getLogsForTenant(user.tenantId, Number(limit), Number(offset));
+    // tenantId and username are no longer in the model, so just return all logs with pagination
+    return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
   
 }
