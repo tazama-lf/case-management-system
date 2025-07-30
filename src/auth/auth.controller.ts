@@ -55,7 +55,6 @@ export class AuthController {
     @Query('limit') limit = 50,
     @Query('offset') offset = 0,
   ) {
-    // tenantId and username are no longer in the model, so just return all logs with pagination
     return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
   

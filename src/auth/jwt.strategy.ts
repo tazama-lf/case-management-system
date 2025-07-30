@@ -86,6 +86,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     console.log('JWT payload:', JSON.stringify(payload, null, 2));
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 5fe5f08 (feat:Authentication & Authorization)
     const user_id = payload.sub || payload.clientId;
     const tenantId = payload.tenant_id || payload.tenantId;
     const roles = payload.realm_access?.roles || payload.claims || [];
