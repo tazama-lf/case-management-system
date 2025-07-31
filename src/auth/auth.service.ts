@@ -27,15 +27,16 @@ export class AuthService {
       const token =
         typeof response.data === 'string'
           ? response.data
-          : response.data?.token ||
-            response.data?.access_token ||
-            response.data?.jwt ||
-            response.data?.user?.token;
-      this.logger.log('Login successful');
-      return { token };
-    } catch (error) {
-      this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
-      throw new Error('Authentication failed');
+          : response.data?.token || response.data?.access_token || response.data?.jwt || response.data?.user?.token;
+        this.logger.log('Login successful');
+        return { token };
+      } catch (error) {
+        this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
+        throw new Error('Authentication failed');
+      }
     }
-  }
+
+
+
+    
 }
