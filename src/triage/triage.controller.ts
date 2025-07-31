@@ -1,12 +1,17 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
+=======
+import { Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+>>>>>>> 0842402 (feat:adding auth service)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
+<<<<<<< HEAD
 <<<<<<< HEAD
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -15,6 +20,9 @@ import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
 =======
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
+=======
+import { AuthGuard } from '@nestjs/passport';
+>>>>>>> 0842402 (feat:adding auth service)
 
 @Controller('api/v1/triage')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -78,24 +86,37 @@ export class TriageController {
     return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
 =======
   @Post()
-  async submitAlert(@Body() dto: SubmitAlertDto) {
-    return this.triageService.handleNewAlert(dto);
+  @UseGuards(AuthGuard('jwt'))
+  async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.handleNewAlert(dto, userId, tenantId);
   }
- //Update permission required for this endpoint
+
   @Patch(':alertId')
+  @UseGuards(AuthGuard('jwt'))
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
+    @Req() req,
   ) {
-    return this.triageService.updateAlertData(alertId, dto);
+    const userId = req.user.user_id;
+    return this.triageService.updateAlertData(alertId, dto, userId);
   }
- //Update permission required for this endpoint
+
   @Patch(':alertId/auto-close')
+  @UseGuards(AuthGuard('jwt'))
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
+    @Req() req,
   ) {
+<<<<<<< HEAD
     return this.triageService.manualCloseAlert(alertId, dto.status);
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
+=======
+    const userId = req.user.user_id;
+    return this.triageService.manualCloseAlert(alertId, dto.status, userId);
+>>>>>>> 0842402 (feat:adding auth service)
   }
 }

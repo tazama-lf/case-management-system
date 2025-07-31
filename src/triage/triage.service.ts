@@ -17,6 +17,7 @@ import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { AlertStatus, Priority } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class TriageService {
@@ -128,6 +129,7 @@ export class TriageService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditLogService,
+    private auth: AuthService,
   ) {}
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
