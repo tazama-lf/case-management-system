@@ -1,12 +1,10 @@
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
   user_id          String   @db.Uuid
@@ -15,10 +13,8 @@ model AuditLog {
   action_performed String   @db.VarChar(255)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
-
   @@map("audit_log")
 }
-
 model Alert {
   alert_id       String   @id @default(uuid()) @db.Uuid
   tenant_id      String   @db.Uuid
@@ -34,10 +30,8 @@ model Alert {
   created_at     DateTime @default(now()) @db.Timestamp(6)
   case_id        String?   @db.Uuid
   case           Case?     @relation(fields: [case_id], references: [case_id])
-
   @@map("alerts")
 }
-
 model Case {
   case_id              String           @id @default(uuid()) @db.Uuid
   case_creator_user_id String           @db.Uuid
@@ -50,14 +44,11 @@ model Case {
   parent_id            String?          @db.Uuid
   case_type            CaseType
   case_creation_type   CaseCreationType
-
   alerts   Alert[]
   tasks    Task[]
   comments Comment[]
-
   @@map("cases")
 }
-
 model Task {
   task_id          String   @id @default(uuid()) @db.Uuid
   case_id          String   @db.Uuid
@@ -67,31 +58,24 @@ model Task {
   description      String?
   created_at       DateTime @default(now()) @db.Timestamp(6)
   updated_at       DateTime @updatedAt @db.Timestamp(6)
-
   case     Case       @relation(fields: [case_id], references: [case_id])
   evidence Evidence[]
   reports  Report[]
   comments Comment[]
-
   @@map("tasks")
 }
-
 model Comment {
   comment_id String   @id @default(uuid()) @db.Uuid
   user_id    String   @db.Uuid
   note       String
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @updatedAt @db.Timestamp(6)
-
   case_id String? @db.Uuid
   case    Case?   @relation(fields: [case_id], references: [case_id])
-
   task_id String? @db.Uuid
   task    Task?   @relation(fields: [task_id], references: [task_id])
-
   @@map("comments")
 }
-
 model Evidence {
   evidence_id      String   @id @default(uuid()) @db.Uuid
   task_id          String   @db.Uuid
@@ -103,12 +87,9 @@ model Evidence {
   file_path        String
   evidence_hash    String
   uploaded_at      DateTime @default(now()) @db.Timestamp(6)
-
   task Task @relation(fields: [task_id], references: [task_id])
-
   @@map("evidence")
 }
-
 model Report {
   report_id        String     @id @default(uuid()) @db.Uuid
   task_id          String     @db.Uuid
@@ -119,19 +100,15 @@ model Report {
   version          String
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
-
   task Task @relation(fields: [task_id], references: [task_id])
-
   @@map("reports")
 }
-
 enum Priority {
   LOW
   MEDIUM
   HIGH
   CRITICAL
 }
-
 enum CaseStatus {
   DRAFT
   PENDING
@@ -141,24 +118,19 @@ enum CaseStatus {
   AUTOCLOSED_CONFIRMED
   AUTOCLOSED_REFUTED
 }
-
 enum AlertStatus {
   NEW
   AUTOCLOSED_CONFIRMED
   AUTOCLOSED_REFUTED
 }
-
-
 enum CaseType {
   FRAUD
   MONEY_LAUNDERING
 }
-
 enum CaseCreationType {
   MANUAL
   SYSTEM
 }
-
 enum ReportType {
   SUMMARY
   DETAILED
