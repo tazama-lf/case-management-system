@@ -1,19 +1,27 @@
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+=======
+import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
+>>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
+<<<<<<< HEAD
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
+=======
+>>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 
 @Controller('api/v1/triage')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
+<<<<<<< HEAD
   @Post('submit-alert')
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
@@ -68,5 +76,26 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
+=======
+  @Post()
+  async submitAlert(@Body() dto: SubmitAlertDto) {
+    return this.triageService.handleNewAlert(dto);
+  }
+
+  @Patch(':alertId')
+  async updateAlert(
+    @Param('alertId') alertId: string,
+    @Body() dto: UpdateAlertDto,
+  ) {
+    return this.triageService.updateAlertData(alertId, dto);
+  }
+
+  @Patch(':alertId/auto-close')
+  async autoCloseAlert(
+    @Param('alertId') alertId: string,
+    @Body() dto: AutoCloseAlertDto,
+  ) {
+    return this.triageService.manualCloseAlert(alertId, dto.status);
+>>>>>>> 98eea0c (feat(triage) :  manual alert triage)
   }
 }
