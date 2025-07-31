@@ -16,7 +16,6 @@ export class AuditLogService {
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
-    details?: any;
   }) {
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return this.prisma.auditLog.create({
@@ -43,7 +42,6 @@ export class AuditLogService {
       entityName,
       actionPerformed: action,
       outcome: 'denied',
-      details,
     });
   }
 
