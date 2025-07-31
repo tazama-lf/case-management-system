@@ -12,7 +12,7 @@ export class TriageController {
   async submitAlert(@Body() dto: SubmitAlertDto) {
     return this.triageService.handleNewAlert(dto);
   }
-
+ //Update permission required for this endpoint
   @Patch(':alertId')
   async updateAlert(
     @Param('alertId') alertId: string,
@@ -20,7 +20,7 @@ export class TriageController {
   ) {
     return this.triageService.updateAlertData(alertId, dto);
   }
-
+ //Update permission required for this endpoint
   @Patch(':alertId/auto-close')
   async autoCloseAlert(
     @Param('alertId') alertId: string,
