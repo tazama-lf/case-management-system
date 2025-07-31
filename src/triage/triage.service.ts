@@ -130,11 +130,11 @@ export class TriageService {
     private audit: AuditLogService,
   ) {}
 
-  async handleNewAlert(dto: SubmitAlertDto, userId: string) {
+  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     try {
       const alert = await this.prisma.alert.create({
         data: {
-          tenant_id: '4b544455-9073-4af6-87a5-519bfeabe170', // Get this from AuthService
+          tenant_id: tenantId, // Use tenantId from AuthService
           priority: Priority.LOW,
           source: '', // Set based on alert source
           txtp: '', // Set based on alert type
