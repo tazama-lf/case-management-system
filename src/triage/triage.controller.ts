@@ -1,20 +1,26 @@
-import { Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
 
-@Controller('api/v1/triage/alerts')
+@Controller('api/v1/triage')
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
-  @Post()
+  @Post("submit-alert")
   @UseGuards(AuthGuard('jwt'))
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
+    console.log('JWT permissions/roles:', req.user.role || req.user.permissions);
     return this.triageService.handleNewAlert(dto, userId, tenantId);
+  }
+
+  @Get('test')
+  getTest() {
+    return { status: 'ok' };
   }
 
   @Patch(':alertId')
