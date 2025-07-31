@@ -21,12 +21,19 @@ export class TriageService {
   ) {}
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
+    // Determine the alert source
+    let source = 'NATS'; // default
+    if (dto.result && dto.result.source) {
+      source = dto.result.source;
+    } else if (dto.result && dto.result.report && dto.result.report.source) {
+      source = dto.result.report.source;
+    }
     try {
       const alert = await this.prisma.alert.create({
         data: {
           tenant_id: tenantId, 
           priority: Priority.LOW,
-          source: '', // Set based on alert source
+          source: source, // Set based on alert source
           txtp: '', // Set based on alert type
           alert_status: AlertStatus.NEW,
           message: dto.result.message,

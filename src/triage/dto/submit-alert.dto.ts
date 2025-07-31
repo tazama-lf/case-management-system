@@ -1,4 +1,4 @@
-import { IsString, IsObject, ValidateNested } from 'class-validator';
+import { IsString, IsObject, ValidateNested, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Prisma } from '@prisma/client';
 
@@ -14,6 +14,10 @@ class AlertResultDto {
 
   @IsObject()
   networkMap: Prisma.JsonObject;
+
+  @IsOptional()
+  @IsString()
+  source?: string; // <-- Added for alert source
 }
 
 export class SubmitAlertDto {
