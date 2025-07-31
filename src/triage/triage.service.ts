@@ -18,14 +18,13 @@ export class TriageService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditLogService,
-    private auth: AuthService,
   ) {}
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     try {
       const alert = await this.prisma.alert.create({
         data: {
-          tenant_id: tenantId, // Use tenantId from AuthService
+          tenant_id: tenantId, 
           priority: Priority.LOW,
           source: '', // Set based on alert source
           txtp: '', // Set based on alert type
@@ -38,7 +37,7 @@ export class TriageService {
         },
       });
       await this.audit.logAction({
-        userId, // Use the provided userId
+        userId, 
         operation: 'ALERT_CREATED',
         entityName: 'Alert',
         actionPerformed: `Created new alert ${alert.alert_id}`,

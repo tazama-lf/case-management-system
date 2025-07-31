@@ -34,8 +34,4 @@ export class AuthService {
         throw new Error('Authentication failed');
       }
     }
-
-
-
-    
 }
