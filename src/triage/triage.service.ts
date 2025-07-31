@@ -130,14 +130,14 @@ export class TriageService {
     private audit: AuditLogService,
   ) {}
 
-  async handleNewAlert(dto: SubmitAlertDto) {
+  async handleNewAlert(dto: SubmitAlertDto, userId: string) {
     try {
       const alert = await this.prisma.alert.create({
         data: {
-          tenant_id: '4b544455-9073-4af6-87a5-519bfeabe170',
+          tenant_id: '4b544455-9073-4af6-87a5-519bfeabe170', // Get this from AuthService
           priority: Priority.LOW,
-          source: '',
-          txtp: '',
+          source: '', // Set based on alert source
+          txtp: '', // Set based on alert type
           alert_status: AlertStatus.NEW,
           message: dto.result.message,
           alert_data: dto.result.report,
@@ -147,7 +147,7 @@ export class TriageService {
         },
       });
       await this.audit.logAction({
-        userId: '4b544455-9073-4af6-87a5-519bfeabe199',
+        userId, // Use the provided userId
         operation: 'ALERT_CREATED',
         entityName: 'Alert',
         actionPerformed: `Created new alert ${alert.alert_id}`,
@@ -161,7 +161,7 @@ export class TriageService {
     }
   }
 
-  async updateAlertData(alertId: string, dto: UpdateAlertDto) {
+  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -180,7 +180,7 @@ export class TriageService {
       });
 
       await this.audit.logAction({
-        userId: '4b544455-9073-4af6-87a5-519bfeabe199',
+        userId,
         operation: 'ALERT_UPDATED',
         entityName: 'Alert',
         actionPerformed:
@@ -199,7 +199,7 @@ export class TriageService {
     }
   }
 
-  async manualCloseAlert(alertId: string, status: AlertStatus) {
+  async manualCloseAlert(alertId: string, status: AlertStatus, userId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -215,7 +215,7 @@ export class TriageService {
       });
 
       await this.audit.logAction({
-        userId: '83513fb3-eac6-4136-b569-c65a5f0f139e',
+        userId,
         operation: 'ALERT_AUTO_CLOSED',
         entityName: 'Alert',
         actionPerformed: `Auto-closed alert ${alertId} with status ${status}`,
