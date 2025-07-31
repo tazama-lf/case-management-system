@@ -164,6 +164,7 @@ export class AuthService {
     }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     try {
       const response = await firstValueFrom(
         this.httpService.post(authUrl, { username, password })
@@ -189,3 +190,6 @@ export class AuthService {
     
 }
 >>>>>>> 0842402 (feat:adding auth service)
+=======
+}
+>>>>>>> d0ff41d (feat:adding auth service)

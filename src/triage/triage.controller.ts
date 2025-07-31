@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
@@ -7,6 +8,9 @@ import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 >>>>>>> 0842402 (feat:adding auth service)
+=======
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+>>>>>>> d0ff41d (feat:adding auth service)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -25,6 +29,7 @@ import { AuthGuard } from '@nestjs/passport';
 >>>>>>> 0842402 (feat:adding auth service)
 
 @Controller('api/v1/triage')
+<<<<<<< HEAD
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
@@ -86,11 +91,23 @@ export class TriageController {
     return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
 =======
   @Post()
+=======
+export class TriageController {
+  constructor(private readonly triageService: TriageService) {}
+
+  @Post("submit-alert")
+>>>>>>> d0ff41d (feat:adding auth service)
   @UseGuards(AuthGuard('jwt'))
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
+    console.log('JWT permissions/roles:', req.user.role || req.user.permissions);
     return this.triageService.handleNewAlert(dto, userId, tenantId);
+  }
+
+  @Get('test')
+  getTest() {
+    return { status: 'ok' };
   }
 
   @Patch(':alertId')
