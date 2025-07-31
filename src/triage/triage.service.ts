@@ -22,7 +22,7 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = 'NATS'; 
+    let source = ''; 
     if (dto.result && typeof dto.result.source === 'string' && dto.result.source) {
       source = dto.result.source;
     } else if (
@@ -50,7 +50,7 @@ export class TriageService {
           tenant_id: tenantId, 
           priority: Priority.LOW,
           source: source, 
-          txtp: txtp, // Set based on alert type
+          txtp: txtp, 
           alert_status: AlertStatus.NEW,
           message: String(dto.result.message),
           alert_data: dto.result.report,
