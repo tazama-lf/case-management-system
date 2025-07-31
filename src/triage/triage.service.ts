@@ -22,21 +22,37 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = 'NATS'; // default
-    if (dto.result && dto.result.source) {
+    let source = 'NATS'; 
+    if (dto.result && typeof dto.result.source === 'string' && dto.result.source) {
       source = dto.result.source;
-    } else if (dto.result && dto.result.report && dto.result.report.source) {
-      source = dto.result.report.source;
+    } else if (
+      dto.result &&
+      dto.result.report &&
+      typeof (dto.result.report as any).source === 'string' &&
+      (dto.result.report as any).source
+    ) {
+      source = (dto.result.report as any).source;
     }
+
+    // Determine the alert type (txtp)
+    let txtp = '';
+    if (dto.result.report && typeof (dto.result.report as any).txtp === 'string') {
+      txtp = (dto.result.report as any).txtp;
+    } else if (dto.result.transaction && typeof (dto.result.transaction as any).txtp === 'string') {
+      txtp = (dto.result.transaction as any).txtp;
+    } else if (dto.result.networkMap && typeof (dto.result.networkMap as any).txtp === 'string') {
+      txtp = (dto.result.networkMap as any).txtp;
+    }
+
     try {
       const alert = await this.prisma.alert.create({
         data: {
           tenant_id: tenantId, 
           priority: Priority.LOW,
-          source: source, // Set based on alert source
-          txtp: '', // Set based on alert type
+          source: source, 
+          txtp: txtp, // Set based on alert type
           alert_status: AlertStatus.NEW,
-          message: dto.result.message,
+          message: String(dto.result.message),
           alert_data: dto.result.report,
           transaction: dto.result.transaction,
           network_map: dto.result.networkMap,
