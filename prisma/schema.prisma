@@ -22,17 +22,18 @@ model AuditLog {
 model Alert {
   alert_id       String   @id @default(uuid()) @db.Uuid
   tenant_id      String   @db.Uuid
-  priority       Priority
-  source         String   @db.VarChar(50)
-  txtp           String   @db.VarChar(50)
+  priority       Priority? @default(LOW)
+  source         String?   @db.VarChar(50)
+  txtp           String?   @db.VarChar(50)
   message        String   @db.VarChar(100)
   alert_data     Json
   transaction    Json
   network_map    Json
+  alert_status   AlertStatus @default(NEW)
   confidence_per Int
   created_at     DateTime @default(now()) @db.Timestamp(6)
-  case_id        String   @db.Uuid
-  case           Case     @relation(fields: [case_id], references: [case_id])
+  case_id        String?   @db.Uuid
+  case           Case?     @relation(fields: [case_id], references: [case_id])
 
   @@map("alerts")
 }
@@ -137,7 +138,16 @@ enum CaseStatus {
   APPROVED
   CLOSED
   REJECTED
+  AUTOCLOSED_CONFIRMED
+  AUTOCLOSED_REFUTED
 }
+
+enum AlertStatus {
+  NEW
+  AUTOCLOSED_CONFIRMED
+  AUTOCLOSED_REFUTED
+}
+
 
 enum CaseType {
   FRAUD
