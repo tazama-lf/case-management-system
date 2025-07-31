@@ -4,33 +4,15 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { AlertStatus, Priority } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class TriageService {
-<<<<<<< HEAD
-  /**
-   * Handles alert submission and applies auto-close logic based on business rules.
-   * @param submitAlertDto - The alert data submitted for triage
-   * @returns Alert response with status and audit log
-   * @throws BadRequestException if required fields are missing or invalid
-   */
-  handleAlert(submitAlertDto: SubmitAlertDto) {
-    // Basic validation
-    if (
-      !submitAlertDto?.priority ||
-      !submitAlertDto.tenant_id ||
-      typeof submitAlertDto.confidence_per !== 'number'
-    ) {
-      throw new BadRequestException('Missing required alert fields.');
-    }
-=======
   private readonly logger = new Logger(TriageService.name);
->>>>>>> 396b276 (feat(triage) :  manual alert triage)
 
   constructor(
     private prisma: PrismaService,
@@ -77,18 +59,6 @@ export class TriageService {
       throw new NotFoundException(`Alert ${alertId} not found`);
     }
 
-<<<<<<< HEAD
-    // Return only the API spec fields
-    return {
-      alert_id: uuidv4(),
-      priority: submitAlertDto.priority,
-      confidence_per,
-      message,
-      case_status: caseStatus,
-      task_status: taskStatus,
-      created_at: new Date().toISOString(),
-    };
-=======
     try {
       const updated = await this.prisma.alert.update({
         where: { alert_id: alertId },
@@ -146,6 +116,5 @@ export class TriageService {
       this.logger.error(`Auto-close failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to auto-close alert');
     }
->>>>>>> 396b276 (feat(triage) :  manual alert triage)
   }
 }
