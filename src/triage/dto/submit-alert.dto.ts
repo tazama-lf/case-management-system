@@ -15,9 +15,8 @@ class AlertResultDto {
   @IsObject()
   networkMap: Prisma.JsonObject;
 
-  @IsOptional()
   @IsString()
-  source?: string; // <-- Added for alert source
+  source: string; // <-- Added for alert source
 }
 
 export class SubmitAlertDto {
