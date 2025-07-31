@@ -7,12 +7,16 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
+<<<<<<< HEAD
 import { PrismaService } from '../prisma.service';
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
+=======
+>>>>>>> bb28498 (feat:fixing the conflic merge)
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { AlertStatus, Priority } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class TriageService {

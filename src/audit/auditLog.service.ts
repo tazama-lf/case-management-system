@@ -46,7 +46,6 @@ export class AuditLogService {
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
-    details?: any;
   }) {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -86,7 +85,6 @@ export class AuditLogService {
         action_performed: data.actionPerformed,
         outcome: data.outcome,
         performed_at: data.performedAt ?? new Date(),
-        details: data.details,
       },
     });
   }
@@ -112,6 +110,9 @@ export class AuditLogService {
       actionPerformed: action,
       outcome: 'denied',
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bb28498 (feat:fixing the conflic merge)
     });
   }
 

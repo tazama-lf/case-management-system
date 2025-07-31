@@ -1,6 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuditLogModule } from './audit/auditLog.module';
+<<<<<<< HEAD
+import { APP_INTERCEPTOR } from '@nestjs/core';
+
+import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { TriageModule } from './triage/triage.module';
+<<<<<<< HEAD
+import { PrismaService } from '../prisma/prisma.service';
+import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
+=======
 import { TriageModule } from './triage/triage.module';
 <<<<<<< HEAD
 import { PrismaModule } from './prisma.module';
@@ -14,6 +24,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 =======
 import { PrismaModule } from 'prisma/prisma.module';
 import { PrismaService } from 'prisma/prisma.service';
+=======
+import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaService } from '../prisma/prisma.service';
+>>>>>>> bb28498 (feat:fixing the conflic merge)
 import { AuthModule } from './auth/auth.module';
 
 >>>>>>> 34b27df (feat:auth)
