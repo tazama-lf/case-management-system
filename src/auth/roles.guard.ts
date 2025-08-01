@@ -30,9 +30,10 @@ export class RolesGuard implements CanActivate {
       this.auditLogService.logPermissionDenied(null, originalUrl, method, { reason: 'No user in request' });
       throw new ForbiddenException('No user found in request');
     }
+    
     // Role check
   if (requiredRoles && requiredRoles.length > 0) {
-  const userRoles = user.role || []; // renamed from role to userRoles for clarity
+  const userRoles = user.role || []; 
   const hasRole = requiredRoles.some(role => userRoles.includes(role));
 
   if (!hasRole) {
