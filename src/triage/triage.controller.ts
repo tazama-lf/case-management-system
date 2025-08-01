@@ -13,7 +13,7 @@ export class TriageController {
 
   @Post('submit-alert')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('CMS-TEST-ROLE')
+  @Roles('CMS-TEST-ROLE','manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
