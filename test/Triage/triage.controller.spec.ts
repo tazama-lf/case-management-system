@@ -420,6 +420,9 @@ describe('TriageController', () => {
     });
   });
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 
   describe('console.log branch coverage', () => {
     it('should log user.role when available', async () => {
@@ -590,6 +593,9 @@ describe('TriageController', () => {
       consoleSpy.mockRestore();
     });
   });
+<<<<<<< HEAD
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+>>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 });

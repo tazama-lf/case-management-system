@@ -7,6 +7,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+<<<<<<< HEAD
 import { TriageModule } from './triage/triage.module';
 <<<<<<< HEAD
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,6 +35,8 @@ import { PrismaService } from '../prisma/prisma.service';
 >>>>>>> d0ff41d (feat:adding auth service)
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from 'prisma/prisma.module';
+=======
+>>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 import { TriageModule } from './triage/triage.module';
 <<<<<<< HEAD
 import { PrismaService } from 'prisma/prisma.service';

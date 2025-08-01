@@ -1,9 +1,13 @@
+<<<<<<< HEAD
 import { Logger } from '@nestjs/common';
+=======
+>>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('AppModule', () => {
+<<<<<<< HEAD
   beforeAll(() => {
     jest.spyOn(Logger.prototype, 'log').mockImplementation(jest.fn());
     jest.spyOn(Logger.prototype, 'error').mockImplementation(jest.fn());
@@ -11,6 +15,8 @@ describe('AppModule', () => {
     jest.spyOn(Logger.prototype, 'debug').mockImplementation(jest.fn());
     jest.spyOn(Logger.prototype, 'verbose').mockImplementation(jest.fn());
   });
+=======
+>>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
   let module: TestingModule;
 
   beforeEach(async () => {
