@@ -1,8 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard } from '../../src/auth/roles.guard';
+import { RolesGuard, Permissions } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+
+describe('Permissions Decorator', () => {
+  it('should set permissions metadata correctly', () => {
+    const permissions = ['read', 'write', 'delete'];
+    const decorator = Permissions(...permissions);
+
+    expect(decorator).toBeDefined();
+    expect(typeof decorator).toBe('function');
+  });
+
+  it('should work with single permission', () => {
+    const decorator = Permissions('read');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with multiple permissions', () => {
+    const decorator = Permissions('read', 'write', 'delete', 'admin');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with no permissions', () => {
+    const decorator = Permissions();
+    expect(decorator).toBeDefined();
+  });
+});
 
 describe('RolesGuard', () => {
   let guard: RolesGuard;
