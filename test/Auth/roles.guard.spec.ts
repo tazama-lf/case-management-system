@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard } from './roles.guard';
+import { RolesGuard } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
-import { AuditLogService } from '../audit/auditLog.service';
+import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 
 describe('RolesGuard', () => {
@@ -17,7 +17,11 @@ describe('RolesGuard', () => {
     logPermissionDenied: jest.fn(),
   };
 
-  const createMockExecutionContext = (user: any, method = 'GET', originalUrl = '/test'): ExecutionContext => {
+  const createMockExecutionContext = (
+    user: any,
+    method = 'GET',
+    originalUrl = '/test',
+  ): ExecutionContext => {
     return {
       switchToHttp: () => ({
         getRequest: () => ({
@@ -136,7 +140,7 @@ describe('RolesGuard', () => {
         null,
         '/test',
         'GET',
-        { reason: 'No user in request' }
+        { reason: 'No user in request' },
       );
     });
 
@@ -155,7 +159,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient role',
           requiredRoles: ['admin'],
-        }
+        },
       );
     });
 
@@ -174,7 +178,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient permissions',
           requiredPermissions: ['write', 'delete'],
-        }
+        },
       );
     });
 
@@ -226,7 +230,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient role',
           requiredRoles: ['admin', 'super-admin'],
-        }
+        },
       );
     });
 
@@ -245,7 +249,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient permissions',
           requiredPermissions: ['read', 'write'],
-        }
+        },
       );
     });
   });

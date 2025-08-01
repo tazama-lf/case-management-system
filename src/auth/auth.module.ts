@@ -8,7 +8,7 @@ import { PrismaModule } from 'prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 
 @Module({
-  imports: [PassportModule, PrismaModule, HttpModule,AuditLogModule], 
+  imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
   providers: [JwtStrategy, AuthService],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],

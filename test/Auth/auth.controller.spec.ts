@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { AuditLogService } from '../audit/auditLog.service';
+import { AuthController } from '../../src/auth/auth.controller';
+import { AuthService } from '../../src/auth/auth.service';
+import { AuditLogService } from '../../src/audit/auditLog.service';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('AuthController', () => {
@@ -77,8 +77,10 @@ describe('AuthController', () => {
       authService.login.mockRejectedValue(new Error(errorMessage));
       auditLogService.logAction.mockResolvedValue({});
 
-      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
       expect(authService.login).toHaveBeenCalledWith('testuser', 'wrongpass');
       expect(auditLogService.logAction).toHaveBeenCalledWith({
         userId: 'unknown',
@@ -110,8 +112,10 @@ describe('AuthController', () => {
       authService.login.mockRejectedValue(new Error('Empty credentials'));
       auditLogService.logAction.mockResolvedValue({});
 
-      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
       expect(authService.login).toHaveBeenCalledWith('', '');
       expect(auditLogService.logAction).toHaveBeenCalledWith({
         userId: 'unknown',
@@ -131,7 +135,10 @@ describe('AuthController', () => {
 
       const result = await controller.login(loginDto);
 
-      expect(authService.login).toHaveBeenCalledWith('test@user.com', 'p@ssw0rd!');
+      expect(authService.login).toHaveBeenCalledWith(
+        'test@user.com',
+        'p@ssw0rd!',
+      );
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,

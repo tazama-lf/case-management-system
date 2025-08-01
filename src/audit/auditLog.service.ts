@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { validate as isUuid } from 'uuid';
-
 
 @Injectable()
 export class AuditLogService {
@@ -29,7 +28,12 @@ export class AuditLogService {
     });
   }
 
-  async logPermissionDenied(user: any, entityName: string, action: string, details?: any) {
+  async logPermissionDenied(
+    user: any,
+    entityName: string,
+    action: string,
+    _details?: any,
+  ) {
     return this.logAction({
       userId: user?.sub || 'unknown',
       operation: 'permission_denied',
