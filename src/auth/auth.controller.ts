@@ -1,4 +1,14 @@
-import { Controller, Post, Body, UnauthorizedException, Logger, Get, UseGuards, HttpCode, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  Logger,
+  Get,
+  UseGuards,
+  HttpCode,
+  Query,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
@@ -37,7 +47,9 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: 'failure',
       });
-      this.logger.warn(`Login failed for user ${body.username}: ${error.message}`);
+      this.logger.warn(
+        `Login failed for user ${body.username}: ${error.message}`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
   }
@@ -50,11 +62,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('audit-logs')
-  async getAuditLogs(
-    @Query('limit') limit = 50,
-    @Query('offset') offset = 0,
-  ) {
+  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
     return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
-  
 }

@@ -1,5 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from '../../src/auth/jwt.strategy';
 import * as fs from 'fs';
 
 // Mock fs
@@ -7,14 +6,15 @@ jest.mock('fs');
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
-  const mockPublicKey = '-----BEGIN PUBLIC KEY-----\nMOCK_PUBLIC_KEY\n-----END PUBLIC KEY-----';
+  const mockPublicKey =
+    '-----BEGIN PUBLIC KEY-----\nMOCK_PUBLIC_KEY\n-----END PUBLIC KEY-----';
   const originalEnv = process.env;
 
   beforeEach(async () => {
     jest.resetModules();
     process.env = { ...originalEnv };
     process.env.AUTH_PUBLIC_KEY_PATH = '/path/to/public.key';
-    
+
     (fs.readFileSync as jest.Mock).mockReturnValue(mockPublicKey);
   });
 
@@ -67,8 +67,8 @@ describe('JwtStrategy', () => {
         sub: 'user-123',
         tenantId: 'tenant-456',
         realm_access: {
-          roles: ['admin', 'user']
-        }
+          roles: ['admin', 'user'],
+        },
       };
 
       const result = await strategy.validate(payload);
@@ -85,7 +85,7 @@ describe('JwtStrategy', () => {
       const payload = {
         sub: 'user-123',
         tenantId: 'tenant-456',
-        claims: ['CMS-TEST-ROLE', 'manage-account']
+        claims: ['CMS-TEST-ROLE', 'manage-account'],
       };
 
       const result = await strategy.validate(payload);
@@ -103,8 +103,8 @@ describe('JwtStrategy', () => {
         clientId: 'client-789',
         tenant_id: 'tenant-456',
         realm_access: {
-          roles: ['client']
-        }
+          roles: ['client'],
+        },
       };
 
       const result = await strategy.validate(payload);
@@ -121,7 +121,7 @@ describe('JwtStrategy', () => {
       const payload = {
         sub: 'user-123',
         tenant_id: 'tenant-789',
-        claims: ['user']
+        claims: ['user'],
       };
 
       const result = await strategy.validate(payload);
@@ -138,31 +138,37 @@ describe('JwtStrategy', () => {
       const payload: any = {
         tenantId: 'tenant-456',
         realm_access: {
-          roles: ['user']
-        }
+          roles: ['user'],
+        },
       };
 
-      await expect(strategy.validate(payload)).rejects.toThrow('Invalid token: missing sub user_id or clientId');
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        'Invalid token: missing sub user_id or clientId',
+      );
     });
 
     it('should throw error when tenantId is missing', async () => {
       const payload = {
         sub: 'user-123',
         realm_access: {
-          roles: ['user']
-        }
+          roles: ['user'],
+        },
       };
 
-      await expect(strategy.validate(payload)).rejects.toThrow('Invalid token: missing tenant_id or tenantId');
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        'Invalid token: missing tenant_id or tenantId',
+      );
     });
 
     it('should throw error when roles are missing', async () => {
       const payload = {
         sub: 'user-123',
-        tenantId: 'tenant-456'
+        tenantId: 'tenant-456',
       };
 
-      await expect(strategy.validate(payload)).rejects.toThrow('Invalid token: missing roles in realm_access or claims');
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        'Invalid token: missing roles in realm_access or claims',
+      );
     });
 
     it('should throw error when roles array is empty', async () => {
@@ -170,11 +176,13 @@ describe('JwtStrategy', () => {
         sub: 'user-123',
         tenantId: 'tenant-456',
         realm_access: {
-          roles: []
-        }
+          roles: [],
+        },
       };
 
-      await expect(strategy.validate(payload)).rejects.toThrow('Invalid token: missing roles in realm_access or claims');
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        'Invalid token: missing roles in realm_access or claims',
+      );
     });
 
     it('should handle complex payload with additional properties', async () => {
@@ -182,12 +190,12 @@ describe('JwtStrategy', () => {
         sub: 'user-123',
         tenantId: 'tenant-456',
         realm_access: {
-          roles: ['admin', 'user']
+          roles: ['admin', 'user'],
         },
         username: 'testuser',
         email: 'test@example.com',
         exp: 1234567890,
-        iat: 1234567800
+        iat: 1234567800,
       };
 
       const result = await strategy.validate(payload);

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
@@ -18,6 +18,14 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+    // Set up default mock return values
+    mockConfigService.get.mockImplementation((key: string) => {
+      if (key === 'TAZAMA_AUTH_URL') {
+        return 'http://auth.example.com/login';
+      }
+      return undefined;
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -58,7 +66,10 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
-      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, { username, password });
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
+        username,
+        password,
+      });
       expect(result).toEqual({ token: mockToken });
     });
 
@@ -83,7 +94,9 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(of({ data: { access_token: mockToken } }));
+      httpService.post.mockReturnValue(
+        of({ data: { access_token: mockToken } }),
+      );
 
       const result = await service.login(username, password);
 
@@ -111,7 +124,9 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(of({ data: { user: { token: mockToken } } }));
+      httpService.post.mockReturnValue(
+        of({ data: { user: { token: mockToken } } }),
+      );
 
       const result = await service.login(username, password);
 
@@ -124,7 +139,9 @@ describe('AuthService', () => {
 
       configService.get.mockReturnValue(undefined);
 
-      await expect(service.login(username, password)).rejects.toThrow('Authentication service unavailable');
+      await expect(service.login(username, password)).rejects.toThrow(
+        'Authentication service unavailable',
+      );
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
     });
 
@@ -135,10 +152,17 @@ describe('AuthService', () => {
       const errorMessage = 'Network error';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(throwError(() => new Error(errorMessage)));
+      httpService.post.mockReturnValue(
+        throwError(() => new Error(errorMessage)),
+      );
 
-      await expect(service.login(username, password)).rejects.toThrow('Authentication failed');
-      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, { username, password });
+      await expect(service.login(username, password)).rejects.toThrow(
+        'Authentication failed',
+      );
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
+        username,
+        password,
+      });
     });
 
     it('should throw error when response does not contain token', async () => {
@@ -147,7 +171,9 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(of({ data: { message: 'no token here' } }));
+      httpService.post.mockReturnValue(
+        of({ data: { message: 'no token here' } }),
+      );
 
       const result = await service.login(username, password);
 
