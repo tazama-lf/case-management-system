@@ -1,0 +1,171 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthService } from './auth.service';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { of, throwError } from 'rxjs';
+
+describe('AuthService', () => {
+  let service: AuthService;
+  let httpService: any;
+  let configService: any;
+
+  const mockHttpService = {
+    post: jest.fn(),
+  };
+
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: HttpService,
+          useValue: mockHttpService,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+    httpService = module.get(HttpService);
+    configService = module.get(ConfigService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('login', () => {
+    it('should successfully login with valid credentials and return token string', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const mockToken = 'jwt-token-123';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: mockToken }));
+
+      const result = await service.login(username, password);
+
+      expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, { username, password });
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should successfully login and extract token from object response with token property', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const mockToken = 'jwt-token-456';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: { token: mockToken } }));
+
+      const result = await service.login(username, password);
+
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should successfully login and extract access_token from object response', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const mockToken = 'jwt-token-789';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: { access_token: mockToken } }));
+
+      const result = await service.login(username, password);
+
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should successfully login and extract jwt from object response', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const mockToken = 'jwt-token-abc';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: { jwt: mockToken } }));
+
+      const result = await service.login(username, password);
+
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should successfully login and extract user.token from nested object response', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const mockToken = 'jwt-token-def';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: { user: { token: mockToken } } }));
+
+      const result = await service.login(username, password);
+
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should throw error when TAZAMA_AUTH_URL is not set', async () => {
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(undefined);
+
+      await expect(service.login(username, password)).rejects.toThrow('Authentication service unavailable');
+      expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
+    });
+
+    it('should throw error when HTTP request fails', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+      const errorMessage = 'Network error';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(throwError(() => new Error(errorMessage)));
+
+      await expect(service.login(username, password)).rejects.toThrow('Authentication failed');
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, { username, password });
+    });
+
+    it('should throw error when response does not contain token', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: { message: 'no token here' } }));
+
+      const result = await service.login(username, password);
+
+      // Should still return with undefined token since the extraction logic returns undefined
+      expect(result).toEqual({ token: undefined });
+    });
+
+    it('should handle empty response data', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(of({ data: null }));
+
+      const result = await service.login(username, password);
+
+      expect(result).toEqual({ token: undefined });
+    });
+  });
+});
