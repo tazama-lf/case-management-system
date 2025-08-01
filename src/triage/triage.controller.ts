@@ -4,13 +4,16 @@ import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('api/v1/triage')
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
-  @Post("submit-alert")
-  @UseGuards(AuthGuard('jwt'))
+  @Post('submit-alert')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('CMS-TEST-ROLE')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
