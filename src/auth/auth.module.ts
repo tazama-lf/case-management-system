@@ -4,8 +4,8 @@ import { JwtStrategy } from './jwt.strategy';
 import { HttpModule } from '@nestjs/axios';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { PrismaModule } from 'prisma/prisma.module';
-import { AuditLogModule } from 'src/audit/auditLog.module';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { AuditLogModule } from '../audit/auditLog.module';
 
 @Module({
   imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
