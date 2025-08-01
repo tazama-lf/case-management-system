@@ -21,12 +21,15 @@ import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+<<<<<<< HEAD
 import { CaseType } from '@prisma/client';
 =======
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 =======
 import { AuthGuard } from '@nestjs/passport';
 >>>>>>> 0842402 (feat:adding auth service)
+=======
+>>>>>>> 61c1161 (feat: Auth adding roles decorators)
 
 @Controller('api/v1/triage')
 <<<<<<< HEAD
@@ -95,9 +98,15 @@ export class TriageController {
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
+<<<<<<< HEAD
   @Post("submit-alert")
 >>>>>>> d0ff41d (feat:adding auth service)
   @UseGuards(AuthGuard('jwt'))
+=======
+  @Post('submit-alert')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('CMS-TEST-ROLE')
+>>>>>>> 61c1161 (feat: Auth adding roles decorators)
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
