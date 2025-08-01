@@ -40,10 +40,14 @@ describe('AuditLogModule', () => {
     const moduleMetadata = Reflect.getMetadata('providers', AuditLogModule);
     const exportsMetadata = Reflect.getMetadata('exports', AuditLogModule);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(moduleMetadata).toContain(AuditLogService);
     expect(exportsMetadata).toContain(AuditLogService);
   });

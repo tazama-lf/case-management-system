@@ -13,10 +13,14 @@ describe('AuthModule', () => {
     const controllersMetadata = Reflect.getMetadata('controllers', AuthModule);
     const exportsMetadata = Reflect.getMetadata('exports', AuthModule);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(providersMetadata).toContain(AuthService);
     expect(providersMetadata).toContain(JwtStrategy);
     expect(controllersMetadata).toContain(AuthController);

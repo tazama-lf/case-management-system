@@ -157,6 +157,7 @@ describe('TriageController', () => {
         'test-tenant-id',
       );
     });
+<<<<<<< HEAD
 
     it('should log case creation when confidence threshold is missing/invalid', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -221,6 +222,8 @@ describe('TriageController', () => {
       process.env.CONFIDENCE_THRESHOLD = originalEnv;
       consoleSpy.mockRestore();
     });
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
   });
 
   describe('getTest', () => {
@@ -239,7 +242,10 @@ describe('TriageController', () => {
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
+<<<<<<< HEAD
         tenantId: 'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       },
     };
 
@@ -272,7 +278,10 @@ describe('TriageController', () => {
         'alert-123',
         mockUpdateAlertDto,
         'test-user-id',
+<<<<<<< HEAD
         'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       );
       expect(triageService.updateAlertData).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -290,7 +299,10 @@ describe('TriageController', () => {
         'alert-123',
         mockUpdateAlertDto,
         'test-user-id',
+<<<<<<< HEAD
         'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       );
     });
   });
@@ -303,7 +315,10 @@ describe('TriageController', () => {
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
+<<<<<<< HEAD
         tenantId: 'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       },
     };
 
@@ -336,7 +351,10 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
+<<<<<<< HEAD
         'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       );
       expect(triageService.manualCloseAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -354,7 +372,10 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
+<<<<<<< HEAD
         'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       );
     });
 
@@ -390,11 +411,15 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_REFUTED,
         'test-user-id',
+<<<<<<< HEAD
         'test-tenant-id',
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
       );
       expect(result).toEqual(expectedResult);
     });
   });
+<<<<<<< HEAD
 
   describe('console.log branch coverage', () => {
     it('should log user.role when available', async () => {
@@ -565,4 +590,6 @@ describe('TriageController', () => {
       consoleSpy.mockRestore();
     });
   });
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
 });

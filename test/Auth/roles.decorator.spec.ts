@@ -3,6 +3,9 @@ import { SetMetadata } from '@nestjs/common';
 
 // Mock SetMetadata
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
 jest.mock('@nestjs/common', () => {
   const actual = jest.requireActual('@nestjs/common');
   return {
@@ -10,6 +13,7 @@ jest.mock('@nestjs/common', () => {
     SetMetadata: jest.fn(),
   };
 });
+<<<<<<< HEAD
 
 describe('Roles Decorator', () => {
   const mockSetMetadata = SetMetadata as jest.MockedFunction<
@@ -24,6 +28,13 @@ jest.mock('@nestjs/common', () => ({
 describe('Roles Decorator', () => {
   const mockSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>;
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+describe('Roles Decorator', () => {
+  const mockSetMetadata = SetMetadata as jest.MockedFunction<
+    typeof SetMetadata
+  >;
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
 
   beforeEach(() => {
     mockSetMetadata.mockClear();
@@ -36,6 +47,7 @@ describe('Roles Decorator', () => {
   it('should call SetMetadata with roles key and provided roles', () => {
     const testRoles = ['admin', 'user'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     Roles(...testRoles);
 
@@ -44,6 +56,11 @@ describe('Roles Decorator', () => {
     Roles(...testRoles);
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+    Roles(...testRoles);
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(mockSetMetadata).toHaveBeenCalledWith('roles', testRoles);
     expect(mockSetMetadata).toHaveBeenCalledTimes(1);
   });
@@ -51,6 +68,7 @@ describe('Roles Decorator', () => {
   it('should handle single role', () => {
     const singleRole = 'admin';
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     Roles(singleRole);
 
@@ -59,12 +77,18 @@ describe('Roles Decorator', () => {
     Roles(singleRole);
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+    Roles(singleRole);
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(mockSetMetadata).toHaveBeenCalledWith('roles', [singleRole]);
   });
 
   it('should handle multiple roles', () => {
     const multipleRoles = ['admin', 'user', 'moderator'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     Roles(...multipleRoles);
 
@@ -73,21 +97,31 @@ describe('Roles Decorator', () => {
     Roles(...multipleRoles);
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+    Roles(...multipleRoles);
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(mockSetMetadata).toHaveBeenCalledWith('roles', multipleRoles);
   });
 
   it('should handle empty roles array', () => {
     Roles();
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(mockSetMetadata).toHaveBeenCalledWith('roles', []);
   });
 
   it('should handle duplicate roles', () => {
     const rolesWithDuplicates = ['admin', 'user', 'admin'];
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     Roles(...rolesWithDuplicates);
@@ -97,6 +131,11 @@ describe('Roles Decorator', () => {
     Roles(...rolesWithDuplicates);
     
 >>>>>>> 68856f4 (feat: Test Coverage)
+=======
+
+    Roles(...rolesWithDuplicates);
+
+>>>>>>> 0d032a5 (feat:Test to Triage Module)
     expect(mockSetMetadata).toHaveBeenCalledWith('roles', rolesWithDuplicates);
   });
 });
