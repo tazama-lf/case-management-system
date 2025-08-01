@@ -39,7 +39,7 @@ describe('AuditLogModule', () => {
   it('should have correct module configuration', () => {
     const moduleMetadata = Reflect.getMetadata('providers', AuditLogModule);
     const exportsMetadata = Reflect.getMetadata('exports', AuditLogModule);
-    
+
     expect(moduleMetadata).toContain(AuditLogService);
     expect(exportsMetadata).toContain(AuditLogService);
   });
