@@ -105,8 +105,12 @@ export class TriageController {
 =======
   @Post('submit-alert')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+<<<<<<< HEAD
   @Roles('CMS-TEST-ROLE')
 >>>>>>> 61c1161 (feat: Auth adding roles decorators)
+=======
+  @Roles('CMS-TEST-ROLE','manage-account')
+>>>>>>> 38c8968 (feat: Unit Test for Auth and Audit)
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
