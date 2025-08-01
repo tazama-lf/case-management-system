@@ -1,8 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
-import { JwtPayload } from 'jsonwebtoken';
 import { firstValueFrom } from 'rxjs';
-import { PrismaService } from 'prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

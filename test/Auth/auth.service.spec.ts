@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
@@ -21,6 +21,14 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+    // Set up default mock return values
+    mockConfigService.get.mockImplementation((key: string) => {
+      if (key === 'TAZAMA_AUTH_URL') {
+        return 'http://auth.example.com/login';
+      }
+      return undefined;
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,

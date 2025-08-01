@@ -7,7 +7,6 @@ import {
   Post,
   Req,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -29,33 +28,11 @@ export class TriageController {
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-
-    const alert = await this.triageService.handleNewAlert(
-      dto,
-      userId,
-      tenantId,
+    console.log(
+      'JWT permissions/roles:',
+      req.user.role || req.user.permissions,
     );
-
-    const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
-
-    if (
-      confidenceThreshold === undefined ||
-      confidenceThreshold === null ||
-      confidenceThreshold.trim() === '' ||
-      isNaN(Number(confidenceThreshold))
-    ) {
-      console.log('CASE_WILL_BE_CREATED');
-      const caseType = CaseType.FRAUD;
-      const caseCreated = await this.triageService.investigateAlert(
-        alert.alert_id,
-        caseType,
-        userId,
-        tenantId,
-      );
-      alert.case_id = caseCreated.case_id;
-    }
-
-    return alert;
+    return this.triageService.handleNewAlert(dto, userId, tenantId);
   }
 
   @Get('test')
@@ -92,60 +69,5 @@ export class TriageController {
       userId,
       tenantId,
     );
-  }
-
-  @Patch(':alertId/investigate')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async sendForInvestigation(
-    @Param('alertId') alertId: string,
-    @Body() dto: InvestigateAlertDto,
-    @Req() req,
-  ) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
-    return this.triageService.investigateAlert(
-      alertId,
-      dto.caseType,
-      userId,
-      tenantId,
-    );
-  }
-
-  @Get()
-  @UseGuards(AuthGuard('jwt'))
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async getUserAlerts(
-    @Req() req,
-    @Query('priority') priority?: string,
-    @Query('status') status?: string,
-    @Query('type') type?: string,
-    @Query('search') search?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
-  ) {
-    const tenantId = req.user.tenantId;
-    return this.triageService.getAlertsForUser({
-      tenantId,
-      priority,
-      status,
-      type,
-      search,
-      page: Number(page),
-      limit: Number(limit),
-      sortBy,
-      sortOrder,
-    });
-  }
-
-  @Get(':alertId')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
-    return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
 }
