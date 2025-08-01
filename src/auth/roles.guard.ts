@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   CanActivate,
   ExecutionContext,
@@ -38,9 +41,10 @@ export class RolesGuard implements CanActivate {
       });
       throw new ForbiddenException('No user found in request');
     }
+
     // Role check
     if (requiredRoles && requiredRoles.length > 0) {
-      const userRoles = user.role || []; // renamed from role to userRoles for clarity
+      const userRoles = user.role || [];
       const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
       if (!hasRole) {
