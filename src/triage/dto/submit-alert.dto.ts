@@ -20,6 +20,7 @@ class AlertResultDto {
 }
 
 export class SubmitAlertDto {
+  @IsObject()
   @ValidateNested()
   @Type(() => AlertResultDto)
   result: AlertResultDto;
