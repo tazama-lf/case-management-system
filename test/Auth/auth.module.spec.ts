@@ -12,7 +12,7 @@ describe('AuthModule', () => {
     const providersMetadata = Reflect.getMetadata('providers', AuthModule);
     const controllersMetadata = Reflect.getMetadata('controllers', AuthModule);
     const exportsMetadata = Reflect.getMetadata('exports', AuthModule);
-    
+
     expect(providersMetadata).toContain(AuthService);
     expect(providersMetadata).toContain(JwtStrategy);
     expect(controllersMetadata).toContain(AuthController);
