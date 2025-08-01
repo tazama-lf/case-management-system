@@ -5,7 +5,7 @@ import { AuditLogModule } from './audit/auditLog.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { TriageModule } from './triage/triage.module';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
   imports: [
@@ -21,3 +21,4 @@ import { PrismaService } from 'prisma/prisma.service';
   providers: [PrismaService],
 })
 export class AppModule {}
+

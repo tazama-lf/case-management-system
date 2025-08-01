@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { validate as isUuid } from 'uuid';
 
@@ -34,7 +34,7 @@ export class AuditLogService {
     user: any,
     entityName: string,
     action: string,
-    details?: any,
+    _details?: any,
   ) {
     return this.logAction({
       userId: user?.sub || 'unknown',

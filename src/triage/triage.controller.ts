@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -13,11 +22,14 @@ export class TriageController {
 
   @Post('submit-alert')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('CMS-TEST-ROLE','manage-account')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    console.log('JWT permissions/roles:', req.user.role || req.user.permissions);
+    console.log(
+      'JWT permissions/roles:',
+      req.user.role || req.user.permissions,
+    );
     return this.triageService.handleNewAlert(dto, userId, tenantId);
   }
 

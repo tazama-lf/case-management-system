@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Controller,
   Post,
@@ -53,6 +50,9 @@ export class AuthController {
       this.logger.warn(
         `Login failed for user ${body.username}: ${error.message}`,
       );
+      this.logger.warn(
+        `Login failed for user ${body.username}: ${error.message}`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
   }
@@ -65,6 +65,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('audit-logs')
+  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
   async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
     return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
