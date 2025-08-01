@@ -324,4 +324,174 @@ describe('TriageController', () => {
       expect(result).toEqual(expectedResult);
     });
   });
+
+  describe('console.log branch coverage', () => {
+    it('should log user.role when available', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'Test',
+          report: { test: 'data' },
+          transaction: { test: 'transaction' },
+          networkMap: { test: 'network' },
+          source: 'test-source',
+        },
+      };
+
+      const req = {
+        user: {
+          user_id: 'user-123',
+          tenantId: 'tenant-456',
+          role: 'test-role', // role is available
+          permissions: 'test-permissions',
+        },
+      };
+
+      mockTriageService.handleNewAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+
+      await controller.submitAlert(dto, req);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
+      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
+        dto,
+        'user-123',
+        'tenant-456',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log user.permissions when role is not available', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'Test',
+          report: { test: 'data' },
+          transaction: { test: 'transaction' },
+          networkMap: { test: 'network' },
+          source: 'test-source',
+        },
+      };
+
+      const req = {
+        user: {
+          user_id: 'user-123',
+          tenantId: 'tenant-456',
+          role: null, // role is null, should fallback to permissions
+          permissions: 'test-permissions',
+        },
+      };
+
+      mockTriageService.handleNewAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+
+      await controller.submitAlert(dto, req);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-permissions',
+      );
+      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
+        dto,
+        'user-123',
+        'tenant-456',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log user.permissions when role is undefined', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'Test',
+          report: { test: 'data' },
+          transaction: { test: 'transaction' },
+          networkMap: { test: 'network' },
+          source: 'test-source',
+        },
+      };
+
+      const req = {
+        user: {
+          user_id: 'user-123',
+          tenantId: 'tenant-456',
+          // role is undefined, should fallback to permissions
+          permissions: 'test-permissions',
+        },
+      };
+
+      mockTriageService.handleNewAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+
+      await controller.submitAlert(dto, req);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-permissions',
+      );
+      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
+        dto,
+        'user-123',
+        'tenant-456',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log user.permissions when role is empty string', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'Test',
+          report: { test: 'data' },
+          transaction: { test: 'transaction' },
+          networkMap: { test: 'network' },
+          source: 'test-source',
+        },
+      };
+
+      const req = {
+        user: {
+          user_id: 'user-123',
+          tenantId: 'tenant-456',
+          role: '', // empty string, should fallback to permissions
+          permissions: 'test-permissions',
+        },
+      };
+
+      mockTriageService.handleNewAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+
+      await controller.submitAlert(dto, req);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-permissions',
+      );
+      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
+        dto,
+        'user-123',
+        'tenant-456',
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
