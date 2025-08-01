@@ -17,7 +17,6 @@ import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { AlertStatus, Priority } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class TriageService {
@@ -133,8 +132,12 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = ''; 
-    if (dto.result && typeof dto.result.source === 'string' && dto.result.source) {
+    let source = '';
+    if (
+      dto.result &&
+      typeof dto.result.source === 'string' &&
+      dto.result.source
+    ) {
       source = dto.result.source;
     } else if (
       dto.result &&
@@ -147,21 +150,30 @@ export class TriageService {
 
     // Determine the alert type (txtp)
     let txtp = '';
-    if (dto.result.report && typeof (dto.result.report as any).txtp === 'string') {
+    if (
+      dto.result.report &&
+      typeof (dto.result.report as any).txtp === 'string'
+    ) {
       txtp = (dto.result.report as any).txtp;
-    } else if (dto.result.transaction && typeof (dto.result.transaction as any).txtp === 'string') {
+    } else if (
+      dto.result.transaction &&
+      typeof (dto.result.transaction as any).txtp === 'string'
+    ) {
       txtp = (dto.result.transaction as any).txtp;
-    } else if (dto.result.networkMap && typeof (dto.result.networkMap as any).txtp === 'string') {
+    } else if (
+      dto.result.networkMap &&
+      typeof (dto.result.networkMap as any).txtp === 'string'
+    ) {
       txtp = (dto.result.networkMap as any).txtp;
     }
 
     try {
       const alert = await this.prisma.alert.create({
         data: {
-          tenant_id: tenantId, 
+          tenant_id: tenantId,
           priority: Priority.LOW,
-          source: source, 
-          txtp: txtp, 
+          source: source,
+          txtp: txtp,
           alert_status: AlertStatus.NEW,
           message: String(dto.result.message),
           alert_data: dto.result.report,
@@ -171,7 +183,7 @@ export class TriageService {
         },
       });
       await this.audit.logAction({
-        userId, 
+        userId,
         operation: 'ALERT_CREATED',
         entityName: 'Alert',
         actionPerformed: `Created new alert ${alert.alert_id}`,

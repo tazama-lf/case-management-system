@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+<<<<<<< HEAD
 
 import { of, throwError } from 'rxjs';
 import {
@@ -15,6 +16,9 @@ jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 
 // Suppress Logger.error output during tests
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+=======
+import { of, throwError } from 'rxjs';
+>>>>>>> ac7173e (feat: Test Coverage)
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -30,12 +34,20 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+<<<<<<< HEAD
+=======
+    // Set up default mock return values
+>>>>>>> ac7173e (feat: Test Coverage)
     mockConfigService.get.mockImplementation((key: string) => {
       if (key === 'TAZAMA_AUTH_URL') {
         return 'http://auth.example.com/login';
       }
       return undefined;
     });
+<<<<<<< HEAD
+=======
+
+>>>>>>> ac7173e (feat: Test Coverage)
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -80,11 +92,15 @@ describe('AuthService', () => {
         username,
         password,
       });
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+=======
+      expect(result).toEqual({ token: mockToken });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
 
     it('should successfully login and extract token from object response with token property', async () => {
@@ -98,11 +114,15 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+=======
+      expect(result).toEqual({ token: mockToken });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
 
     it('should successfully login and extract access_token from object response', async () => {
@@ -118,11 +138,15 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+=======
+      expect(result).toEqual({ token: mockToken });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
 
     it('should successfully login and extract jwt from object response', async () => {
@@ -136,11 +160,15 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+=======
+      expect(result).toEqual({ token: mockToken });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
 
     it('should successfully login and extract user.token from nested object response', async () => {
@@ -156,6 +184,7 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
@@ -164,17 +193,28 @@ describe('AuthService', () => {
     });
 
     it('should throw ServiceUnavailableException when TAZAMA_AUTH_URL is not set', async () => {
+=======
+      expect(result).toEqual({ token: mockToken });
+    });
+
+    it('should throw error when TAZAMA_AUTH_URL is not set', async () => {
+>>>>>>> ac7173e (feat: Test Coverage)
       const username = 'testuser';
       const password = 'testpass';
 
       configService.get.mockReturnValue(undefined);
 
       await expect(service.login(username, password)).rejects.toThrow(
+<<<<<<< HEAD
         ServiceUnavailableException,
+=======
+        'Authentication service unavailable',
+>>>>>>> ac7173e (feat: Test Coverage)
       );
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
     });
 
+<<<<<<< HEAD
     it('should throw UnauthorizedException when HTTP request fails with 401', async () => {
       const mockAuthUrl = 'http://auth.example.com/login';
       const username = 'testuser';
@@ -206,6 +246,21 @@ describe('AuthService', () => {
 
       await expect(service.login(username, password)).rejects.toThrow(
         ServiceUnavailableException,
+=======
+    it('should throw error when HTTP request fails', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+      const errorMessage = 'Network error';
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(
+        throwError(() => new Error(errorMessage)),
+      );
+
+      await expect(service.login(username, password)).rejects.toThrow(
+        'Authentication failed',
+>>>>>>> ac7173e (feat: Test Coverage)
       );
       expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
         username,
@@ -226,11 +281,15 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
       // Should still return with undefined token since the extraction logic returns undefined
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: undefined,
         expiresIn: null,
       });
+=======
+      expect(result).toEqual({ token: undefined });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
 
     it('should handle empty response data', async () => {
@@ -243,6 +302,7 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
+<<<<<<< HEAD
       expect(result).toEqual({
         message: 'Login successful',
         token: undefined,
@@ -308,6 +368,9 @@ describe('AuthService', () => {
 
     it('should return 0 if token is invalid', () => {
       expect(service.getTokenTimeToExpiry('invalid.token')).toBe(0);
+=======
+      expect(result).toEqual({ token: undefined });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
   });
 });

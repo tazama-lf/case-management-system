@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
@@ -11,6 +12,18 @@ import { Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/co
 =======
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 >>>>>>> d0ff41d (feat:adding auth service)
+=======
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+>>>>>>> ac7173e (feat: Test Coverage)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -106,15 +119,22 @@ export class TriageController {
   @Post('submit-alert')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
 <<<<<<< HEAD
+<<<<<<< HEAD
   @Roles('CMS-TEST-ROLE')
 >>>>>>> 61c1161 (feat: Auth adding roles decorators)
 =======
   @Roles('CMS-TEST-ROLE','manage-account')
 >>>>>>> 38c8968 (feat: Unit Test for Auth and Audit)
+=======
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+>>>>>>> ac7173e (feat: Test Coverage)
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    console.log('JWT permissions/roles:', req.user.role || req.user.permissions);
+    console.log(
+      'JWT permissions/roles:',
+      req.user.role || req.user.permissions,
+    );
     return this.triageService.handleNewAlert(dto, userId, tenantId);
   }
 

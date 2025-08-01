@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from '../../src/auth/auth.controller';
 import { AuthService } from '../../src/auth/auth.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
+<<<<<<< HEAD
 import { UnauthorizedException, Logger } from '@nestjs/common';
+=======
+import { UnauthorizedException } from '@nestjs/common';
+>>>>>>> ac7173e (feat: Test Coverage)
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -18,6 +22,7 @@ describe('AuthController', () => {
     getLogs: jest.fn(),
   };
 
+<<<<<<< HEAD
   const mockLogger = {
     log: jest.fn(),
     error: jest.fn(),
@@ -26,13 +31,26 @@ describe('AuthController', () => {
     verbose: jest.fn(),
   };
 
+=======
+>>>>>>> ac7173e (feat: Test Coverage)
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+<<<<<<< HEAD
         { provide: AuthService, useValue: mockAuthService },
         { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: Logger, useValue: mockLogger },
+=======
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
+        {
+          provide: AuditLogService,
+          useValue: mockAuditLogService,
+        },
+>>>>>>> ac7173e (feat: Test Coverage)
       ],
     }).compile();
 
@@ -45,6 +63,7 @@ describe('AuthController', () => {
     jest.clearAllMocks();
   });
 
+<<<<<<< HEAD
   it('should handle empty login credentials', async () => {
     const loginDto = { username: '', password: '' };
 
@@ -81,6 +100,109 @@ describe('AuthController', () => {
     expect(result).toEqual({
       message: 'Login successful',
       token: mockToken,
+=======
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  describe('login', () => {
+    it('should successfully login and return token with success audit log', async () => {
+      const loginDto = { username: 'testuser', password: 'testpass' };
+      const mockToken = 'jwt-token-123';
+
+      authService.login.mockResolvedValue({ token: mockToken });
+      auditLogService.logAction.mockResolvedValue({});
+
+      const result = await controller.login(loginDto);
+
+      expect(authService.login).toHaveBeenCalledWith('testuser', 'testpass');
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId: 'unknown',
+        operation: 'login',
+        entityName: 'user',
+        actionPerformed: 'login',
+        outcome: 'success',
+      });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+      });
+    });
+
+    it('should handle login failure and log failure audit', async () => {
+      const loginDto = { username: 'testuser', password: 'wrongpass' };
+      const errorMessage = 'Authentication failed';
+
+      authService.login.mockRejectedValue(new Error(errorMessage));
+      auditLogService.logAction.mockResolvedValue({});
+
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(authService.login).toHaveBeenCalledWith('testuser', 'wrongpass');
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId: 'unknown',
+        operation: 'login',
+        entityName: 'user',
+        actionPerformed: 'login',
+        outcome: 'failure',
+      });
+    });
+
+    it('should throw UnauthorizedException with message "Invalid credentials" on login failure', async () => {
+      const loginDto = { username: 'testuser', password: 'wrongpass' };
+
+      authService.login.mockRejectedValue(new Error('Some auth error'));
+      auditLogService.logAction.mockResolvedValue({});
+
+      try {
+        await controller.login(loginDto);
+        fail('Expected UnauthorizedException to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(error.message).toBe('Invalid credentials');
+      }
+    });
+
+    it('should handle empty login credentials', async () => {
+      const loginDto = { username: '', password: '' };
+
+      authService.login.mockRejectedValue(new Error('Empty credentials'));
+      auditLogService.logAction.mockResolvedValue({});
+
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(authService.login).toHaveBeenCalledWith('', '');
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId: 'unknown',
+        operation: 'login',
+        entityName: 'user',
+        actionPerformed: 'login',
+        outcome: 'failure',
+      });
+    });
+
+    it('should handle special characters in username and password', async () => {
+      const loginDto = { username: 'test@user.com', password: 'p@ssw0rd!' };
+      const mockToken = 'jwt-token-special';
+
+      authService.login.mockResolvedValue({ token: mockToken });
+      auditLogService.logAction.mockResolvedValue({});
+
+      const result = await controller.login(loginDto);
+
+      expect(authService.login).toHaveBeenCalledWith(
+        'test@user.com',
+        'p@ssw0rd!',
+      );
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+      });
+>>>>>>> ac7173e (feat: Test Coverage)
     });
   });
 

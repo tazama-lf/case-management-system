@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+<<<<<<< HEAD
 import { RolesGuard, Permissions } from '../../src/auth/roles.guard';
+=======
+import { RolesGuard } from '../../src/auth/roles.guard';
+>>>>>>> ac7173e (feat: Test Coverage)
 import { Reflector } from '@nestjs/core';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 
+<<<<<<< HEAD
 describe('Permissions Decorator', () => {
   it('should set permissions metadata correctly', () => {
     const permissions = ['read', 'write', 'delete'];
@@ -29,6 +34,8 @@ describe('Permissions Decorator', () => {
   });
 });
 
+=======
+>>>>>>> ac7173e (feat: Test Coverage)
 describe('RolesGuard', () => {
   let guard: RolesGuard;
   let reflector: any;

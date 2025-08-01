@@ -25,8 +25,22 @@ export default tseslint.config(
 
 export default tseslint.config(
   {
+<<<<<<< HEAD
     ignores: ['eslint.config.mjs'],
 >>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
+=======
+    ignores: [
+      'eslint.config.mjs',
+      'dist/**/*',
+      'node_modules/**/*',
+      '**/*.d.ts',
+      'coverage/**/*',
+      '.next/**/*',
+      'build/**/*',
+      '*.config.js',
+      '*.config.mjs'
+    ],
+>>>>>>> ac7173e (feat: Test Coverage)
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -77,8 +91,20 @@ export default tseslint.config(
 =======
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
+<<<<<<< HEAD
       '@typescript-eslint/no-unsafe-argument': 'warn'
 >>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
+=======
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }],
+      '@typescript-eslint/require-await': 'warn',
+      '@typescript-eslint/unbound-method': 'warn',
+      '@typescript-eslint/no-require-imports': 'warn'
+>>>>>>> ac7173e (feat: Test Coverage)
     },
   },
 );

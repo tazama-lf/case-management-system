@@ -202,4 +202,11 @@ vite.config.ts.timestamp-*
 =======
 
 /generated/prisma
+<<<<<<< HEAD
 >>>>>>> c1f198e (feat: prisma)
+=======
+
+#dist files 
+dist/
+node_modules/
+>>>>>>> ac7173e (feat: Test Coverage)

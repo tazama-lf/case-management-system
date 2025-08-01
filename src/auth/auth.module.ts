@@ -28,10 +28,13 @@ import { PrismaModule } from 'prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 
 @Module({
-  imports: [PassportModule, PrismaModule, HttpModule,AuditLogModule], 
+  imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
   providers: [JwtStrategy, AuthService],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],
 })
 export class AuthModule {}
+<<<<<<< HEAD
 >>>>>>> 63fc0de (feat:implementing the auth service)
+=======
+>>>>>>> ac7173e (feat: Test Coverage)

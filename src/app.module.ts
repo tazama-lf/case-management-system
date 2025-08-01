@@ -35,9 +35,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { TriageModule } from './triage/triage.module';
+<<<<<<< HEAD
 import { PrismaService } from 'prisma/prisma.service';
 
 >>>>>>> 34b27df (feat:auth)
+=======
+import { PrismaService } from '../prisma/prisma.service';
+>>>>>>> ac7173e (feat: Test Coverage)
 
 @Module({
   imports: [
@@ -65,7 +69,11 @@ import { PrismaService } from 'prisma/prisma.service';
   providers: [PrismaService],
 })
 export class AppModule {}
+<<<<<<< HEAD
 =======
   ],
 })
 export class AppModule {}
+>>>>>>> 9e1ce67 (feat: audit log)
+=======
+>>>>>>> ac7173e (feat: Test Coverage)

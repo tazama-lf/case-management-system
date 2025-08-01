@@ -19,8 +19,11 @@ interface JwtPayload {
 >>>>>>> 63fc0de (feat:implementing the auth service)
 =======
 import * as fs from 'fs';
+<<<<<<< HEAD
 import * as path from 'path';
 >>>>>>> 8017cec (feat:auth)
+=======
+>>>>>>> ac7173e (feat: Test Coverage)
 
 // Define the JWT payload interface
 interface JwtPayload {
@@ -48,6 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     try {
       publicKey = fs.readFileSync(keyPath, 'utf8');
 <<<<<<< HEAD
+<<<<<<< HEAD
     } catch {
       throw new Error('Public key file not found or unreadable');
     }
@@ -60,6 +64,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 >>>>>>> 63fc0de (feat:implementing the auth service)
 =======
     } catch (err) {
+=======
+    } catch {
+>>>>>>> ac7173e (feat: Test Coverage)
       throw new Error('Public key file not found or unreadable');
     }
     if (!publicKey) {
@@ -111,6 +118,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
+<<<<<<< HEAD
 =======
 =======
 async validate(payload: JwtPayload) {
@@ -176,3 +184,5 @@ async validate(payload: JwtPayload) {
 =======
 }
 >>>>>>> a522114 (feat:Authentication & Authorization)
+=======
+>>>>>>> ac7173e (feat: Test Coverage)
