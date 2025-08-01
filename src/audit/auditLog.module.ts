@@ -4,6 +4,7 @@ import { AuditLogService } from './auditLog.service';
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { PrismaModule } from '../../prisma/prisma.module';
 =======
 import { AuditLogController } from './auditLog.controller';
@@ -20,6 +21,9 @@ import { PrismaModule } from 'prisma/prisma.module';
 =======
 import { PassportModule } from '@nestjs/passport';
 >>>>>>> ea2f4e8 (feat:auth)
+=======
+import { PrismaModule } from '../../prisma/prisma.module';
+>>>>>>> 68856f4 (feat: Test Coverage)
 
 @Module({
   imports: [PrismaModule],

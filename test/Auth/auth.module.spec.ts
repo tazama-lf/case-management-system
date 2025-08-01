@@ -12,7 +12,11 @@ describe('AuthModule', () => {
     const providersMetadata = Reflect.getMetadata('providers', AuthModule);
     const controllersMetadata = Reflect.getMetadata('controllers', AuthModule);
     const exportsMetadata = Reflect.getMetadata('exports', AuthModule);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 68856f4 (feat: Test Coverage)
     expect(providersMetadata).toContain(AuthService);
     expect(providersMetadata).toContain(JwtStrategy);
     expect(controllersMetadata).toContain(AuthController);

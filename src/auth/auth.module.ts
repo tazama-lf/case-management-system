@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from '../audit/auditLog.module';
+<<<<<<< HEAD
 
 import { Logger } from '@nestjs/common';
 
@@ -26,6 +27,8 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from 'prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
+=======
+>>>>>>> 68856f4 (feat: Test Coverage)
 
 @Module({
   imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
