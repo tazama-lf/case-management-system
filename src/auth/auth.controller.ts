@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import {
   Controller,
   Post,
@@ -16,6 +17,7 @@ import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { async } from 'rxjs';
 
 @Controller('auth')
 export class AuthController {
@@ -50,6 +52,9 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: 'failure',
       });
+      this.logger.warn(
+        `Login failed for user ${body.username}: ${error.message}`,
+      );
       this.logger.warn(
         `Login failed for user ${body.username}: ${error.message}`,
       );

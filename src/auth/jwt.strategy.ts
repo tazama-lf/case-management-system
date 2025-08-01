@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Define the JWT payload interface
 interface JwtPayload {
@@ -27,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     let publicKey: string | undefined;
     try {
       publicKey = fs.readFileSync(keyPath, 'utf8');
-    } catch (err) {
+    } catch {
       throw new Error('Public key file not found or unreadable');
     }
     if (!publicKey) {

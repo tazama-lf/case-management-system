@@ -3,9 +3,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard } from './roles.guard';
+import { RolesGuard } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
-import { AuditLogService } from '../audit/auditLog.service';
+import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 
 describe('RolesGuard', () => {
