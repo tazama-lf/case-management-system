@@ -37,10 +37,17 @@ Formats all files in the workspace (including coverage, prisma, etc.) using Pret
 npx prettier --write .
 ```
 
+
 Formats only TypeScript files in `src/` and `test/`:
 
 ```
 npx prettier --write "src/**/*.ts" "test/**/*.ts"
+```
+
+Formats all files in the coverage directory:
+
+```
+npx prettier --write "coverage/**/*.*"
 ```
 
 ---
