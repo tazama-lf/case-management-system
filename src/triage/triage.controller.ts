@@ -103,12 +103,16 @@ export class TriageController {
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
+<<<<<<< HEAD
     return this.triageService.manualCloseAlert(
       alertId,
       dto.status,
       userId,
       tenantId,
     );
+=======
+    return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
+>>>>>>> df93bad (feat(triage): enforce tenant isolation for alert operations)
   }
 <<<<<<< HEAD
 =======
