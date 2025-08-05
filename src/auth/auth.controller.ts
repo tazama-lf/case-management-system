@@ -13,7 +13,6 @@ import {
   UseGuards,
   HttpCode,
   Query,
-  BadRequestException,
   Inject,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -46,13 +45,9 @@ export class AuthController {
         message: 'Login successful',
         token: result.token,
       };
-      if (result.refreshToken) {
-        response.refreshToken = result.refreshToken;
-      }
       if (result.expiresIn) {
         response.expiresIn = result.expiresIn;
       }
-
       return response;
     } catch (error) {
       await this.auditLogService.logAction({
@@ -69,45 +64,6 @@ export class AuthController {
         `Login failed for user ${body.username}: ${error.message}`,
       );
       throw new UnauthorizedException('Invalid credentials');
-    }
-  }
-
-  @Post('refresh')
-  @HttpCode(200)
-  async refreshToken(@Body() body: { refreshToken: string }) {
-    if (!body.refreshToken) {
-      throw new BadRequestException('Refresh token is required');
-    }
-    try {
-      const result = await this.authService.refreshToken(body.refreshToken);
-      await this.auditLogService.logAction({
-        userId: 'unknown',
-        operation: 'token_refresh',
-        entityName: 'user',
-        actionPerformed: 'refresh_token',
-        outcome: 'success',
-      });
-      const response: any = {
-        message: 'Token refresh successful',
-        token: result.token,
-      };
-      if (result.refreshToken) {
-        response.refreshToken = result.refreshToken;
-      }
-      if (result.expiresIn) {
-        response.expiresIn = result.expiresIn;
-      }
-      return response;
-    } catch (error) {
-      await this.auditLogService.logAction({
-        userId: 'unknown',
-        operation: 'token_refresh',
-        entityName: 'user',
-        actionPerformed: 'refresh_token',
-        outcome: 'failure',
-      });
-      this.logger.warn(`Token refresh failed: ${error.message}`);
-      throw new UnauthorizedException('Token refresh failed');
     }
   }
 
