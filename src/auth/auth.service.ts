@@ -8,7 +8,6 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
-import * as fs from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -119,34 +118,6 @@ export class AuthService {
       throw new ServiceUnavailableException(
         'Authentication service unavailable',
       );
-    }
-  }
-
-  private async validateToken(token: string): Promise<boolean> {
-    try {
-      const keyPath = process.env.AUTH_PUBLIC_KEY_PATH;
-      if (!keyPath) {
-        throw new Error('AUTH_PUBLIC_KEY_PATH environment variable is not set');
-      }
-      const publicKey = fs.readFileSync(keyPath, 'utf8');
-      jwt.verify(token, publicKey, { algorithms: ['RS256'] });
-      return true;
-    } catch (error) {
-      this.logger.warn(`Token validation failed: ${error.message}`);
-      return false;
-    }
-  }
-
-  private async getTokenExpiry(token: string): Promise<Date | null> {
-    try {
-      const decoded = jwt.decode(token) as any;
-      if (decoded && decoded.exp) {
-        return new Date(decoded.exp * 1000); // Convert from seconds to milliseconds
-      }
-      return null;
-    } catch (error) {
-      this.logger.warn(`Failed to get token expiry: ${error.message}`);
-      return null;
     }
   }
 
