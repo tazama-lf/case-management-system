@@ -6,6 +6,10 @@ import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
+import {
+  UnauthorizedException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -136,31 +140,49 @@ describe('AuthService', () => {
       expect(result).toEqual({ token: mockToken });
     });
 
-    it('should throw error when TAZAMA_AUTH_URL is not set', async () => {
+    it('should throw ServiceUnavailableException when TAZAMA_AUTH_URL is not set', async () => {
       const username = 'testuser';
       const password = 'testpass';
 
       configService.get.mockReturnValue(undefined);
 
       await expect(service.login(username, password)).rejects.toThrow(
-        'Authentication service unavailable',
+        ServiceUnavailableException,
       );
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
     });
 
-    it('should throw error when HTTP request fails', async () => {
+    it('should throw UnauthorizedException when HTTP request fails with 401', async () => {
       const mockAuthUrl = 'http://auth.example.com/login';
       const username = 'testuser';
       const password = 'testpass';
-      const errorMessage = 'Network error';
+      const error: any = new Error('Unauthorized');
+      error.response = { status: 401 };
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(
-        throwError(() => new Error(errorMessage)),
-      );
+      httpService.post.mockReturnValue(throwError(() => error));
 
       await expect(service.login(username, password)).rejects.toThrow(
-        'Authentication failed',
+        UnauthorizedException,
+      );
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
+        username,
+        password,
+      });
+    });
+
+    it('should throw ServiceUnavailableException when HTTP request fails with non-401 error', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+      const error: any = new Error('Network error');
+      error.response = { status: 500 };
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(throwError(() => error));
+
+      await expect(service.login(username, password)).rejects.toThrow(
+        ServiceUnavailableException,
       );
       expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
         username,
