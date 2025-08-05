@@ -216,6 +216,7 @@ export class TriageController {
 =======
     const userId = req.user.user_id;
 <<<<<<< HEAD
+<<<<<<< HEAD
     return this.triageService.manualCloseAlert(alertId, dto.status, userId);
 >>>>>>> 0842402 (feat:adding auth service)
 =======
@@ -227,6 +228,10 @@ export class TriageController {
       tenantId,
     );
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
+=======
+    const tenantId = req.user.tenantId;
+    return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
+>>>>>>> e79442b (feat(triage): enforce tenant isolation for alert operations)
   }
 <<<<<<< HEAD
 =======
