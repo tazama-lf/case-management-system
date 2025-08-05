@@ -30,9 +30,11 @@ import { AuditLogModule } from 'src/audit/auditLog.module';
 =======
 >>>>>>> 68856f4 (feat: Test Coverage)
 
+import { Logger } from '@nestjs/common';
+
 @Module({
   imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
-  providers: [JwtStrategy, AuthService],
+  providers: [JwtStrategy, AuthService, { provide: Logger, useClass: Logger }],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],
 })

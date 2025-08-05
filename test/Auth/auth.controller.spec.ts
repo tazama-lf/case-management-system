@@ -3,10 +3,14 @@ import { AuthController } from '../../src/auth/auth.controller';
 import { AuthService } from '../../src/auth/auth.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { UnauthorizedException, Logger } from '@nestjs/common';
 =======
 import { UnauthorizedException } from '@nestjs/common';
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+import { UnauthorizedException, Logger } from '@nestjs/common';
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -23,6 +27,9 @@ describe('AuthController', () => {
   };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
   const mockLogger = {
     log: jest.fn(),
     error: jest.fn(),
@@ -31,12 +38,16 @@ describe('AuthController', () => {
     verbose: jest.fn(),
   };
 
+<<<<<<< HEAD
 =======
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+<<<<<<< HEAD
 <<<<<<< HEAD
         { provide: AuthService, useValue: mockAuthService },
         { provide: AuditLogService, useValue: mockAuditLogService },
@@ -51,6 +62,11 @@ describe('AuthController', () => {
           useValue: mockAuditLogService,
         },
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: AuditLogService, useValue: mockAuditLogService },
+        { provide: Logger, useValue: mockLogger },
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
       ],
     }).compile();
 
@@ -64,6 +80,9 @@ describe('AuthController', () => {
   });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
   it('should handle empty login credentials', async () => {
     const loginDto = { username: '', password: '' };
 
@@ -82,6 +101,7 @@ describe('AuthController', () => {
       actionPerformed: 'login',
       outcome: 'failure',
     });
+<<<<<<< HEAD
   });
 
   it('should handle special characters in username and password', async () => {
@@ -103,18 +123,20 @@ describe('AuthController', () => {
 =======
   it('should be defined', () => {
     expect(controller).toBeDefined();
+=======
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
   });
 
-  describe('login', () => {
-    it('should successfully login and return token with success audit log', async () => {
-      const loginDto = { username: 'testuser', password: 'testpass' };
-      const mockToken = 'jwt-token-123';
+  it('should handle special characters in username and password', async () => {
+    const loginDto = { username: 'test@user.com', password: 'p@ssw0rd!' };
+    const mockToken = 'jwt-token-special';
 
-      authService.login.mockResolvedValue({ token: mockToken });
-      auditLogService.logAction.mockResolvedValue({});
+    authService.login.mockResolvedValue({ token: mockToken });
+    auditLogService.logAction.mockResolvedValue({});
 
-      const result = await controller.login(loginDto);
+    const result = await controller.login(loginDto);
 
+<<<<<<< HEAD
       expect(authService.login).toHaveBeenCalledWith('testuser', 'testpass');
       expect(auditLogService.logAction).toHaveBeenCalledWith({
         userId: 'unknown',
@@ -203,6 +225,15 @@ describe('AuthController', () => {
         token: mockToken,
       });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+    expect(authService.login).toHaveBeenCalledWith(
+      'test@user.com',
+      'p@ssw0rd!',
+    );
+    expect(result).toEqual({
+      message: 'Login successful',
+      token: mockToken,
+>>>>>>> f74fb43 (feat: token refresh functionality implemented)
     });
   });
 
