@@ -219,7 +219,6 @@ export class AuthService {
       };
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
     } catch (error) {
-      // Distinguish between invalid credentials and service errors
       if (error.response && error.response.status === 401) {
         this.logger.warn(`Invalid credentials for user ${username}`);
         throw new UnauthorizedException('Invalid credentials');
@@ -238,7 +237,7 @@ export class AuthService {
         const currentTime = Math.floor(Date.now() / 1000);
         return decoded.exp < currentTime;
       }
-      return true; // If we can't determine expiry, consider it expired
+      return true;
     } catch (error) {
       this.logger.warn(`Failed to check token expiry: ${error.message}`);
       return true;
@@ -250,7 +249,7 @@ export class AuthService {
       const decoded = jwt.decode(token) as any;
       if (decoded && decoded.exp) {
         const currentTime = Math.floor(Date.now() / 1000);
-        return Math.max(0, decoded.exp - currentTime); // Return seconds until expiry
+        return Math.max(0, decoded.exp - currentTime);
       }
       return 0;
     } catch (error) {

@@ -39,9 +39,12 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     // Set up default mock return values
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> c6bb796 (feat: token refresh functionality implemented)
     mockConfigService.get.mockImplementation((key: string) => {
       if (key === 'TAZAMA_AUTH_URL') {
         return 'http://auth.example.com/login';
@@ -49,9 +52,12 @@ describe('AuthService', () => {
       return undefined;
     });
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> c6bb796 (feat: token refresh functionality implemented)
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -448,6 +454,66 @@ describe('AuthService', () => {
 >>>>>>> ac7173e (feat: Test Coverage)
 =======
 >>>>>>> a67b513 (feat: token refresh functionality implemented)
+    });
+  });
+
+  describe('isTokenExpired', () => {
+    const realDateNow = Date.now;
+    afterEach(() => {
+      global.Date.now = realDateNow;
+    });
+
+    it('should return false if token is not expired', () => {
+      // exp in the future
+      const future = Math.floor(Date.now() / 1000) + 1000;
+      const token = require('jsonwebtoken').sign({ exp: future }, 'secret');
+      expect(service.isTokenExpired(token)).toBe(false);
+    });
+
+    it('should return true if token is expired', () => {
+      // exp in the past
+      const past = Math.floor(Date.now() / 1000) - 1000;
+      const token = require('jsonwebtoken').sign({ exp: past }, 'secret');
+      expect(service.isTokenExpired(token)).toBe(true);
+    });
+
+    it('should return true if token has no exp', () => {
+      const token = require('jsonwebtoken').sign({ foo: 'bar' }, 'secret');
+      expect(service.isTokenExpired(token)).toBe(true);
+    });
+
+    it('should return true if token is invalid', () => {
+      expect(service.isTokenExpired('invalid.token')).toBe(true);
+    });
+  });
+
+  describe('getTokenTimeToExpiry', () => {
+    const realDateNow = Date.now;
+    afterEach(() => {
+      global.Date.now = realDateNow;
+    });
+
+    it('should return seconds to expiry if token is valid', () => {
+      const now = Math.floor(Date.now() / 1000);
+      const exp = now + 500;
+      const token = require('jsonwebtoken').sign({ exp }, 'secret');
+      expect(service.getTokenTimeToExpiry(token)).toBeGreaterThanOrEqual(499);
+    });
+
+    it('should return 0 if token is expired', () => {
+      const now = Math.floor(Date.now() / 1000);
+      const exp = now - 10;
+      const token = require('jsonwebtoken').sign({ exp }, 'secret');
+      expect(service.getTokenTimeToExpiry(token)).toBe(0);
+    });
+
+    it('should return 0 if token has no exp', () => {
+      const token = require('jsonwebtoken').sign({ foo: 'bar' }, 'secret');
+      expect(service.getTokenTimeToExpiry(token)).toBe(0);
+    });
+
+    it('should return 0 if token is invalid', () => {
+      expect(service.getTokenTimeToExpiry('invalid.token')).toBe(0);
     });
   });
 });
