@@ -12,17 +12,10 @@ import { AuthService } from './auth.service';
 
 @Injectable()
 export class TokenExpiryInterceptor implements NestInterceptor {
-  private readonly refreshThreshold: number;
-
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {
-    this.refreshThreshold = parseInt(
-      this.configService.get<string>('TOKEN_REFRESH_THRESHOLD') || '300',
-      10,
-    );
-  }
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -30,18 +23,10 @@ export class TokenExpiryInterceptor implements NestInterceptor {
 
     if (token) {
       const isExpired = (this.authService as any)['isTokenExpired'](token);
-      const timeToExpiry = (this.authService as any)['getTokenTimeToExpiry'](
-        token,
-      );
       if (isExpired) {
         throw new UnauthorizedException(
-          'Token has expired. Please refresh your token or log in again.',
+          'Token has expired. Please log in again.',
         );
-      }
-      if (timeToExpiry < this.refreshThreshold && timeToExpiry > 0) {
-        const response = context.switchToHttp().getResponse();
-        response.setHeader('X-Token-Refresh-Required', 'true');
-        response.setHeader('X-Token-Expires-In', timeToExpiry.toString());
       }
     }
 
@@ -53,7 +38,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
             return throwError(
               () =>
                 new UnauthorizedException(
-                  'Token has expired. Please refresh your token or log in again.',
+                  'Token has expired. Please log in again.',
                 ),
             );
           }

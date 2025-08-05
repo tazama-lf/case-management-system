@@ -4,7 +4,9 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, { logger });
+  const app = await NestFactory.create(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
