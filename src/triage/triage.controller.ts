@@ -46,6 +46,9 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('api/v1/triage')
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1b547ff (feat: Authentication Guards Added at Controller Level)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
@@ -117,6 +120,7 @@ export class TriageController {
   @UseGuards(AuthGuard('jwt'))
 =======
   @Post('submit-alert')
+<<<<<<< HEAD
   @UseGuards(AuthGuard('jwt'), RolesGuard)
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -126,6 +130,8 @@ export class TriageController {
   @Roles('CMS-TEST-ROLE','manage-account')
 >>>>>>> 38c8968 (feat: Unit Test for Auth and Audit)
 =======
+=======
+>>>>>>> 1b547ff (feat: Authentication Guards Added at Controller Level)
   @Roles('CMS-TEST-ROLE', 'manage-account')
 >>>>>>> ac7173e (feat: Test Coverage)
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
@@ -144,7 +150,6 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @UseGuards(AuthGuard('jwt'))
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
@@ -155,7 +160,6 @@ export class TriageController {
   }
 
   @Patch(':alertId/auto-close')
-  @UseGuards(AuthGuard('jwt'))
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
