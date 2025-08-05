@@ -100,7 +100,10 @@ export class TriageService {
     tenantId: string,
   ) {
     const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
     });
 
     if (!alert) {
@@ -115,7 +118,10 @@ export class TriageService {
 
     try {
       const updated = await this.prisma.alert.update({
-        where: { alert_id: alertId },
+        where: {
+          alert_id: alertId,
+          tenant_id: tenantId,
+        },
         data: {
           confidence_per: dto.confidence_per,
           priority: dto.priority,
@@ -149,7 +155,10 @@ export class TriageService {
     tenantId: string,
   ) {
     const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
     });
 
     if (!alert) {
@@ -164,7 +173,10 @@ export class TriageService {
 
     try {
       const updated = await this.prisma.alert.update({
-        where: { alert_id: alertId },
+        where: {
+          alert_id: alertId,
+          tenant_id: tenantId,
+        },
         data: { alert_status: status },
       });
 
