@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AuditLogModule } from './audit/auditLog.module';
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1c9a440 (feat: token refresh functionality implemented)
 import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AuthModule } from './auth/auth.module';
@@ -12,6 +15,7 @@ import { TriageModule } from './triage/triage.module';
 <<<<<<< HEAD
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
+<<<<<<< HEAD
 =======
 import { TriageModule } from './triage/triage.module';
 <<<<<<< HEAD
@@ -45,6 +49,8 @@ import { PrismaService } from 'prisma/prisma.service';
 =======
 import { PrismaService } from '../prisma/prisma.service';
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> 1c9a440 (feat: token refresh functionality implemented)
 
 @Module({
   imports: [
@@ -65,11 +71,15 @@ import { PrismaService } from '../prisma/prisma.service';
       provide: APP_INTERCEPTOR,
       useClass: TokenExpiryInterceptor,
     },
+<<<<<<< HEAD
 =======
     AuthModule,
 >>>>>>> ea2f4e8 (feat:auth)
   ],
   providers: [PrismaService],
+=======
+  ],
+>>>>>>> 1c9a440 (feat: token refresh functionality implemented)
 })
 export class AppModule {}
 <<<<<<< HEAD

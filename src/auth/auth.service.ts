@@ -2,6 +2,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 import { HttpService } from '@nestjs/axios';
+<<<<<<< HEAD
 import { Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
@@ -96,8 +97,13 @@ export class AuthService {}
 import { HttpService } from '@nestjs/axios';
 >>>>>>> dc05881 (feat:auth)
 import { Injectable, Logger } from '@nestjs/common';
+=======
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+>>>>>>> 1c9a440 (feat: token refresh functionality implemented)
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
+import * as fs from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -189,12 +195,130 @@ export class AuthService {
             response.data?.access_token ||
             response.data?.jwt ||
             response.data?.user?.token;
+
+      const refreshToken =
+        response.data?.refresh_token || response.data?.refreshToken;
+
       this.logger.log('Login successful');
+<<<<<<< HEAD
 >>>>>>> ac7173e (feat: Test Coverage)
       return { token };
+=======
+      return {
+        token,
+        refreshToken,
+        expiresIn: response.data?.expires_in || response.data?.expiresIn,
+      };
+>>>>>>> 1c9a440 (feat: token refresh functionality implemented)
     } catch (error) {
       this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
       throw new Error('Authentication failed');
+    }
+  }
+
+  async refreshToken(refreshToken: string) {
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+    const refreshUrl = this.configService.get<string>(
+      'TAZAMA_AUTH_REFRESH_URL',
+    );
+
+    if (!authUrl) {
+      this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
+      throw new Error('Authentication service unavailable');
+    }
+
+    // Use configured refresh URL or construct from auth URL
+    const tokenRefreshUrl =
+      refreshUrl ||
+      authUrl.replace('/login', '/refresh') ||
+      `${authUrl}/refresh`;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(tokenRefreshUrl, {
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      );
+
+      const newToken =
+        typeof response.data === 'string'
+          ? response.data
+          : response.data?.token ||
+            response.data?.access_token ||
+            response.data?.jwt ||
+            response.data?.user?.token;
+
+      const newRefreshToken =
+        response.data?.refresh_token ||
+        response.data?.refreshToken ||
+        refreshToken;
+
+      this.logger.log('Token refresh successful');
+      return {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        expiresIn: response.data?.expires_in || response.data?.expiresIn,
+      };
+    } catch (error) {
+      this.logger.warn(`Token refresh failed: ${error.message}`);
+      throw new UnauthorizedException('Token refresh failed');
+    }
+  }
+
+  private async validateToken(token: string): Promise<boolean> {
+    try {
+      const keyPath = process.env.AUTH_PUBLIC_KEY_PATH;
+      if (!keyPath) {
+        throw new Error('AUTH_PUBLIC_KEY_PATH environment variable is not set');
+      }
+      const publicKey = fs.readFileSync(keyPath, 'utf8');
+      jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+      return true;
+    } catch (error) {
+      this.logger.warn(`Token validation failed: ${error.message}`);
+      return false;
+    }
+  }
+
+  private async getTokenExpiry(token: string): Promise<Date | null> {
+    try {
+      const decoded = jwt.decode(token) as any;
+      if (decoded && decoded.exp) {
+        return new Date(decoded.exp * 1000); // Convert from seconds to milliseconds
+      }
+      return null;
+    } catch (error) {
+      this.logger.warn(`Failed to get token expiry: ${error.message}`);
+      return null;
+    }
+  }
+
+  public isTokenExpired(token: string): boolean {
+    try {
+      const decoded = jwt.decode(token) as any;
+      if (decoded && decoded.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        return decoded.exp < currentTime;
+      }
+      return true; // If we can't determine expiry, consider it expired
+    } catch (error) {
+      this.logger.warn(`Failed to check token expiry: ${error.message}`);
+      return true;
+    }
+  }
+
+  public getTokenTimeToExpiry(token: string): number {
+    try {
+      const decoded = jwt.decode(token) as any;
+      if (decoded && decoded.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        return Math.max(0, decoded.exp - currentTime); // Return seconds until expiry
+      }
+      return 0;
+    } catch (error) {
+      this.logger.warn(`Failed to get time to expiry: ${error.message}`);
+      return 0;
     }
   }
 }
