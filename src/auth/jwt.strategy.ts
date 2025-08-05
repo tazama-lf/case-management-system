@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -43,7 +45,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @param payload The JWT payload containing user information.
    * @returns An object containing the username, roles, permissions, and tenantId.
    */
-  async validate(payload: JwtPayload) {
+  validate(payload: JwtPayload) {
     console.log('JWT payload:', JSON.stringify(payload, null, 2));
     const user_id = payload.sub || payload.clientId;
     const tenantId = payload.tenant_id || payload.tenantId;

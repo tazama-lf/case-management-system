@@ -7,9 +7,8 @@ import {
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority } from '@prisma/client';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class TriageService {
@@ -22,40 +21,12 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = '';
-    if (
-      dto.result &&
-      typeof dto.result.source === 'string' &&
-      dto.result.source
-    ) {
-      source = dto.result.source;
-    } else if (
-      dto.result &&
-      dto.result.report &&
-      typeof (dto.result.report as any).source === 'string' &&
-      (dto.result.report as any).source
-    ) {
-      source = (dto.result.report as any).source;
-    }
-
+    let source = 'REST API';
     // Determine the alert type (txtp)
-    let txtp = '';
-    if (
-      dto.result.report &&
-      typeof (dto.result.report as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.report as any).txtp;
-    } else if (
-      dto.result.transaction &&
-      typeof (dto.result.transaction as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.transaction as any).txtp;
-    } else if (
-      dto.result.networkMap &&
-      typeof (dto.result.networkMap as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.networkMap as any).txtp;
-    }
+    const txtp =
+      typeof dto?.result?.transaction?.TxTp === 'string'
+        ? dto.result.transaction.TxTp
+        : '';
 
     try {
       const alert = await this.prisma.alert.create({
@@ -152,6 +123,56 @@ export class TriageService {
     } catch (error) {
       this.logger.error(`Auto-close failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to auto-close alert');
+    }
+  }
+
+  async investigateAlert(
+    alertId: string,
+    caseType: CaseType,
+    userId: string,
+    tenantId: string,
+  ) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    const casePriority = alert.priority ?? Priority.LOW;
+
+    try {
+      const createdCase = await this.prisma.case.create({
+        data: {
+          case_creator_user_id: userId,
+          case_owner_user_id: userId,
+          tenant_id: tenantId,
+          priority: casePriority,
+          status: CaseStatus.DRAFT,
+          parent_id: null,
+          case_type: caseType,
+          case_creation_type: CaseCreationType.MANUAL,
+        },
+      });
+
+      const updatedAlert = await this.prisma.alert.update({
+        where: { alert_id: alertId },
+        data: { alert_status: AlertStatus.SENT_FOR_INVESTIGATION, case_id: createdCase.case_id },
+      });
+
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_SENT_FOR_INVESTIGATION',
+        entityName: 'Alert',
+        actionPerformed: `Created case ${createdCase.case_id} for alert ${alertId}`,
+        outcome: 'SUCCESS',
+      });
+
+      return updatedAlert;
+    } catch (error) {
+      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
+      throw new InternalServerErrorException('Failed to update alert for investigation');
     }
   }
 }
