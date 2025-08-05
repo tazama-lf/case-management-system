@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -35,10 +36,24 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: 'success',
       });
-      return {
+      const response: any = {
         message: 'Login successful',
         token: result.token,
       };
+      if (result.refreshToken) {
+        response.refreshToken = result.refreshToken;
+      }
+      if (result.expiresIn) {
+        response.expiresIn = result.expiresIn;
+      }
+      if (result.token) {
+        // Optionally, you can keep expiry info if needed for frontend
+        // const expiry = await this.authService.getTokenExpiry(result.token);
+        // if (expiry) {
+        //   response.expiresAt = expiry.toISOString();
+        // }
+      }
+      return response;
     } catch (error) {
       await this.auditLogService.logAction({
         userId: 'unknown',
@@ -54,6 +69,52 @@ export class AuthController {
         `Login failed for user ${body.username}: ${error.message}`,
       );
       throw new UnauthorizedException('Invalid credentials');
+    }
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    if (!body.refreshToken) {
+      throw new BadRequestException('Refresh token is required');
+    }
+    try {
+      const result = await this.authService.refreshToken(body.refreshToken);
+      await this.auditLogService.logAction({
+        userId: 'unknown',
+        operation: 'token_refresh',
+        entityName: 'user',
+        actionPerformed: 'refresh_token',
+        outcome: 'success',
+      });
+      const response: any = {
+        message: 'Token refresh successful',
+        token: result.token,
+      };
+      if (result.refreshToken) {
+        response.refreshToken = result.refreshToken;
+      }
+      if (result.expiresIn) {
+        response.expiresIn = result.expiresIn;
+      }
+      // Optionally, you can keep expiry info if needed for frontend
+      // if (result.token) {
+      //   const expiry = await this.authService.getTokenExpiry(result.token);
+      //   if (expiry) {
+      //     response.expiresAt = expiry.toISOString();
+      //   }
+      // }
+      return response;
+    } catch (error) {
+      await this.auditLogService.logAction({
+        userId: 'unknown',
+        operation: 'token_refresh',
+        entityName: 'user',
+        actionPerformed: 'refresh_token',
+        outcome: 'failure',
+      });
+      this.logger.warn(`Token refresh failed: ${error.message}`);
+      throw new UnauthorizedException('Token refresh failed');
     }
   }
 
