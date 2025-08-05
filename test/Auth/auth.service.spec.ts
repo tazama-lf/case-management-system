@@ -74,7 +74,11 @@ describe('AuthService', () => {
         username,
         password,
       });
-      expect(result).toEqual({ token: mockToken });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+        expiresIn: null,
+      });
     });
 
     it('should successfully login and extract token from object response with token property', async () => {
@@ -88,7 +92,11 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
-      expect(result).toEqual({ token: mockToken });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+        expiresIn: null,
+      });
     });
 
     it('should successfully login and extract access_token from object response', async () => {
@@ -104,7 +112,11 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
-      expect(result).toEqual({ token: mockToken });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+        expiresIn: null,
+      });
     });
 
     it('should successfully login and extract jwt from object response', async () => {
@@ -118,7 +130,11 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
-      expect(result).toEqual({ token: mockToken });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+        expiresIn: null,
+      });
     });
 
     it('should successfully login and extract user.token from nested object response', async () => {
@@ -134,7 +150,11 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
-      expect(result).toEqual({ token: mockToken });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: mockToken,
+        expiresIn: null,
+      });
     });
 
     it('should throw ServiceUnavailableException when TAZAMA_AUTH_URL is not set', async () => {
@@ -200,7 +220,11 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
       // Should still return with undefined token since the extraction logic returns undefined
-      expect(result).toEqual({ token: undefined });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: undefined,
+        expiresIn: null,
+      });
     });
 
     it('should handle empty response data', async () => {
@@ -213,7 +237,11 @@ describe('AuthService', () => {
 
       const result = await service.login(username, password);
 
-      expect(result).toEqual({ token: undefined });
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: undefined,
+        expiresIn: null,
+      });
     });
   });
 });
