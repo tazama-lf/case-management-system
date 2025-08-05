@@ -17,11 +17,11 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('api/v1/triage')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
   @Post('submit-alert')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
@@ -39,7 +39,6 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @UseGuards(AuthGuard('jwt'))
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
@@ -50,7 +49,6 @@ export class TriageController {
   }
 
   @Patch(':alertId/auto-close')
-  @UseGuards(AuthGuard('jwt'))
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
