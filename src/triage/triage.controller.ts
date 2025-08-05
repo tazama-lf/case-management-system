@@ -2,6 +2,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
@@ -13,6 +14,8 @@ import { Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/co
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 >>>>>>> d0ff41d (feat:adding auth service)
 =======
+=======
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 import {
   Body,
   Controller,
@@ -23,17 +26,24 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+<<<<<<< HEAD
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+<<<<<<< HEAD
 <<<<<<< HEAD
 import { CaseType } from '@prisma/client';
 =======
@@ -43,6 +53,9 @@ import { AuthGuard } from '@nestjs/passport';
 >>>>>>> 0842402 (feat:adding auth service)
 =======
 >>>>>>> 61c1161 (feat: Auth adding roles decorators)
+=======
+import { CaseType } from '@prisma/client';
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 
 @Controller('api/v1/triage')
 <<<<<<< HEAD
@@ -55,12 +68,24 @@ export class TriageController {
 
 <<<<<<< HEAD
   @Post('submit-alert')
+<<<<<<< HEAD
+=======
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
 
+<<<<<<< HEAD
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId);
+=======
+    const alert = await this.triageService.handleNewAlert(
+      dto,
+      userId,
+      tenantId,
+    );
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 
     const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
 
@@ -70,8 +95,19 @@ export class TriageController {
       confidenceThreshold.trim() === '' ||
       isNaN(Number(confidenceThreshold))
     ) {
+<<<<<<< HEAD
       const caseType = CaseType.FRAUD;
       const caseCreated = await this.triageService.investigateAlert(alert.alert_id, caseType, userId, tenantId);
+=======
+      console.log('CASE_WILL_BE_CREATED');
+      const caseType = CaseType.FRAUD;
+      const caseCreated = await this.triageService.investigateAlert(
+        alert.alert_id,
+        caseType,
+        userId,
+        tenantId,
+      );
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
       alert.case_id = caseCreated.case_id;
     }
 
@@ -86,6 +122,7 @@ export class TriageController {
   @Patch(':alertId')
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
+<<<<<<< HEAD
   async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
@@ -150,6 +187,8 @@ export class TriageController {
   }
 
   @Patch(':alertId')
+=======
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
@@ -161,6 +200,11 @@ export class TriageController {
   }
 
   @Patch(':alertId/auto-close')
+<<<<<<< HEAD
+=======
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
@@ -184,4 +228,25 @@ export class TriageController {
     );
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
   }
+<<<<<<< HEAD
+=======
+
+  @Patch(':alertId/investigate')
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async sendForInvestigation(
+    @Param('alertId') alertId: string,
+    @Body() dto: InvestigateAlertDto,
+    @Req() req,
+  ) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.investigateAlert(
+      alertId,
+      dto.caseType,
+      userId,
+      tenantId,
+    );
+  }
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 }

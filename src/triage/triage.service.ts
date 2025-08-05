@@ -15,7 +15,7 @@ import { PrismaService } from '../prisma.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority } from '@prisma/client';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -32,7 +32,14 @@ export class TriageService {
     // Determine the alert source
     let source = 'REST API';
     // Determine the alert type (txtp)
+<<<<<<< HEAD
     const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
+=======
+    const txtp =
+      typeof dto?.result?.transaction?.TxTp === 'string'
+        ? dto.result.transaction.TxTp
+        : '';
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 
     try {
       const alert = await this.prisma.alert.create({
@@ -286,4 +293,57 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to auto-close alert');
     }
   }
+<<<<<<< HEAD
+=======
+
+  async investigateAlert(
+    alertId: string,
+    caseType: CaseType,
+    userId: string,
+    tenantId: string,
+  ) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    const casePriority = alert.priority ?? Priority.LOW;
+
+    try {
+      const createdCase = await this.prisma.case.create({
+        data: {
+          case_creator_user_id: userId,
+          case_owner_user_id: userId,
+          tenant_id: tenantId,
+          priority: casePriority,
+          status: CaseStatus.DRAFT,
+          parent_id: null,
+          case_type: caseType,
+          case_creation_type: CaseCreationType.MANUAL,
+        },
+      });
+
+      const updatedAlert = await this.prisma.alert.update({
+        where: { alert_id: alertId },
+        data: { alert_status: AlertStatus.SENT_FOR_INVESTIGATION, case_id: createdCase.case_id },
+      });
+
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_SENT_FOR_INVESTIGATION',
+        entityName: 'Alert',
+        actionPerformed: `Created case ${createdCase.case_id} for alert ${alertId}`,
+        outcome: 'SUCCESS',
+      });
+
+      return updatedAlert;
+    } catch (error) {
+      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
+      throw new InternalServerErrorException('Failed to update alert for investigation');
+    }
+  }
+>>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 }
