@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 npx lint-staged
 =======
 #!/bin/sh
@@ -6,3 +7,6 @@ npx lint-staged
 
 npm run lint
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+npm test
+>>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)

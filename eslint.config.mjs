@@ -38,7 +38,7 @@ export default tseslint.config(
       '.next/**/*',
       'build/**/*',
       '*.config.js',
-      '*.config.mjs'
+      '*.config.mjs',
     ],
 >>>>>>> ac7173e (feat: Test Coverage)
   },
@@ -100,11 +100,18 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unsafe-call': 'warn',
       '@typescript-eslint/no-unsafe-return': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/unbound-method': 'warn',
+<<<<<<< HEAD
       '@typescript-eslint/no-require-imports': 'warn'
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+      '@typescript-eslint/no-require-imports': 'warn',
+>>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
     },
   },
 );

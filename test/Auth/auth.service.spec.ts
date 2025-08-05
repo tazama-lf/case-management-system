@@ -3,12 +3,18 @@ import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
 
 import { of, throwError } from 'rxjs';
 import {
   UnauthorizedException,
   ServiceUnavailableException,
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
   Logger,
 } from '@nestjs/common';
 
@@ -17,12 +23,15 @@ jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 
 // Suppress Logger.error output during tests
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+<<<<<<< HEAD
 =======
 import { of, throwError } from 'rxjs';
 >>>>>>> ac7173e (feat: Test Coverage)
 =======
 } from '@nestjs/common';
 >>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
+=======
+>>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
 
 describe('AuthService', () => {
   let service: AuthService;
