@@ -17,6 +17,7 @@ import { AuthService } from './auth.service';
 @Injectable()
 export class TokenExpiryInterceptor implements NestInterceptor {
 <<<<<<< HEAD
+<<<<<<< HEAD
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
@@ -34,6 +35,12 @@ export class TokenExpiryInterceptor implements NestInterceptor {
     );
   }
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
+=======
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -42,23 +49,29 @@ export class TokenExpiryInterceptor implements NestInterceptor {
     if (token) {
       const isExpired = (this.authService as any)['isTokenExpired'](token);
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (isExpired) {
         throw new UnauthorizedException('Token has expired. Please log in again.');
 =======
       const timeToExpiry = (this.authService as any)['getTokenTimeToExpiry'](
         token,
       );
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       if (isExpired) {
         throw new UnauthorizedException(
-          'Token has expired. Please refresh your token or log in again.',
+          'Token has expired. Please log in again.',
         );
       }
+<<<<<<< HEAD
       if (timeToExpiry < this.refreshThreshold && timeToExpiry > 0) {
         const response = context.switchToHttp().getResponse();
         response.setHeader('X-Token-Refresh-Required', 'true');
         response.setHeader('X-Token-Expires-In', timeToExpiry.toString());
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
       }
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     }
 
     return next.handle().pipe(
@@ -72,7 +85,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
             return throwError(
               () =>
                 new UnauthorizedException(
-                  'Token has expired. Please refresh your token or log in again.',
+                  'Token has expired. Please log in again.',
                 ),
             );
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)

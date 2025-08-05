@@ -97,14 +97,20 @@ describe('AuthService', () => {
         password,
       });
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+<<<<<<< HEAD
 =======
       expect(result).toEqual({ token: mockToken });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
 
     it('should successfully login and extract token from object response with token property', async () => {
@@ -119,14 +125,20 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+<<<<<<< HEAD
 =======
       expect(result).toEqual({ token: mockToken });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
 
     it('should successfully login and extract access_token from object response', async () => {
@@ -143,14 +155,20 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+<<<<<<< HEAD
 =======
       expect(result).toEqual({ token: mockToken });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
 
     it('should successfully login and extract jwt from object response', async () => {
@@ -165,14 +183,20 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
         expiresIn: null,
       });
+<<<<<<< HEAD
 =======
       expect(result).toEqual({ token: mockToken });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
 
     it('should successfully login and extract user.token from nested object response', async () => {
@@ -189,6 +213,9 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: mockToken,
@@ -320,14 +347,20 @@ describe('AuthService', () => {
 
       // Should still return with undefined token since the extraction logic returns undefined
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: undefined,
         expiresIn: null,
       });
+<<<<<<< HEAD
 =======
       expect(result).toEqual({ token: undefined });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
 
     it('should handle empty response data', async () => {
@@ -341,11 +374,15 @@ describe('AuthService', () => {
       const result = await service.login(username, password);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
       expect(result).toEqual({
         message: 'Login successful',
         token: undefined,
         expiresIn: null,
       });
+<<<<<<< HEAD
     });
   });
 
@@ -409,6 +446,8 @@ describe('AuthService', () => {
 =======
       expect(result).toEqual({ token: undefined });
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+>>>>>>> a67b513 (feat: token refresh functionality implemented)
     });
   });
 });
