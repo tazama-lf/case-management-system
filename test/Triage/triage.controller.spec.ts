@@ -175,6 +175,7 @@ describe('TriageController', () => {
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
+        tenantId: 'test-tenant-id',
       },
     };
 
@@ -207,6 +208,7 @@ describe('TriageController', () => {
         'alert-123',
         mockUpdateAlertDto,
         'test-user-id',
+        'test-tenant-id',
       );
       expect(triageService.updateAlertData).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -224,6 +226,7 @@ describe('TriageController', () => {
         'alert-123',
         mockUpdateAlertDto,
         'test-user-id',
+        'test-tenant-id',
       );
     });
   });
@@ -236,6 +239,7 @@ describe('TriageController', () => {
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
+        tenantId: 'test-tenant-id',
       },
     };
 
@@ -268,6 +272,7 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
+        'test-tenant-id',
       );
       expect(triageService.manualCloseAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -285,6 +290,7 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
+        'test-tenant-id',
       );
     });
 
@@ -320,6 +326,7 @@ describe('TriageController', () => {
         'alert-123',
         AlertStatus.AUTOCLOSED_REFUTED,
         'test-user-id',
+        'test-tenant-id',
       );
       expect(result).toEqual(expectedResult);
     });
