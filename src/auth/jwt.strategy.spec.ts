@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+/* eslint-disable @typescript-eslint/require-await */
 import { JwtStrategy } from './jwt.strategy';
 import * as fs from 'fs';
 
