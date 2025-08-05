@@ -1,0 +1,70 @@
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class TokenExpiryInterceptor implements NestInterceptor {
+  private readonly refreshThreshold: number;
+
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {
+    this.refreshThreshold = parseInt(
+      this.configService.get<string>('TOKEN_REFRESH_THRESHOLD') || '300',
+      10,
+    );
+  }
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const request = context.switchToHttp().getRequest();
+    const token = this.extractTokenFromHeader(request);
+
+    if (token) {
+      const isExpired = (this.authService as any)['isTokenExpired'](token);
+      const timeToExpiry = (this.authService as any)['getTokenTimeToExpiry'](
+        token,
+      );
+      if (isExpired) {
+        throw new UnauthorizedException(
+          'Token has expired. Please refresh your token or log in again.',
+        );
+      }
+      if (timeToExpiry < this.refreshThreshold && timeToExpiry > 0) {
+        const response = context.switchToHttp().getResponse();
+        response.setHeader('X-Token-Refresh-Required', 'true');
+        response.setHeader('X-Token-Expires-In', timeToExpiry.toString());
+      }
+    }
+
+    return next.handle().pipe(
+      catchError((error) => {
+        if (error.status === 401 && token) {
+          const isExpired = (this.authService as any)['isTokenExpired'](token);
+          if (isExpired) {
+            return throwError(
+              () =>
+                new UnauthorizedException(
+                  'Token has expired. Please refresh your token or log in again.',
+                ),
+            );
+          }
+        }
+        return throwError(() => error);
+      }),
+    );
+  }
+
+  private extractTokenFromHeader(request: any): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
+  }
+}
