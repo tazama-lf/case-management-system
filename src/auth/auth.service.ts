@@ -50,14 +50,12 @@ export class AuthService {
             response.data?.jwt ||
             response.data?.user?.token;
 
-      const refreshToken =
-        response.data?.refresh_token || response.data?.refreshToken;
-
       this.logger.log('Login successful');
       return {
+        message: 'Login successful',
         token,
-        refreshToken,
-        expiresIn: response.data?.expires_in || response.data?.expiresIn,
+        expiresIn:
+          response.data?.expires_in ?? response.data?.expiresIn ?? null,
       };
     } catch (error) {
       // Distinguish between invalid credentials and service errors
@@ -66,67 +64,6 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
       this.logger.error(`Auth service error during login: ${error.message}`);
-      throw new ServiceUnavailableException(
-        'Authentication service unavailable',
-      );
-    }
-  }
-
-  async refreshToken(refreshToken: string) {
-    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
-    const refreshUrl = this.configService.get<string>(
-      'TAZAMA_AUTH_REFRESH_URL',
-    );
-
-    if (!authUrl) {
-      this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
-      throw new ServiceUnavailableException(
-        'Authentication service unavailable',
-      );
-    }
-
-    // Use configured refresh URL or construct from auth URL
-    const tokenRefreshUrl =
-      refreshUrl ||
-      authUrl.replace('/login', '/refresh') ||
-      `${authUrl}/refresh`;
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(tokenRefreshUrl, {
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      );
-
-      const newToken =
-        typeof response.data === 'string'
-          ? response.data
-          : response.data?.token ||
-            response.data?.access_token ||
-            response.data?.jwt ||
-            response.data?.user?.token;
-
-      const newRefreshToken =
-        response.data?.refresh_token ||
-        response.data?.refreshToken ||
-        refreshToken;
-
-      this.logger.log('Token refresh successful');
-      return {
-        token: newToken,
-        refreshToken: newRefreshToken,
-        expiresIn: response.data?.expires_in || response.data?.expiresIn,
-      };
-    } catch (error) {
-      // Distinguish between invalid/expired refresh token and service errors
-      if (error.response && error.response.status === 401) {
-        this.logger.warn('Invalid or expired refresh token');
-        throw new UnauthorizedException('Invalid or expired refresh token');
-      }
-      this.logger.error(
-        `Auth service error during token refresh: ${error.message}`,
-      );
       throw new ServiceUnavailableException(
         'Authentication service unavailable',
       );
