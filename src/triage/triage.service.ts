@@ -7,7 +7,13 @@ import {
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
+import {
+  AlertStatus,
+  Priority,
+  CaseCreationType,
+  CaseStatus,
+  CaseType,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -58,13 +64,24 @@ export class TriageService {
     }
   }
 
-  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string) {
+  async updateAlertData(
+    alertId: string,
+    dto: UpdateAlertDto,
+    userId: string,
+    tenantId: string,
+  ) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
 
     if (!alert) {
       throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    if (alert.tenant_id !== tenantId) {
+      throw new NotFoundException(
+        `Alert ${alertId} not accessible for this tenant`,
+      );
     }
 
     try {
@@ -96,13 +113,24 @@ export class TriageService {
     }
   }
 
-  async manualCloseAlert(alertId: string, status: AlertStatus, userId: string) {
+  async manualCloseAlert(
+    alertId: string,
+    status: AlertStatus,
+    userId: string,
+    tenantId: string,
+  ) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
 
     if (!alert) {
       throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    if (alert.tenant_id !== tenantId) {
+      throw new NotFoundException(
+        `Alert ${alertId} not accessible for this tenant`,
+      );
     }
 
     try {
@@ -140,6 +168,12 @@ export class TriageService {
       throw new NotFoundException(`Alert ${alertId} not found`);
     }
 
+    if (alert.tenant_id !== tenantId) {
+      throw new NotFoundException(
+        `Alert ${alertId} not accessible for this tenant`,
+      );
+    }
+
     const casePriority = alert.priority ?? Priority.LOW;
 
     try {
@@ -158,7 +192,10 @@ export class TriageService {
 
       const updatedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
-        data: { alert_status: AlertStatus.SENT_FOR_INVESTIGATION, case_id: createdCase.case_id },
+        data: {
+          alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+          case_id: createdCase.case_id,
+        },
       });
 
       await this.audit.logAction({
@@ -171,8 +208,13 @@ export class TriageService {
 
       return updatedAlert;
     } catch (error) {
-      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
-      throw new InternalServerErrorException('Failed to update alert for investigation');
+      this.logger.error(
+        `Failed to update alert ${alertId} for investigation`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        'Failed to update alert for investigation',
+      );
     }
   }
 }
