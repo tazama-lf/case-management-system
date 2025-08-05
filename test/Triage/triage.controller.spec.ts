@@ -243,9 +243,13 @@ describe('TriageController', () => {
       user: {
         user_id: 'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         tenantId: 'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        tenantId: 'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       },
     };
 
@@ -279,9 +283,13 @@ describe('TriageController', () => {
         mockUpdateAlertDto,
         'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
       expect(triageService.updateAlertData).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -300,9 +308,13 @@ describe('TriageController', () => {
         mockUpdateAlertDto,
         'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
     });
   });
@@ -316,9 +328,13 @@ describe('TriageController', () => {
       user: {
         user_id: 'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         tenantId: 'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        tenantId: 'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       },
     };
 
@@ -352,9 +368,13 @@ describe('TriageController', () => {
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
       expect(triageService.manualCloseAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -373,9 +393,13 @@ describe('TriageController', () => {
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
     });
 
@@ -412,9 +436,13 @@ describe('TriageController', () => {
         AlertStatus.AUTOCLOSED_REFUTED,
         'test-user-id',
 <<<<<<< HEAD
+<<<<<<< HEAD
         'test-tenant-id',
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+        'test-tenant-id',
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
       expect(result).toEqual(expectedResult);
     });

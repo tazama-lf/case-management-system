@@ -157,6 +157,7 @@ describe('TriageService', () => {
         alertId,
         mockUpdateDto,
         userId,
+        'tenant-123',
       );
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
@@ -169,7 +170,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateAlertData(alertId, mockUpdateDto, userId),
+        service.updateAlertData(alertId, mockUpdateDto, userId, 'tenant-123'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -205,7 +206,12 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.alert.update.mockResolvedValue(closedAlert);
 
-      const result = await service.manualCloseAlert(alertId, status, userId);
+      const result = await service.manualCloseAlert(
+        alertId,
+        status,
+        userId,
+        'tenant-123',
+      );
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
       expect(prismaService.alert.update).toHaveBeenCalled();
@@ -217,7 +223,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.manualCloseAlert(alertId, status, userId),
+        service.manualCloseAlert(alertId, status, userId, 'tenant-123'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -482,7 +488,7 @@ describe('TriageService', () => {
       prismaService.alert.update.mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.updateAlertData('alert-123', dto, 'user-123'),
+        service.updateAlertData('alert-123', dto, 'user-123', 'tenant-123'),
       ).rejects.toThrow(InternalServerErrorException);
     });
 
@@ -494,6 +500,7 @@ describe('TriageService', () => {
           'alert-123',
           AlertStatus.AUTOCLOSED_CONFIRMED,
           'user-123',
+          'tenant-123',
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -513,6 +520,7 @@ describe('TriageService', () => {
           'alert-123',
           AlertStatus.AUTOCLOSED_CONFIRMED,
           'user-123',
+          'tenant-123',
         ),
       ).rejects.toThrow(InternalServerErrorException);
     });

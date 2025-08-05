@@ -156,7 +156,8 @@ export class TriageController {
     @Req() req,
   ) {
     const userId = req.user.user_id;
-    return this.triageService.updateAlertData(alertId, dto, userId);
+    const tenantId = req.user.tenantId;
+    return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/auto-close')
@@ -170,7 +171,17 @@ export class TriageController {
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 =======
     const userId = req.user.user_id;
+<<<<<<< HEAD
     return this.triageService.manualCloseAlert(alertId, dto.status, userId);
 >>>>>>> 0842402 (feat:adding auth service)
+=======
+    const tenantId = req.user.tenantId;
+    return this.triageService.manualCloseAlert(
+      alertId,
+      dto.status,
+      userId,
+      tenantId,
+    );
+>>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
   }
 }
