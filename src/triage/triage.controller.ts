@@ -18,12 +18,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 
-@Controller('api/v1/triage/alerts')
+@Controller('api/v1/triage')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
-  @Post('')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Post('submit-alert')
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
@@ -41,8 +41,6 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles('CMS-TEST-ROLE', 'manage-account')
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
@@ -54,8 +52,6 @@ export class TriageController {
   }
 
   @Patch(':alertId/auto-close')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles('CMS-TEST-ROLE', 'manage-account')
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
