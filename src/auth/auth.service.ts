@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 import { HttpService } from '@nestjs/axios';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
@@ -100,6 +101,14 @@ import { Injectable, Logger } from '@nestjs/common';
 =======
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
+=======
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
@@ -182,7 +191,9 @@ export class AuthService {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
     if (!authUrl) {
       this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
-      throw new Error('Authentication service unavailable');
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
     }
     try {
       const response = await firstValueFrom(
@@ -211,8 +222,15 @@ export class AuthService {
       };
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
     } catch (error) {
-      this.logger.warn(`Tazama Auth Service login failed: ${error.message}`);
-      throw new Error('Authentication failed');
+      // Distinguish between invalid credentials and service errors
+      if (error.response && error.response.status === 401) {
+        this.logger.warn(`Invalid credentials for user ${username}`);
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      this.logger.error(`Auth service error during login: ${error.message}`);
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
     }
   }
 
@@ -224,7 +242,9 @@ export class AuthService {
 
     if (!authUrl) {
       this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
-      throw new Error('Authentication service unavailable');
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
     }
 
     // Use configured refresh URL or construct from auth URL
@@ -261,8 +281,17 @@ export class AuthService {
         expiresIn: response.data?.expires_in || response.data?.expiresIn,
       };
     } catch (error) {
-      this.logger.warn(`Token refresh failed: ${error.message}`);
-      throw new UnauthorizedException('Token refresh failed');
+      // Distinguish between invalid/expired refresh token and service errors
+      if (error.response && error.response.status === 401) {
+        this.logger.warn('Invalid or expired refresh token');
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+      this.logger.error(
+        `Auth service error during token refresh: ${error.message}`,
+      );
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
     }
   }
 

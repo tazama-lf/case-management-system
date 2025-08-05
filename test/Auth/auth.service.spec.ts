@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import {
   UnauthorizedException,
   ServiceUnavailableException,
+<<<<<<< HEAD
   Logger,
 } from '@nestjs/common';
 
@@ -19,6 +20,9 @@ jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 =======
 import { of, throwError } from 'rxjs';
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+} from '@nestjs/common';
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -197,8 +201,12 @@ describe('AuthService', () => {
       expect(result).toEqual({ token: mockToken });
     });
 
+<<<<<<< HEAD
     it('should throw error when TAZAMA_AUTH_URL is not set', async () => {
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+    it('should throw ServiceUnavailableException when TAZAMA_AUTH_URL is not set', async () => {
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
       const username = 'testuser';
       const password = 'testpass';
 
@@ -206,14 +214,19 @@ describe('AuthService', () => {
 
       await expect(service.login(username, password)).rejects.toThrow(
 <<<<<<< HEAD
+<<<<<<< HEAD
         ServiceUnavailableException,
 =======
         'Authentication service unavailable',
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+        ServiceUnavailableException,
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
       );
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
     });
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     it('should throw UnauthorizedException when HTTP request fails with 401', async () => {
       const mockAuthUrl = 'http://auth.example.com/login';
@@ -248,19 +261,44 @@ describe('AuthService', () => {
         ServiceUnavailableException,
 =======
     it('should throw error when HTTP request fails', async () => {
+=======
+    it('should throw UnauthorizedException when HTTP request fails with 401', async () => {
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
       const mockAuthUrl = 'http://auth.example.com/login';
       const username = 'testuser';
       const password = 'testpass';
-      const errorMessage = 'Network error';
+      const error: any = new Error('Unauthorized');
+      error.response = { status: 401 };
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(
-        throwError(() => new Error(errorMessage)),
-      );
+      httpService.post.mockReturnValue(throwError(() => error));
 
       await expect(service.login(username, password)).rejects.toThrow(
+<<<<<<< HEAD
         'Authentication failed',
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+        UnauthorizedException,
+      );
+      expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
+        username,
+        password,
+      });
+    });
+
+    it('should throw ServiceUnavailableException when HTTP request fails with non-401 error', async () => {
+      const mockAuthUrl = 'http://auth.example.com/login';
+      const username = 'testuser';
+      const password = 'testpass';
+      const error: any = new Error('Network error');
+      error.response = { status: 500 };
+
+      configService.get.mockReturnValue(mockAuthUrl);
+      httpService.post.mockReturnValue(throwError(() => error));
+
+      await expect(service.login(username, password)).rejects.toThrow(
+        ServiceUnavailableException,
+>>>>>>> 4dc8c12 (feat: token refresh functionality implemented)
       );
       expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
         username,
