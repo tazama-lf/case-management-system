@@ -4,11 +4,13 @@ import {
   Body,
   UnauthorizedException,
   Logger,
+  LoggerService,
   Get,
   UseGuards,
   HttpCode,
   Query,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -17,11 +19,10 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
-  private readonly logger = new Logger(AuthController.name);
-
   constructor(
     private readonly authService: AuthService,
     private readonly auditLogService: AuditLogService,
+    @Inject(Logger) private readonly logger: LoggerService,
   ) {}
 
   @Post('login')
@@ -46,13 +47,7 @@ export class AuthController {
       if (result.expiresIn) {
         response.expiresIn = result.expiresIn;
       }
-      if (result.token) {
-        // Optionally, you can keep expiry info if needed for frontend
-        // const expiry = await this.authService.getTokenExpiry(result.token);
-        // if (expiry) {
-        //   response.expiresAt = expiry.toISOString();
-        // }
-      }
+
       return response;
     } catch (error) {
       await this.auditLogService.logAction({
@@ -97,13 +92,6 @@ export class AuthController {
       if (result.expiresIn) {
         response.expiresIn = result.expiresIn;
       }
-      // Optionally, you can keep expiry info if needed for frontend
-      // if (result.token) {
-      //   const expiry = await this.authService.getTokenExpiry(result.token);
-      //   if (expiry) {
-      //     response.expiresAt = expiry.toISOString();
-      //   }
-      // }
       return response;
     } catch (error) {
       await this.auditLogService.logAction({
