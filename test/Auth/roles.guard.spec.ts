@@ -1,8 +1,58 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard } from './roles.guard';
+import { RolesGuard, Permissions, Roles } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
-import { AuditLogService } from '../audit/auditLog.service';
+import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+
+describe('Permissions Decorator', () => {
+  it('should set permissions metadata correctly', () => {
+    const permissions = ['read', 'write', 'delete'];
+    const decorator = Permissions(...permissions);
+
+    expect(decorator).toBeDefined();
+    expect(typeof decorator).toBe('function');
+  });
+
+  it('should work with single permission', () => {
+    const decorator = Permissions('read');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with multiple permissions', () => {
+    const decorator = Permissions('read', 'write', 'delete', 'admin');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with no permissions', () => {
+    const decorator = Permissions();
+    expect(decorator).toBeDefined();
+  });
+});
+
+describe('Roles Decorator', () => {
+  it('should set roles metadata correctly', () => {
+    const roles = ['admin', 'user', 'moderator'];
+    const decorator = Roles(...roles);
+
+    expect(decorator).toBeDefined();
+    expect(typeof decorator).toBe('function');
+  });
+
+  it('should work with single role', () => {
+    const decorator = Roles('admin');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with multiple roles', () => {
+    const decorator = Roles('admin', 'user', 'moderator');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with no roles', () => {
+    const decorator = Roles();
+    expect(decorator).toBeDefined();
+  });
+});
 
 describe('RolesGuard', () => {
   let guard: RolesGuard;
@@ -17,7 +67,11 @@ describe('RolesGuard', () => {
     logPermissionDenied: jest.fn(),
   };
 
-  const createMockExecutionContext = (user: any, method = 'GET', originalUrl = '/test'): ExecutionContext => {
+  const createMockExecutionContext = (
+    user: any,
+    method = 'GET',
+    originalUrl = '/test',
+  ): ExecutionContext => {
     return {
       switchToHttp: () => ({
         getRequest: () => ({
@@ -136,7 +190,7 @@ describe('RolesGuard', () => {
         null,
         '/test',
         'GET',
-        { reason: 'No user in request' }
+        { reason: 'No user in request' },
       );
     });
 
@@ -155,7 +209,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient role',
           requiredRoles: ['admin'],
-        }
+        },
       );
     });
 
@@ -174,7 +228,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient permissions',
           requiredPermissions: ['write', 'delete'],
-        }
+        },
       );
     });
 
@@ -226,7 +280,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient role',
           requiredRoles: ['admin', 'super-admin'],
-        }
+        },
       );
     });
 
@@ -245,7 +299,7 @@ describe('RolesGuard', () => {
         {
           reason: 'Insufficient permissions',
           requiredPermissions: ['read', 'write'],
-        }
+        },
       );
     });
   });
