@@ -18,12 +18,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 
-@Controller('api/v1/triage')
+@Controller('api/v1/triage/alerts')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
-  @Post('submit-alert')
+  @Post('')
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
@@ -41,6 +41,7 @@ export class TriageController {
   }
 
   @Patch(':alertId')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
   async updateAlert(
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertDto,
@@ -52,6 +53,7 @@ export class TriageController {
   }
 
   @Patch(':alertId/auto-close')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
   async autoCloseAlert(
     @Param('alertId') alertId: string,
     @Body() dto: AutoCloseAlertDto,
@@ -59,7 +61,19 @@ export class TriageController {
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.manualCloseAlert(
+    return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
+  }
+
+  @Patch(':alertId/investigate')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async sendForInvestigation(
+    @Param('alertId') alertId: string,
+    @Body() dto: InvestigateAlertDto,
+    @Req() req,
+  ) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.investigateAlert(
       alertId,
       dto.status,
       userId,
