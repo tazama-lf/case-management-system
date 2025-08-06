@@ -29,11 +29,40 @@ export class TriageController {
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    console.log(
-      'JWT permissions/roles:',
-      req.user.role || req.user.permissions,
+
+    // Log JWT permissions/roles for monitoring
+    const logValue =
+      req.user.role && req.user.role.trim() !== ''
+        ? req.user.role
+        : req.user.permissions;
+    console.log('JWT permissions/roles:', logValue);
+
+    const alert = await this.triageService.handleNewAlert(
+      dto,
+      userId,
+      tenantId,
     );
-    return this.triageService.handleNewAlert(dto, userId, tenantId);
+
+    const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
+
+    if (
+      confidenceThreshold === undefined ||
+      confidenceThreshold === null ||
+      confidenceThreshold.trim() === '' ||
+      isNaN(Number(confidenceThreshold))
+    ) {
+      console.log('CASE_WILL_BE_CREATED');
+      const caseType = CaseType.FRAUD;
+      const caseCreated = await this.triageService.investigateAlert(
+        alert.alert_id,
+        caseType,
+        userId,
+        tenantId,
+      );
+      alert.case_id = caseCreated.case_id;
+    }
+
+    return alert;
   }
 
   @Get('test')
@@ -62,12 +91,7 @@ export class TriageController {
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.manualCloseAlert(
-      alertId,
-      dto,
-      userId,
-      tenantId,
-    );
+    return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/investigate')

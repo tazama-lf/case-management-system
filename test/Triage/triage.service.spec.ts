@@ -157,7 +157,7 @@ describe('TriageService', () => {
         alertId,
         mockUpdateDto,
         userId,
-        'tenant-123',
+        'test-tenant-id',
       );
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe('TriageService', () => {
   describe('manualCloseAlert', () => {
     const alertId = 'alert-123';
     const userId = 'test-user-id';
-    const status = AlertStatus.AUTOCLOSED_CONFIRMED;
+    const closeAlertDto = { reason: 'Alert marked as false positive' };
 
     const mockExistingAlert = {
       alert_id: alertId,
@@ -200,7 +200,7 @@ describe('TriageService', () => {
     it('should close alert successfully', async () => {
       const closedAlert = {
         ...mockExistingAlert,
-        alert_status: AlertStatus.AUTOCLOSED_CONFIRMED,
+        alert_status: AlertStatus.CLOSED,
       };
 
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
@@ -208,9 +208,9 @@ describe('TriageService', () => {
 
       const result = await service.manualCloseAlert(
         alertId,
-        status,
+        closeAlertDto,
         userId,
-        'tenant-123',
+        'test-tenant-id',
       );
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
@@ -223,7 +223,12 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.manualCloseAlert(alertId, status, userId, 'tenant-123'),
+        service.manualCloseAlert(
+          alertId,
+          closeAlertDto,
+          userId,
+          'test-tenant-id',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -260,7 +265,7 @@ describe('TriageService', () => {
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          source: 'direct-source',
+          source: 'REST API',
         }),
       });
       expect(result).toEqual(mockAlert);
@@ -297,7 +302,7 @@ describe('TriageService', () => {
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          source: 'report-source',
+          source: 'REST API',
         }),
       });
       expect(result).toEqual(mockAlert);
@@ -334,7 +339,7 @@ describe('TriageService', () => {
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          source: '',
+          source: 'REST API',
         }),
       });
       expect(result).toEqual(mockAlert);
@@ -373,18 +378,18 @@ describe('TriageService', () => {
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          txtp: 'report-txtp',
+          txtp: '',
         }),
       });
       expect(result).toEqual(mockAlert);
     });
 
-    it('should extract txtp from result.transaction.txtp', async () => {
+    it('should extract txtp from result.transaction.TxTp', async () => {
       const dto: SubmitAlertDto = {
         result: {
           message: 'Test alert',
           report: { test: 'data' },
-          transaction: { txtp: 'transaction-txtp' },
+          transaction: { TxTp: 'transaction-txtp' },
           networkMap: { test: 'network' },
           source: 'test-source',
         },
@@ -447,7 +452,7 @@ describe('TriageService', () => {
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          txtp: 'network-txtp',
+          txtp: '',
         }),
       });
       expect(result).toEqual(mockAlert);
@@ -479,7 +484,7 @@ describe('TriageService', () => {
       await expect(
         service.manualCloseAlert(
           'alert-123',
-          AlertStatus.AUTOCLOSED_CONFIRMED,
+          { reason: 'Test close reason' },
           'user-123',
           'tenant-123',
         ),
