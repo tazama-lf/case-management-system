@@ -30,6 +30,13 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
 
+    // Log JWT permissions/roles for monitoring
+    const logValue =
+      req.user.role && req.user.role.trim() !== ''
+        ? req.user.role
+        : req.user.permissions;
+    console.log('JWT permissions/roles:', logValue);
+
     const alert = await this.triageService.handleNewAlert(
       dto,
       userId,
@@ -84,12 +91,7 @@ export class TriageController {
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.manualCloseAlert(
-      alertId,
-      dto,
-      userId,
-      tenantId,
-    );
+    return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/investigate')
