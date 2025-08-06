@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
+import { CloseAlertDto } from './dto/close-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import {
   AlertStatus,
@@ -85,6 +86,10 @@ export class TriageService {
       );
     }
 
+    if (alert.alert_status === AlertStatus.CLOSED) {
+      throw new BadRequestException(`Alert ${alertId} is closed status and can not be updated`);
+    }
+
     try {
       const updated = await this.prisma.alert.update({
         where: { alert_id: alertId },
@@ -116,7 +121,7 @@ export class TriageService {
 
   async manualCloseAlert(
     alertId: string,
-    status: AlertStatus,
+    closeAlertDto: CloseAlertDto,
     userId: string,
     tenantId: string,
   ) {
@@ -134,24 +139,28 @@ export class TriageService {
       );
     }
 
+    if (alert.alert_status === AlertStatus.CLOSED) {
+      throw new BadRequestException(`Alert ${alertId} is already closed`);
+    }
+
     try {
       const updated = await this.prisma.alert.update({
         where: { alert_id: alertId },
-        data: { alert_status: status },
+        data: { alert_status: AlertStatus.CLOSED },
       });
 
       await this.audit.logAction({
         userId,
-        operation: 'ALERT_AUTO_CLOSED',
+        operation: 'ALERT_CLOSED',
         entityName: 'Alert',
-        actionPerformed: `Auto-closed alert ${alertId} with status ${status}`,
+        actionPerformed: `Closed alert ${alertId} with reason: ${closeAlertDto.reason}  at ${new Date().toISOString()}`,
         outcome: 'SUCCESS',
       });
 
       return updated;
     } catch (error) {
-      this.logger.error(`Auto-close failed for alert ${alertId}`, error);
-      throw new InternalServerErrorException('Failed to auto-close alert');
+      this.logger.error(`Close failed for alert ${alertId}`, error);
+      throw new InternalServerErrorException('Failed to close alert');
     }
   }
 
@@ -377,7 +386,9 @@ export class TriageService {
         );
       }
 
-      this.logger.log(`Alert ${alertId} opened by user ${userId} at ${new Date().toISOString()}`);
+      this.logger.log(
+        `Alert ${alertId} opened by user ${userId} at ${new Date().toISOString()}`,
+      );
 
       const { tenant_id, ...sanitizedAlert } = alert;
       return sanitizedAlert;
