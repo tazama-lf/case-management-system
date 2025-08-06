@@ -29,7 +29,7 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = 'REST API';
+    const source = 'REST API';
     // Determine the alert type (txtp)
     const txtp =
       typeof dto?.result?.transaction?.TxTp === 'string'
@@ -87,7 +87,9 @@ export class TriageService {
     }
 
     if (alert.alert_status === AlertStatus.CLOSED) {
-      throw new BadRequestException(`Alert ${alertId} is closed status and can not be updated`);
+      throw new BadRequestException(
+        `Alert ${alertId} is closed status and can not be updated`,
+      );
     }
 
     try {
@@ -390,6 +392,7 @@ export class TriageService {
         `Alert ${alertId} opened by user ${userId} at ${new Date().toISOString()}`,
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...sanitizedAlert } = alert;
       return sanitizedAlert;
     } catch (error) {
