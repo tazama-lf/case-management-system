@@ -11,7 +11,8 @@ import {
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
-import { AutoCloseAlertDto } from './dto/auto-close-alert.dto';
+import { InvestigateAlertDto } from './dto/investigate-alert-dto';
+import { CloseAlertDto } from './dto/close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -52,16 +53,21 @@ export class TriageController {
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
   }
 
-  @Patch(':alertId/auto-close')
+  @Patch(':alertId/close')
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async autoCloseAlert(
+  async closeAlert(
     @Param('alertId') alertId: string,
-    @Body() dto: AutoCloseAlertDto,
+    @Body() dto: CloseAlertDto,
     @Req() req,
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
+    return this.triageService.manualCloseAlert(
+      alertId,
+      dto,
+      userId,
+      tenantId,
+    );
   }
 
   @Patch(':alertId/investigate')
