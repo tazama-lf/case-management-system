@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -18,11 +19,11 @@ import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 
-@Controller('api/v1/triage')
+@Controller('api/v1/triage/alerts')
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
-  @Post('submit-alert')
+  @Post('')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
@@ -85,7 +86,12 @@ export class TriageController {
   ) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.manualCloseAlert(alertId, dto.status, userId, tenantId);
+    return this.triageService.manualCloseAlert(
+      alertId,
+      dto.status,
+      userId,
+      tenantId,
+    );
   }
 
   @Patch(':alertId/investigate')
@@ -104,5 +110,42 @@ export class TriageController {
       userId,
       tenantId,
     );
+  }
+
+  @Get()
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async getUserAlerts(
+    @Req() req,
+    @Query('priority') priority?: string,
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+    @Query('search') search?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.triageService.getAlertsForUser({
+      tenantId,
+      priority,
+      status,
+      type,
+      search,
+      page: Number(page),
+      limit: Number(limit),
+      sortBy,
+      sortOrder,
+    });
+  }
+
+  @Get(':alertId')
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
 }
