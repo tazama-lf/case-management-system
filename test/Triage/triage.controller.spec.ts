@@ -6,7 +6,7 @@ import { AuditLogService } from '../../src/audit/auditLog.service';
 import { RolesGuard } from '../../src/auth/roles.guard';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
 import { UpdateAlertDto } from '../../src/triage/dto/update-alert.dto';
-import { AutoCloseAlertDto } from '../../src/triage/dto/auto-close-alert.dto';
+import { CloseAlertDto } from '../../src/triage/dto/close-alert.dto';
 import { AlertStatus, Priority } from '@prisma/client';
 
 describe('TriageController', () => {
@@ -17,6 +17,7 @@ describe('TriageController', () => {
     handleNewAlert: jest.fn(),
     updateAlertData: jest.fn(),
     manualCloseAlert: jest.fn(),
+    investigateAlert: jest.fn(),
   };
 
   const mockAuditLogService = {
@@ -100,6 +101,10 @@ describe('TriageController', () => {
         updated_at: new Date(),
       };
       triageService.handleNewAlert.mockResolvedValue(expectedResult);
+      triageService.investigateAlert.mockResolvedValue({
+        ...expectedResult,
+        case_id: 'case-123',
+      });
 
       const result = await controller.submitAlert(
         mockSubmitAlertDto,
@@ -112,6 +117,12 @@ describe('TriageController', () => {
         'test-tenant-id',
       );
       expect(triageService.handleNewAlert).toHaveBeenCalledTimes(1);
+      expect(triageService.investigateAlert).toHaveBeenCalledWith(
+        expectedResult.alert_id,
+        'FRAUD',
+        'test-user-id',
+        'test-tenant-id',
+      );
       expect(result).toEqual(expectedResult);
     });
 
@@ -148,6 +159,10 @@ describe('TriageController', () => {
         updated_at: new Date(),
       };
       triageService.handleNewAlert.mockResolvedValue(expectedResult);
+      triageService.investigateAlert.mockResolvedValue({
+        ...expectedResult,
+        case_id: 'case-456',
+      });
 
       await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
@@ -231,9 +246,9 @@ describe('TriageController', () => {
     });
   });
 
-  describe('autoCloseAlert', () => {
-    const mockAutoCloseDto: AutoCloseAlertDto = {
-      status: AlertStatus.AUTOCLOSED_CONFIRMED,
+  describe('closeAlert', () => {
+    const mockCloseDto: CloseAlertDto = {
+      reason: 'Alert marked as false positive',
     };
 
     const mockRequest = {
@@ -243,7 +258,7 @@ describe('TriageController', () => {
       },
     };
 
-    it('should auto-close alert successfully', async () => {
+    it('should close alert successfully', async () => {
       const expectedResult = {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
@@ -255,22 +270,22 @@ describe('TriageController', () => {
         transaction: { test: 'transaction data' },
         network_map: { test: 'network data' },
         confidence_per: 85,
-        alert_status: AlertStatus.AUTOCLOSED_CONFIRMED,
+        alert_status: AlertStatus.CLOSED,
         case_id: null,
         created_at: new Date(),
         updated_at: new Date(),
       };
       triageService.manualCloseAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.autoCloseAlert(
+      const result = await controller.closeAlert(
         'alert-123',
-        mockAutoCloseDto,
+        mockCloseDto,
         mockRequest,
       );
 
       expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
         'alert-123',
-        AlertStatus.AUTOCLOSED_CONFIRMED,
+        mockCloseDto,
         'test-user-id',
         'test-tenant-id',
       );
@@ -283,20 +298,20 @@ describe('TriageController', () => {
       triageService.manualCloseAlert.mockRejectedValue(error);
 
       await expect(
-        controller.autoCloseAlert('alert-123', mockAutoCloseDto, mockRequest),
+        controller.closeAlert('alert-123', mockCloseDto, mockRequest),
       ).rejects.toThrow('Close failed');
 
       expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
         'alert-123',
-        AlertStatus.AUTOCLOSED_CONFIRMED,
+        mockCloseDto,
         'test-user-id',
         'test-tenant-id',
       );
     });
 
-    it('should handle different alert statuses', async () => {
-      const refutedDto: AutoCloseAlertDto = {
-        status: AlertStatus.AUTOCLOSED_REFUTED,
+    it('should handle different close reasons', async () => {
+      const customReasonDto: CloseAlertDto = {
+        reason: 'Duplicate alert - already processed',
       };
       const expectedResult = {
         alert_id: 'alert-123',
@@ -309,22 +324,22 @@ describe('TriageController', () => {
         transaction: { test: 'transaction data' },
         network_map: { test: 'network data' },
         confidence_per: 85,
-        alert_status: AlertStatus.AUTOCLOSED_REFUTED,
+        alert_status: AlertStatus.CLOSED,
         case_id: null,
         created_at: new Date(),
         updated_at: new Date(),
       };
       triageService.manualCloseAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.autoCloseAlert(
+      const result = await controller.closeAlert(
         'alert-123',
-        refutedDto,
+        customReasonDto,
         mockRequest,
       );
 
       expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
         'alert-123',
-        AlertStatus.AUTOCLOSED_REFUTED,
+        customReasonDto,
         'test-user-id',
         'test-tenant-id',
       );
@@ -357,6 +372,11 @@ describe('TriageController', () => {
 
       mockTriageService.handleNewAlert.mockResolvedValue({
         alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+      mockTriageService.investigateAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        case_id: 'case-123',
         message: 'Alert created',
       });
 
@@ -401,6 +421,11 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         message: 'Alert created',
       });
+      mockTriageService.investigateAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        case_id: 'case-123',
+        message: 'Alert created',
+      });
 
       await controller.submitAlert(dto, req);
 
@@ -443,6 +468,11 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         message: 'Alert created',
       });
+      mockTriageService.investigateAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        case_id: 'case-123',
+        message: 'Alert created',
+      });
 
       await controller.submitAlert(dto, req);
 
@@ -483,6 +513,11 @@ describe('TriageController', () => {
 
       mockTriageService.handleNewAlert.mockResolvedValue({
         alert_id: 'alert-123',
+        message: 'Alert created',
+      });
+      mockTriageService.investigateAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        case_id: 'case-123',
         message: 'Alert created',
       });
 
