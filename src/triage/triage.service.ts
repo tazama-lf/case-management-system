@@ -3,6 +3,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -214,6 +215,178 @@ export class TriageService {
       );
       throw new InternalServerErrorException(
         'Failed to update alert for investigation',
+      );
+    }
+  }
+
+  async getAlertsForUser(params: {
+    tenantId: string;
+    priority?: string;
+    status?: string;
+    type?: string;
+    search?: string;
+    page: number;
+    limit: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) {
+    const {
+      tenantId,
+      priority,
+      status,
+      type,
+      search,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    } = params;
+
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Page must be a positive integer');
+    }
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new BadRequestException('Limit must be a positive integer');
+    }
+
+    // Validate sortBy
+    const validSortFields = ['priority', 'created_at'];
+    if (!validSortFields.includes(sortBy)) {
+      throw new BadRequestException(
+        `Invalid sortBy field: ${sortBy}. Must be one of ${validSortFields.join(', ')}`,
+      );
+    }
+    if (!['asc', 'desc'].includes(sortOrder)) {
+      throw new BadRequestException('sortOrder must be "asc" or "desc"');
+    }
+
+    const whereClause: any = {
+      tenant_id: tenantId,
+    };
+
+    if (priority) {
+      if (
+        !Object.values(Priority).includes(priority.toUpperCase() as Priority)
+      ) {
+        throw new BadRequestException(`Invalid priority: ${priority}`);
+      }
+      whereClause.priority = priority.toUpperCase();
+    }
+
+    if (status) {
+      if (
+        !Object.values(AlertStatus).includes(
+          status.toUpperCase() as AlertStatus,
+        )
+      ) {
+        throw new BadRequestException(`Invalid status: ${status}`);
+      }
+      whereClause.alert_status = status.toUpperCase();
+    }
+
+    if (type) {
+      whereClause.txtp = type;
+    }
+
+    if (search) {
+      whereClause.OR = [];
+
+      if (search.length === 36) {
+        whereClause.OR.push({ alert_id: { equals: search } });
+        whereClause.OR.push({ case_id: { equals: search } });
+      }
+
+      whereClause.OR.push({
+        txtp: { contains: search, mode: 'insensitive' },
+      });
+
+      if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
+        whereClause.OR.push({
+          priority: { equals: search.toUpperCase() as Priority },
+        });
+      }
+
+      if (
+        Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)
+      ) {
+        whereClause.OR.push({
+          alert_status: { equals: search.toUpperCase() as AlertStatus },
+        });
+      }
+    }
+
+    try {
+      const alerts = await this.prisma.alert.findMany({
+        where: whereClause,
+        orderBy: { [sortBy]: sortOrder },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          alert_id: true,
+          txtp: true,
+          priority: true,
+          confidence_per: true,
+          alert_status: true,
+          created_at: true,
+        },
+      });
+
+      const totalCount = await this.prisma.alert.count({ where: whereClause });
+
+      return {
+        data: alerts,
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      };
+    } catch (error) {
+      this.logger.error('Failed to fetch alerts', error);
+      throw new InternalServerErrorException('Unable to fetch alert list');
+    }
+  }
+
+  async getAlertDetails(alertId: string, tenantId: string, userId: string) {
+    try {
+      const alert = await this.prisma.alert.findUnique({
+        where: { alert_id: alertId },
+        select: {
+          alert_id: true,
+          txtp: true,
+          priority: true,
+          confidence_per: true,
+          alert_status: true,
+          created_at: true,
+          source: true,
+          message: true,
+          alert_data: true,
+          transaction: true,
+          network_map: true,
+          case_id: true,
+          tenant_id: true,
+        },
+      });
+
+      if (!alert) {
+        throw new NotFoundException(`Alert ${alertId} not found`);
+      }
+
+      if (alert.tenant_id !== tenantId) {
+        throw new NotFoundException(
+          `Alert ${alertId} is not accessible for this tenant`,
+        );
+      }
+
+      this.logger.log(`Alert ${alertId} opened by user ${userId} at ${new Date().toISOString()}`);
+
+      const { tenant_id, ...sanitizedAlert } = alert;
+      return sanitizedAlert;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+
+      this.logger.error(`Failed to fetch alert ${alertId}`, error);
+      throw new InternalServerErrorException(
+        'Unable to retrieve alert details',
       );
     }
   }
