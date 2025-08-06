@@ -138,4 +138,191 @@ describe('UpdateAlertDto', () => {
     );
     expect(errors.some((error) => error.property === 'priority')).toBe(true);
   });
+
+  it('should validate confidence_per with decimal precision', async () => {
+    const decimalValues = [0.1, 15.5, 99.99, 33.333333];
+
+    for (const confidence of decimalValues) {
+      const validData = {
+        confidence_per: confidence,
+      };
+
+      const dto = plainToClass(UpdateAlertDto, validData);
+      const errors = await validate(dto);
+
+      expect(errors).toHaveLength(0);
+      expect(dto.confidence_per).toBe(confidence);
+    }
+  });
+
+  it('should validate negative confidence_per values', async () => {
+    const validData = {
+      confidence_per: -50,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.confidence_per).toBe(-50);
+  });
+
+  it('should validate very large confidence_per values', async () => {
+    const validData = {
+      confidence_per: 999999.99,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.confidence_per).toBe(999999.99);
+  });
+
+  it('should fail validation when confidence_per is NaN', async () => {
+    const invalidData = {
+      confidence_per: NaN,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const confidenceError = errors.find(
+      (error) => error.property === 'confidence_per',
+    );
+    expect(confidenceError).toBeDefined();
+  });
+
+  it('should fail validation when confidence_per is Infinity', async () => {
+    const invalidData = {
+      confidence_per: Infinity,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const confidenceError = errors.find(
+      (error) => error.property === 'confidence_per',
+    );
+    expect(confidenceError).toBeDefined();
+  });
+
+  it('should fail validation when confidence_per is a string number', async () => {
+    const invalidData = {
+      confidence_per: '85',
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const confidenceError = errors.find(
+      (error) => error.property === 'confidence_per',
+    );
+    expect(confidenceError).toBeDefined();
+    expect(confidenceError?.constraints).toHaveProperty('isNumber');
+  });
+
+  it('should fail validation when priority is a number', async () => {
+    const invalidData = {
+      priority: 1,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const priorityError = errors.find((error) => error.property === 'priority');
+    expect(priorityError).toBeDefined();
+    expect(priorityError?.constraints).toHaveProperty('isEnum');
+  });
+
+  it('should handle null values for optional fields', () => {
+    const plainObject = {
+      confidence_per: null,
+      priority: null,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, plainObject);
+
+    expect(dto.confidence_per).toBeNull();
+    expect(dto.priority).toBeNull();
+  });
+
+  it('should fail validation when priority is an object', async () => {
+    const invalidData = {
+      priority: { level: 'HIGH' },
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const priorityError = errors.find((error) => error.property === 'priority');
+    expect(priorityError).toBeDefined();
+    expect(priorityError?.constraints).toHaveProperty('isEnum');
+  });
+
+  it('should fail validation when confidence_per is an array', async () => {
+    const invalidData = {
+      confidence_per: [85],
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const confidenceError = errors.find(
+      (error) => error.property === 'confidence_per',
+    );
+    expect(confidenceError).toBeDefined();
+    expect(confidenceError?.constraints).toHaveProperty('isNumber');
+  });
+
+  it('should validate with zero confidence_per', async () => {
+    const validData = {
+      confidence_per: 0,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.confidence_per).toBe(0);
+  });
+
+  it('should handle extra properties by including them in transformed object', async () => {
+    const dataWithExtraProps = {
+      confidence_per: 85,
+      priority: Priority.HIGH,
+      extraField: 'should be included',
+      anotherField: 123,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, dataWithExtraProps);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.confidence_per).toBe(85);
+    expect(dto.priority).toBe(Priority.HIGH);
+    // Extra fields are included by default in class-transformer
+    expect((dto as any).extraField).toBe('should be included');
+    expect((dto as any).anotherField).toBe(123);
+  });
+
+  it('should validate case sensitivity of Priority enum', async () => {
+    const invalidData = {
+      priority: 'high', // lowercase
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const priorityError = errors.find((error) => error.property === 'priority');
+    expect(priorityError).toBeDefined();
+    expect(priorityError?.constraints).toHaveProperty('isEnum');
+  });
 });
