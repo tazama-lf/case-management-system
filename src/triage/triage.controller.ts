@@ -110,7 +110,6 @@ export class TriageController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async getUserAlerts(
     @Req() req,
@@ -138,7 +137,6 @@ export class TriageController {
   }
 
   @Get(':alertId')
-  @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {
     const userId = req.user.user_id;
