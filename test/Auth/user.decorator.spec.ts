@@ -1,4 +1,3 @@
-import { ExecutionContext } from '@nestjs/common';
 import { User } from '../../src/auth/user.decorator';
 
 describe('User Decorator', () => {
@@ -35,34 +34,11 @@ describe('User Decorator', () => {
   });
 
   // Test the actual decorator function logic
-  it('should extract user from request context', () => {
-    const mockUser = { id: 'test-user', tenantId: 'test-tenant' };
-    const mockRequest = { user: mockUser };
-    
-    const mockContext = {
-      switchToHttp: () => ({
-        getRequest: () => mockRequest,
-      }),
-    } as ExecutionContext;
-
-    // Get the decorator function
-    const decorator = User();
-    
-    // Since this is a parameter decorator created by createParamDecorator,
-    // we need to test it in a way that simulates how NestJS would use it
-    // The decorator function gets called with (data, context) parameters
-    
-    // Test by creating a mock class and method that uses the decorator
-    class TestController {
-      testMethod(@User() user: any) {
-        return user;
-      }
-    }
-
-    // Manually invoke the decorator logic (this is what createParamDecorator does internally)
+  it('should create a decorator that can be used on parameters', () => {
+    // Manually invoke the decorator logic to test the function
     const decoratorFunction = User();
-    
-    // For this test, we'll just verify the decorator can be created and called
+
+    // For this test, we'll just verify the decorator can be created
     expect(decoratorFunction).toBeDefined();
     expect(typeof decoratorFunction).toBe('function');
   });
