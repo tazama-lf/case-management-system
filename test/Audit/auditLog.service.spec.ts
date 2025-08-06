@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuditLogService } from './auditLog.service';
-import { PrismaService } from 'prisma/prisma.service';
-import { v4 as uuidv4 } from 'uuid';
+import { AuditLogService } from '../../src/audit/auditLog.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 // Mock uuid
 jest.mock('uuid', () => ({
@@ -213,7 +212,11 @@ describe('AuditLogService', () => {
       validateUuid.mockReturnValue(true);
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      const result = await service.logPermissionDenied(mockUser, 'test-entity', 'test-action');
+      const result = await service.logPermissionDenied(
+        mockUser,
+        'test-entity',
+        'test-action',
+      );
 
       expect(prismaService.auditLog.create).toHaveBeenCalledWith({
         data: {
@@ -245,7 +248,11 @@ describe('AuditLogService', () => {
       uuidv4Mock.mockReturnValue(mockGeneratedUuid);
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      const result = await service.logPermissionDenied(null, 'test-entity', 'test-action');
+      const result = await service.logPermissionDenied(
+        null,
+        'test-entity',
+        'test-action',
+      );
 
       expect(prismaService.auditLog.create).toHaveBeenCalledWith({
         data: {

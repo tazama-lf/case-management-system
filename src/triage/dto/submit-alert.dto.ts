@@ -1,4 +1,4 @@
-import { IsString, IsObject, ValidateNested, IsOptional } from 'class-validator';
+import { IsString, IsObject, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Prisma } from '@prisma/client';
 
@@ -20,6 +20,7 @@ class AlertResultDto {
 }
 
 export class SubmitAlertDto {
+  @IsObject()
   @ValidateNested()
   @Type(() => AlertResultDto)
   result: AlertResultDto;
