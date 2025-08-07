@@ -52,6 +52,7 @@ export class TriageController {
       confidenceThreshold.trim() === '' ||
       isNaN(Number(confidenceThreshold))
     ) {
+      console.log('CASE_WILL_BE_CREATED');
       const caseType = CaseType.FRAUD;
       const caseCreated = await this.triageService.investigateAlert(
         alert.alert_id,
