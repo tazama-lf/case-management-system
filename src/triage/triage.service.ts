@@ -470,7 +470,7 @@ export class TriageService {
         },
       });
 
-      const updatedAlert = await this.prisma.alert.update({
+      await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: {
           alert_status: AlertStatus.CONVERTED,
