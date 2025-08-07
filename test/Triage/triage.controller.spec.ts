@@ -853,6 +853,10 @@ describe('TriageController', () => {
       );
 
       expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
       expect(triageService.investigateAlert).toHaveBeenCalledWith(
         expectedAlert.alert_id,
         CaseType.FRAUD,
@@ -881,6 +885,10 @@ describe('TriageController', () => {
       );
 
       expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
 
@@ -904,6 +912,10 @@ describe('TriageController', () => {
       );
 
       expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
 
@@ -927,6 +939,10 @@ describe('TriageController', () => {
       );
 
       expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
 
@@ -950,6 +966,10 @@ describe('TriageController', () => {
       );
 
       expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'JWT permissions/roles:',
+        'test-role',
+      );
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
 

@@ -12,6 +12,21 @@ describe('User Decorator', () => {
     expect(typeof decorator).toBe('function');
   });
 
+  it('should extract user from request context', () => {
+    const mockUser = { id: 'test-user', name: 'Test User' };
+    const mockRequest = { user: mockUser };
+    const mockExecutionContext = {
+      switchToHttp: () => ({
+        getRequest: () => mockRequest,
+      }),
+    } as any;
+
+    const decoratorFactory = User();
+    const result = decoratorFactory({}, mockExecutionContext, 0);
+
+    expect(result).toEqual(mockUser);
+  });
+
   it('should create different decorators for different calls', () => {
     const decorator1 = User();
     const decorator2 = User();
