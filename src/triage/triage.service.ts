@@ -8,6 +8,7 @@ import {
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
+import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import {
   AlertStatus,
@@ -37,7 +38,7 @@ export class TriageService {
         : '';
 
     try {
-      const alert = await this.prisma.alert.create({
+      const newAlert = await this.prisma.alert.create({
         data: {
           tenant_id: tenantId,
           priority: Priority.LOW,
@@ -55,11 +56,11 @@ export class TriageService {
         userId,
         operation: 'ALERT_CREATED',
         entityName: 'Alert',
-        actionPerformed: `Created new alert ${alert.alert_id}`,
+        actionPerformed: `Created new alert ${newAlert.alert_id}`,
         outcome: 'SUCCESS',
       });
 
-      return alert;
+      return newAlert;
     } catch (error) {
       this.logger.error('Error creating alert', error);
       throw new InternalServerErrorException('Failed to create alert');
@@ -72,28 +73,28 @@ export class TriageService {
     userId: string,
     tenantId: string,
   ) {
-    const alert = await this.prisma.alert.findUnique({
+    const existingAlert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
 
-    if (!alert) {
+    if (!existingAlert) {
       throw new NotFoundException(`Alert ${alertId} not found`);
     }
 
-    if (alert.tenant_id !== tenantId) {
+    if (existingAlert.tenant_id !== tenantId) {
       throw new NotFoundException(
         `Alert ${alertId} not accessible for this tenant`,
       );
     }
 
-    if (alert.alert_status === AlertStatus.CLOSED) {
+    if (existingAlert.alert_status === AlertStatus.CLOSED) {
       throw new BadRequestException(
         `Alert ${alertId} is closed status and can not be updated`,
       );
     }
 
     try {
-      const updated = await this.prisma.alert.update({
+      const updatedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: {
           confidence_per: dto.confidence_per,
@@ -114,7 +115,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      return updated;
+      return updatedAlert;
     } catch (error) {
       this.logger.error(`Update failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to update alert');
@@ -146,7 +147,7 @@ export class TriageService {
     }
 
     try {
-      const updated = await this.prisma.alert.update({
+      const closedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: { alert_status: AlertStatus.CLOSED },
       });
@@ -159,7 +160,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      return updated;
+      return closedAlert;
     } catch (error) {
       this.logger.error(`Close failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to close alert');
@@ -189,7 +190,7 @@ export class TriageService {
     const casePriority = alert.priority ?? Priority.LOW;
 
     try {
-      const createdCase = await this.prisma.case.create({
+      const newCase = await this.prisma.case.create({
         data: {
           case_creator_user_id: userId,
           case_owner_user_id: userId,
@@ -206,7 +207,7 @@ export class TriageService {
         where: { alert_id: alertId },
         data: {
           alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-          case_id: createdCase.case_id,
+          case_id: newCase.case_id,
         },
       });
 
@@ -214,7 +215,7 @@ export class TriageService {
         userId,
         operation: 'ALERT_SENT_FOR_INVESTIGATION',
         entityName: 'Alert',
-        actionPerformed: `Created case ${createdCase.case_id} for alert ${alertId}`,
+        actionPerformed: `Created case ${newCase.case_id} for alert ${alertId}`,
         outcome: 'SUCCESS',
       });
 
@@ -389,7 +390,7 @@ export class TriageService {
       }
 
       this.logger.log(
-        `Alert ${alertId} opened by user ${userId} at ${new Date().toISOString()}`,
+        `Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`,
       );
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -402,6 +403,77 @@ export class TriageService {
       throw new InternalServerErrorException(
         'Unable to retrieve alert details',
       );
+    }
+  }
+
+  async convertToCase(
+    alertId: string,
+    convertAlertToCase: ConvertAlertToCase,
+    userId: string,
+    tenantId: string,
+  ) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    if (alert.tenant_id !== tenantId) {
+      throw new NotFoundException(
+        `Alert ${alertId} not accessible for this tenant`,
+      );
+    }
+
+    if (alert.alert_status === AlertStatus.CLOSED) {
+      throw new BadRequestException(`Alert ${alertId} is already closed`);
+    }
+
+    if (alert.alert_status === AlertStatus.CONVERTED) {
+      throw new BadRequestException(
+        `Alert ${alertId} is already converted to a case`,
+      );
+    }
+
+    const casePriority = convertAlertToCase.priority ?? alert.priority;
+    try {
+      const newCase = await this.prisma.case.create({
+        data: {
+          case_creator_user_id: userId,
+          case_owner_user_id: userId,
+          tenant_id: alert.tenant_id,
+          priority: casePriority,
+          status: CaseStatus.DRAFT,
+          parent_id: null,
+          case_type: convertAlertToCase.caseType,
+          case_creation_type: CaseCreationType.MANUAL,
+        },
+      });
+
+      const updatedAlert = await this.prisma.alert.update({
+        where: { alert_id: alertId },
+        data: {
+          alert_status: AlertStatus.CONVERTED,
+          case_id: newCase.case_id,
+        },
+      });
+
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_CONVERTED_TO_CASE',
+        entityName: 'Alert',
+        actionPerformed: `Converted alert ${alertId} to case ${newCase.case_id}`,
+        outcome: 'SUCCESS',
+      });
+
+      return newCase;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create convert alert ${alertId} to case`,
+        error,
+      );
+      throw new InternalServerErrorException('Failed to convert alert to case');
     }
   }
 }

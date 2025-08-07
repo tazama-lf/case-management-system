@@ -13,6 +13,7 @@ import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { InvestigateAlertDto } from './dto/investigate-alert-dto';
+import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
@@ -51,7 +52,6 @@ export class TriageController {
       confidenceThreshold.trim() === '' ||
       isNaN(Number(confidenceThreshold))
     ) {
-      console.log('CASE_WILL_BE_CREATED');
       const caseType = CaseType.FRAUD;
       const caseCreated = await this.triageService.investigateAlert(
         alert.alert_id,
@@ -144,5 +144,22 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
+  }
+
+  @Post(':alertId/convert-to-case')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async convertAlertToCase(
+    @Param('alertId') alertId: string,
+    @Body() convertAlertToCase: ConvertAlertToCase,
+    @Req() req,
+  ) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.convertToCase(
+      alertId,
+      convertAlertToCase,
+      userId,
+      tenantId,
+    );
   }
 }
