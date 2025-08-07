@@ -1,4 +1,4 @@
-import {IsEnum } from 'class-validator';
+import { IsEnum } from 'class-validator';
 import { Priority, CaseType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
