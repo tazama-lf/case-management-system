@@ -28,6 +28,7 @@ describe('AlertMessageDto', () => {
       alert_status: AlertStatus.NEW,
       confidence_per: 85,
       case_id: 'test-case-123',
+      userId: 'test-user',
     };
 
     const dto = plainToClass(AlertMessageDto, alertData);
@@ -45,11 +46,29 @@ describe('AlertMessageDto', () => {
     expect(dto.alert_status).toBe(AlertStatus.NEW);
     expect(dto.confidence_per).toBe(85);
     expect(dto.case_id).toBe('test-case-123');
+    expect(dto.userId).toBe('test-user');
+  });
+
+  it('should validate userId field', async () => {
+    const data = {
+      tenant_id: 'test-tenant',
+      message: 'Test message',
+      alert_data: {},
+      transaction: {},
+      network_map: {},
+      confidence_per: 50,
+      userId: 'user-123',
+    };
+    const dto = plainToClass(AlertMessageDto, data);
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+    expect(dto.userId).toBe('user-123');
   });
 
   it('should validate required fields only', async () => {
     const minimalData = {
       tenant_id: 'test-tenant',
+      source: 'test-source',
       message: 'Test alert message',
       alert_data: { test: 'data' },
       transaction: { test: 'transaction' },
@@ -69,6 +88,7 @@ describe('AlertMessageDto', () => {
     for (const priority of priorities) {
       const dto = plainToClass(AlertMessageDto, {
         tenant_id: 'test-tenant',
+        source: 'test-source',
         message: 'Test message',
         alert_data: {},
         transaction: {},

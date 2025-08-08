@@ -125,7 +125,7 @@ describe('TriageService', () => {
         mockSubmitAlertDto,
         userId,
         tenantId,
-        'test-source'
+        'test-source',
       );
 
       expect(prismaService.alert.create).toHaveBeenCalled();
@@ -377,7 +377,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
-        'test-source'
+        'test-source',
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
@@ -414,7 +414,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
-        'test-source'
+        'test-source',
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
@@ -451,7 +451,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
-        'test-source'
+        'test-source',
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({

@@ -30,6 +30,7 @@ export class NatsStartupService implements OnModuleInit {
     const transaction = alertDto.transaction as any;
     const tenantId = transaction?.tenantId;
     const txTp = transaction?.TxTp;
+    const userId = alertDto.userId ?? transaction?.userId ?? 'system';
 
     // Validate presence and format
     if (
@@ -70,7 +71,7 @@ export class NatsStartupService implements OnModuleInit {
 
       await this.triageService.handleNewAlert(
         submitAlertDto,
-        tenantId,
+        userId,
         tenantId,
         'NATS',
       );
