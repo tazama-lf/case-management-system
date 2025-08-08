@@ -20,7 +20,7 @@ export class TriageService {
    * @returns Alert response with status and audit log
    * @throws BadRequestException if required fields are missing or invalid
    */
-  async handleAlert(submitAlertDto: SubmitAlertDto) {
+  handleAlert(submitAlertDto: SubmitAlertDto) {
     // Basic validation
     if (
       !submitAlertDto?.priority ||
@@ -57,6 +57,8 @@ export class TriageService {
       priority: submitAlertDto.priority,
       confidence_per,
       message,
+      case_status: caseStatus,
+      task_status: taskStatus,
       created_at: new Date().toISOString(),
     };
   }

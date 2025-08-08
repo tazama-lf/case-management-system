@@ -3,6 +3,7 @@
 Tazama Case and Investigation Management System is a comprehensive solution for managing cases and investigations efficiently. This project aims to streamline workflows, improve collaboration, and provide robust tools for tracking, reporting, and analyzing case data.
 
 ---
+
 # Tazama Case Management System – Authentication Flow
 
 ## Overview
