@@ -5,9 +5,10 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { TriageModule } from './triage/triage.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
+import { TriageModule } from './triage/triage.module';
+import { NatsModule } from './nats/nats.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
     AuditLogModule,
     TriageModule,
     AuthModule,
+    NatsModule,
   ],
   providers: [
     PrismaService,

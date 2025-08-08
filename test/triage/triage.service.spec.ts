@@ -22,6 +22,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
+import { ConvertAlertToCase } from 'src/triage/dto/convert-alert-to-case.dto';
 // Suppress Logger.error output during tests
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 
@@ -913,6 +914,25 @@ describe('TriageService', () => {
       );
     });
 
+    it('should handle search with general text (txtp contains)', async () => {
+      const searchParams = { ...mockParams, search: 'payment' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(searchParams);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { txtp: { contains: 'payment', mode: 'insensitive' } },
+            ]),
+          }),
+        }),
+      );
+    });
+
     it('should handle database errors', async () => {
       prismaService.alert.findMany.mockRejectedValue(
         new Error('Database error'),
@@ -922,6 +942,59 @@ describe('TriageService', () => {
         InternalServerErrorException,
       );
     });
+
+    it('should filter alerts by priority when provided', async () => {
+      const paramsWithPriority = { ...mockParams, priority: 'HIGH' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(paramsWithPriority);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            priority: Priority.HIGH,
+          }),
+        }),
+      );
+    });
+
+    it('should filter alerts by status when provided', async () => {
+      const paramsWithStatus = { ...mockParams, status: 'NEW' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(paramsWithStatus);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            alert_status: AlertStatus.NEW,
+          }),
+        }),
+      );
+    });
+
+    it('should filter alerts by type when provided', async () => {
+      const paramsWithType = { ...mockParams, type: 'PAYMENT' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(paramsWithType);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            txtp: 'PAYMENT',
+          }),
+        }),
+      );
+    });
+
+    it('should handle database errors', async () => {});
   });
 
   describe('getAlertDetails', () => {
@@ -994,6 +1067,188 @@ describe('TriageService', () => {
 
       await expect(
         service.getAlertDetails(alertId, tenantId, userId),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('convertToCase', () => {
+    const alertId = 'alert-123';
+    const userId = 'test-user-id';
+    const tenantId = 'test-tenant-id';
+    const convertDto: ConvertAlertToCase = {
+      priority: Priority.HIGH,
+      caseType: CaseType.FRAUD,
+    };
+
+    const mockExistingAlert = {
+      alert_id: alertId,
+      tenant_id: tenantId,
+      priority: Priority.LOW,
+      source: 'test-source',
+      txtp: null,
+      message: 'Test alert message',
+      alert_data: { test: 'report data' },
+      transaction: { test: 'transaction data' },
+      network_map: { test: 'network data' },
+      confidence_per: 80,
+      alert_status: AlertStatus.NEW,
+      case_id: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    it('should convert alert to case successfully', async () => {
+      const mockCase = {
+        case_id: 'case-123',
+        case_creator_user_id: userId,
+        case_owner_user_id: userId,
+        tenant_id: tenantId,
+        priority: Priority.HIGH,
+        status: CaseStatus.DRAFT,
+        parent_id: null,
+        case_type: CaseType.FRAUD,
+        case_creation_type: CaseCreationType.MANUAL,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const updatedAlert = {
+        ...mockExistingAlert,
+        alert_status: AlertStatus.CONVERTED,
+        case_id: mockCase.case_id,
+      };
+
+      prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
+      prismaService.case.create.mockResolvedValue(mockCase);
+      prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+      const result = await service.convertToCase(
+        alertId,
+        convertDto,
+        userId,
+        tenantId,
+      );
+
+      expect(prismaService.alert.findUnique).toHaveBeenCalledWith({
+        where: { alert_id: alertId },
+      });
+      expect(prismaService.case.create).toHaveBeenCalledWith({
+        data: {
+          case_creator_user_id: userId,
+          case_owner_user_id: userId,
+          tenant_id: tenantId,
+          priority: Priority.HIGH,
+          status: CaseStatus.DRAFT,
+          parent_id: null,
+          case_type: CaseType.FRAUD,
+          case_creation_type: CaseCreationType.MANUAL,
+        },
+      });
+      expect(prismaService.alert.update).toHaveBeenCalledWith({
+        where: { alert_id: alertId },
+        data: {
+          alert_status: AlertStatus.CONVERTED,
+          case_id: mockCase.case_id,
+        },
+      });
+      expect(auditService.logAction).toHaveBeenCalled();
+      expect(result).toEqual(mockCase);
+    });
+
+    it('should throw NotFoundException when alert not found', async () => {
+      prismaService.alert.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.convertToCase(alertId, convertDto, userId, tenantId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException when alert not accessible for tenant', async () => {
+      const alertWithDifferentTenant = {
+        ...mockExistingAlert,
+        tenant_id: 'different-tenant-id',
+      };
+
+      prismaService.alert.findUnique.mockResolvedValue(
+        alertWithDifferentTenant,
+      );
+
+      await expect(
+        service.convertToCase(alertId, convertDto, userId, tenantId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when alert is already closed', async () => {
+      const closedAlert = {
+        ...mockExistingAlert,
+        alert_status: AlertStatus.CLOSED,
+      };
+
+      prismaService.alert.findUnique.mockResolvedValue(closedAlert);
+
+      await expect(
+        service.convertToCase(alertId, convertDto, userId, tenantId),
+      ).rejects.toThrow('Alert alert-123 is already closed');
+    });
+
+    it('should throw BadRequestException when alert is already converted', async () => {
+      const convertedAlert = {
+        ...mockExistingAlert,
+        alert_status: AlertStatus.CONVERTED,
+      };
+
+      prismaService.alert.findUnique.mockResolvedValue(convertedAlert);
+
+      await expect(
+        service.convertToCase(alertId, convertDto, userId, tenantId),
+      ).rejects.toThrow('Alert alert-123 is already converted to a case');
+    });
+
+    it('should use alert priority when convertDto priority is not provided', async () => {
+      const convertDtoWithoutPriority = {
+        caseType: CaseType.FRAUD,
+      } as ConvertAlertToCase;
+
+      const mockCase = {
+        case_id: 'case-123',
+        case_creator_user_id: userId,
+        case_owner_user_id: userId,
+        tenant_id: tenantId,
+        priority: Priority.LOW, // Should use alert's priority
+        status: CaseStatus.DRAFT,
+        parent_id: null,
+        case_type: CaseType.FRAUD,
+        case_creation_type: CaseCreationType.MANUAL,
+      };
+
+      prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
+      prismaService.case.create.mockResolvedValue(mockCase);
+      prismaService.alert.update.mockResolvedValue({
+        ...mockExistingAlert,
+        alert_status: AlertStatus.CONVERTED,
+        case_id: mockCase.case_id,
+      });
+
+      await service.convertToCase(
+        alertId,
+        convertDtoWithoutPriority,
+        userId,
+        tenantId,
+      );
+
+      expect(prismaService.case.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          priority: Priority.LOW, // Alert's original priority
+        }),
+      });
+    });
+
+    it('should handle database errors during conversion', async () => {
+      prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
+      prismaService.case.create.mockRejectedValue(new Error('Database error'));
+
+      await expect(
+        service.convertToCase(alertId, convertDto, userId, tenantId),
       ).rejects.toThrow(InternalServerErrorException);
     });
   });
