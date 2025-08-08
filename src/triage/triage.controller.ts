@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Body,
   Controller,
@@ -7,6 +8,8 @@ import {
   Post,
   Req,
   UseGuards,
+  Query,
+  Logger,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -18,11 +21,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
-import { InvestigateAlertDto } from './dto/investigate-alert-dto';
+import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
+  private readonly logger = new Logger(TriageController.name);
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
@@ -162,5 +166,34 @@ export class TriageController {
       userId,
       tenantId,
     );
+  }
+  @Post('ingest')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async ingestAlert(@Body() alertDto: AlertMessageDto, @Req() req) {
+    const tenantId = req?.user?.tenantId ?? 'default';
+
+    try {
+      const submitAlertDto: SubmitAlertDto = {
+        result: {
+          message: alertDto.message,
+          report: alertDto.alert_data,
+          transaction: alertDto.transaction,
+          networkMap: alertDto.network_map,
+          source: alertDto.source ?? '',
+          txtp: alertDto.txtp ?? '',
+        },
+      };
+
+      await this.triageService.handleNewAlert(submitAlertDto, 'http', tenantId);
+      this.logger.log(`Alert ingested from HTTP for tenant: ${tenantId}`);
+      return { status: 'success' };
+    } catch (err) {
+      this.logger.error(`Failed to persist alert for tenant: ${tenantId}`, {
+        error: err instanceof Error ? err.message : String(err),
+        tenantId,
+        alertData: alertDto,
+      });
+      return { status: 'error', message: 'Failed to persist alert' };
+    }
   }
 }
