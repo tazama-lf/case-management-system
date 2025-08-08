@@ -17,6 +17,8 @@ class AlertResultDto {
 
   @IsString()
   source: string;
+  @IsString()
+  txtp: string;
 }
 
 export class SubmitAlertDto {

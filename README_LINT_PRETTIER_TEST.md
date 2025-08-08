@@ -30,13 +30,11 @@ npm run lint -- --fix
 
 ### Format Code with Prettier
 
-
 Formats all files in the workspace (including coverage, prisma, etc.) using Prettier:
 
 ```
 npx prettier --write .
 ```
-
 
 Formats only TypeScript files in `src/` and `test/`:
 

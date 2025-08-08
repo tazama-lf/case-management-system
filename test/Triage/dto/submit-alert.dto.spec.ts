@@ -16,6 +16,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -28,6 +29,7 @@ describe('SubmitAlertDto', () => {
     expect(dto.result.report).toEqual({ test: 'report data' });
     expect(dto.result.transaction).toEqual({ test: 'transaction data' });
     expect(dto.result.networkMap).toEqual({ test: 'network data' });
+    expect(dto.result.txtp).toBe('test-txtp');
   });
 
   it('should fail validation when result is missing', async () => {
@@ -48,6 +50,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -67,6 +70,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 123,
+        txtp: 'test-txtp',
       },
     };
 
@@ -86,6 +90,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -120,6 +125,7 @@ describe('SubmitAlertDto', () => {
           edges: [{ from: 'node1', to: 'node2' }],
         },
         source: 'fraud-detection-engine',
+        txtp: 'complex-txtp',
       },
     };
 
@@ -140,6 +146,7 @@ describe('SubmitAlertDto', () => {
         transaction: 'not an object',
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -159,6 +166,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: ['not', 'an', 'object'],
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -177,6 +185,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -195,6 +204,7 @@ describe('SubmitAlertDto', () => {
         report: { test: 'report data' },
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
+        txtp: 'test-txtp',
       },
     };
 
@@ -214,6 +224,7 @@ describe('SubmitAlertDto', () => {
         transaction: {},
         networkMap: {},
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -234,6 +245,7 @@ describe('SubmitAlertDto', () => {
         transaction: null,
         networkMap: null,
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -253,6 +265,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -271,6 +284,7 @@ describe('SubmitAlertDto', () => {
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
         source: 'test-source',
+        txtp: 'test-txtp',
       },
     };
 
@@ -289,6 +303,7 @@ describe('SubmitAlertDto', () => {
         transaction: { currency: '€', description: 'Ñørmål tráñsäctîøñ' },
         networkMap: { node: '🌐', edge: '→' },
         source: 'système-détection-fraude',
+        txtp: 'unicode-txtp',
       },
     };
 
@@ -340,6 +355,7 @@ describe('SubmitAlertDto', () => {
           },
         },
         source: 'advanced-ml-engine',
+        txtp: 'deep-txtp',
       },
     };
 
