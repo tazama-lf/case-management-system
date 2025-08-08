@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { TriageService } from '../../src/triage/triage.service';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
 
@@ -8,7 +9,7 @@ describe('TriageService', () => {
     service = new TriageService();
   });
 
-  it('should auto-close alert with high confidence and true positive', async () => {
+  it('should auto-close alert with high confidence and true positive', () => {
     const dto: SubmitAlertDto = {
       tenant_id: 'tenant1',
       priority: 'High',
@@ -20,12 +21,14 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 95,
     };
-    const result = await service.handleAlert(dto);
+    const result = service.handleAlert(dto);
     expect(result.message).toBe('Alert auto-closed with high confidence.');
     expect(result.priority).toBe('High');
     expect(result.confidence_per).toBe(95);
     expect(result.alert_id).toBeDefined();
     expect(result.created_at).toBeDefined();
+    expect(result.case_status).toBe('71 - AUTOCLOSED CONFIRMED');
+    expect(result.task_status).toBe('30 - COMPLETED');
   });
 
   it('should not auto-close alert if confidence is low', async () => {
@@ -40,12 +43,14 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 50,
     };
-    const result = await service.handleAlert(dto);
+    const result = service.handleAlert(dto);
     expect(result.message).toBe('Alert received.');
     expect(result.priority).toBe('Low');
     expect(result.confidence_per).toBe(50);
     expect(result.alert_id).toBeDefined();
     expect(result.created_at).toBeDefined();
+    expect(result.case_status).toBe('PENDING');
+    expect(result.task_status).toBe('IN_PROGRESS');
   });
 
   it('should not auto-close alert if not a true positive', async () => {
@@ -60,8 +65,10 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 95,
     };
-    const result = await service.handleAlert(dto);
+    const result = service.handleAlert(dto);
     expect(result.message).toBe('Alert received.');
+    expect(result.case_status).toBe('PENDING');
+    expect(result.task_status).toBe('IN_PROGRESS');
   });
 
   it('should not auto-close alert if transaction exists', async () => {
@@ -76,8 +83,10 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 95,
     };
-    const result = await service.handleAlert(dto);
+    const result = service.handleAlert(dto);
     expect(result.message).toBe('Alert received.');
+    expect(result.case_status).toBe('PENDING');
+    expect(result.task_status).toBe('IN_PROGRESS');
   });
 
   it('should not auto-close alert if AML is suspected', async () => {
@@ -92,14 +101,16 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 95,
     };
-    const result = await service.handleAlert(dto);
+    const result = service.handleAlert(dto);
     expect(result.message).toBe('Alert received.');
+    expect(result.case_status).toBe('PENDING');
+    expect(result.task_status).toBe('IN_PROGRESS');
   });
 
   it('should throw BadRequestException for missing required fields', async () => {
-    await expect(service.handleAlert({} as any)).rejects.toThrow(
-      'Missing required alert fields.',
-    );
+    await expect(async () => {
+      service.handleAlert({} as any);
+    }).rejects.toThrow('Missing required alert fields.');
   });
 
   it('should log audit when auto-closing', async () => {
@@ -115,7 +126,7 @@ describe('TriageService', () => {
       network_map: {},
       confidence_per: 95,
     };
-    await service.handleAlert(dto);
+    service.handleAlert(dto);
     expect(spy).toHaveBeenCalledWith(
       '[AUDIT] Alert auto-closed:',
       expect.objectContaining({
