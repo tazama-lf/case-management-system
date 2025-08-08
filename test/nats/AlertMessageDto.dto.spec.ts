@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Priority, AlertStatus } from '@prisma/client';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
+import { AlertMessageDto } from '../../src/nats/dto/AlertMessageDto.dto';
 
 describe('AlertMessageDto', () => {
   it('should be defined', () => {
