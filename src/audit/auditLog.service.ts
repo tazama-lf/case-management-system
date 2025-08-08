@@ -27,7 +27,6 @@ export class AuditLogService {
         action_performed: data.actionPerformed,
         outcome: data.outcome,
         performed_at: data.performedAt ?? new Date(),
-        details: data.details,
       },
     });
   }
