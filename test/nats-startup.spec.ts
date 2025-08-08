@@ -15,7 +15,7 @@ import { TriageService } from '../src/triage/triage.service';
 import { Priority, AlertStatus } from '@prisma/client';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
+import { AlertMessageDto } from '../src/nats/dto/AlertMessageDto.dto';
 import { Logger } from '@nestjs/common';
 
 // Mock the startup factory
@@ -107,11 +107,13 @@ describe('NatsStartupService', () => {
         tenantId: 'test-tenant',
         TxTp: 'test-txtp',
         test: 'transaction',
+        userId: 'test-user',
       },
       network_map: { test: 'network' },
       alert_status: AlertStatus.NEW,
       confidence_per: 85,
       case_id: 'test-case-123',
+      userId: 'test-user',
     };
 
     const validAlertDto = new AlertMessageDto();
@@ -138,12 +140,13 @@ describe('NatsStartupService', () => {
             report: validAlertPayload.alert_data,
             transaction: validAlertPayload.transaction,
             networkMap: validAlertPayload.network_map,
-            source: validAlertPayload.source,
-            txtp: 'test-txtp',
           },
         },
-        'nats',
+        validAlertPayload.userId ??
+          validAlertPayload.transaction.userId ??
+          'system',
         'test-tenant',
+        'NATS',
       );
     });
 
