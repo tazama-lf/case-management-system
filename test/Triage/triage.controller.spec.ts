@@ -120,7 +120,7 @@ describe('TriageController', () => {
         mockSubmitAlertDto,
         'test-user-id',
         'test-tenant-id',
-        'REST API'
+        'REST API',
       );
       expect(triageService.handleNewAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
@@ -138,7 +138,7 @@ describe('TriageController', () => {
         mockSubmitAlertDto,
         'test-user-id',
         'test-tenant-id',
-        'REST API'
+        'REST API',
       );
     });
 
@@ -171,7 +171,7 @@ describe('TriageController', () => {
         mockSubmitAlertDto,
         'test-user-id',
         'test-tenant-id',
-        'REST API'
+        'REST API',
       );
     });
   });

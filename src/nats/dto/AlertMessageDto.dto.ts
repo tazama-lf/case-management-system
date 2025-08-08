@@ -47,4 +47,7 @@ export class AlertMessageDto {
   @IsOptional()
   @IsString()
   case_id?: string;
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
