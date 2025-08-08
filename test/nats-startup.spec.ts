@@ -273,12 +273,13 @@ describe('NatsStartupService', () => {
             report: validAlertPayload.alert_data,
             transaction: validAlertPayload.transaction,
             networkMap: validAlertPayload.network_map,
-            source: '', // Should default to empty string
-            txtp: 'test-txtp',
           },
         },
-        'nats',
+        validAlertPayload.userId ??
+          validAlertPayload.transaction.userId ??
+          'system',
         'test-tenant',
+        'NATS',
       );
     });
   });

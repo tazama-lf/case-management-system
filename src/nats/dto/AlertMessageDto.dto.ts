@@ -17,6 +17,7 @@ export class AlertMessageDto {
   @Type(() => String)
   priority?: Priority;
 
+  @IsOptional()
   @IsString()
   source?: string;
 
