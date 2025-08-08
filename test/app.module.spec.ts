@@ -1,7 +1,18 @@
+// Set required environment variables before any imports
+process.env.STARTUP_TYPE = 'nats';
+
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../prisma/prisma.service';
+
+// Mock the startup factory
+jest.mock('@tazama-lf/frms-coe-startup-lib', () => ({
+  StartupFactory: jest.fn().mockImplementation(() => ({
+    init: jest.fn(),
+    handleMessage: jest.fn(),
+  })),
+}));
 
 describe('AppModule', () => {
   beforeAll(() => {
