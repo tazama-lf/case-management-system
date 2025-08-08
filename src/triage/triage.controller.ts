@@ -179,8 +179,6 @@ export class TriageController {
           report: alertDto.alert_data,
           transaction: alertDto.transaction,
           networkMap: alertDto.network_map,
-          source: alertDto.source ?? '',
-          txtp: alertDto.txtp ?? '',
         },
       };
 

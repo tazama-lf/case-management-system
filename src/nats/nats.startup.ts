@@ -65,10 +65,12 @@ export class NatsStartupService implements OnModuleInit {
           report: alertDto.alert_data,
           transaction: alertDto.transaction,
           networkMap: alertDto.network_map,
-          source: alertDto.source ?? '',
-          txtp: txTp,
         },
       };
+
+      // Set source and txtp explicitly from NATS extraction
+      (submitAlertDto.result as any).source = 'nats';
+      (submitAlertDto.result as any).txtp = txTp;
 
       await this.triageService.handleNewAlert(submitAlertDto, 'nats', tenantId);
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
