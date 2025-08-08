@@ -68,6 +68,10 @@ export class NatsStartupService implements OnModuleInit {
         },
       };
 
+      // Set source and txtp explicitly from NATS extraction
+      (submitAlertDto.result as any).source = 'nats';
+      (submitAlertDto.result as any).txtp = txTp;
+
       await this.triageService.handleNewAlert(
         submitAlertDto,
         tenantId,

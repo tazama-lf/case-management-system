@@ -21,6 +21,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CaseType } from '@prisma/client';
+import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -34,11 +35,17 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
 
+    // Log JWT permissions/roles for monitoring
+    const logValue =
+      req.user.role && req.user.role.trim() !== ''
+        ? req.user.role
+        : req.user.permissions;
+    console.log('JWT permissions/roles:', logValue);
+
     const alert = await this.triageService.handleNewAlert(
       dto,
       userId,
       tenantId,
-      'REST API',
     );
 
     const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
@@ -49,7 +56,7 @@ export class TriageController {
       confidenceThreshold.trim() === '' ||
       isNaN(Number(confidenceThreshold))
     ) {
-      
+      console.log('CASE_WILL_BE_CREATED');
       const caseType = CaseType.FRAUD;
       const caseCreated = await this.triageService.investigateAlert(
         alert.alert_id,
@@ -103,7 +110,7 @@ export class TriageController {
     const tenantId = req.user.tenantId;
     return this.triageService.investigateAlert(
       alertId,
-      dto.status,
+      dto.caseType,
       userId,
       tenantId,
     );
@@ -159,5 +166,32 @@ export class TriageController {
       userId,
       tenantId,
     );
+  }
+  @Post('ingest')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async ingestAlert(@Body() alertDto: AlertMessageDto, @Req() req) {
+    const tenantId = req?.user?.tenantId ?? 'default';
+
+    try {
+      const submitAlertDto: SubmitAlertDto = {
+        result: {
+          message: alertDto.message,
+          report: alertDto.alert_data,
+          transaction: alertDto.transaction,
+          networkMap: alertDto.network_map,
+        },
+      };
+
+      await this.triageService.handleNewAlert(submitAlertDto, 'http', tenantId);
+      this.logger.log(`Alert ingested from HTTP for tenant: ${tenantId}`);
+      return { status: 'success' };
+    } catch (err) {
+      this.logger.error(`Failed to persist alert for tenant: ${tenantId}`, {
+        error: err instanceof Error ? err.message : String(err),
+        tenantId,
+        alertData: alertDto,
+      });
+      return { status: 'error', message: 'Failed to persist alert' };
+    }
   }
 }
