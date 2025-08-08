@@ -8,5 +8,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [TriageController],
   providers: [TriageService, AuditLogService],
+  exports: [TriageService],
 })
 export class TriageModule {}

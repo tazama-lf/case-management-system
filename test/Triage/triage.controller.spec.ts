@@ -364,6 +364,7 @@ describe('TriageController', () => {
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
           source: 'test-source',
+          txtp: '',
         },
       };
 
@@ -411,6 +412,7 @@ describe('TriageController', () => {
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
           source: 'test-source',
+          txtp: '',
         },
       };
 
@@ -458,6 +460,7 @@ describe('TriageController', () => {
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
           source: 'test-source',
+          txtp: '',
         },
       };
 
@@ -505,6 +508,7 @@ describe('TriageController', () => {
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
           source: 'test-source',
+          txtp: '',
         },
       };
 
