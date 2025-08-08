@@ -95,7 +95,6 @@ describe('TriageService', () => {
         report: { test: 'report data' },
         transaction: { test: 'transaction data' },
         networkMap: { test: 'network data' },
-        source: 'test-source',
       },
     };
 
@@ -126,6 +125,7 @@ describe('TriageService', () => {
         mockSubmitAlertDto,
         userId,
         tenantId,
+        'test-source'
       );
 
       expect(prismaService.alert.create).toHaveBeenCalled();
@@ -350,119 +350,6 @@ describe('TriageService', () => {
     });
   });
 
-  describe('source extraction coverage', () => {
-    it('should extract source from result.source', async () => {
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test alert',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'direct-source',
-        },
-      };
-
-      const mockAlert = {
-        alert_id: 'alert-123',
-        tenant_id: 'tenant-123',
-        priority: Priority.LOW,
-        source: 'direct-source',
-        txtp: '',
-        alert_status: AlertStatus.NEW,
-        message: 'Test alert',
-      };
-
-      prismaService.alert.create.mockResolvedValue(mockAlert);
-
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-      );
-
-      expect(prismaService.alert.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          source: 'REST API',
-        }),
-      });
-      expect(result).toEqual(mockAlert);
-    });
-
-    it('should extract source from result.report.source when result.source is not available', async () => {
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test alert',
-          report: { source: 'report-source' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: '', // empty string, should fallback to report
-        },
-      };
-
-      const mockAlert = {
-        alert_id: 'alert-123',
-        tenant_id: 'tenant-123',
-        priority: Priority.LOW,
-        source: 'report-source',
-        txtp: '',
-        alert_status: AlertStatus.NEW,
-        message: 'Test alert',
-      };
-
-      prismaService.alert.create.mockResolvedValue(mockAlert);
-
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-      );
-
-      expect(prismaService.alert.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          source: 'REST API',
-        }),
-      });
-      expect(result).toEqual(mockAlert);
-    });
-
-    it('should use default empty source when neither result.source nor result.report.source are available', async () => {
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test alert',
-          report: { test: 'data' }, // no source property
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: '', // empty source
-        },
-      };
-
-      const mockAlert = {
-        alert_id: 'alert-123',
-        tenant_id: 'tenant-123',
-        priority: Priority.LOW,
-        source: '',
-        txtp: '',
-        alert_status: AlertStatus.NEW,
-        message: 'Test alert',
-      };
-
-      prismaService.alert.create.mockResolvedValue(mockAlert);
-
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-      );
-
-      expect(prismaService.alert.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          source: 'REST API',
-        }),
-      });
-      expect(result).toEqual(mockAlert);
-    });
-  });
-
   describe('txtp extraction coverage', () => {
     it('should extract txtp from result.report.txtp', async () => {
       const dto: SubmitAlertDto = {
@@ -471,7 +358,6 @@ describe('TriageService', () => {
           report: { txtp: 'report-txtp' },
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
-          source: 'test-source',
         },
       };
 
@@ -491,6 +377,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
+        'test-source'
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
@@ -508,7 +395,6 @@ describe('TriageService', () => {
           report: { test: 'data' },
           transaction: { TxTp: 'transaction-txtp' },
           networkMap: { test: 'network' },
-          source: 'test-source',
         },
       };
 
@@ -528,6 +414,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
+        'test-source'
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
@@ -545,7 +432,6 @@ describe('TriageService', () => {
           report: { test: 'data' },
           transaction: { test: 'transaction' },
           networkMap: { txtp: 'network-txtp' },
-          source: 'test-source',
         },
       };
 
@@ -565,6 +451,7 @@ describe('TriageService', () => {
         dto,
         'user-123',
         'tenant-123',
+        'test-source'
       );
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
@@ -584,14 +471,13 @@ describe('TriageService', () => {
           report: { test: 'data' },
           transaction: { test: 'transaction' },
           networkMap: { test: 'network' },
-          source: 'test-source',
         },
       };
 
       prismaService.alert.create.mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.handleNewAlert(dto, 'user-123', 'tenant-123'),
+        service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source'),
       ).rejects.toThrow(InternalServerErrorException);
     });
 

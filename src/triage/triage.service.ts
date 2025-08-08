@@ -28,9 +28,7 @@ export class TriageService {
     private audit: AuditLogService,
   ) {}
 
-  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
-    // Determine the alert source
-    const source = 'REST API';
+  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string, source: string) {
     // Determine the alert type (txtp)
     let txtp = '';
     if (

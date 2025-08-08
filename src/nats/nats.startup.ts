@@ -65,12 +65,15 @@ export class NatsStartupService implements OnModuleInit {
           report: alertDto.alert_data,
           transaction: alertDto.transaction,
           networkMap: alertDto.network_map,
-          source: alertDto.source ?? '',
-          txtp: txTp,
         },
       };
 
-      await this.triageService.handleNewAlert(submitAlertDto, 'nats', tenantId);
+      await this.triageService.handleNewAlert(
+        submitAlertDto,
+        tenantId,
+        tenantId,
+        'NATS',
+      );
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
     } catch (err) {
       this.logger.error('Failed to persist alert', {
