@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await */
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from '../../src/auth/jwt.strategy';
 import * as fs from 'fs';
 
 jest.mock('fs');
@@ -71,7 +70,7 @@ describe('JwtStrategy', () => {
         },
       };
 
-      const result = await strategy.validate(payload);
+      const result = strategy.validate(payload);
 
       expect(result).toEqual({
         role: ['admin', 'user'],
@@ -81,6 +80,43 @@ describe('JwtStrategy', () => {
       });
     });
 
+    it('should throw error if user_id is missing', async () => {
+      const payload = {
+        tenantId: 'tenant-456',
+        realm_access: {
+          roles: ['admin', 'user'],
+        },
+      };
+      expect(() => strategy.validate(payload as any)).toThrow(
+        'Invalid token: missing sub user_id or clientId',
+      );
+    });
+
+    it('should throw error if tenantId is missing', async () => {
+      const payload = {
+        sub: 'user-123',
+        realm_access: {
+          roles: ['admin', 'user'],
+        },
+      };
+      expect(() => strategy.validate(payload as any)).toThrow(
+        'Invalid token: missing tenant_id or tenantId',
+      );
+    });
+
+    it('should throw error if roles are missing', async () => {
+      const payload = {
+        sub: 'user-123',
+        tenantId: 'tenant-456',
+        realm_access: {
+          roles: [],
+        },
+      };
+      expect(() => strategy.validate(payload as any)).toThrow(
+        'Invalid token: missing roles in realm_access or claims',
+      );
+    });
+
     it('should validate payload with claims instead of realm_access', async () => {
       const payload = {
         sub: 'user-123',
@@ -88,7 +124,7 @@ describe('JwtStrategy', () => {
         claims: ['CMS-TEST-ROLE', 'manage-account'],
       };
 
-      const result = await strategy.validate(payload);
+      const result = strategy.validate(payload);
 
       expect(result).toEqual({
         role: ['CMS-TEST-ROLE', 'manage-account'],
@@ -107,7 +143,7 @@ describe('JwtStrategy', () => {
         },
       };
 
-      const result = await strategy.validate(payload);
+      const result = strategy.validate(payload);
 
       expect(result).toEqual({
         role: ['client'],
@@ -124,7 +160,7 @@ describe('JwtStrategy', () => {
         claims: ['user'],
       };
 
-      const result = await strategy.validate(payload);
+      const result = strategy.validate(payload);
 
       expect(result).toEqual({
         role: ['user'],
@@ -132,57 +168,6 @@ describe('JwtStrategy', () => {
         tenantId: 'tenant-789',
         user_id: 'user-123',
       });
-    });
-
-    it('should throw error when user_id is missing', async () => {
-      const payload: any = {
-        tenantId: 'tenant-456',
-        realm_access: {
-          roles: ['user'],
-        },
-      };
-
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        'Invalid token: missing sub user_id or clientId',
-      );
-    });
-
-    it('should throw error when tenantId is missing', async () => {
-      const payload = {
-        sub: 'user-123',
-        realm_access: {
-          roles: ['user'],
-        },
-      };
-
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        'Invalid token: missing tenant_id or tenantId',
-      );
-    });
-
-    it('should throw error when roles are missing', async () => {
-      const payload = {
-        sub: 'user-123',
-        tenantId: 'tenant-456',
-      };
-
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        'Invalid token: missing roles in realm_access or claims',
-      );
-    });
-
-    it('should throw error when roles array is empty', async () => {
-      const payload = {
-        sub: 'user-123',
-        tenantId: 'tenant-456',
-        realm_access: {
-          roles: [],
-        },
-      };
-
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        'Invalid token: missing roles in realm_access or claims',
-      );
     });
 
     it('should handle complex payload with additional properties', async () => {
@@ -198,7 +183,7 @@ describe('JwtStrategy', () => {
         iat: 1234567800,
       };
 
-      const result = await strategy.validate(payload);
+      const result = strategy.validate(payload);
 
       expect(result).toEqual({
         role: ['admin', 'user'],

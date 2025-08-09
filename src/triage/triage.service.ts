@@ -35,23 +35,10 @@ export class TriageService {
     source: string,
   ) {
     // Determine the alert type (txtp)
-    let txtp = '';
-    if (
-      dto.result.report &&
-      typeof (dto.result.report as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.report as any).txtp;
-    } else if (
-      dto.result.transaction &&
-      typeof (dto.result.transaction as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.transaction as any).txtp;
-    } else if (
-      dto.result.networkMap &&
-      typeof (dto.result.networkMap as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.networkMap as any).txtp;
-    }
+    const txtp =
+      typeof dto?.result?.transaction?.TxTp === 'string'
+        ? dto.result.transaction.TxTp
+        : '';
 
     try {
       const newAlert = await this.prisma.alert.create({
@@ -145,10 +132,7 @@ export class TriageService {
     tenantId: string,
   ) {
     const alert = await this.prisma.alert.findUnique({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
+      where: { alert_id: alertId },
     });
 
     if (!alert) {
@@ -169,7 +153,6 @@ export class TriageService {
       const closedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: { alert_status: AlertStatus.CLOSED },
->>>>>>> 0f8431d (feat(manual-alert): add close alert in case of false positive)
       });
 
       await this.audit.logAction({
@@ -186,8 +169,6 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to close alert');
     }
   }
-<<<<<<< HEAD
-=======
 
   async investigateAlert(
     alertId: string,
