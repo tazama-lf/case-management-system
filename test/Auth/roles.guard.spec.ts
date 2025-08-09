@@ -1,9 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
-import { RolesGuard, Permissions } from '../../src/auth/roles.guard';
+import { RolesGuard, Permissions, Roles } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
@@ -29,6 +25,31 @@ describe('Permissions Decorator', () => {
 
   it('should work with no permissions', () => {
     const decorator = Permissions();
+    expect(decorator).toBeDefined();
+  });
+});
+
+describe('Roles Decorator', () => {
+  it('should set roles metadata correctly', () => {
+    const roles = ['admin', 'user', 'moderator'];
+    const decorator = Roles(...roles);
+
+    expect(decorator).toBeDefined();
+    expect(typeof decorator).toBe('function');
+  });
+
+  it('should work with single role', () => {
+    const decorator = Roles('admin');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with multiple roles', () => {
+    const decorator = Roles('admin', 'user', 'moderator');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with no roles', () => {
+    const decorator = Roles();
     expect(decorator).toBeDefined();
   });
 });
