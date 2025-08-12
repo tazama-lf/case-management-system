@@ -7,7 +7,8 @@ import { RolesGuard } from '../../src/auth/roles.guard';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
 import { UpdateAlertDto } from '../../src/triage/dto/update-alert.dto';
 import { AutoCloseAlertDto } from '../../src/triage/dto/auto-close-alert.dto';
-import { AlertStatus, Priority } from '@prisma/client';
+import { InvestigateAlertDto } from '../../src/triage/dto/investigate-alert-dto';
+import { AlertStatus, Priority, CaseType } from '@prisma/client';
 
 describe('TriageController', () => {
   let controller: TriageController;
@@ -17,17 +18,22 @@ describe('TriageController', () => {
     handleNewAlert: jest.fn(),
     updateAlertData: jest.fn(),
     manualCloseAlert: jest.fn(),
+    investigateAlert: jest.fn(),
   };
 
   const mockAuditLogService = {
-    log: jest.fn(),
-    create: jest.fn(),
+    logAction: jest.fn(),
+    logPermissionDenied: jest.fn(),
+    getLogs: jest.fn(),
   };
 
-  const mockReflector = {
-    get: jest.fn(),
-    getAllAndOverride: jest.fn(),
-    getAllAndMerge: jest.fn(),
+  const mockUser = {
+    user_id: 'user-123',
+    tenantId: 'tenant-123',
+  };
+
+  const mockRequest = {
+    user: mockUser,
   };
 
   beforeEach(async () => {
@@ -43,10 +49,12 @@ describe('TriageController', () => {
           useValue: mockAuditLogService,
         },
         {
-          provide: Reflector,
-          useValue: mockReflector,
+          provide: RolesGuard,
+          useValue: {
+            canActivate: jest.fn().mockReturnValue(true),
+          },
         },
-        RolesGuard,
+        Reflector,
       ],
     }).compile();
 
@@ -63,8 +71,9 @@ describe('TriageController', () => {
   });
 
   describe('submitAlert', () => {
-    const mockSubmitAlertDto: SubmitAlertDto = {
+    const submitAlertDto: SubmitAlertDto = {
       result: {
+<<<<<<< HEAD
         message: 'Test alert message',
         report: { test: 'report data' },
         transaction: { test: 'transaction data' },
@@ -192,38 +201,187 @@ describe('TriageController', () => {
         txtp: null,
         message: 'Test',
         alert_data: { test: 'data' },
+=======
+        message: 'Test alert',
+        report: { test: 'data' },
+>>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
         transaction: { test: 'transaction' },
-        network_map: { test: 'network' },
-        confidence_per: 0,
-        alert_status: AlertStatus.NEW,
-        case_id: null,
-      });
-      mockTriageService.investigateAlert.mockResolvedValue({
-        case_id: 'case-789',
-      });
+        networkMap: { test: 'network' },
+        source: 'test-source',
+      },
+    };
 
-      // Simulate missing/invalid confidence threshold
+    const mockAlert = {
+      alert_id: 'alert-123',
+      tenant_id: 'tenant-123',
+      priority: Priority.LOW,
+      source: 'REST API',
+      txtp: '',
+      alert_status: AlertStatus.NEW,
+      message: 'Test alert',
+      confidence_per: 0,
+      case_id: null,
+      alert_data: { test: 'data' },
+      transaction: { test: 'transaction' },
+      network_map: { test: 'network' },
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    it('should submit alert and auto-investigate when confidence threshold is invalid', async () => {
+      // Mock environment variable to be invalid
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      process.env.CONFIDENCE_THRESHOLD = 'invalid';
+
+      const mockCaseAlert = {
+        ...mockAlert,
+        case_id: 'case-123',
+        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      };
+
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.investigateAlert.mockResolvedValue(mockCaseAlert);
+
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
+        submitAlertDto,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith(
+        'alert-123',
+        CaseType.FRAUD,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(result.case_id).toBe('case-123');
+
+      // Restore environment variable
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
+    });
+
+    it('should submit alert and auto-investigate when confidence threshold is undefined', async () => {
+      // Mock environment variable to be undefined
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      delete process.env.CONFIDENCE_THRESHOLD;
+
+      const mockCaseAlert = {
+        ...mockAlert,
+        case_id: 'case-123',
+        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      };
+
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.investigateAlert.mockResolvedValue(mockCaseAlert);
+
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
+        submitAlertDto,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith(
+        'alert-123',
+        CaseType.FRAUD,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(result.case_id).toBe('case-123');
+
+      // Restore environment variable
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
+    });
+
+    it('should submit alert and auto-investigate when confidence threshold is null', async () => {
+      // Mock environment variable to be undefined (simulating null)
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      delete process.env.CONFIDENCE_THRESHOLD;
+
+      const mockCaseAlert = {
+        ...mockAlert,
+        case_id: 'case-123',
+        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      };
+
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.investigateAlert.mockResolvedValue(mockCaseAlert);
+
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.investigateAlert).toHaveBeenCalled();
+      expect(result.case_id).toBe('case-123');
+
+      // Restore environment variable
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
+    });
+
+    it('should submit alert and auto-investigate when confidence threshold is empty string', async () => {
+      // Mock environment variable to be empty
       const originalEnv = process.env.CONFIDENCE_THRESHOLD;
       process.env.CONFIDENCE_THRESHOLD = '';
 
-      const result = await controller.submitAlert(dto, req);
+      const mockCaseAlert = {
+        ...mockAlert,
+        case_id: 'case-123',
+        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      };
 
-      expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
-      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
-        dto,
-        'user-123',
-        'tenant-456',
-      );
-      expect(mockTriageService.investigateAlert).toHaveBeenCalledWith(
-        'alert-123',
-        expect.anything(), // CaseType.FRAUD
-        'user-123',
-        'tenant-456',
-      );
-      expect(result.case_id).toBe('case-789');
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.investigateAlert.mockResolvedValue(mockCaseAlert);
 
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.investigateAlert).toHaveBeenCalled();
+      expect(result.case_id).toBe('case-123');
+
+      // Restore environment variable
       process.env.CONFIDENCE_THRESHOLD = originalEnv;
-      consoleSpy.mockRestore();
+    });
+
+    it('should submit alert and auto-investigate when confidence threshold is whitespace', async () => {
+      // Mock environment variable to be whitespace
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      process.env.CONFIDENCE_THRESHOLD = '   ';
+
+      const mockCaseAlert = {
+        ...mockAlert,
+        case_id: 'case-123',
+        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      };
+
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.investigateAlert.mockResolvedValue(mockCaseAlert);
+
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.investigateAlert).toHaveBeenCalled();
+      expect(result.case_id).toBe('case-123');
+
+      // Restore environment variable
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
+    });
+
+    it('should only submit alert when confidence threshold is valid', async () => {
+      // Mock environment variable to be valid
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      process.env.CONFIDENCE_THRESHOLD = '75';
+
+      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+
+      const result = await controller.submitAlert(submitAlertDto, mockRequest);
+
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
+        submitAlertDto,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(triageService.investigateAlert).not.toHaveBeenCalled();
+      expect(result).toEqual(mockAlert);
+
+      // Restore environment variable
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
     });
 <<<<<<< HEAD
 =======
@@ -233,18 +391,20 @@ describe('TriageController', () => {
   });
 
   describe('getTest', () => {
-    it('should return test status', () => {
+    it('should return status ok', () => {
       const result = controller.getTest();
       expect(result).toEqual({ status: 'ok' });
     });
   });
 
   describe('updateAlert', () => {
-    const mockUpdateAlertDto: UpdateAlertDto = {
+    const alertId = 'alert-123';
+    const updateDto: UpdateAlertDto = {
       confidence_per: 85,
       priority: Priority.HIGH,
     };
 
+<<<<<<< HEAD
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
@@ -257,34 +417,32 @@ describe('TriageController', () => {
         tenantId: 'test-tenant-id',
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       },
+=======
+    const mockUpdatedAlert = {
+      alert_id: alertId,
+      tenant_id: 'tenant-123',
+      priority: Priority.HIGH,
+      confidence_per: 85,
+      source: 'REST API',
+      txtp: '',
+      alert_status: AlertStatus.NEW,
+      message: 'Test alert',
+      case_id: null,
+      alert_data: { test: 'data' },
+      transaction: { test: 'transaction' },
+      network_map: { test: 'network' },
+      created_at: new Date(),
+      updated_at: new Date(),
+>>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     };
 
     it('should update alert successfully', async () => {
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.HIGH,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 85,
-        alert_status: AlertStatus.NEW,
-        case_id: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      triageService.updateAlertData.mockResolvedValue(expectedResult);
+      triageService.updateAlertData.mockResolvedValue(mockUpdatedAlert);
 
-      const result = await controller.updateAlert(
-        'alert-123',
-        mockUpdateAlertDto,
-        mockRequest,
-      );
+      const result = await controller.updateAlert(alertId, updateDto, mockRequest);
 
       expect(triageService.updateAlertData).toHaveBeenCalledWith(
+<<<<<<< HEAD
         'alert-123',
         mockUpdateAlertDto,
         'test-user-id',
@@ -321,15 +479,24 @@ describe('TriageController', () => {
 =======
         'test-tenant-id',
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
+=======
+        alertId,
+        updateDto,
+        mockUser.user_id,
+        mockUser.tenantId,
+>>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
       );
+      expect(result).toEqual(mockUpdatedAlert);
     });
   });
 
   describe('autoCloseAlert', () => {
-    const mockAutoCloseDto: AutoCloseAlertDto = {
+    const alertId = 'alert-123';
+    const autoCloseDto: AutoCloseAlertDto = {
       status: AlertStatus.AUTOCLOSED_CONFIRMED,
     };
 
+<<<<<<< HEAD
     const mockRequest = {
       user: {
         user_id: 'test-user-id',
@@ -342,34 +509,32 @@ describe('TriageController', () => {
         tenantId: 'test-tenant-id',
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       },
+=======
+    const mockClosedAlert = {
+      alert_id: alertId,
+      tenant_id: 'tenant-123',
+      priority: Priority.LOW,
+      source: 'REST API',
+      txtp: '',
+      alert_status: AlertStatus.AUTOCLOSED_CONFIRMED,
+      message: 'Test alert',
+      case_id: null,
+      alert_data: { test: 'data' },
+      transaction: { test: 'transaction' },
+      network_map: { test: 'network' },
+      confidence_per: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+>>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     };
 
     it('should auto-close alert successfully', async () => {
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.LOW,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 85,
-        alert_status: AlertStatus.AUTOCLOSED_CONFIRMED,
-        case_id: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      triageService.manualCloseAlert.mockResolvedValue(expectedResult);
+      triageService.manualCloseAlert.mockResolvedValue(mockClosedAlert);
 
-      const result = await controller.autoCloseAlert(
-        'alert-123',
-        mockAutoCloseDto,
-        mockRequest,
-      );
+      const result = await controller.autoCloseAlert(alertId, autoCloseDto, mockRequest);
 
       expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
+<<<<<<< HEAD
         'alert-123',
         AlertStatus.AUTOCLOSED_CONFIRMED,
         'test-user-id',
@@ -451,6 +616,14 @@ describe('TriageController', () => {
 >>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
       );
       expect(result).toEqual(expectedResult);
+=======
+        alertId,
+        autoCloseDto.status,
+        mockUser.user_id,
+        mockUser.tenantId,
+      );
+      expect(result).toEqual(mockClosedAlert);
+>>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     });
   });
 <<<<<<< HEAD
@@ -458,173 +631,41 @@ describe('TriageController', () => {
 =======
 >>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 
-  describe('console.log branch coverage', () => {
-    it('should log user.role when available', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  describe('sendForInvestigation', () => {
+    const alertId = 'alert-123';
+    const investigateDto: InvestigateAlertDto = {
+      caseType: CaseType.FRAUD,
+    };
 
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'test-source',
-        },
-      };
+    const mockInvestigatedAlert = {
+      alert_id: alertId,
+      tenant_id: 'tenant-123',
+      priority: Priority.LOW,
+      source: 'REST API',
+      txtp: '',
+      alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+      message: 'Test alert',
+      case_id: 'case-123',
+      alert_data: { test: 'data' },
+      transaction: { test: 'transaction' },
+      network_map: { test: 'network' },
+      confidence_per: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
 
-      const req = {
-        user: {
-          user_id: 'user-123',
-          tenantId: 'tenant-456',
-          role: 'test-role', // role is available
-          permissions: 'test-permissions',
-        },
-      };
+    it('should send alert for investigation successfully', async () => {
+      triageService.investigateAlert.mockResolvedValue(mockInvestigatedAlert);
 
-      mockTriageService.handleNewAlert.mockResolvedValue({
-        alert_id: 'alert-123',
-        message: 'Alert created',
-      });
+      const result = await controller.sendForInvestigation(alertId, investigateDto, mockRequest);
 
-      await controller.submitAlert(dto, req);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'JWT permissions/roles:',
-        'test-role',
+      expect(triageService.investigateAlert).toHaveBeenCalledWith(
+        alertId,
+        investigateDto.caseType,
+        mockUser.user_id,
+        mockUser.tenantId,
       );
-      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
-        dto,
-        'user-123',
-        'tenant-456',
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should log user.permissions when role is not available', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'test-source',
-        },
-      };
-
-      const req = {
-        user: {
-          user_id: 'user-123',
-          tenantId: 'tenant-456',
-          role: null, // role is null, should fallback to permissions
-          permissions: 'test-permissions',
-        },
-      };
-
-      mockTriageService.handleNewAlert.mockResolvedValue({
-        alert_id: 'alert-123',
-        message: 'Alert created',
-      });
-
-      await controller.submitAlert(dto, req);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'JWT permissions/roles:',
-        'test-permissions',
-      );
-      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
-        dto,
-        'user-123',
-        'tenant-456',
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should log user.permissions when role is undefined', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'test-source',
-        },
-      };
-
-      const req = {
-        user: {
-          user_id: 'user-123',
-          tenantId: 'tenant-456',
-          // role is undefined, should fallback to permissions
-          permissions: 'test-permissions',
-        },
-      };
-
-      mockTriageService.handleNewAlert.mockResolvedValue({
-        alert_id: 'alert-123',
-        message: 'Alert created',
-      });
-
-      await controller.submitAlert(dto, req);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'JWT permissions/roles:',
-        'test-permissions',
-      );
-      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
-        dto,
-        'user-123',
-        'tenant-456',
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should log user.permissions when role is empty string', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'test-source',
-        },
-      };
-
-      const req = {
-        user: {
-          user_id: 'user-123',
-          tenantId: 'tenant-456',
-          role: '', // empty string, should fallback to permissions
-          permissions: 'test-permissions',
-        },
-      };
-
-      mockTriageService.handleNewAlert.mockResolvedValue({
-        alert_id: 'alert-123',
-        message: 'Alert created',
-      });
-
-      await controller.submitAlert(dto, req);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'JWT permissions/roles:',
-        'test-permissions',
-      );
-      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
-        dto,
-        'user-123',
-        'tenant-456',
-      );
-
-      consoleSpy.mockRestore();
+      expect(result).toEqual(mockInvestigatedAlert);
     });
   });
 <<<<<<< HEAD
