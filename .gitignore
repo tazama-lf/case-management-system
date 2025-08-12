@@ -53,6 +53,9 @@ prisma/*.db-journal
 .env.*
 !.env.example
 
+# NPM configuration (may contain tokens)
+.npmrc
+
 # Editor and IDE files
 .vscode/*
 !.vscode/extensions.json
