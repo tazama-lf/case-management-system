@@ -151,8 +151,14 @@ prisma/*.db-journal
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> ae8010e (chore: update prettier config and .gitignore)
+=======
+# NPM configuration (may contain tokens)
+.npmrc
+
+>>>>>>> 97d049b (Remove .npmrc from version control and update .gitignore)
 # Editor and IDE files
 .vscode/*
 !.vscode/extensions.json
