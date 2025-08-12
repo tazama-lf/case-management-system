@@ -1,14 +1,20 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # SPDX-License-Identifier: Apache-2.0
 
 =======
 >>>>>>> 088485b (Initial commit)
+=======
+# SPDX-License-Identifier: Apache-2.0
+
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+<<<<<<< HEAD
 <<<<<<< HEAD
 pnpm-debug.log*
 
@@ -77,25 +83,48 @@ bower_components
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
+=======
+pnpm-debug.log*
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
 
 # Dependency directories
 node_modules/
-jspm_packages/
 
-# Snowpack dependency directory (https://snowpack.dev/)
-web_modules/
+# Build and output directories (NestJS)
+dist/
+build/
 
-# TypeScript cache
+# Coverage directories (Jest)
+coverage/
+*.lcov
+.jest-cache/
+
+# Prisma-specific ignores
+prisma/*.db
+prisma/*.db-journal
+
+# Generated files (Prisma or other)
+/generated/
+
+# TypeScript cache and declaration files
 *.tsbuildinfo
+*.d.ts
+!*.d.cts
+!*.d.mts
 
-# Optional npm cache directory
+# Optional npm/Yarn/pnpm cache
 .npm
+.yarn-integrity
+.pnpm-store/
 
-# Optional eslint cache
+# Optional linting caches
 .eslintcache
+<<<<<<< HEAD
 
 # Optional stylelint cache
 >>>>>>> 088485b (Initial commit)
+=======
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
 .stylelintcache
 
 # Optional REPL history
@@ -105,6 +134,7 @@ web_modules/
 *.tgz
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Environment variable files
 =======
 # Yarn Integrity file
@@ -112,16 +142,23 @@ web_modules/
 
 # dotenv environment variable files
 >>>>>>> 088485b (Initial commit)
+=======
+# Environment variable files
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
 .env
 .env.*
 !.env.example
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
 # Editor and IDE files
 .vscode/*
 !.vscode/extensions.json
 .idea/
 .DS_Store
+<<<<<<< HEAD
 
 # Temporary files
 tmp/
@@ -210,3 +247,12 @@ vite.config.ts.timestamp-*
 dist/
 node_modules/
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+
+# Temporary files
+tmp/
+temp/
+*.bak
+*.swp
+Thumbs.db
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)

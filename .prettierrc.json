@@ -9,4 +9,8 @@
   "bracketSpacing": true,
   "arrowParens": "always",
   "endOfLine": "lf"
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> ae8010e (chore: update prettier config and .gitignore)
