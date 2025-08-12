@@ -1,11 +1,15 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 // @ts-check
 >>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
+=======
+>>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
 import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+<<<<<<< HEAD
 <<<<<<< HEAD
 export default tseslint.config(
   {
@@ -23,6 +27,8 @@ export default tseslint.config(
     ],
 =======
 
+=======
+>>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
 export default tseslint.config(
   {
 <<<<<<< HEAD
@@ -30,13 +36,14 @@ export default tseslint.config(
 >>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
 =======
     ignores: [
-      'eslint.config.mjs',
+      'eslint.config.ts',
       'dist/**/*',
       'node_modules/**/*',
-      '**/*.d.ts',
       'coverage/**/*',
-      '.next/**/*',
       'build/**/*',
+      'prisma/client/**/*',
+      'generated/**/*',
+      '**/*.d.ts',
       '*.config.js',
       '*.config.mjs',
     ],
@@ -52,10 +59,14 @@ export default tseslint.config(
         ...globals.jest,
       },
 <<<<<<< HEAD
+<<<<<<< HEAD
       sourceType: 'module', // Changed to 'module' for NestJS ES modules compatibility
 =======
       sourceType: 'commonjs',
 >>>>>>> 875cecd (feat(core): init NestJS with triage mock API)
+=======
+      sourceType: 'module', // Changed to 'module' for NestJS ES modules compatibility
+>>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
@@ -65,6 +76,9 @@ export default tseslint.config(
   {
     rules: {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
       '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' for flexibility in NestJS/Prisma
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
@@ -72,7 +86,10 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unsafe-call': 'warn',
       '@typescript-eslint/no-unsafe-return': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/unbound-method': 'warn',
       '@typescript-eslint/no-require-imports': 'warn',
@@ -85,6 +102,7 @@ export default tseslint.config(
       complexity: ['warn', { max: 25 }],
       'max-depth': ['warn', { max: 5 }],
       'no-console': 'warn', // Changed to warn for NestJS logging
+<<<<<<< HEAD
 =======
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
@@ -109,6 +127,8 @@ export default tseslint.config(
 =======
       '@typescript-eslint/no-require-imports': 'warn',
 >>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
+=======
+>>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
     },
   },
 );
