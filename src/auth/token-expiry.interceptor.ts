@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -24,9 +18,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
     if (token) {
       const isExpired = (this.authService as any)['isTokenExpired'](token);
       if (isExpired) {
-        throw new UnauthorizedException(
-          'Token has expired. Please log in again.',
-        );
+        throw new UnauthorizedException('Token has expired. Please log in again.');
       }
     }
 
@@ -35,12 +27,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
         if (error.status === 401 && token) {
           const isExpired = (this.authService as any)['isTokenExpired'](token);
           if (isExpired) {
-            return throwError(
-              () =>
-                new UnauthorizedException(
-                  'Token has expired. Please log in again.',
-                ),
-            );
+            return throwError(() => new UnauthorizedException('Token has expired. Please log in again.'));
           }
         }
         return throwError(() => error);

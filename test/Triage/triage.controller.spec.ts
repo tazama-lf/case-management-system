@@ -157,6 +157,70 @@ describe('TriageController', () => {
         'test-tenant-id',
       );
     });
+
+    it('should log case creation when confidence threshold is missing/invalid', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'Test',
+          report: { test: 'data' },
+          transaction: { test: 'transaction' },
+          networkMap: { test: 'network' },
+          source: 'test-source',
+        },
+      };
+
+      const req = {
+        user: {
+          user_id: 'user-123',
+          tenantId: 'tenant-456',
+          role: 'test-role',
+          permissions: 'test-permissions',
+        },
+      };
+
+      mockTriageService.handleNewAlert.mockResolvedValue({
+        alert_id: 'alert-123',
+        tenant_id: 'tenant-456',
+        priority: Priority.LOW,
+        source: 'test-source',
+        txtp: null,
+        message: 'Test',
+        alert_data: { test: 'data' },
+        transaction: { test: 'transaction' },
+        network_map: { test: 'network' },
+        confidence_per: 0,
+        alert_status: AlertStatus.NEW,
+        case_id: null,
+      });
+      mockTriageService.investigateAlert.mockResolvedValue({
+        case_id: 'case-789',
+      });
+
+      // Simulate missing/invalid confidence threshold
+      const originalEnv = process.env.CONFIDENCE_THRESHOLD;
+      process.env.CONFIDENCE_THRESHOLD = '';
+
+      const result = await controller.submitAlert(dto, req);
+
+      expect(consoleSpy).toHaveBeenCalledWith('CASE_WILL_BE_CREATED');
+      expect(mockTriageService.handleNewAlert).toHaveBeenCalledWith(
+        dto,
+        'user-123',
+        'tenant-456',
+      );
+      expect(mockTriageService.investigateAlert).toHaveBeenCalledWith(
+        'alert-123',
+        expect.anything(), // CaseType.FRAUD
+        'user-123',
+        'tenant-456',
+      );
+      expect(result.case_id).toBe('case-789');
+
+      process.env.CONFIDENCE_THRESHOLD = originalEnv;
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('getTest', () => {
