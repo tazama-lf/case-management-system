@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -10,6 +11,9 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -25,6 +29,7 @@ export const ROLES_KEY = 'roles';
 export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
 
 export const PERMISSIONS_KEY = 'permissions';
+<<<<<<< HEAD
 <<<<<<< HEAD
 export const Permissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
 <<<<<<< HEAD
@@ -94,6 +99,9 @@ export class RolesGuard implements CanActivate {
 export const Permissions = (...permissions: string[]) =>
   SetMetadata(PERMISSIONS_KEY, permissions);
 >>>>>>> ac7173e (feat: Test Coverage)
+=======
+export const Permissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -103,14 +111,8 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
-      ROLES_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [context.getHandler(), context.getClass()]);
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
     const { user, method, originalUrl } = context.switchToHttp().getRequest();
     if (!user) {
       this.auditLogService.logPermissionDenied(null, originalUrl, method, {
@@ -134,10 +136,7 @@ export class RolesGuard implements CanActivate {
     }
     // Permissions check
     if (requiredPermissions && requiredPermissions.length > 0) {
-      if (
-        !user.permissions ||
-        !requiredPermissions.every((p) => user.permissions.includes(p))
-      ) {
+      if (!user.permissions || !requiredPermissions.every((p) => user.permissions.includes(p))) {
         this.auditLogService.logPermissionDenied(user, originalUrl, method, {
           reason: 'Insufficient permissions',
           requiredPermissions,

@@ -158,6 +158,9 @@ describe('TriageController', () => {
       );
     });
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 
     it('should log case creation when confidence threshold is missing/invalid', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -222,8 +225,11 @@ describe('TriageController', () => {
       process.env.CONFIDENCE_THRESHOLD = originalEnv;
       consoleSpy.mockRestore();
     });
+<<<<<<< HEAD
 =======
 >>>>>>> 0d032a5 (feat:Test to Triage Module)
+=======
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
   });
 
   describe('getTest', () => {

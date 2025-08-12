@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, UnauthorizedException } from '@nestjs/common';
 =======
 import {
@@ -9,6 +10,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
+=======
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, UnauthorizedException } from '@nestjs/common';
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { ConfigService } from '@nestjs/config';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -59,9 +63,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
 =======
 >>>>>>> a67b513 (feat: token refresh functionality implemented)
       if (isExpired) {
-        throw new UnauthorizedException(
-          'Token has expired. Please log in again.',
-        );
+        throw new UnauthorizedException('Token has expired. Please log in again.');
       }
 <<<<<<< HEAD
       if (timeToExpiry < this.refreshThreshold && timeToExpiry > 0) {
@@ -80,6 +82,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
           const isExpired = (this.authService as any)['isTokenExpired'](token);
           if (isExpired) {
 <<<<<<< HEAD
+<<<<<<< HEAD
             return throwError(() => new UnauthorizedException('Token has expired. Please log in again.'));
 =======
             return throwError(
@@ -89,6 +92,9 @@ export class TokenExpiryInterceptor implements NestInterceptor {
                 ),
             );
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
+=======
+            return throwError(() => new UnauthorizedException('Token has expired. Please log in again.'));
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
           }
         }
         return throwError(() => error);

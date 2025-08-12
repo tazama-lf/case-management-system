@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 =======
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
@@ -30,6 +31,9 @@ import {
 >>>>>>> ac7173e (feat: Test Coverage)
 =======
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
+=======
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -78,6 +82,7 @@ export class TriageController {
     const tenantId = req.user.tenantId;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId);
 =======
     const alert = await this.triageService.handleNewAlert(
@@ -86,6 +91,9 @@ export class TriageController {
       tenantId,
     );
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
+=======
+    const alert = await this.triageService.handleNewAlert(dto, userId, tenantId);
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 
     const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
 
@@ -95,6 +103,7 @@ export class TriageController {
       confidenceThreshold.trim() === '' ||
       isNaN(Number(confidenceThreshold))
     ) {
+<<<<<<< HEAD
 <<<<<<< HEAD
       const caseType = CaseType.FRAUD;
       const caseCreated = await this.triageService.investigateAlert(alert.alert_id, caseType, userId, tenantId);
@@ -108,6 +117,10 @@ export class TriageController {
         tenantId,
       );
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
+=======
+      const caseType = CaseType.FRAUD;
+      const caseCreated = await this.triageService.investigateAlert(alert.alert_id, caseType, userId, tenantId);
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
       alert.case_id = caseCreated.case_id;
     }
 
@@ -122,6 +135,7 @@ export class TriageController {
   @Patch(':alertId')
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
+<<<<<<< HEAD
 <<<<<<< HEAD
   async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
     const userId = req.user.user_id;
@@ -194,6 +208,9 @@ export class TriageController {
     @Body() dto: UpdateAlertDto,
     @Req() req,
   ) {
+=======
+  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
@@ -204,6 +221,7 @@ export class TriageController {
 =======
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
+<<<<<<< HEAD
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
   async autoCloseAlert(
     @Param('alertId') alertId: string,
@@ -214,6 +232,9 @@ export class TriageController {
     return this.triageService.manualCloseAlert(alertId, dto.status);
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 =======
+=======
+  async autoCloseAlert(@Param('alertId') alertId: string, @Body() dto: AutoCloseAlertDto, @Req() req) {
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
     const userId = req.user.user_id;
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -239,19 +260,10 @@ export class TriageController {
   @Patch(':alertId/investigate')
   @UseGuards(AuthGuard('jwt'))
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async sendForInvestigation(
-    @Param('alertId') alertId: string,
-    @Body() dto: InvestigateAlertDto,
-    @Req() req,
-  ) {
+  async sendForInvestigation(@Param('alertId') alertId: string, @Body() dto: InvestigateAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.investigateAlert(
-      alertId,
-      dto.caseType,
-      userId,
-      tenantId,
-    );
+    return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
   }
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 }

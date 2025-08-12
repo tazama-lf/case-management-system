@@ -103,12 +103,7 @@ export class AuditLogService {
       userId: user?.sub || 'unknown',
 =======
 
-  async logPermissionDenied(
-    user: any,
-    entityName: string,
-    action: string,
-    _details?: any,
-  ) {
+  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
     return this.logAction({
       userId: user?.sub || 'unknown',
 <<<<<<< HEAD

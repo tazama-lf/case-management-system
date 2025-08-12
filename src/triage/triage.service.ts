@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 =======
 import {
@@ -12,16 +13,13 @@ import { PrismaService } from '../prisma.service';
 >>>>>>> 98eea0c (feat(triage) :  manual alert triage)
 =======
 >>>>>>> bb28498 (feat:fixing the conflic merge)
+=======
+import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import {
-  AlertStatus,
-  Priority,
-  CaseCreationType,
-  CaseStatus,
-  CaseType,
-} from '@prisma/client';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -36,8 +34,9 @@ export class TriageService {
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
     // Determine the alert source
-    let source = 'REST API';
+    const source = 'REST API';
     // Determine the alert type (txtp)
+<<<<<<< HEAD
 <<<<<<< HEAD
     const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
 =======
@@ -188,6 +187,9 @@ export class TriageService {
     ) {
       txtp = (dto.result.networkMap as any).txtp;
     }
+=======
+    const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 
     try {
       const alert = await this.prisma.alert.create({
@@ -219,12 +221,7 @@ export class TriageService {
     }
   }
 
-  async updateAlertData(
-    alertId: string,
-    dto: UpdateAlertDto,
-    userId: string,
-    tenantId: string,
-  ) {
+  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: {
         alert_id: alertId,
@@ -237,9 +234,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     try {
@@ -260,9 +255,7 @@ export class TriageService {
         entityName: 'Alert',
         actionPerformed:
           `Updated alert ${alertId}` +
-          (dto.confidence_per !== undefined
-            ? `, confidence_per=${dto.confidence_per}`
-            : '') +
+          (dto.confidence_per !== undefined ? `, confidence_per=${dto.confidence_per}` : '') +
           (dto.priority !== undefined ? `, priority=${dto.priority}` : ''),
         outcome: 'SUCCESS',
       });
@@ -274,12 +267,7 @@ export class TriageService {
     }
   }
 
-  async manualCloseAlert(
-    alertId: string,
-    status: AlertStatus,
-    userId: string,
-    tenantId: string,
-  ) {
+  async manualCloseAlert(alertId: string, status: AlertStatus, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: {
         alert_id: alertId,
@@ -292,9 +280,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     try {
@@ -323,12 +309,7 @@ export class TriageService {
 <<<<<<< HEAD
 =======
 
-  async investigateAlert(
-    alertId: string,
-    caseType: CaseType,
-    userId: string,
-    tenantId: string,
-  ) {
+  async investigateAlert(alertId: string, caseType: CaseType, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -338,9 +319,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     const casePriority = alert.priority ?? Priority.LOW;
@@ -377,13 +356,8 @@ export class TriageService {
 
       return updatedAlert;
     } catch (error) {
-      this.logger.error(
-        `Failed to update alert ${alertId} for investigation`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        'Failed to update alert for investigation',
-      );
+      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
+      throw new InternalServerErrorException('Failed to update alert for investigation');
     }
   }
 >>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)

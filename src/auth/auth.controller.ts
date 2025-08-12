@@ -52,9 +52,7 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: 'failure',
       });
-      this.logger.warn(
-        `Login failed for user ${body.username}: ${error.message}`,
-      );
+      this.logger.warn(`Login failed for user ${body.username}: ${error.message}`);
       throw new UnauthorizedException('Invalid credentials');
     }
   }

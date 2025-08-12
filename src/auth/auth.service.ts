@@ -4,6 +4,9 @@
 import { HttpService } from '@nestjs/axios';
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { Injectable, Logger, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +26,7 @@ export class AuthService {
     if (!authUrl) {
       this.logger.error('TAZAMA_AUTH_URL is not set in environment variables');
       throw new ServiceUnavailableException('Authentication service unavailable');
+<<<<<<< HEAD
     }
     try {
       const response = await firstValueFrom(this.httpService.post(authUrl, { username, password }));
@@ -193,18 +197,15 @@ export class AuthService {
       throw new ServiceUnavailableException(
         'Authentication service unavailable',
       );
+=======
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
     }
     try {
-      const response = await firstValueFrom(
-        this.httpService.post(authUrl, { username, password }),
-      );
+      const response = await firstValueFrom(this.httpService.post(authUrl, { username, password }));
       const token =
         typeof response.data === 'string'
           ? response.data
-          : response.data?.token ||
-            response.data?.access_token ||
-            response.data?.jwt ||
-            response.data?.user?.token;
+          : response.data?.token || response.data?.access_token || response.data?.jwt || response.data?.user?.token;
 
       this.logger.log('Login successful');
 <<<<<<< HEAD
@@ -214,8 +215,7 @@ export class AuthService {
       return {
         message: 'Login successful',
         token,
-        expiresIn:
-          response.data?.expires_in ?? response.data?.expiresIn ?? null,
+        expiresIn: response.data?.expires_in ?? response.data?.expiresIn ?? null,
       };
 >>>>>>> 1c9a440 (feat: token refresh functionality implemented)
     } catch (error) {
@@ -224,9 +224,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
       this.logger.error(`Auth service error during login: ${error.message}`);
-      throw new ServiceUnavailableException(
-        'Authentication service unavailable',
-      );
+      throw new ServiceUnavailableException('Authentication service unavailable');
     }
   }
 

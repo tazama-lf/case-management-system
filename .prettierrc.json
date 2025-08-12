@@ -10,7 +10,11 @@
   "arrowParens": "always",
   "endOfLine": "lf"
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
 =======
 }
 >>>>>>> ae8010e (chore: update prettier config and .gitignore)
+=======
+}
+>>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
