@@ -1,21 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-<<<<<<< HEAD
-<<<<<<< HEAD
-import { RolesGuard, Permissions } from '../../src/auth/roles.guard';
-=======
-import { RolesGuard } from '../../src/auth/roles.guard';
->>>>>>> ac7173e (feat: Test Coverage)
-=======
-import { RolesGuard, Permissions } from '../../src/auth/roles.guard';
->>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
+import { RolesGuard, Permissions, Roles } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 describe('Permissions Decorator', () => {
   it('should set permissions metadata correctly', () => {
     const permissions = ['read', 'write', 'delete'];
@@ -41,11 +29,31 @@ describe('Permissions Decorator', () => {
   });
 });
 
-<<<<<<< HEAD
-=======
->>>>>>> ac7173e (feat: Test Coverage)
-=======
->>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
+describe('Roles Decorator', () => {
+  it('should set roles metadata correctly', () => {
+    const roles = ['admin', 'user', 'moderator'];
+    const decorator = Roles(...roles);
+
+    expect(decorator).toBeDefined();
+    expect(typeof decorator).toBe('function');
+  });
+
+  it('should work with single role', () => {
+    const decorator = Roles('admin');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with multiple roles', () => {
+    const decorator = Roles('admin', 'user', 'moderator');
+    expect(decorator).toBeDefined();
+  });
+
+  it('should work with no roles', () => {
+    const decorator = Roles();
+    expect(decorator).toBeDefined();
+  });
+});
+
 describe('RolesGuard', () => {
   let guard: RolesGuard;
   let reflector: any;

@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-// SPDX-License-Identifier: Apache-2.0
-/*
- * For a detailed explanation regarding each configuration property and type check, visit:
- * https://jestjs.io/docs/configuration
- */
->>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
-=======
->>>>>>> 6549427 (fix:jest.config.js to jest.config.ts)
 import type { Config } from '@jest/types';
 // Sync object
 const config: Config.InitialOptions = {

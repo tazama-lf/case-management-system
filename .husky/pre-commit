@@ -1,16 +1,1 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 npx lint-staged
-=======
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-npm run lint
->>>>>>> ac7173e (feat: Test Coverage)
-=======
-npm test
->>>>>>> f9a4b26 (feat: fixing the esLint and prettier errors)
-=======
-npx lint-staged
->>>>>>> cfe6ecd (Update Husky configuration to v10 format)

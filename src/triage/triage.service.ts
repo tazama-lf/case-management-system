@@ -1,21 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
-=======
-import {
-  Injectable,
-  NotFoundException,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
-<<<<<<< HEAD
-import { PrismaService } from '../prisma.service';
->>>>>>> 98eea0c (feat(triage) :  manual alert triage)
-=======
->>>>>>> bb28498 (feat:fixing the conflic merge)
-=======
-import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
->>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -25,7 +8,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 @Injectable()
 export class TriageService {
   private readonly logger = new Logger(TriageService.name);
-<<<<<<< HEAD
 
   constructor(
     private prisma: PrismaService,
@@ -36,160 +18,7 @@ export class TriageService {
     // Determine the alert source
     const source = 'REST API';
     // Determine the alert type (txtp)
-<<<<<<< HEAD
-<<<<<<< HEAD
     const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
-=======
-    const txtp =
-      typeof dto?.result?.transaction?.TxTp === 'string'
-        ? dto.result.transaction.TxTp
-        : '';
->>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
-
-    try {
-      const alert = await this.prisma.alert.create({
-        data: {
-          tenant_id: tenantId,
-          priority: Priority.LOW,
-          source: source,
-          txtp: txtp,
-          alert_status: AlertStatus.NEW,
-          message: String(dto.result.message),
-          alert_data: dto.result.report,
-          transaction: dto.result.transaction,
-          network_map: dto.result.networkMap,
-          confidence_per: 0,
-        },
-      });
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_CREATED',
-        entityName: 'Alert',
-        actionPerformed: `Created new alert ${alert.alert_id}`,
-        outcome: 'SUCCESS',
-      });
-
-      return alert;
-    } catch (error) {
-      this.logger.error('Error creating alert', error);
-      throw new InternalServerErrorException('Failed to create alert');
-    }
-  }
-
-<<<<<<< HEAD
-  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string) {
-=======
-  async updateAlertData(
-    alertId: string,
-    dto: UpdateAlertDto,
-    userId: string,
-    tenantId: string,
-  ) {
->>>>>>> e79442b (feat(triage): enforce tenant isolation for alert operations)
-    const alert = await this.prisma.alert.findUnique({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
-    }
-
-    try {
-      const updated = await this.prisma.alert.update({
-        where: {
-          alert_id: alertId,
-          tenant_id: tenantId,
-        },
-        data: {
-          confidence_per: dto.confidence_per,
-          priority: dto.priority,
-        },
-      });
-
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_UPDATED',
-        entityName: 'Alert',
-        actionPerformed:
-          `Updated alert ${alertId}` +
-          (dto.confidence_per !== undefined ? `, confidence_per=${dto.confidence_per}` : '') +
-          (dto.priority !== undefined ? `, priority=${dto.priority}` : ''),
-        outcome: 'SUCCESS',
-      });
-
-      return updated;
-    } catch (error) {
-      this.logger.error(`Update failed for alert ${alertId}`, error);
-      throw new InternalServerErrorException('Failed to update alert');
-  /**
-   * Handles alert submission and applies auto-close logic based on business rules.
-   * @param submitAlertDto - The alert data submitted for triage
-   * @returns Alert response with status and audit log
-   * @throws BadRequestException if required fields are missing or invalid
-   */
-  async handleAlert(submitAlertDto: SubmitAlertDto) {
-    // Basic validation
-    if (
-      !submitAlertDto?.priority ||
-      !submitAlertDto.tenant_id ||
-      typeof submitAlertDto.confidence_per !== 'number'
-    ) {
-      throw new BadRequestException('Missing required alert fields.');
-    }
-=======
->>>>>>> 98eea0c (feat(triage) :  manual alert triage)
-
-  constructor(
-    private prisma: PrismaService,
-    private audit: AuditLogService,
-  ) {}
-
-  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string) {
-    // Determine the alert source
-    let source = '';
-    if (
-      dto.result &&
-      typeof dto.result.source === 'string' &&
-      dto.result.source
-    ) {
-      source = dto.result.source;
-    } else if (
-      dto.result &&
-      dto.result.report &&
-      typeof (dto.result.report as any).source === 'string' &&
-      (dto.result.report as any).source
-    ) {
-      source = (dto.result.report as any).source;
-    }
-
-    // Determine the alert type (txtp)
-    let txtp = '';
-    if (
-      dto.result.report &&
-      typeof (dto.result.report as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.report as any).txtp;
-    } else if (
-      dto.result.transaction &&
-      typeof (dto.result.transaction as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.transaction as any).txtp;
-    } else if (
-      dto.result.networkMap &&
-      typeof (dto.result.networkMap as any).txtp === 'string'
-    ) {
-      txtp = (dto.result.networkMap as any).txtp;
-    }
-=======
-    const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
->>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
 
     try {
       const alert = await this.prisma.alert.create({
@@ -223,10 +52,7 @@ export class TriageService {
 
   async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
+      where: { alert_id: alertId },
     });
 
     if (!alert) {
@@ -239,10 +65,7 @@ export class TriageService {
 
     try {
       const updated = await this.prisma.alert.update({
-        where: {
-          alert_id: alertId,
-          tenant_id: tenantId,
-        },
+        where: { alert_id: alertId },
         data: {
           confidence_per: dto.confidence_per,
           priority: dto.priority,
@@ -269,10 +92,7 @@ export class TriageService {
 
   async manualCloseAlert(alertId: string, status: AlertStatus, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
+      where: { alert_id: alertId },
     });
 
     if (!alert) {
@@ -285,10 +105,7 @@ export class TriageService {
 
     try {
       const updated = await this.prisma.alert.update({
-        where: {
-          alert_id: alertId,
-          tenant_id: tenantId,
-        },
+        where: { alert_id: alertId },
         data: { alert_status: status },
       });
 
@@ -306,8 +123,6 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to auto-close alert');
     }
   }
-<<<<<<< HEAD
-=======
 
   async investigateAlert(alertId: string, caseType: CaseType, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
@@ -360,5 +175,4 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to update alert for investigation');
     }
   }
->>>>>>> ccd91b0 (feat(triage): send alert for manual investigation)
 }

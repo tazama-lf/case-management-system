@@ -1,13 +1,6 @@
 import { JwtStrategy } from '../../src/auth/jwt.strategy';
 import * as fs from 'fs';
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-// Mock fs
->>>>>>> ac7173e (feat: Test Coverage)
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
 jest.mock('fs');
 
 describe('JwtStrategy', () => {

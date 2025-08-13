@@ -73,138 +73,8 @@ describe('TriageController', () => {
   describe('submitAlert', () => {
     const submitAlertDto: SubmitAlertDto = {
       result: {
-<<<<<<< HEAD
-        message: 'Test alert message',
-        report: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        networkMap: { test: 'network data' },
-        source: 'test-source',
-      },
-    };
-
-    const mockRequest = {
-      user: {
-        user_id: 'test-user-id',
-        tenantId: 'test-tenant-id',
-        role: 'test-role',
-        permissions: ['test-permission'],
-      },
-    };
-
-    it('should submit alert successfully', async () => {
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.LOW,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 0,
-        alert_status: AlertStatus.NEW,
-        case_id: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      triageService.handleNewAlert.mockResolvedValue(expectedResult);
-
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
-
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
-      expect(triageService.handleNewAlert).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should handle service errors during alert submission', async () => {
-      const error = new Error('Service error');
-      triageService.handleNewAlert.mockRejectedValue(error);
-
-      await expect(
-        controller.submitAlert(mockSubmitAlertDto, mockRequest),
-      ).rejects.toThrow('Service error');
-
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
-    });
-
-    it('should extract user data correctly from request', async () => {
-      const expectedResult = {
-        alert_id: 'alert-456',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.LOW,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 0,
-        alert_status: AlertStatus.NEW,
-        case_id: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      triageService.handleNewAlert.mockResolvedValue(expectedResult);
-
-      await controller.submitAlert(mockSubmitAlertDto, mockRequest);
-
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
-    });
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
-
-    it('should log case creation when confidence threshold is missing/invalid', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      const dto: SubmitAlertDto = {
-        result: {
-          message: 'Test',
-          report: { test: 'data' },
-          transaction: { test: 'transaction' },
-          networkMap: { test: 'network' },
-          source: 'test-source',
-        },
-      };
-
-      const req = {
-        user: {
-          user_id: 'user-123',
-          tenantId: 'tenant-456',
-          role: 'test-role',
-          permissions: 'test-permissions',
-        },
-      };
-
-      mockTriageService.handleNewAlert.mockResolvedValue({
-        alert_id: 'alert-123',
-        tenant_id: 'tenant-456',
-        priority: Priority.LOW,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test',
-        alert_data: { test: 'data' },
-=======
         message: 'Test alert',
         report: { test: 'data' },
->>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
         transaction: { test: 'transaction' },
         networkMap: { test: 'network' },
         source: 'test-source',
@@ -383,11 +253,6 @@ describe('TriageController', () => {
       // Restore environment variable
       process.env.CONFIDENCE_THRESHOLD = originalEnv;
     });
-<<<<<<< HEAD
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
->>>>>>> 85c2ac7 (fix:jest.config.js to jest.config.ts)
   });
 
   describe('getTest', () => {
@@ -404,20 +269,6 @@ describe('TriageController', () => {
       priority: Priority.HIGH,
     };
 
-<<<<<<< HEAD
-    const mockRequest = {
-      user: {
-        user_id: 'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        tenantId: 'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        tenantId: 'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      },
-=======
     const mockUpdatedAlert = {
       alert_id: alertId,
       tenant_id: 'tenant-123',
@@ -433,7 +284,6 @@ describe('TriageController', () => {
       network_map: { test: 'network' },
       created_at: new Date(),
       updated_at: new Date(),
->>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     };
 
     it('should update alert successfully', async () => {
@@ -442,49 +292,10 @@ describe('TriageController', () => {
       const result = await controller.updateAlert(alertId, updateDto, mockRequest);
 
       expect(triageService.updateAlertData).toHaveBeenCalledWith(
-<<<<<<< HEAD
-        'alert-123',
-        mockUpdateAlertDto,
-        'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      );
-      expect(triageService.updateAlertData).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should handle service errors during alert update', async () => {
-      const error = new Error('Update failed');
-      triageService.updateAlertData.mockRejectedValue(error);
-
-      await expect(
-        controller.updateAlert('alert-123', mockUpdateAlertDto, mockRequest),
-      ).rejects.toThrow('Update failed');
-
-      expect(triageService.updateAlertData).toHaveBeenCalledWith(
-        'alert-123',
-        mockUpdateAlertDto,
-        'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-=======
         alertId,
         updateDto,
         mockUser.user_id,
         mockUser.tenantId,
->>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
       );
       expect(result).toEqual(mockUpdatedAlert);
     });
@@ -496,20 +307,6 @@ describe('TriageController', () => {
       status: AlertStatus.AUTOCLOSED_CONFIRMED,
     };
 
-<<<<<<< HEAD
-    const mockRequest = {
-      user: {
-        user_id: 'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        tenantId: 'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        tenantId: 'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      },
-=======
     const mockClosedAlert = {
       alert_id: alertId,
       tenant_id: 'tenant-123',
@@ -525,7 +322,6 @@ describe('TriageController', () => {
       confidence_per: 0,
       created_at: new Date(),
       updated_at: new Date(),
->>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     };
 
     it('should auto-close alert successfully', async () => {
@@ -534,102 +330,14 @@ describe('TriageController', () => {
       const result = await controller.autoCloseAlert(alertId, autoCloseDto, mockRequest);
 
       expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-<<<<<<< HEAD
-        'alert-123',
-        AlertStatus.AUTOCLOSED_CONFIRMED,
-        'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      );
-      expect(triageService.manualCloseAlert).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should handle service errors during alert closure', async () => {
-      const error = new Error('Close failed');
-      triageService.manualCloseAlert.mockRejectedValue(error);
-
-      await expect(
-        controller.autoCloseAlert('alert-123', mockAutoCloseDto, mockRequest),
-      ).rejects.toThrow('Close failed');
-
-      expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-        'alert-123',
-        AlertStatus.AUTOCLOSED_CONFIRMED,
-        'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      );
-    });
-
-    it('should handle different alert statuses', async () => {
-      const refutedDto: AutoCloseAlertDto = {
-        status: AlertStatus.AUTOCLOSED_REFUTED,
-      };
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.LOW,
-        source: 'test-source',
-        txtp: null,
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 85,
-        alert_status: AlertStatus.AUTOCLOSED_REFUTED,
-        case_id: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      triageService.manualCloseAlert.mockResolvedValue(expectedResult);
-
-      const result = await controller.autoCloseAlert(
-        'alert-123',
-        refutedDto,
-        mockRequest,
-      );
-
-      expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-        'alert-123',
-        AlertStatus.AUTOCLOSED_REFUTED,
-        'test-user-id',
-<<<<<<< HEAD
-<<<<<<< HEAD
-        'test-tenant-id',
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
-        'test-tenant-id',
->>>>>>> 70c13fd (feat: Authentication Guards Added at Controller Level)
-      );
-      expect(result).toEqual(expectedResult);
-=======
         alertId,
         autoCloseDto.status,
         mockUser.user_id,
         mockUser.tenantId,
       );
       expect(result).toEqual(mockClosedAlert);
->>>>>>> 02dd359 (fix: improve test coverage and fix failing tests)
     });
   });
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 
   describe('sendForInvestigation', () => {
     const alertId = 'alert-123';
@@ -668,9 +376,4 @@ describe('TriageController', () => {
       expect(result).toEqual(mockInvestigatedAlert);
     });
   });
-<<<<<<< HEAD
-=======
->>>>>>> 0d032a5 (feat:Test to Triage Module)
-=======
->>>>>>> 2d59734 (feat: Test Coverage for Triage Module)
 });
