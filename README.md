@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 
-> > > > > > > 875cecd (feat(core): init NestJS with triage mock API)
 
 # Tazama Case and Investigation Management System
 
@@ -68,9 +64,6 @@ sequenceDiagram
     end
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
 ## Table of Contents
 
 - [1. Component Overview](#1-component-overview)
@@ -146,13 +139,10 @@ Application settings are configured primarily via environment variables. See `.e
 
 ### Project setup
 
-=======
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
-=======
->>>>>>> def7809 (fix:jest.config.js to jest.config.ts)
 
 ## **_3. Configuration_**
 
@@ -163,13 +153,10 @@ Application settings are configured primarily via environment variables. See `.e
 - NATS (if used): messaging settings
 - Logging and audit configuration
 
-<<<<<<< HEAD
 
 ## Project setup
 
-> > > > > > > 875cecd (feat(core): init NestJS with triage mock API)
 
-## =======
 
 ---
 
@@ -177,26 +164,20 @@ Application settings are configured primarily via environment variables. See `.e
 
 ### Project setup
 
-> > > > > > > def7809 (fix:jest.config.js to jest.config.ts)
 
 ```bash
 $ npm install
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 ### Compile and run the project
 
-=======
 
 ## Compile and run the project
 
-> > > > > > > # 875cecd (feat(core): init NestJS with triage mock API)
 
 ### Compile and run the project
 
-> > > > > > > def7809 (fix:jest.config.js to jest.config.ts)
 
 ```bash
 # development
@@ -209,24 +190,18 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 ---
 
 ## **_5. Testing_**
 
-=======
 
 ## Run tests
 
-> > > > > > > 875cecd (feat(core): init NestJS with triage mock API)
 
-## =======
 
 ## **_5. Testing_**
 
-> > > > > > > def7809 (fix:jest.config.js to jest.config.ts)
 
 ```bash
 # unit tests
@@ -239,8 +214,6 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 ---
 
@@ -336,19 +309,16 @@ If you see many TypeScript warnings about `any` usage, add proper types. If Pret
 
 ---
 
-=======
+
 
 # case-management-system
 
 Tazama Case and Investigation Management System
 
-> > > > > > > # 088485b (Initial commit)
 
 ## Deployment
 
-## =======
 
-> > > > > > > def7809 (fix:jest.config.js to jest.config.ts)
 
 ## **_6. Coding Standards_**
 
@@ -442,9 +412,5 @@ If you see many TypeScript warnings about `any` usage, add proper types. If Pret
 
 ---
 
-<<<<<<< HEAD
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
-> > > > > > > # 875cecd (feat(core): init NestJS with triage mock API)
-> > > > > > >
-> > > > > > > def7809 (fix:jest.config.js to jest.config.ts)
