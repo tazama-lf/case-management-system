@@ -15,7 +15,6 @@ import {
   Priority,
   CaseCreationType,
   CaseStatus,
-  CaseType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -102,6 +101,7 @@ export class TriageService {
         data: {
           confidence_per: dto.confidence_per,
           priority: dto.priority,
+          alert_type: dto.alertType,
         },
       });
 
@@ -114,7 +114,8 @@ export class TriageService {
           (dto.confidence_per !== undefined
             ? `, confidence_per=${dto.confidence_per}`
             : '') +
-          (dto.priority !== undefined ? `, priority=${dto.priority}` : ''),
+          (dto.priority !== undefined ? `, priority=${dto.priority}` : '') +
+          (dto.alertType !== undefined ? `, alert_type=${dto.alertType}` : ''),
         outcome: 'SUCCESS',
       });
 
@@ -131,17 +132,16 @@ export class TriageService {
     userId: string,
     tenantId: string,
   ) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
     });
 
     if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
       throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
+        `Alert with ID ${alertId} was not found for tenant ${tenantId}.`,
       );
     }
 
@@ -167,70 +167,6 @@ export class TriageService {
     } catch (error) {
       this.logger.error(`Close failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to close alert');
-    }
-  }
-
-  async investigateAlert(
-    alertId: string,
-    caseType: CaseType,
-    userId: string,
-    tenantId: string,
-  ) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
-    }
-
-    const casePriority = alert.priority ?? Priority.LOW;
-
-    try {
-      const newCase = await this.prisma.case.create({
-        data: {
-          case_creator_user_id: userId,
-          case_owner_user_id: userId,
-          tenant_id: tenantId,
-          priority: casePriority,
-          status: CaseStatus.DRAFT,
-          parent_id: null,
-          case_type: caseType,
-          case_creation_type: CaseCreationType.MANUAL,
-        },
-      });
-
-      const updatedAlert = await this.prisma.alert.update({
-        where: { alert_id: alertId },
-        data: {
-          alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-          case_id: newCase.case_id,
-        },
-      });
-
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_SENT_FOR_INVESTIGATION',
-        entityName: 'Alert',
-        actionPerformed: `Created case ${newCase.case_id} for alert ${alertId}`,
-        outcome: 'SUCCESS',
-      });
-
-      return updatedAlert;
-    } catch (error) {
-      this.logger.error(
-        `Failed to update alert ${alertId} for investigation`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        'Failed to update alert for investigation',
-      );
     }
   }
 
