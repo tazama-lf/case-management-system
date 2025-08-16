@@ -1,3 +1,4 @@
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -7,20 +8,10 @@ import { TriageService } from '../../src/triage/triage.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { AlertStatus, Priority, CaseType, CaseStatus, CaseCreationType } from '@prisma/client';
 
-import {
-  AlertStatus,
-  Priority,
-  CaseType,
-  CaseStatus,
-  CaseCreationType,
-} from '@prisma/client';
-
-import {
-  Logger,
-  NotFoundException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
 import { ConvertAlertToCase } from 'src/triage/dto/convert-alert-to-case.dto';
 // Suppress Logger.error output during tests
@@ -60,6 +51,13 @@ describe('TriageService', () => {
         performed_at: new Date(),
       }),
     };
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      verbose: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -71,6 +69,10 @@ describe('TriageService', () => {
         {
           provide: AuditLogService,
           useValue: mockAuditService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();
@@ -121,12 +123,7 @@ describe('TriageService', () => {
 
       prismaService.alert.create.mockResolvedValue(expectedAlert);
 
-      const result = await service.handleNewAlert(
-        mockSubmitAlertDto,
-        userId,
-        tenantId,
-        'test-source',
-      );
+      const result = await service.handleNewAlert(mockSubmitAlertDto, userId, tenantId, 'test-source');
 
       expect(prismaService.alert.create).toHaveBeenCalled();
       expect(auditService.logAction).toHaveBeenCalled();
@@ -169,12 +166,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.alert.update.mockResolvedValue(updatedAlert);
 
-      const result = await service.updateAlertData(
-        alertId,
-        mockUpdateDto,
-        userId,
-        'test-tenant-id',
-      );
+      const result = await service.updateAlertData(alertId, mockUpdateDto, userId, 'test-tenant-id');
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
       expect(prismaService.alert.update).toHaveBeenCalled();
@@ -185,9 +177,7 @@ describe('TriageService', () => {
     it('should throw NotFoundException when alert not found', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.updateAlertData(alertId, mockUpdateDto, userId, 'tenant-123'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, 'tenant-123')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when alert not accessible for tenant', async () => {
@@ -196,13 +186,9 @@ describe('TriageService', () => {
         tenant_id: 'different-tenant-id',
       };
 
-      prismaService.alert.findUnique.mockResolvedValue(
-        alertWithDifferentTenant,
-      );
+      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
-      await expect(
-        service.updateAlertData(alertId, mockUpdateDto, userId, 'tenant-123'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, 'tenant-123')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when alert is closed', async () => {
@@ -213,14 +199,7 @@ describe('TriageService', () => {
 
       prismaService.alert.findUnique.mockResolvedValue(closedAlert);
 
-      await expect(
-        service.updateAlertData(
-          alertId,
-          mockUpdateDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow(
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, 'test-tenant-id')).rejects.toThrow(
         'Alert alert-123 is closed status and can not be updated',
       );
     });
@@ -229,14 +208,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.alert.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.updateAlertData(
-          alertId,
-          mockUpdateDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, 'test-tenant-id')).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -271,12 +243,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.alert.update.mockResolvedValue(closedAlert);
 
-      const result = await service.manualCloseAlert(
-        alertId,
-        closeAlertDto,
-        userId,
-        'test-tenant-id',
-      );
+      const result = await service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id');
 
       expect(prismaService.alert.findUnique).toHaveBeenCalled();
       expect(prismaService.alert.update).toHaveBeenCalled();
@@ -303,9 +270,7 @@ describe('TriageService', () => {
         tenant_id: 'different-tenant-id',
       };
 
-      prismaService.alert.findUnique.mockResolvedValue(
-        alertWithDifferentTenant,
-      );
+      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
       await expect(
         service.manualCloseAlert(
@@ -325,28 +290,18 @@ describe('TriageService', () => {
 
       prismaService.alert.findUnique.mockResolvedValue(closedAlert);
 
-      await expect(
-        service.manualCloseAlert(
-          alertId,
-          closeAlertDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow('Alert alert-123 is already closed');
+      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(
+        'Alert alert-123 is already closed',
+      );
     });
 
     it('should handle database errors during close operation', async () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.alert.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.manualCloseAlert(
-          alertId,
-          closeAlertDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -373,12 +328,7 @@ describe('TriageService', () => {
 
       prismaService.alert.create.mockResolvedValue(mockAlert);
 
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-        'test-source',
-      );
+      const result = await service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source');
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -410,12 +360,7 @@ describe('TriageService', () => {
 
       prismaService.alert.create.mockResolvedValue(mockAlert);
 
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-        'test-source',
-      );
+      const result = await service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source');
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -447,12 +392,7 @@ describe('TriageService', () => {
 
       prismaService.alert.create.mockResolvedValue(mockAlert);
 
-      const result = await service.handleNewAlert(
-        dto,
-        'user-123',
-        'tenant-123',
-        'test-source',
-      );
+      const result = await service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source');
 
       expect(prismaService.alert.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -476,22 +416,15 @@ describe('TriageService', () => {
 
       prismaService.alert.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source'),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('should handle database errors in manualCloseAlert', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.manualCloseAlert(
-          'alert-123',
-          { reason: 'Test close reason' },
-          'user-123',
-          'tenant-123',
-        ),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.manualCloseAlert('alert-123', { reason: 'Test close reason' }, 'user-123', 'tenant-123')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -543,12 +476,7 @@ describe('TriageService', () => {
       prismaService.case.create.mockResolvedValue(mockCase);
       prismaService.alert.update.mockResolvedValue(updatedAlert);
 
-      const result = await service.investigateAlert(
-        alertId,
-        caseType,
-        userId,
-        tenantId,
-      );
+      const result = await service.investigateAlert(alertId, caseType, userId, tenantId);
 
       expect(prismaService.alert.findUnique).toHaveBeenCalledWith({
         where: { alert_id: alertId },
@@ -579,9 +507,7 @@ describe('TriageService', () => {
     it('should throw NotFoundException when alert not found', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.investigateAlert(alertId, caseType, userId, tenantId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.investigateAlert(alertId, caseType, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when alert not accessible for tenant', async () => {
@@ -590,13 +516,9 @@ describe('TriageService', () => {
         tenant_id: 'different-tenant-id',
       };
 
-      prismaService.alert.findUnique.mockResolvedValue(
-        alertWithDifferentTenant,
-      );
+      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
-      await expect(
-        service.investigateAlert(alertId, caseType, userId, tenantId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.investigateAlert(alertId, caseType, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should use LOW priority as default when alert priority is null', async () => {
@@ -640,9 +562,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.case.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.investigateAlert(alertId, caseType, userId, tenantId),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.investigateAlert(alertId, caseType, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -694,49 +614,37 @@ describe('TriageService', () => {
     it('should throw BadRequestException for invalid page', async () => {
       const invalidParams = { ...mockParams, page: 0 };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'Page must be a positive integer',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Page must be a positive integer');
     });
 
     it('should throw BadRequestException for invalid limit', async () => {
       const invalidParams = { ...mockParams, limit: -1 };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'Limit must be a positive integer',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Limit must be a positive integer');
     });
 
     it('should throw BadRequestException for invalid sortBy field', async () => {
       const invalidParams = { ...mockParams, sortBy: 'invalid_field' };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'Invalid sortBy field: invalid_field',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Invalid sortBy field: invalid_field');
     });
 
     it('should throw BadRequestException for invalid sortOrder', async () => {
       const invalidParams = { ...mockParams, sortOrder: 'invalid' as any };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'sortOrder must be "asc" or "desc"',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('sortOrder must be "asc" or "desc"');
     });
 
     it('should throw BadRequestException for invalid priority', async () => {
       const invalidParams = { ...mockParams, priority: 'INVALID_PRIORITY' };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'Invalid priority: INVALID_PRIORITY',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Invalid priority: INVALID_PRIORITY');
     });
 
     it('should throw BadRequestException for invalid status', async () => {
       const invalidParams = { ...mockParams, status: 'INVALID_STATUS' };
 
-      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow(
-        'Invalid status: INVALID_STATUS',
-      );
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Invalid status: INVALID_STATUS');
     });
 
     it('should handle search with UUID (36 characters)', async () => {
@@ -773,9 +681,7 @@ describe('TriageService', () => {
       expect(prismaService.alert.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              { priority: { equals: Priority.HIGH } },
-            ]),
+            OR: expect.arrayContaining([{ priority: { equals: Priority.HIGH } }]),
           }),
         }),
       );
@@ -792,9 +698,7 @@ describe('TriageService', () => {
       expect(prismaService.alert.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              { alert_status: { equals: AlertStatus.CLOSED } },
-            ]),
+            OR: expect.arrayContaining([{ alert_status: { equals: AlertStatus.CLOSED } }]),
           }),
         }),
       );
@@ -811,22 +715,16 @@ describe('TriageService', () => {
       expect(prismaService.alert.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              { txtp: { contains: 'payment', mode: 'insensitive' } },
-            ]),
+            OR: expect.arrayContaining([{ txtp: { contains: 'payment', mode: 'insensitive' } }]),
           }),
         }),
       );
     });
 
     it('should handle database errors', async () => {
-      prismaService.alert.findMany.mockRejectedValue(
-        new Error('Database error'),
-      );
+      prismaService.alert.findMany.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getAlertsForUser(mockParams)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.getAlertsForUser(mockParams)).rejects.toThrow(InternalServerErrorException);
     });
 
     it('should filter alerts by priority when provided', async () => {
@@ -905,9 +803,7 @@ describe('TriageService', () => {
     };
 
     it('should return alert details successfully', async () => {
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'log')
-        .mockImplementation();
+      const loggerSpy = jest.spyOn(service['logger'], 'log').mockImplementation();
 
       prismaService.alert.findUnique.mockResolvedValue(mockAlert);
 
@@ -916,9 +812,7 @@ describe('TriageService', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...expectedResult } = mockAlert;
       expect(result).toEqual(expectedResult);
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Alert ${alertId} opened by user ${userId}`),
-      );
+      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining(`Alert ${alertId} opened by user ${userId}`));
 
       loggerSpy.mockRestore();
     });
@@ -926,9 +820,7 @@ describe('TriageService', () => {
     it('should throw NotFoundException when alert not found', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getAlertDetails(alertId, tenantId, userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getAlertDetails(alertId, tenantId, userId)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when alert not accessible for tenant', async () => {
@@ -937,23 +829,15 @@ describe('TriageService', () => {
         tenant_id: 'different-tenant-id',
       };
 
-      prismaService.alert.findUnique.mockResolvedValue(
-        alertWithDifferentTenant,
-      );
+      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
-      await expect(
-        service.getAlertDetails(alertId, tenantId, userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getAlertDetails(alertId, tenantId, userId)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle database errors', async () => {
-      prismaService.alert.findUnique.mockRejectedValue(
-        new Error('Database error'),
-      );
+      prismaService.alert.findUnique.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.getAlertDetails(alertId, tenantId, userId),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getAlertDetails(alertId, tenantId, userId)).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -1008,12 +892,7 @@ describe('TriageService', () => {
       prismaService.case.create.mockResolvedValue(mockCase);
       prismaService.alert.update.mockResolvedValue(updatedAlert);
 
-      const result = await service.convertToCase(
-        alertId,
-        convertDto,
-        userId,
-        tenantId,
-      );
+      const result = await service.convertToCase(alertId, convertDto, userId, tenantId);
 
       expect(prismaService.alert.findUnique).toHaveBeenCalledWith({
         where: { alert_id: alertId },
@@ -1044,9 +923,7 @@ describe('TriageService', () => {
     it('should throw NotFoundException when alert not found', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.convertToCase(alertId, convertDto, userId, tenantId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when alert not accessible for tenant', async () => {
@@ -1055,13 +932,9 @@ describe('TriageService', () => {
         tenant_id: 'different-tenant-id',
       };
 
-      prismaService.alert.findUnique.mockResolvedValue(
-        alertWithDifferentTenant,
-      );
+      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
-      await expect(
-        service.convertToCase(alertId, convertDto, userId, tenantId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when alert is already closed', async () => {
@@ -1072,9 +945,7 @@ describe('TriageService', () => {
 
       prismaService.alert.findUnique.mockResolvedValue(closedAlert);
 
-      await expect(
-        service.convertToCase(alertId, convertDto, userId, tenantId),
-      ).rejects.toThrow('Alert alert-123 is already closed');
+      await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow('Alert alert-123 is already closed');
     });
 
     it('should throw BadRequestException when alert is already converted', async () => {
@@ -1085,9 +956,9 @@ describe('TriageService', () => {
 
       prismaService.alert.findUnique.mockResolvedValue(convertedAlert);
 
-      await expect(
-        service.convertToCase(alertId, convertDto, userId, tenantId),
-      ).rejects.toThrow('Alert alert-123 is already converted to a case');
+      await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow(
+        'Alert alert-123 is already converted to a case',
+      );
     });
 
     it('should use alert priority when convertDto priority is not provided', async () => {
@@ -1115,12 +986,7 @@ describe('TriageService', () => {
         case_id: mockCase.case_id,
       });
 
-      await service.convertToCase(
-        alertId,
-        convertDtoWithoutPriority,
-        userId,
-        tenantId,
-      );
+      await service.convertToCase(alertId, convertDtoWithoutPriority, userId, tenantId);
 
       expect(prismaService.case.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -1133,9 +999,7 @@ describe('TriageService', () => {
       prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
       prismaService.case.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        service.convertToCase(alertId, convertDto, userId, tenantId),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

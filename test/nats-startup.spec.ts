@@ -16,7 +16,7 @@ import { Priority, AlertStatus } from '@prisma/client';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { AlertMessageDto } from '../src/nats/dto/AlertMessageDto.dto';
-import { Logger } from '@nestjs/common';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 // Mock the startup factory
 jest.mock('@tazama-lf/frms-coe-startup-lib', () => ({
@@ -39,9 +39,12 @@ jest.mock('class-transformer', () => ({
 }));
 
 describe('NatsStartupService', () => {
+  let mockLoggerService: any;
   beforeAll(() => {
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(jest.fn());
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(jest.fn());
+    mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+    };
   });
   let service: NatsStartupService;
   let triageService: TriageService;
@@ -61,6 +64,10 @@ describe('NatsStartupService', () => {
             handleNewAlert: jest.fn(),
           },
         },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
       ],
     }).compile();
 
@@ -68,10 +75,8 @@ describe('NatsStartupService', () => {
     triageService = module.get<TriageService>(TriageService);
 
     // Get the mocked functions
-    mockValidate = jest.requireMock('class-validator')
-      .validate as jest.MockedFunction<typeof validate>;
-    mockPlainToInstance = jest.requireMock('class-transformer')
-      .plainToInstance as jest.MockedFunction<typeof plainToInstance>;
+    mockValidate = jest.requireMock('class-validator').validate as jest.MockedFunction<typeof validate>;
+    mockPlainToInstance = jest.requireMock('class-transformer').plainToInstance as jest.MockedFunction<typeof plainToInstance>;
   });
 
   it('should be defined', () => {
@@ -81,17 +86,12 @@ describe('NatsStartupService', () => {
   describe('onModuleInit', () => {
     it('should initialize the startup factory and server', async () => {
       const mockInit = jest.fn();
-      const { StartupFactory } = jest.requireMock(
-        '@tazama-lf/frms-coe-startup-lib',
-      );
+      const { StartupFactory } = jest.requireMock('@tazama-lf/frms-coe-startup-lib');
       StartupFactory.mockImplementation(() => ({ init: mockInit }));
 
       await service.onModuleInit();
 
-      expect(mockInit).toHaveBeenCalledWith(
-        expect.any(Function),
-        expect.any(Object),
-      );
+  expect(mockInit).toHaveBeenCalledWith(expect.any(Function), mockLoggerService);
     });
   });
 
@@ -128,10 +128,7 @@ describe('NatsStartupService', () => {
 
       await service.handleMessage(validAlertPayload);
 
-      expect(mockPlainToInstance).toHaveBeenCalledWith(
-        AlertMessageDto,
-        validAlertPayload,
-      );
+      expect(mockPlainToInstance).toHaveBeenCalledWith(AlertMessageDto, validAlertPayload);
       expect(mockValidate).toHaveBeenCalledWith(validAlertDto);
       expect(triageService.handleNewAlert).toHaveBeenCalledWith(
         {
@@ -142,9 +139,7 @@ describe('NatsStartupService', () => {
             networkMap: validAlertPayload.network_map,
           },
         },
-        validAlertPayload.userId ??
-          validAlertPayload.transaction.userId ??
-          'system',
+        validAlertPayload.userId ?? validAlertPayload.transaction.userId ?? 'system',
         'test-tenant',
         'NATS',
       );
@@ -160,7 +155,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(validAlertPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle missing tenantId', async () => {
@@ -177,7 +172,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle missing TxTp', async () => {
@@ -194,7 +189,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle invalid tenantId type', async () => {
@@ -211,7 +206,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle invalid TxTp type', async () => {
@@ -228,7 +223,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle triage service errors', async () => {
@@ -239,7 +234,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(validAlertPayload);
 
       expect(triageService.handleNewAlert).toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle non-Error exceptions from triage service', async () => {
@@ -250,7 +245,7 @@ describe('NatsStartupService', () => {
       await service.handleMessage(validAlertPayload);
 
       expect(triageService.handleNewAlert).toHaveBeenCalled();
-      expect(Logger.prototype.error).toHaveBeenCalled();
+  expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle alert with missing source field', async () => {
@@ -275,9 +270,7 @@ describe('NatsStartupService', () => {
             networkMap: validAlertPayload.network_map,
           },
         },
-        validAlertPayload.userId ??
-          validAlertPayload.transaction.userId ??
-          'system',
+        validAlertPayload.userId ?? validAlertPayload.transaction.userId ?? 'system',
         'test-tenant',
         'NATS',
       );

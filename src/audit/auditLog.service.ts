@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,12 +28,7 @@ export class AuditLogService {
     });
   }
 
-  async logPermissionDenied(
-    user: any,
-    entityName: string,
-    action: string,
-    _details?: any,
-  ) {
+  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
     return this.logAction({
       userId: user?.sub || 'unknown',
       operation: 'permission_denied',

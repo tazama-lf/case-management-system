@@ -18,5 +18,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*", "prisma/**/*", "test/**/*"]
+  "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
 }

@@ -7,11 +7,11 @@ import { AuthController } from './auth.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from '../audit/auditLog.module';
 
-import { Logger } from '@nestjs/common';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 @Module({
   imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
-  providers: [JwtStrategy, AuthService, { provide: Logger, useClass: Logger }],
+  providers: [JwtStrategy, AuthService, LoggerService],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],
 })

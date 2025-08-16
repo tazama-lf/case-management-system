@@ -1,3 +1,4 @@
+ 
 import { Test, TestingModule } from '@nestjs/testing';
 import { RolesGuard, Permissions, Roles } from '../../src/auth/roles.guard';
 import { Reflector } from '@nestjs/core';
@@ -67,11 +68,7 @@ describe('RolesGuard', () => {
     logPermissionDenied: jest.fn(),
   };
 
-  const createMockExecutionContext = (
-    user: any,
-    method = 'GET',
-    originalUrl = '/test',
-  ): ExecutionContext => {
+  const createMockExecutionContext = (user: any, method = 'GET', originalUrl = '/test'): ExecutionContext => {
     return {
       switchToHttp: () => ({
         getRequest: () => ({
@@ -186,12 +183,7 @@ describe('RolesGuard', () => {
       reflector.getAllAndOverride.mockReturnValueOnce(null); // permissions
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(
-        null,
-        '/test',
-        'GET',
-        { reason: 'No user in request' },
-      );
+      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(null, '/test', 'GET', { reason: 'No user in request' });
     });
 
     it('should deny access and log when user lacks required role', () => {
@@ -202,15 +194,10 @@ describe('RolesGuard', () => {
       reflector.getAllAndOverride.mockReturnValueOnce(null); // permissions
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(
-        user,
-        '/admin',
-        'POST',
-        {
-          reason: 'Insufficient role',
-          requiredRoles: ['admin'],
-        },
-      );
+      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(user, '/admin', 'POST', {
+        reason: 'Insufficient role',
+        requiredRoles: ['admin'],
+      });
     });
 
     it('should deny access and log when user lacks required permissions', () => {
@@ -221,15 +208,10 @@ describe('RolesGuard', () => {
       reflector.getAllAndOverride.mockReturnValueOnce(['write', 'delete']); // permissions
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(
-        user,
-        '/secure',
-        'DELETE',
-        {
-          reason: 'Insufficient permissions',
-          requiredPermissions: ['write', 'delete'],
-        },
-      );
+      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(user, '/secure', 'DELETE', {
+        reason: 'Insufficient permissions',
+        requiredPermissions: ['write', 'delete'],
+      });
     });
 
     it('should deny access when user has no permissions property', () => {
@@ -273,15 +255,10 @@ describe('RolesGuard', () => {
       reflector.getAllAndOverride.mockReturnValueOnce(null); // permissions
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(
-        user,
-        '/test',
-        'GET',
-        {
-          reason: 'Insufficient role',
-          requiredRoles: ['admin', 'super-admin'],
-        },
-      );
+      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(user, '/test', 'GET', {
+        reason: 'Insufficient role',
+        requiredRoles: ['admin', 'super-admin'],
+      });
     });
 
     it('should handle partial permission match correctly', () => {
@@ -292,15 +269,10 @@ describe('RolesGuard', () => {
       reflector.getAllAndOverride.mockReturnValueOnce(['read', 'write']); // permissions - both required
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(
-        user,
-        '/test',
-        'GET',
-        {
-          reason: 'Insufficient permissions',
-          requiredPermissions: ['read', 'write'],
-        },
-      );
+      expect(auditLogService.logPermissionDenied).toHaveBeenCalledWith(user, '/test', 'GET', {
+        reason: 'Insufficient permissions',
+        requiredPermissions: ['read', 'write'],
+      });
     });
   });
 });

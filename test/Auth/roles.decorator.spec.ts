@@ -11,9 +11,7 @@ jest.mock('@nestjs/common', () => {
 });
 
 describe('Roles Decorator', () => {
-  const mockSetMetadata = SetMetadata as jest.MockedFunction<
-    typeof SetMetadata
-  >;
+  const mockSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>;
 
   beforeEach(() => {
     mockSetMetadata.mockClear();

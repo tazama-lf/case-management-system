@@ -1,10 +1,12 @@
 // Set required environment variables before any imports
 process.env.STARTUP_TYPE = 'nats';
+process.env.NODE_ENV = 'test';
 
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 // Mock the startup factory
 jest.mock('@tazama-lf/frms-coe-startup-lib', () => ({
@@ -32,6 +34,14 @@ describe('AppModule', () => {
       .useValue({
         $connect: jest.fn(),
         $disconnect: jest.fn(),
+      })
+      .overrideProvider(LoggerService)
+      .useValue({
+        log: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn(),
+        verbose: jest.fn(),
       })
       .compile();
   });

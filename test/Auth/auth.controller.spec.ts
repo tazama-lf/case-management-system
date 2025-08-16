@@ -1,8 +1,10 @@
+ 
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from '../../src/auth/auth.controller';
 import { AuthService } from '../../src/auth/auth.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
-import { UnauthorizedException, Logger } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -18,7 +20,7 @@ describe('AuthController', () => {
     getLogs: jest.fn(),
   };
 
-  const mockLogger = {
+  const mockLoggerService = {
     log: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
@@ -32,7 +34,7 @@ describe('AuthController', () => {
       providers: [
         { provide: AuthService, useValue: mockAuthService },
         { provide: AuditLogService, useValue: mockAuditLogService },
-        { provide: Logger, useValue: mockLogger },
+        { provide: LoggerService, useValue: mockLoggerService },
       ],
     }).compile();
 
@@ -51,9 +53,7 @@ describe('AuthController', () => {
     authService.login.mockRejectedValue(new Error('Empty credentials'));
     auditLogService.logAction.mockResolvedValue({});
 
-    await expect(controller.login(loginDto)).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
 
     expect(authService.login).toHaveBeenCalledWith('', '');
     expect(auditLogService.logAction).toHaveBeenCalledWith({
@@ -74,10 +74,7 @@ describe('AuthController', () => {
 
     const result = await controller.login(loginDto);
 
-    expect(authService.login).toHaveBeenCalledWith(
-      'test@user.com',
-      'p@ssw0rd!',
-    );
+    expect(authService.login).toHaveBeenCalledWith('test@user.com', 'p@ssw0rd!');
     expect(result).toEqual({
       message: 'Login successful',
       token: mockToken,

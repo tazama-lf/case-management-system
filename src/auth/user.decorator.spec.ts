@@ -26,9 +26,7 @@ describe('User Decorator', () => {
 
     const mockRequest = { user: mockUser };
 
-    (
-      mockExecutionContext.switchToHttp().getRequest as jest.Mock
-    ).mockReturnValue(mockRequest);
+    (mockExecutionContext.switchToHttp().getRequest as jest.Mock).mockReturnValue(mockRequest);
 
     // The User decorator is created by createParamDecorator, so we need to get the factory function
     const decoratorFactory = User as any;
@@ -42,9 +40,7 @@ describe('User Decorator', () => {
   it('should return undefined when no user in request', () => {
     const mockRequest = {};
 
-    (
-      mockExecutionContext.switchToHttp().getRequest as jest.Mock
-    ).mockReturnValue(mockRequest);
+    (mockExecutionContext.switchToHttp().getRequest as jest.Mock).mockReturnValue(mockRequest);
 
     const decoratorFactory = User as any;
     const result = decoratorFactory.factory(undefined, mockExecutionContext);
@@ -55,9 +51,7 @@ describe('User Decorator', () => {
   it('should return null when user is explicitly null', () => {
     const mockRequest = { user: null };
 
-    (
-      mockExecutionContext.switchToHttp().getRequest as jest.Mock
-    ).mockReturnValue(mockRequest);
+    (mockExecutionContext.switchToHttp().getRequest as jest.Mock).mockReturnValue(mockRequest);
 
     const decoratorFactory = User as any;
     const result = decoratorFactory.factory(undefined, mockExecutionContext);
@@ -85,9 +79,7 @@ describe('User Decorator', () => {
 
     const mockRequest = { user: mockUser };
 
-    (
-      mockExecutionContext.switchToHttp().getRequest as jest.Mock
-    ).mockReturnValue(mockRequest);
+    (mockExecutionContext.switchToHttp().getRequest as jest.Mock).mockReturnValue(mockRequest);
 
     const decoratorFactory = User as any;
     const result = decoratorFactory.factory(undefined, mockExecutionContext);
@@ -101,9 +93,7 @@ describe('User Decorator', () => {
     const mockUser = { user_id: 'user-123' };
     const mockRequest = { user: mockUser };
 
-    (
-      mockExecutionContext.switchToHttp().getRequest as jest.Mock
-    ).mockReturnValue(mockRequest);
+    (mockExecutionContext.switchToHttp().getRequest as jest.Mock).mockReturnValue(mockRequest);
 
     const decoratorFactory = User as any;
     const result = decoratorFactory.factory('someData', mockExecutionContext);

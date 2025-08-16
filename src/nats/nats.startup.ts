@@ -1,8 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import {
-  StartupFactory,
-  IStartupService,
-} from '@tazama-lf/frms-coe-startup-lib';
+/* eslint-disable prettier/prettier */
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { StartupFactory, IStartupService } from '@tazama-lf/frms-coe-startup-lib';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TriageService } from '../triage/triage.service';
 import { SubmitAlertDto } from '../triage/dto/submit-alert.dto';
 import { plainToInstance } from 'class-transformer';
@@ -11,10 +10,11 @@ import { AlertMessageDto } from './dto/AlertMessageDto.dto';
 
 @Injectable()
 export class NatsStartupService implements OnModuleInit {
-  private readonly logger = new Logger(NatsStartupService.name);
+  constructor(
+    private readonly triageService: TriageService,
+    private readonly logger: LoggerService,
+  ) {}
   private server: IStartupService;
-
-  constructor(private readonly triageService: TriageService) {}
 
   async onModuleInit() {
     this.server = new StartupFactory();
@@ -33,19 +33,12 @@ export class NatsStartupService implements OnModuleInit {
     const userId = alertDto.userId ?? transaction?.userId ?? 'system';
 
     // Validate presence and format
-    if (
-      errors.length > 0 ||
-      !tenantId ||
-      typeof tenantId !== 'string' ||
-      !txTp ||
-      typeof txTp !== 'string'
-    ) {
+    if (errors.length > 0 || !tenantId || typeof tenantId !== 'string' || !txTp || typeof txTp !== 'string') {
       this.logger.error('Invalid alert message received', {
         validationErrors: errors.map((e) => ({
           property: e.property,
           constraints: e.constraints,
         })),
-
         missingFields: {
           tenantId: !tenantId,
           txTp: !txTp,
@@ -55,9 +48,7 @@ export class NatsStartupService implements OnModuleInit {
       return;
     }
 
-    this.logger.log(
-      `Extracted txtp: ${txTp} from transaction for tenant: ${tenantId}`,
-    );
+    this.logger.log(`Extracted txtp: ${txTp} from transaction for tenant: ${tenantId}`);
 
     try {
       const submitAlertDto: SubmitAlertDto = {
@@ -69,12 +60,7 @@ export class NatsStartupService implements OnModuleInit {
         },
       };
 
-      await this.triageService.handleNewAlert(
-        submitAlertDto,
-        userId,
-        tenantId,
-        'NATS',
-      );
+      await this.triageService.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
     } catch (err) {
       this.logger.error('Failed to persist alert', {

@@ -1,14 +1,12 @@
+ 
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 import { of, throwError } from 'rxjs';
-import {
-  UnauthorizedException,
-  ServiceUnavailableException,
-  Logger,
-} from '@nestjs/common';
+import { UnauthorizedException, ServiceUnavailableException, Logger } from '@nestjs/common';
 
 // Suppress Logger.error output during tests
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
@@ -36,6 +34,13 @@ describe('AuthService', () => {
       }
       return undefined;
     });
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      verbose: jest.fn(),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -46,6 +51,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();
@@ -112,9 +121,7 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(
-        of({ data: { access_token: mockToken } }),
-      );
+      httpService.post.mockReturnValue(of({ data: { access_token: mockToken } }));
 
       const result = await service.login(username, password);
 
@@ -150,9 +157,7 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(
-        of({ data: { user: { token: mockToken } } }),
-      );
+      httpService.post.mockReturnValue(of({ data: { user: { token: mockToken } } }));
 
       const result = await service.login(username, password);
 
@@ -169,9 +174,7 @@ describe('AuthService', () => {
 
       configService.get.mockReturnValue(undefined);
 
-      await expect(service.login(username, password)).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(service.login(username, password)).rejects.toThrow(ServiceUnavailableException);
       expect(configService.get).toHaveBeenCalledWith('TAZAMA_AUTH_URL');
     });
 
@@ -185,9 +188,7 @@ describe('AuthService', () => {
       configService.get.mockReturnValue(mockAuthUrl);
       httpService.post.mockReturnValue(throwError(() => error));
 
-      await expect(service.login(username, password)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(username, password)).rejects.toThrow(UnauthorizedException);
       expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
         username,
         password,
@@ -204,9 +205,7 @@ describe('AuthService', () => {
       configService.get.mockReturnValue(mockAuthUrl);
       httpService.post.mockReturnValue(throwError(() => error));
 
-      await expect(service.login(username, password)).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(service.login(username, password)).rejects.toThrow(ServiceUnavailableException);
       expect(httpService.post).toHaveBeenCalledWith(mockAuthUrl, {
         username,
         password,
@@ -219,9 +218,7 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(
-        of({ data: { message: 'no token here' } }),
-      );
+      httpService.post.mockReturnValue(of({ data: { message: 'no token here' } }));
 
       const result = await service.login(username, password);
 
