@@ -137,8 +137,8 @@ enum CaseType {
 }
 enum AlertType {
   FRAUD
-  MONEY_LAUNDERING
-  FRAUD_AND_MONEY_LAUNDERING
+  AML
+  FRAUD_AND_AML
 }
 enum CaseCreationType {
   MANUAL
