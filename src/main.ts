@@ -1,12 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { validateProcessorConfig } from '@tazama-lf/frms-coe-lib/lib/config';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
+  // Validate and get the processor config for LoggerService
+  const configuration = validateProcessorConfig();
+  const logger = new LoggerService(configuration);
+
   const app = await NestFactory.create(AppModule, {
-    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    logger,
   });
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -17,6 +23,8 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
+
   logger.log(`Application started on port ${port}`);
 }
+
 bootstrap();

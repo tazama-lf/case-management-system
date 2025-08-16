@@ -69,9 +69,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
     expect(confidenceError?.constraints).toHaveProperty('isNumber');
   });
@@ -133,9 +131,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((error) => error.property === 'confidence_per')).toBe(
-      true,
-    );
+    expect(errors.some((error) => error.property === 'confidence_per')).toBe(true);
     expect(errors.some((error) => error.property === 'priority')).toBe(true);
   });
 
@@ -188,9 +184,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
   });
 
@@ -203,9 +197,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
   });
 
@@ -218,9 +210,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
     expect(confidenceError?.constraints).toHaveProperty('isNumber');
   });
@@ -274,9 +264,7 @@ describe('UpdateAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
     expect(confidenceError?.constraints).toHaveProperty('isNumber');
   });

@@ -1,3 +1,4 @@
+ 
 import { JwtStrategy } from '../../src/auth/jwt.strategy';
 import * as fs from 'fs';
 
@@ -5,8 +6,7 @@ jest.mock('fs');
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
-  const mockPublicKey =
-    '-----BEGIN PUBLIC KEY-----\nMOCK_PUBLIC_KEY\n-----END PUBLIC KEY-----';
+  const mockPublicKey = '-----BEGIN PUBLIC KEY-----\nMOCK_PUBLIC_KEY\n-----END PUBLIC KEY-----';
   const originalEnv = process.env;
 
   beforeEach(async () => {
@@ -87,9 +87,7 @@ describe('JwtStrategy', () => {
           roles: ['admin', 'user'],
         },
       };
-      expect(() => strategy.validate(payload as any)).toThrow(
-        'Invalid token: missing sub user_id or clientId',
-      );
+      expect(() => strategy.validate(payload as any)).toThrow('Invalid token: missing sub user_id or clientId');
     });
 
     it('should throw error if tenantId is missing', async () => {
@@ -99,9 +97,7 @@ describe('JwtStrategy', () => {
           roles: ['admin', 'user'],
         },
       };
-      expect(() => strategy.validate(payload as any)).toThrow(
-        'Invalid token: missing tenant_id or tenantId',
-      );
+      expect(() => strategy.validate(payload as any)).toThrow('Invalid token: missing tenant_id or tenantId');
     });
 
     it('should throw error if roles are missing', async () => {
@@ -112,9 +108,7 @@ describe('JwtStrategy', () => {
           roles: [],
         },
       };
-      expect(() => strategy.validate(payload as any)).toThrow(
-        'Invalid token: missing roles in realm_access or claims',
-      );
+      expect(() => strategy.validate(payload as any)).toThrow('Invalid token: missing roles in realm_access or claims');
     });
 
     it('should validate payload with claims instead of realm_access', async () => {

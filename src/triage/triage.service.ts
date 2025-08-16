@@ -1,44 +1,25 @@
-import {
-  Injectable,
-  NotFoundException,
-  InternalServerErrorException,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+/* eslint-disable prettier/prettier */
+import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import {
-  AlertStatus,
-  Priority,
-  CaseCreationType,
-  CaseStatus,
-  CaseType,
-} from '@prisma/client';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, CaseType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class TriageService {
-  private readonly logger = new Logger(TriageService.name);
-
   constructor(
+    private readonly logger: LoggerService,
     private prisma: PrismaService,
     private audit: AuditLogService,
   ) {}
 
-  async handleNewAlert(
-    dto: SubmitAlertDto,
-    userId: string,
-    tenantId: string,
-    source: string,
-  ) {
+  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string, source: string) {
     // Determine the alert type (txtp)
-    const txtp =
-      typeof dto?.result?.transaction?.TxTp === 'string'
-        ? dto.result.transaction.TxTp
-        : '';
+    const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
 
     try {
       const newAlert = await this.prisma.alert.create({
@@ -70,12 +51,7 @@ export class TriageService {
     }
   }
 
-  async updateAlertData(
-    alertId: string,
-    dto: UpdateAlertDto,
-    userId: string,
-    tenantId: string,
-  ) {
+  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string) {
     const existingAlert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -85,15 +61,11 @@ export class TriageService {
     }
 
     if (existingAlert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     if (existingAlert.alert_status === AlertStatus.CLOSED) {
-      throw new BadRequestException(
-        `Alert ${alertId} is closed status and can not be updated`,
-      );
+      throw new BadRequestException(`Alert ${alertId} is closed status and can not be updated`);
     }
 
     try {
@@ -111,9 +83,7 @@ export class TriageService {
         entityName: 'Alert',
         actionPerformed:
           `Updated alert ${alertId}` +
-          (dto.confidence_per !== undefined
-            ? `, confidence_per=${dto.confidence_per}`
-            : '') +
+          (dto.confidence_per !== undefined ? `, confidence_per=${dto.confidence_per}` : '') +
           (dto.priority !== undefined ? `, priority=${dto.priority}` : ''),
         outcome: 'SUCCESS',
       });
@@ -125,12 +95,7 @@ export class TriageService {
     }
   }
 
-  async manualCloseAlert(
-    alertId: string,
-    closeAlertDto: CloseAlertDto,
-    userId: string,
-    tenantId: string,
-  ) {
+  async manualCloseAlert(alertId: string, closeAlertDto: CloseAlertDto, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -140,9 +105,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     if (alert.alert_status === AlertStatus.CLOSED) {
@@ -170,12 +133,7 @@ export class TriageService {
     }
   }
 
-  async investigateAlert(
-    alertId: string,
-    caseType: CaseType,
-    userId: string,
-    tenantId: string,
-  ) {
+  async investigateAlert(alertId: string, caseType: CaseType, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -185,9 +143,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     const casePriority = alert.priority ?? Priority.LOW;
@@ -224,13 +180,8 @@ export class TriageService {
 
       return updatedAlert;
     } catch (error) {
-      this.logger.error(
-        `Failed to update alert ${alertId} for investigation`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        'Failed to update alert for investigation',
-      );
+      this.logger.error(`Failed to update alert ${alertId} for investigation`, error);
+      throw new InternalServerErrorException('Failed to update alert for investigation');
     }
   }
 
@@ -245,17 +196,7 @@ export class TriageService {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const {
-      tenantId,
-      priority,
-      status,
-      type,
-      search,
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-    } = params;
+    const { tenantId, priority, status, type, search, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -267,9 +208,7 @@ export class TriageService {
     // Validate sortBy
     const validSortFields = ['priority', 'created_at'];
     if (!validSortFields.includes(sortBy)) {
-      throw new BadRequestException(
-        `Invalid sortBy field: ${sortBy}. Must be one of ${validSortFields.join(', ')}`,
-      );
+      throw new BadRequestException(`Invalid sortBy field: ${sortBy}. Must be one of ${validSortFields.join(', ')}`);
     }
     if (!['asc', 'desc'].includes(sortOrder)) {
       throw new BadRequestException('sortOrder must be "asc" or "desc"');
@@ -280,20 +219,14 @@ export class TriageService {
     };
 
     if (priority) {
-      if (
-        !Object.values(Priority).includes(priority.toUpperCase() as Priority)
-      ) {
+      if (!Object.values(Priority).includes(priority.toUpperCase() as Priority)) {
         throw new BadRequestException(`Invalid priority: ${priority}`);
       }
       whereClause.priority = priority.toUpperCase();
     }
 
     if (status) {
-      if (
-        !Object.values(AlertStatus).includes(
-          status.toUpperCase() as AlertStatus,
-        )
-      ) {
+      if (!Object.values(AlertStatus).includes(status.toUpperCase() as AlertStatus)) {
         throw new BadRequestException(`Invalid status: ${status}`);
       }
       whereClause.alert_status = status.toUpperCase();
@@ -321,9 +254,7 @@ export class TriageService {
         });
       }
 
-      if (
-        Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)
-      ) {
+      if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
         whereClause.OR.push({
           alert_status: { equals: search.toUpperCase() as AlertStatus },
         });
@@ -387,14 +318,10 @@ export class TriageService {
       }
 
       if (alert.tenant_id !== tenantId) {
-        throw new NotFoundException(
-          `Alert ${alertId} is not accessible for this tenant`,
-        );
+        throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
       }
 
-      this.logger.log(
-        `Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`,
-      );
+      this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`);
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...sanitizedAlert } = alert;
@@ -403,18 +330,11 @@ export class TriageService {
       if (error instanceof NotFoundException) throw error;
 
       this.logger.error(`Failed to fetch alert ${alertId}`, error);
-      throw new InternalServerErrorException(
-        'Unable to retrieve alert details',
-      );
+      throw new InternalServerErrorException('Unable to retrieve alert details');
     }
   }
 
-  async convertToCase(
-    alertId: string,
-    convertAlertToCase: ConvertAlertToCase,
-    userId: string,
-    tenantId: string,
-  ) {
+  async convertToCase(alertId: string, convertAlertToCase: ConvertAlertToCase, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -424,9 +344,7 @@ export class TriageService {
     }
 
     if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
-      );
+      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
     }
 
     if (alert.alert_status === AlertStatus.CLOSED) {
@@ -434,9 +352,7 @@ export class TriageService {
     }
 
     if (alert.alert_status === AlertStatus.CONVERTED) {
-      throw new BadRequestException(
-        `Alert ${alertId} is already converted to a case`,
-      );
+      throw new BadRequestException(`Alert ${alertId} is already converted to a case`);
     }
 
     const casePriority = convertAlertToCase.priority ?? alert.priority;
@@ -472,10 +388,7 @@ export class TriageService {
 
       return newCase;
     } catch (error) {
-      this.logger.error(
-        `Failed to create convert alert ${alertId} to case`,
-        error,
-      );
+      this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
       throw new InternalServerErrorException('Failed to convert alert to case');
     }
   }

@@ -1,3 +1,4 @@
+ 
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
@@ -111,17 +112,9 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-        'REST API',
-      );
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(mockSubmitAlertDto, 'test-user-id', 'test-tenant-id', 'REST API');
       expect(triageService.handleNewAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
@@ -130,16 +123,9 @@ describe('TriageController', () => {
       const error = new Error('Service error');
       triageService.handleNewAlert.mockRejectedValue(error);
 
-      await expect(
-        controller.submitAlert(mockSubmitAlertDto, mockRequest),
-      ).rejects.toThrow('Service error');
+      await expect(controller.submitAlert(mockSubmitAlertDto, mockRequest)).rejects.toThrow('Service error');
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-        'REST API',
-      );
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(mockSubmitAlertDto, 'test-user-id', 'test-tenant-id', 'REST API');
     });
 
     it('should extract user data correctly from request', async () => {
@@ -167,12 +153,7 @@ describe('TriageController', () => {
 
       await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-        'REST API',
-      );
+      expect(triageService.handleNewAlert).toHaveBeenCalledWith(mockSubmitAlertDto, 'test-user-id', 'test-tenant-id', 'REST API');
     });
   });
 
@@ -215,18 +196,9 @@ describe('TriageController', () => {
       };
       triageService.updateAlertData.mockResolvedValue(expectedResult);
 
-      const result = await controller.updateAlert(
-        'alert-123',
-        mockUpdateAlertDto,
-        mockRequest,
-      );
+      const result = await controller.updateAlert('alert-123', mockUpdateAlertDto, mockRequest);
 
-      expect(triageService.updateAlertData).toHaveBeenCalledWith(
-        'alert-123',
-        mockUpdateAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.updateAlertData).toHaveBeenCalledWith('alert-123', mockUpdateAlertDto, 'test-user-id', 'test-tenant-id');
       expect(triageService.updateAlertData).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
@@ -235,16 +207,9 @@ describe('TriageController', () => {
       const error = new Error('Update failed');
       triageService.updateAlertData.mockRejectedValue(error);
 
-      await expect(
-        controller.updateAlert('alert-123', mockUpdateAlertDto, mockRequest),
-      ).rejects.toThrow('Update failed');
+      await expect(controller.updateAlert('alert-123', mockUpdateAlertDto, mockRequest)).rejects.toThrow('Update failed');
 
-      expect(triageService.updateAlertData).toHaveBeenCalledWith(
-        'alert-123',
-        mockUpdateAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.updateAlertData).toHaveBeenCalledWith('alert-123', mockUpdateAlertDto, 'test-user-id', 'test-tenant-id');
     });
   });
 
@@ -279,18 +244,9 @@ describe('TriageController', () => {
       };
       triageService.manualCloseAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.closeAlert(
-        'alert-123',
-        mockCloseDto,
-        mockRequest,
-      );
+      const result = await controller.closeAlert('alert-123', mockCloseDto, mockRequest);
 
-      expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-        'alert-123',
-        mockCloseDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.manualCloseAlert).toHaveBeenCalledWith('alert-123', mockCloseDto, 'test-user-id', 'test-tenant-id');
       expect(triageService.manualCloseAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
@@ -299,16 +255,9 @@ describe('TriageController', () => {
       const error = new Error('Close failed');
       triageService.manualCloseAlert.mockRejectedValue(error);
 
-      await expect(
-        controller.closeAlert('alert-123', mockCloseDto, mockRequest),
-      ).rejects.toThrow('Close failed');
+      await expect(controller.closeAlert('alert-123', mockCloseDto, mockRequest)).rejects.toThrow('Close failed');
 
-      expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-        'alert-123',
-        mockCloseDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.manualCloseAlert).toHaveBeenCalledWith('alert-123', mockCloseDto, 'test-user-id', 'test-tenant-id');
     });
 
     it('should handle different close reasons', async () => {
@@ -333,18 +282,9 @@ describe('TriageController', () => {
       };
       triageService.manualCloseAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.closeAlert(
-        'alert-123',
-        customReasonDto,
-        mockRequest,
-      );
+      const result = await controller.closeAlert('alert-123', customReasonDto, mockRequest);
 
-      expect(triageService.manualCloseAlert).toHaveBeenCalledWith(
-        'alert-123',
-        customReasonDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.manualCloseAlert).toHaveBeenCalledWith('alert-123', customReasonDto, 'test-user-id', 'test-tenant-id');
       expect(result).toEqual(expectedResult);
     });
   });
@@ -381,18 +321,9 @@ describe('TriageController', () => {
 
       triageService.investigateAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.sendForInvestigation(
-        'alert-123',
-        mockInvestigateDto,
-        mockRequest,
-      );
+      const result = await controller.sendForInvestigation('alert-123', mockInvestigateDto, mockRequest);
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith(
-        'alert-123',
-        CaseType.FRAUD,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
       expect(triageService.investigateAlert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
@@ -401,20 +332,9 @@ describe('TriageController', () => {
       const error = new Error('Investigation failed');
       triageService.investigateAlert.mockRejectedValue(error);
 
-      await expect(
-        controller.sendForInvestigation(
-          'alert-123',
-          mockInvestigateDto,
-          mockRequest,
-        ),
-      ).rejects.toThrow('Investigation failed');
+      await expect(controller.sendForInvestigation('alert-123', mockInvestigateDto, mockRequest)).rejects.toThrow('Investigation failed');
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith(
-        'alert-123',
-        CaseType.FRAUD,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
     });
 
     it('should handle different case types', async () => {
@@ -441,18 +361,9 @@ describe('TriageController', () => {
 
       triageService.investigateAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.sendForInvestigation(
-        'alert-123',
-        amlDto,
-        mockRequest,
-      );
+      const result = await controller.sendForInvestigation('alert-123', amlDto, mockRequest);
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith(
-        'alert-123',
-        CaseType.MONEY_LAUNDERING,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.MONEY_LAUNDERING, 'test-user-id', 'test-tenant-id');
       expect(result).toEqual(expectedResult);
     });
   });
@@ -511,17 +422,7 @@ describe('TriageController', () => {
 
       triageService.getAlertsForUser.mockResolvedValue(expectedResult);
 
-      const result = await controller.getUserAlerts(
-        mockRequest,
-        'HIGH',
-        'NEW',
-        'PAYMENT',
-        'test search',
-        2,
-        5,
-        'priority',
-        'asc',
-      );
+      const result = await controller.getUserAlerts(mockRequest, 'HIGH', 'NEW', 'PAYMENT', 'test search', 2, 5, 'priority', 'asc');
 
       expect(triageService.getAlertsForUser).toHaveBeenCalledWith({
         tenantId: 'test-tenant-id',
@@ -541,9 +442,7 @@ describe('TriageController', () => {
       const error = new Error('Failed to fetch alerts');
       triageService.getAlertsForUser.mockRejectedValue(error);
 
-      await expect(controller.getUserAlerts(mockRequest)).rejects.toThrow(
-        'Failed to fetch alerts',
-      );
+      await expect(controller.getUserAlerts(mockRequest)).rejects.toThrow('Failed to fetch alerts');
     });
   });
 
@@ -575,11 +474,7 @@ describe('TriageController', () => {
 
       const result = await controller.getAlertDetails('alert-123', mockRequest);
 
-      expect(triageService.getAlertDetails).toHaveBeenCalledWith(
-        'alert-123',
-        'test-tenant-id',
-        'test-user-id',
-      );
+      expect(triageService.getAlertDetails).toHaveBeenCalledWith('alert-123', 'test-tenant-id', 'test-user-id');
       expect(triageService.getAlertDetails).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
@@ -588,15 +483,9 @@ describe('TriageController', () => {
       const error = new Error('Alert not found');
       triageService.getAlertDetails.mockRejectedValue(error);
 
-      await expect(
-        controller.getAlertDetails('alert-123', mockRequest),
-      ).rejects.toThrow('Alert not found');
+      await expect(controller.getAlertDetails('alert-123', mockRequest)).rejects.toThrow('Alert not found');
 
-      expect(triageService.getAlertDetails).toHaveBeenCalledWith(
-        'alert-123',
-        'test-tenant-id',
-        'test-user-id',
-      );
+      expect(triageService.getAlertDetails).toHaveBeenCalledWith('alert-123', 'test-tenant-id', 'test-user-id');
     });
   });
 
@@ -652,17 +541,9 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith(
-        expectedAlert.alert_id,
-        CaseType.FRAUD,
-        'test-user-id',
-        'test-tenant-id',
-      );
+      expect(triageService.investigateAlert).toHaveBeenCalledWith(expectedAlert.alert_id, CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
       expect(result.case_id).toBe('case-123');
 
       consoleSpy.mockRestore();
@@ -679,10 +560,7 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
@@ -701,10 +579,7 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
@@ -723,10 +598,7 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
@@ -745,10 +617,7 @@ describe('TriageController', () => {
         case_id: 'case-123',
       });
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
       expect(triageService.investigateAlert).toHaveBeenCalled();
       expect(result.case_id).toBe('case-123');
@@ -764,10 +633,7 @@ describe('TriageController', () => {
       const freshAlert = createFreshAlert();
       triageService.handleNewAlert.mockResolvedValue(freshAlert);
 
-      const result = await controller.submitAlert(
-        mockSubmitAlertDto,
-        mockRequest,
-      );
+      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
       expect(triageService.investigateAlert).not.toHaveBeenCalled();
       expect(result.case_id).toBeNull();

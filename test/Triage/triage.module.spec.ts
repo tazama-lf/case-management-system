@@ -1,3 +1,6 @@
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+
+ 
 import { Test, TestingModule } from '@nestjs/testing';
 import { TriageModule } from '../../src/triage/triage.module';
 import { TriageController } from '../../src/triage/triage.controller';
@@ -8,7 +11,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 describe('TriageModule', () => {
   let module: TestingModule;
-
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    verbose: jest.fn(),
+};
   const mockPrismaService = {
     alert: {
       create: jest.fn(),
@@ -31,7 +40,9 @@ describe('TriageModule', () => {
       .useValue(mockPrismaService)
       .overrideProvider(AuditLogService)
       .useValue(mockAuditLogService)
-      .compile();
+  .overrideProvider(LoggerService)
+  .useValue(mockLoggerService)
+  .compile();
   });
 
   afterEach(async () => {
@@ -70,9 +81,7 @@ describe('TriageModule', () => {
 
   it('should export the correct providers', () => {
     const providers = Reflect.getMetadata('providers', TriageModule) || [];
-    expect(providers).toEqual(
-      expect.arrayContaining([TriageService, AuditLogService]),
-    );
+    expect(providers).toEqual(expect.arrayContaining([TriageService, AuditLogService]));
   });
 
   it('should have the correct controllers', () => {

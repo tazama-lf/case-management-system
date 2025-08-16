@@ -1,16 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-  Query,
-  Logger,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -20,12 +9,13 @@ import { CloseAlertDto } from './dto/close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseType } from '@prisma/client';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
-  private readonly logger = new Logger(TriageController.name);
+  private readonly logger: LoggerService;
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
@@ -34,12 +24,7 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
 
-    const alert = await this.triageService.handleNewAlert(
-      dto,
-      userId,
-      tenantId,
-      'REST API',
-    );
+    const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
 
     const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
 
@@ -50,12 +35,7 @@ export class TriageController {
       isNaN(Number(confidenceThreshold))
     ) {
       const caseType = CaseType.FRAUD;
-      const caseCreated = await this.triageService.investigateAlert(
-        alert.alert_id,
-        caseType,
-        userId,
-        tenantId,
-      );
+      const caseCreated = await this.triageService.investigateAlert(alert.alert_id, caseType, userId, tenantId);
       alert.case_id = caseCreated.case_id;
     }
 
@@ -69,11 +49,7 @@ export class TriageController {
 
   @Patch(':alertId')
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async updateAlert(
-    @Param('alertId') alertId: string,
-    @Body() dto: UpdateAlertDto,
-    @Req() req,
-  ) {
+  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
@@ -81,11 +57,7 @@ export class TriageController {
 
   @Patch(':alertId/close')
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async closeAlert(
-    @Param('alertId') alertId: string,
-    @Body() dto: CloseAlertDto,
-    @Req() req,
-  ) {
+  async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
@@ -93,19 +65,10 @@ export class TriageController {
 
   @Patch(':alertId/investigate')
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async sendForInvestigation(
-    @Param('alertId') alertId: string,
-    @Body() dto: InvestigateAlertDto,
-    @Req() req,
-  ) {
+  async sendForInvestigation(@Param('alertId') alertId: string, @Body() dto: InvestigateAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.investigateAlert(
-      alertId,
-      dto.caseType,
-      userId,
-      tenantId,
-    );
+    return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
   }
 
   @Get()
@@ -145,18 +108,9 @@ export class TriageController {
 
   @Post(':alertId/convert-to-case')
   @Roles('CMS-TEST-ROLE', 'manage-account')
-  async convertAlertToCase(
-    @Param('alertId') alertId: string,
-    @Body() convertAlertToCase: ConvertAlertToCase,
-    @Req() req,
-  ) {
+  async convertAlertToCase(@Param('alertId') alertId: string, @Body() convertAlertToCase: ConvertAlertToCase, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
-    return this.triageService.convertToCase(
-      alertId,
-      convertAlertToCase,
-      userId,
-      tenantId,
-    );
+    return this.triageService.convertToCase(alertId, convertAlertToCase, userId, tenantId);
   }
 }

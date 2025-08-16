@@ -1,10 +1,4 @@
-import {
-  IsObject,
-  IsOptional,
-  IsString,
-  IsNumber,
-  IsEnum,
-} from 'class-validator';
+import { IsObject, IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Priority, AlertStatus } from '@prisma/client';
 

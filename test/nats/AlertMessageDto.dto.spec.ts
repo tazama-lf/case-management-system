@@ -194,9 +194,7 @@ describe('AlertMessageDto', () => {
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find(
-      (error) => error.property === 'confidence_per',
-    );
+    const confidenceError = errors.find((error) => error.property === 'confidence_per');
     expect(confidenceError).toBeDefined();
   });
 
@@ -244,9 +242,7 @@ describe('AlertMessageDto', () => {
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const alertDataError = errors.find(
-      (error) => error.property === 'alert_data',
-    );
+    const alertDataError = errors.find((error) => error.property === 'alert_data');
     expect(alertDataError).toBeDefined();
   });
 
@@ -262,9 +258,7 @@ describe('AlertMessageDto', () => {
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const transactionError = errors.find(
-      (error) => error.property === 'transaction',
-    );
+    const transactionError = errors.find((error) => error.property === 'transaction');
     expect(transactionError).toBeDefined();
   });
 
@@ -280,9 +274,7 @@ describe('AlertMessageDto', () => {
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const networkMapError = errors.find(
-      (error) => error.property === 'network_map',
-    );
+    const networkMapError = errors.find((error) => error.property === 'network_map');
     expect(networkMapError).toBeDefined();
   });
 

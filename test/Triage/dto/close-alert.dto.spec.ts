@@ -22,7 +22,7 @@ describe('CloseAlertDto', () => {
 
   it('should validate a DTO with multiline reason', async () => {
     const validData = {
-      reason: `Alert closed due to:\n- False positive\n- Insufficient evidence\n- Duplicate of case #123`,
+      reason: 'Alert closed due to:\n- False positive\n- Insufficient evidence\n- Duplicate of case #123',
     };
 
     const dto = plainToClass(CloseAlertDto, validData);
@@ -34,17 +34,14 @@ describe('CloseAlertDto', () => {
 
   it('should validate a DTO with special characters in reason', async () => {
     const validData = {
-      reason:
-        'Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification',
+      reason: 'Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification',
     };
 
     const dto = plainToClass(CloseAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe(
-      'Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification',
-    );
+    expect(dto.reason).toBe('Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification');
   });
 
   it('should validate a DTO with very long reason', async () => {
@@ -176,8 +173,6 @@ describe('CloseAlertDto', () => {
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe(
-      '🚨 Alert closed due to émergency resolution 中文测试',
-    );
+    expect(dto.reason).toBe('🚨 Alert closed due to émergency resolution 中文测试');
   });
 });
