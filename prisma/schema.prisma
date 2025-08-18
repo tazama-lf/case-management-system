@@ -19,7 +19,7 @@ model Alert {
   alert_id       String   @id @default(uuid()) @db.Uuid
   tenant_id      String   @db.Uuid
   priority       Priority? @default(LOW)
-  alert_type     AlertType? @default(FRAUD)
+  alert_type     AlertType?
   source         String?   @db.VarChar(50)
   txtp           String?   @db.VarChar(50)
   message        String   @db.VarChar(100)

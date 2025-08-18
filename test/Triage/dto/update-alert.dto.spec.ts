@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { UpdateAlertDto } from '../../../src/triage/dto/update-alert.dto';
-import { Priority } from '@prisma/client';
+import { Priority, AlertType } from '@prisma/client';
 
 describe('UpdateAlertDto', () => {
   it('should be defined', () => {
@@ -324,5 +324,43 @@ describe('UpdateAlertDto', () => {
     const priorityError = errors.find((error) => error.property === 'priority');
     expect(priorityError).toBeDefined();
     expect(priorityError?.constraints).toHaveProperty('isEnum');
+  });
+
+  it('should pass when alertType is a valid enum value', async () => {
+    const dto = new UpdateAlertDto();
+    dto.alertType = AlertType.FRAUD;
+
+    const errors = await validate(dto);
+    expect(errors.length).toBe(0);
+  });
+
+  it('should fail when alertType is an invalid enum value', async () => {
+    const dto = new UpdateAlertDto();
+    // @ts-expect-error: assigning invalid enum value
+    dto.alertType = 'INVALID_TYPE';
+
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].constraints).toHaveProperty('isEnum');
+  });
+
+  it('should validate case sensitivity of AlertType enum', async () => {
+    const invalidData = {
+      alertType: 'fraud', // lowercase
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const alertError = errors.find((error) => error.property === 'alertType');
+    expect(alertError).toBeDefined();
+    expect(alertError?.constraints).toHaveProperty('isEnum');
+  });
+
+  it('should pass when alertType is undefined (optional)', async () => {
+    const dto = new UpdateAlertDto(); // leave alertType unset
+    const errors = await validate(dto);
+    expect(errors.length).toBe(0);
   });
 });
