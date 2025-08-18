@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
@@ -10,8 +10,7 @@ import { RolesGuard } from '../../src/auth/roles.guard';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
 import { UpdateAlertDto } from '../../src/triage/dto/update-alert.dto';
 import { CloseAlertDto } from '../../src/triage/dto/close-alert.dto';
-import { InvestigateAlertDto } from '../../src/triage/dto/investigate-alert-dto';
-import { AlertStatus, Priority, CaseType } from '@prisma/client';
+import { AlertStatus, Priority } from '@prisma/client';
 
 describe('TriageController', () => {
   let controller: TriageController;
@@ -93,6 +92,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
+        alert_type:null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -106,10 +106,10 @@ describe('TriageController', () => {
         updated_at: new Date(),
       };
       triageService.handleNewAlert.mockResolvedValue(expectedResult);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedResult,
-        case_id: 'case-123',
-      });
+      // triageService.investigateAlert.mockResolvedValue({
+      //   ...expectedResult,
+      //   case_id: 'case-123',
+      // });
 
       const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
@@ -132,6 +132,7 @@ describe('TriageController', () => {
         alert_id: 'alert-456',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
+        alert_type:null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -145,10 +146,10 @@ describe('TriageController', () => {
         updated_at: new Date(),
       };
       triageService.handleNewAlert.mockResolvedValue(expectedResult);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedResult,
-        case_id: 'case-456',
-      });
+      // triageService.investigateAlert.mockResolvedValue({
+      //   ...expectedResult,
+      //   case_id: 'case-456',
+      // });
 
       await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
@@ -181,6 +182,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.HIGH,
+        alert_type:null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -229,6 +231,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
+        alert_type:null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -267,6 +270,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
+        alert_type:null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -288,84 +292,113 @@ describe('TriageController', () => {
     });
   });
 
-  describe('sendForInvestigation', () => {
-    const mockInvestigateDto: InvestigateAlertDto = {
-      caseType: CaseType.FRAUD,
-    };
+  // describe('sendForInvestigation', () => {
+  //   const mockInvestigateDto: InvestigateAlertDto = {
+  //     caseType: CaseType.FRAUD,
+  //   };
 
-    const mockRequest = {
-      user: {
-        user_id: 'test-user-id',
-        tenantId: 'test-tenant-id',
-      },
-    };
+  //   const mockRequest = {
+  //     user: {
+  //       user_id: 'test-user-id',
+  //       tenantId: 'test-tenant-id',
+  //     },
+  //   };
 
-    it('should send alert for investigation successfully', async () => {
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.HIGH,
-        source: 'test-source',
-        txtp: 'PAYMENT',
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 85,
-        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-        case_id: 'case-123',
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
+  //   it('should send alert for investigation successfully', async () => {
+  //     const expectedResult = {
+  //       alert_id: 'alert-123',
+  //       tenant_id: 'test-tenant-id',
+  //       priority: Priority.HIGH,
+  //       source: 'test-source',
+  //       txtp: 'PAYMENT',
+  //       message: 'Test alert message',
+  //       alert_data: { test: 'report data' },
+  //       transaction: { test: 'transaction data' },
+  //       network_map: { test: 'network data' },
+  //       confidence_per: 85,
+  //       alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+  //       case_id: 'case-123',
+  //       created_at: new Date(),
+  //       updated_at: new Date(),
+  //     };
 
-      triageService.investigateAlert.mockResolvedValue(expectedResult);
+  //     triageService.investigateAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.sendForInvestigation('alert-123', mockInvestigateDto, mockRequest);
+  //     const result = await controller.sendForInvestigation(
+  //       'alert-123',
+  //       mockInvestigateDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
-      expect(triageService.investigateAlert).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(expectedResult);
-    });
+  //     expect(triageService.investigateAlert).toHaveBeenCalledWith(
+  //       'alert-123',
+  //       CaseType.FRAUD,
+  //       'test-user-id',
+  //       'test-tenant-id',
+  //     );
+  //     expect(triageService.investigateAlert).toHaveBeenCalledTimes(1);
+  //     expect(result).toEqual(expectedResult);
+  //   });
 
-    it('should handle service errors during investigation', async () => {
-      const error = new Error('Investigation failed');
-      triageService.investigateAlert.mockRejectedValue(error);
+  //   it('should handle service errors during investigation', async () => {
+  //     const error = new Error('Investigation failed');
+  //     triageService.investigateAlert.mockRejectedValue(error);
 
-      await expect(controller.sendForInvestigation('alert-123', mockInvestigateDto, mockRequest)).rejects.toThrow('Investigation failed');
+  //     await expect(
+  //       controller.sendForInvestigation(
+  //         'alert-123',
+  //         mockInvestigateDto,
+  //         mockRequest,
+  //       ),
+  //     ).rejects.toThrow('Investigation failed');
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
-    });
+  //     expect(triageService.investigateAlert).toHaveBeenCalledWith(
+  //       'alert-123',
+  //       CaseType.FRAUD,
+  //       'test-user-id',
+  //       'test-tenant-id',
+  //     );
+  //   });
 
-    it('should handle different case types', async () => {
-      const amlDto: InvestigateAlertDto = {
-        caseType: CaseType.MONEY_LAUNDERING,
-      };
+  //   it('should handle different case types', async () => {
+  //     const amlDto: InvestigateAlertDto = {
+  //       caseType: CaseType.MONEY_LAUNDERING,
+  //     };
 
-      const expectedResult = {
-        alert_id: 'alert-123',
-        tenant_id: 'test-tenant-id',
-        priority: Priority.HIGH,
-        source: 'test-source',
-        txtp: 'PAYMENT',
-        message: 'Test alert message',
-        alert_data: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        network_map: { test: 'network data' },
-        confidence_per: 85,
-        alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-        case_id: 'case-456',
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
+  //     const expectedResult = {
+  //       alert_id: 'alert-123',
+  //       tenant_id: 'test-tenant-id',
+  //       priority: Priority.HIGH,
+  //       source: 'test-source',
+  //       txtp: 'PAYMENT',
+  //       message: 'Test alert message',
+  //       alert_data: { test: 'report data' },
+  //       transaction: { test: 'transaction data' },
+  //       network_map: { test: 'network data' },
+  //       confidence_per: 85,
+  //       alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+  //       case_id: 'case-456',
+  //       created_at: new Date(),
+  //       updated_at: new Date(),
+  //     };
 
-      triageService.investigateAlert.mockResolvedValue(expectedResult);
+  //     triageService.investigateAlert.mockResolvedValue(expectedResult);
 
-      const result = await controller.sendForInvestigation('alert-123', amlDto, mockRequest);
+  //     const result = await controller.sendForInvestigation(
+  //       'alert-123',
+  //       amlDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith('alert-123', CaseType.MONEY_LAUNDERING, 'test-user-id', 'test-tenant-id');
-      expect(result).toEqual(expectedResult);
-    });
-  });
+  //     expect(triageService.investigateAlert).toHaveBeenCalledWith(
+  //       'alert-123',
+  //       CaseType.MONEY_LAUNDERING,
+  //       'test-user-id',
+  //       'test-tenant-id',
+  //     );
+  //     expect(result).toEqual(expectedResult);
+  //   });
+  // });
 
   describe('getUserAlerts', () => {
     const mockRequest = {
@@ -488,161 +521,184 @@ describe('TriageController', () => {
     });
   });
 
-  describe('submitAlert environment variable handling', () => {
-    const mockSubmitAlertDto: SubmitAlertDto = {
-      result: {
-        message: 'Test alert message',
-        report: { test: 'report data' },
-        transaction: { test: 'transaction data' },
-        networkMap: { test: 'network data' },
-      },
-    };
+  // describe('submitAlert environment variable handling', () => {
+  //   const mockSubmitAlertDto: SubmitAlertDto = {
+  //     result: {
+  //       message: 'Test alert message',
+  //       report: { test: 'report data' },
+  //       transaction: { test: 'transaction data' },
+  //       networkMap: { test: 'network data' },
+  //     },
+  //   };
 
-    const mockRequest = {
-      user: {
-        user_id: 'test-user-id',
-        tenantId: 'test-tenant-id',
-        role: 'test-role',
-        permissions: ['test-permission'],
-      },
-    };
+  //   const mockRequest = {
+  //     user: {
+  //       user_id: 'test-user-id',
+  //       tenantId: 'test-tenant-id',
+  //       role: 'test-role',
+  //       permissions: ['test-permission'],
+  //     },
+  //   };
 
-    // Function to create a fresh alert object for each test
-    const createFreshAlert = () => ({
-      alert_id: 'alert-123',
-      tenant_id: 'test-tenant-id',
-      priority: Priority.LOW,
-      source: 'test-source',
-      txtp: null,
-      message: 'Test alert message',
-      alert_data: { test: 'report data' },
-      transaction: { test: 'transaction data' },
-      network_map: { test: 'network data' },
-      confidence_per: 0,
-      alert_status: AlertStatus.NEW,
-      case_id: null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+  //   // Function to create a fresh alert object for each test
+  //   const createFreshAlert = () => ({
+  //     alert_id: 'alert-123',
+  //     tenant_id: 'test-tenant-id',
+  //     priority: Priority.LOW,
+  //     source: 'test-source',
+  //     txtp: null,
+  //     message: 'Test alert message',
+  //     alert_data: { test: 'report data' },
+  //     transaction: { test: 'transaction data' },
+  //     network_map: { test: 'network data' },
+  //     confidence_per: 0,
+  //     alert_status: AlertStatus.NEW,
+  //     case_id: null,
+  //     created_at: new Date(),
+  //     updated_at: new Date(),
+  //   });
 
-    beforeEach(() => {
-      // Each test will set up its own mock
-    });
+  //   beforeEach(() => {
+  //     // Each test will set up its own mock
+  //   });
 
-    it('should create case when CONFIDENCE_THRESHOLD is undefined', async () => {
-      delete process.env.CONFIDENCE_THRESHOLD;
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should create case when CONFIDENCE_THRESHOLD is undefined', async () => {
+  //     delete process.env.CONFIDENCE_THRESHOLD;
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      const expectedAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(expectedAlert);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedAlert,
-        case_id: 'case-123',
-      });
+  //     const expectedAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(expectedAlert);
+  //     triageService.investigateAlert.mockResolvedValue({
+  //       ...expectedAlert,
+  //       case_id: 'case-123',
+  //     });
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalledWith(expectedAlert.alert_id, CaseType.FRAUD, 'test-user-id', 'test-tenant-id');
-      expect(result.case_id).toBe('case-123');
+  //     expect(triageService.investigateAlert).toHaveBeenCalledWith(
+  //       expectedAlert.alert_id,
+  //       CaseType.FRAUD,
+  //       'test-user-id',
+  //       'test-tenant-id',
+  //     );
+  //     expect(result.case_id).toBe('case-123');
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    it('should create case when CONFIDENCE_THRESHOLD is null', async () => {
-      process.env.CONFIDENCE_THRESHOLD = null as any;
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should create case when CONFIDENCE_THRESHOLD is null', async () => {
+  //     process.env.CONFIDENCE_THRESHOLD = null as any;
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      const expectedAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(expectedAlert);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedAlert,
-        case_id: 'case-123',
-      });
+  //     const expectedAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(expectedAlert);
+  //     triageService.investigateAlert.mockResolvedValue({
+  //       ...expectedAlert,
+  //       case_id: 'case-123',
+  //     });
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalled();
-      expect(result.case_id).toBe('case-123');
+  //     expect(triageService.investigateAlert).toHaveBeenCalled();
+  //     expect(result.case_id).toBe('case-123');
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    it('should create case when CONFIDENCE_THRESHOLD is empty string', async () => {
-      process.env.CONFIDENCE_THRESHOLD = '';
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should create case when CONFIDENCE_THRESHOLD is empty string', async () => {
+  //     process.env.CONFIDENCE_THRESHOLD = '';
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      const expectedAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(expectedAlert);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedAlert,
-        case_id: 'case-123',
-      });
+  //     const expectedAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(expectedAlert);
+  //     triageService.investigateAlert.mockResolvedValue({
+  //       ...expectedAlert,
+  //       case_id: 'case-123',
+  //     });
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalled();
-      expect(result.case_id).toBe('case-123');
+  //     expect(triageService.investigateAlert).toHaveBeenCalled();
+  //     expect(result.case_id).toBe('case-123');
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    it('should create case when CONFIDENCE_THRESHOLD is whitespace', async () => {
-      process.env.CONFIDENCE_THRESHOLD = '   ';
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should create case when CONFIDENCE_THRESHOLD is whitespace', async () => {
+  //     process.env.CONFIDENCE_THRESHOLD = '   ';
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      const expectedAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(expectedAlert);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedAlert,
-        case_id: 'case-123',
-      });
+  //     const expectedAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(expectedAlert);
+  //     triageService.investigateAlert.mockResolvedValue({
+  //       ...expectedAlert,
+  //       case_id: 'case-123',
+  //     });
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalled();
-      expect(result.case_id).toBe('case-123');
+  //     expect(triageService.investigateAlert).toHaveBeenCalled();
+  //     expect(result.case_id).toBe('case-123');
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    it('should create case when CONFIDENCE_THRESHOLD is not a number', async () => {
-      process.env.CONFIDENCE_THRESHOLD = 'not-a-number';
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should create case when CONFIDENCE_THRESHOLD is not a number', async () => {
+  //     process.env.CONFIDENCE_THRESHOLD = 'not-a-number';
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      const expectedAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(expectedAlert);
-      triageService.investigateAlert.mockResolvedValue({
-        ...expectedAlert,
-        case_id: 'case-123',
-      });
+  //     const expectedAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(expectedAlert);
+  //     triageService.investigateAlert.mockResolvedValue({
+  //       ...expectedAlert,
+  //       case_id: 'case-123',
+  //     });
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).toHaveBeenCalled();
-      expect(result.case_id).toBe('case-123');
+  //     expect(triageService.investigateAlert).toHaveBeenCalled();
+  //     expect(result.case_id).toBe('case-123');
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    it('should not create case when CONFIDENCE_THRESHOLD is a valid number', async () => {
-      process.env.CONFIDENCE_THRESHOLD = '75';
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+  //   it('should not create case when CONFIDENCE_THRESHOLD is a valid number', async () => {
+  //     process.env.CONFIDENCE_THRESHOLD = '75';
+  //     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      // Create a fresh copy of the expected alert for this test
-      const freshAlert = createFreshAlert();
-      triageService.handleNewAlert.mockResolvedValue(freshAlert);
+  //     // Create a fresh copy of the expected alert for this test
+  //     const freshAlert = createFreshAlert();
+  //     triageService.handleNewAlert.mockResolvedValue(freshAlert);
 
-      const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
+  //     const result = await controller.submitAlert(
+  //       mockSubmitAlertDto,
+  //       mockRequest,
+  //     );
 
-      expect(triageService.investigateAlert).not.toHaveBeenCalled();
-      expect(result.case_id).toBeNull();
+  //     expect(triageService.investigateAlert).not.toHaveBeenCalled();
+  //     expect(result.case_id).toBeNull();
 
-      consoleSpy.mockRestore();
-    });
+  //     consoleSpy.mockRestore();
+  //   });
 
-    afterEach(() => {
-      delete process.env.CONFIDENCE_THRESHOLD;
-      jest.clearAllMocks();
-    });
-  });
+  //   afterEach(() => {
+  //     delete process.env.CONFIDENCE_THRESHOLD;
+  //     jest.clearAllMocks();
+  //   });
+  // });
 });

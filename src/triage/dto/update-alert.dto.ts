@@ -11,6 +11,6 @@ export class UpdateAlertDto {
   priority?: Priority;
 
   @IsOptional()
-  @IsEnum(Priority)
+  @IsEnum(AlertType)
   alertType?: AlertType;
 }
