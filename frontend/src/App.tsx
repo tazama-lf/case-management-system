@@ -1,35 +1,37 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import Login from './pages/Login';
+import HomeDashboard from './pages/HomeDashboard';
+import './index.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentView, setCurrentView] = useState<'login' | 'dashboard'>('login');
+
+  // Demo toggle function
+  const toggleView = () => {
+    setCurrentView(currentView === 'login' ? 'dashboard' : 'login');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div className="App">
+      {/* Demo Navigation - Remove in production */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={toggleView}
+          className="btn btn-secondary btn-sm"
+          style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          Demo: Switch to {currentView === 'login' ? 'Dashboard' : 'Login'}
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {/* Render current view */}
+      {currentView === 'login' ? <Login /> : <HomeDashboard />}
+    </div>
+  );
 }
 
-export default App
+export default App;
