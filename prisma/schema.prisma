@@ -19,6 +19,7 @@ model Alert {
   alert_id       String   @id @default(uuid()) @db.Uuid
   tenant_id      String   @db.Uuid
   priority       Priority? @default(LOW)
+  alert_type     AlertType? @default(FRAUD)
   source         String?   @db.VarChar(50)
   txtp           String?   @db.VarChar(50)
   message        String   @db.VarChar(100)
@@ -133,6 +134,11 @@ enum AlertStatus {
 enum CaseType {
   FRAUD
   MONEY_LAUNDERING
+}
+enum AlertType {
+  FRAUD
+  AML
+  FRAUD_AND_AML
 }
 enum CaseCreationType {
   MANUAL

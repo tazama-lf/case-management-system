@@ -4,19 +4,15 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
-import { InvestigateAlertDto } from './dto/investigate-alert-dto';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseType } from '@prisma/client';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TriageController {
-  private readonly logger: LoggerService;
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
@@ -26,19 +22,6 @@ export class TriageController {
     const tenantId = req.user.tenantId;
 
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
-
-    const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD;
-
-    if (
-      confidenceThreshold === undefined ||
-      confidenceThreshold === null ||
-      confidenceThreshold.trim() === '' ||
-      isNaN(Number(confidenceThreshold))
-    ) {
-      const caseType = CaseType.FRAUD;
-      const caseCreated = await this.triageService.investigateAlert(alert.alert_id, caseType, userId, tenantId);
-      alert.case_id = caseCreated.case_id;
-    }
 
     return alert;
   }
@@ -62,14 +45,6 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
-  }
-
-  @Patch(':alertId/investigate')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async sendForInvestigation(@Param('alertId') alertId: string, @Body() dto: InvestigateAlertDto, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
-    return this.triageService.investigateAlert(alertId, dto.caseType, userId, tenantId);
   }
 
   @Get()
