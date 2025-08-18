@@ -1,1 +1,1 @@
-// Custom React hooks - useAuth, useAlerts, useCases, etc.
+// Custom hooks for managing component state and side effects
