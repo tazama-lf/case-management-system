@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { EyeIcon, EyeSlashIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import type { LoginCredentials } from '../types/auth.types';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onLoginSuccess: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
     password: '',
@@ -32,8 +36,8 @@ const Login: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // For demo purposes, show success
-      alert('Login successful! (Demo mode)');
+      // Navigate to dashboard on successful login
+      onLoginSuccess();
     } catch {
       setError('Invalid username or password. Please try again.');
     } finally {
@@ -53,7 +57,7 @@ const Login: React.FC = () => {
           <div className="mx-auto h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
             <LockClosedIcon className="h-8 w-8 text-blue-600" />
           </div>
-          <h2 className="text-lg font-semibold text-dark mb-2">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
             Investigation Platform
           </h2>
         </div>
@@ -163,7 +167,7 @@ const Login: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <p className="text-dark-100 text-sm">
+          <p className="text-gray-500 text-sm">
             © 2025. All rights reserved.
           </p>
         </div>

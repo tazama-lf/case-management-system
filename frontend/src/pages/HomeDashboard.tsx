@@ -4,10 +4,11 @@ import {
   FolderIcon,
   UserGroupIcon,
   CogIcon,
-  ArrowRightIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
+import { Card } from '../components';
 
-interface DashboardCard {
+interface DashboardCardData {
   id: string;
   title: string;
   description: string;
@@ -18,8 +19,12 @@ interface DashboardCard {
   href: string;
 }
 
-const HomeDashboard: React.FC = () => {
-  const dashboardCards: DashboardCard[] = [
+interface HomeDashboardProps {
+  onLogout: () => void;
+}
+
+const HomeDashboard: React.FC<HomeDashboardProps> = ({ onLogout }) => {
+  const dashboardCards: DashboardCardData[] = [
     {
       id: 'alerts',
       title: 'Alerts Dashboard',
@@ -67,59 +72,56 @@ const HomeDashboard: React.FC = () => {
     // TODO: Implement actual navigation
   };
 
+  const handleLogout = () => {
+    console.log('Logout clicked');
+    onLogout();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            {/* Left side - Title and subtitle */}
+            <div>
+              <h3 className="text-3xl font-semibold text-gray-900">
+                Investigation Platform
+              </h3>
+              <p className="text-lg text-gray-600 mt-2">
+                Select a dashboard to begin your investigation
+              </p>
+            </div>
+            
+            {/* Right side - Logout button */}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Tazama Case Management System
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Choose your dashboard to manage alerts, cases, and investigations effectively
-          </p>
-        </div>
-
-        {/* Dashboard Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        {/* Simple 4-Card Grid Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {dashboardCards.map((card) => (
-            <button
+            <Card
               key={card.id}
+              title={card.title}
+              description={card.description}
+              icon={card.icon}
+              iconColor={card.iconColor}
+              bgColor={card.bgColor}
+              hoverColor={card.hoverColor}
               onClick={() => handleCardClick(card.href)}
-              className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-8 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-gray-300 ${card.hoverColor} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-            >
-              {/* Icon Section */}
-              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-lg ${card.bgColor} mb-6`}>
-                <card.icon className={`h-8 w-8 ${card.iconColor}`} />
-              </div>
-
-              {/* Content Section */}
-              <div className="text-left">
-                <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-gray-800">
-                  {card.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
-                  {card.description}
-                </p>
-              </div>
-
-              {/* Arrow Icon */}
-              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <ArrowRightIcon className="h-5 w-5 text-gray-400" />
-              </div>
-
-              {/* Hover Effect Background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-gray-50 opacity-0 group-hover:opacity-50 transition-opacity duration-200 pointer-events-none" />
-            </button>
+              className="w-full"
+            />
           ))}
-        </div>
-
-        {/* Footer Info */}
-        <div className="text-center mt-16">
-          <p className="text-sm text-gray-500">
-            Welcome to the Tazama Financial Crime Investigation Platform
-          </p>
         </div>
       </main>
     </div>

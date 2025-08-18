@@ -1,8 +1,8 @@
-// Layout Components
+// Layout components
 export { default as Navbar } from './layout/Navbar';
 
-// Common Components
-// TODO: Export common components when created
+// Common components
+export { default as Card } from './common/Card';
 
 // Form Components  
 // TODO: Export form components when created

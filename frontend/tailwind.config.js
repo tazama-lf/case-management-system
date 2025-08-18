@@ -4,7 +4,6 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       // Brand Colors for Tazama Case Management System
@@ -273,11 +272,6 @@ export default {
           boxShadow: theme('boxShadow.card'),
           padding: theme('spacing.6'),
           border: `1px solid ${theme('colors.gray.200')}`,
-        },
-        '.card-dark': {
-          backgroundColor: theme('colors.gray.800'),
-          borderColor: theme('colors.gray.700'),
-          color: theme('colors.gray.100'),
         },
         
         // Form elements
