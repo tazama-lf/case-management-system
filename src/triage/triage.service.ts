@@ -75,17 +75,16 @@ export class TriageService {
     userId: string,
     tenantId: string,
   ) {
-    const existingAlert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
+    const existingAlert = await this.prisma.alert.findFirst({
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
     });
 
     if (!existingAlert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (existingAlert.tenant_id !== tenantId) {
       throw new NotFoundException(
-        `Alert ${alertId} not accessible for this tenant`,
+        `Alert with ID ${alertId} was not found for tenant ${tenantId}.`,
       );
     }
 
