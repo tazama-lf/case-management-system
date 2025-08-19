@@ -21,9 +21,10 @@ interface DashboardCardData {
 
 interface HomeDashboardProps {
   onLogout: () => void;
+  onNavigateToAlerts: () => void;
 }
 
-const HomeDashboard: React.FC<HomeDashboardProps> = ({ onLogout }) => {
+const HomeDashboard: React.FC<HomeDashboardProps> = ({ onLogout, onNavigateToAlerts }) => {
   const dashboardCards: DashboardCardData[] = [
     {
       id: 'alerts',
@@ -69,7 +70,12 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ onLogout }) => {
 
   const handleCardClick = (href: string) => {
     console.log('Navigate to:', href);
-    // TODO: Implement actual navigation
+    
+    // Route to specific dashboard
+    if (href === '/alerts') {
+      onNavigateToAlerts();
+    }
+    // TODO: Implement other navigation routes
   };
 
   const handleLogout = () => {
