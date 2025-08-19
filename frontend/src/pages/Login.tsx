@@ -36,7 +36,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Navigate to dashboard on successful login
+      // Set auth token in localStorage to mark user as authenticated
+      localStorage.setItem('authToken', 'mock-jwt-token');
+      
+      // Navigate to alerts dashboard on successful login
       onLoginSuccess();
     } catch {
       setError('Invalid username or password. Please try again.');

@@ -1,423 +1,353 @@
-import React, { useState, useEffect } from 'react';
-import { AlertsSearchWithFilters, AlertsTable, Navbar } from '../components';
-import type { 
-  Alert, 
-  AlertsSearchFilters, 
-  AlertsTableColumn,
-  AlertsDashboardProps 
-} from '../types/alertsdashboard.types';
+import React, { useState, useMemo } from 'react';
+import { 
+  MagnifyingGlassIcon, 
+  FunnelIcon, 
+  XMarkIcon,
+  ArrowDownTrayIcon
+} from '@heroicons/react/24/outline';
+import { AlertsTable } from '../components';
+import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction } from '../types/alertsdashboard.types';
 
-const AlertsDashboard: React.FC<AlertsDashboardProps> = ({ onBack }) => {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+// Mock data for demonstration
+const mockAlerts: Alert[] = [
+  {
+    id: 'ALT-001',
+    transactionId: 'TXN-12345',
+    title: 'Suspicious Transaction Pattern',
+    description: 'Multiple high-value transactions detected from same account',
+    type: 'Transaction Monitoring',
+    severity: 'high',
+    priority: 'high',
+    source: 'Transaction Monitoring System',
+    riskScore: 85,
+    confidence: 92,
+    status: 'new',
+    createdAt: '2025-08-19T10:30:00Z',
+    updatedAt: '2025-08-19T10:30:00Z',
+    lastUpdated: '2025-08-19T10:30:00Z',
+    assignedTo: 'user-123',
+    assignee: 'John Doe',
+    amount: 150000,
+    currency: 'USD'
+  },
+  {
+    id: 'ALT-002',
+    transactionId: 'TXN-12346',
+    title: 'AML Risk Alert',
+    description: 'Customer appears on sanctions list',
+    type: 'AML Screening',
+    severity: 'critical',
+    priority: 'critical',
+    source: 'AML Screening System',
+    riskScore: 95,
+    confidence: 98,
+    status: 'investigating',
+    createdAt: '2025-08-19T09:15:00Z',
+    updatedAt: '2025-08-19T11:20:00Z',
+    lastUpdated: '2025-08-19T11:20:00Z',
+    assignedTo: 'user-123',
+    assignee: 'John Doe',
+    amount: 75000,
+    currency: 'EUR'
+  },
+  {
+    id: 'ALT-003',
+    transactionId: 'TXN-12347',
+    title: 'Unusual Payment Velocity',
+    description: 'Rapid sequence of payments to different beneficiaries',
+    type: 'Velocity Check',
+    severity: 'medium',
+    priority: 'medium',
+    source: 'Real-time Monitoring',
+    riskScore: 72,
+    confidence: 85,
+    status: 'new',
+    createdAt: '2025-08-19T08:45:00Z',
+    updatedAt: '2025-08-19T08:45:00Z',
+    lastUpdated: '2025-08-19T08:45:00Z',
+    assignedTo: 'user-123',
+    assignee: 'John Doe',
+    amount: 25000,
+    currency: 'USD'
+  },
+  {
+    id: 'ALT-004',
+    transactionId: 'TXN-12348',
+    title: 'Cross-border Transaction Alert',
+    description: 'High-risk jurisdiction transaction detected',
+    type: 'Geographic Risk',
+    severity: 'high',
+    priority: 'high',
+    source: 'Geographic Screening',
+    riskScore: 88,
+    confidence: 90,
+    status: 'resolved',
+    createdAt: '2025-08-18T16:30:00Z',
+    updatedAt: '2025-08-19T09:00:00Z',
+    lastUpdated: '2025-08-19T09:00:00Z',
+    assignedTo: 'user-123',
+    assignee: 'John Doe',
+    amount: 200000,
+    currency: 'GBP'
+  },
+  {
+    id: 'ALT-005',
+    transactionId: 'TXN-12349',
+    title: 'PEP Risk Alert',
+    description: 'Transaction involving Politically Exposed Person',
+    type: 'PEP Screening',
+    severity: 'medium',
+    priority: 'low',
+    source: 'PEP Database',
+    riskScore: 65,
+    confidence: 78,
+    status: 'false_positive',
+    createdAt: '2025-08-18T14:20:00Z',
+    updatedAt: '2025-08-19T10:15:00Z',
+    lastUpdated: '2025-08-19T10:15:00Z',
+    assignedTo: 'user-123',
+    assignee: 'John Doe',
+    amount: 50000,
+    currency: 'USD'
+  }
+];
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+// Helper function to check if date is within time range
+const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  
+  switch (timeRange) {
+    case 'today': {
+      return date.toDateString() === now.toDateString();
+    }
+    case 'yesterday': {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return date.toDateString() === yesterday.toDateString();
+    }
+    case 'last7days': {
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      return date >= sevenDaysAgo;
+    }
+    case 'last30days': {
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return date >= thirtyDaysAgo;
+    }
+    case 'last90days': {
+      const ninetyDaysAgo = new Date(now);
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      return date >= ninetyDaysAgo;
+    }
+    case 'thisWeek': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'thisMonth': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'custom': {
+      if (customDateRange?.startDate && customDateRange?.endDate) {
+        const startDate = new Date(customDateRange.startDate);
+        const endDate = new Date(customDateRange.endDate);
+        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+        return date >= startDate && date <= endDate;
+      }
+      return true;
+    }
+    default:
+      return true;
+  }
+};
 
-  // Sorting state - default to priority (critical first) then by timestamp
-  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('priority');
+const AlertsDashboard: React.FC = () => {
+  const [searchFilters, setSearchFilters] = useState<AlertsSearchFilters>({
+    query: '',
+    source: '',
+    type: '',
+    priority: '',
+    status: '',
+    timeRange: '',
+  });
+  
+  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Custom date range state
+  const [customDateRange, setCustomDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
 
-  // Handle navigation from navbar
-  const handleNavigation = (href: string) => {
-    if (href === '/' && onBack) {
-      onBack(); // Navigate back to dashboard
-    }
-    // Add other navigation logic as needed
-    console.log('Navigate to:', href);
-  };
-
-  // Handle logout from navbar
-  const handleLogout = () => {
-    console.log('Logout requested');
-    // Handle logout logic here
-  };
-
-  // Mock data - replace with actual API call
-  // Simulating alerts assigned to the logged-in user (John Doe)
-  useEffect(() => {
-    const currentUser = 'John Doe'; // This would come from auth context
-    const mockAlerts: Alert[] = [
-      {
-        id: 'ALT-2024-001',
-        transactionId: 'TXN-789456123',
-        title: 'High-value transaction detected',
-        description: 'Transaction exceeds daily limit threshold',
-        type: 'High Value Transaction',
-        severity: 'high',
-        priority: 'high',
-        source: 'Transaction Monitor',
-        riskScore: 85,
-        confidence: 92,
-        status: 'new',
-        createdAt: '2024-08-19T10:30:00Z',
-        updatedAt: '2024-08-19T10:30:00Z',
-        lastUpdated: '2024-08-19T10:30:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 50000,
-        currency: 'USD'
-      },
-      {
-        id: 'ALT-2024-002',
-        transactionId: 'TXN-456789012',
-        title: 'Suspicious pattern identified',
-        description: 'Multiple transactions from same IP in short timeframe',
-        type: 'Suspicious Pattern',
-        severity: 'medium',
-        priority: 'medium',
-        source: 'Fraud Detection',
-        riskScore: 72,
-        confidence: 87,
-        status: 'investigating',
-        createdAt: '2024-08-19T09:15:00Z',
-        updatedAt: '2024-08-19T11:20:00Z',
-        lastUpdated: '2024-08-19T11:20:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 15000,
-        currency: 'EUR'
-      },
-      {
-        id: 'ALT-2024-003',
-        transactionId: 'TXN-123456789',
-        title: 'AML threshold exceeded',
-        description: 'Customer cumulative transaction amount exceeds AML reporting threshold',
-        type: 'AML Violation',
-        severity: 'critical',
-        priority: 'critical',
-        source: 'AML Engine',
-        riskScore: 95,
-        confidence: 96,
-        status: 'new',
-        createdAt: '2024-08-19T08:45:00Z',
-        updatedAt: '2024-08-19T08:45:00Z',
-        lastUpdated: '2024-08-19T08:45:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 75000,
-        currency: 'USD'
-      },
-      {
-        id: 'ALT-2024-004',
-        transactionId: 'TXN-987654321',
-        title: 'KYC documentation missing',
-        description: 'Customer profile missing required documentation',
-        type: 'KYC Issue',
-        severity: 'low',
-        priority: 'low',
-        source: 'KYC System',
-        riskScore: 45,
-        confidence: 78,
-        status: 'resolved',
-        createdAt: '2024-08-18T16:20:00Z',
-        updatedAt: '2024-08-19T09:30:00Z',
-        lastUpdated: '2024-08-19T09:30:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser
-      },
-      {
-        id: 'ALT-2024-005',
-        transactionId: 'TXN-654321098',
-        title: 'Unusual geographic activity',
-        description: 'Transaction from unusual geographic location',
-        type: 'Geographic Anomaly',
-        severity: 'medium',
-        priority: 'low',
-        source: 'Fraud Detection',
-        riskScore: 68,
-        confidence: 74,
-        status: 'false_positive',
-        createdAt: '2024-08-18T14:10:00Z',
-        updatedAt: '2024-08-19T08:15:00Z',
-        lastUpdated: '2024-08-19T08:15:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 2500,
-        currency: 'GBP'
-      },
-      {
-        id: 'ALT-2024-006',
-        transactionId: 'TXN-321098765',
-        title: 'Velocity limit exceeded',
-        description: 'Too many transactions in a short time period',
-        type: 'Velocity Check',
-        severity: 'high',
-        priority: 'medium',
-        source: 'Transaction Monitor',
-        riskScore: 79,
-        confidence: 88,
-        status: 'investigating',
-        createdAt: '2024-08-19T12:00:00Z',
-        updatedAt: '2024-08-19T13:15:00Z',
-        lastUpdated: '2024-08-19T13:15:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 25000,
-        currency: 'USD'
-      },
-      {
-        id: 'ALT-2024-007',
-        transactionId: 'TXN-098765432',
-        title: 'Blacklist match detected',
-        description: 'Transaction involves entity on sanctions list',
-        type: 'Sanctions Screening',
-        severity: 'critical',
-        priority: 'critical',
-        source: 'Sanctions Monitor',
-        riskScore: 98,
-        confidence: 99,
-        status: 'new',
-        createdAt: '2024-08-19T14:30:00Z',
-        updatedAt: '2024-08-19T14:30:00Z',
-        lastUpdated: '2024-08-19T14:30:00Z',
-        assignedTo: 'john.doe',
-        assignee: currentUser,
-        amount: 100000,
-        currency: 'EUR'
-      }
+  // Download Overturned Alerts Report
+  const downloadOverturnedAlertsReport = () => {
+    // Filter for overturned alerts (false positives)
+    const overturnedAlerts = mockAlerts.filter(alert => alert.status === 'false_positive');
+    
+    // Create CSV content
+    const csvHeaders = [
+      'Alert ID',
+      'Transaction ID',
+      'Source',
+      'Risk Score',
+      'Priority',
+      'Confidence %',
+      'Status',
+      'Last Updated',
+      'Assigned To',
+      'Amount',
+      'Currency'
     ];
+    
+    const csvData = overturnedAlerts.map(alert => [
+      alert.id,
+      alert.transactionId,
+      alert.source,
+      alert.riskScore.toString(),
+      alert.priority,
+      alert.confidence.toString(),
+      alert.status,
+      new Date(alert.lastUpdated).toLocaleDateString(),
+      alert.assignee || 'Unassigned',
+      alert.amount?.toString() || 'N/A',
+      alert.currency || 'N/A'
+    ]);
+    
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `overturned-alerts-report-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
 
-    // Simulate API loading
-    setTimeout(() => {
-      setAlerts(mockAlerts);
-      setFilteredAlerts(mockAlerts);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  // Filter and sort the alerts
+  const filteredAndSortedAlerts = useMemo(() => {
+    const filtered = mockAlerts.filter(alert => {
+      const matchesQuery = !searchFilters.query || 
+        alert.id.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
+        alert.title.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
+        alert.description.toLowerCase().includes(searchFilters.query.toLowerCase());
+      
+      const matchesType = !searchFilters.type || alert.type === searchFilters.type;
+      const matchesPriority = !searchFilters.priority || alert.priority === searchFilters.priority;
+      const matchesStatus = !searchFilters.status || alert.status === searchFilters.status;
+      const matchesSource = !searchFilters.source || alert.source === searchFilters.source;
+      const matchesTimeRange = !searchFilters.timeRange || isDateInRange(alert.createdAt, searchFilters.timeRange, customDateRange);
 
-  // Handle search and filtering
-  const handleSearch = (filters: AlertsSearchFilters) => {
-    let filtered = [...alerts];
+      return matchesQuery && matchesType && matchesPriority && matchesStatus && matchesSource && matchesTimeRange;
+    });
 
-    // Text search (Alert ID, title, description, transaction ID)
-    if (filters.query) {
-      const query = filters.query.toLowerCase();
-      filtered = filtered.filter(alert => 
-        alert.title.toLowerCase().includes(query) ||
-        alert.description.toLowerCase().includes(query) ||
-        alert.id.toLowerCase().includes(query) ||
-        alert.transactionId.toLowerCase().includes(query)
-      );
-    }
-
-    // Source filter
-    if (filters.source && filters.source !== 'All Sources') {
-      filtered = filtered.filter(alert => alert.source === filters.source);
-    }
-
-    // Type filter
-    if (filters.type && filters.type !== 'All Types') {
-      filtered = filtered.filter(alert => alert.type === filters.type);
-    }
-
-    // Priority filter
-    if (filters.priority && filters.priority !== 'All Priorities') {
-      filtered = filtered.filter(alert => alert.priority === filters.priority);
-    }
-
-    // Status filter
-    if (filters.status && filters.status !== 'All Statuses') {
-      filtered = filtered.filter(alert => alert.status === filters.status);
-    }
-
-    // Time range filter
-    if (filters.timeRange !== 'all') {
-      const now = new Date();
-      const alertDate = (alert: Alert) => new Date(alert.createdAt);
-
-      switch (filters.timeRange) {
-        case 'today': {
-          filtered = filtered.filter(alert => {
-            const created = alertDate(alert);
-            return created.toDateString() === now.toDateString();
-          });
-          break;
-        }
-        case 'yesterday': {
-          const yesterday = new Date(now);
-          yesterday.setDate(yesterday.getDate() - 1);
-          filtered = filtered.filter(alert => {
-            const created = alertDate(alert);
-            return created.toDateString() === yesterday.toDateString();
-          });
-          break;
-        }
-        case 'last7days': {
-          const sevenDaysAgo = new Date(now);
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          filtered = filtered.filter(alert => alertDate(alert) >= sevenDaysAgo);
-          break;
-        }
-        case 'last30days': {
-          const thirtyDaysAgo = new Date(now);
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          filtered = filtered.filter(alert => alertDate(alert) >= thirtyDaysAgo);
-          break;
-        }
-        case 'custom': {
-          if (filters.startDate) {
-            const startDate = new Date(filters.startDate);
-            filtered = filtered.filter(alert => alertDate(alert) >= startDate);
-          }
-          if (filters.endDate) {
-            const endDate = new Date(filters.endDate);
-            endDate.setHours(23, 59, 59, 999);
-            filtered = filtered.filter(alert => alertDate(alert) <= endDate);
-          }
-          break;
-        }
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      const aValue = a[sortColumn as keyof Alert];
+      const bValue = b[sortColumn as keyof Alert];
+      
+      let comparison = 0;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
       }
-    }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
-    setFilteredAlerts(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
+    return filtered;
+  }, [searchFilters, sortColumn, sortDirection, customDateRange]);
 
-  const handleClearSearch = () => {
-    setFilteredAlerts(alerts);
-    setCurrentPage(1);
-  };
-
-  // Handle sorting
   const handleSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
     setSortColumn(column);
     setSortDirection(direction);
+  };
 
-    const sorted = [...filteredAlerts].sort((a, b) => {
-      // Special handling for priority and severity columns
-      if (column === 'priority' || column === 'severity') {
-        const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-        const aValue = priorityOrder[a[column as keyof Alert] as keyof typeof priorityOrder] || 0;
-        const bValue = priorityOrder[b[column as keyof Alert] as keyof typeof priorityOrder] || 0;
-        
-        if (direction === 'asc') {
-          return aValue - bValue;
-        } else {
-          return bValue - aValue;
-        }
-      }
+  const handleFilterChange = (key: keyof AlertsSearchFilters, value: string) => {
+    setSearchFilters(prev => ({ ...prev, [key]: value }));
+  };
 
-      // Regular sorting for other columns
-      const aValue = a[column as keyof Alert];
-      const bValue = b[column as keyof Alert];
-
-      if (aValue === undefined || aValue === null) return 1;
-      if (bValue === undefined || bValue === null) return -1;
-
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
+  const clearFilters = () => {
+    setSearchFilters({
+      query: '',
+      source: '',
+      type: '',
+      priority: '',
+      status: '',
+      timeRange: '',
     });
-
-    setFilteredAlerts(sorted);
   };
 
-  // Severity badge component
-  const SeverityBadge: React.FC<{ severity: Alert['severity'] }> = ({ severity }) => {
-    const styles = {
-      low: 'bg-gray-100 text-gray-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      critical: 'bg-red-100 text-red-800'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[severity]}`}>
-        {severity.charAt(0).toUpperCase() + severity.slice(1)}
-      </span>
-    );
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'text-red-600 bg-red-50';
+      case 'high': return 'text-orange-600 bg-orange-50';
+      case 'medium': return 'text-yellow-600 bg-yellow-50';
+      case 'low': return 'text-green-600 bg-green-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
   };
 
-  // Priority badge component
-  const PriorityBadge: React.FC<{ priority: Alert['priority'] }> = ({ priority }) => {
-    const styles = {
-      low: 'bg-blue-100 text-blue-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      critical: 'bg-red-100 text-red-800'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[priority]}`}>
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-      </span>
-    );
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new': return 'text-blue-600 bg-blue-50';
+      case 'investigating': return 'text-yellow-600 bg-yellow-50';
+      case 'resolved': return 'text-green-600 bg-green-50';
+      case 'false_positive': return 'text-gray-600 bg-gray-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
   };
 
-  // Status badge component
-  const StatusBadge: React.FC<{ status: Alert['status'] }> = ({ status }) => {
-    const styles = {
-      new: 'bg-blue-100 text-blue-800',
-      investigating: 'bg-yellow-100 text-yellow-800',
-      resolved: 'bg-green-100 text-green-800',
-      false_positive: 'bg-gray-100 text-gray-800'
-    };
-
-    const labels = {
-      new: 'New',
-      investigating: 'Investigating',
-      resolved: 'Resolved',
-      false_positive: 'False Positive'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
-      </span>
-    );
-  };
-
-  // Format currency
-  const formatCurrency = (amount: number | undefined, currency: string | undefined) => {
-    if (!amount || !currency) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount);
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  // Table columns configuration - Alert ID, Transaction ID, Source, Risk Score, Priority, Confidence %, Status, Last Updated
+  // Define table columns
   const columns: AlertsTableColumn<Alert>[] = [
     {
       key: 'id',
       header: 'Alert ID',
       sortable: true,
-      width: '120px'
+      render: (value) => (
+        <div className="font-medium text-blue-600">{value as string}</div>
+      )
     },
     {
       key: 'transactionId',
       header: 'Transaction ID',
       sortable: true,
-      width: '140px'
+      render: (value) => (
+        <div className="font-mono text-sm text-gray-900">{value as string}</div>
+      )
     },
     {
       key: 'source',
       header: 'Source',
       sortable: true,
-      width: '140px'
+      render: (value) => (
+        <div className="text-sm text-gray-600">{value as string}</div>
+      )
     },
     {
       key: 'riskScore',
       header: 'Risk Score',
       sortable: true,
-      align: 'center',
-      width: '100px',
-      render: (_, row) => (
-        <div className="flex items-center justify-center">
-          <span className={`text-sm font-medium ${
-            row.riskScore >= 80 ? 'text-red-600' : 
-            row.riskScore >= 60 ? 'text-orange-600' : 
-            row.riskScore >= 40 ? 'text-yellow-600' : 'text-green-600'
-          }`}>
-            {row.riskScore}/100
+      render: (value) => (
+        <div className="flex items-center">
+          <span className={`font-medium ${(value as number) >= 80 ? 'text-red-600' : (value as number) >= 60 ? 'text-yellow-600' : 'text-green-600'}`}>
+            {value as number}
           </span>
         </div>
       )
@@ -426,94 +356,303 @@ const AlertsDashboard: React.FC<AlertsDashboardProps> = ({ onBack }) => {
       key: 'priority',
       header: 'Priority',
       sortable: true,
-      align: 'center',
-      width: '100px',
-      render: (_, row) => <PriorityBadge priority={row.priority} />
+      render: (value) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(value as string)}`}>
+          {(value as string).toUpperCase()}
+        </span>
+      )
     },
     {
       key: 'confidence',
       header: 'Confidence %',
       sortable: true,
-      align: 'center',
-      width: '110px',
-      render: (_, row) => (
-        <span className="text-sm font-medium text-gray-900">
-          {row.confidence}%
-        </span>
+      render: (value) => (
+        <div className="text-sm font-medium text-gray-900">{value as number}%</div>
       )
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      align: 'center',
-      width: '120px',
-      render: (_, row) => <StatusBadge status={row.status} />
+      render: (value) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}>
+          {(value as string).replace('_', ' ').toUpperCase()}
+        </span>
+      )
     },
     {
       key: 'lastUpdated',
       header: 'Last Updated',
       sortable: true,
-      width: '140px',
-      render: (_, row) => formatDate(row.lastUpdated)
+      render: (value) => (
+        <div className="text-sm text-gray-600">
+          {new Date(value as string).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </div>
+      )
     }
   ];
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAlerts.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedAlerts = filteredAlerts.slice(startIndex, startIndex + pageSize);
+  // Define table actions
+  const actions: AlertsTableAction<Alert>[] = [
+    {
+      label: 'Investigate',
+      onClick: (alert) => {
+        console.log('Investigate alert:', alert.id);
+        // Navigate to alert details or investigation page
+      },
+      color: 'blue'
+    },
+    {
+      label: 'Convert to Case',
+      onClick: (alert) => {
+        console.log('Convert to case:', alert.id);
+        // Open case conversion modal
+      },
+      color: 'green',
+      disabled: (alert) => alert.status === 'resolved' || alert.status === 'false_positive'
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <Navbar 
-        onNavigate={handleNavigation}
-        onLogout={handleLogout}
-        user={{ name: 'John Doe', email: 'john.doe@tazama.org', initials: 'JD' }}
-      />
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Alerts</h1>
-          <p className="text-gray-600 mt-1">
-            Alerts assigned to you for investigation and resolution. 
-            Total: {filteredAlerts.length} alerts
-          </p>
+    <div className="p-6">
+      <div className="max-w-full mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Alerts Dashboard</h1>
+              <p className="mt-2 text-gray-600">
+                Triage and investigate alerts, convert to cases, and manage alert workflows
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={downloadOverturnedAlertsReport}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                Overturned Alerts Report
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Search and Filters */}
-        <AlertsSearchWithFilters
-          onSearch={handleSearch}
-          onClear={handleClearSearch}
-          placeholder="Search alerts by Alert ID, Transaction ID, title, or description..."
-          sources={['All Sources', 'Transaction Monitor', 'AML Engine', 'KYC System', 'Fraud Detection', 'Sanctions Monitor']}
-          types={['All Types', 'High Value Transaction', 'Suspicious Pattern', 'AML Violation', 'KYC Issue', 'Geographic Anomaly', 'Velocity Check', 'Sanctions Screening']}
-          priorities={['All Priorities', 'low', 'medium', 'high', 'critical']}
-          statuses={['All Statuses', 'new', 'investigating', 'resolved', 'false_positive']}
-        />
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+              {/* Search Input */}
+              <div className="flex-1">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by Alert ID, title, or keywords..."
+                    value={searchFilters.query}
+                    onChange={(e) => handleFilterChange('query', e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Filter Toggle */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <FunnelIcon className="h-5 w-5 mr-2" />
+                Filters
+                {Object.values(searchFilters).some(value => value && value !== '') && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Active
+                  </span>
+                )}
+              </button>
+
+              {/* Clear Filters */}
+              {Object.values(searchFilters).some(value => value && value !== '') && (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <XMarkIcon className="h-5 w-5 mr-2" />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Expanded Filters */}
+          {showFilters && (
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                {/* Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Alert Type
+                  </label>
+                  <select
+                    value={searchFilters.type}
+                    onChange={(e) => handleFilterChange('type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Types</option>
+                    <option value="Transaction Monitoring">Transaction Monitoring</option>
+                    <option value="AML Screening">AML Screening</option>
+                    <option value="Velocity Check">Velocity Check</option>
+                    <option value="Geographic Risk">Geographic Risk</option>
+                    <option value="PEP Screening">PEP Screening</option>
+                  </select>
+                </div>
+
+                {/* Priority Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={searchFilters.priority}
+                    onChange={(e) => handleFilterChange('priority', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={searchFilters.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="new">New</option>
+                    <option value="investigating">Investigating</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="false_positive">False Positive</option>
+                  </select>
+                </div>
+
+                {/* Source Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Source
+                  </label>
+                  <select
+                    value={searchFilters.source}
+                    onChange={(e) => handleFilterChange('source', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Sources</option>
+                    <option value="Transaction Monitoring System">Transaction Monitoring System</option>
+                    <option value="AML Screening System">AML Screening System</option>
+                    <option value="Real-time Monitoring">Real-time Monitoring</option>
+                    <option value="Geographic Screening">Geographic Screening</option>
+                    <option value="PEP Database">PEP Database</option>
+                  </select>
+                </div>
+
+                {/* Time Range Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Time Range
+                  </label>
+                  <select
+                    value={searchFilters.timeRange}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleFilterChange('timeRange', value);
+                      if (value === 'custom') {
+                        setShowCustomDatePicker(true);
+                      } else {
+                        setShowCustomDatePicker(false);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="thisWeek">This Week</option>
+                    <option value="last7days">Last 7 Days</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="last30days">Last 30 Days</option>
+                    <option value="last90days">Last 90 Days</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Custom Date Range Picker */}
+              {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
+                <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Custom Date Range</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customDateRange.startDate}
+                        onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customDateRange.endDate}
+                        onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Results Summary */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {filteredAndSortedAlerts.length} of {mockAlerts.length} alerts
+          </div>
+          <div className="text-sm text-gray-600">
+            Sorted by {sortColumn} ({sortDirection === 'asc' ? 'ascending' : 'descending'})
+          </div>
+        </div>
 
         {/* Alerts Table */}
-        <AlertsTable
-          data={paginatedAlerts}
-          columns={columns}
-          loading={loading}
-          emptyMessage="No alerts found matching your criteria"
-          pagination={{
-            currentPage,
-            totalPages,
-            pageSize,
-            totalItems: filteredAlerts.length,
-            onPageChange: setCurrentPage
-          }}
-          onSort={handleSort}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          rowKey="id"
-        />
-      </main>
+        <div className="bg-white rounded-lg shadow">
+          <AlertsTable
+            data={filteredAndSortedAlerts}
+            columns={columns}
+            actions={actions}
+            onSort={handleSort}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
+          />
+        </div>
+      </div>
     </div>
   );
 };
