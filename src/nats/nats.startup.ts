@@ -1,7 +1,8 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { StartupFactory, IStartupService } from '@tazama-lf/frms-coe-startup-lib';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import NatsRelayPlugin from '@tazama-lf/nats-relay-plugin';
+import { connect, StringCodec, Subscription } from 'nats';
 import { TriageService } from '../triage/triage.service';
 import { SubmitAlertDto } from '../triage/dto/submit-alert.dto';
 import { plainToInstance } from 'class-transformer';
@@ -10,60 +11,79 @@ import { AlertMessageDto } from './dto/AlertMessageDto.dto';
 
 @Injectable()
 export class NatsStartupService implements OnModuleInit {
+  private readonly natsRelay: NatsRelayPlugin;
+
   constructor(
     private readonly triageService: TriageService,
     private readonly logger: LoggerService,
-  ) {}
-  private server: IStartupService;
+  ) {
+    this.natsRelay = new NatsRelayPlugin();
+  }
 
   async onModuleInit() {
-    this.server = new StartupFactory();
-    await this.server.init(this.handleMessage.bind(this), this.logger);
-    this.logger.log('NATS Startup Service initialized');
+    await this.natsRelay.init(this.logger); // No APM needed
+    this.logger.log('NATS Relay Plugin initialized');
+
+    // Official NATS client subscription
+    const natsUrl = process.env.DESTINATION_TRANSPORT_URL;
+    const consumerStream = process.env.CONSUMER_STREAM || 'cms';
+    const sc = StringCodec();
+    const nc = await connect({ servers: natsUrl });
+    this.logger.log(`Subscribed to NATS subject: ${consumerStream}`);
+    const sub: Subscription = nc.subscribe(consumerStream);
+    (async () => {
+      for await (const msg of sub) {
+        try {
+          const data = sc.decode(msg.data);
+          this.logger.log('Received NATS message:', data);
+          await this.handleMessage(JSON.parse(data));
+        } catch (err) {
+          console.log(err.message);
+          this.logger.error('Failed to process NATS message', { error: err });
+        }
+      }
+    })();
   }
 
   async handleMessage(req: Record<string, any>) {
     const alertDto = plainToInstance(AlertMessageDto, req);
     const errors = await validate(alertDto);
 
-    // Extract tenantId and txTp from the transaction object
-    const transaction = alertDto.transaction as any;
+    const result = alertDto.result;
+    const transaction = result.transaction as any;
     const tenantId = transaction?.tenantId;
     const txTp = transaction?.TxTp;
-    const userId = alertDto.userId ?? transaction?.userId ?? 'system';
+    const userId = result.userId ?? transaction?.userId ?? 'system';
 
-    // Validate presence and format
-    if (errors.length > 0 || !tenantId || typeof tenantId !== 'string' || !txTp || typeof txTp !== 'string') {
+    if (errors.length > 0 || !tenantId || !txTp) {
       this.logger.error('Invalid alert message received', {
-        validationErrors: errors.map((e) => ({
-          property: e.property,
-          constraints: e.constraints,
-        })),
-        missingFields: {
-          tenantId: !tenantId,
-          txTp: !txTp,
-        },
+        validationErrors: errors.map((e) => ({ property: e.property, constraints: e.constraints })),
+        missingFields: { tenantId: !tenantId, txTp: !txTp },
         originalPayload: req,
       });
       return;
     }
 
-    this.logger.log(`Extracted txtp: ${txTp} from transaction for tenant: ${tenantId}`);
+    this.logger.log(`Extracted txTp: ${txTp} for tenant: ${tenantId}`);
 
     try {
       const submitAlertDto: SubmitAlertDto = {
         result: {
-          message: alertDto.message,
-          report: alertDto.alert_data,
-          transaction: alertDto.transaction,
-          networkMap: alertDto.network_map,
+          message: result.message,
+          report: result.alert_data,
+          transaction: result.transaction,
+          networkMap: result.network_map,
         },
       };
 
       await this.triageService.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
+
+      // Publish alert to NATS
+      await this.natsRelay.relay(JSON.stringify(submitAlertDto.result));
+      this.logger.log('Alert published to NATS');
     } catch (err) {
-      this.logger.error('Failed to persist alert', {
+      this.logger.error('Failed to persist or publish alert', {
         error: err instanceof Error ? err.message : err,
         tenantId,
         alertData: alertDto,

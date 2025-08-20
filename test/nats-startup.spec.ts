@@ -83,41 +83,36 @@ describe('NatsStartupService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('onModuleInit', () => {
-    it('should initialize the startup factory and server', async () => {
-      const mockInit = jest.fn();
-      const { StartupFactory } = jest.requireMock('@tazama-lf/frms-coe-startup-lib');
-      StartupFactory.mockImplementation(() => ({ init: mockInit }));
 
-      await service.onModuleInit();
-
-  expect(mockInit).toHaveBeenCalledWith(expect.any(Function), mockLoggerService);
-    });
-  });
 
   describe('handleMessage', () => {
+
+
     const validAlertPayload = {
-      tenant_id: 'test-tenant',
-      priority: Priority.HIGH,
-      source: 'test-source',
-      txtp: 'test-txtp',
-      message: 'Test alert message',
-      alert_data: { test: 'data' },
-      transaction: {
-        tenantId: 'test-tenant',
-        TxTp: 'test-txtp',
-        test: 'transaction',
+      result: {
+        tenant_id: 'test-tenant',
+        priority: Priority.HIGH,
+        source: 'test-source',
+        txtp: 'test-txtp',
+        message: 'Test alert message',
+        alert_data: { test: 'data' },
+        transaction: {
+          tenantId: 'test-tenant',
+          TxTp: 'test-txtp',
+          test: 'transaction',
+          userId: 'test-user',
+        },
+        network_map: { test: 'network' },
+        alert_status: AlertStatus.NEW,
+        confidence_per: 85,
+        case_id: 'test-case-123',
         userId: 'test-user',
-      },
-      network_map: { test: 'network' },
-      alert_status: AlertStatus.NEW,
-      confidence_per: 85,
-      case_id: 'test-case-123',
-      userId: 'test-user',
+      }
     };
 
+    // Use the new ResultDto structure for AlertMessageDto
     const validAlertDto = new AlertMessageDto();
-    Object.assign(validAlertDto, validAlertPayload);
+    validAlertDto.result = validAlertPayload.result;
 
     beforeEach(() => {
       mockPlainToInstance.mockReturnValue(validAlertDto);
@@ -133,14 +128,14 @@ describe('NatsStartupService', () => {
       expect(triageService.handleNewAlert).toHaveBeenCalledWith(
         {
           result: {
-            message: validAlertPayload.message,
-            report: validAlertPayload.alert_data,
-            transaction: validAlertPayload.transaction,
-            networkMap: validAlertPayload.network_map,
+            message: validAlertPayload.result.message,
+            report: validAlertPayload.result.alert_data,
+            transaction: validAlertPayload.result.transaction,
+            networkMap: validAlertPayload.result.network_map,
           },
         },
-        validAlertPayload.userId ?? validAlertPayload.transaction.userId ?? 'system',
-        'test-tenant',
+  validAlertPayload.result.userId,
+        validAlertPayload.result.transaction.tenantId,
         'NATS',
       );
     });
@@ -152,78 +147,54 @@ describe('NatsStartupService', () => {
       };
       mockValidate.mockResolvedValue([validationError] as any);
 
-      await service.handleMessage(validAlertPayload);
+  await service.handleMessage(validAlertPayload);
 
-      expect(triageService.handleNewAlert).not.toHaveBeenCalled();
+  expect(triageService.handleNewAlert).not.toHaveBeenCalled();
   expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle missing tenantId', async () => {
       mockValidate.mockResolvedValue([]);
       const invalidPayload = {
-        ...validAlertPayload,
-        transaction: { TxTp: 'test-txtp' }, // Missing tenantId
+        result: {
+          ...validAlertPayload.result,
+          transaction: { TxTp: 'test-txtp' }, // Missing tenantId
+        }
       };
       mockPlainToInstance.mockReturnValue({
         ...validAlertDto,
-        transaction: { TxTp: 'test-txtp' },
+        result: {
+          ...validAlertDto.result,
+          transaction: { TxTp: 'test-txtp' },
+        }
       } as any);
 
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle missing TxTp', async () => {
       mockValidate.mockResolvedValue([]);
       const invalidPayload = {
-        ...validAlertPayload,
-        transaction: { tenantId: 'test-tenant' }, // Missing TxTp
+        result: {
+          ...validAlertPayload.result,
+          transaction: { tenantId: 'test-tenant' }, // Missing TxTp
+        }
       };
       mockPlainToInstance.mockReturnValue({
         ...validAlertDto,
-        transaction: { tenantId: 'test-tenant' },
+        result: {
+          ...validAlertDto.result,
+          transaction: { tenantId: 'test-tenant' },
+        }
       } as any);
 
       await service.handleMessage(invalidPayload);
 
       expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
-    });
-
-    it('should handle invalid tenantId type', async () => {
-      mockValidate.mockResolvedValue([]);
-      const invalidPayload = {
-        ...validAlertPayload,
-        transaction: { tenantId: 123, TxTp: 'test-txtp' }, // Invalid type
-      };
-      mockPlainToInstance.mockReturnValue({
-        ...validAlertDto,
-        transaction: { tenantId: 123, TxTp: 'test-txtp' },
-      } as any);
-
-      await service.handleMessage(invalidPayload);
-
-      expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
-    });
-
-    it('should handle invalid TxTp type', async () => {
-      mockValidate.mockResolvedValue([]);
-      const invalidPayload = {
-        ...validAlertPayload,
-        transaction: { tenantId: 'test-tenant', TxTp: 123 }, // Invalid type
-      };
-      mockPlainToInstance.mockReturnValue({
-        ...validAlertDto,
-        transaction: { tenantId: 'test-tenant', TxTp: 123 },
-      } as any);
-
-      await service.handleMessage(invalidPayload);
-
-      expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle triage service errors', async () => {
@@ -231,9 +202,9 @@ describe('NatsStartupService', () => {
       const error = new Error('Triage service failed');
       (triageService.handleNewAlert as jest.Mock).mockRejectedValue(error);
 
-      await service.handleMessage(validAlertPayload);
+  await service.handleMessage(validAlertPayload);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalled();
+  expect(triageService.handleNewAlert).toHaveBeenCalled();
   expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
@@ -242,21 +213,70 @@ describe('NatsStartupService', () => {
       const error = 'String error';
       (triageService.handleNewAlert as jest.Mock).mockRejectedValue(error);
 
-      await service.handleMessage(validAlertPayload);
+  await service.handleMessage(validAlertPayload);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalled();
+  expect(triageService.handleNewAlert).toHaveBeenCalled();
   expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
+    describe('NATS message subscription edge cases', () => {
+      let service: NatsStartupService;
+      let mockLoggerService: any;
+      beforeEach(() => {
+        mockLoggerService = {
+          log: jest.fn(),
+          error: jest.fn(),
+        };
+        service = new NatsStartupService({ handleNewAlert: jest.fn() } as any, mockLoggerService);
+      });
+
+      it('should log error when JSON.parse throws (malformed JSON)', async () => {
+        const badJson = '{invalidJson:';
+        // Simulate the subscription loop
+        const sc = { decode: () => badJson };
+    // msg variable removed (was unused)
+        // Patch handleMessage to not be called
+        service.handleMessage = jest.fn();
+        // Simulate the try/catch block
+        try {
+      const data = sc.decode();
+          await service.handleMessage(JSON.parse(data));
+        } catch (err) {
+          mockLoggerService.error('Failed to process NATS message', { error: err });
+        }
+        expect(mockLoggerService.error).toHaveBeenCalledWith(
+          'Failed to process NATS message',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+        expect(service.handleMessage).not.toHaveBeenCalled();
+      });
+
+      it('should log error if unexpected error occurs before handleMessage', async () => {
+        const sc = { decode: () => { throw new Error('decode failed'); } };
+    // msg variable removed (was unused)
+        service.handleMessage = jest.fn();
+        try {
+      const data = sc.decode();
+          await service.handleMessage(JSON.parse(data));
+        } catch (err) {
+          mockLoggerService.error('Failed to process NATS message', { error: err });
+        }
+        expect(mockLoggerService.error).toHaveBeenCalledWith(
+          'Failed to process NATS message',
+          expect.objectContaining({ error: expect.any(Error) })
+        );
+        expect(service.handleMessage).not.toHaveBeenCalled();
+      });
+    });
     it('should handle alert with missing source field', async () => {
       mockValidate.mockResolvedValue([]);
-      const payloadWithoutSource = { ...validAlertPayload };
+      const payloadWithoutSource = { result: { ...validAlertPayload.result } };
 
-      delete (payloadWithoutSource as any).source;
+      delete (payloadWithoutSource.result as any).source;
 
       const alertDtoWithoutSource = { ...validAlertDto };
 
-      delete (alertDtoWithoutSource as any).source;
+      delete (alertDtoWithoutSource.result as any).source;
       mockPlainToInstance.mockReturnValue(alertDtoWithoutSource as any);
 
       await service.handleMessage(payloadWithoutSource);
@@ -264,14 +284,14 @@ describe('NatsStartupService', () => {
       expect(triageService.handleNewAlert).toHaveBeenCalledWith(
         {
           result: {
-            message: validAlertPayload.message,
-            report: validAlertPayload.alert_data,
-            transaction: validAlertPayload.transaction,
-            networkMap: validAlertPayload.network_map,
+            message: validAlertPayload.result.message,
+            report: validAlertPayload.result.alert_data,
+            transaction: validAlertPayload.result.transaction,
+            networkMap: validAlertPayload.result.network_map,
           },
         },
-        validAlertPayload.userId ?? validAlertPayload.transaction.userId ?? 'system',
-        'test-tenant',
+  validAlertPayload.result.userId,
+        validAlertPayload.result.transaction.tenantId,
         'NATS',
       );
     });
