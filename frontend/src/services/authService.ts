@@ -9,6 +9,7 @@ class AuthService {
     /**
      * Login user with credentials
      */
+
     async login(credentials: LoginCredentials): Promise<LoginResponse> {
         try {
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
