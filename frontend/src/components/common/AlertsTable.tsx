@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   ChevronUpIcon, 
-  ChevronDownIcon, 
-  EllipsisHorizontalIcon
-} from '@heroicons/react/24/outline';
-import type { AlertsTableColumn, AlertsTableAction, AlertsTableProps } from '../../types/alertsdashboard.types';
+  ChevronDownIcon} from '@heroicons/react/24/outline';
+import type { AlertsTableColumn, AlertsTableProps } from '../../types/alertsdashboard.types';
 
 const AlertsTable = <T extends Record<string, unknown>>({
   data,
@@ -22,7 +20,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
   rowKey = 'id' as keyof T,
   onRowClick
 }: AlertsTableProps<T>) => {
-  const [showActions, setShowActions] = useState<string | null>(null);
 
   const getRowKey = (row: T, index: number): string | number => {
     if (typeof rowKey === 'function') {
@@ -86,16 +83,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
       <ChevronDownIcon className="h-4 w-4" />;
   };
 
-  const getActionColor = (color: string = 'gray') => {
-    const colors = {
-      blue: 'text-blue-600 hover:text-blue-800',
-      green: 'text-green-600 hover:text-green-800',
-      red: 'text-red-600 hover:text-red-800',
-      gray: 'text-gray-600 hover:text-gray-800'
-    };
-    return colors[color as keyof typeof colors] || colors.gray;
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {/* Loading State */}
@@ -145,13 +132,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
                   </div>
                 </th>
               ))}
-
-              {/* Actions Header */}
-              {actions && actions.length > 0 && (
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              )}
             </tr>
           </thead>
 
@@ -201,46 +181,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
                         {renderCellContent(column, row)}
                       </td>
                     ))}
-
-                    {/* Actions Cell */}
-                    {actions && actions.length > 0 && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative inline-block">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowActions(showActions === String(key) ? null : String(key));
-                            }}
-                            className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
-                          >
-                            <EllipsisHorizontalIcon className="h-5 w-5" />
-                          </button>
-
-                          {/* Actions Dropdown */}
-                          {showActions === String(key) && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
-                              <div className="py-1">
-                                {actions.map((action: AlertsTableAction<T>, actionIndex: number) => (
-                                  <button
-                                    key={actionIndex}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      action.onClick(row);
-                                      setShowActions(null);
-                                    }}
-                                    disabled={action.disabled?.(row)}
-                                    className={`flex items-center space-x-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed ${getActionColor(action.color)}`}
-                                  >
-                                    {action.icon && <action.icon className="h-4 w-4" />}
-                                    <span>{action.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    )}
                   </tr>
                 );
               })

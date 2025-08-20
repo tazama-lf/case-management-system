@@ -3,6 +3,7 @@ import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction } from '../types/alertsdashboard.types';
+import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
 
 // Mock data for demonstration
 const mockAlerts: Alert[] = [
@@ -181,6 +182,10 @@ const AlertsDashboard: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
   // Custom date range state
   const [customDateRange, setCustomDateRange] = useState({
     startDate: '',
@@ -275,13 +280,36 @@ const AlertsDashboard: React.FC = () => {
     return filtered;
   }, [alerts, searchFilters, sortColumn, sortDirection, customDateRange]);
 
+  // Paginated alerts for current page
+  const paginatedAlerts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredAndSortedAlerts.slice(startIndex, endIndex);
+  }, [filteredAndSortedAlerts, currentPage, pageSize]);
+
+  // Pagination calculations
+  const totalItems = filteredAndSortedAlerts.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when page size changes
+  };
+
   const handleSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
     setSortColumn(column);
     setSortDirection(direction);
+    setCurrentPage(1); // Reset to first page when sorting changes
   };
 
   const handleFilterChange = (key: keyof AlertsSearchFilters, value: string) => {
     setSearchFilters(prev => ({ ...prev, [key]: value }));
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const handleRowClick = (alert: Alert) => {
@@ -315,10 +343,37 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
-  const handleConvertToCase = (alert: Alert) => {
-    console.log('Converting alert to case:', alert.id);
-    // TODO: Implement case conversion logic
-    handleCloseModal();
+  const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
+    try {
+      console.log('Converting alert to case:', {
+        alertId: alert.id,
+        caseData,
+        convertedBy: 'current-user', // TODO: Get from auth context
+        timestamp: new Date().toISOString(),
+      });
+
+      // Update the alert status to 'converted' and make it read-only
+      setAlerts(prevAlerts =>
+        prevAlerts.map(a =>
+          a.id === alert.id
+            ? { ...a, status: 'converted' as const, updatedAt: new Date().toISOString() }
+            : a
+        )
+      );
+
+      // TODO: In real implementation:
+      // 1. Call API to create new case with caseData
+      // 2. Update alert status to 'converted' in backend
+      // 3. Link the case to the original alert
+      // 4. Send audit log for case conversion
+      // 5. Show success notification
+
+      console.log('Alert successfully converted to case');
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error converting alert to case:', error);
+      // TODO: Show error notification
+    }
   };
 
   const handleCloseAlert = async (alert: Alert, reason?: string, justification?: string) => {
@@ -384,6 +439,7 @@ const AlertsDashboard: React.FC = () => {
       case 'investigating': return 'text-yellow-600 bg-yellow-50';
       case 'resolved': return 'text-green-600 bg-green-50';
       case 'false_positive': return 'text-gray-600 bg-gray-50';
+      case 'converted': return 'text-purple-600 bg-purple-50';
       default: return 'text-gray-600 bg-gray-50';
     }
   };
@@ -528,17 +584,40 @@ const AlertsDashboard: React.FC = () => {
         {/* Results Summary */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing {filteredAndSortedAlerts.length} of {mockAlerts.length} alerts
+            Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} alerts
+            {totalItems !== alerts.length && (
+              <span className="text-gray-500"> (filtered from {alerts.length} total)</span>
+            )}
           </div>
-          <div className="text-sm text-gray-600">
-            Sorted by {sortColumn} ({sortDirection === 'asc' ? 'ascending' : 'descending'})
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label htmlFor="pageSize" className="text-sm text-gray-600">
+                Show:
+              </label>
+              <select
+                id="pageSize"
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-600">per page</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              Sorted by {sortColumn} ({sortDirection === 'asc' ? 'ascending' : 'descending'})
+            </div>
           </div>
         </div>
 
         {/* Alerts Table */}
         <div className="bg-white rounded-lg shadow">
           <AlertsTable
-            data={filteredAndSortedAlerts}
+            data={paginatedAlerts}
             columns={columns}
             actions={actions}
             onSort={handleSort}
@@ -546,6 +625,13 @@ const AlertsDashboard: React.FC = () => {
             sortDirection={sortDirection}
             onRowClick={handleRowClick}
             emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
+            pagination={{
+              currentPage,
+              totalPages,
+              pageSize,
+              totalItems,
+              onPageChange: handlePageChange,
+            }}
           />
         </div>
       </div>

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../../types/alertsdashboard.types';
 import CloseAlertModal from './CloseAlertModal';
+import ConvertToCaseModal, { type ConvertToCaseData } from './ConvertToCaseModal';
 
 interface AlertsDetailModalProps {
   alert: Alert | null;
   isOpen: boolean;
   onClose: () => void;
-  onConvertToCase?: (alert: Alert) => void;
+  onConvertToCase?: (alert: Alert, caseData?: ConvertToCaseData) => void;
   onCloseAlert?: (alert: Alert, reason?: string, justification?: string) => void;
 }
 
@@ -21,6 +22,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [open, setOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
   // Log alert opening
   useEffect(() => {
@@ -50,10 +52,30 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   }, [alert, isOpen]);
 
   const handleConvert = () => {
-    if (alert && onConvertToCase) onConvertToCase(alert);
-    else if (alert) console.log('Convert to case clicked for', alert.id);
-    setOpen(false);
-    onClose();
+    console.log('handleConvert called, alert status:', alert?.status);
+    // Only show convert modal if alert is in an open state
+    if (alert && (alert.status === 'new' || alert.status === 'investigating')) {
+      console.log('Setting showConvertModal to true');
+      setShowConvertModal(true);
+    } else {
+      console.log('Alert cannot be converted in current status:', alert?.status);
+    }
+  };
+
+  const handleConfirmConvert = async (caseData: ConvertToCaseData) => {
+    try {
+      // Call the parent's onConvertToCase with additional parameters
+      if (alert && onConvertToCase) {
+        await onConvertToCase(alert, caseData);
+      }
+      setShowConvertModal(false);
+      setOpen(false);
+      onClose();
+    } catch (error) {
+      console.error('Error converting alert to case:', error);
+      // Keep modal open to show error
+      throw error;
+    }
   };
 
   const handleCloseAlert = () => {
@@ -187,12 +209,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   {open && (
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-40">
                       <div className="py-1">
-                        <button
-                          onClick={handleConvert}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Convert to case
-                        </button>
+                        {/* Only show Convert to Case if status allows converting */}
+                        {(alert?.status === 'new' || alert?.status === 'investigating') && (
+                          <button
+                            onClick={() => {
+                              console.log('Convert to Case button clicked');
+                              handleConvert();
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Convert to Case
+                          </button>
+                        )}
                         {/* Only show Close Alert if status allows closing */}
                         {(alert?.status === 'new' || alert?.status === 'investigating') && (
                           <button
@@ -435,6 +463,16 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           onClose={() => setShowCloseModal(false)}
           alert={alert}
           onConfirmClose={handleConfirmCloseAlert}
+        />
+      )}
+
+      {/* Convert to Case Modal */}
+      {alert && (
+        <ConvertToCaseModal
+          isOpen={showConvertModal}
+          onClose={() => setShowConvertModal(false)}
+          alert={alert}
+          onConfirmConvert={handleConfirmConvert}
         />
       )}
     </div>

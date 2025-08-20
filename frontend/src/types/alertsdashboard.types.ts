@@ -12,7 +12,7 @@ export interface Alert extends Record<string, unknown> {
   source: string;
   riskScore: number; // 0-100
   confidence: number; // 0-100 (confidence percentage)
-  status: 'new' | 'investigating' | 'resolved' | 'false_positive';
+  status: 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted';
   createdAt: string;
   updatedAt: string;
   lastUpdated: string; // Same as updatedAt but for display
