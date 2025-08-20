@@ -1,8 +1,8 @@
-import { IsObject, IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsObject, IsOptional, IsString, IsNumber, IsEnum, ValidateNested, IsDefined } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Priority, AlertStatus } from '@prisma/client';
 
-export class AlertMessageDto {
+export class ResultDto {
   @IsString()
   tenant_id: string;
 
@@ -45,4 +45,11 @@ export class AlertMessageDto {
   @IsOptional()
   @IsString()
   userId?: string;
+}
+
+export class AlertMessageDto {
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => ResultDto)
+  result: ResultDto;
 }

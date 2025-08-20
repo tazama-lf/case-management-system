@@ -6,12 +6,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from '../audit/auditLog.module';
-
-import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { LoggerModule } from '../logger/logger.module';
 
 @Module({
-  imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule],
-  providers: [JwtStrategy, AuthService, LoggerService],
+  imports: [PassportModule, PrismaModule, HttpModule, AuditLogModule, LoggerModule],
+  providers: [JwtStrategy, AuthService],
   exports: [PassportModule, JwtStrategy, AuthService],
   controllers: [AuthController],
 })
