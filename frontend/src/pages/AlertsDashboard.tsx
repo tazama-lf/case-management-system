@@ -162,6 +162,9 @@ const isDateInRange = (dateString: string, timeRange: string, customDateRange?: 
 };
 
 const AlertsDashboard: React.FC = () => {
+  // Alerts state - initialize with mock data
+  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  
   const [searchFilters, setSearchFilters] = useState<AlertsSearchFilters>({
     query: '',
     source: '',
@@ -187,7 +190,7 @@ const AlertsDashboard: React.FC = () => {
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {
     // Filter for overturned alerts (false positives)
-    const overturnedAlerts = mockAlerts.filter(alert => alert.status === 'false_positive');
+    const overturnedAlerts = alerts.filter(alert => alert.status === 'false_positive');
     
     // Create CSV content
     const csvHeaders = [
@@ -237,7 +240,7 @@ const AlertsDashboard: React.FC = () => {
 
   // Filter and sort the alerts
   const filteredAndSortedAlerts = useMemo(() => {
-    const filtered = mockAlerts.filter(alert => {
+    const filtered = alerts.filter(alert => {
       const matchesQuery = !searchFilters.query || 
         alert.id.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
         alert.title.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
@@ -270,7 +273,7 @@ const AlertsDashboard: React.FC = () => {
     });
 
     return filtered;
-  }, [searchFilters, sortColumn, sortDirection, customDateRange]);
+  }, [alerts, searchFilters, sortColumn, sortDirection, customDateRange]);
 
   const handleSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
     setSortColumn(column);
@@ -318,10 +321,40 @@ const AlertsDashboard: React.FC = () => {
     handleCloseModal();
   };
 
-  const handleCloseAlert = (alert: Alert) => {
-    console.log('Closing alert:', alert.id);
-    // TODO: Implement alert closing logic
-    handleCloseModal();
+  const handleCloseAlert = async (alert: Alert, reason?: string, justification?: string) => {
+    try {
+      console.log('Closing alert:', {
+        alertId: alert.id,
+        reason,
+        justification,
+        closedBy: 'current-user', // TODO: Get from auth context
+        closedAt: new Date().toISOString()
+      });
+
+      // Update alert status in local state
+      setAlerts(prevAlerts => 
+        prevAlerts.map(a => 
+          a.id === alert.id 
+            ? { ...a, status: 'false_positive' as const, updatedAt: new Date().toISOString() }
+            : a
+        )
+      );
+
+      // TODO: Call API to close alert with reason and justification
+      // await triageService.closeAlert(alert.id, { reason, justification });
+
+      // TODO: Create audit log entry
+      // await auditService.log('ALERT_CLOSED', { alertId: alert.id, reason, justification });
+
+      // Show success notification
+      console.log('✅ Alert closed successfully');
+      
+      handleCloseModal();
+    } catch (error) {
+      console.error('❌ Error closing alert:', error);
+      // TODO: Show error notification to user
+      throw error; // Re-throw to keep modal open
+    }
   };
 
   const clearFilters = () => {

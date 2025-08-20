@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../../types/alertsdashboard.types';
+import CloseAlertModal from './CloseAlertModal';
 
 interface AlertsDetailModalProps {
   alert: Alert | null;
   isOpen: boolean;
   onClose: () => void;
   onConvertToCase?: (alert: Alert) => void;
-  onCloseAlert?: (alert: Alert) => void;
+  onCloseAlert?: (alert: Alert, reason?: string, justification?: string) => void;
 }
 
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
@@ -19,6 +20,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   // Log alert opening
   useEffect(() => {
@@ -55,10 +57,31 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   };
 
   const handleCloseAlert = () => {
-    if (alert && onCloseAlert) onCloseAlert(alert);
-    else if (alert) console.log('Close alert clicked for', alert.id);
-    setOpen(false);
-    onClose();
+    console.log('handleCloseAlert called, alert status:', alert?.status);
+    // Only show close modal if alert is in an open state
+    if (alert && (alert.status === 'new' || alert.status === 'investigating')) {
+      console.log('Setting showCloseModal to true');
+      setShowCloseModal(true);
+    } else {
+      console.log('Alert cannot be closed in current status:', alert?.status);
+    }
+  };
+
+  const handleConfirmCloseAlert = async (_alertId: string, reason: string, justification: string) => {
+    try {
+      // Call the parent's onCloseAlert with additional parameters
+      if (alert && onCloseAlert) {
+        // Pass the additional closure information
+        await onCloseAlert(alert, reason, justification);
+      }
+      setShowCloseModal(false);
+      setOpen(false);
+      onClose();
+    } catch (error) {
+      console.error('Error closing alert:', error);
+      // Keep modal open to show error
+      throw error;
+    }
   };
 
   // Don't render if not open or no alert
@@ -81,13 +104,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         return 'text-gray-600 bg-gray-50';
     }
   };
-
-  // Mock entities data - in real implementation, fetch from API
-  const involvedEntities = [
-    { type: 'Account', id: 'ACC-78901', name: 'Primary Transaction Account' },
-    { type: 'Customer', id: 'CUST-56789', name: 'John Smith' },
-    { type: 'Merchant', id: 'MERCH-34567', name: 'Global Transfers Ltd' },
-  ];
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -145,7 +161,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 {/* Actions dropdown */}
                 <div className="relative ml-4">
                   <button
-                    onClick={() => setOpen(!open)}
+                    onClick={() => {
+                      console.log('Actions button clicked, current open state:', open);
+                      setOpen(!open);
+                    }}
                     aria-haspopup="menu"
                     aria-expanded={open}
                     className="inline-flex items-center px-4 py-2 border border-gray-200 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -174,12 +193,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         >
                           Convert to case
                         </button>
-                        <button
-                          onClick={handleCloseAlert}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Close Alert
-                        </button>
+                        {/* Only show Close Alert if status allows closing */}
+                        {(alert?.status === 'new' || alert?.status === 'investigating') && (
+                          <button
+                            onClick={() => {
+                              console.log('Close Alert button clicked');
+                              handleCloseAlert();
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Close Alert
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -402,6 +427,16 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Close Alert Modal */}
+      {alert && (
+        <CloseAlertModal
+          isOpen={showCloseModal}
+          onClose={() => setShowCloseModal(false)}
+          alert={alert}
+          onConfirmClose={handleConfirmCloseAlert}
+        />
+      )}
     </div>
   );
 };
