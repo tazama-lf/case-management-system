@@ -3,12 +3,12 @@ import { TriageService } from './triage.service';
 import { TriageController } from './triage.controller';
 import { AuditLogService } from '../audit/auditLog.service';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { LoggerModule } from '../logger/logger.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, LoggerModule],
   controllers: [TriageController],
-  providers: [TriageService, AuditLogService, LoggerService],
+  providers: [TriageService, AuditLogService],
   exports: [TriageService],
 })
 export class TriageModule {}
