@@ -1,5 +1,14 @@
 import React from 'react';
 
+// Transaction message interface
+export interface TransactionMessage {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
+  status: 'sent' | 'received' | 'processing' | 'failed';
+}
+
 // Alert data interface
 export interface Alert extends Record<string, unknown> {
   id: string;

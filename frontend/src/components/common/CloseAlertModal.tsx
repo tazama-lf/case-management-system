@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { Alert } from '../../types/alertsdashboard.types';
+import type { Alert, TransactionMessage } from '../../types/alertsdashboard.types';
+import TransactionMessagesModal from './TransactionMessagesModal';
+import MessagePayloadModal from './MessagePayloadModal';
 
 interface CloseAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
   alert: Alert;
-  onConfirmClose: (alertId: string, reason: string, justification: string) => void;
+  onConfirmClose: (alertId: string, justification: string) => void;
 }
 
 const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
@@ -15,23 +17,26 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
   alert,
   onConfirmClose,
 }) => {
-  const [reason, setReason] = useState('');
   const [justification, setJustification] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Transaction modals state
+  const [showTransactionMessages, setShowTransactionMessages] = useState(false);
+  const [showMessagePayload, setShowMessagePayload] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!reason || !justification.trim()) {
+    if (!justification.trim()) {
       return; // Form validation handled by required attributes
     }
 
     setIsSubmitting(true);
     
     try {
-      await onConfirmClose(alert.id, reason, justification.trim());
+      await onConfirmClose(alert.id, justification.trim());
       // Reset form
-      setReason('');
       setJustification('');
       onClose();
     } catch (error) {
@@ -43,9 +48,23 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
   };
 
   const handleCancel = () => {
-    setReason('');
     setJustification('');
     onClose();
+  };
+
+  const handleMessageClick = (message: TransactionMessage) => {
+    setSelectedMessage(message);
+    setShowTransactionMessages(false);
+    setShowMessagePayload(true);
+  };
+
+  const handleCloseTransactionMessages = () => {
+    setShowTransactionMessages(false);
+  };
+
+  const handleCloseMessagePayload = () => {
+    setShowMessagePayload(false);
+    setSelectedMessage(null);
   };
 
   if (!isOpen) {
@@ -88,6 +107,15 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
               </h4>
               <div className="space-y-1 text-sm text-gray-600">
                 <p><span className="font-medium">ID:</span> {alert.id}</p>
+                <p>
+                  <span className="font-medium">Transaction ID:</span>{' '}
+                  <button
+                    onClick={() => setShowTransactionMessages(true)}
+                    className="text-blue-600 hover:text-blue-800 underline font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  >
+                    {alert.transactionId}
+                  </button>
+                </p>
                 <p><span className="font-medium">Type:</span> {alert.type}</p>
                 <p><span className="font-medium">Severity:</span> {alert.severity}</p>
                 <p><span className="font-medium">Current Status:</span> {alert.status}</p>
@@ -96,7 +124,6 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-
               {/* Justification Text Area */}
               <div>
                 <label htmlFor="justification" className="block text-sm font-medium text-gray-700 mb-2">
@@ -142,7 +169,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={!reason || !justification.trim() || justification.trim().length < 10 || isSubmitting}
+              disabled={!justification.trim() || justification.trim().length < 10 || isSubmitting}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Closing...' : 'Close Alert'}
@@ -158,6 +185,21 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Transaction Messages Modal */}
+      <TransactionMessagesModal
+        isOpen={showTransactionMessages}
+        onClose={handleCloseTransactionMessages}
+        transactionId={alert.transactionId}
+        onMessageClick={handleMessageClick}
+      />
+
+      {/* Message Payload Modal */}
+      <MessagePayloadModal
+        isOpen={showMessagePayload}
+        onClose={handleCloseMessagePayload}
+        message={selectedMessage}
+      />
     </div>
   );
 };

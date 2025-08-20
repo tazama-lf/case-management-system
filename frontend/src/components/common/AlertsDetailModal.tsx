@@ -9,7 +9,7 @@ interface AlertsDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConvertToCase?: (alert: Alert, caseData?: ConvertToCaseData) => void;
-  onCloseAlert?: (alert: Alert, reason?: string, justification?: string) => void;
+  onCloseAlert?: (alert: Alert, justification?: string) => void;
 }
 
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
@@ -89,12 +89,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     }
   };
 
-  const handleConfirmCloseAlert = async (_alertId: string, reason: string, justification: string) => {
+  const handleConfirmCloseAlert = async (_alertId: string, justification: string) => {
     try {
       // Call the parent's onCloseAlert with additional parameters
       if (alert && onCloseAlert) {
-        // Pass the additional closure information
-        await onCloseAlert(alert, reason, justification);
+        // Pass the justification information
+        await onCloseAlert(alert, justification);
       }
       setShowCloseModal(false);
       setOpen(false);

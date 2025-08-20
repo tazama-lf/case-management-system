@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
-import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction } from '../types/alertsdashboard.types';
+import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
+import MessagePayloadModal from '../components/common/MessagePayloadModal';
+import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction, TransactionMessage } from '../types/alertsdashboard.types';
 import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
 
 // Mock data for demonstration
@@ -182,6 +184,12 @@ const AlertsDashboard: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
   
+  // Transaction modals state
+  const [showTransactionMessages, setShowTransactionMessages] = useState(false);
+  const [showMessagePayload, setShowMessagePayload] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -343,6 +351,28 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
+  // Transaction modal handlers
+  const handleTransactionIdClick = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setShowTransactionMessages(true);
+  };
+
+  const handleTransactionMessageClick = (message: TransactionMessage) => {
+    setSelectedMessage(message);
+    setShowTransactionMessages(false);
+    setShowMessagePayload(true);
+  };
+
+  const handleCloseTransactionMessages = () => {
+    setShowTransactionMessages(false);
+    setSelectedTransactionId('');
+  };
+
+  const handleCloseMessagePayload = () => {
+    setShowMessagePayload(false);
+    setSelectedMessage(null);
+  };
+
   const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
     try {
       console.log('Converting alert to case:', {
@@ -376,11 +406,10 @@ const AlertsDashboard: React.FC = () => {
     }
   };
 
-  const handleCloseAlert = async (alert: Alert, reason?: string, justification?: string) => {
+  const handleCloseAlert = async (alert: Alert, justification?: string) => {
     try {
       console.log('Closing alert:', {
         alertId: alert.id,
-        reason,
         justification,
         closedBy: 'current-user', // TODO: Get from auth context
         closedAt: new Date().toISOString()
@@ -395,8 +424,8 @@ const AlertsDashboard: React.FC = () => {
         )
       );
 
-      // TODO: Call API to close alert with reason and justification
-      // await triageService.closeAlert(alert.id, { reason, justification });
+      // TODO: Call API to close alert with justification
+      // await triageService.closeAlert(alert.id, { justification });
 
       // TODO: Create audit log entry
       // await auditService.log('ALERT_CLOSED', { alertId: alert.id, reason, justification });
@@ -451,7 +480,7 @@ const AlertsDashboard: React.FC = () => {
       header: 'Alert ID',
       sortable: true,
       render: (value) => (
-        <div className="font-medium text-blue-600">{value as string}</div>
+        <div className="font-medium text-gray-900">{value as string}</div>
       )
     },
     {
@@ -459,7 +488,15 @@ const AlertsDashboard: React.FC = () => {
       header: 'Transaction ID',
       sortable: true,
       render: (value) => (
-        <div className="font-mono text-sm text-gray-900">{value as string}</div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTransactionIdClick(value as string);
+          }}
+          className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+        >
+          {value as string}
+        </button>
       )
     },
     {
@@ -643,6 +680,21 @@ const AlertsDashboard: React.FC = () => {
         onClose={handleCloseModal}
         onConvertToCase={handleConvertToCase}
         onCloseAlert={handleCloseAlert}
+      />
+
+      {/* Transaction Messages Modal */}
+      <TransactionMessagesModal
+        isOpen={showTransactionMessages}
+        onClose={handleCloseTransactionMessages}
+        transactionId={selectedTransactionId}
+        onMessageClick={handleTransactionMessageClick}
+      />
+
+      {/* Message Payload Modal */}
+      <MessagePayloadModal
+        isOpen={showMessagePayload}
+        onClose={handleCloseMessagePayload}
+        message={selectedMessage}
       />
     </div>
   );
