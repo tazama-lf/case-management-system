@@ -19,6 +19,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // Debug: Log environment variables and API URL
+  useEffect(() => {
+    console.log('Environment variables:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+      // Check all available env vars
+      allEnvVars: import.meta.env
+    });
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -39,6 +49,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Debug: Log the credentials and API URL being used
+    console.log('Login attempt:', {
+      credentials: { ...credentials, password: '***' },
+      apiUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+      fullUrl: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/auth/login`
+    });
+
     try {
       await login(credentials);
 
@@ -50,8 +67,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         navigate('/alerts');
       }
     } catch (error) {
-      // Error is handled by the context
-      console.error('Login failed:', error);
+      // Enhanced error logging
+      console.error('Login failed with detailed error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   };
 
@@ -72,6 +93,19 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </h2>
             <p className="text-sm text-gray-600">Investigation Platform</p>
           </div>
+
+          {/* Debug Info */}
+          {process.env.NODE_ENV === 'development' && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-blue-800 text-xs font-medium mb-1">Debug Info</p>
+                <p className="text-blue-700 text-xs">
+                  API URL: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}
+                </p>
+                <p className="text-blue-700 text-xs">
+                  Full Login URL: {`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/auth/login`}
+                </p>
+              </div>
+          )}
 
           {/* Login Form */}
           <div className="card">

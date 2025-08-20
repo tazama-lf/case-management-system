@@ -10,7 +10,7 @@ import AdminDashboard from '../pages/AdminDashboard';
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Login onLoginSuccess={() => window.location.href = '/alerts'} />,
+    element: <Login />,
   },
   {
     path: '/',
@@ -19,9 +19,9 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: (
-      <ProtectedRoute>
-        <LayoutWithProvider />
-      </ProtectedRoute>
+        <ProtectedRoute>
+          <LayoutWithProvider />
+        </ProtectedRoute>
     ),
     children: [
       {
@@ -34,11 +34,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'supervisor',
-        element: <SupervisorDashboard />,
+        element: (
+            <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+              <SupervisorDashboard />
+            </ProtectedRoute>
+        ),
       },
       {
         path: 'admin',
-        element: <AdminDashboard />,
+        element: (
+            <ProtectedRoute requiredRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+        ),
       },
     ],
   },
