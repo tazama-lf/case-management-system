@@ -1,0 +1,247 @@
+{
+	"info": {
+		"_postman_id": "e8c9f253-64c7-4b68-972f-464314fffd1e",
+		"name": "Tazama",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25504372"
+	},
+	"item": [
+		{
+			"name": "updateAlert",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"priority\": \"MEDIUM\",\r\n  \"confidence_per\": 87\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/alerts/039d0546-1f09-4485-b5fe-cfd2d26b8b12",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						"alerts",
+						"039d0546-1f09-4485-b5fe-cfd2d26b8b12"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "newAlert",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"result\": {\r\n      \"source\": \"NATS\",\r\n      \"message\": \"Multiple transactions to same recipient\",\r\n      \"report\": {\r\n        \"evaluationID\": \"x987y654z321\",\r\n        \"status\": \"PEND\"\r\n      },\r\n      \"transaction\": {\r\n        \"TxTp\": \"pacs.002.001.12\",\r\n        \"FIToFIPmtSts\": {}\r\n      },\r\n      \"networkMap\": {\r\n        \"active\": false,\r\n        \"cfg\": \"1.0.1\",\r\n        \"messages\": [\"Initial check passed\"]\r\n      }\r\n    }\r\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/alerts",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						"alerts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "closeAlert",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"confidence_per\": 88\r\n}\r\n"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/alerts/fe44f892-631b-4fbd-a58d-9f02532d2bb9/autoclose",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						"alerts",
+						"fe44f892-631b-4fbd-a58d-9f02532d2bb9",
+						"autoclose"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "investigate alert",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/073ff68c-b981-40ab-ba6e-62c0648bd655/investigate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						"073ff68c-b981-40ab-ba6e-62c0648bd655",
+						"investigate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getUserAlerts",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage?page=1&limit=2",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage"
+					],
+					"query": [
+						{
+							"key": "priority",
+							"value": "HIGH",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "NEW",
+							"disabled": true
+						},
+						{
+							"key": "type",
+							"value": "FRAUD",
+							"disabled": true
+						},
+						{
+							"key": "search",
+							"value": "alert123",
+							"disabled": true
+						},
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "2"
+						},
+						{
+							"key": "sortBy",
+							"value": "created_at",
+							"disabled": true
+						},
+						{
+							"key": "sortOrder",
+							"value": "desc",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getAlertDetails",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "convertToCase",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"priority\": \"HIGH\",\r\n  \"caseType\": \"FRAUD\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/triage/alerts/21511c51-d382-484f-95f2-3c9124b4eba5/convert-to-case",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"triage",
+						"alerts",
+						"21511c51-d382-484f-95f2-3c9124b4eba5",
+						"convert-to-case"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
