@@ -19,7 +19,8 @@ const AlertsTable = <T extends Record<string, unknown>>({
   selectable = false,
   selectedRows = new Set(),
   onSelectionChange,
-  rowKey = 'id' as keyof T
+  rowKey = 'id' as keyof T,
+  onRowClick
 }: AlertsTableProps<T>) => {
   const [showActions, setShowActions] = useState<string | null>(null);
 
@@ -173,11 +174,12 @@ const AlertsTable = <T extends Record<string, unknown>>({
                 return (
                   <tr 
                     key={String(key)}
-                    className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+                    className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${onRowClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onRowClick && onRowClick(row)}
                   >
                     {/* Selection Cell */}
                     {selectable && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -202,10 +204,13 @@ const AlertsTable = <T extends Record<string, unknown>>({
 
                     {/* Actions Cell */}
                     {actions && actions.length > 0 && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                         <div className="relative inline-block">
                           <button
-                            onClick={() => setShowActions(showActions === String(key) ? null : String(key))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowActions(showActions === String(key) ? null : String(key));
+                            }}
                             className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
                           >
                             <EllipsisHorizontalIcon className="h-5 w-5" />
@@ -218,7 +223,8 @@ const AlertsTable = <T extends Record<string, unknown>>({
                                 {actions.map((action: AlertsTableAction<T>, actionIndex: number) => (
                                   <button
                                     key={actionIndex}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       action.onClick(row);
                                       setShowActions(null);
                                     }}

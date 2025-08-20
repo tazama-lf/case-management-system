@@ -54,16 +54,6 @@ export interface AlertsTableAction<T> {
 }
 
 // Props interfaces for components
-export interface AlertsSearchWithFiltersProps {
-  onSearch: (filters: AlertsSearchFilters) => void;
-  onClear: () => void;
-  placeholder?: string;
-  sources?: string[];
-  types?: string[];
-  priorities?: string[];
-  statuses?: string[];
-}
-
 export interface AlertsTableProps<T> {
   data: T[];
   columns: AlertsTableColumn<T>[];
@@ -84,6 +74,7 @@ export interface AlertsTableProps<T> {
   selectedRows?: Set<string | number>;
   onSelectionChange?: (selectedRows: Set<string | number>) => void;
   rowKey?: keyof T | ((row: T) => string | number);
+  onRowClick?: (row: T) => void;
 }
 
 export interface AlertsDashboardProps {
