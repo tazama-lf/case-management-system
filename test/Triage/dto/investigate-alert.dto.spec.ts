@@ -21,16 +21,16 @@ describe('InvestigateAlertDto', () => {
     expect(dto.caseType).toBe(CaseType.FRAUD);
   });
 
-  it('should validate a valid DTO with MONEY_LAUNDERING case type', async () => {
+  it('should validate a valid DTO with AML case type', async () => {
     const validData = {
-      caseType: CaseType.MONEY_LAUNDERING,
+      caseType: CaseType.AML,
     };
 
     const dto = plainToClass(InvestigateAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
-    expect(dto.caseType).toBe(CaseType.MONEY_LAUNDERING);
+    expect(dto.caseType).toBe(CaseType.AML);
   });
 
   it('should validate all valid CaseType enum values', async () => {
@@ -145,7 +145,7 @@ describe('InvestigateAlertDto', () => {
 
   it('should fail validation when caseType is an array', async () => {
     const invalidData = {
-      caseType: ['FRAUD', 'MONEY_LAUNDERING'],
+      caseType: ['FRAUD', 'AML'],
     };
 
     const dto = plainToClass(InvestigateAlertDto, invalidData);

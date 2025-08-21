@@ -43,6 +43,22 @@ describe('AuthController', () => {
     auditLogService = module.get(AuditLogService);
   });
 
+  it('should include expiresIn when provided by AuthService', async () => {
+    const loginDto = { username: 'user', password: 'pass' };
+    const mockToken = 'jwt-token-expires';
+
+    authService.login.mockResolvedValue({ token: mockToken, expiresIn: 3600 });
+    auditLogService.logAction.mockResolvedValue({});
+
+    const result = await controller.login(loginDto);
+
+    expect(result).toEqual({
+      message: 'Login successful',
+      token: mockToken,
+      expiresIn: 3600,
+    });
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });

@@ -90,6 +90,261 @@ describe('TriageService', () => {
     auditService = module.get(AuditLogService);
   });
 
+  describe('handleAITriage (Stories 1G,1A,1F,1I,1E,1C,1D)', () => {
+    const alertId = 'alert-xyz';
+    const userId = 'user-xyz';
+    const tenantId = 'tenant-xyz';
+    const baseDto: SubmitAlertDto = {
+      result: {
+        message: 'msg',
+        report: {},
+        transaction: {},
+        networkMap: {},
+      },
+    };
+
+    let predictSpy: jest.SpyInstance;
+    let updateSpy: jest.SpyInstance;
+    let createCaseSpy: jest.SpyInstance;
+    let autoCloseSpy: jest.SpyInstance;
+    let loggerLogSpy: jest.SpyInstance;
+
+    const setEnv = (key: string, value?: string) => {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    };
+
+    beforeEach(() => {
+      predictSpy = jest.spyOn<any, any>(service as any, 'predictAlert');
+      updateSpy = jest.spyOn(service as any, 'updateAlertData').mockResolvedValue(undefined);
+      createCaseSpy = jest.spyOn(service as any, 'createInvestigationCase').mockResolvedValue({} as any);
+      autoCloseSpy = jest.spyOn(service as any, 'autoCloseAlert').mockResolvedValue(undefined);
+      loggerLogSpy = jest.spyOn(service['logger'], 'log').mockImplementation();
+    });
+
+    afterEach(() => {
+      predictSpy.mockRestore();
+      updateSpy.mockRestore();
+      createCaseSpy.mockRestore();
+      autoCloseSpy.mockRestore();
+      loggerLogSpy.mockRestore();
+      setEnv('CONFIDENCE_THRESHOLD', undefined);
+      setEnv('CLIENT_SYSTEM_INTERDICTION_ENABLED', undefined);
+    });
+
+    it('1G/1F: defaults threshold to 100 when not set; below threshold -> investigation + audit', async () => {
+      // No CONFIDENCE_THRESHOLD set -> defaults to 100
+      setEnv('CONFIDENCE_THRESHOLD', undefined);
+      predictSpy.mockResolvedValue({
+        priority: Priority.MEDIUM,
+        alertType: AlertType.FRAUD,
+        confidence_per: 90,
+        isTruePositive: false,
+      });
+
+      await service.handleAITriage(alertId, baseDto, userId, tenantId);
+
+      expect(updateSpy).toHaveBeenCalled();
+      expect(createCaseSpy).toHaveBeenCalledWith(alertId, userId, tenantId, expect.any(Object));
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_LOW_CONFIDENCE' }),
+      );
+      expect(loggerLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[1G] Using confidence threshold: 100'),
+      );
+    });
+
+    it('1A: high confidence false positive -> auto close REFUTED + audit', async () => {
+      setEnv('CONFIDENCE_THRESHOLD', '80');
+      predictSpy.mockResolvedValue({
+        priority: Priority.LOW,
+        alertType: AlertType.FRAUD,
+        confidence_per: 95,
+        isTruePositive: false,
+      });
+
+      await service.handleAITriage(alertId, baseDto, userId, tenantId);
+
+      expect(autoCloseSpy).toHaveBeenCalledWith(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_HIGH_CONFIDENCE_FALSE_POSITIVE' }),
+      );
+    });
+
+    it('1I: FRAUD_AND_AML true positive -> create master + two children + audit', async () => {
+      setEnv('CONFIDENCE_THRESHOLD', '80');
+      const master = { case_id: 'master-1' } as any;
+      // First call returns master, subsequent calls for children
+      predictSpy.mockResolvedValue({
+        priority: Priority.MEDIUM,
+        alertType: AlertType.FRAUD_AND_AML,
+        confidence_per: 97,
+        isTruePositive: true,
+      });
+      (createCaseSpy)
+        .mockResolvedValueOnce(master)
+        .mockResolvedValueOnce({} as any)
+        .mockResolvedValueOnce({} as any);
+
+      await service.handleAITriage(alertId, baseDto, userId, tenantId);
+
+      expect(createCaseSpy).toHaveBeenNthCalledWith(1, alertId, userId, tenantId, expect.any(Object), CaseType.FRAUD_AND_AML);
+      expect(createCaseSpy).toHaveBeenNthCalledWith(2, alertId, userId, tenantId, expect.any(Object), CaseType.FRAUD, master.case_id);
+      expect(createCaseSpy).toHaveBeenNthCalledWith(3, alertId, userId, tenantId, expect.any(Object), CaseType.AML, master.case_id);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD_AND_AML' }),
+      );
+    });
+
+    it('1E: AML true positive -> create AML case + audit', async () => {
+      setEnv('CONFIDENCE_THRESHOLD', '80');
+      predictSpy.mockResolvedValue({
+        priority: Priority.HIGH,
+        alertType: AlertType.AML,
+        confidence_per: 95,
+        isTruePositive: true,
+      });
+
+      await service.handleAITriage(alertId, baseDto, userId, tenantId);
+
+      expect(createCaseSpy).toHaveBeenCalledWith(alertId, userId, tenantId, expect.any(Object), CaseType.AML);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_TRUE_POSITIVE_AML' }),
+      );
+    });
+
+    it('1C: FRAUD true positive but interdicted (no transaction) -> auto close CONFIRMED + audit', async () => {
+      setEnv('CONFIDENCE_THRESHOLD', '80');
+      setEnv('CLIENT_SYSTEM_INTERDICTION_ENABLED', 'true');
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'm',
+          report: {
+            tadpResult: {
+              typologyResult: [
+                { result: 90, workflow: { interdictionThreshold: 50 } },
+              ],
+            },
+          },
+          transaction: {},
+          networkMap: {},
+        },
+      } as any;
+
+      predictSpy.mockResolvedValue({
+        priority: Priority.MEDIUM,
+        alertType: AlertType.FRAUD,
+        confidence_per: 95,
+        isTruePositive: true,
+      });
+
+      await service.handleAITriage(alertId, dto, userId, tenantId);
+
+      expect(autoCloseSpy).toHaveBeenCalledWith(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD_INTERDICTED' }),
+      );
+    });
+
+    it('1D: FRAUD true positive and transaction occurred -> create FRAUD case + audit', async () => {
+      setEnv('CONFIDENCE_THRESHOLD', '80');
+      setEnv('CLIENT_SYSTEM_INTERDICTION_ENABLED', 'true');
+      const dto: SubmitAlertDto = {
+        result: {
+          message: 'm',
+          report: {
+            tadpResult: {
+              typologyResult: [
+                { result: 20, workflow: { interdictionThreshold: 50 } }, // not interdicted
+              ],
+            },
+          },
+          transaction: {},
+          networkMap: {},
+        },
+      } as any;
+
+      predictSpy.mockResolvedValue({
+        priority: Priority.MEDIUM,
+        alertType: AlertType.FRAUD,
+        confidence_per: 95,
+        isTruePositive: true,
+      });
+
+      await service.handleAITriage(alertId, dto, userId, tenantId);
+
+      expect(createCaseSpy).toHaveBeenCalledWith(alertId, userId, tenantId, expect.any(Object), CaseType.FRAUD);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD' }),
+      );
+    });
+  });
+
+  describe('handleAITriage interdiction branches', () => {
+    const alertId = 'alert-itd-1';
+    const userId = 'user-itd-1';
+    const tenantId = 'tenant-itd-1';
+
+    const baseDto = (typology: any): SubmitAlertDto => ({
+      result: {
+        message: 'm',
+        report: { tadpResult: { typologyResult: [typology] } },
+        transaction: {},
+        networkMap: {},
+      },
+    }) as any;
+
+    let origEnvInterdiction: string | undefined;
+    let predictSpy: jest.SpyInstance;
+    let autoCloseSpy: jest.SpyInstance;
+    let createCaseSpy: jest.SpyInstance;
+    let updateAlertDataSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      origEnvInterdiction = process.env.CLIENT_SYSTEM_INTERDICTION_ENABLED;
+      process.env.CLIENT_SYSTEM_INTERDICTION_ENABLED = 'true';
+      predictSpy = jest.spyOn<any, any>(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 100,
+        priority: Priority.HIGH,
+        alertType: AlertType.FRAUD,
+        isTruePositive: true,
+      });
+      autoCloseSpy = jest.spyOn<any, any>(service as any, 'autoCloseAlert').mockResolvedValue(undefined);
+      createCaseSpy = jest.spyOn<any, any>(service as any, 'createInvestigationCase').mockResolvedValue({});
+      updateAlertDataSpy = jest.spyOn(service, 'updateAlertData').mockResolvedValue({} as any);
+      prismaService.alert.update.mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      process.env.CLIENT_SYSTEM_INTERDICTION_ENABLED = origEnvInterdiction;
+      predictSpy.mockRestore();
+      autoCloseSpy.mockRestore();
+      createCaseSpy.mockRestore();
+      updateAlertDataSpy.mockRestore();
+    });
+
+    it('sets transactionOccurred=false when result > threshold, leading to AUTOCLOSED_CONFIRMED for FRAUD', async () => {
+      const dto = baseDto({ result: 90, workflow: { interdictionThreshold: 50 } });
+
+      await service.handleAITriage(alertId, dto, userId, tenantId);
+
+      expect(autoCloseSpy).toHaveBeenCalledWith(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
+      expect(createCaseSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps transactionOccurred=true when non-numeric typology values; creates FRAUD case', async () => {
+      const dto = baseDto({ result: 'n/a', workflow: { interdictionThreshold: 'x' } });
+
+      await service.handleAITriage(alertId, dto, userId, tenantId);
+
+      expect(createCaseSpy).toHaveBeenCalledWith(alertId, userId, tenantId, expect.any(Object), CaseType.FRAUD);
+      expect(autoCloseSpy).not.toHaveBeenCalledWith(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
+    });
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -228,8 +483,50 @@ describe('TriageService', () => {
       service.updateAlertData(alertId, mockUpdateDto, userId, tenantId),
     ).rejects.toThrow(InternalServerErrorException);
   });
-});
 
+  it('should omit confidence_per and alert_type parts in audit when undefined', async () => {
+    const dtoPartial: UpdateAlertDto = {
+      priority: Priority.HIGH,
+      // confidence_per and alertType deliberately undefined
+    } as any;
+
+    const updatedAlert = { ...mockExistingAlert, priority: Priority.HIGH };
+
+    prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
+    prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+    await service.updateAlertData(alertId, dtoPartial, userId, tenantId);
+
+    expect(prismaService.alert.update).toHaveBeenCalledWith({
+      where: { alert_id: alertId },
+      data: expect.objectContaining({ priority: Priority.HIGH }),
+    });
+    expect(auditService.logAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionPerformed: expect.stringContaining('Updated alert alert-123'),
+      }),
+    );
+  });
+
+  it('should omit priority part in audit when only confidence_per and alertType provided', async () => {
+    const dtoPartial: UpdateAlertDto = {
+      confidence_per: 77,
+      alertType: AlertType.FRAUD,
+    } as any;
+
+    const updatedAlert = { ...mockExistingAlert, confidence_per: 77, alert_type: AlertType.FRAUD };
+
+    prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
+    prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+    await service.updateAlertData(alertId, dtoPartial, userId, tenantId);
+
+    expect(prismaService.alert.update).toHaveBeenCalledWith({
+      where: { alert_id: alertId },
+      data: expect.objectContaining({ confidence_per: 77, alert_type: AlertType.FRAUD }),
+    });
+  });
+  });
 
   describe('manualCloseAlert', () => {
     const alertId = 'alert-123';
@@ -1032,6 +1329,143 @@ describe('TriageService', () => {
       prismaService.case.create.mockRejectedValue(new Error('Database error'));
 
       await expect(service.convertToCase(alertId, convertDto, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('private helpers and error paths coverage', () => {
+    const alertId = 'alert-err-1';
+    const userId = 'user-err-1';
+    const tenantId = 'tenant-err-1';
+
+    it('handleAITriage: catches error, audits failure, and throws InternalServerErrorException', async () => {
+      const dto: SubmitAlertDto = { result: { message: 'm', report: {}, transaction: {}, networkMap: {} } } as any;
+
+      const predictSpy = jest
+        .spyOn<any, any>(service as any, 'predictAlert')
+        .mockRejectedValue(new Error('prediction failed'));
+
+      await expect(service.handleAITriage(alertId, dto, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
+
+      expect(predictSpy).toHaveBeenCalled();
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FAILED' }),
+      );
+
+      predictSpy.mockRestore();
+    });
+
+    describe('autoCloseAlert()', () => {
+      it('updates alert status and audits on success', async () => {
+        prismaService.alert.update.mockResolvedValue({});
+
+        await (service as any).autoCloseAlert(alertId, AlertStatus.CLOSED, userId);
+
+        expect(prismaService.alert.update).toHaveBeenCalledWith({
+          where: { alert_id: alertId },
+          data: { alert_status: AlertStatus.CLOSED },
+        });
+        expect(auditService.logAction).toHaveBeenCalledWith(
+          expect.objectContaining({ operation: 'ALERT_AUTO_CLOSED' }),
+        );
+      });
+
+      it('throws InternalServerErrorException on prisma error', async () => {
+        prismaService.alert.update.mockRejectedValue(new Error('db error'));
+
+        await expect(
+          (service as any).autoCloseAlert(alertId, AlertStatus.CLOSED, userId),
+        ).rejects.toThrow(InternalServerErrorException);
+      });
+    });
+
+    describe('createInvestigationCase()', () => {
+      beforeEach(() => {
+        // Provide a transactional executor that calls the callback with prismaService as tx
+        prismaService.$transaction = jest.fn(async (cb: any) => cb(prismaService));
+      });
+
+      it('creates case, updates alert, audits, and returns updated alert (no parentId branch)', async () => {
+        const createdCase = { case_id: 'case-abc' };
+        const updatedAlert = { alert_id: alertId, alert_status: AlertStatus.SENT_FOR_INVESTIGATION, case_id: 'case-abc' };
+
+        prismaService.case.create.mockResolvedValue(createdCase);
+        prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+        const res = await service.createInvestigationCase(alertId, userId, tenantId, { priority: Priority.HIGH } as any);
+
+        expect(prismaService.case.create).toHaveBeenCalled();
+        expect(prismaService.alert.update).toHaveBeenCalledWith({
+          where: { alert_id: alertId },
+          data: expect.objectContaining({
+            alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+            priority: Priority.HIGH,
+            case_id: createdCase.case_id,
+          }),
+        });
+        expect(auditService.logAction).toHaveBeenCalledWith(
+          expect.objectContaining({ operation: 'ALERT_SENT_FOR_INVESTIGATION' }),
+        );
+        expect(res).toEqual(updatedAlert);
+      });
+
+      it('creates child case branch (parentId provided) and does not set case_id on alert', async () => {
+        const createdCase = { case_id: 'child-1' };
+        const updatedAlert = { alert_id: alertId, alert_status: AlertStatus.SENT_FOR_INVESTIGATION };
+
+        prismaService.case.create.mockResolvedValue(createdCase);
+        prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+        const res = await service.createInvestigationCase(
+          alertId,
+          userId,
+          tenantId,
+          { priority: Priority.MEDIUM } as any,
+          CaseType.FRAUD,
+          'parent-xyz',
+        );
+
+        expect(prismaService.alert.update).toHaveBeenCalledWith({
+          where: { alert_id: alertId },
+          data: expect.objectContaining({
+            alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+          }),
+        });
+        expect(res).toEqual(updatedAlert);
+      });
+
+      it('throws InternalServerErrorException on failure', async () => {
+        prismaService.case.create.mockRejectedValue(new Error('db error'));
+
+        await expect(
+          service.createInvestigationCase(alertId, userId, tenantId, { priority: Priority.LOW } as any),
+        ).rejects.toThrow(InternalServerErrorException);
+      });
+
+      it('sets case priority to null when prediction is undefined', async () => {
+        const createdCase = { case_id: 'case-null-priority' };
+        const updatedAlert = { alert_id: alertId, alert_status: AlertStatus.SENT_FOR_INVESTIGATION };
+
+        prismaService.case.create.mockResolvedValue(createdCase);
+        prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+        await service.createInvestigationCase(alertId, userId, tenantId);
+
+        expect(prismaService.case.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({ priority: null }),
+        });
+      });
+    });
+
+    it('predictAlert: returns a structured prediction object', async () => {
+      const result = await (service as any).predictAlert();
+      expect(result).toEqual(
+        expect.objectContaining({
+          priority: expect.any(String),
+          alertType: expect.any(String),
+          confidence_per: expect.any(Number),
+          isTruePositive: expect.any(Boolean),
+        }),
+      );
     });
   });
 });

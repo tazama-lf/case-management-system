@@ -1,5 +1,6 @@
  
 import { Test, TestingModule } from '@nestjs/testing';
+import * as jwt from 'jsonwebtoken';
 import { AuthService } from '../../src/auth/auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -276,6 +277,17 @@ describe('AuthService', () => {
     it('should return true if token is invalid', () => {
       expect(service.isTokenExpired('invalid.token')).toBe(true);
     });
+
+    it('should return true and log warn when jwt.decode throws', () => {
+      const spy = jest.spyOn(jwt, 'decode').mockImplementation(() => {
+        throw new Error('decode failed');
+      });
+      try {
+        expect(service.isTokenExpired('any.token')).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
   describe('getTokenTimeToExpiry', () => {
@@ -305,6 +317,17 @@ describe('AuthService', () => {
 
     it('should return 0 if token is invalid', () => {
       expect(service.getTokenTimeToExpiry('invalid.token')).toBe(0);
+    });
+
+    it('should return 0 and log warn when jwt.decode throws', () => {
+      const spy = jest.spyOn(jwt, 'decode').mockImplementation(() => {
+        throw new Error('decode failed');
+      });
+      try {
+        expect(service.getTokenTimeToExpiry('any.token')).toBe(0);
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 });

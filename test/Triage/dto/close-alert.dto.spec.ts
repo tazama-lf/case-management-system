@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
+import { validateSync } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { CloseAlertDto } from '../../../src/triage/dto/close-alert.dto';
 
@@ -174,5 +175,24 @@ describe('CloseAlertDto', () => {
 
     expect(errors).toHaveLength(0);
     expect(dto.reason).toBe('🚨 Alert closed due to émergency resolution 中文测试');
+  });
+
+  it('should allow direct instantiation and validate successfully', async () => {
+    const dto = new CloseAlertDto();
+    dto.reason = 'Closed after manual review';
+
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+    expect(dto.reason).toBe('Closed after manual review');
+  });
+
+  it('should fail synchronous validation for non-string reason', () => {
+    const dto: any = new CloseAlertDto();
+    dto.reason = 42;
+
+    const errors = validateSync(dto);
+    expect(errors.length).toBeGreaterThan(0);
+    const reasonError = errors.find((e) => e.property === 'reason');
+    expect(reasonError?.constraints).toHaveProperty('isString');
   });
 });
