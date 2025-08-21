@@ -122,6 +122,14 @@ export interface ConvertToCaseDto {
   caseType: CaseType;
 }
 
+// Convert Alert to Case Response
+export interface ConvertToCaseResponse {
+  case_id: string;
+  alert_id: string;
+  message: string;
+  success: boolean;
+}
+
 // Close Alert DTO
 export interface CloseAlertDto {
   reason: string;
@@ -186,6 +194,17 @@ export interface ApiError {
   message: string;
   statusCode?: number;
   error?: string;
+  details?: any;
+}
+
+// Enhanced API Error Response interface
+export interface ApiErrorResponse {
+  message: string;
+  statusCode: number;
+  error: string;
+  timestamp?: string;
+  path?: string;
+  details?: Record<string, any>;
 }
 
 // Service response wrapper
@@ -193,4 +212,5 @@ export interface ServiceResponse<T> {
   data?: T;
   error?: ApiError;
   success: boolean;
+  loading?: boolean;
 }

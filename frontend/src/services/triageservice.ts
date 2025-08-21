@@ -1,8 +1,37 @@
 import apiClient from './apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto } from '../types/triage.types';
+import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse } from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
+
+  // Error handling utility
+  private handleError(error: any, operation: string): Error {
+    console.error(`TriageService Error - ${operation}:`, error);
+    
+    if (error.response?.data) {
+      const apiError = error.response.data as ApiErrorResponse;
+      return new Error(apiError.message || `Failed to ${operation}`);
+    }
+    
+    if (error.message) {
+      return new Error(error.message);
+    }
+    
+    return new Error(`Failed to ${operation}`);
+  }
+
+  // Response validation utility
+  private validateAlertResponse(data: any): Alert {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid alert data received');
+    }
+    
+    if (!data.alert_id) {
+      throw new Error('Alert ID is missing from response');
+    }
+    
+    return data as Alert;
+  }
 
   // GET /api/v1/triage/alerts
   async getAlerts(filters: AlertsFilter = {}): Promise<{
@@ -51,23 +80,48 @@ class TriageService {
 
   // GET /api/v1/triage/alerts/:alertId
   async getAlertById(alertId: string): Promise<Alert> {
-    return apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
+    try {
+      const response = await apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
+      return this.validateAlertResponse(response);
+    } catch (error) {
+      throw this.handleError(error, 'fetch alert details');
+    }
   }
 
   // PATCH /api/v1/triage/alerts/:alertId
   async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
-    return apiClient.patch<Alert>(`${this.baseUrl}/${alertId}`, data);
+    try {
+      const response = await apiClient.patch<Alert>(`${this.baseUrl}/${alertId}`, data);
+      return this.validateAlertResponse(response);
+    } catch (error) {
+      throw this.handleError(error, 'update alert');
+    }
   }
 
   // PATCH /api/v1/triage/alerts/:alertId/close
   async closeAlert(alertId: string, justification: string): Promise<Alert> {
-    const data: CloseAlertDto = { reason: justification };
-    return apiClient.patch<Alert>(`${this.baseUrl}/${alertId}/close`, data);
+    try {
+      const data: CloseAlertDto = { reason: justification };
+      const response = await apiClient.patch<Alert>(`${this.baseUrl}/${alertId}/close`, data);
+      return this.validateAlertResponse(response);
+    } catch (error) {
+      throw this.handleError(error, 'close alert');
+    }
   }
 
   // POST /api/v1/triage/alerts/:alertId/convert-to-case
-  async convertAlertToCase(alertId: string, data: ConvertToCaseDto): Promise<any> {
-    return apiClient.post<any>(`${this.baseUrl}/${alertId}/convert-to-case`, data);
+  async convertAlertToCase(alertId: string, data: ConvertToCaseDto): Promise<ConvertToCaseResponse> {
+    try {
+      const response = await apiClient.post<ConvertToCaseResponse>(`${this.baseUrl}/${alertId}/convert-to-case`, data);
+      
+      if (!response || typeof response !== 'object') {
+        throw new Error('Invalid response from convert to case operation');
+      }
+      
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'convert alert to case');
+    }
   }
 }
 

@@ -27,7 +27,9 @@ interface OperationStates {
   convertingToCase: Set<string>;
   closingAlert: Set<string>;
   updatingAlert: Set<string>;
+  loadingDetails: Set<string>;
   refreshing: boolean;
+  submittingAlert: boolean;
 }
 
 // Helper function to check if date is within time range
@@ -102,7 +104,9 @@ const AlertsDashboard: React.FC = () => {
     convertingToCase: new Set(),
     closingAlert: new Set(),
     updatingAlert: new Set(),
-    refreshing: false
+    loadingDetails: new Set(),
+    refreshing: false,
+    submittingAlert: false
   });
   
   const [searchFilters, setSearchFilters] = useState<AlertsSearchFilters>({
@@ -351,21 +355,51 @@ const AlertsDashboard: React.FC = () => {
     }));
   };
 
-  const handleRowClick = (alert: Alert) => {
-    // Log alert access before opening
-    const currentUser = 'John Doe'; // In real implementation, get from auth context
-    const timestamp = new Date().toISOString();
-    
-    console.log('Alert Access Logged:', {
-      alertId: alert.id,
-      userId: currentUser,
-      action: 'alert_accessed_from_dashboard',
-      timestamp: timestamp,
-      userAgent: navigator.userAgent
-    });
-    
-    setSelectedAlert(alert);
-    setShowModal(true);
+  const handleRowClick = async (alert: Alert) => {
+    try {
+      // Add to loading state
+      setOperationStates(prev => ({ 
+        ...prev, 
+        loadingDetails: new Set([...prev.loadingDetails, alert.id]) 
+      }));
+
+      // Log alert access before fetching details
+      const currentUser = 'John Doe'; // In real implementation, get from auth context
+      const timestamp = new Date().toISOString();
+      
+      console.log('Alert Access Logged:', {
+        alertId: alert.id,
+        userId: currentUser,
+        action: 'alert_accessed_from_dashboard',
+        timestamp: timestamp,
+        userAgent: navigator.userAgent
+      });
+
+      // Fetch detailed alert data from API
+      const detailedAlert = await triageService.getAlertById(alert.id);
+      
+      // Transform backend data to UI format and show modal
+      setSelectedAlert(transformBackendAlertToUI(detailedAlert));
+      setShowModal(true);
+      
+    } catch (error) {
+      console.error('Failed to fetch alert details:', error);
+      
+      // Fallback to showing the existing alert data
+      setSelectedAlert(alert);
+      setShowModal(true);
+      
+      // TODO: Show error toast notification
+      // For now, just log the error
+      console.warn('Using cached alert data due to API error');
+      
+    } finally {
+      // Remove from loading state
+      setOperationStates(prev => ({ 
+        ...prev, 
+        loadingDetails: new Set([...prev.loadingDetails].filter(id => id !== alert.id)) 
+      }));
+    }
   };
 
   const handleCloseModal = () => {
@@ -444,7 +478,23 @@ const AlertsDashboard: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error converting alert to case:', error);
-      // TODO: Show error notification
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to convert alert to case';
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('permission')) {
+          errorMessage = 'You do not have permission to convert this alert';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Alert not found';
+        } else if (error.message.includes('already converted')) {
+          errorMessage = 'This alert has already been converted to a case';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // TODO: Show error toast notification instead of console log
+      console.error('Convert to case error:', errorMessage);
       throw error;
     } finally {
       // Remove loading state
@@ -483,7 +533,23 @@ const AlertsDashboard: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       console.error('❌ Error closing alert:', error);
-      // TODO: Show error notification to user
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to close alert';
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('permission')) {
+          errorMessage = 'You do not have permission to close this alert';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Alert not found';
+        } else if (error.message.includes('already closed')) {
+          errorMessage = 'This alert is already closed';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // TODO: Show error toast notification instead of console log
+      console.error('Close alert error:', errorMessage);
       throw error; // Re-throw to keep modal open
     } finally {
       // Remove loading state
@@ -626,7 +692,8 @@ const AlertsDashboard: React.FC = () => {
         console.log('Investigate alert:', alert.id);
         handleRowClick(alert);
       },
-      color: 'blue'
+      color: 'blue',
+      disabled: (alert) => operationStates.loadingDetails.has(alert.id)
     },
     {
       label: 'Convert to Case',
@@ -635,7 +702,7 @@ const AlertsDashboard: React.FC = () => {
         handleRowClick(alert);
       },
       color: 'green',
-      disabled: (alert) => alert.status === 'resolved' || alert.status === 'false_positive'
+      disabled: (alert) => alert.status === 'resolved' || alert.status === 'false_positive' || operationStates.loadingDetails.has(alert.id)
     }
   ];
 
