@@ -6,7 +6,7 @@ import { CloseAlertDto } from './dto/close-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus } from '@prisma/client';
+import { Alert, AlertStatus, AlertType, Priority, CaseCreationType, CaseType, CaseStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class TriageService {
   ) {}
 
   async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string, source: string) {
-    // Determine the alert type (txtp)
+    // Determine the transaction type (txtp)
     const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
 
     try {
@@ -339,5 +339,192 @@ export class TriageService {
       this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
       throw new InternalServerErrorException('Failed to convert alert to case');
     }
+  }
+
+  async handleAITriage(alertId: string, dto: SubmitAlertDto, userId: string, tenantId: string): Promise<void> {
+    try {
+      // Story 1G
+      // If confidenceThreshold environment variable is not set, default to 100% → ensures low-confidence predictions always go to investigation.
+      const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD ? Number(process.env.CONFIDENCE_THRESHOLD) : 100;
+
+      // === Check if interdiction is enabled and determine if transaction occurred ===
+      const interdictionEnabled = process.env.CLIENT_SYSTEM_INTERDICTION_ENABLED === 'true';
+      let transactionOccurred = true;
+
+      if (interdictionEnabled) {
+        const tadpResult = dto?.result?.report?.tadpResult;
+
+        if (
+          typeof tadpResult === 'object' &&
+          tadpResult !== null &&
+          'typologyResult' in tadpResult &&
+          Array.isArray((tadpResult as any).typologyResult)
+        ) {
+          const typology = (tadpResult as any).typologyResult[0];
+          const result = typeof typology?.result === 'number' ? typology.result : undefined;
+          const interdictionThreshold =
+            typeof typology?.workflow?.interdictionThreshold === 'number' ? typology.workflow.interdictionThreshold : undefined;
+
+          if (result !== undefined && interdictionThreshold !== undefined && result > interdictionThreshold) {
+            transactionOccurred = false;
+          }
+        }
+      }
+
+      // Story 1A
+      // === 1. Get AI prediction and update alert ===
+      const prediction = await this.predictAlert();
+      const {
+        confidence_per: predictedConfidence,
+        priority: predictedPriority,
+        alertType: predictedAlertType,
+        isTruePositive: predictedTruePositive,
+      } = prediction;
+
+      const updateDto = new UpdateAlertDto();
+      updateDto.priority = predictedPriority;
+      updateDto.alertType = predictedAlertType;
+      updateDto.confidence_per = predictedConfidence;
+      await this.updateAlertData(alertId, updateDto, userId, tenantId);
+
+      // Story 1F
+      // === 2. Confidence below threshold → Investigation case ===
+      if (predictedConfidence < confidenceThreshold) {
+        await this.createInvestigationCase(alertId, userId, tenantId, prediction);
+        return;
+      }
+
+      // Story 1B
+      // === 3. High confidence & False Positive → Auto-close as REFUTED ===
+      if (predictedConfidence >= confidenceThreshold && !predictedTruePositive) {
+        await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
+        return;
+      }
+      // === 4. High confidence & True Positive ===
+      if (predictedTruePositive) {
+        // Story 1I
+        // Create master FRAUD_AND_AML case + child FRAUD & AML cases
+        if (predictedAlertType === AlertType.FRAUD_AND_AML) {
+          const masterCase = await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD_AND_AML);
+          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD, masterCase.case_id);
+          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML, masterCase.case_id);
+          return;
+        }
+
+        // Story 1E
+        // If AML suspicion create case
+        if (predictedAlertType === AlertType.AML) {
+          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML);
+          return;
+        }
+
+        // If fraud and transaction occured create case else autoclose
+        if (predictedAlertType === AlertType.FRAUD) {
+          // Story 1C
+          if (!transactionOccurred) {
+            await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
+            return;
+          }
+          // Story 1D
+          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD);
+          return;
+        }
+      }
+    } catch (error) {
+      this.logger.error(`AI triage failed for alert ${alertId}`, error.stack);
+      await this.audit.logAction({
+        userId,
+        operation: 'AI_TRIAGE_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `AI triage failed for alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
+      throw new InternalServerErrorException('AI triage process failed');
+    }
+  }
+
+  private async autoCloseAlert(alertId: string, status: AlertStatus, userId: string) {
+    try {
+      await this.prisma.alert.update({
+        where: { alert_id: alertId },
+        data: { alert_status: status },
+      });
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_AUTO_CLOSED',
+        entityName: 'Alert',
+        actionPerformed: `Auto closed alert ${alertId} with status: ${status} at ${new Date().toISOString()}`,
+        outcome: 'SUCCESS',
+      });
+    } catch (error) {
+      this.logger.error(`Auto close failed for alert ${alertId}`, error);
+      throw new InternalServerErrorException('Failed to auto close alert');
+    }
+  }
+
+  async createInvestigationCase(
+    alertId: string,
+    userId: string,
+    tenantId: string,
+    prediction?: any,
+    caseType?: CaseType | null,
+    parentId?: string | null,
+  ): Promise<Alert> {
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const createdCase = await tx.case.create({
+          data: {
+            case_creator_user_id: userId,
+            case_owner_user_id: userId,
+            tenant_id: tenantId,
+            priority: prediction?.priority ?? null,
+            status: CaseStatus.DRAFT,
+            parent_id: parentId ?? null,
+            case_type: caseType ?? null,
+            case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
+          },
+        });
+
+        // Update alert
+        const updatedAlert = await tx.alert.update({
+          where: { alert_id: alertId },
+          data: {
+            alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
+            priority: prediction?.priority,
+            ...(parentId ? {} : { case_id: createdCase.case_id }),
+          },
+        });
+
+        return { createdCase, updatedAlert };
+      });
+
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_SENT_FOR_INVESTIGATION',
+        entityName: 'Alert',
+        actionPerformed: `Created case ${result.createdCase.case_id} for alert ${alertId}`,
+        outcome: 'SUCCESS',
+      });
+
+      return result.updatedAlert; // return updated alert instead of case
+    } catch (error) {
+      this.logger.error(`Failed to create investigation case for alert ${alertId}. Error: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to create investigation case');
+    }
+  }
+
+  private async predictAlert(): Promise<{
+    priority: Priority;
+    alertType: AlertType;
+    confidence_per: number;
+    isTruePositive: boolean; // true = real alarm, false = false alarm
+  }> {
+    // --- Placeholder AI Prediction ---
+    return {
+      priority: Priority.MEDIUM,
+      alertType: AlertType.FRAUD_AND_AML,
+      confidence_per: 97,
+      isTruePositive: true,
+    };
   }
 }

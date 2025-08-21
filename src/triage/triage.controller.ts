@@ -22,8 +22,13 @@ export class TriageController {
     const tenantId = req.user.tenantId;
 
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
-
-    return alert;
+    const aiTriage = process.env.AI_TRIAGE === 'true';
+    // Story 1H
+    if (aiTriage) {
+      return await this.triageService.handleAITriage(alert.alert_id, dto, userId, tenantId);
+    }
+    const updateAlert = this.triageService.createInvestigationCase(alert.alert_id, userId, tenantId);
+    return updateAlert;
   }
 
   @Get('test')
