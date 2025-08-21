@@ -114,8 +114,48 @@ const AlertsDashboard: React.FC = () => {
     timeRange: '',
   });
   
-  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('createdAt');
+  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('lastUpdated');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Field mapping utility: Maps frontend field names to backend field names
+  const mapToBackendField = useCallback((frontendField: keyof Alert | string): string => {
+    const fieldMapping: Record<string, string> = {
+      // Date fields
+      'createdAt': 'created_at',
+      'updatedAt': 'created_at',
+      'lastUpdated': 'created_at',
+      'created_at': 'created_at',
+      
+      // Score/Confidence fields
+      'riskScore': 'confidence_per',
+      'confidence': 'confidence_per',
+      'confidence_per': 'confidence_per',
+      
+      // Status and priority fields
+      'priority': 'priority',
+      'status': 'alert_status',
+      'alert_status': 'alert_status',
+      
+      // ID fields
+      'id': 'alert_id',
+      'alert_id': 'alert_id',
+      'transactionId': 'txtp',
+      'txtp': 'txtp',
+      
+      // Other fields
+      'source': 'source',
+      'type': 'alert_type',
+      'alert_type': 'alert_type'
+    };
+    
+    const backendField = fieldMapping[frontendField as string];
+    if (!backendField) {
+      console.warn(`Unknown field mapping for: ${frontendField}, using as-is`);
+      return frontendField as string;
+    }
+    
+    return backendField;
+  }, []);
   
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -151,10 +191,22 @@ const AlertsDashboard: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
+      let errorMessage = 'Failed to load alerts';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = 'Access denied. You do not have permission to view alerts.';
+        } else if (error.message.includes('Session expired')) {
+          errorMessage = 'Session expired. Please log in again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setApiState(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load alerts'
+        error: errorMessage
       }));
     }
   }, []);
@@ -169,13 +221,13 @@ const AlertsDashboard: React.FC = () => {
       search: searchFilters.query || undefined,
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
-      sortBy: typeof sortColumn === 'string' ? sortColumn : 'createdAt',
+      sortBy: mapToBackendField(sortColumn),
       sortOrder: sortDirection
     };
 
     await fetchAlerts(filters);
     setOperationStates(prev => ({ ...prev, refreshing: false }));
-  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection]);
+  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Load alerts on component mount and when filters change
   useEffect(() => {
@@ -186,12 +238,12 @@ const AlertsDashboard: React.FC = () => {
       search: searchFilters.query || undefined,
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
-      sortBy: typeof sortColumn === 'string' ? sortColumn : 'createdAt',
+      sortBy: mapToBackendField(sortColumn),
       sortOrder: sortDirection
     };
 
     fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection]);
+  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {

@@ -28,7 +28,25 @@ class TriageService {
     const queryString = params.toString();
     const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
     
-    return apiClient.get<any>(url);
+    // Get the raw backend response
+    const backendResponse = await apiClient.get<{
+      data: Alert[];
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    }>(url);
+    
+    // Transform to expected frontend format
+    return {
+      alerts: backendResponse.data || [],
+      pagination: {
+        currentPage: backendResponse.page || 1,
+        totalPages: backendResponse.totalPages || 1,
+        totalItems: backendResponse.total || 0,
+        pageSize: backendResponse.limit || 10
+      }
+    };
   }
 
   // GET /api/v1/triage/alerts/:alertId
