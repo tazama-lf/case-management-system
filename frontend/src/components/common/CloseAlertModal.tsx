@@ -190,7 +190,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
       <TransactionMessagesModal
         isOpen={showTransactionMessages}
         onClose={handleCloseTransactionMessages}
-        transactionId={alert.transactionId}
+        transactionId={alert.transactionId || alert.id}
         onMessageClick={handleMessageClick}
       />
 

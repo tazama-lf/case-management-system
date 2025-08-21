@@ -1,11 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { ArrowDownTrayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
 import MessagePayloadModal from '../components/common/MessagePayloadModal';
 import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction, TransactionMessage } from '../types/alertsdashboard.types';
 import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
+import triageService from '../services/triageservice';
+import { transformBackendAlertToUI } from '../utils/alertTransformers';
+import type { Alert as BackendAlert, AlertsFilter, ConvertToCaseDto } from '../types/triage.types';
 
 // Mock data for demonstration
 const mockAlerts: Alert[] = [
