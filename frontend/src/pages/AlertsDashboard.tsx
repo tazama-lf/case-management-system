@@ -139,7 +139,7 @@ const AlertsDashboard: React.FC = () => {
       // ID fields
       'id': 'alert_id',
       'alert_id': 'alert_id',
-      'transactionId': 'txtp',
+      'transactionId': 'transaction_id',
       'txtp': 'txtp',
       
       // Other fields
@@ -296,10 +296,8 @@ const AlertsDashboard: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Filter and sort logic (now handled by backend API, this is for client-side display)
+  // Filter and sort logic
   const filteredAndSortedAlerts = useMemo(() => {
-    // Since filtering is now handled by the backend API, we just return the current alerts
-    // But we still need this for client-side date filtering if custom range is used
     let filtered = apiState.alerts;
 
     // Apply client-side custom date filtering if needed
