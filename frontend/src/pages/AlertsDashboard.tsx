@@ -99,6 +99,10 @@ const AlertsDashboard: React.FC = () => {
     }
   });
 
+  // State for tracking fetched source values
+  const [fetchedSources, setFetchedSources] = useState<Record<string, string>>({});
+  const [loadingSources, setLoadingSources] = useState<Set<string>>(new Set());
+  
   // Operation states for loading indicators
   const [operationStates, setOperationStates] = useState<OperationStates>({
     convertingToCase: new Set(),
@@ -623,9 +627,68 @@ const AlertsDashboard: React.FC = () => {
       key: 'source',
       header: 'Source',
       sortable: true,
-      render: (value) => (
-        <div className="text-sm text-gray-600">{value as string}</div>
-      )
+      render: (value, alert) => {
+        const alertObj = alert as Alert;
+        const alertId = alertObj.id;
+        
+        // Check if we have a cached source value
+        const cachedSource = fetchedSources[alertId];
+        
+        // Try to get source from: 1) cached, 2) value, 3) alert.source
+        const sourceValue = cachedSource || (value as string) || alertObj.source;
+        
+        // If no source available and not currently loading, fetch from API
+        if (!sourceValue && !loadingSources.has(alertId)) {
+          // Fetch source from AlertDetails API
+          setLoadingSources(prev => new Set([...prev, alertId]));
+          
+          triageService.getAlertById(alertId)
+            .then(alertDetails => {
+              if (alertDetails.source) {
+                setFetchedSources(prev => ({
+                  ...prev,
+                  [alertId]: alertDetails.source!
+                }));
+              }
+            })
+            .catch(error => {
+              console.error(`Failed to fetch source for alert ${alertId}:`, error);
+            })
+            .finally(() => {
+              setLoadingSources(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(alertId);
+                return newSet;
+              });
+            });
+        }
+        
+        // Determine what to display
+        let displayValue = sourceValue || 'Unknown';
+        const isLoading = loadingSources.has(alertId);
+        
+        if (isLoading) {
+          displayValue = 'Loading...';
+        }
+        
+        return (
+          <span 
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              isLoading 
+                ? 'bg-gray-100 text-gray-600' 
+                : sourceValue 
+                ? 'bg-blue-100 text-blue-800' 
+                : 'bg-orange-100 text-orange-800'
+            }`}
+            title={sourceValue ? `Source: ${sourceValue}` : 'Source information not available'}
+          >
+            {isLoading && (
+              <div className="animate-spin h-3 w-3 mr-1 border border-gray-400 rounded-full border-t-transparent"></div>
+            )}
+            {displayValue}
+          </span>
+        );
+      }
     },
     {
       key: 'riskScore',
@@ -872,11 +935,12 @@ const AlertsDashboard: React.FC = () => {
 
       {/* Alert Detail Modal */}
       <AlertsDetailModal
-        alert={selectedAlert}
+        alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
         onConvertToCase={handleConvertToCase}
         onCloseAlert={handleCloseAlert}
+        onAlertUpdated={() => fetchAlerts()} // Refresh alerts after updates
       />
 
       {/* Transaction Messages Modal */}

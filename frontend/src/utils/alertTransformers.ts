@@ -5,27 +5,53 @@ import type { Alert as UIAlert } from '../types/alertsdashboard.types';
  * Transform backend Alert to UI Alert format
  */
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
-  return {
-    ...backendAlert,
-    // Map backend fields to UI fields
+  // Debug logging to check source field
+  console.log('Transforming alert:', {
+    alert_id: backendAlert.alert_id,
+    source: backendAlert.source,
+    alert_type: backendAlert.alert_type,
+    raw_alert: backendAlert
+  });
+
+  const transformedAlert: UIAlert = {
+    // Backend fields
+    alert_id: backendAlert.alert_id,
+    tenant_id: backendAlert.tenant_id || 'default-tenant',
+    priority: backendAlert.priority,
+    alert_type: backendAlert.alert_type,
+    source: backendAlert.source,
+    txtp: backendAlert.txtp,
+    message: backendAlert.message,
+    alert_data: backendAlert.alert_data,
+    transaction: backendAlert.transaction,
+    network_map: backendAlert.network_map,
+    alert_status: backendAlert.alert_status,
+    confidence_per: backendAlert.confidence_per,
+    created_at: backendAlert.created_at,
+    case_id: backendAlert.case_id,
+    
+    // UI-specific mapped fields
     id: backendAlert.alert_id,
     transactionId: extractTransactionId(backendAlert.transaction),
     title: backendAlert.message,
     description: backendAlert.message,
-    type: backendAlert.alert_type || backendAlert.source || 'Unknown',
+    type: backendAlert.alert_type || 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
     riskScore: backendAlert.confidence_per,
     confidence: backendAlert.confidence_per,
     status: mapAlertStatusToUIStatus(backendAlert.alert_status),
     createdAt: backendAlert.created_at,
-    updatedAt: backendAlert.created_at, // Backend doesn't have updated_at for alerts
+    updatedAt: backendAlert.created_at,
     lastUpdated: backendAlert.created_at,
-    // TODO: These will need to be added to backend schema or derived from other data
     assignedTo: undefined,
     assignee: undefined,
     amount: extractAmount(backendAlert.transaction),
     currency: extractCurrency(backendAlert.transaction),
   };
+
+  console.log('Transformed alert - Source value:', transformedAlert.source);
+  console.log('Full transformed alert:', transformedAlert);
+  return transformedAlert;
 }
 
 /**
@@ -36,7 +62,7 @@ export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
     alert_id: uiAlert.alert_id,
     tenant_id: uiAlert.tenant_id,
     priority: uiAlert.priority,
-    alert_type: uiAlert.alert_type as any, // Type assertion needed for compatibility
+    alert_type: uiAlert.alert_type as any,
     source: uiAlert.source,
     txtp: uiAlert.txtp,
     message: uiAlert.message,

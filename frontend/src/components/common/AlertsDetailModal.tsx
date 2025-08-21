@@ -1,64 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { Alert } from '../../types/alertsdashboard.types';
+import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import type { Alert as TriageAlert } from '../../types/triage.types';
+import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
+import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
 import ConvertToCaseModal, { type ConvertToCaseData } from './ConvertToCaseModal';
 
 interface AlertsDetailModalProps {
-  alert: Alert | null;
+  alertId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onConvertToCase?: (alert: Alert, caseData?: ConvertToCaseData) => void;
-  onCloseAlert?: (alert: Alert, justification?: string) => void;
+  onConvertToCase?: (alert: LegacyAlert, caseData?: ConvertToCaseData) => void;
+  onCloseAlert?: (alert: LegacyAlert, justification?: string) => void;
+  onAlertUpdated?: () => void; // Callback to refresh the alerts list
 }
 
+// Temporary adapter to convert new Alert format to legacy format for modals
+const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
+  // Backend fields - pass through
+  alert_id: alert.alert_id,
+  tenant_id: alert.tenant_id,
+  priority: alert.priority,
+  alert_type: alert.alert_type,
+  source: alert.source,
+  txtp: alert.txtp,
+  message: alert.message,
+  alert_data: alert.alert_data,
+  transaction: alert.transaction,
+  network_map: alert.network_map,
+  alert_status: alert.alert_status,
+  confidence_per: alert.confidence_per,
+  created_at: alert.created_at,
+  case_id: alert.case_id,
+
+  // UI-specific fields - derived mappings
+  id: alert.alert_id,
+  title: alert.message,
+  description: alert.message,
+  type: alert.alert_type || alert.source || 'transaction_monitoring',
+  severity: alert.priority.toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+  riskScore: alert.confidence_per,
+  confidence: alert.confidence_per,
+  status: (alert.alert_status === 'CLOSED' ? 'resolved' : 
+           alert.alert_status === 'CONVERTED' ? 'converted' :
+           alert.alert_status.toLowerCase()) as 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted',
+  createdAt: alert.created_at,
+  updatedAt: alert.created_at, // Use created_at as fallback
+  lastUpdated: alert.created_at,
+  transactionId: alert.txtp,
+  assignedTo: undefined,
+  assignee: undefined,
+  amount: undefined, // Would need to parse from transaction data
+  currency: undefined, // Would need to parse from transaction data
+});
+
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
-  alert,
+  alertId,
   isOpen,
   onClose,
   onConvertToCase,
   onCloseAlert,
+  onAlertUpdated,
 }) => {
+  const [alert, setAlert] = useState<TriageAlert | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
 
-  // Log alert opening
+  // Fetch alert details when alertId changes and modal is open
   useEffect(() => {
-    if (alert && isOpen) {
-      const logAlertView = () => {
-        const currentUser = 'John Doe'; // In real implementation, get from auth context
-        const timestamp = new Date().toISOString();
+    const fetchAlertDetails = async () => {
+      if (!alertId || !isOpen) {
+        setAlert(null);
+        return;
+      }
 
+      setLoading(true);
+      setError(null);
+
+      try {
+        console.log('🔍 Fetching alert details for ID:', alertId);
+        const alertDetails = await triageService.getAlertById(alertId);
+        console.log('Alert details fetched:', alertDetails);
+        setAlert(alertDetails);
+
+        // Log alert view for audit trail
+        const currentUser = 'system'; // TODO: Get from auth context
         console.log('Alert View Logged:', {
-          alertId: alert.id,
+          alertId: alertDetails.alert_id,
           viewedBy: currentUser,
-          viewedAt: timestamp,
+          viewedAt: new Date().toISOString(),
           action: 'alert_opened',
         });
+      } catch (err) {
+        console.error('Error fetching alert details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load alert details');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        // In real implementation, send to audit service
-        // auditService.logAction({
-        //   alertId: alert.id,
-        //   userId: currentUser,
-        //   action: 'alert_opened',
-        //   timestamp: timestamp
-        // });
-      };
-
-      logAlertView();
-    }
-  }, [alert, isOpen]);
+    fetchAlertDetails();
+  }, [alertId, isOpen]);
 
   const handleConvert = () => {
-    console.log('handleConvert called, alert status:', alert?.status);
+    console.log('handleConvert called, alert status:', alert?.alert_status);
     // Only show convert modal if alert is in an open state
-    if (alert && (alert.status === 'new' || alert.status === 'investigating')) {
+    if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       console.log('Setting showConvertModal to true');
       setShowConvertModal(true);
     } else {
-      console.log('Alert cannot be converted in current status:', alert?.status);
+      console.log('Alert cannot be converted in current status:', alert?.alert_status);
     }
   };
 
@@ -66,7 +121,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     try {
       // Call the parent's onConvertToCase with additional parameters
       if (alert && onConvertToCase) {
-        await onConvertToCase(alert, caseData);
+        await onConvertToCase(convertToLegacyAlert(alert), caseData);
+        // Refresh alert details after successful conversion
+        if (onAlertUpdated) {
+          onAlertUpdated();
+        }
       }
       setShowConvertModal(false);
       setOpen(false);
@@ -79,13 +138,13 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   };
 
   const handleCloseAlert = () => {
-    console.log('handleCloseAlert called, alert status:', alert?.status);
+    console.log('handleCloseAlert called, alert status:', alert?.alert_status);
     // Only show close modal if alert is in an open state
-    if (alert && (alert.status === 'new' || alert.status === 'investigating')) {
+    if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       console.log('Setting showCloseModal to true');
       setShowCloseModal(true);
     } else {
-      console.log('Alert cannot be closed in current status:', alert?.status);
+      console.log('Alert cannot be closed in current status:', alert?.alert_status);
     }
   };
 
@@ -94,7 +153,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       // Call the parent's onCloseAlert with additional parameters
       if (alert && onCloseAlert) {
         // Pass the justification information
-        await onCloseAlert(alert, justification);
+        await onCloseAlert(convertToLegacyAlert(alert), justification);
+        // Refresh alert details after successful closure
+        if (onAlertUpdated) {
+          onAlertUpdated();
+        }
       }
       setShowCloseModal(false);
       setOpen(false);
@@ -106,14 +169,64 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     }
   };
 
-  // Don't render if not open or no alert
-  if (!isOpen || !alert) {
+  // Don't render if not open
+  if (!isOpen) {
     return null;
   }
 
-  // Get severity color
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
+  // Loading state
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
+          <div className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity" aria-hidden="true"></div>
+          <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-sm text-gray-600">Loading alert details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
+          <div className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity" aria-hidden="true"></div>
+          <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
+            <ExclamationTriangleIcon className="h-12 w-12 text-red-600 mx-auto" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900">Error Loading Alert</h3>
+            <p className="mt-2 text-sm text-gray-600">{error}</p>
+            <div className="mt-6 flex justify-center space-x-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Retry
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No alert loaded yet or alert not found
+  if (!alert) {
+    return null;
+  }
+
+  // Get priority color (using priority instead of severity)
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
       case 'critical':
         return 'text-red-600 bg-red-50';
       case 'high':
@@ -169,14 +282,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       Alert Details
                     </h3>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(alert.priority)}`}
                     >
-                      {alert.severity.toUpperCase()}
+                      {alert.priority}
                     </span>
                   </div>
-                  <p className="text-lg text-gray-600 mb-1">{alert.title}</p>
+                  <p className="text-lg text-gray-600 mb-1">{alert.message}</p>
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.id} • Transaction: {alert.transactionId}
+                    Alert ID: {alert.alert_id} • Source: {alert.source || 'N/A'}
                   </p>
                 </div>
 
@@ -210,7 +323,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-40">
                       <div className="py-1">
                         {/* Only show Convert to Case if status allows converting */}
-                        {(alert?.status === 'new' || alert?.status === 'investigating') && (
+                        {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
                           <button
                             onClick={() => {
                               console.log('Convert to Case button clicked');
@@ -222,7 +335,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           </button>
                         )}
                         {/* Only show Close Alert if status allows closing */}
-                        {(alert?.status === 'new' || alert?.status === 'investigating') && (
+                        {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
                           <button
                             onClick={() => {
                               console.log('Close Alert button clicked');
@@ -252,14 +365,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         <span className="text-sm font-medium text-gray-500">
                           Alert ID:
                         </span>
-                        <p className="text-sm text-gray-900">{alert.id}</p>
+                        <p className="text-sm text-gray-900">{alert.alert_id}</p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-gray-500">
-                          Risk Score:
+                          Confidence Score:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {alert.riskScore}/100
+                          {alert.confidence_per}%
                         </p>
                       </div>
                       <div>
@@ -267,7 +380,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Created:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {new Date(alert.createdAt).toLocaleString()}
+                          {new Date(alert.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">
+                          Status:
+                        </span>
+                        <p className="text-sm text-gray-900">
+                          {alert.alert_status}
                         </p>
                       </div>
                     </div>
@@ -281,10 +402,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
                       <div>
                         <span className="text-sm font-medium text-gray-500">
-                          Transaction ID:
+                          Transaction Data:
                         </span>
-                        <p className="text-sm text-gray-900 font-mono">
-                          {alert.transactionId}
+                        <div className="text-sm text-gray-900 font-mono bg-gray-100 p-2 rounded mt-1">
+                          {alert.transaction ? JSON.stringify(alert.transaction, null, 2) : 'No transaction data'}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">
+                          Alert Type:
+                        </span>
+                        <p className="text-sm text-gray-900">
+                          {alert.alert_type || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -337,27 +466,24 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             by {alert.source}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {new Date(alert.createdAt).toLocaleString()}
+                            {new Date(alert.created_at).toLocaleString()}
                           </p>
                         </div>
                       </div>
 
-                      {alert.assignee && (
-                        <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900">
-                              <span className="font-medium">
-                                Alert assigned
-                              </span>{' '}
-                              to {alert.assignee}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(alert.updatedAt).toLocaleString()}
-                            </p>
-                          </div>
+                      {/* Assignment info placeholder - will be implemented later */}
+                      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-shrink-0 w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900">
+                            <span className="font-medium">Alert assignment</span>
+                            feature coming soon
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            System notification
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -381,7 +507,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   <div className="flex items-center space-x-4 text-sm">
                     <span className="text-gray-500">Triggered Rule:</span>
                     <span className="font-medium text-gray-900">
-                      {alert.type}
+                      {alert.alert_type || 'N/A'}
                     </span>
                     <span className="text-gray-500">•</span>
                     <span className="text-gray-500">Typology:</span>
@@ -414,13 +540,13 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         <tbody className="bg-white divide-y divide-gray-200">
                           <tr>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {alert.type}
+                              {alert.alert_type || 'N/A'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {alert.riskScore}
+                              N/A
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {alert.confidence}%
+                              {alert.confidence_per}%
                             </td>
                           </tr>
                           <tr>
@@ -439,10 +565,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               Total Score
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {alert.riskScore}
+                              N/A
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {alert.confidence}%
+                              {alert.confidence_per}%
                             </td>
                           </tr>
                         </tbody>
@@ -461,7 +587,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         <CloseAlertModal
           isOpen={showCloseModal}
           onClose={() => setShowCloseModal(false)}
-          alert={alert}
+          alert={convertToLegacyAlert(alert)}
           onConfirmClose={handleConfirmCloseAlert}
         />
       )}
@@ -471,7 +597,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         <ConvertToCaseModal
           isOpen={showConvertModal}
           onClose={() => setShowConvertModal(false)}
-          alert={alert}
+          alert={convertToLegacyAlert(alert)}
           onConfirmConvert={handleConfirmConvert}
         />
       )}
