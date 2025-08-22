@@ -1,4 +1,5 @@
-/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import NatsRelayPlugin from '@tazama-lf/nats-relay-plugin';

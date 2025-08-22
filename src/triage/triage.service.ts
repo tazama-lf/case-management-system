@@ -47,6 +47,13 @@ export class TriageService {
       return newAlert;
     } catch (error) {
       this.logger.error('Error creating alert', error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_CREATION_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to create alert: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to create alert');
     }
   }
@@ -92,6 +99,13 @@ export class TriageService {
       return updatedAlert;
     } catch (error) {
       this.logger.error(`Update failed for alert ${alertId}`, error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_UPDATE_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to update alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to update alert');
     }
   }
@@ -129,6 +143,13 @@ export class TriageService {
       return closedAlert;
     } catch (error) {
       this.logger.error(`Close failed for alert ${alertId}`, error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_CLOSE_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to close alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to close alert');
     }
   }
@@ -236,6 +257,13 @@ export class TriageService {
       };
     } catch (error) {
       this.logger.error('Failed to fetch alerts', error);
+      await this.audit.logAction({
+        userId: params.tenantId, // If you have a userId, use it; otherwise, use tenantId for traceability
+        operation: 'ALERTS_FETCH_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to fetch alerts for tenant ${params.tenantId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Unable to fetch alert list');
     }
   }
@@ -278,6 +306,13 @@ export class TriageService {
       if (error instanceof NotFoundException) throw error;
 
       this.logger.error(`Failed to fetch alert ${alertId}`, error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_FETCH_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to fetch alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Unable to retrieve alert details');
     }
   }
@@ -337,6 +372,13 @@ export class TriageService {
       return newCase;
     } catch (error) {
       this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_CONVERT_TO_CASE_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to convert alert ${alertId} to case: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to convert alert to case');
     }
   }
@@ -458,6 +500,13 @@ export class TriageService {
       });
     } catch (error) {
       this.logger.error(`Auto close failed for alert ${alertId}`, error);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_AUTO_CLOSE_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to auto close alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to auto close alert');
     }
   }
@@ -509,6 +558,13 @@ export class TriageService {
       return result.updatedAlert; // return updated alert instead of case
     } catch (error) {
       this.logger.error(`Failed to create investigation case for alert ${alertId}. Error: ${error.message}`, error.stack);
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_INVESTIGATION_FAILED',
+        entityName: 'Alert',
+        actionPerformed: `Failed to create investigation case for alert ${alertId}: ${error.message}`,
+        outcome: 'FAILURE',
+      });
       throw new InternalServerErrorException('Failed to create investigation case');
     }
   }
