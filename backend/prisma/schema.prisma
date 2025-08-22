@@ -133,7 +133,8 @@ enum AlertStatus {
 }
 enum CaseType {
   FRAUD
-  MONEY_LAUNDERING
+  AML
+  FRAUD_AND_AML
 }
 enum AlertType {
   FRAUD

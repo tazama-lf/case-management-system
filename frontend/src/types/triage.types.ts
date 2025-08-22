@@ -30,9 +30,9 @@ export const CaseStatus = {
 } as const;
 
 export const CaseType = {
-  INVESTIGATION: 'INVESTIGATION',
-  COMPLIANCE: 'COMPLIANCE',
-  FRAUD: 'FRAUD'
+  FRAUD: 'FRAUD',
+  AML: 'AML',
+  FRAUD_AND_AML: 'FRAUD_AND_AML'
 } as const;
 
 export const CaseCreationType = {
@@ -119,7 +119,7 @@ export interface UpdateAlertDto {
 // Convert Alert to Case DTO
 export interface ConvertToCaseDto {
   priority: Priority;
-  caseType: CaseType;
+  caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
 }
 
 // Convert Alert to Case Response

@@ -498,7 +498,7 @@ const AlertsDashboard: React.FC = () => {
         
         const convertData: ConvertToCaseDto = {
           priority: priorityMap[caseData.priority] || 'MEDIUM',
-          caseType: 'INVESTIGATION' // Default case type
+          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML'
         };
         
         await triageService.convertAlertToCase(alertId, convertData);
@@ -506,7 +506,7 @@ const AlertsDashboard: React.FC = () => {
         // Default conversion without case data
         const convertData: ConvertToCaseDto = {
           priority: alert.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-          caseType: 'INVESTIGATION'
+          caseType: 'FRAUD' // Default case type
         };
         
         await triageService.convertAlertToCase(alertId, convertData);
