@@ -341,7 +341,7 @@ export class TriageService {
     }
   }
 
-  async handleAITriage(alertId: string, dto: SubmitAlertDto, userId: string, tenantId: string): Promise<void> {
+  async handleAITriage(alertId: string, dto: SubmitAlertDto, userId: string, tenantId: string) {
     try {
       // Story 1G
       // If confidenceThreshold environment variable is not set, default to 100% → ensures low-confidence predictions always go to investigation.
@@ -406,8 +406,8 @@ export class TriageService {
           actionPerformed: `Low confidence (${predictedConfidence} < ${confidenceThreshold}) → sent for investigation for alert ${alertId}`,
           outcome: 'SUCCESS',
         });
-        await this.createInvestigationCase(alertId, userId, tenantId, prediction);
-        return;
+
+        return await this.createInvestigationCase(alertId, userId, tenantId, prediction);
       }
 
       // Story 1B
@@ -423,8 +423,7 @@ export class TriageService {
           actionPerformed: `Auto-closed alert ${alertId} as ${AlertStatus.AUTOCLOSED_REFUTED}`,
           outcome: 'SUCCESS',
         });
-        await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
-        return;
+        return await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
       }
       // === 4. High confidence & True Positive ===
       if (predictedTruePositive) {
@@ -434,15 +433,7 @@ export class TriageService {
           this.logger.log(`[1I] True positive FRAUD_AND_AML for alert ${alertId}. Creating master and child cases (FRAUD, AML).`);
           const masterCase = await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD_AND_AML);
           await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD, masterCase.case_id);
-          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML, masterCase.case_id);
-          await this.audit.logAction({
-            userId,
-            operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD_AND_AML',
-            entityName: 'Alert',
-            actionPerformed: `Created master FRAUD_AND_AML and child FRAUD & AML cases for alert ${alertId}. Master case ${masterCase.case_id}`,
-            outcome: 'SUCCESS',
-          });
-          return;
+          return await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML, masterCase.case_id);
         }
 
         // Story 1E
@@ -456,8 +447,7 @@ export class TriageService {
             actionPerformed: `Created AML case for alert ${alertId}`,
             outcome: 'SUCCESS',
           });
-          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML);
-          return;
+          return await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML);
         }
 
         // If fraud and transaction occured create case else autoclose
@@ -474,8 +464,7 @@ export class TriageService {
               actionPerformed: `Auto-closed alert ${alertId} as ${AlertStatus.AUTOCLOSED_CONFIRMED} due to interdiction/no transaction`,
               outcome: 'SUCCESS',
             });
-            await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
-            return;
+            return await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
           }
           // Story 1D
           this.logger.log(`[1D] True positive FRAUD for alert ${alertId}. Creating FRAUD investigation case.`);
@@ -486,8 +475,7 @@ export class TriageService {
             actionPerformed: `Created FRAUD case for alert ${alertId}`,
             outcome: 'SUCCESS',
           });
-          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD);
-          return;
+          return await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD);
         }
       }
     } catch (error) {
@@ -505,7 +493,7 @@ export class TriageService {
 
   private async autoCloseAlert(alertId: string, status: AlertStatus, userId: string) {
     try {
-      await this.prisma.alert.update({
+      const updatedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: { alert_status: status },
       });
@@ -516,6 +504,7 @@ export class TriageService {
         actionPerformed: `Auto closed alert ${alertId} with status: ${status} at ${new Date().toISOString()}`,
         outcome: 'SUCCESS',
       });
+      return updatedAlert;
     } catch (error) {
       this.logger.error(`Auto close failed for alert ${alertId}`, error);
       throw new InternalServerErrorException('Failed to auto close alert');
@@ -566,7 +555,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      return result.updatedAlert; // return updated alert instead of case
+      return result.updatedAlert;
     } catch (error) {
       this.logger.error(`Failed to create investigation case for alert ${alertId}. Error: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to create investigation case');

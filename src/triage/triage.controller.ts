@@ -21,14 +21,7 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
 
-    const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
-    const aiTriage = process.env.AI_TRIAGE === 'true';
-    // Story 1H
-    if (aiTriage) {
-      await this.triageService.handleAITriage(alert.alert_id, dto, userId, tenantId);
-    }
-    // If AI triage disabled, simply return created alert (tests expect this behavior)
-    return alert;
+    return await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
   }
 
   @Get('test')
