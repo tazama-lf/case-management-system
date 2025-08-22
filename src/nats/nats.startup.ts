@@ -76,9 +76,16 @@ export class NatsStartupService implements OnModuleInit {
         },
       };
 
-      await this.triageService.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
+      const alert = await this.triageService.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
 
+      const aiTriageEnabled = process.env.AI_TRIAGE === 'true';
+      // Story 1H
+      if (aiTriageEnabled) {
+        await this.triageService.handleAITriage(alert.alert_id, submitAlertDto, userId, tenantId);
+      } else {
+        await this.triageService.createInvestigationCase(alert.alert_id, userId, tenantId);
+      }
       // Publish alert to NATS
       await this.natsRelay.relay(JSON.stringify(submitAlertDto.result));
       this.logger.log('Alert published to NATS');
