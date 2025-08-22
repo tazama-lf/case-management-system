@@ -29,6 +29,18 @@ export const CaseStatus = {
   ESCALATED: 'ESCALATED'
 } as const;
 
+// Action History types
+export interface ActionHistory {
+  id: string;
+  timestamp: string;
+  action: string;
+  operation: string;
+  outcome: string;
+  userId: string;
+}
+
+// Type aliases
+
 export const CaseType = {
   FRAUD: 'FRAUD',
   AML: 'AML',

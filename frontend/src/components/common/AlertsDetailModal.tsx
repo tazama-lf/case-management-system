@@ -3,9 +3,10 @@ import {
   XMarkIcon, 
   ExclamationTriangleIcon,
   DocumentDuplicateIcon,
-  XCircleIcon
+  XCircleIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
-import type { Alert as TriageAlert } from '../../types/triage.types';
+import type { Alert as TriageAlert, ActionHistory } from '../../types/triage.types';
 import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
 import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
@@ -128,6 +129,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [showRules, setShowRules] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Fetch alert details when alertId changes and modal is open
   useEffect(() => {
@@ -145,6 +148,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const alertDetails = await triageService.getAlertById(alertId);
         console.log('Alert details fetched:', alertDetails);
         setAlert(alertDetails);
+
+        // Fetch action history
+        setLoadingHistory(true);
+        try {
+          const history = await triageService.getAlertActionHistory(alertId);
+          setActionHistory(history);
+        } catch (historyError) {
+          console.warn('Failed to fetch action history:', historyError);
+          setActionHistory([]);
+        } finally {
+          setLoadingHistory(false);
+        }
 
         // Log alert view for audit trail
         const currentUser = 'system'; // TODO: Get from auth context
@@ -302,7 +317,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div
-          className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity"
+          className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         ></div>
@@ -316,7 +331,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         </span>
 
         {/* Modal panel */}
-        <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-7xl sm:w-full">
+        <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
           {/* Close button */}
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
@@ -329,13 +344,13 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           </div>
 
           {/* Modal content */}
-          <div className="bg-white px-6 pt-6 pb-6 max-h-[90vh] overflow-y-auto">
-            <div className="max-w-6xl mx-auto">
+          <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
               {/* Header Section */}
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-2xl font-bold text-gray-900">
+                    <h3 className="text-xl font-bold text-gray-900 mt-4">
                       Alert Details
                     </h3>
                     <span
@@ -385,7 +400,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               </div>
 
               {/* Row 1: Alert Summary & Transaction Data */}
-              <div className="bg-white rounded-lg mb-6">
+              <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
                   {/* Column 1: Alert Summary */}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
@@ -446,7 +461,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               </div>
 
               {/* Row 2: Related Items & Action History */}
-              <div className="bg-white rounded-lg mb-6">
+              <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
                   {/* Column 1: Related Items */}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
@@ -468,53 +483,55 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
                     </h4>
-                    <div className="space-y-4">
-                      <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900">
-                            <span className="font-medium">Alert opened</span> by
-                            John Doe
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date().toLocaleString()}
-                          </p>
-                        </div>
+                    
+                    {loadingHistory ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-sm text-gray-600">Loading...</span>
                       </div>
-
-                      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-shrink-0 w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900">
-                            <span className="font-medium">Alert created</span>{' '}
-                            by {alert.source}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(alert.created_at).toLocaleString()}
-                          </p>
-                        </div>
+                    ) : actionHistory.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {actionHistory.map((action) => (
+                          <div key={action.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                              action.outcome === 'SUCCESS' 
+                                ? 'bg-green-100 text-green-600' 
+                                : action.outcome === 'FAILURE'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              <ClockIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">
+                                <span className="font-medium">{action.action}</span>
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(action.timestamp).toLocaleString('en-US', {
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                  hour12: true
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-
-                      {/* Assignment info placeholder - will be implemented later */}
-                      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-shrink-0 w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900">
-                            <span className="font-medium">Alert assignment</span>
-                            feature coming soon
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            System notification
-                          </p>
-                        </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500">No action history available</p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Row 3: Rules & Typologies */}
-              <div className="bg-white rounded-lg p-6 mb-6 border border-gray-200">
+              <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
                     Rules & Typologies
@@ -592,6 +609,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   )}
                 </div>
               </div>
+
             </div>
           </div>
         </div>

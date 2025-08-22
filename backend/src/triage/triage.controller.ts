@@ -88,6 +88,13 @@ export class TriageController {
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
 
+  @Get(':alertId/action-history')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req) {
+    const tenantId = req.user.tenantId;
+    return this.triageService.getAlertActionHistory(alertId, tenantId);
+  }
+
   @Post(':alertId/convert-to-case')
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async convertAlertToCase(@Param('alertId') alertId: string, @Body() convertAlertToCase: ConvertAlertToCase, @Req() req) {

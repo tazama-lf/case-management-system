@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse } from '../types/triage.types';
+import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory } from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
@@ -104,6 +104,16 @@ class TriageService {
       return this.validateAlertResponse(response);
     } catch (error) {
       throw this.handleError(error, 'fetch alert details');
+    }
+  }
+
+  // GET /api/v1/triage/alerts/:alertId/action-history
+  async getAlertActionHistory(alertId: string): Promise<ActionHistory[]> {
+    try {
+      const response = await apiClient.get<ActionHistory[]>(`${this.baseUrl}/${alertId}/action-history`);
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'fetch alert action history');
     }
   }
 

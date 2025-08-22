@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
@@ -328,6 +328,51 @@ export class TriageService {
 
       this.logger.error(`Failed to fetch alert ${alertId}`, error);
       throw new InternalServerErrorException('Unable to retrieve alert details');
+    }
+  }
+
+  async getAlertActionHistory(alertId: string, tenantId: string) {
+    try {
+      // First verify the alert exists and belongs to the tenant
+      const alert = await this.prisma.alert.findUnique({
+        where: { alert_id: alertId },
+      });
+
+      if (!alert || alert.tenant_id !== tenantId) {
+        throw new ForbiddenException('Alert not found or access denied');
+      }
+
+      // Get action history for this alert
+      const actionHistory = await this.audit.getActionHistoryForAlert(alertId);
+
+      // Format the action history for better readability
+      return actionHistory.map((log) => ({
+        id: log.audit_log_id,
+        timestamp: log.performed_at,
+        action: this.formatActionDescription(log.operation, log.action_performed),
+        operation: log.operation,
+        outcome: log.outcome,
+        userId: log.user_id,
+      }));
+    } catch (error) {
+      throw new ForbiddenException('You are not authorized to access this alert action history');
+    }
+  }
+
+  private formatActionDescription(operation: string, actionPerformed: string): string {
+    switch (operation) {
+      case 'ALERT_CREATED':
+        return 'Alert created by system';
+      case 'ALERT_UPDATED':
+        return 'Alert updated';
+      case 'ALERT_CLOSED':
+        return 'Alert manually closed';
+      case 'ALERT_CONVERTED_TO_CASE':
+        const caseIdMatch = actionPerformed.match(/case ([A-Za-z0-9-]+)/);
+        const caseId = caseIdMatch ? caseIdMatch[1] : 'unknown';
+        return `Case with ID ${caseId} Created`;
+      default:
+        return actionPerformed;
     }
   }
 
