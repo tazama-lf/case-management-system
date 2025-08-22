@@ -445,11 +445,19 @@ export class TriageService {
       // === 4. High confidence & True Positive ===
       if (predictedTruePositive) {
         // Story 1I
-        // Create master FRAUD_AND_AML case + child FRAUD & AML cases
         if (predictedAlertType === AlertType.FRAUD_AND_AML) {
+          this.logger.log(`Creating master FRAUD_AND_AML case and child FRAUD & AML cases for alert ${alertId} by user ${userId}`);
           const masterCase = await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD_AND_AML);
           await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD, masterCase.case_id);
           await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML, masterCase.case_id);
+
+          await this.audit.logAction({
+            userId,
+            operation: 'ALERT_CONVERTED_TO_MASTER_AND_CHILD_CASES',
+            entityName: 'Alert',
+            actionPerformed: `Converted alert ${alertId} to master case ${masterCase.case_id} and child cases (FRAUD, AML)`,
+            outcome: 'SUCCESS',
+          });
           return;
         }
 
