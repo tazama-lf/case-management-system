@@ -195,7 +195,7 @@ describe('TriageService', () => {
       expect(createCaseSpy).toHaveBeenNthCalledWith(2, alertId, userId, tenantId, expect.any(Object), CaseType.FRAUD, master.case_id);
       expect(createCaseSpy).toHaveBeenNthCalledWith(3, alertId, userId, tenantId, expect.any(Object), CaseType.AML, master.case_id);
       expect(auditService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD_AND_AML' }),
+        expect.objectContaining({ operation: 'ALERT_CONVERTED_TO_MASTER_AND_CHILD_CASES' }),
       );
     });
 

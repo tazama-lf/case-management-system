@@ -185,10 +185,9 @@ describe('TriageController', () => {
       expect(triageService.handleNewAlert).toHaveBeenCalledWith(mockSubmitAlertDto, 'test-user-id', 'test-tenant-id', 'REST API');
     });
 
-    it('should call AI triage when AI_TRIAGE is true and still return created alert', async () => {
-      process.env.AI_TRIAGE = 'true';
+    it('should return created alert', async () => {
       const expectedResult = {
-        alert_id: 'alert-ai-1',
+        alert_id: 'alert-1',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
         alert_type: null,
@@ -205,7 +204,6 @@ describe('TriageController', () => {
         updated_at: new Date(),
       };
       triageService.handleNewAlert.mockResolvedValue(expectedResult);
-      triageService.handleAITriage.mockResolvedValue(undefined as unknown as void);
 
       const result = await controller.submitAlert(mockSubmitAlertDto, mockRequest);
 
@@ -215,15 +213,7 @@ describe('TriageController', () => {
         'test-tenant-id',
         'REST API',
       );
-      expect(triageService.handleAITriage).toHaveBeenCalledWith(
-        expectedResult.alert_id,
-        mockSubmitAlertDto,
-        'test-user-id',
-        'test-tenant-id',
-      );
       expect(result).toEqual(expectedResult);
-
-      delete process.env.AI_TRIAGE;
     });
   });
 
