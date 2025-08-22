@@ -186,5 +186,18 @@ describe('JwtStrategy', () => {
         user_id: 'user-123',
       });
     });
+
+    it('should throw error when roles are missing from both realm_access and claims', async () => {
+      const payload: any = {
+        sub: 'user-123',
+        tenantId: 'tenant-456',
+        // no realm_access
+        // no claims
+      };
+
+      expect(() => strategy.validate(payload)).toThrow(
+        'Invalid token: missing roles in realm_access or claims',
+      );
+    });
   });
 });

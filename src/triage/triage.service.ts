@@ -383,11 +383,14 @@ export class TriageService {
     }
   }
 
-  async handleAITriage(alertId: string, dto: SubmitAlertDto, userId: string, tenantId: string): Promise<void> {
+  async handleAITriage(alertId: string, dto: SubmitAlertDto, userId: string, tenantId: string) {
     try {
       // Story 1G
       // If confidenceThreshold environment variable is not set, default to 100% → ensures low-confidence predictions always go to investigation.
       const confidenceThreshold = process.env.CONFIDENCE_THRESHOLD ? Number(process.env.CONFIDENCE_THRESHOLD) : 100;
+      this.logger.log(
+        `[1G] Using confidence threshold: ${confidenceThreshold} (env CONFIDENCE_THRESHOLD=${process.env.CONFIDENCE_THRESHOLD ?? 'undefined'}) for alert ${alertId}`,
+      );
 
       // === Check if interdiction is enabled and determine if transaction occurred ===
       const interdictionEnabled = process.env.CLIENT_SYSTEM_INTERDICTION_ENABLED === 'true';
@@ -422,6 +425,9 @@ export class TriageService {
         alertType: predictedAlertType,
         isTruePositive: predictedTruePositive,
       } = prediction;
+      this.logger.log(
+        `[1A] AI prediction for alert ${alertId}: confidence=${predictedConfidence}, priority=${predictedPriority}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
+      );
 
       const updateDto = new UpdateAlertDto();
       updateDto.priority = predictedPriority;
@@ -432,15 +438,34 @@ export class TriageService {
       // Story 1F
       // === 2. Confidence below threshold → Investigation case ===
       if (predictedConfidence < confidenceThreshold) {
-        await this.createInvestigationCase(alertId, userId, tenantId, prediction);
-        return;
+        this.logger.log(
+          `[1F] Confidence ${predictedConfidence} below threshold ${confidenceThreshold} for alert ${alertId}. Creating investigation case.`,
+        );
+        await this.audit.logAction({
+          userId,
+          operation: 'AI_TRIAGE_LOW_CONFIDENCE',
+          entityName: 'Alert',
+          actionPerformed: `Low confidence (${predictedConfidence} < ${confidenceThreshold}) → sent for investigation for alert ${alertId}`,
+          outcome: 'SUCCESS',
+        });
+
+        return await this.createInvestigationCase(alertId, userId, tenantId, prediction);
       }
 
       // Story 1B
       // === 3. High confidence & False Positive → Auto-close as REFUTED ===
       if (predictedConfidence >= confidenceThreshold && !predictedTruePositive) {
-        await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
-        return;
+        this.logger.log(
+          `[1A] High confidence (${predictedConfidence} >= ${confidenceThreshold}) but False Positive. Auto-closing alert ${alertId} as AUTOCLOSED_REFUTED.`,
+        );
+        await this.audit.logAction({
+          userId,
+          operation: 'AI_TRIAGE_HIGH_CONFIDENCE_FALSE_POSITIVE',
+          entityName: 'Alert',
+          actionPerformed: `Auto-closed alert ${alertId} as ${AlertStatus.AUTOCLOSED_REFUTED}`,
+          outcome: 'SUCCESS',
+        });
+        return await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_REFUTED, userId);
       }
       // === 4. High confidence & True Positive ===
       if (predictedTruePositive) {
@@ -464,20 +489,43 @@ export class TriageService {
         // Story 1E
         // If AML suspicion create case
         if (predictedAlertType === AlertType.AML) {
-          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML);
-          return;
+          this.logger.log(`[1E] True positive AML for alert ${alertId}. Creating AML investigation case.`);
+          await this.audit.logAction({
+            userId,
+            operation: 'AI_TRIAGE_TRUE_POSITIVE_AML',
+            entityName: 'Alert',
+            actionPerformed: `Created AML case for alert ${alertId}`,
+            outcome: 'SUCCESS',
+          });
+          return await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.AML);
         }
 
         // If fraud and transaction occured create case else autoclose
         if (predictedAlertType === AlertType.FRAUD) {
           // Story 1C
           if (!transactionOccurred) {
-            await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
-            return;
+            this.logger.log(
+              `[1C] True positive FRAUD but interdiction indicates no transaction occurred for alert ${alertId}. Auto-closing as AUTOCLOSED_CONFIRMED.`,
+            );
+            await this.audit.logAction({
+              userId,
+              operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD_INTERDICTED',
+              entityName: 'Alert',
+              actionPerformed: `Auto-closed alert ${alertId} as ${AlertStatus.AUTOCLOSED_CONFIRMED} due to interdiction/no transaction`,
+              outcome: 'SUCCESS',
+            });
+            return await this.autoCloseAlert(alertId, AlertStatus.AUTOCLOSED_CONFIRMED, userId);
           }
           // Story 1D
-          await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD);
-          return;
+          this.logger.log(`[1D] True positive FRAUD for alert ${alertId}. Creating FRAUD investigation case.`);
+          await this.audit.logAction({
+            userId,
+            operation: 'AI_TRIAGE_TRUE_POSITIVE_FRAUD',
+            entityName: 'Alert',
+            actionPerformed: `Created FRAUD case for alert ${alertId}`,
+            outcome: 'SUCCESS',
+          });
+          return await this.createInvestigationCase(alertId, userId, tenantId, prediction, CaseType.FRAUD);
         }
       }
     } catch (error) {
@@ -495,7 +543,7 @@ export class TriageService {
 
   private async autoCloseAlert(alertId: string, status: AlertStatus, userId: string) {
     try {
-      await this.prisma.alert.update({
+      const updatedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
         data: { alert_status: status },
       });
@@ -506,6 +554,7 @@ export class TriageService {
         actionPerformed: `Auto closed alert ${alertId} with status: ${status} at ${new Date().toISOString()}`,
         outcome: 'SUCCESS',
       });
+      return updatedAlert;
     } catch (error) {
       this.logger.error(`Auto close failed for alert ${alertId}`, error);
       await this.audit.logAction({
@@ -563,7 +612,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      return result.updatedAlert; // return updated alert instead of case
+      return result.updatedAlert;
     } catch (error) {
       this.logger.error(`Failed to create investigation case for alert ${alertId}. Error: ${error.message}`, error.stack);
       await this.audit.logAction({
