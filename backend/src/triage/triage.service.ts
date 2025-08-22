@@ -133,6 +133,55 @@ export class TriageService {
     }
   }
 
+  // New method to get available filter values
+  async getFilterOptions(tenantId: string) {
+    try {
+      // Get unique priorities
+      const priorities = await this.prisma.alert.findMany({
+        where: { tenant_id: tenantId },
+        select: { priority: true },
+        distinct: ['priority'],
+      });
+
+      // Get unique statuses
+      const statuses = await this.prisma.alert.findMany({
+        where: { tenant_id: tenantId },
+        select: { alert_status: true },
+        distinct: ['alert_status'],
+      });
+
+      // Get unique types (txtp)
+      const types = await this.prisma.alert.findMany({
+        where: {
+          tenant_id: tenantId,
+          txtp: { not: null },
+        },
+        select: { txtp: true },
+        distinct: ['txtp'],
+      });
+
+      // Get unique sources
+      const sources = await this.prisma.alert.findMany({
+        where: {
+          tenant_id: tenantId,
+          source: { not: null },
+        },
+        select: { source: true },
+        distinct: ['source'],
+      });
+
+      return {
+        priorities: priorities.map((p) => p.priority),
+        statuses: statuses.map((s) => s.alert_status),
+        types: types.map((t) => t.txtp).filter(Boolean),
+        sources: sources.map((s) => s.source).filter(Boolean),
+      };
+    } catch (error) {
+      this.logger.error('Failed to fetch filter options', error);
+      throw new InternalServerErrorException('Unable to fetch filter options');
+    }
+  }
+
   async getAlertsForUser(params: {
     tenantId: string;
     priority?: string;

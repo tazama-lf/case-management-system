@@ -78,6 +78,25 @@ class TriageService {
     };
   }
 
+  // GET /api/v1/triage/alerts/filter-options
+  async getFilterOptions(): Promise<{
+    priorities: string[];
+    statuses: string[];
+    types: string[];
+    sources: string[];
+    confidenceRange: {
+      min: number;
+      max: number;
+    };
+  }> {
+    try {
+      const response = await apiClient.get(`${this.baseUrl}/filter-options`);
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'fetch filter options');
+    }
+  }
+
   // GET /api/v1/triage/alerts/:alertId
   async getAlertById(alertId: string): Promise<Alert> {
     try {

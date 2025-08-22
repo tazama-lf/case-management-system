@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../../types/alertsdashboard.types';
+import useDebounce from '../../hooks/useDebounce';
+import triageService from '../../services/triageservice';
 
 interface AlertsSearchAndFiltersProps {
   searchFilters: AlertsSearchFilters;
@@ -11,6 +13,14 @@ interface AlertsSearchAndFiltersProps {
     endDate: string;
   };
   onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
+  onSearch?: (query: string) => void; // For real-time search callback
+}
+
+interface FilterOptions {
+  priorities: string[];
+  statuses: string[];
+  types: string[];
+  sources: string[];
 }
 
 const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
@@ -18,12 +28,57 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onFilterChange,
   onClearFilters,
   customDateRange,
-  onCustomDateRangeChange
+  onCustomDateRangeChange,
+  onSearch
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    priorities: [],
+    statuses: [],
+    types: [],
+    sources: []
+  });
+  const [loadingOptions, setLoadingOptions] = useState(true);
 
-  const hasActiveFilters = Object.values(searchFilters).some(value => value && value !== '');
+  // Debounced search with 300ms delay
+  const debouncedQuery = useDebounce(searchFilters.query, 300);
+
+  // Load filter options from backend
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        setLoadingOptions(true);
+        const options = await triageService.getFilterOptions();
+        setFilterOptions(options);
+      } catch (error) {
+        console.error('Failed to load filter options:', error);
+        // Fallback to static options if API fails
+        setFilterOptions({
+          priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+          statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
+          types: ['Transaction Monitoring', 'AML Screening', 'Velocity Check'],
+          sources: ['REST API', 'Transaction Monitoring System']
+        });
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+
+    loadFilterOptions();
+  }, []);
+
+  // Trigger search when debounced query changes
+  useEffect(() => {
+    if (onSearch && debouncedQuery !== searchFilters.query) {
+      onSearch(debouncedQuery);
+    }
+  }, [debouncedQuery, onSearch, searchFilters.query]);
+
+  const hasActiveFilters = Object.entries(searchFilters).some(([key, value]) => {
+    if (key === 'query') return false; // Don't count search query as filter
+    return value && value !== '';
+  });
 
   const handleTimeRangeChange = (value: string) => {
     onFilterChange('timeRange', value);
@@ -37,6 +92,19 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
     const newRange = { ...customDateRange, [field]: value };
     onCustomDateRangeChange(newRange);
+  };
+
+  const formatDisplayValue = (value: string, type: 'priority' | 'status') => {
+    switch (type) {
+      case 'priority':
+        return value.charAt(0) + value.slice(1).toLowerCase();
+      case 'status':
+        return value.split('_').map(word => 
+          word.charAt(0) + word.slice(1).toLowerCase()
+        ).join(' ');
+      default:
+        return value;
+    }
   };
 
   return (
@@ -87,103 +155,112 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       {/* Expanded Filters */}
       {showFilters && (
         <div className="p-4 bg-gray-50 border-t border-gray-200">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {/* Type Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Alert Type
-              </label>
-              <select
-                value={searchFilters.type}
-                onChange={(e) => onFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Types</option>
-                <option value="Transaction Monitoring">Transaction Monitoring</option>
-                <option value="AML Screening">AML Screening</option>
-                <option value="Velocity Check">Velocity Check</option>
-                <option value="Geographic Risk">Geographic Risk</option>
-                <option value="PEP Screening">PEP Screening</option>
-              </select>
+          {loadingOptions ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <p className="mt-2 text-sm text-gray-500">Loading filter options...</p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+              {/* Type Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alert Type
+                </label>
+                <select
+                  value={searchFilters.type || ''}
+                  onChange={(e) => onFilterChange('type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Types</option>
+                  {filterOptions.types.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Priority Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Priority
-              </label>
-              <select
-                value={searchFilters.priority}
-                onChange={(e) => onFilterChange('priority', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
+              {/* Priority Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Priority
+                </label>
+                <select
+                  value={searchFilters.priority}
+                  onChange={(e) => onFilterChange('priority', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Priorities</option>
+                  {filterOptions.priorities.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {formatDisplayValue(priority, 'priority')}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={searchFilters.status}
-                onChange={(e) => onFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="new">New</option>
-                <option value="investigating">Investigating</option>
-                <option value="resolved">Resolved</option>
-                <option value="false_positive">False Positive</option>
-              </select>
-            </div>
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={searchFilters.status}
+                  onChange={(e) => onFilterChange('status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Statuses</option>
+                  {filterOptions.statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {formatDisplayValue(status, 'status')}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Source Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Source
-              </label>
-              <select
-                value={searchFilters.source}
-                onChange={(e) => onFilterChange('source', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Sources</option>
-                <option value="Transaction Monitoring System">Transaction Monitoring System</option>
-                <option value="AML Screening System">AML Screening System</option>
-                <option value="Real-time Monitoring">Real-time Monitoring</option>
-                <option value="Geographic Screening">Geographic Screening</option>
-                <option value="PEP Database">PEP Database</option>
-              </select>
-            </div>
+              {/* Source Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Source
+                </label>
+                <select
+                  value={searchFilters.source || ''}
+                  onChange={(e) => onFilterChange('source', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Sources</option>
+                  {filterOptions.sources.map((source) => (
+                    <option key={source} value={source}>
+                      {source}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Time Range Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time Range
-              </label>
-              <select
-                value={searchFilters.timeRange}
-                onChange={(e) => handleTimeRangeChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="thisWeek">This Week</option>
-                <option value="last7days">Last 7 Days</option>
-                <option value="thisMonth">This Month</option>
-                <option value="last30days">Last 30 Days</option>
-                <option value="last90days">Last 90 Days</option>
-                <option value="custom">Custom Range</option>
-              </select>
+              {/* Time Range Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time Range
+                </label>
+                <select
+                  value={searchFilters.timeRange}
+                  onChange={(e) => handleTimeRangeChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="thisWeek">This Week</option>
+                  <option value="last7days">Last 7 Days</option>
+                  <option value="thisMonth">This Month</option>
+                  <option value="last30days">Last 30 Days</option>
+                  <option value="last90days">Last 90 Days</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Custom Date Range Picker */}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (

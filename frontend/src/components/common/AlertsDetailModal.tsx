@@ -408,14 +408,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {alert.transaction ? JSON.stringify(alert.transaction, null, 2) : 'No transaction data'}
                         </div>
                       </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-500">
-                          Alert Type:
-                        </span>
-                        <p className="text-sm text-gray-900">
-                          {alert.alert_type || 'N/A'}
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </div>

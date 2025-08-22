@@ -28,7 +28,6 @@ interface OperationStates {
   closingAlert: Set<string>;
   updatingAlert: Set<string>;
   loadingDetails: Set<string>;
-  refreshing: boolean;
   submittingAlert: boolean;
 }
 
@@ -109,7 +108,6 @@ const AlertsDashboard: React.FC = () => {
     closingAlert: new Set(),
     updatingAlert: new Set(),
     loadingDetails: new Set(),
-    refreshing: false,
     submittingAlert: false
   });
   
@@ -181,6 +179,8 @@ const AlertsDashboard: React.FC = () => {
     endDate: ''
   });
 
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
   // API integration functions
   const fetchAlerts = useCallback(async (filters: AlertsFilter = {}) => {
     try {
@@ -197,6 +197,9 @@ const AlertsDashboard: React.FC = () => {
         alerts: transformedAlerts,
         pagination: response.pagination
       });
+      
+      // Update last updated timestamp
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
       let errorMessage = 'Failed to load alerts';
@@ -220,8 +223,6 @@ const AlertsDashboard: React.FC = () => {
   }, []);
 
   const refreshAlerts = useCallback(async () => {
-    setOperationStates(prev => ({ ...prev, refreshing: true }));
-    
     const filters: AlertsFilter = {
       priority: searchFilters.priority || undefined,
       status: searchFilters.status || undefined,
@@ -234,7 +235,6 @@ const AlertsDashboard: React.FC = () => {
     };
 
     await fetchAlerts(filters);
-    setOperationStates(prev => ({ ...prev, refreshing: false }));
   }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Load alerts on component mount and when filters change
@@ -252,6 +252,40 @@ const AlertsDashboard: React.FC = () => {
 
     fetchAlerts(filters);
   }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+
+  // Real-time polling for dashboard updates
+  useEffect(() => {
+    const POLLING_INTERVAL = 30000; // Poll every 30 seconds
+    
+    const pollForUpdates = () => {
+      // Only poll if not currently loading and not performing other operations
+      const hasActiveOperations = operationStates.convertingToCase.size > 0 || 
+                                  operationStates.closingAlert.size > 0 || 
+                                  operationStates.updatingAlert.size > 0 ||
+                                  operationStates.submittingAlert;
+                                  
+      if (!apiState.loading && !hasActiveOperations) {
+        const filters: AlertsFilter = {
+          priority: searchFilters.priority || undefined,
+          status: searchFilters.status || undefined,
+          type: searchFilters.type || undefined,
+          search: searchFilters.query || undefined,
+          page: apiState.pagination.currentPage,
+          limit: apiState.pagination.pageSize,
+          sortBy: mapToBackendField(sortColumn),
+          sortOrder: sortDirection
+        };
+
+        // Silent refresh - don't show loading indicators
+        fetchAlerts(filters);
+      }
+    };
+
+    const intervalId = setInterval(pollForUpdates, POLLING_INTERVAL);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField, apiState.loading, operationStates]);
 
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {
@@ -795,12 +829,6 @@ const AlertsDashboard: React.FC = () => {
               <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">Error Loading Alerts</h3>
               <p className="mt-2 text-gray-600">{apiState.error}</p>
-              <button
-                onClick={refreshAlerts}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Try Again
-              </button>
             </div>
           </div>
         </div>
@@ -821,16 +849,6 @@ const AlertsDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={refreshAlerts}
-                disabled={operationStates.refreshing}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {operationStates.refreshing ? (
-                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-gray-500 rounded-full border-t-transparent"></div>
-                ) : null}
-                Refresh
-              </button>
               <button
                 onClick={downloadOverturnedAlertsReport}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -854,14 +872,6 @@ const AlertsDashboard: React.FC = () => {
                 <div className="mt-2 text-sm text-red-700">
                   <p>{apiState.error}</p>
                 </div>
-                <div className="mt-4">
-                  <button
-                    onClick={refreshAlerts}
-                    className="text-sm bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1 rounded-md"
-                  >
-                    Try again
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -874,6 +884,10 @@ const AlertsDashboard: React.FC = () => {
           onClearFilters={clearFilters}
           customDateRange={customDateRange}
           onCustomDateRangeChange={setCustomDateRange}
+          onSearch={(query) => {
+            // Update search filters with debounced query
+            setSearchFilters(prev => ({ ...prev, query }));
+          }}
         />
 
         {/* Results Summary */}
@@ -883,6 +897,11 @@ const AlertsDashboard: React.FC = () => {
             {apiState.loading && (
               <span className="ml-2">
                 <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
+              </span>
+            )}
+            {lastUpdated && !apiState.loading && (
+              <span className="ml-4 text-xs text-gray-500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
               </span>
             )}
           </div>
