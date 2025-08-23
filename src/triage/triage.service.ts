@@ -6,7 +6,7 @@ import { CloseAlertDto } from './dto/close-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus } from '@prisma/client';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, AlertType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -138,13 +138,15 @@ export class TriageService {
     priority?: string;
     status?: string;
     type?: string;
+    alertType?: string;
     search?: string;
+    source?: string;
     page: number;
     limit: number;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const { tenantId, priority, status, type, search, page, limit, sortBy, sortOrder } = params;
+    const { tenantId, priority, status, type, alertType, search, source, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -180,8 +182,18 @@ export class TriageService {
       whereClause.alert_status = status.toUpperCase();
     }
 
+    if (alertType) {
+      if (!Object.values(AlertType).includes(alertType.toUpperCase() as AlertType)) {
+        throw new BadRequestException(`Invalid alertType: ${alertType}`);
+      }
+      whereClause.alert_type = alertType.toUpperCase();
+    }
+
     if (type) {
       whereClause.txtp = type;
+    }
+    if (source) {
+      whereClause.source = source;
     }
 
     if (search) {
@@ -192,9 +204,7 @@ export class TriageService {
         whereClause.OR.push({ case_id: { equals: search } });
       }
 
-      whereClause.OR.push({
-        txtp: { contains: search, mode: 'insensitive' },
-      });
+      whereClause.OR.push({ txtp: { contains: search, mode: 'insensitive' } }, { source: { contains: search, mode: 'insensitive' } });
 
       if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
         whereClause.OR.push({
@@ -205,6 +215,11 @@ export class TriageService {
       if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
         whereClause.OR.push({
           alert_status: { equals: search.toUpperCase() as AlertStatus },
+        });
+      }
+      if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
+        whereClause.OR.push({
+          alert_type: { equals: search.toUpperCase() as AlertType },
         });
       }
     }
@@ -221,6 +236,8 @@ export class TriageService {
           priority: true,
           confidence_per: true,
           alert_status: true,
+          source: true,
+          alert_type: true,
           created_at: true,
         },
       });
