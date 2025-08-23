@@ -9,26 +9,24 @@ export interface TransactionMessage {
   status: 'sent' | 'received' | 'processing' | 'failed';
 }
 
-// Alert data interface
+// Extended Alert interface for UI display
+// We'll use intersection types to avoid conflicts
 export interface Alert extends Record<string, unknown> {
-  id: string;
-  transactionId: string;
-  title: string;
-  description: string;
-  type: string; // Alert type
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  source: string;
-  riskScore: number; // 0-100
-  confidence: number; // 0-100 (confidence percentage)
-  status: 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted';
-  createdAt: string;
-  updatedAt: string;
-  lastUpdated: string; // Same as updatedAt but for display
-  assignedTo?: string; // User ID of the assigned user
-  assignee?: string; // Display name of assignee
-  amount?: number;
-  currency?: string;
+  // Backend fields (matching TriageAlert)
+  alert_id: string;
+  tenant_id: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  alert_type?: string;
+  source?: string;
+  txtp?: string;
+  message: string;
+  alert_data: any;
+  transaction: any;
+  network_map: any;
+  alert_status: 'NEW' | 'INVESTIGATING' | 'CLOSED' | 'CONVERTED' | 'AUTOCLOSED_CONFIRMED' | 'AUTOCLOSED_REFUTED' | 'SENT_FOR_INVESTIGATION';
+  confidence_per: number;
+  created_at: string;
+  case_id?: string;
 }
 
 // Search and filter interfaces

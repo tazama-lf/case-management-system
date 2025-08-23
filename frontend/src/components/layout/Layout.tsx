@@ -27,13 +27,11 @@ const Layout: React.FC<LayoutProps> = ({
   const handleLogout = () => {
     // Remove auth token from localStorage
     localStorage.removeItem('authToken');
-    console.log('Logout requested');
     // Redirect to login
     window.location.href = '/login';
   };
 
   const handleNavigate = (href: string) => {
-    console.log('Navigate to:', href);
     // Navigation is handled by React Router
   };
 

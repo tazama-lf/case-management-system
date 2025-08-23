@@ -1,5 +1,3 @@
-/* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -54,7 +52,9 @@ export class TriageController {
     @Query('priority') priority?: string,
     @Query('status') status?: string,
     @Query('type') type?: string,
+    @Query('alertType') alertType?: string,
     @Query('search') search?: string,
+    @Query('source') source?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('sortBy') sortBy = 'created_at',
@@ -66,12 +66,21 @@ export class TriageController {
       priority,
       status,
       type,
+      alertType,
       search,
+      source,
       page: Number(page),
       limit: Number(limit),
       sortBy,
       sortOrder,
     });
+  }
+
+  @Get('filter-options')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async getFilterOptions(@Req() req) {
+    const tenantId = req.user.tenantId;
+    return this.triageService.getFilterOptions(tenantId);
   }
 
   @Get(':alertId')
@@ -88,5 +97,13 @@ export class TriageController {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.convertToCase(alertId, convertAlertToCase, userId, tenantId);
+  }
+
+  @Get(':alertId/action-history')
+  @Roles('CMS-TEST-ROLE', 'manage-account')
+  async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req) {
+    const userId = req.user.user_id;
+    const tenantId = req.user.tenantId;
+    return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
   }
 }

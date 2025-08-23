@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../../types/alertsdashboard.types';
 
@@ -10,11 +10,10 @@ interface ConvertToCaseModalProps {
 }
 
 export interface ConvertToCaseData {
-  caseId: string;
-  assignedTo: string;
+  caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
   priority: 'low' | 'medium' | 'high';
   linkedCases: string[];
-  notes: string;
+  notes?: string;
   alertId: string;
 }
 
@@ -24,66 +23,40 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   alert,
   onConfirmConvert,
 }) => {
-  const [assignedTo, setAssignedTo] = useState('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [caseType, setCaseType] = useState<'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''>('');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [showLinkCases, setShowLinkCases] = useState(false);
   const [linkedCases, setLinkedCases] = useState<string[]>([]);
   const [caseSearchQuery, setCaseSearchQuery] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [caseId, setCaseId] = useState('');
 
-  // Mock investigators data - in real implementation, fetch from API
-  const investigators = [
-    { id: 'inv-001', name: 'John Smith', email: 'john.smith@tazama.org' },
-    { id: 'inv-002', name: 'Jane Doe', email: 'jane.doe@tazama.org' },
-    { id: 'inv-003', name: 'Mike Johnson', email: 'mike.johnson@tazama.org' },
-    { id: 'inv-004', name: 'Sarah Wilson', email: 'sarah.wilson@tazama.org' },
-    { id: 'inv-005', name: 'David Brown', email: 'david.brown@tazama.org' },
-  ];
-
-  // Mock existing cases for auto-complete - in real implementation, fetch from API
-  const existingCases = [
-    { id: 'CASE-001', title: 'Suspicious Money Transfer Investigation' },
-    { id: 'CASE-002', title: 'Multiple Account Fraud Detection' },
-    { id: 'CASE-003', title: 'Cross-Border Transaction Analysis' },
-    { id: 'CASE-004', title: 'Identity Theft Investigation' },
-    { id: 'CASE-005', title: 'Merchant Account Abuse' },
-  ];
-
-  // Generate new case ID when modal opens
-  useEffect(() => {
-    if (isOpen && alert) {
-      const newCaseId = `CASE-${Date.now().toString().slice(-6)}`;
-      setCaseId(newCaseId);
-      // Pre-populate notes with alert information
-      setNotes(`Case created from Alert ${alert.id}\n\nAlert Details:\n- Type: ${alert.type}\n- Severity: ${alert.severity}\n- Risk Score: ${alert.riskScore}\n- Transaction ID: ${alert.transactionId}\n\nInitial Investigation Notes:\n`);
-    }
-  }, [isOpen, alert]);
-
-  const filteredCases = existingCases.filter(
-    (caseItem) =>
-      caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
-      caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
-  );
+  const filteredCases = caseSearchQuery
+    ? existingCases.filter(
+        (caseItem) =>
+          caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
+          caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
+      )
+    : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!assignedTo || !notes.trim()) {
-      return; // Form validation handled by required attributes
+
+    if (!caseType || !priority) {
+      // Basic validation
+      alert('Please select a Case Type and Priority Level.');
+      return;
     }
 
     setIsSubmitting(true);
     
     try {
       const caseData: ConvertToCaseData = {
-        caseId,
-        assignedTo,
+        caseType,
         priority,
         linkedCases,
-        notes: notes.trim(),
-        alertId: alert.id,
+        notes: notes.trim() || undefined,
+        alertId: alert.alert_id,
       };
       
       await onConfirmConvert(caseData);
@@ -97,13 +70,12 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   };
 
   const handleCancel = () => {
-    setAssignedTo('');
-    setPriority('medium');
+    setCaseType('');
+    setPriority('');
     setShowLinkCases(false);
     setLinkedCases([]);
     setCaseSearchQuery('');
     setNotes('');
-    setCaseId('');
     onClose();
   };
 
@@ -160,41 +132,22 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Case ID (disabled) */}
+              {/* Case Type */}
               <div>
-                <label htmlFor="caseId" className="block text-sm font-medium text-gray-700 mb-2">
-                  Case ID
-                </label>
-                <input
-                  id="caseId"
-                  type="text"
-                  value={caseId}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-generated case identifier
-                </p>
-              </div>
-
-              {/* Assign to Investigator */}
-              <div>
-                <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign to Investigator <span className="text-red-500">*</span>
+                <label htmlFor="caseType" className="block text-sm font-medium text-gray-700 mb-2">
+                  Case Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  id="assignedTo"
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
+                  id="caseType"
+                  value={caseType}
+                  onChange={(e) => setCaseType(e.target.value as 'FRAUD' | 'AML' | 'FRAUD_AND_AML')}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">Select an investigator...</option>
-                  {investigators.map((investigator) => (
-                    <option key={investigator.id} value={investigator.id}>
-                      {investigator.name} ({investigator.email})
-                    </option>
-                  ))}
+                  <option value="" disabled>Select a case type</option>
+                  <option value="FRAUD">Fraud</option>
+                  <option value="AML">AML (Anti-Money Laundering)</option>
+                  <option value="FRAUD_AND_AML">Fraud and AML</option>
                 </select>
               </div>
 
@@ -320,20 +273,16 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
               {/* Notes */}
               <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes <span className="text-red-500">*</span>
+                  Notes <span className="text-gray-500">(Optional)</span>
                 </label>
                 <textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  required
                   rows={6}
                   placeholder="Enter case notes and investigation details..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Minimum 20 characters required
-                </p>
               </div>
 
               {/* Warning Message */}
@@ -362,7 +311,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={!assignedTo || !notes.trim() || notes.trim().length < 20 || isSubmitting}
+              disabled={isSubmitting}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating Case...' : 'Create Case'}

@@ -1,115 +1,38 @@
-import React, { useState, useMemo } from 'react';
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { 
+  ArrowDownTrayIcon, 
+  ExclamationTriangleIcon
+} from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
 import MessagePayloadModal from '../components/common/MessagePayloadModal';
-import type { Alert, AlertsSearchFilters, AlertsTableColumn, AlertsTableAction, TransactionMessage } from '../types/alertsdashboard.types';
+import type { Alert, AlertsSearchFilters, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
+import triageService from '../services/triageservice';
+import { transformBackendAlertToUI } from '../utils/alertTransformers';
+import type { AlertsFilter, ConvertToCaseDto } from '../types/triage.types';
 
-// Mock data for demonstration
-const mockAlerts: Alert[] = [
-  {
-    id: 'ALT-001',
-    transactionId: 'TXN-12345',
-    title: 'Suspicious Transaction Pattern',
-    description: 'Multiple high-value transactions detected from the same account within a short timeframe. Pattern analysis indicates potential structuring activity to avoid reporting thresholds. Transaction amounts: $49,500, $48,750, $49,200 executed within 2 hours from different ATM locations.',
-    type: 'Transaction Monitoring',
-    severity: 'high',
-    priority: 'high',
-    source: 'Transaction Monitoring System',
-    riskScore: 85,
-    confidence: 92,
-    status: 'new',
-    createdAt: '2025-08-19T10:30:00Z',
-    updatedAt: '2025-08-19T10:30:00Z',
-    lastUpdated: '2025-08-19T10:30:00Z',
-    assignedTo: 'user-123',
-    assignee: 'John Doe',
-    amount: 150000,
-    currency: 'USD'
-  },
-  {
-    id: 'ALT-002',
-    transactionId: 'TXN-12346',
-    title: 'AML Risk Alert',
-    description: 'Customer John Smith (ID: CUST-56789) has been identified on the consolidated sanctions list. The customer attempted a wire transfer of $75,000 to a high-risk jurisdiction. Additional screening revealed previous flagged activities and connections to entities under regulatory scrutiny.',
-    type: 'AML Screening',
-    severity: 'critical',
-    priority: 'critical',
-    source: 'AML Screening System',
-    riskScore: 95,
-    confidence: 98,
-    status: 'investigating',
-    createdAt: '2025-08-19T09:15:00Z',
-    updatedAt: '2025-08-19T11:20:00Z',
-    lastUpdated: '2025-08-19T11:20:00Z',
-    assignedTo: 'user-123',
-    assignee: 'John Doe',
-    amount: 75000,
-    currency: 'EUR'
-  },
-  {
-    id: 'ALT-003',
-    transactionId: 'TXN-12347',
-    title: 'Unusual Payment Velocity',
-    description: 'Rapid sequence of payments to different beneficiaries',
-    type: 'Velocity Check',
-    severity: 'medium',
-    priority: 'medium',
-    source: 'Real-time Monitoring',
-    riskScore: 72,
-    confidence: 85,
-    status: 'new',
-    createdAt: '2025-08-19T08:45:00Z',
-    updatedAt: '2025-08-19T08:45:00Z',
-    lastUpdated: '2025-08-19T08:45:00Z',
-    assignedTo: 'user-123',
-    assignee: 'John Doe',
-    amount: 25000,
-    currency: 'USD'
-  },
-  {
-    id: 'ALT-004',
-    transactionId: 'TXN-12348',
-    title: 'Cross-border Transaction Alert',
-    description: 'High-risk jurisdiction transaction detected',
-    type: 'Geographic Risk',
-    severity: 'high',
-    priority: 'high',
-    source: 'Geographic Screening',
-    riskScore: 88,
-    confidence: 90,
-    status: 'resolved',
-    createdAt: '2025-08-18T16:30:00Z',
-    updatedAt: '2025-08-19T09:00:00Z',
-    lastUpdated: '2025-08-19T09:00:00Z',
-    assignedTo: 'user-123',
-    assignee: 'John Doe',
-    amount: 200000,
-    currency: 'GBP'
-  },
-  {
-    id: 'ALT-005',
-    transactionId: 'TXN-12349',
-    title: 'PEP Risk Alert',
-    description: 'Transaction involving Politically Exposed Person',
-    type: 'PEP Screening',
-    severity: 'medium',
-    priority: 'low',
-    source: 'PEP Database',
-    riskScore: 65,
-    confidence: 78,
-    status: 'false_positive',
-    createdAt: '2025-08-18T14:20:00Z',
-    updatedAt: '2025-08-19T10:15:00Z',
-    lastUpdated: '2025-08-19T10:15:00Z',
-    assignedTo: 'user-123',
-    assignee: 'John Doe',
-    amount: 50000,
-    currency: 'USD'
-  }
-];
+// API state management interfaces
+interface ApiState {
+  loading: boolean;
+  error: string | null;
+  alerts: Alert[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    pageSize: number;
+  };
+}
+
+interface OperationStates {
+  convertingToCase: Set<string>;
+  closingAlert: Set<string>;
+  updatingAlert: Set<string>;
+  loadingDetails: Set<string>;
+  submittingAlert: boolean;
+}
 
 // Helper function to check if date is within time range
 const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
@@ -165,8 +88,31 @@ const isDateInRange = (dateString: string, timeRange: string, customDateRange?: 
 };
 
 const AlertsDashboard: React.FC = () => {
-  // Alerts state - initialize with mock data
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  // API state management
+  const [apiState, setApiState] = useState<ApiState>({
+    loading: true,
+    error: null,
+    alerts: [],
+    pagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalItems: 0,
+      pageSize: 10
+    }
+  });
+
+  // State for tracking fetched source values
+  const [fetchedSources, setFetchedSources] = useState<Record<string, string>>({});
+  const [loadingSources, setLoadingSources] = useState<Set<string>>(new Set());
+  
+  // Operation states for loading indicators
+  const [operationStates, setOperationStates] = useState<OperationStates>({
+    convertingToCase: new Set(),
+    closingAlert: new Set(),
+    updatingAlert: new Set(),
+    loadingDetails: new Set(),
+    submittingAlert: false
+  });
   
   const [searchFilters, setSearchFilters] = useState<AlertsSearchFilters>({
     query: '',
@@ -177,8 +123,48 @@ const AlertsDashboard: React.FC = () => {
     timeRange: '',
   });
   
-  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('createdAt');
+  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('lastUpdated');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Field mapping utility: Maps frontend field names to backend field names
+  const mapToBackendField = useCallback((frontendField: keyof Alert | string): string => {
+    const fieldMapping: Record<string, string> = {
+      // Date fields
+      'createdAt': 'created_at',
+      'updatedAt': 'created_at',
+      'lastUpdated': 'created_at',
+      'created_at': 'created_at',
+      
+      // Score/Confidence fields
+      'riskScore': 'confidence_per',
+      'confidence': 'confidence_per',
+      'confidence_per': 'confidence_per',
+      
+      // Status and priority fields
+      'priority': 'priority',
+      'status': 'alert_status',
+      'alert_status': 'alert_status',
+      
+      // ID fields
+      'id': 'alert_id',
+      'alert_id': 'alert_id',
+      'transactionId': 'transaction_id',
+      'txtp': 'txtp',
+      
+      // Other fields
+      'source': 'source',
+      'type': 'alert_type',
+      'alert_type': 'alert_type'
+    };
+    
+    const backendField = fieldMapping[frontendField as string];
+    if (!backendField) {
+      console.warn(`Unknown field mapping for: ${frontendField}, using as-is`);
+      return frontendField as string;
+    }
+    
+    return backendField;
+  }, []);
   
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -190,20 +176,145 @@ const AlertsDashboard: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
   
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  
   // Custom date range state
   const [customDateRange, setCustomDateRange] = useState({
     startDate: '',
     endDate: ''
   });
 
+  // Debounced search query state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // API integration functions
+  const fetchAlerts = useCallback(async (filters: AlertsFilter = {}) => {
+    try {
+      setApiState(prev => ({ ...prev, loading: true, error: null }));
+      
+      const response = await triageService.getAlerts(filters);
+      
+      // Transform backend alerts to UI format
+      const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
+      
+      setApiState({
+        loading: false,
+        error: null,
+        alerts: transformedAlerts,
+        pagination: response.pagination
+      });
+      
+      // Update last updated timestamp
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Failed to fetch alerts:', error);
+      let errorMessage = 'Failed to load alerts';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = 'Access denied. You do not have permission to view alerts.';
+        } else if (error.message.includes('Session expired')) {
+          errorMessage = 'Session expired. Please log in again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setApiState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
+    }
+  }, []);
+
+  const refreshAlerts = useCallback(async () => {
+    const filters: AlertsFilter = {
+      priority: searchFilters.priority || undefined,
+      status: searchFilters.status || undefined,
+      type: searchFilters.type || undefined,
+      search: debouncedSearchQuery || undefined,
+      page: apiState.pagination.currentPage,
+      limit: apiState.pagination.pageSize,
+      sortBy: mapToBackendField(sortColumn),
+      sortOrder: sortDirection
+    };
+
+    await fetchAlerts(filters);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+
+  // Load alerts on component mount and when filters change
+  useEffect(() => {
+    const filters: AlertsFilter = {
+      priority: searchFilters.priority || undefined,
+      status: searchFilters.status || undefined,
+      type: searchFilters.type || undefined,
+      search: debouncedSearchQuery || undefined, // Use debounced query
+      page: apiState.pagination.currentPage,
+      limit: apiState.pagination.pageSize,
+      sortBy: mapToBackendField(sortColumn),
+      sortOrder: sortDirection
+    };
+
+    fetchAlerts(filters);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchFilters.query);
+      // Reset to first page when search query changes
+      if (debouncedSearchQuery !== searchFilters.query) {
+        setApiState(prev => ({
+          ...prev,
+          pagination: { ...prev.pagination, currentPage: 1 }
+        }));
+      }
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchFilters.query, debouncedSearchQuery]);
+
+  // Real-time polling for dashboard updates
+  useEffect(() => {
+    const POLLING_INTERVAL = 30000; // Poll every 30 seconds
+    
+    const pollForUpdates = () => {
+      // Only poll if not currently loading and not performing other operations
+      const hasActiveOperations = operationStates.convertingToCase.size > 0 || 
+                                  operationStates.closingAlert.size > 0 || 
+                                  operationStates.updatingAlert.size > 0 ||
+                                  operationStates.submittingAlert;
+                                  
+      if (!apiState.loading && !hasActiveOperations) {
+        const filters: AlertsFilter = {
+          priority: searchFilters.priority || undefined,
+          status: searchFilters.status || undefined,
+          type: searchFilters.type || undefined,
+          search: debouncedSearchQuery || undefined, // Use debounced query
+          page: apiState.pagination.currentPage,
+          limit: apiState.pagination.pageSize,
+          sortBy: mapToBackendField(sortColumn),
+          sortOrder: sortDirection
+        };
+
+        // Silent refresh - don't show loading indicators
+        fetchAlerts(filters);
+      }
+    };
+
+    const intervalId = setInterval(pollForUpdates, POLLING_INTERVAL);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField, apiState.loading, operationStates]);
+
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {
     // Filter for overturned alerts (false positives)
-    const overturnedAlerts = alerts.filter(alert => alert.status === 'false_positive');
+    const overturnedAlerts = apiState.alerts.filter((alert: Alert) => alert.status === 'false_positive');
     
     // Create CSV content
     const csvHeaders = [
@@ -220,23 +331,23 @@ const AlertsDashboard: React.FC = () => {
       'Currency'
     ];
     
-    const csvData = overturnedAlerts.map(alert => [
-      alert.id,
-      alert.transactionId,
-      alert.source,
-      alert.riskScore.toString(),
-      alert.priority,
-      alert.confidence.toString(),
-      alert.status,
-      new Date(alert.lastUpdated).toLocaleDateString(),
-      alert.assignee || 'Unassigned',
-      alert.amount?.toString() || 'N/A',
-      alert.currency || 'N/A'
+    const csvData: string[][] = overturnedAlerts.map((alert: Alert) => [
+      alert.alert_id as string || '',
+      alert.transactionId as string || '',
+      alert.source as string || '',
+      (alert.riskScore as number || 0).toString(),
+      alert.priority as string || '',
+      (alert.confidence as number || 0).toString(),
+      alert.status as string || '',
+      new Date(alert.lastUpdated as string).toLocaleDateString(),
+      alert.assignee as string || 'Unassigned',
+      (alert.amount as number)?.toString() || 'N/A',
+      alert.currency as string || 'N/A'
     ]);
     
     const csvContent = [
       csvHeaders.join(','),
-      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+      ...csvData.map((row: string[]) => row.map((field: string) => `"${field}"`).join(','))
     ].join('\n');
     
     // Create and download file
@@ -251,99 +362,98 @@ const AlertsDashboard: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Filter and sort the alerts
+  // Filter and sort logic
   const filteredAndSortedAlerts = useMemo(() => {
-    const filtered = alerts.filter(alert => {
-      const matchesQuery = !searchFilters.query || 
-        alert.id.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
-        alert.title.toLowerCase().includes(searchFilters.query.toLowerCase()) ||
-        alert.description.toLowerCase().includes(searchFilters.query.toLowerCase());
-      
-      const matchesType = !searchFilters.type || alert.type === searchFilters.type;
-      const matchesPriority = !searchFilters.priority || alert.priority === searchFilters.priority;
-      const matchesStatus = !searchFilters.status || alert.status === searchFilters.status;
-      const matchesSource = !searchFilters.source || alert.source === searchFilters.source;
-      const matchesTimeRange = !searchFilters.timeRange || isDateInRange(alert.createdAt, searchFilters.timeRange, customDateRange);
+    let filtered = apiState.alerts;
 
-      return matchesQuery && matchesType && matchesPriority && matchesStatus && matchesSource && matchesTimeRange;
-    });
-
-    // Sort the filtered results
-    filtered.sort((a, b) => {
-      const aValue = a[sortColumn as keyof Alert];
-      const bValue = b[sortColumn as keyof Alert];
-      
-      let comparison = 0;
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        comparison = aValue.localeCompare(bValue);
-      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-        comparison = aValue - bValue;
-      } else {
-        comparison = String(aValue).localeCompare(String(bValue));
-      }
-      
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
+    // Apply client-side custom date filtering if needed
+    if (searchFilters.timeRange === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+      filtered = apiState.alerts.filter((alert: Alert) => {
+        return isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange);
+      });
+    }
 
     return filtered;
-  }, [alerts, searchFilters, sortColumn, sortDirection, customDateRange]);
+  }, [apiState.alerts, searchFilters.timeRange, customDateRange]);
 
-  // Paginated alerts for current page
-  const paginatedAlerts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredAndSortedAlerts.slice(startIndex, endIndex);
-  }, [filteredAndSortedAlerts, currentPage, pageSize]);
-
-  // Pagination calculations
-  const totalItems = filteredAndSortedAlerts.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  // Use API pagination instead of client-side pagination
+  const paginatedAlerts = filteredAndSortedAlerts;
+  const totalItems = apiState.pagination.totalItems;
+  const totalPages = apiState.pagination.totalPages;
+  const currentPage = apiState.pagination.currentPage;
+  const pageSize = apiState.pagination.pageSize;
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    setApiState(prev => ({
+      ...prev,
+      pagination: { ...prev.pagination, currentPage: page }
+    }));
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setCurrentPage(1); // Reset to first page when page size changes
+    setApiState(prev => ({
+      ...prev,
+      pagination: { ...prev.pagination, pageSize: newPageSize, currentPage: 1 }
+    }));
   };
 
   const handleSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
     setSortColumn(column);
     setSortDirection(direction);
-    setCurrentPage(1); // Reset to first page when sorting changes
+    // Reset to first page when sorting changes
+    setApiState(prev => ({
+      ...prev,
+      pagination: { ...prev.pagination, currentPage: 1 }
+    }));
   };
 
   const handleFilterChange = (key: keyof AlertsSearchFilters, value: string) => {
     setSearchFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to first page when filters change
+    // Reset to first page when filters change
+    setApiState(prev => ({
+      ...prev,
+      pagination: { ...prev.pagination, currentPage: 1 }
+    }));
   };
 
-  const handleRowClick = (alert: Alert) => {
-    // Log alert access before opening
-    const currentUser = 'John Doe'; // In real implementation, get from auth context
-    const timestamp = new Date().toISOString();
-    
-    console.log('Alert Access Logged:', {
-      alertId: alert.id,
-      userId: currentUser,
-      action: 'alert_accessed_from_dashboard',
-      timestamp: timestamp,
-      userAgent: navigator.userAgent
-    });
-    
-    // In real implementation, send to audit service
-    // auditService.logAlertAccess({
-    //   alertId: alert.id,
-    //   userId: currentUser,
-    //   action: 'alert_accessed_from_dashboard',
-    //   timestamp: timestamp,
-    //   sourceView: 'alerts_dashboard'
-    // });
+  const handleRowClick = async (alert: Alert) => {
+    try {
+      // Add to loading state
+      setOperationStates(prev => ({ 
+        ...prev, 
+        loadingDetails: new Set([...prev.loadingDetails, alert.alert_id as string]) 
+      }));
 
-    setSelectedAlert(alert);
-    setShowModal(true);
+      // Log alert access before fetching details
+      const currentUser = 'John Doe'; // In real implementation, get from auth context
+      const timestamp = new Date().toISOString();
+
+      // Fetch detailed alert data from API
+      const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
+      
+      // Transform backend data to UI format and show modal
+      setSelectedAlert(transformBackendAlertToUI(detailedAlert));
+      setShowModal(true);
+      
+    } catch (error) {
+      console.error('Failed to fetch alert details:', error);
+      
+      // Fallback to showing the existing alert data
+      setSelectedAlert(alert);
+      setShowModal(true);
+      
+      // TODO: Show error toast notification
+      // For now, just log the error
+      console.warn('Using cached alert data due to API error');
+      
+    } finally {
+      // Remove from loading state
+      setOperationStates(prev => ({ 
+        ...prev, 
+        loadingDetails: new Set([...prev.loadingDetails].filter(id => id !== alert.alert_id)) 
+      }));
+    }
   };
 
   const handleCloseModal = () => {
@@ -374,70 +484,118 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
+    const alertId = alert.alert_id as string;
+    
     try {
-      console.log('Converting alert to case:', {
-        alertId: alert.id,
-        caseData,
-        convertedBy: 'current-user', // TODO: Get from auth context
-        timestamp: new Date().toISOString(),
-      });
+      // Set loading state
+      setOperationStates(prev => ({
+        ...prev,
+        convertingToCase: new Set([...prev.convertingToCase, alertId])
+      }));
 
-      // Update the alert status to 'converted' and make it read-only
-      setAlerts(prevAlerts =>
-        prevAlerts.map(a =>
-          a.id === alert.id
-            ? { ...a, status: 'converted' as const, updatedAt: new Date().toISOString() }
-            : a
-        )
-      );
+      // Call API to convert alert to case
+      if (caseData) {
+        // Map UI priority values to backend priority values
+        const priorityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
+          'low': 'LOW',
+          'medium': 'MEDIUM', 
+          'high': 'HIGH'
+        };
+        
+        const convertData: ConvertToCaseDto = {
+          priority: priorityMap[caseData.priority] || 'MEDIUM',
+          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML'
+        };
+        
+        await triageService.convertAlertToCase(alertId, convertData);
+      } else {
+        // Default conversion without case data
+        const convertData: ConvertToCaseDto = {
+          priority: alert.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+          caseType: 'FRAUD' // Default case type
+        };
+        
+        await triageService.convertAlertToCase(alertId, convertData);
+      }
 
-      // TODO: In real implementation:
-      // 1. Call API to create new case with caseData
-      // 2. Update alert status to 'converted' in backend
-      // 3. Link the case to the original alert
-      // 4. Send audit log for case conversion
-      // 5. Show success notification
+      // Refresh alerts to get updated data
+      await refreshAlerts();
 
-      console.log('Alert successfully converted to case');
       handleCloseModal();
     } catch (error) {
-      console.error('Error converting alert to case:', error);
-      // TODO: Show error notification
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to convert alert to case';
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('permission')) {
+          errorMessage = 'You do not have permission to convert this alert';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Alert not found';
+        } else if (error.message.includes('already converted')) {
+          errorMessage = 'This alert has already been converted to a case';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // TODO: Show error toast notification instead of console log
+      console.error('Convert to case error:', errorMessage);
+      throw error;
+    } finally {
+      // Remove loading state
+      setOperationStates(prev => {
+        const newSet = new Set(prev.convertingToCase);
+        newSet.delete(alertId);
+        return { ...prev, convertingToCase: newSet };
+      });
     }
   };
 
   const handleCloseAlert = async (alert: Alert, justification?: string) => {
+    const alertId = alert.alert_id as string;
+    
     try {
-      console.log('Closing alert:', {
-        alertId: alert.id,
-        justification,
-        closedBy: 'current-user', // TODO: Get from auth context
-        closedAt: new Date().toISOString()
-      });
+      // Set loading state
+      setOperationStates(prev => ({
+        ...prev,
+        closingAlert: new Set([...prev.closingAlert, alertId])
+      }));
 
-      // Update alert status in local state
-      setAlerts(prevAlerts => 
-        prevAlerts.map(a => 
-          a.id === alert.id 
-            ? { ...a, status: 'false_positive' as const, updatedAt: new Date().toISOString() }
-            : a
-        )
-      );
+      // Call API to close alert
+      await triageService.closeAlert(alertId, justification || 'Closed from dashboard');
 
-      // TODO: Call API to close alert with justification
-      // await triageService.closeAlert(alert.id, { justification });
+      // Refresh alerts to get updated data
+      await refreshAlerts();
 
-      // TODO: Create audit log entry
-      // await auditService.log('ALERT_CLOSED', { alertId: alert.id, reason, justification });
-
-      // Show success notification
-      console.log('✅ Alert closed successfully');
-      
       handleCloseModal();
+
     } catch (error) {
       console.error('❌ Error closing alert:', error);
-      // TODO: Show error notification to user
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to close alert';
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('permission')) {
+          errorMessage = 'You do not have permission to close this alert';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Alert not found';
+        } else if (error.message.includes('already closed')) {
+          errorMessage = 'This alert is already closed';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // TODO: Show error toast notification instead of console log
+      console.error('Close alert error:', errorMessage);
       throw error; // Re-throw to keep modal open
+    } finally {
+      // Remove loading state
+      setOperationStates(prev => {
+        const newSet = new Set(prev.closingAlert);
+        newSet.delete(alertId);
+        return { ...prev, closingAlert: newSet };
+      });
     }
   };
 
@@ -453,7 +611,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
+    switch (priority.toLowerCase()) {
       case 'critical': return 'text-red-600 bg-red-50';
       case 'high': return 'text-orange-600 bg-orange-50';
       case 'medium': return 'text-yellow-600 bg-yellow-50';
@@ -463,13 +621,21 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new': return 'text-blue-600 bg-blue-50';
-      case 'investigating': return 'text-yellow-600 bg-yellow-50';
-      case 'resolved': return 'text-green-600 bg-green-50';
-      case 'false_positive': return 'text-gray-600 bg-gray-50';
-      case 'converted': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
+    switch (status.toUpperCase()) {
+      case 'NEW':
+        return 'text-blue-600 bg-blue-50';
+      case 'AUTOCLOSED_CONFIRMED':
+        return 'text-green-600 bg-green-50';
+      case 'AUTOCLOSED_REFUTED':
+        return 'text-red-600 bg-red-50';
+      case 'CLOSED':
+        return 'text-gray-600 bg-gray-50';
+      case 'CONVERTED':
+        return 'text-purple-600 bg-purple-50';
+      case 'SENT_FOR_INVESTIGATION':
+        return 'text-pink-600 bg-pink-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -503,8 +669,13 @@ const AlertsDashboard: React.FC = () => {
       key: 'source',
       header: 'Source',
       sortable: true,
+    },
+    {
+      key: 'alert_type',
+      header: 'Alert Type',
+      sortable: true,
       render: (value) => (
-        <div className="text-sm text-gray-600">{value as string}</div>
+        <span className="text-sm text-gray-600">{value as string}</span>
       )
     },
     {
@@ -543,7 +714,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => (
         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}>
-          {(value as string).replace('_', ' ').toUpperCase()}
+          {(value as string).replace(/_/g, ' ').toUpperCase()}
         </span>
       )
     },
@@ -564,26 +735,38 @@ const AlertsDashboard: React.FC = () => {
     }
   ];
 
-  // Define table actions
-  const actions: AlertsTableAction<Alert>[] = [
-    {
-      label: 'Investigate',
-      onClick: (alert) => {
-        console.log('Investigate alert:', alert.id);
-        // Navigate to alert details or investigation page
-      },
-      color: 'blue'
-    },
-    {
-      label: 'Convert to Case',
-      onClick: (alert) => {
-        console.log('Convert to case:', alert.id);
-        // Open case conversion modal
-      },
-      color: 'green',
-      disabled: (alert) => alert.status === 'resolved' || alert.status === 'false_positive'
-    }
-  ];
+  // Loading state render
+  if (apiState.loading && apiState.alerts.length === 0) {
+    return (
+      <div className="p-6">
+        <div className="max-w-full mx-auto">
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading alerts...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state render
+  if (apiState.error && apiState.alerts.length === 0) {
+    return (
+      <div className="p-6">
+        <div className="max-w-full mx-auto">
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto" />
+              <h3 className="mt-4 text-lg font-medium text-gray-900">Error Loading Alerts</h3>
+              <p className="mt-2 text-gray-600">{apiState.error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -609,6 +792,23 @@ const AlertsDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* API Error Banner */}
+        {apiState.error && apiState.alerts.length > 0 && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Error refreshing data
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{apiState.error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search and Filters */}
         <AlertsSearchAndFilters
           searchFilters={searchFilters}
@@ -616,14 +816,25 @@ const AlertsDashboard: React.FC = () => {
           onClearFilters={clearFilters}
           customDateRange={customDateRange}
           onCustomDateRangeChange={setCustomDateRange}
+          onSearch={(query) => {
+            // Update search filters immediately for input field, debounce is handled separately
+            setSearchFilters(prev => ({ ...prev, query }));
+          }}
         />
 
         {/* Results Summary */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
             Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} alerts
-            {totalItems !== alerts.length && (
-              <span className="text-gray-500"> (filtered from {alerts.length} total)</span>
+            {apiState.loading && (
+              <span className="ml-2">
+                <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
+              </span>
+            )}
+            {lastUpdated && !apiState.loading && (
+              <span className="ml-4 text-xs text-gray-500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
             )}
           </div>
           <div className="flex items-center space-x-4">
@@ -656,7 +867,6 @@ const AlertsDashboard: React.FC = () => {
           <AlertsTable
             data={paginatedAlerts}
             columns={columns}
-            actions={actions}
             onSort={handleSort}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
@@ -675,11 +885,12 @@ const AlertsDashboard: React.FC = () => {
 
       {/* Alert Detail Modal */}
       <AlertsDetailModal
-        alert={selectedAlert}
+        alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
         onConvertToCase={handleConvertToCase}
         onCloseAlert={handleCloseAlert}
+        onAlertUpdated={() => fetchAlerts()} // Refresh alerts after updates
       />
 
       {/* Transaction Messages Modal */}

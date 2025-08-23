@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { Alert, TransactionMessage } from '../../types/alertsdashboard.types';
-import TransactionMessagesModal from './TransactionMessagesModal';
-import MessagePayloadModal from './MessagePayloadModal';
+import type { Alert } from '../../types/alertsdashboard.types';
 
 interface CloseAlertModalProps {
   isOpen: boolean;
@@ -19,11 +17,6 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
 }) => {
   const [justification, setJustification] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Transaction modals state
-  const [showTransactionMessages, setShowTransactionMessages] = useState(false);
-  const [showMessagePayload, setShowMessagePayload] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +28,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
     setIsSubmitting(true);
     
     try {
-      await onConfirmClose(alert.id, justification.trim());
+      await onConfirmClose(alert.alert_id, justification.trim());
       // Reset form
       setJustification('');
       onClose();
@@ -52,26 +45,9 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
     onClose();
   };
 
-  const handleMessageClick = (message: TransactionMessage) => {
-    setSelectedMessage(message);
-    setShowTransactionMessages(false);
-    setShowMessagePayload(true);
-  };
-
-  const handleCloseTransactionMessages = () => {
-    setShowTransactionMessages(false);
-  };
-
-  const handleCloseMessagePayload = () => {
-    setShowMessagePayload(false);
-    setSelectedMessage(null);
-  };
-
   if (!isOpen) {
     return null;
   }
-
-  console.log('CloseAlertModal rendering, isOpen:', isOpen, 'alert:', alert);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
@@ -106,19 +82,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
                 Alert Details
               </h4>
               <div className="space-y-1 text-sm text-gray-600">
-                <p><span className="font-medium">ID:</span> {alert.id}</p>
-                <p>
-                  <span className="font-medium">Transaction ID:</span>{' '}
-                  <button
-                    onClick={() => setShowTransactionMessages(true)}
-                    className="text-blue-600 hover:text-blue-800 underline font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-                  >
-                    {alert.transactionId}
-                  </button>
-                </p>
-                <p><span className="font-medium">Type:</span> {alert.type}</p>
-                <p><span className="font-medium">Severity:</span> {alert.severity}</p>
-                <p><span className="font-medium">Current Status:</span> {alert.status}</p>
+                <p><span className="font-medium">Alert ID:</span> {alert.alert_id}</p>
               </div>
             </div>
 
@@ -185,21 +149,6 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Transaction Messages Modal */}
-      <TransactionMessagesModal
-        isOpen={showTransactionMessages}
-        onClose={handleCloseTransactionMessages}
-        transactionId={alert.transactionId}
-        onMessageClick={handleMessageClick}
-      />
-
-      {/* Message Payload Modal */}
-      <MessagePayloadModal
-        isOpen={showMessagePayload}
-        onClose={handleCloseMessagePayload}
-        message={selectedMessage}
-      />
     </div>
   );
 };
