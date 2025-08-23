@@ -28,7 +28,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
     setIsSubmitting(true);
     
     try {
-      await onConfirmClose(alert.id, justification.trim());
+      await onConfirmClose(alert.alert_id, justification.trim());
       // Reset form
       setJustification('');
       onClose();
@@ -82,7 +82,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
                 Alert Details
               </h4>
               <div className="space-y-1 text-sm text-gray-600">
-                <p><span className="font-medium">Alert ID:</span> {alert.id}</p>
+                <p><span className="font-medium">Alert ID:</span> {alert.alert_id}</p>
               </div>
             </div>
 

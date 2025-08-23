@@ -23,31 +23,30 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   alert,
   onConfirmConvert,
 }) => {
-  const [caseType, setCaseType] = useState<'FRAUD' | 'AML' | 'FRAUD_AND_AML'>('FRAUD');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [caseType, setCaseType] = useState<'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''>('');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [showLinkCases, setShowLinkCases] = useState(false);
   const [linkedCases, setLinkedCases] = useState<string[]>([]);
   const [caseSearchQuery, setCaseSearchQuery] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock existing cases for auto-complete - in real implementation, fetch from API
-  const existingCases = [
-    { id: 'CASE-001', title: 'Suspicious Money Transfer Investigation' },
-    { id: 'CASE-002', title: 'Multiple Account Fraud Detection' },
-    { id: 'CASE-003', title: 'Cross-Border Transaction Analysis' },
-    { id: 'CASE-004', title: 'Identity Theft Investigation' },
-    { id: 'CASE-005', title: 'Merchant Account Abuse' },
-  ];
-
-  const filteredCases = existingCases.filter(
-    (caseItem) =>
-      caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
-      caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
-  );
+  const filteredCases = caseSearchQuery
+    ? existingCases.filter(
+        (caseItem) =>
+          caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
+          caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
+      )
+    : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!caseType || !priority) {
+      // Basic validation
+      alert('Please select a Case Type and Priority Level.');
+      return;
+    }
 
     setIsSubmitting(true);
     
@@ -57,7 +56,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
         priority,
         linkedCases,
         notes: notes.trim() || undefined,
-        alertId: alert.id,
+        alertId: alert.alert_id,
       };
       
       await onConfirmConvert(caseData);
@@ -71,8 +70,8 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   };
 
   const handleCancel = () => {
-    setCaseType('FRAUD');
-    setPriority('medium');
+    setCaseType('');
+    setPriority('');
     setShowLinkCases(false);
     setLinkedCases([]);
     setCaseSearchQuery('');
@@ -145,6 +144,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
+                  <option value="" disabled>Select a case type</option>
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML (Anti-Money Laundering)</option>
                   <option value="FRAUD_AND_AML">Fraud and AML</option>

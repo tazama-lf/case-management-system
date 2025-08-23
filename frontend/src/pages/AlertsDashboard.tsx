@@ -332,7 +332,7 @@ const AlertsDashboard: React.FC = () => {
     ];
     
     const csvData: string[][] = overturnedAlerts.map((alert: Alert) => [
-      alert.id as string || '',
+      alert.alert_id as string || '',
       alert.transactionId as string || '',
       alert.source as string || '',
       (alert.riskScore as number || 0).toString(),
@@ -422,7 +422,7 @@ const AlertsDashboard: React.FC = () => {
       // Add to loading state
       setOperationStates(prev => ({ 
         ...prev, 
-        loadingDetails: new Set([...prev.loadingDetails, alert.id as string]) 
+        loadingDetails: new Set([...prev.loadingDetails, alert.alert_id as string]) 
       }));
 
       // Log alert access before fetching details
@@ -430,7 +430,7 @@ const AlertsDashboard: React.FC = () => {
       const timestamp = new Date().toISOString();
 
       // Fetch detailed alert data from API
-      const detailedAlert = await triageService.getAlertById(alert.id as string);
+      const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
       
       // Transform backend data to UI format and show modal
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
@@ -451,7 +451,7 @@ const AlertsDashboard: React.FC = () => {
       // Remove from loading state
       setOperationStates(prev => ({ 
         ...prev, 
-        loadingDetails: new Set([...prev.loadingDetails].filter(id => id !== alert.id)) 
+        loadingDetails: new Set([...prev.loadingDetails].filter(id => id !== alert.alert_id)) 
       }));
     }
   };
@@ -484,7 +484,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
-    const alertId = alert.id as string;
+    const alertId = alert.alert_id as string;
     
     try {
       // Set loading state
@@ -552,7 +552,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const handleCloseAlert = async (alert: Alert, justification?: string) => {
-    const alertId = alert.id as string;
+    const alertId = alert.alert_id as string;
     
     try {
       // Set loading state
