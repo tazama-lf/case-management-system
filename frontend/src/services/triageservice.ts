@@ -82,12 +82,8 @@ class TriageService {
   async getFilterOptions(): Promise<{
     priorities: string[];
     statuses: string[];
-    types: string[];
+    alertTypes: string[];
     sources: string[];
-    confidenceRange: {
-      min: number;
-      max: number;
-    };
   }> {
     try {
       const response = await apiClient.get(`${this.baseUrl}/filter-options`);

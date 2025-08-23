@@ -1,13 +1,13 @@
 /* eslint-disable prettier/prettier */
-import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, AlertType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TriageService {
@@ -133,67 +133,22 @@ export class TriageService {
     }
   }
 
-  // New method to get available filter values
-  async getFilterOptions(tenantId: string) {
-    try {
-      // Get unique priorities
-      const priorities = await this.prisma.alert.findMany({
-        where: { tenant_id: tenantId },
-        select: { priority: true },
-        distinct: ['priority'],
-      });
-
-      // Get unique statuses
-      const statuses = await this.prisma.alert.findMany({
-        where: { tenant_id: tenantId },
-        select: { alert_status: true },
-        distinct: ['alert_status'],
-      });
-
-      // Get unique types (txtp)
-      const types = await this.prisma.alert.findMany({
-        where: {
-          tenant_id: tenantId,
-          txtp: { not: null },
-        },
-        select: { txtp: true },
-        distinct: ['txtp'],
-      });
-
-      // Get unique sources
-      const sources = await this.prisma.alert.findMany({
-        where: {
-          tenant_id: tenantId,
-          source: { not: null },
-        },
-        select: { source: true },
-        distinct: ['source'],
-      });
-
-      return {
-        priorities: priorities.map((p) => p.priority),
-        statuses: statuses.map((s) => s.alert_status),
-        types: types.map((t) => t.txtp).filter(Boolean),
-        sources: sources.map((s) => s.source).filter(Boolean),
-      };
-    } catch (error) {
-      this.logger.error('Failed to fetch filter options', error);
-      throw new InternalServerErrorException('Unable to fetch filter options');
-    }
-  }
-
   async getAlertsForUser(params: {
     tenantId: string;
     priority?: string;
     status?: string;
     type?: string;
+    alertType?: string;
     search?: string;
+    source?: string;
     page: number;
     limit: number;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const { tenantId, priority, status, type, search, page, limit, sortBy, sortOrder } = params;
+    const { tenantId, priority, status, search, source, page, limit, sortBy, sortOrder } = params;
+    let type = params.type;
+    const alertType = params.alertType;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -211,7 +166,7 @@ export class TriageService {
       throw new BadRequestException('sortOrder must be "asc" or "desc"');
     }
 
-    const whereClause: any = {
+    const whereClause: Prisma.AlertWhereInput = {
       tenant_id: tenantId,
     };
 
@@ -219,18 +174,33 @@ export class TriageService {
       if (!Object.values(Priority).includes(priority.toUpperCase() as Priority)) {
         throw new BadRequestException(`Invalid priority: ${priority}`);
       }
-      whereClause.priority = priority.toUpperCase();
+      whereClause.priority = priority.toUpperCase() as Priority;
     }
 
     if (status) {
       if (!Object.values(AlertStatus).includes(status.toUpperCase() as AlertStatus)) {
         throw new BadRequestException(`Invalid status: ${status}`);
       }
-      whereClause.alert_status = status.toUpperCase();
+      whereClause.alert_status = status.toUpperCase() as AlertStatus;
+    }
+
+    if (alertType) {
+      if (!Object.values(AlertType).includes(alertType.toUpperCase() as AlertType)) {
+        throw new BadRequestException(`Invalid alertType: ${alertType}`);
+      }
+      whereClause.alert_type = alertType.toUpperCase() as AlertType;
+    } else if (type && Object.values(AlertType).includes(type.toUpperCase() as AlertType)) {
+      // If alertType is not present, but type is, and it's a valid AlertType, use it as alert_type
+      whereClause.alert_type = type.toUpperCase() as AlertType;
+      // Unset type so it's not used for txtp filtering
+      type = undefined;
     }
 
     if (type) {
       whereClause.txtp = type;
+    }
+    if (source) {
+      whereClause.source = source;
     }
 
     if (search) {
@@ -241,9 +211,7 @@ export class TriageService {
         whereClause.OR.push({ case_id: { equals: search } });
       }
 
-      whereClause.OR.push({
-        txtp: { contains: search, mode: 'insensitive' },
-      });
+      whereClause.OR.push({ txtp: { contains: search, mode: 'insensitive' } }, { source: { contains: search, mode: 'insensitive' } });
 
       if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
         whereClause.OR.push({
@@ -254,6 +222,11 @@ export class TriageService {
       if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
         whereClause.OR.push({
           alert_status: { equals: search.toUpperCase() as AlertStatus },
+        });
+      }
+      if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
+        whereClause.OR.push({
+          alert_type: { equals: search.toUpperCase() as AlertType },
         });
       }
     }
@@ -270,6 +243,8 @@ export class TriageService {
           priority: true,
           confidence_per: true,
           alert_status: true,
+          source: true,
+          alert_type: true,
           created_at: true,
         },
       });
@@ -331,51 +306,6 @@ export class TriageService {
     }
   }
 
-  async getAlertActionHistory(alertId: string, tenantId: string) {
-    try {
-      // First verify the alert exists and belongs to the tenant
-      const alert = await this.prisma.alert.findUnique({
-        where: { alert_id: alertId },
-      });
-
-      if (!alert || alert.tenant_id !== tenantId) {
-        throw new ForbiddenException('Alert not found or access denied');
-      }
-
-      // Get action history for this alert
-      const actionHistory = await this.audit.getActionHistoryForAlert(alertId);
-
-      // Format the action history for better readability
-      return actionHistory.map((log) => ({
-        id: log.audit_log_id,
-        timestamp: log.performed_at,
-        action: this.formatActionDescription(log.operation, log.action_performed),
-        operation: log.operation,
-        outcome: log.outcome,
-        userId: log.user_id,
-      }));
-    } catch (error) {
-      throw new ForbiddenException('You are not authorized to access this alert action history');
-    }
-  }
-
-  private formatActionDescription(operation: string, actionPerformed: string): string {
-    switch (operation) {
-      case 'ALERT_CREATED':
-        return 'Alert created by system';
-      case 'ALERT_UPDATED':
-        return 'Alert updated';
-      case 'ALERT_CLOSED':
-        return 'Alert manually closed';
-      case 'ALERT_CONVERTED_TO_CASE':
-        const caseIdMatch = actionPerformed.match(/case ([A-Za-z0-9-]+)/);
-        const caseId = caseIdMatch ? caseIdMatch[1] : 'unknown';
-        return `Case with ID ${caseId} Created`;
-      default:
-        return actionPerformed;
-    }
-  }
-
   async convertToCase(alertId: string, convertAlertToCase: ConvertAlertToCase, userId: string, tenantId: string) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
@@ -432,6 +362,33 @@ export class TriageService {
     } catch (error) {
       this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
       throw new InternalServerErrorException('Failed to convert alert to case');
+    }
+  }
+
+  async getAlertActionHistory(alertId: string, tenantId: string, userId: string) {
+    // TODO: Implement actual action history retrieval logic
+    // For now, return a stub
+    return { alertId, tenantId, userId, history: [] };
+  }
+
+  async getFilterOptions(tenantId: string) {
+    try {
+      const sourceResult = await this.prisma.alert.findMany({
+        where: { tenant_id: tenantId },
+        select: { source: true },
+        distinct: ['source'],
+      });
+      const sources = sourceResult.map((s) => s.source).filter(Boolean) as string[];
+
+      return {
+        priorities: Object.values(Priority),
+        statuses: Object.values(AlertStatus),
+        alertTypes: Object.values(AlertType),
+        sources,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get filter options for tenant ${tenantId}`, error);
+      throw new InternalServerErrorException('Unable to retrieve filter options');
     }
   }
 }

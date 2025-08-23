@@ -43,7 +43,7 @@ model Case {
   created_at           DateTime         @default(now()) @db.Timestamp(6)
   updated_at           DateTime         @updatedAt @db.Timestamp(6)
   parent_id            String?          @db.Uuid
-  case_type            CaseType
+  case_type            CaseType?
   case_creation_type   CaseCreationType
   alerts   Alert[]
   tasks    Task[]

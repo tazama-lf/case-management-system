@@ -23,28 +23,10 @@ export interface Alert extends Record<string, unknown> {
   alert_data: any;
   transaction: any;
   network_map: any;
-  alert_status: 'NEW' | 'INVESTIGATING' | 'CLOSED' | 'CONVERTED';
+  alert_status: 'NEW' | 'INVESTIGATING' | 'CLOSED' | 'CONVERTED' | 'AUTOCLOSED_CONFIRMED' | 'AUTOCLOSED_REFUTED' | 'SENT_FOR_INVESTIGATION';
   confidence_per: number;
   created_at: string;
   case_id?: string;
-
-  // Additional UI-specific fields for compatibility with existing components
-  id: string; // Maps to alert_id
-  transactionId?: string; // Derived from transaction data
-  title?: string; // Derived from message
-  description?: string; // Derived from message
-  type: string; // Maps to alert_type or source
-  severity: 'low' | 'medium' | 'high' | 'critical'; // Maps from Priority
-  riskScore: number; // Maps from confidence_per
-  confidence: number; // Maps from confidence_per
-  status: 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted'; // Maps from alert_status
-  createdAt: string; // Maps to created_at
-  updatedAt: string; // Maps to created_at (since backend doesn't have updated_at for alerts)
-  lastUpdated: string; // Same as updatedAt but for display
-  assignedTo?: string; // User ID of the assigned user (not in backend schema yet)
-  assignee?: string; // Display name of assignee (not in backend schema yet)
-  amount?: number; // Derived from transaction data
-  currency?: string; // Derived from transaction data
 }
 
 // Search and filter interfaces

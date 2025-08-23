@@ -624,13 +624,21 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new': return 'text-blue-600 bg-blue-50';
-      case 'investigating': return 'text-yellow-600 bg-yellow-50';
-      case 'resolved': return 'text-green-600 bg-green-50';
-      case 'false_positive': return 'text-gray-600 bg-gray-50';
-      case 'converted': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
+    switch (status.toUpperCase()) {
+      case 'NEW':
+        return 'text-blue-600 bg-blue-50';
+      case 'AUTOCLOSED_CONFIRMED':
+        return 'text-green-600 bg-green-50';
+      case 'AUTOCLOSED_REFUTED':
+        return 'text-red-600 bg-red-50';
+      case 'CLOSED':
+        return 'text-gray-600 bg-gray-50';
+      case 'CONVERTED':
+        return 'text-purple-600 bg-purple-50';
+      case 'SENT_FOR_INVESTIGATION':
+        return 'text-pink-600 bg-pink-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -664,68 +672,14 @@ const AlertsDashboard: React.FC = () => {
       key: 'source',
       header: 'Source',
       sortable: true,
-      render: (value, alert) => {
-        const alertObj = alert as Alert;
-        const alertId = alertObj.id;
-        
-        // Check if we have a cached source value
-        const cachedSource = fetchedSources[alertId];
-        
-        // Try to get source from: 1) cached, 2) value, 3) alert.source
-        const sourceValue = cachedSource || (value as string) || alertObj.source;
-        
-        // If no source available and not currently loading, fetch from API
-        if (!sourceValue && !loadingSources.has(alertId)) {
-          // Fetch source from AlertDetails API
-          setLoadingSources(prev => new Set([...prev, alertId]));
-          
-          triageService.getAlertById(alertId)
-            .then(alertDetails => {
-              if (alertDetails.source) {
-                setFetchedSources(prev => ({
-                  ...prev,
-                  [alertId]: alertDetails.source!
-                }));
-              }
-            })
-            .catch(error => {
-              console.error(`Failed to fetch source for alert ${alertId}:`, error);
-            })
-            .finally(() => {
-              setLoadingSources(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(alertId);
-                return newSet;
-              });
-            });
-        }
-        
-        // Determine what to display
-        let displayValue = sourceValue || 'Unknown';
-        const isLoading = loadingSources.has(alertId);
-        
-        if (isLoading) {
-          displayValue = 'Loading...';
-        }
-        
-        return (
-          <span 
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              isLoading 
-                ? 'bg-gray-100 text-gray-600' 
-                : sourceValue 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-orange-100 text-orange-800'
-            }`}
-            title={sourceValue ? `Source: ${sourceValue}` : 'Source information not available'}
-          >
-            {isLoading && (
-              <div className="animate-spin h-3 w-3 mr-1 border border-gray-400 rounded-full border-t-transparent"></div>
-            )}
-            {displayValue}
-          </span>
-        );
-      }
+    },
+    {
+      key: 'alert_type',
+      header: 'Alert Type',
+      sortable: true,
+      render: (value) => (
+        <span className="text-sm text-gray-600">{value as string}</span>
+      )
     },
     {
       key: 'riskScore',
@@ -763,7 +717,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => (
         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}>
-          {(value as string).replace('_', ' ').toUpperCase()}
+          {(value as string).replace(/_/g, ' ').toUpperCase()}
         </span>
       )
     },

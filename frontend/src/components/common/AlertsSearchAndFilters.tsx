@@ -19,7 +19,7 @@ interface AlertsSearchAndFiltersProps {
 interface FilterOptions {
   priorities: string[];
   statuses: string[];
-  types: string[];
+  alertTypes: string[];
   sources: string[];
 }
 
@@ -36,7 +36,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priorities: [],
     statuses: [],
-    types: [],
+    alertTypes: [],
     sources: []
   });
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -57,7 +57,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         setFilterOptions({
           priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
           statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
-          types: ['Transaction Monitoring', 'AML Screening', 'Velocity Check'],
+          alertTypes: ['Transaction Monitoring', 'AML Screening', 'Velocity Check'],
           sources: ['REST API', 'Transaction Monitoring System']
         });
       } finally {
@@ -162,7 +162,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              {/* Type Filter */}
+              {/* Alert Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Alert Type
@@ -173,7 +173,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Types</option>
-                  {filterOptions.types.map((type) => (
+                  {filterOptions.alertTypes.map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>

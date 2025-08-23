@@ -115,16 +115,22 @@ export function mapSeverityToPriority(severity: 'low' | 'medium' | 'high' | 'cri
 /**
  * Map AlertStatus enum to UI status string
  */
-function mapAlertStatusToUIStatus(status: AlertStatus): 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted' {
+function mapAlertStatusToUIStatus(status: AlertStatus): 'new' | 'investigating' | 'closed' | 'converted' | 'autoclosed_confirmed' | 'autoclosed_refuted' | 'sent_for_investigation' {
   switch (status) {
     case 'NEW':
       return 'new';
     case 'INVESTIGATING':
       return 'investigating';
     case 'CLOSED':
-      return 'resolved'; // Map CLOSED to resolved for UI
+      return 'closed';
     case 'CONVERTED':
       return 'converted';
+    case 'AUTOCLOSED_CONFIRMED':
+      return 'autoclosed_confirmed';
+    case 'AUTOCLOSED_REFUTED':
+      return 'autoclosed_refuted';
+    case 'SENT_FOR_INVESTIGATION':
+      return 'sent_for_investigation';
     default:
       return 'new';
   }
@@ -133,17 +139,22 @@ function mapAlertStatusToUIStatus(status: AlertStatus): 'new' | 'investigating' 
 /**
  * Map UI status back to AlertStatus enum
  */
-export function mapUIStatusToAlertStatus(status: 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted'): AlertStatus {
+export function mapUIStatusToAlertStatus(status: 'new' | 'investigating' | 'closed' | 'converted' | 'autoclosed_confirmed' | 'autoclosed_refuted' | 'sent_for_investigation'): AlertStatus {
   switch (status) {
     case 'new':
       return 'NEW';
     case 'investigating':
       return 'INVESTIGATING';
-    case 'resolved':
-    case 'false_positive':
-      return 'CLOSED'; // Map both resolved and false_positive to CLOSED
+    case 'closed':
+      return 'CLOSED';
     case 'converted':
       return 'CONVERTED';
+    case 'autoclosed_confirmed':
+      return 'AUTOCLOSED_CONFIRMED';
+    case 'autoclosed_refuted':
+      return 'AUTOCLOSED_REFUTED';
+    case 'sent_for_investigation':
+      return 'SENT_FOR_INVESTIGATION';
     default:
       return 'NEW';
   }

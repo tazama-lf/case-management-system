@@ -447,157 +447,6 @@ describe('TriageService', () => {
     });
   });
 
-  // describe('investigateAlert', () => {
-  //   const alertId = 'alert-123';
-  //   const userId = 'test-user-id';
-  //   const tenantId = 'test-tenant-id';
-  //   const caseType = CaseType.FRAUD;
-
-  //   const mockExistingAlert = {
-  //     alert_id: alertId,
-  //     tenant_id: tenantId,
-  //     priority: Priority.HIGH,
-  //     source: 'test-source',
-  //     txtp: null,
-  //     message: 'Test alert message',
-  //     alert_data: { test: 'report data' },
-  //     transaction: { test: 'transaction data' },
-  //     network_map: { test: 'network data' },
-  //     confidence_per: 80,
-  //     alert_status: AlertStatus.NEW,
-  //     case_id: null,
-  //     created_at: new Date(),
-  //     updated_at: new Date(),
-  //   };
-
-  //   it('should create case and update alert for investigation successfully', async () => {
-  //     const mockCase = {
-  //       case_id: 'case-123',
-  //       case_creator_user_id: userId,
-  //       case_owner_user_id: userId,
-  //       tenant_id: tenantId,
-  //       priority: Priority.HIGH,
-  //       status: CaseStatus.DRAFT,
-  //       parent_id: null,
-  //       case_type: caseType,
-  //       case_creation_type: CaseCreationType.MANUAL,
-  //       created_at: new Date(),
-  //       updated_at: new Date(),
-  //     };
-
-  //     const updatedAlert = {
-  //       ...mockExistingAlert,
-  //       alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-  //       case_id: mockCase.case_id,
-  //     };
-
-  //     prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
-  //     prismaService.case.create.mockResolvedValue(mockCase);
-  //     prismaService.alert.update.mockResolvedValue(updatedAlert);
-
-  //     const result = await service.investigateAlert(
-  //       alertId,
-  //       caseType,
-  //       userId,
-  //       tenantId,
-  //     );
-
-  //     expect(prismaService.alert.findUnique).toHaveBeenCalledWith({
-  //       where: { alert_id: alertId },
-  //     });
-  //     expect(prismaService.case.create).toHaveBeenCalledWith({
-  //       data: {
-  //         case_creator_user_id: userId,
-  //         case_owner_user_id: userId,
-  //         tenant_id: tenantId,
-  //         priority: Priority.HIGH,
-  //         status: CaseStatus.DRAFT,
-  //         parent_id: null,
-  //         case_type: caseType,
-  //         case_creation_type: CaseCreationType.MANUAL,
-  //       },
-  //     });
-  //     expect(prismaService.alert.update).toHaveBeenCalledWith({
-  //       where: { alert_id: alertId },
-  //       data: {
-  //         alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-  //         case_id: mockCase.case_id,
-  //       },
-  //     });
-  //     expect(auditService.logAction).toHaveBeenCalled();
-  //     expect(result).toEqual(updatedAlert);
-  //   });
-
-  //   it('should throw NotFoundException when alert not found', async () => {
-  //     prismaService.alert.findUnique.mockResolvedValue(null);
-
-  //     await expect(
-  //       service.investigateAlert(alertId, caseType, userId, tenantId),
-  //     ).rejects.toThrow(NotFoundException);
-  //   });
-
-  //   it('should throw NotFoundException when alert not accessible for tenant', async () => {
-  //     const alertWithDifferentTenant = {
-  //       ...mockExistingAlert,
-  //       tenant_id: 'different-tenant-id',
-  //     };
-
-  //     prismaService.alert.findUnique.mockResolvedValue(
-  //       alertWithDifferentTenant,
-  //     );
-
-  //     await expect(
-  //       service.investigateAlert(alertId, caseType, userId, tenantId),
-  //     ).rejects.toThrow(NotFoundException);
-  //   });
-
-  //   it('should use LOW priority as default when alert priority is null', async () => {
-  //     const alertWithNullPriority = {
-  //       ...mockExistingAlert,
-  //       priority: null,
-  //     };
-
-  //     const mockCase = {
-  //       case_id: 'case-123',
-  //       case_creator_user_id: userId,
-  //       case_owner_user_id: userId,
-  //       tenant_id: tenantId,
-  //       priority: Priority.LOW,
-  //       status: CaseStatus.DRAFT,
-  //       parent_id: null,
-  //       case_type: caseType,
-  //       case_creation_type: CaseCreationType.MANUAL,
-  //     };
-
-  //     const updatedAlert = {
-  //       ...alertWithNullPriority,
-  //       alert_status: AlertStatus.SENT_FOR_INVESTIGATION,
-  //       case_id: mockCase.case_id,
-  //     };
-
-  //     prismaService.alert.findUnique.mockResolvedValue(alertWithNullPriority);
-  //     prismaService.case.create.mockResolvedValue(mockCase);
-  //     prismaService.alert.update.mockResolvedValue(updatedAlert);
-
-  //     await service.investigateAlert(alertId, caseType, userId, tenantId);
-
-  //     expect(prismaService.case.create).toHaveBeenCalledWith({
-  //       data: expect.objectContaining({
-  //         priority: Priority.LOW,
-  //       }),
-  //     });
-  //   });
-
-  //   it('should handle database errors during investigation', async () => {
-  //     prismaService.alert.findUnique.mockResolvedValue(mockExistingAlert);
-  //     prismaService.case.create.mockRejectedValue(new Error('Database error'));
-
-  //     await expect(
-  //       service.investigateAlert(alertId, caseType, userId, tenantId),
-  //     ).rejects.toThrow(InternalServerErrorException);
-  //   });
-  // });
-
   describe('getAlertsForUser', () => {
     const mockParams = {
       tenantId: 'test-tenant-id',
@@ -614,6 +463,8 @@ describe('TriageService', () => {
         priority: Priority.HIGH,
         confidence_per: 85,
         alert_status: AlertStatus.NEW,
+        source: 'REST API',
+        alert_type: AlertType.AML,
         created_at: new Date(),
       },
       {
@@ -622,6 +473,8 @@ describe('TriageService', () => {
         priority: Priority.LOW,
         confidence_per: 45,
         alert_status: AlertStatus.CLOSED,
+        source: 'REST API',
+        alert_type: AlertType.AML,
         created_at: new Date(),
       },
     ];
@@ -677,6 +530,12 @@ describe('TriageService', () => {
       const invalidParams = { ...mockParams, status: 'INVALID_STATUS' };
 
       await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Invalid status: INVALID_STATUS');
+    });
+
+    it('should throw BadRequestException for invalid alertType', async () => {
+      const invalidParams = { ...mockParams, alertType: 'INVALID_STATUS' };
+
+      await expect(service.getAlertsForUser(invalidParams)).rejects.toThrow('Invalid alertType: INVALID_STATUS');
     });
 
     it('should handle search with UUID (36 characters)', async () => {
@@ -736,6 +595,23 @@ describe('TriageService', () => {
       );
     });
 
+    it('should handle search with alertType match', async () => {
+      const searchParams = { ...mockParams, search: 'AML' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(searchParams);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([{ alert_type: { equals: AlertType.AML } }]),
+          }),
+        }),
+      );
+    });
+
     it('should handle search with general text (txtp contains)', async () => {
       const searchParams = { ...mockParams, search: 'payment' };
 
@@ -748,6 +624,23 @@ describe('TriageService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             OR: expect.arrayContaining([{ txtp: { contains: 'payment', mode: 'insensitive' } }]),
+          }),
+        }),
+      );
+    });
+
+    it('should handle search with general text (source contains)', async () => {
+      const searchParams = { ...mockParams, search: 'REST API' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(searchParams);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([{ source: { contains: 'REST API', mode: 'insensitive' } }]),
           }),
         }),
       );
@@ -793,6 +686,23 @@ describe('TriageService', () => {
       );
     });
 
+    it('should filter alerts by alertType when provided', async () => {
+      const paramsWithStatus = { ...mockParams, alertType: 'AML' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(paramsWithStatus);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            alert_type: AlertType.AML,
+          }),
+        }),
+      );
+    });
+
     it('should filter alerts by type when provided', async () => {
       const paramsWithType = { ...mockParams, type: 'PAYMENT' };
 
@@ -805,6 +715,22 @@ describe('TriageService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             txtp: 'PAYMENT',
+          }),
+        }),
+      );
+    });
+    it('should filter alerts by source when provided', async () => {
+      const paramsWithType = { ...mockParams, source: 'REST API' };
+
+      prismaService.alert.findMany.mockResolvedValue(mockAlerts);
+      prismaService.alert.count.mockResolvedValue(1);
+
+      await service.getAlertsForUser(paramsWithType);
+
+      expect(prismaService.alert.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            source: 'REST API',
           }),
         }),
       );

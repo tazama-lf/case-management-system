@@ -38,26 +38,6 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   confidence_per: alert.confidence_per,
   created_at: alert.created_at,
   case_id: alert.case_id,
-
-  // UI-specific fields - derived mappings
-  id: alert.alert_id,
-  title: alert.message,
-  description: alert.message,
-  type: alert.alert_type || alert.source || 'transaction_monitoring',
-  severity: alert.priority.toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
-  riskScore: alert.confidence_per,
-  confidence: alert.confidence_per,
-  status: (alert.alert_status === 'CLOSED' ? 'resolved' : 
-           alert.alert_status === 'CONVERTED' ? 'converted' :
-           alert.alert_status.toLowerCase()) as 'new' | 'investigating' | 'resolved' | 'false_positive' | 'converted',
-  createdAt: alert.created_at,
-  updatedAt: alert.created_at, // Use created_at as fallback
-  lastUpdated: alert.created_at,
-  transactionId: alert.txtp,
-  assignedTo: undefined,
-  assignee: undefined,
-  amount: undefined, // Would need to parse from transaction data
-  currency: undefined, // Would need to parse from transaction data
 });
 
 // Risk score calculation and breakdown
