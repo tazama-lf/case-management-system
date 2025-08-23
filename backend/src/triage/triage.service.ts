@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -157,8 +156,8 @@ export class TriageService {
       throw new BadRequestException('Limit must be a positive integer');
     }
 
-    // Validate sortBy
-    const validSortFields = ['priority', 'created_at'];
+    // Validate sortBy - allow sorting by any field in the select clause
+    const validSortFields = ['alert_id', 'txtp', 'priority', 'confidence_per', 'alert_status', 'source', 'alert_type', 'created_at'];
     if (!validSortFields.includes(sortBy)) {
       throw new BadRequestException(`Invalid sortBy field: ${sortBy}. Must be one of ${validSortFields.join(', ')}`);
     }
@@ -204,31 +203,34 @@ export class TriageService {
     }
 
     if (search) {
-      whereClause.OR = [];
+      const searchConditions: Prisma.AlertWhereInput[] = [
+        { txtp: { contains: search, mode: 'insensitive' } },
+        { source: { contains: search, mode: 'insensitive' } },
+      ];
 
+      // Very basic UUID check. A proper validation should be used in a real app.
       if (search.length === 36) {
-        whereClause.OR.push({ alert_id: { equals: search } });
-        whereClause.OR.push({ case_id: { equals: search } });
+        searchConditions.push({ alert_id: { equals: search } });
+        searchConditions.push({ case_id: { equals: search } });
       }
 
-      whereClause.OR.push({ txtp: { contains: search, mode: 'insensitive' } }, { source: { contains: search, mode: 'insensitive' } });
-
       if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
-        whereClause.OR.push({
+        searchConditions.push({
           priority: { equals: search.toUpperCase() as Priority },
         });
       }
 
       if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
-        whereClause.OR.push({
+        searchConditions.push({
           alert_status: { equals: search.toUpperCase() as AlertStatus },
         });
       }
       if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
-        whereClause.OR.push({
+        searchConditions.push({
           alert_type: { equals: search.toUpperCase() as AlertType },
         });
       }
+      whereClause.OR = searchConditions;
     }
 
     try {
@@ -366,9 +368,24 @@ export class TriageService {
   }
 
   async getAlertActionHistory(alertId: string, tenantId: string, userId: string) {
-    // TODO: Implement actual action history retrieval logic
-    // For now, return a stub
-    return { alertId, tenantId, userId, history: [] };
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
+    }
+
+    const history = await this.audit.getActionHistoryForAlert(alertId);
+    return {
+      alertId,
+      tenantId,
+      userId,
+      history,
+    };
   }
 
   async getFilterOptions(tenantId: string) {

@@ -106,8 +106,8 @@ class TriageService {
   // GET /api/v1/triage/alerts/:alertId/action-history
   async getAlertActionHistory(alertId: string): Promise<ActionHistory[]> {
     try {
-      const response = await apiClient.get<ActionHistory[]>(`${this.baseUrl}/${alertId}/action-history`);
-      return response;
+      const response = await apiClient.get<{ history: ActionHistory[] }>(`${this.baseUrl}/${alertId}/action-history`);
+      return response.history;
     } catch (error) {
       throw this.handleError(error, 'fetch alert action history');
     }

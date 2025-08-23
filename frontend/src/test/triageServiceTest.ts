@@ -10,14 +10,6 @@ export const testTriageService = () => {
   const hasCloseAlert = typeof triageService.closeAlert === 'function';
   const hasConvertAlertToCase = typeof triageService.convertAlertToCase === 'function';
 
-  console.log('TriageService Methods Available:', {
-    getAlerts: hasGetAlerts,
-    getAlertById: hasGetAlertById,
-    updateAlert: hasUpdateAlert,
-    closeAlert: hasCloseAlert,
-    convertAlertToCase: hasConvertAlertToCase
-  });
-
   return hasGetAlerts && hasGetAlertById && hasUpdateAlert && hasCloseAlert && hasConvertAlertToCase;
 };
 

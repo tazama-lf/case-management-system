@@ -124,9 +124,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       setError(null);
 
       try {
-        console.log('🔍 Fetching alert details for ID:', alertId);
         const alertDetails = await triageService.getAlertById(alertId);
-        console.log('Alert details fetched:', alertDetails);
         setAlert(alertDetails);
 
         // Fetch action history
@@ -135,22 +133,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           const history = await triageService.getAlertActionHistory(alertId);
           setActionHistory(history);
         } catch (historyError) {
-          console.warn('Failed to fetch action history:', historyError);
           setActionHistory([]);
         } finally {
           setLoadingHistory(false);
         }
 
-        // Log alert view for audit trail
-        const currentUser = 'system'; // TODO: Get from auth context
-        console.log('Alert View Logged:', {
-          alertId: alertDetails.alert_id,
-          viewedBy: currentUser,
-          viewedAt: new Date().toISOString(),
-          action: 'alert_opened',
-        });
       } catch (err) {
-        console.error('Error fetching alert details:', err);
         setError(err instanceof Error ? err.message : 'Failed to load alert details');
       } finally {
         setLoading(false);
@@ -161,13 +149,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   }, [alertId, isOpen]);
 
   const handleConvert = () => {
-    console.log('handleConvert called, alert status:', alert?.alert_status);
     // Only show convert modal if alert is in an open state
     if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
-      console.log('Setting showConvertModal to true');
       setShowConvertModal(true);
     } else {
-      console.log('Alert cannot be converted in current status:', alert?.alert_status);
     }
   };
 
@@ -191,13 +176,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   };
 
   const handleCloseAlert = () => {
-    console.log('handleCloseAlert called, alert status:', alert?.alert_status);
     // Only show close modal if alert is in an open state
     if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
-      console.log('Setting showCloseModal to true');
       setShowCloseModal(true);
     } else {
-      console.log('Alert cannot be closed in current status:', alert?.alert_status);
     }
   };
 
@@ -345,7 +327,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
                         <button
                           onClick={() => {
-                            console.log('Convert to Case button clicked');
                             handleConvert();
                           }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
@@ -360,7 +341,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
                         <button
                           onClick={() => {
-                            console.log('Close Alert button clicked');
                             handleCloseAlert();
                           }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
@@ -472,7 +452,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     ) : actionHistory.length > 0 ? (
                       <div className="space-y-3 max-h-64 overflow-y-auto">
                         {actionHistory.map((action) => (
-                          <div key={action.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                          <div key={action.audit_log_id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                             <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
                               action.outcome === 'SUCCESS' 
                                 ? 'bg-green-100 text-green-600' 
@@ -484,10 +464,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
-                                <span className="font-medium">{action.action}</span>
+                                <span className="font-medium">{action.action_performed}</span>
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(action.timestamp).toLocaleString('en-US', {
+                                {new Date(action.performed_at).toLocaleString('en-US', {
                                   month: 'numeric',
                                   day: 'numeric',
                                   year: 'numeric',

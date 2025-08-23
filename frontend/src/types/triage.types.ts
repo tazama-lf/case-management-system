@@ -34,12 +34,13 @@ export const CaseStatus = {
 
 // Action History types
 export interface ActionHistory {
-  id: string;
-  timestamp: string;
-  action: string;
+  audit_log_id: string;
+  user_id: string;
   operation: string;
+  entity_name: string;
+  action_performed: string;
   outcome: string;
-  userId: string;
+  performed_at: string;
 }
 
 // Type aliases

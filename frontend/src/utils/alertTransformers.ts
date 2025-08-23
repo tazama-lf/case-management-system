@@ -5,13 +5,6 @@ import type { Alert as UIAlert } from '../types/alertsdashboard.types';
  * Transform backend Alert to UI Alert format
  */
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
-  // Debug logging to check source field
-  console.log('Transforming alert:', {
-    alert_id: backendAlert.alert_id,
-    source: backendAlert.source,
-    alert_type: backendAlert.alert_type,
-    raw_alert: backendAlert
-  });
 
   const transformedAlert: UIAlert = {
     // Backend fields
@@ -49,8 +42,6 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     currency: extractCurrency(backendAlert.transaction),
   };
 
-  console.log('Transformed alert - Source value:', transformedAlert.source);
-  console.log('Full transformed alert:', transformedAlert);
   return transformedAlert;
 }
 

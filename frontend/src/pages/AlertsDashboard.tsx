@@ -182,6 +182,9 @@ const AlertsDashboard: React.FC = () => {
     endDate: ''
   });
 
+  // Debounced search query state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // API integration functions
@@ -230,7 +233,7 @@ const AlertsDashboard: React.FC = () => {
       priority: searchFilters.priority || undefined,
       status: searchFilters.status || undefined,
       type: searchFilters.type || undefined,
-      search: searchFilters.query || undefined,
+      search: debouncedSearchQuery || undefined,
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -238,7 +241,7 @@ const AlertsDashboard: React.FC = () => {
     };
 
     await fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Load alerts on component mount and when filters change
   useEffect(() => {
@@ -246,7 +249,7 @@ const AlertsDashboard: React.FC = () => {
       priority: searchFilters.priority || undefined,
       status: searchFilters.status || undefined,
       type: searchFilters.type || undefined,
-      search: searchFilters.query || undefined,
+      search: debouncedSearchQuery || undefined, // Use debounced query
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -254,7 +257,25 @@ const AlertsDashboard: React.FC = () => {
     };
 
     fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchFilters.query);
+      // Reset to first page when search query changes
+      if (debouncedSearchQuery !== searchFilters.query) {
+        setApiState(prev => ({
+          ...prev,
+          pagination: { ...prev.pagination, currentPage: 1 }
+        }));
+      }
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchFilters.query, debouncedSearchQuery]);
 
   // Real-time polling for dashboard updates
   useEffect(() => {
@@ -272,7 +293,7 @@ const AlertsDashboard: React.FC = () => {
           priority: searchFilters.priority || undefined,
           status: searchFilters.status || undefined,
           type: searchFilters.type || undefined,
-          search: searchFilters.query || undefined,
+          search: debouncedSearchQuery || undefined, // Use debounced query
           page: apiState.pagination.currentPage,
           limit: apiState.pagination.pageSize,
           sortBy: mapToBackendField(sortColumn),
@@ -288,7 +309,7 @@ const AlertsDashboard: React.FC = () => {
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [fetchAlerts, searchFilters, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField, apiState.loading, operationStates]);
+  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField, apiState.loading, operationStates]);
 
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {
@@ -311,17 +332,17 @@ const AlertsDashboard: React.FC = () => {
     ];
     
     const csvData: string[][] = overturnedAlerts.map((alert: Alert) => [
-      alert.id || '',
-      alert.transactionId || '',
-      alert.source || '',
-      (alert.riskScore || 0).toString(),
-      alert.priority || '',
-      (alert.confidence || 0).toString(),
-      alert.status || '',
-      new Date(alert.lastUpdated).toLocaleDateString(),
-      alert.assignee || 'Unassigned',
-      alert.amount?.toString() || 'N/A',
-      alert.currency || 'N/A'
+      alert.id as string || '',
+      alert.transactionId as string || '',
+      alert.source as string || '',
+      (alert.riskScore as number || 0).toString(),
+      alert.priority as string || '',
+      (alert.confidence as number || 0).toString(),
+      alert.status as string || '',
+      new Date(alert.lastUpdated as string).toLocaleDateString(),
+      alert.assignee as string || 'Unassigned',
+      (alert.amount as number)?.toString() || 'N/A',
+      alert.currency as string || 'N/A'
     ]);
     
     const csvContent = [
@@ -348,7 +369,7 @@ const AlertsDashboard: React.FC = () => {
     // Apply client-side custom date filtering if needed
     if (searchFilters.timeRange === 'custom' && customDateRange.startDate && customDateRange.endDate) {
       filtered = apiState.alerts.filter((alert: Alert) => {
-        return isDateInRange(alert.createdAt, searchFilters.timeRange, customDateRange);
+        return isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange);
       });
     }
 
@@ -401,23 +422,15 @@ const AlertsDashboard: React.FC = () => {
       // Add to loading state
       setOperationStates(prev => ({ 
         ...prev, 
-        loadingDetails: new Set([...prev.loadingDetails, alert.id]) 
+        loadingDetails: new Set([...prev.loadingDetails, alert.id as string]) 
       }));
 
       // Log alert access before fetching details
       const currentUser = 'John Doe'; // In real implementation, get from auth context
       const timestamp = new Date().toISOString();
-      
-      console.log('Alert Access Logged:', {
-        alertId: alert.id,
-        userId: currentUser,
-        action: 'alert_accessed_from_dashboard',
-        timestamp: timestamp,
-        userAgent: navigator.userAgent
-      });
 
       // Fetch detailed alert data from API
-      const detailedAlert = await triageService.getAlertById(alert.id);
+      const detailedAlert = await triageService.getAlertById(alert.id as string);
       
       // Transform backend data to UI format and show modal
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
@@ -471,7 +484,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
-    const alertId = alert.id;
+    const alertId = alert.id as string;
     
     try {
       // Set loading state
@@ -479,13 +492,6 @@ const AlertsDashboard: React.FC = () => {
         ...prev,
         convertingToCase: new Set([...prev.convertingToCase, alertId])
       }));
-
-      console.log('Converting alert to case:', {
-        alertId: alert.id,
-        caseData,
-        convertedBy: 'current-user', // TODO: Get from auth context
-        timestamp: new Date().toISOString(),
-      });
 
       // Call API to convert alert to case
       if (caseData) {
@@ -515,10 +521,8 @@ const AlertsDashboard: React.FC = () => {
       // Refresh alerts to get updated data
       await refreshAlerts();
 
-      console.log('Alert successfully converted to case');
       handleCloseModal();
     } catch (error) {
-      console.error('Error converting alert to case:', error);
       
       // Enhanced error handling
       let errorMessage = 'Failed to convert alert to case';
@@ -548,7 +552,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const handleCloseAlert = async (alert: Alert, justification?: string) => {
-    const alertId = alert.id;
+    const alertId = alert.id as string;
     
     try {
       // Set loading state
@@ -557,21 +561,14 @@ const AlertsDashboard: React.FC = () => {
         closingAlert: new Set([...prev.closingAlert, alertId])
       }));
 
-      console.log('Closing alert:', {
-        alertId: alert.id,
-        justification,
-        closedBy: 'current-user', // TODO: Get from auth context
-        closedAt: new Date().toISOString()
-      });
-
       // Call API to close alert
       await triageService.closeAlert(alertId, justification || 'Closed from dashboard');
 
       // Refresh alerts to get updated data
       await refreshAlerts();
 
-      console.log('✅ Alert closed successfully');
       handleCloseModal();
+
     } catch (error) {
       console.error('❌ Error closing alert:', error);
       
@@ -820,7 +817,7 @@ const AlertsDashboard: React.FC = () => {
           customDateRange={customDateRange}
           onCustomDateRangeChange={setCustomDateRange}
           onSearch={(query) => {
-            // Update search filters with debounced query
+            // Update search filters immediately for input field, debounce is handled separately
             setSearchFilters(prev => ({ ...prev, query }));
           }}
         />
