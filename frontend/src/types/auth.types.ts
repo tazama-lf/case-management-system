@@ -1,10 +1,10 @@
 export interface User {
   user_id: string;
   username: string;
-  email?: string;
+  email: string;
   tenantId: string;
   roles: string[];
-  permissions?: string[];
+  permissions: string[];
 }
 
 export interface LoginCredentials {
@@ -31,4 +31,23 @@ export interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+}
+
+export interface DecodedToken {
+  exp: number;
+  sub: string;
+  clientId?: string;
+  preferred_username?: string;
+  username?: string;
+  email?: string;
+  tenant_id?: string;
+  claims?: string[];
+  realm_access?: {
+    roles: string[];
+  };
+  resource_access?: {
+    [key: string]: {
+      roles: string[];
+    };
+  };
 }

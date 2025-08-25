@@ -1,4 +1,4 @@
-import type { LoginCredentials, LoginResponse, User } from '../types/auth.types';
+import type { LoginCredentials, LoginResponse, User, DecodedToken } from '../types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
@@ -94,14 +94,10 @@ class AuthService {
      * Decode JWT token and extract user information
      */
     decodeToken(token: string): User | null {
+        const decoded = this.getDecodedToken(token);
+        if (!decoded) return null;
+
         try {
-            // Split the token to get the payload
-            const payload = token.split('.')[1];
-            if (!payload) return null;
-
-            // Decode base64 URL
-            const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-
             // Extract user information from the decoded token
             const user: User = {
                 user_id: decoded.sub || decoded.clientId || '',
@@ -114,71 +110,74 @@ class AuthService {
 
             return user;
         } catch (error) {
+            console.error('Error extracting user info from decoded token:', error);
+            return null;
+        }
+    }
+
+/**
+ * Extract roles from token payload
+ */
+private extractRoles(payload: DecodedToken): string[] {
+    const roles: string[] = [];
+
+    if (payload.resource_access) {
+        Object.values(payload.resource_access).forEach((resource: { roles: string[] }) => {
+            if (resource.roles) {
+                roles.push(...resource.roles);
+            }
+        });
+    }
+    return roles;
+}
+
+    private getDecodedToken(token: string): DecodedToken | null {
+        try {
+            const payload = token.split('.')[1];
+            return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+        } catch (error) {
             console.error('Error decoding token:', error);
             return null;
         }
     }
 
     /**
-     * Extract roles from token payload
-     */
-    private extractRoles(payload: any): string[] {
-        const roles: string[] = [];
 
-        // Extract from realm_access.roles
-        if (payload.realm_access?.roles) {
-            roles.push(...payload.realm_access.roles);
+    private getDecodedToken(token: string): any | null {
+        try {
+            const payload = token.split('.')[1];
+            if (!payload) return null;
+
+            // Decode base64 URL
+            return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+        } catch (error) {
+            console.error('Error decoding token:', error);
+            return null;
         }
-
-        // Extract from resource_access
-        if (payload.resource_access) {
-            Object.values(payload.resource_access).forEach((resource: any) => {
-                if (resource.roles) {
-                    roles.push(...resource.roles);
-                }
-            });
-        }
-
-        // Filter out system roles and duplicates
-        return [...new Set(roles)].filter(role =>
-            !role.startsWith('default-') &&
-            !role.startsWith('uma_') &&
-            role !== 'offline_access'
-        );
     }
 
     /**
      * Check if token is expired
      */
     isTokenExpired(token: string): boolean {
-        try {
-            const payload = token.split('.')[1];
-            if (!payload) return true;
-
-            const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-            const currentTime = Math.floor(Date.now() / 1000);
-
-            return decoded.exp < currentTime;
-        } catch (error) {
-            console.error('Error checking token expiration:', error);
+        const decoded = this.getDecodedToken(token);
+        if (!decoded || typeof decoded.exp !== 'number') {
             return true;
         }
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        return decoded.exp < currentTime;
     }
 
     /**
      * Get token expiration time
      */
     getTokenExpiration(token: string): Date | null {
-        try {
-            const payload = token.split('.')[1];
-            if (!payload) return null;
-
-            const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-            return new Date(decoded.exp * 1000);
-        } catch (error) {
-            console.error('Error getting token expiration:', error);
+        const decoded = this.getDecodedToken(token);
+        if (!decoded || typeof decoded.exp !== 'number') {
             return null;
         }
+        return new Date(decoded.exp * 1000);
     }
 
     /**
