@@ -5,10 +5,11 @@ import { ConvertAlertToCase } from '../../../src/triage/dto/convert-alert-to-cas
 import { Priority, CaseType } from '@prisma/client';
 
 describe('ConvertAlertToCase DTO', () => {
-  it('should validate a valid ConvertAlertToCase DTO', async () => {
+  it('should validate a valid DTO with all fields', async () => {
     const dto = plainToInstance(ConvertAlertToCase, {
       priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
+      caseOwnerUserId: '550e8400-e29b-41d4-a716-446655440000',
     });
 
     const errors = await validate(dto);
@@ -16,6 +17,19 @@ describe('ConvertAlertToCase DTO', () => {
     expect(errors).toHaveLength(0);
     expect(dto.priority).toBe(Priority.HIGH);
     expect(dto.caseType).toBe(CaseType.FRAUD);
+    expect(dto.caseOwnerUserId).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+
+  it('should validate when priority and caseOwnerUserId are omitted', async () => {
+    const dto = plainToInstance(ConvertAlertToCase, {
+      caseType: CaseType.FRAUD,
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.priority).toBeUndefined();
+    expect(dto.caseOwnerUserId).toBeUndefined();
   });
 
   it('should fail validation for invalid priority', async () => {
@@ -44,17 +58,6 @@ describe('ConvertAlertToCase DTO', () => {
     expect(errors[0].constraints).toHaveProperty('isEnum');
   });
 
-  it('should fail validation for missing priority', async () => {
-    const dto = plainToInstance(ConvertAlertToCase, {
-      caseType: CaseType.FRAUD,
-    });
-
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(1);
-    expect(errors[0].property).toBe('priority');
-  });
-
   it('should fail validation for missing caseType', async () => {
     const dto = plainToInstance(ConvertAlertToCase, {
       priority: Priority.HIGH,
@@ -64,6 +67,19 @@ describe('ConvertAlertToCase DTO', () => {
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('caseType');
+  });
+
+  it('should fail validation for invalid UUID in caseOwnerUserId', async () => {
+    const dto = plainToInstance(ConvertAlertToCase, {
+      caseType: CaseType.FRAUD,
+      caseOwnerUserId: 'not-a-uuid',
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe('caseOwnerUserId');
+    expect(errors[0].constraints).toHaveProperty('isUuid');
   });
 
   it('should accept all valid Priority values', async () => {

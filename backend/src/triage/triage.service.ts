@@ -330,11 +330,12 @@ export class TriageService {
     }
 
     const casePriority = convertAlertToCase.priority ?? alert.priority;
+    const caseOwner = convertAlertToCase.caseOwnerUserId ?? userId;
     try {
       const newCase = await this.prisma.case.create({
         data: {
           case_creator_user_id: userId,
-          case_owner_user_id: userId,
+          case_owner_user_id: caseOwner,
           tenant_id: alert.tenant_id,
           priority: casePriority,
           status: CaseStatus.DRAFT,

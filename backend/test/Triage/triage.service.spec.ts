@@ -806,6 +806,7 @@ describe('TriageService', () => {
     const convertDto: ConvertAlertToCase = {
       priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
+      caseOwnerUserId: 'test-user-id'
     };
 
     const mockExistingAlert = {
