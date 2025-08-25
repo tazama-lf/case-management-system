@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
@@ -6,8 +5,8 @@ import { CloseAlertDto } from './dto/close-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus, AlertType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AlertStatus, Priority, CaseCreationType, CaseStatus, AlertType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TriageService {
@@ -146,7 +145,9 @@ export class TriageService {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const { tenantId, priority, status, type, alertType, search, source, page, limit, sortBy, sortOrder } = params;
+    const { tenantId, priority, status, search, source, page, limit, sortBy, sortOrder } = params;
+    let type = params.type;
+    const alertType = params.alertType;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -155,8 +156,8 @@ export class TriageService {
       throw new BadRequestException('Limit must be a positive integer');
     }
 
-    // Validate sortBy
-    const validSortFields = ['priority', 'created_at'];
+    // Validate sortBy - allow sorting by any field in the select clause
+    const validSortFields = ['alert_id', 'txtp', 'priority', 'confidence_per', 'alert_status', 'source', 'alert_type', 'created_at'];
     if (!validSortFields.includes(sortBy)) {
       throw new BadRequestException(`Invalid sortBy field: ${sortBy}. Must be one of ${validSortFields.join(', ')}`);
     }
@@ -164,7 +165,7 @@ export class TriageService {
       throw new BadRequestException('sortOrder must be "asc" or "desc"');
     }
 
-    const whereClause: any = {
+    const whereClause: Prisma.AlertWhereInput = {
       tenant_id: tenantId,
     };
 
@@ -172,21 +173,26 @@ export class TriageService {
       if (!Object.values(Priority).includes(priority.toUpperCase() as Priority)) {
         throw new BadRequestException(`Invalid priority: ${priority}`);
       }
-      whereClause.priority = priority.toUpperCase();
+      whereClause.priority = priority.toUpperCase() as Priority;
     }
 
     if (status) {
       if (!Object.values(AlertStatus).includes(status.toUpperCase() as AlertStatus)) {
         throw new BadRequestException(`Invalid status: ${status}`);
       }
-      whereClause.alert_status = status.toUpperCase();
+      whereClause.alert_status = status.toUpperCase() as AlertStatus;
     }
 
     if (alertType) {
       if (!Object.values(AlertType).includes(alertType.toUpperCase() as AlertType)) {
         throw new BadRequestException(`Invalid alertType: ${alertType}`);
       }
-      whereClause.alert_type = alertType.toUpperCase();
+      whereClause.alert_type = alertType.toUpperCase() as AlertType;
+    } else if (type && Object.values(AlertType).includes(type.toUpperCase() as AlertType)) {
+      // If alertType is not present, but type is, and it's a valid AlertType, use it as alert_type
+      whereClause.alert_type = type.toUpperCase() as AlertType;
+      // Unset type so it's not used for txtp filtering
+      type = undefined;
     }
 
     if (type) {
@@ -197,31 +203,34 @@ export class TriageService {
     }
 
     if (search) {
-      whereClause.OR = [];
+      const searchConditions: Prisma.AlertWhereInput[] = [
+        { txtp: { contains: search, mode: 'insensitive' } },
+        { source: { contains: search, mode: 'insensitive' } },
+      ];
 
+      // Very basic UUID check. A proper validation should be used in a real app.
       if (search.length === 36) {
-        whereClause.OR.push({ alert_id: { equals: search } });
-        whereClause.OR.push({ case_id: { equals: search } });
+        searchConditions.push({ alert_id: { equals: search } });
+        searchConditions.push({ case_id: { equals: search } });
       }
 
-      whereClause.OR.push({ txtp: { contains: search, mode: 'insensitive' } }, { source: { contains: search, mode: 'insensitive' } });
-
       if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
-        whereClause.OR.push({
+        searchConditions.push({
           priority: { equals: search.toUpperCase() as Priority },
         });
       }
 
       if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
-        whereClause.OR.push({
+        searchConditions.push({
           alert_status: { equals: search.toUpperCase() as AlertStatus },
         });
       }
       if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
-        whereClause.OR.push({
+        searchConditions.push({
           alert_type: { equals: search.toUpperCase() as AlertType },
         });
       }
+      whereClause.OR = searchConditions;
     }
 
     try {
@@ -355,6 +364,48 @@ export class TriageService {
     } catch (error) {
       this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
       throw new InternalServerErrorException('Failed to convert alert to case');
+    }
+  }
+
+  async getAlertActionHistory(alertId: string, tenantId: string, userId: string) {
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
+    }
+
+    const history = await this.audit.getActionHistoryForAlert(alertId);
+    return {
+      alertId,
+      tenantId,
+      userId,
+      history,
+    };
+  }
+
+  async getFilterOptions(tenantId: string) {
+    try {
+      const sourceResult = await this.prisma.alert.findMany({
+        where: { tenant_id: tenantId },
+        select: { source: true },
+        distinct: ['source'],
+      });
+      const sources = sourceResult.map((s) => s.source).filter(Boolean) as string[];
+
+      return {
+        priorities: Object.values(Priority),
+        statuses: Object.values(AlertStatus),
+        alertTypes: Object.values(AlertType),
+        sources,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get filter options for tenant ${tenantId}`, error);
+      throw new InternalServerErrorException('Unable to retrieve filter options');
     }
   }
 }

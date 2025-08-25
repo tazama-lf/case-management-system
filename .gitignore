@@ -14,6 +14,10 @@ node_modules/
 # Build and output directories (NestJS)
 dist/
 build/
+backend/dist/
+backend/build/
+frontend/dist/
+frontend/build/
 
 # Coverage directories (Jest)
 coverage/

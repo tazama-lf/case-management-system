@@ -21,6 +21,12 @@ async function bootstrap() {
     }),
   );
 
+  // Temporary - allow all origins (for testing only)
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
