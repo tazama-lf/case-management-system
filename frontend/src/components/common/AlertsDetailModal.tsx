@@ -146,6 +146,38 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   return { id: undefined, label: undefined, result: undefined };
 };
 
+// Utility: escape HTML for safe insertion
+const escapeHtml = (unsafe: string) => {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+// Utility: simple JSON syntax highlighter that returns HTML
+const syntaxHighlightJson = (obj: unknown) => {
+  const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  const escaped = escapeHtml(String(json));
+
+  // Wrap JSON tokens in spans with Tailwind-compatible classes
+  const highlighted = escaped
+    // keys
+    .replace(/("(.*?)")(?=\s*:)/g, '<span class="text-indigo-700 font-medium">$1</span>')
+    // strings
+    .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+  // numbers (including optional exponent)
+  .replace(/(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi, '$1<span class="text-red-600">$2</span>')
+    // booleans
+    .replace(/(:\s*)(true|false)/gi, '$1<span class="text-yellow-600">$2</span>')
+    // null
+    .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+
+  // Preserve line breaks inside a <pre> by returning raw HTML
+  return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+};
+
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   alertId,
   isOpen,
@@ -448,14 +480,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       Transaction Data
                     </h4>
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                      <div>
-                        <span className="text-sm font-medium text-gray-500">
-                          Transaction Data:
-                        </span>
-                        <div className="text-sm text-gray-900 font-mono bg-gray-100 p-2 rounded mt-1">
-                          {alert.transaction ? JSON.stringify(alert.transaction, null, 2) : 'No transaction data'}
-                        </div>
-                      </div>
+                          {alert.transaction ? (
+                            <pre
+                              className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                              dangerouslySetInnerHTML={{ __html: syntaxHighlightJson(alert.transaction) }}
+                            />
+                          ) : (
+                            <div className="text-sm text-gray-600">No transaction data</div>
+                          )}
                     </div>
                   </div>
                 </div>
