@@ -9,18 +9,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { TriageModule } from './triage/triage.module';
 import { NatsModule } from './nats/nats.module';
+import { validate } from './config/env.validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
+      validate,
     }),
     PrismaModule,
+    NatsModule,
     AuditLogModule,
     TriageModule,
     AuthModule,
-    NatsModule,
   ],
   providers: [
     PrismaService,

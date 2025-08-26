@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { NatsStartupService } from './nats.startup';
 import { TriageModule } from '../triage/triage.module';
-import { LoggerModule } from '../logger/logger.module';
+import { NatsStartupService } from './nats.service';
+import { LoggerModule } from 'src/logger/logger.module';
 
 @Module({
   imports: [TriageModule, LoggerModule],

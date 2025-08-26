@@ -15,7 +15,7 @@ describe('TriageModule', () => {
     warn: jest.fn(),
     debug: jest.fn(),
     verbose: jest.fn(),
-};
+  };
   const mockPrismaService = {
     alert: {
       create: jest.fn(),
@@ -38,9 +38,9 @@ describe('TriageModule', () => {
       .useValue(mockPrismaService)
       .overrideProvider(AuditLogService)
       .useValue(mockAuditLogService)
-  .overrideProvider(LoggerService)
-  .useValue(mockLoggerService)
-  .compile();
+      .overrideProvider(LoggerService)
+      .useValue(mockLoggerService)
+      .compile();
   });
 
   afterEach(async () => {

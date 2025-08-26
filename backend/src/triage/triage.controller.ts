@@ -1,20 +1,24 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
+import { SubmitAlertDto } from './dto/submit-alert.dto';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
+import { RequireCMSTestRole } from 'src/auth/auth.decorator';
 
 @Controller('api/v1/triage/alerts')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(TazamaAuthGuard)
 export class TriageController {
-  constructor(private readonly triageService: TriageService) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly triageService: TriageService,
+  ) {}
 
   @Post('')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  // @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
@@ -30,15 +34,15 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
+    const userId = req.user.token.user_id;
+    const tenantId = req.user.token.tenantId;
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/close')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
@@ -46,7 +50,7 @@ export class TriageController {
   }
 
   @Get()
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async getUserAlerts(
     @Req() req,
     @Query('priority') priority?: string,
@@ -77,7 +81,7 @@ export class TriageController {
   }
 
   @Get(':alertId')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
@@ -85,18 +89,10 @@ export class TriageController {
   }
 
   @Post(':alertId/convert-to-case')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
+  @RequireCMSTestRole()
   async convertAlertToCase(@Param('alertId') alertId: string, @Body() convertAlertToCase: ConvertAlertToCase, @Req() req) {
     const userId = req.user.user_id;
     const tenantId = req.user.tenantId;
     return this.triageService.convertToCase(alertId, convertAlertToCase, userId, tenantId);
-  }
-
-  @Get(':alertId/action-history')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
-    return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
   }
 }

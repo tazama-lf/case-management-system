@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { HttpService } from '@nestjs/axios';
 import { Injectable, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
@@ -23,6 +22,10 @@ export class AuthService {
     }
     try {
       const response = await firstValueFrom(this.httpService.post(authUrl, { username, password }));
+      if (!response?.data) {
+        this.logger.error('Auth service did not return a valid response', AuthService.name);
+        throw new ServiceUnavailableException('Authentication service unavailable');
+      }
       const token =
         typeof response.data === 'string'
           ? response.data

@@ -1,4 +1,3 @@
-  
 import 'reflect-metadata';
 import { Priority, AlertStatus } from '@prisma/client';
 import { validate } from 'class-validator';
@@ -31,27 +30,27 @@ describe('AlertMessageDto', () => {
         confidence_per: 85,
         case_id: 'test-case-123',
         userId: 'test-user',
-      }
+      },
     };
 
     const dto = plainToClass(AlertMessageDto, alertData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
-  // Validate all fields inside result
-  const r = dto.result;
-  expect(r.tenant_id).toBe('test-tenant');
-  expect(r.priority).toBe(Priority.HIGH);
-  expect(r.source).toBe('test-source');
-  expect(r.txtp).toBe('test-txtp');
-  expect(r.message).toBe('Test alert message');
-  expect(r.alert_data).toEqual({ test: 'data' });
-  expect(r.transaction).toEqual({ test: 'transaction' });
-  expect(r.network_map).toEqual({ test: 'network' });
-  expect(r.alert_status).toBe(AlertStatus.NEW);
-  expect(r.confidence_per).toBe(85);
-  expect(r.case_id).toBe('test-case-123');
-  expect(r.userId).toBe('test-user');
+    // Validate all fields inside result
+    const r = dto.result;
+    expect(r.tenant_id).toBe('test-tenant');
+    expect(r.priority).toBe(Priority.HIGH);
+    expect(r.source).toBe('test-source');
+    expect(r.txtp).toBe('test-txtp');
+    expect(r.message).toBe('Test alert message');
+    expect(r.alert_data).toEqual({ test: 'data' });
+    expect(r.transaction).toEqual({ test: 'transaction' });
+    expect(r.network_map).toEqual({ test: 'network' });
+    expect(r.alert_status).toBe(AlertStatus.NEW);
+    expect(r.confidence_per).toBe(85);
+    expect(r.case_id).toBe('test-case-123');
+    expect(r.userId).toBe('test-user');
   });
 
   it('should validate userId field', async () => {
@@ -64,12 +63,12 @@ describe('AlertMessageDto', () => {
         network_map: {},
         confidence_per: 50,
         userId: 'user-123',
-      }
+      },
     };
     const dto = plainToClass(AlertMessageDto, data);
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
-  expect(dto.result.userId).toBe('user-123');
+    expect(dto.result.userId).toBe('user-123');
   });
   it('should fail validation if result property is missing', async () => {
     const dto = plainToClass(AlertMessageDto, {});
@@ -94,7 +93,7 @@ describe('AlertMessageDto', () => {
         confidence_per: 'not-a-number',
         case_id: 101112,
         userId: 131415,
-      }
+      },
     });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
@@ -115,7 +114,7 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: {},
         confidence_per: 1,
-      }
+      },
     });
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
@@ -136,7 +135,7 @@ describe('AlertMessageDto', () => {
         confidence_per: 1,
         case_id: 'cid',
         userId: 'uid',
-      }
+      },
     });
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
@@ -152,7 +151,7 @@ describe('AlertMessageDto', () => {
         transaction: { test: 'transaction' },
         network_map: { test: 'network' },
         confidence_per: 75,
-      }
+      },
     };
 
     const dto = plainToClass(AlertMessageDto, minimalData);
@@ -175,12 +174,12 @@ describe('AlertMessageDto', () => {
           network_map: {},
           confidence_per: 50,
           priority: priority,
-        }
+        },
       });
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(0);
-    expect(dto.result.priority).toBe(priority);
+      expect(dto.result.priority).toBe(priority);
     }
   });
 
@@ -197,12 +196,12 @@ describe('AlertMessageDto', () => {
           network_map: {},
           confidence_per: 50,
           alert_status: status,
-        }
+        },
       });
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(0);
-    expect(dto.result.alert_status).toBe(status);
+      expect(dto.result.alert_status).toBe(status);
     }
   });
 
@@ -211,7 +210,7 @@ describe('AlertMessageDto', () => {
       result: {
         priority: Priority.HIGH,
         // Missing required fields: tenant_id, message, alert_data, transaction, network_map, confidence_per
-      }
+      },
     };
 
     const dto = plainToClass(AlertMessageDto, invalidData);
@@ -230,7 +229,7 @@ describe('AlertMessageDto', () => {
         network_map: {},
         confidence_per: 50,
         priority: 'INVALID_PRIORITY',
-      }
+      },
     });
 
     const errors = await validate(dto);
@@ -247,7 +246,7 @@ describe('AlertMessageDto', () => {
         network_map: {},
         confidence_per: 50,
         alert_status: 'INVALID_STATUS',
-      }
+      },
     });
 
     const errors = await validate(dto);
@@ -265,7 +264,7 @@ describe('AlertMessageDto', () => {
         confidence_per: 50,
         priority: 'HIGH',
         alert_status: 'NEW',
-      }
+      },
     });
 
     expect(dto.result.priority).toBe('HIGH');
@@ -282,12 +281,14 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: {},
         confidence_per: 'invalid-number',
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'confidence_per'));
+    const confidenceError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'confidence_per'),
+    );
     expect(confidenceError).toBeDefined();
   });
 
@@ -300,12 +301,14 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: {},
         confidence_per: 50,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const tenantError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'tenant_id'));
+    const tenantError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'tenant_id'),
+    );
     expect(tenantError).toBeDefined();
   });
 
@@ -318,12 +321,14 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: {},
         confidence_per: 50,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const messageError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'message'));
+    const messageError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'message'),
+    );
     expect(messageError).toBeDefined();
   });
 
@@ -336,12 +341,14 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: {},
         confidence_per: 50,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const alertDataError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'alert_data'));
+    const alertDataError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'alert_data'),
+    );
     expect(alertDataError).toBeDefined();
   });
 
@@ -354,12 +361,14 @@ describe('AlertMessageDto', () => {
         transaction: 'not-an-object',
         network_map: {},
         confidence_per: 50,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const transactionError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'transaction'));
+    const transactionError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'transaction'),
+    );
     expect(transactionError).toBeDefined();
   });
 
@@ -372,12 +381,14 @@ describe('AlertMessageDto', () => {
         transaction: {},
         network_map: 'not-an-object',
         confidence_per: 50,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    const networkMapError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'network_map'));
+    const networkMapError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'network_map'),
+    );
     expect(networkMapError).toBeDefined();
   });
 
@@ -396,17 +407,17 @@ describe('AlertMessageDto', () => {
         userId: 'user-789',
         source: 'fraud-detection',
         txtp: 'payment-transfer',
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
-  expect(dto.result.priority).toBe(Priority.MEDIUM);
-  expect(dto.result.alert_status).toBe(AlertStatus.CONVERTED);
-  expect(dto.result.case_id).toBe('case-456');
-  expect(dto.result.userId).toBe('user-789');
-  expect(dto.result.source).toBe('fraud-detection');
-  expect(dto.result.txtp).toBe('payment-transfer');
+    expect(dto.result.priority).toBe(Priority.MEDIUM);
+    expect(dto.result.alert_status).toBe(AlertStatus.CONVERTED);
+    expect(dto.result.case_id).toBe('case-456');
+    expect(dto.result.userId).toBe('user-789');
+    expect(dto.result.source).toBe('fraud-detection');
+    expect(dto.result.txtp).toBe('payment-transfer');
   });
 
   it('should fail validation for invalid optional string fields', async () => {
@@ -422,13 +433,15 @@ describe('AlertMessageDto', () => {
         userId: 456, // should be string
         source: 789, // should be string
         txtp: 101112, // should be string
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
 
-    const caseIdError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'case_id'));
+    const caseIdError = errors.find(
+      (error) => error.property === 'result' && error.children?.some((child) => child.property === 'case_id'),
+    );
     const userIdError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'userId'));
     const sourceError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'source'));
     const txtpError = errors.find((error) => error.property === 'result' && error.children?.some((child) => child.property === 'txtp'));
@@ -454,7 +467,7 @@ describe('AlertMessageDto', () => {
         userId: null,
         source: null,
         txtp: null,
-      }
+      },
     });
 
     const errors = await validate(dto);
@@ -476,7 +489,7 @@ describe('AlertMessageDto', () => {
         userId: undefined,
         source: undefined,
         txtp: undefined,
-      }
+      },
     });
 
     const errors = await validate(dto);
@@ -517,13 +530,13 @@ describe('AlertMessageDto', () => {
         transaction: complexTransaction,
         network_map: complexNetworkMap,
         confidence_per: 95,
-      }
+      },
     });
 
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
-  expect(dto.result.alert_data).toEqual(complexAlertData);
-  expect(dto.result.transaction).toEqual(complexTransaction);
-  expect(dto.result.network_map).toEqual(complexNetworkMap);
+    expect(dto.result.alert_data).toEqual(complexAlertData);
+    expect(dto.result.transaction).toEqual(complexTransaction);
+    expect(dto.result.network_map).toEqual(complexNetworkMap);
   });
 });
