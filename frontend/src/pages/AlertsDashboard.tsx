@@ -101,9 +101,7 @@ const AlertsDashboard: React.FC = () => {
     }
   });
 
-  // State for tracking fetched source values
-  const [fetchedSources, setFetchedSources] = useState<Record<string, string>>({});
-  const [loadingSources, setLoadingSources] = useState<Set<string>>(new Set());
+  // State for tracking fetched source values (not used currently)
   
   // Operation states for loading indicators
   const [operationStates, setOperationStates] = useState<OperationStates>({
@@ -230,10 +228,6 @@ const AlertsDashboard: React.FC = () => {
 
   const refreshAlerts = useCallback(async () => {
     const filters: AlertsFilter = {
-      priority: searchFilters.priority || undefined,
-      status: searchFilters.status || undefined,
-      type: searchFilters.type || undefined,
-      search: debouncedSearchQuery || undefined,
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -241,15 +235,13 @@ const AlertsDashboard: React.FC = () => {
     };
 
     await fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [fetchAlerts, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Load alerts on component mount and when filters change
+  // Load alerts on component mount and when pagination/sort change. Filters (search, type, priority, status)
+  // are applied client-side in `filteredAndSortedAlerts` to avoid refetching on every filter interaction.
   useEffect(() => {
     const filters: AlertsFilter = {
-      priority: searchFilters.priority || undefined,
-      status: searchFilters.status || undefined,
-      type: searchFilters.type || undefined,
-      search: debouncedSearchQuery || undefined, // Use debounced query
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -257,7 +249,7 @@ const AlertsDashboard: React.FC = () => {
     };
 
     fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [fetchAlerts, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
 
   // Debounce search query
   useEffect(() => {
@@ -363,25 +355,110 @@ const AlertsDashboard: React.FC = () => {
   };
 
   // Filter and sort logic
+  // Client-side filtering, sorting and pagination
   const filteredAndSortedAlerts = useMemo(() => {
-    let filtered = apiState.alerts;
+    let filtered = apiState.alerts.slice();
 
-    // Apply client-side custom date filtering if needed
-    if (searchFilters.timeRange === 'custom' && customDateRange.startDate && customDateRange.endDate) {
-      filtered = apiState.alerts.filter((alert: Alert) => {
-        return isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange);
+    // Text query filter (search across alert id, message, transaction id)
+    if (debouncedSearchQuery && debouncedSearchQuery.trim() !== '') {
+      const q = debouncedSearchQuery.trim().toLowerCase();
+      filtered = filtered.filter((a: Alert) => {
+        const txId = (a.transactionId || '') as string;
+        return (
+          String(a.alert_id).toLowerCase().includes(q) ||
+          String(a.message || '').toLowerCase().includes(q) ||
+          txId.toLowerCase().includes(q)
+        );
       });
     }
 
-    return filtered;
-  }, [apiState.alerts, searchFilters.timeRange, customDateRange]);
+    // Source filter
+    if (searchFilters.source) {
+      filtered = filtered.filter(a => (a.source || '').toLowerCase() === searchFilters.source.toLowerCase());
+    }
 
-  // Use API pagination instead of client-side pagination
-  const paginatedAlerts = filteredAndSortedAlerts;
-  const totalItems = apiState.pagination.totalItems;
-  const totalPages = apiState.pagination.totalPages;
-  const currentPage = apiState.pagination.currentPage;
+    // Type filter
+    if (searchFilters.type) {
+      filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === searchFilters.type.toLowerCase());
+    }
+
+    // Priority filter
+    if (searchFilters.priority) {
+      filtered = filtered.filter(a => (a.priority || '').toLowerCase() === searchFilters.priority.toLowerCase());
+    }
+
+    // Status filter
+    if (searchFilters.status) {
+      filtered = filtered.filter(a => (a.alert_status || '').toLowerCase() === searchFilters.status.toLowerCase());
+    }
+
+    // Time range filter
+    if (searchFilters.timeRange) {
+      filtered = filtered.filter((alert: Alert) => isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange));
+    }
+
+    // Sorting (client-side)
+    const getValue = (item: Alert, key: string) => {
+      const v = item[key as keyof Alert] as unknown;
+      if (v === undefined || v === null) return '';
+      if (typeof v === 'string') return v.toLowerCase();
+      if (typeof v === 'number') return v;
+      if (v instanceof Date) return v.getTime();
+      return String(v);
+    };
+
+    filtered.sort((a: Alert, b: Alert) => {
+      const aVal = getValue(a, sortColumn as string);
+      const bVal = getValue(b, sortColumn as string);
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [apiState.alerts, debouncedSearchQuery, searchFilters.source, searchFilters.type, searchFilters.priority, searchFilters.status, searchFilters.timeRange, customDateRange, sortColumn, sortDirection]);
+
+  // Apply client-side pagination to the filtered results
   const pageSize = apiState.pagination.pageSize;
+  const currentPage = apiState.pagination.currentPage;
+  const totalItems = filteredAndSortedAlerts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const paginatedAlerts = filteredAndSortedAlerts.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize);
+
+  // Compute available alert types from fetched alerts for the filters UI
+  const alertTypes = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.alert_type) set.add(a.alert_type);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  // Compute available priorities, statuses, and sources from fetched alerts
+  const priorities = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.priority) set.add(String(a.priority));
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  const statuses = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.alert_status) set.add(a.alert_status);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.source) set.add(a.source);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
@@ -424,10 +501,6 @@ const AlertsDashboard: React.FC = () => {
         ...prev, 
         loadingDetails: new Set([...prev.loadingDetails, alert.alert_id as string]) 
       }));
-
-      // Log alert access before fetching details
-      const currentUser = 'John Doe'; // In real implementation, get from auth context
-      const timestamp = new Date().toISOString();
 
       // Fetch detailed alert data from API
       const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
@@ -855,6 +928,10 @@ const AlertsDashboard: React.FC = () => {
             // Update search filters immediately for input field, debounce is handled separately
             setSearchFilters(prev => ({ ...prev, query }));
           }}
+          alertTypes={alertTypes}
+          priorities={priorities}
+          statuses={statuses}
+          sources={sources}
         />
 
         {/* Results Summary */}
