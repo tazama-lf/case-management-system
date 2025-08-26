@@ -10,7 +10,8 @@ import type { Alert as TriageAlert, ActionHistory } from '../../types/triage.typ
 import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
 import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
-import ConvertToCaseModal, { type ConvertToCaseData } from './ConvertToCaseModal';
+import ConvertToCaseModal from './ConvertToCaseModal';
+import type { ConvertToCaseData } from '../../types/triage.types';
 
 interface AlertsDetailModalProps {
   alertId: string | null;
@@ -38,6 +39,7 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   confidence_per: alert.confidence_per,
   created_at: alert.created_at,
   case_id: alert.case_id,
+  prediction_outcome: alert.prediction_outcome,
 });
 
 // Risk score calculation and breakdown
@@ -49,7 +51,8 @@ const getRiskScore = (alert: TriageAlert): number => {
     'HIGH': 2,
     'CRITICAL': 3
   };
-  
+  console.log('Calculating risk score for alert:', alert);
+
   const baseScore = alert.confidence_per || 50;
   const weight = priorityWeights[alert.priority] || 1;
   return Math.round(baseScore * weight * 10); // Scale to reasonable range
@@ -57,9 +60,37 @@ const getRiskScore = (alert: TriageAlert): number => {
 
 // Risk breakdown components
 const getRiskBreakdown = (alert: TriageAlert) => {
+  // Try to extract typology/rule results from alert.alert_data (TADP-style)
+  try {
+    const maybe = alert.alert_data as unknown;
+    if (maybe && typeof maybe === 'object') {
+      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      if (tadp && typeof tadp === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+          const typ = typologyResult[0] as Record<string, unknown>;
+          const maybeRules = typ['ruleResults'];
+          if (Array.isArray(maybeRules)) {
+            // Map ruleResults to the table shape { name, type, score }
+            return maybeRules.map((r) => {
+              const rec = r as Record<string, unknown>;
+              const id = (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
+              // Use available fields for display; prefer a human label if present
+              const name = (rec['label'] as string) || (rec['name'] as string) || id;
+              const type = (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
+              const wght = typeof rec['wght'] === 'number' ? (rec['wght'] as number) : Number(rec['weight'] || 0);
+              return { name, type, score: wght };
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore parsing errors and fall back to synthetic breakdown
+  }
+
+  // Fallback: synthesize breakdown based on computed risk score
   const totalScore = getRiskScore(alert);
-  
-  // Generate realistic breakdown based on alert properties
   const components = [
     {
       name: 'Multiple ATM Withdrawals',
@@ -77,22 +108,42 @@ const getRiskBreakdown = (alert: TriageAlert) => {
       score: Math.round(totalScore * 0.34) // ~34% of total
     }
   ];
-  
-  // Add fourth component if high risk
+
   if (alert.priority === 'HIGH' || alert.priority === 'CRITICAL') {
     components.push({
       name: 'Aggregated Transaction Mirroring',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.33) // Adjust for 4 components
+      score: Math.round(totalScore * 0.33)
     });
-    
-    // Rebalance other components
     components[0].score = Math.round(totalScore * 0.22);
     components[1].score = Math.round(totalScore * 0.22);
     components[2].score = Math.round(totalScore * 0.23);
   }
-  
+
   return components;
+};
+
+// Extract typology info (id/label/result) from alert.alert_data.tadpResult.typologyResult[0]
+const extractTypologyInfo = (alert: TriageAlert) => {
+  try {
+    const maybe = alert.alert_data as unknown;
+    if (maybe && typeof maybe === 'object') {
+      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      if (tadp && typeof tadp === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+          const typ = typologyResult[0] as Record<string, unknown>;
+          const id = typ['id'] as string | undefined;
+          const label = (typ['label'] as string) || (typ['name'] as string) || id;
+          const result = typeof typ['result'] === 'number' ? (typ['result'] as number) : undefined;
+          return { id, label, result };
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { id: undefined, label: undefined, result: undefined };
 };
 
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
@@ -132,7 +183,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         try {
           const history = await triageService.getAlertActionHistory(alertId);
           setActionHistory(history);
-        } catch (historyError) {
+        } catch {
           setActionHistory([]);
         } finally {
           setLoadingHistory(false);
@@ -152,8 +203,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     // Only show convert modal if alert is in an open state
     if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       setShowConvertModal(true);
-    } else {
-    }
+  }
   };
 
   const handleConfirmConvert = async (caseData: ConvertToCaseData) => {
@@ -161,7 +211,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       // Call the parent's onConvertToCase with additional parameters
       if (alert && onConvertToCase) {
         await onConvertToCase(convertToLegacyAlert(alert), caseData);
-        // Refresh alert details after successful conversion
         if (onAlertUpdated) {
           onAlertUpdated();
         }
@@ -170,26 +219,20 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error converting alert to case:', error);
-      // Keep modal open to show error
       throw error;
     }
   };
 
   const handleCloseAlert = () => {
-    // Only show close modal if alert is in an open state
     if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       setShowCloseModal(true);
-    } else {
-    }
+  }
   };
 
   const handleConfirmCloseAlert = async (_alertId: string, justification: string) => {
     try {
-      // Call the parent's onCloseAlert with additional parameters
       if (alert && onCloseAlert) {
-        // Pass the justification information
         await onCloseAlert(convertToLegacyAlert(alert), justification);
-        // Refresh alert details after successful closure
         if (onAlertUpdated) {
           onAlertUpdated();
         }
@@ -198,12 +241,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error closing alert:', error);
-      // Keep modal open to show error
       throw error;
     }
   };
 
-  // Don't render if not open
   if (!isOpen) {
     return null;
   }
@@ -506,15 +547,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                 <div className="mb-4">
                   <div className="flex items-center space-x-4 text-sm">
-                    <span className="text-gray-500">Risk Category:</span>
-                    <span className="font-medium text-gray-900">
-                      False promotions, phishing, or social engineering scams
-                    </span>
-                    <span className="text-gray-500">•</span>
-                    <span className="text-gray-500">Risk Score:</span>
-                    <span className="font-medium text-red-600 text-base">
-                      {getRiskScore(alert)}
-                    </span>
+                    {(() => {
+                      const typ = extractTypologyInfo(alert);
+                      return (
+                        <>
+                          <span className="text-gray-500">Risk Category:</span>
+                          <span className="font-medium text-gray-900">{typ.label || typ.id || 'Unknown'}</span>
+                          <span className="text-gray-500">•</span>
+                          <span className="text-gray-500">Risk Score:</span>
+                          <span className="font-medium text-red-600 text-base">{typ.result ?? getRiskScore(alert)}</span>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -560,7 +604,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               Aggregate
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                              {getRiskScore(alert)}
+                              {(() => {
+                                const typ = extractTypologyInfo(alert);
+                                return typ.result ?? getRiskScore(alert);
+                              })()}
                             </td>
                           </tr>
                         </tbody>

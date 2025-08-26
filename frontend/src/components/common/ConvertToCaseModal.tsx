@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import type { ConvertToCaseData as ConvertToCaseDataType } from '../../types/triage.types';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../../types/alertsdashboard.types';
 
@@ -6,16 +8,9 @@ interface ConvertToCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   alert: Alert;
-  onConfirmConvert: (caseData: ConvertToCaseData) => void;
+  onConfirmConvert: (caseData: ConvertToCaseDataType) => void;
 }
 
-export interface ConvertToCaseData {
-  caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
-  priority: 'low' | 'medium' | 'high';
-  linkedCases: string[];
-  notes?: string;
-  alertId: string;
-}
 
 const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   isOpen,
@@ -29,13 +24,19 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   const [linkedCases, setLinkedCases] = useState<string[]>([]);
   const [caseSearchQuery, setCaseSearchQuery] = useState('');
   const [notes, setNotes] = useState('');
+  const { user } = useAuth();
+  const [caseOwnerUserId, setCaseOwnerUserId] = useState<string | undefined>(user?.user_id || undefined);
+  const [otherOwnerInput, setOtherOwnerInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+
+  // Placeholder for existing cases; replace with real data source if available
+  const existingCases: { id: string; title: string }[] = [];
 
   const filteredCases = caseSearchQuery
-    ? existingCases.filter(
-        (caseItem) =>
-          caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
-          caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
+    ? existingCases.filter((caseItem) =>
+        caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
+        caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
       )
     : [];
 
@@ -44,21 +45,26 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
 
     if (!caseType || !priority) {
       // Basic validation
-      alert('Please select a Case Type and Priority Level.');
+      window.alert('Please select a Case Type and Priority Level.');
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      const caseData: ConvertToCaseData = {
+      const chosenOwner = caseOwnerUserId === 'other' ? (otherOwnerInput.trim() || undefined) : caseOwnerUserId;
+
+      const caseData: ConvertToCaseDataType = {
         caseType,
         priority,
         linkedCases,
-        notes: notes.trim() || undefined,
+        notes: notes.trim(),
         alertId: alert.alert_id,
+        caseOwnerUserId: chosenOwner,
+        // risk fields will be populated by parent (AlertsDashboard) from alert data, but include here for preview
+        ...extractRiskFromAlert(alert)
       };
-      
+
       await onConfirmConvert(caseData);
       handleCancel();
     } catch (error) {
@@ -67,6 +73,35 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // parsing/helpers removed for UI; keep extractRiskFromAlert for payload construction
+
+  const extractRiskFromAlert = (legacyAlert: Alert) => {
+    const result: { riskCategory?: string; riskScore?: number; riskComponents?: Array<{ id: string; wght: number }> } = {};
+    try {
+      const maybe = legacyAlert.alert_data as unknown;
+      if (maybe && typeof maybe === 'object') {
+        const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+        const typology = tadp && typeof tadp === 'object' ? (tadp as Record<string, unknown>)['typologyResult'] : undefined;
+        const first = Array.isArray(typology) && typology.length > 0 && typeof typology[0] === 'object' ? (typology[0] as Record<string, unknown>) : undefined;
+        if (first) {
+          result.riskCategory = first['id'] as string | undefined;
+          const maybeResult = first['result'];
+          result.riskScore = typeof maybeResult === 'number' ? (maybeResult as number) : undefined;
+          const maybeRules = first['ruleResults'];
+          if (Array.isArray(maybeRules)) {
+            result.riskComponents = maybeRules.map((r) => {
+              const rec = r as Record<string, unknown>;
+              return { id: rec['id'] as string, wght: rec['wght'] as number };
+            });
+          }
+        }
+      }
+    } catch {
+      // ignore parsing errors
+    }
+    return result;
   };
 
   const handleCancel = () => {
@@ -193,6 +228,34 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                 </div>
               </div>
 
+                  {/* Assign to Investigator dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assign to Investigator</label>
+                  <select
+                    id="caseOwner"
+                    value={caseOwnerUserId ?? ''}
+                    onChange={(e) => setCaseOwnerUserId(e.target.value || undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Unassigned</option>
+                    {user && <option value={user.user_id}>{user.username || user.user_id}</option>}
+                    <option value="other">Other (enter user id)</option>
+                  </select>
+
+                  {caseOwnerUserId === 'other' && (
+                    <input
+                      type="text"
+                      value={otherOwnerInput}
+                      onChange={(e) => setOtherOwnerInput(e.target.value)}
+                      placeholder="Enter investigator user id (UUID)"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  )}
+                </div>
+
+              {/* Rules & Typologies */}
+              {/* Rules & Typologies UI removed - data is still included in the payload via extractRiskFromAlert */}
+
               {/* Link to Other Cases */}
               <div>
                 <div className="flex items-center mb-3">
@@ -284,6 +347,8 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 />
               </div>
+
+              {/* Preview payload UI removed */}
 
               {/* Warning Message */}
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4">

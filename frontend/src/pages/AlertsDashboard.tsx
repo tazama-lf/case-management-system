@@ -8,7 +8,7 @@ import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
 import MessagePayloadModal from '../components/common/MessagePayloadModal';
 import type { Alert, AlertsSearchFilters, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
-import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
+import type { ConvertToCaseData } from '../types/triage.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { AlertsFilter, ConvertToCaseDto } from '../types/triage.types';
@@ -502,9 +502,45 @@ const AlertsDashboard: React.FC = () => {
           'high': 'HIGH'
         };
         
+        // Extract risk info from alert.alert_data.tadpResult.typologyResult[0] if present
+        type LocalRiskComponent = { id: string; wght: number };
+        let riskCategory: string | undefined;
+        let riskScore: number | undefined;
+        let riskComponents: LocalRiskComponent[] | undefined;
+
+        const maybeTadp = alert.alert_data as unknown;
+        let typology: Record<string, unknown> | undefined;
+        if (maybeTadp && typeof maybeTadp === 'object') {
+          const tadp = (maybeTadp as Record<string, unknown>)['tadpResult'];
+          if (tadp && typeof tadp === 'object') {
+            const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+            if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+              typology = typologyResult[0] as Record<string, unknown>;
+            }
+          }
+        }
+
+        if (typology) {
+          riskCategory = typology['id'] as string | undefined;
+          const maybeResult = typology['result'];
+          riskScore = typeof maybeResult === 'number' ? (maybeResult as number) : undefined;
+          const maybeRules = typology['ruleResults'];
+          if (Array.isArray(maybeRules)) {
+            riskComponents = maybeRules.map((r) => {
+              const rec = r as Record<string, unknown>;
+              return { id: rec['id'] as string, wght: rec['wght'] as number };
+            });
+          }
+        }
+
         const convertData: ConvertToCaseDto = {
-          priority: priorityMap[caseData.priority] || 'MEDIUM',
-          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML'
+          priority: priorityMap[caseData.priority as string] || 'MEDIUM',
+          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML',
+          // pass through optional case owner id when provided by modal
+          caseOwnerUserId: caseData.caseOwnerUserId,
+          riskCategory,
+          riskScore,
+          riskComponents,
         };
         
         await triageService.convertAlertToCase(alertId, convertData);
@@ -570,7 +606,7 @@ const AlertsDashboard: React.FC = () => {
       handleCloseModal();
 
     } catch (error) {
-      console.error('❌ Error closing alert:', error);
+      console.error('Error closing alert:', error);
       
       // Enhanced error handling
       let errorMessage = 'Failed to close alert';
@@ -590,7 +626,6 @@ const AlertsDashboard: React.FC = () => {
       console.error('Close alert error:', errorMessage);
       throw error; // Re-throw to keep modal open
     } finally {
-      // Remove loading state
       setOperationStates(prev => {
         const newSet = new Set(prev.closingAlert);
         newSet.delete(alertId);
