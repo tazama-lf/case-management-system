@@ -363,11 +363,22 @@ const AlertsDashboard: React.FC = () => {
     if (debouncedSearchQuery && debouncedSearchQuery.trim() !== '') {
       const q = debouncedSearchQuery.trim().toLowerCase();
       filtered = filtered.filter((a: Alert) => {
-        const txId = (a.transactionId || '') as string;
+        const alertId = String(a.alert_id || '').toLowerCase();
+        const message = String(a.message || '').toLowerCase();
+        const txId = String(a.transactionId || '').toLowerCase();
+        const source = String(a.source || '').toLowerCase();
+        const type = String(a.alert_type || '').toLowerCase();
+        const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
+        const networkMap = a.network_map ? JSON.stringify(a.network_map).toLowerCase() : '';
+
         return (
-          String(a.alert_id).toLowerCase().includes(q) ||
-          String(a.message || '').toLowerCase().includes(q) ||
-          txId.toLowerCase().includes(q)
+          alertId.includes(q) ||
+          message.includes(q) ||
+          txId.includes(q) ||
+          source.includes(q) ||
+          type.includes(q) ||
+          transactionJson.includes(q) ||
+          networkMap.includes(q)
         );
       });
     }
@@ -924,10 +935,6 @@ const AlertsDashboard: React.FC = () => {
           onClearFilters={clearFilters}
           customDateRange={customDateRange}
           onCustomDateRangeChange={setCustomDateRange}
-          onSearch={(query) => {
-            // Update search filters immediately for input field, debounce is handled separately
-            setSearchFilters(prev => ({ ...prev, query }));
-          }}
           alertTypes={alertTypes}
           priorities={priorities}
           statuses={statuses}

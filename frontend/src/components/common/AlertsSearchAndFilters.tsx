@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../../types/alertsdashboard.types';
-import useDebounce from '../../hooks/useDebounce';
 // triageService not needed for client-side filter options
 
 interface AlertsSearchAndFiltersProps {
@@ -13,7 +12,7 @@ interface AlertsSearchAndFiltersProps {
     endDate: string;
   };
   onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
-  onSearch?: (query: string) => void; // For real-time search callback
+  // onSearch deprecated; search is handled by parent via `searchFilters.query`
   alertTypes?: string[];
   priorities?: string[];
   statuses?: string[];
@@ -33,7 +32,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
-  onSearch,
+  
   alertTypes
   ,priorities, statuses, sources
 }) => {
@@ -47,24 +46,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   });
   const [loadingOptions] = useState(false);
 
-  // Debounced search with 300ms delay
-  const debouncedQuery = useDebounce(searchFilters.query, 300);
   // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
     setFilterOptions({
       priorities: (priorities && priorities.length > 0) ? priorities : ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
       statuses: (statuses && statuses.length > 0) ? statuses : ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'false_positive'],
-      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['Transaction Monitoring', 'AML Screening', 'Velocity Check'],
-      sources: (sources && sources.length > 0) ? sources : ['REST API', 'Transaction Monitoring System']
+      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AML'],
+      sources: (sources && sources.length > 0) ? sources : ['REST API', 'NATS']
     });
   }, [alertTypes, priorities, statuses, sources]);
 
-  // Trigger search when debounced query changes
-  useEffect(() => {
-    if (onSearch && debouncedQuery !== searchFilters.query) {
-      onSearch(debouncedQuery);
-    }
-  }, [debouncedQuery, onSearch, searchFilters.query]);
 
   const hasActiveFilters = Object.entries(searchFilters).some(([key, value]) => {
     if (key === 'query') return false; // Don't count search query as filter
