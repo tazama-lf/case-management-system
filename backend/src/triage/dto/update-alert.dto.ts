@@ -1,4 +1,4 @@
-import { Priority, AlertType } from '@prisma/client';
+import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
 import { IsOptional, IsEnum, IsNumber } from 'class-validator';
 
 export class UpdateAlertDto {
@@ -13,4 +13,8 @@ export class UpdateAlertDto {
   @IsOptional()
   @IsEnum(AlertType)
   alertType?: AlertType;
+
+  @IsOptional()
+  @IsEnum(PredictionOutcome)
+  predictionOutcome?: PredictionOutcome;
 }

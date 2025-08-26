@@ -16,9 +16,8 @@ export class TriageService {
     private audit: AuditLogService,
   ) {}
 
-  async handleNewAlert(dto: SubmitAlertDto, userId: string, tenantId: string, source: string) {
-    // Determine the alert type (txtp)
-    const txtp = typeof dto?.result?.transaction?.TxTp === 'string' ? dto.result.transaction.TxTp : '';
+  async handleNewAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
+    const txtp = alert.transaction.TxTp;
 
     try {
       const newAlert = await this.prisma.alert.create({
@@ -28,10 +27,10 @@ export class TriageService {
           source: source,
           txtp: txtp,
           alert_status: AlertStatus.NEW,
-          message: String(dto.result.message),
-          alert_data: dto.result.report,
-          transaction: dto.result.transaction,
-          network_map: dto.result.networkMap,
+          message: String(alert.message),
+          alert_data: JSON.parse(JSON.stringify(alert.report)),
+          transaction: JSON.parse(JSON.stringify(alert.transaction)),
+          network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: 0,
         },
       });
@@ -73,6 +72,7 @@ export class TriageService {
           confidence_per: dto.confidence_per,
           priority: dto.priority,
           alert_type: dto.alertType,
+          prediction_outcome: dto.predictionOutcome,
         },
       });
 
@@ -146,7 +146,7 @@ export class TriageService {
     sortOrder: 'asc' | 'desc';
   }) {
     const { tenantId, priority, status, search, source, page, limit, sortBy, sortOrder } = params;
-    let type = params.type;
+    const type = params.type;
     const alertType = params.alertType;
 
     if (!Number.isInteger(page) || page < 1) {
@@ -188,11 +188,6 @@ export class TriageService {
         throw new BadRequestException(`Invalid alertType: ${alertType}`);
       }
       whereClause.alert_type = alertType.toUpperCase() as AlertType;
-    } else if (type && Object.values(AlertType).includes(type.toUpperCase() as AlertType)) {
-      // If alertType is not present, but type is, and it's a valid AlertType, use it as alert_type
-      whereClause.alert_type = type.toUpperCase() as AlertType;
-      // Unset type so it's not used for txtp filtering
-      type = undefined;
     }
 
     if (type) {
@@ -387,26 +382,5 @@ export class TriageService {
       userId,
       history,
     };
-  }
-
-  async getFilterOptions(tenantId: string) {
-    try {
-      const sourceResult = await this.prisma.alert.findMany({
-        where: { tenant_id: tenantId },
-        select: { source: true },
-        distinct: ['source'],
-      });
-      const sources = sourceResult.map((s) => s.source).filter(Boolean) as string[];
-
-      return {
-        priorities: Object.values(Priority),
-        statuses: Object.values(AlertStatus),
-        alertTypes: Object.values(AlertType),
-        sources,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to get filter options for tenant ${tenantId}`, error);
-      throw new InternalServerErrorException('Unable to retrieve filter options');
-    }
   }
 }

@@ -76,13 +76,6 @@ export class TriageController {
     });
   }
 
-  @Get('filter-options')
-  @Roles('CMS-TEST-ROLE', 'manage-account')
-  async getFilterOptions(@Req() req) {
-    const tenantId = req.user.tenantId;
-    return this.triageService.getFilterOptions(tenantId);
-  }
-
   @Get(':alertId')
   @Roles('CMS-TEST-ROLE', 'manage-account')
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {

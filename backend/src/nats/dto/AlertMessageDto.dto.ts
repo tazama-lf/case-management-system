@@ -1,8 +1,11 @@
-import { IsObject, IsOptional, IsString, IsNumber, IsEnum, ValidateNested, IsDefined } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Priority, AlertStatus } from '@prisma/client';
+import { TransactionDTO } from './Transaction.dto';
+import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
+import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 
-export class ResultDto {
+export class AlertMessageDto {
   @IsString()
   tenant_id: string;
 
@@ -22,14 +25,17 @@ export class ResultDto {
   @IsString()
   message: string;
 
-  @IsObject()
-  alert_data: object;
+  @ValidateNested()
+  @Type(() => Alert)
+  report: Alert;
 
-  @IsObject()
-  transaction: object;
+  @ValidateNested()
+  @Type(() => TransactionDTO)
+  transaction: TransactionDTO;
 
-  @IsObject()
-  network_map: object;
+  @ValidateNested()
+  @Type(() => NetworkMap)
+  networkMap: NetworkMap;
 
   @IsOptional()
   @IsEnum(AlertStatus)
@@ -42,14 +48,8 @@ export class ResultDto {
   @IsOptional()
   @IsString()
   case_id?: string;
+
   @IsOptional()
   @IsString()
   userId?: string;
-}
-
-export class AlertMessageDto {
-  @IsDefined()
-  @ValidateNested()
-  @Type(() => ResultDto)
-  result: ResultDto;
 }
