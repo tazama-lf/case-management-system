@@ -161,8 +161,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
     ) {
       setShowConvertModal(true);
-    } else {
-    }
+    } 
   };
 
   const handleConfirmConvert = async (caseData: ConvertToCaseData) => {
@@ -191,8 +190,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
     ) {
       setShowCloseModal(true);
-    } else {
-    }
+    } 
   };
 
   const handleConfirmCloseAlert = async (
