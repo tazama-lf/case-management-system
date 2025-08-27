@@ -71,7 +71,8 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
                   Transaction Messages
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Transaction ID: <span className="font-mono font-medium">{transactionId}</span>
+                  Transaction ID:{' '}
+                  <span className="font-mono font-medium">{transactionId}</span>
                 </p>
               </div>
               <button
@@ -140,7 +141,8 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
           <div className="bg-gray-50 px-6 py-3">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">
-                {messages.length} message{messages.length !== 1 ? 's' : ''} found
+                {messages.length} message{messages.length !== 1 ? 's' : ''}{' '}
+                found
               </p>
               <button
                 onClick={onClose}

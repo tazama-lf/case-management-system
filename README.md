@@ -13,6 +13,7 @@ This repository is organized as a monorepo containing:
 ## Quick Start
 
 ### Development
+
 ```bash
 # Install all dependencies
 npm run install:all
@@ -25,6 +26,7 @@ npm run dev
 ```
 
 ### Building
+
 ```bash
 # Build all packages
 npm run build

@@ -1,13 +1,18 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  ArrowDownTrayIcon, 
-  ExclamationTriangleIcon
+import {
+  ArrowDownTrayIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
 import MessagePayloadModal from '../components/common/MessagePayloadModal';
-import type { Alert, AlertsSearchFilters, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
+import type {
+  Alert,
+  AlertsSearchFilters,
+  AlertsTableColumn,
+  TransactionMessage,
+} from '../types/alertsdashboard.types';
 import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
@@ -35,10 +40,14 @@ interface OperationStates {
 }
 
 // Helper function to check if date is within time range
-const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
+const isDateInRange = (
+  dateString: string,
+  timeRange: string,
+  customDateRange?: { startDate: string; endDate: string },
+) => {
   const date = new Date(dateString);
   const now = new Date();
-  
+
   switch (timeRange) {
     case 'today': {
       return date.toDateString() === now.toDateString();
@@ -97,23 +106,25 @@ const AlertsDashboard: React.FC = () => {
       currentPage: 1,
       totalPages: 0,
       totalItems: 0,
-      pageSize: 10
-    }
+      pageSize: 10,
+    },
   });
 
   // State for tracking fetched source values
-  const [fetchedSources, setFetchedSources] = useState<Record<string, string>>({});
+  const [fetchedSources, setFetchedSources] = useState<Record<string, string>>(
+    {},
+  );
   const [loadingSources, setLoadingSources] = useState<Set<string>>(new Set());
-  
+
   // Operation states for loading indicators
   const [operationStates, setOperationStates] = useState<OperationStates>({
     convertingToCase: new Set(),
     closingAlert: new Set(),
     updatingAlert: new Set(),
     loadingDetails: new Set(),
-    submittingAlert: false
+    submittingAlert: false,
   });
-  
+
   const [searchFilters, setSearchFilters] = useState<AlertsSearchFilters>({
     query: '',
     source: '',
@@ -122,64 +133,73 @@ const AlertsDashboard: React.FC = () => {
     status: '',
     timeRange: '',
   });
-  
-  const [sortColumn, setSortColumn] = useState<keyof Alert | string>('lastUpdated');
+
+  const [sortColumn, setSortColumn] = useState<keyof Alert | string>(
+    'lastUpdated',
+  );
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // Field mapping utility: Maps frontend field names to backend field names
-  const mapToBackendField = useCallback((frontendField: keyof Alert | string): string => {
-    const fieldMapping: Record<string, string> = {
-      // Date fields
-      'createdAt': 'created_at',
-      'updatedAt': 'created_at',
-      'lastUpdated': 'created_at',
-      'created_at': 'created_at',
-      
-      // Score/Confidence fields
-      'riskScore': 'confidence_per',
-      'confidence': 'confidence_per',
-      'confidence_per': 'confidence_per',
-      
-      // Status and priority fields
-      'priority': 'priority',
-      'status': 'alert_status',
-      'alert_status': 'alert_status',
-      
-      // ID fields
-      'id': 'alert_id',
-      'alert_id': 'alert_id',
-      'transactionId': 'transaction_id',
-      'txtp': 'txtp',
-      
-      // Other fields
-      'source': 'source',
-      'type': 'alert_type',
-      'alert_type': 'alert_type'
-    };
-    
-    const backendField = fieldMapping[frontendField as string];
-    if (!backendField) {
-      console.warn(`Unknown field mapping for: ${frontendField}, using as-is`);
-      return frontendField as string;
-    }
-    
-    return backendField;
-  }, []);
-  
+  const mapToBackendField = useCallback(
+    (frontendField: keyof Alert | string): string => {
+      const fieldMapping: Record<string, string> = {
+        // Date fields
+        createdAt: 'created_at',
+        updatedAt: 'created_at',
+        lastUpdated: 'created_at',
+        created_at: 'created_at',
+
+        // Score/Confidence fields
+        riskScore: 'confidence_per',
+        confidence: 'confidence_per',
+        confidence_per: 'confidence_per',
+
+        // Status and priority fields
+        priority: 'priority',
+        status: 'alert_status',
+        alert_status: 'alert_status',
+
+        // ID fields
+        id: 'alert_id',
+        alert_id: 'alert_id',
+        transactionId: 'transaction_id',
+        txtp: 'txtp',
+
+        // Other fields
+        source: 'source',
+        type: 'alert_type',
+        alert_type: 'alert_type',
+      };
+
+      const backendField = fieldMapping[frontendField as string];
+      if (!backendField) {
+        console.warn(
+          `Unknown field mapping for: ${frontendField}, using as-is`,
+        );
+        return frontendField as string;
+      }
+
+      return backendField;
+    },
+    [],
+  );
+
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
-  
+
   // Transaction modals state
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
-  
+  const [selectedMessage, setSelectedMessage] =
+    useState<TransactionMessage | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] =
+    useState<string>('');
+
   // Custom date range state
   const [customDateRange, setCustomDateRange] = useState({
     startDate: '',
-    endDate: ''
+    endDate: '',
   });
 
   // Debounced search query state
@@ -190,40 +210,44 @@ const AlertsDashboard: React.FC = () => {
   // API integration functions
   const fetchAlerts = useCallback(async (filters: AlertsFilter = {}) => {
     try {
-      setApiState(prev => ({ ...prev, loading: true, error: null }));
-      
+      setApiState((prev) => ({ ...prev, loading: true, error: null }));
+
       const response = await triageService.getAlerts(filters);
-      
+
       // Transform backend alerts to UI format
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
-      
+
       setApiState({
         loading: false,
         error: null,
         alerts: transformedAlerts,
-        pagination: response.pagination
+        pagination: response.pagination,
       });
-      
+
       // Update last updated timestamp
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
       let errorMessage = 'Failed to load alerts';
-      
+
       if (error instanceof Error) {
-        if (error.message.includes('403') || error.message.includes('Forbidden')) {
-          errorMessage = 'Access denied. You do not have permission to view alerts.';
+        if (
+          error.message.includes('403') ||
+          error.message.includes('Forbidden')
+        ) {
+          errorMessage =
+            'Access denied. You do not have permission to view alerts.';
         } else if (error.message.includes('Session expired')) {
           errorMessage = 'Session expired. Please log in again.';
         } else {
           errorMessage = error.message;
         }
       }
-      
-      setApiState(prev => ({
+
+      setApiState((prev) => ({
         ...prev,
         loading: false,
-        error: errorMessage
+        error: errorMessage,
       }));
     }
   }, []);
@@ -237,11 +261,22 @@ const AlertsDashboard: React.FC = () => {
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
-      sortOrder: sortDirection
+      sortOrder: sortDirection,
     };
 
     await fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [
+    fetchAlerts,
+    searchFilters.priority,
+    searchFilters.status,
+    searchFilters.type,
+    debouncedSearchQuery,
+    apiState.pagination.currentPage,
+    apiState.pagination.pageSize,
+    sortColumn,
+    sortDirection,
+    mapToBackendField,
+  ]);
 
   // Load alerts on component mount and when filters change
   useEffect(() => {
@@ -253,11 +288,22 @@ const AlertsDashboard: React.FC = () => {
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
-      sortOrder: sortDirection
+      sortOrder: sortDirection,
     };
 
     fetchAlerts(filters);
-  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+  }, [
+    fetchAlerts,
+    searchFilters.priority,
+    searchFilters.status,
+    searchFilters.type,
+    debouncedSearchQuery,
+    apiState.pagination.currentPage,
+    apiState.pagination.pageSize,
+    sortColumn,
+    sortDirection,
+    mapToBackendField,
+  ]);
 
   // Debounce search query
   useEffect(() => {
@@ -265,9 +311,9 @@ const AlertsDashboard: React.FC = () => {
       setDebouncedSearchQuery(searchFilters.query);
       // Reset to first page when search query changes
       if (debouncedSearchQuery !== searchFilters.query) {
-        setApiState(prev => ({
+        setApiState((prev) => ({
           ...prev,
-          pagination: { ...prev.pagination, currentPage: 1 }
+          pagination: { ...prev.pagination, currentPage: 1 },
         }));
       }
     }, 500); // 500ms delay
@@ -280,14 +326,15 @@ const AlertsDashboard: React.FC = () => {
   // Real-time polling for dashboard updates
   useEffect(() => {
     const POLLING_INTERVAL = 30000; // Poll every 30 seconds
-    
+
     const pollForUpdates = () => {
       // Only poll if not currently loading and not performing other operations
-      const hasActiveOperations = operationStates.convertingToCase.size > 0 || 
-                                  operationStates.closingAlert.size > 0 || 
-                                  operationStates.updatingAlert.size > 0 ||
-                                  operationStates.submittingAlert;
-                                  
+      const hasActiveOperations =
+        operationStates.convertingToCase.size > 0 ||
+        operationStates.closingAlert.size > 0 ||
+        operationStates.updatingAlert.size > 0 ||
+        operationStates.submittingAlert;
+
       if (!apiState.loading && !hasActiveOperations) {
         const filters: AlertsFilter = {
           priority: searchFilters.priority || undefined,
@@ -297,7 +344,7 @@ const AlertsDashboard: React.FC = () => {
           page: apiState.pagination.currentPage,
           limit: apiState.pagination.pageSize,
           sortBy: mapToBackendField(sortColumn),
-          sortOrder: sortDirection
+          sortOrder: sortDirection,
         };
 
         // Silent refresh - don't show loading indicators
@@ -309,13 +356,28 @@ const AlertsDashboard: React.FC = () => {
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [fetchAlerts, searchFilters.priority, searchFilters.status, searchFilters.type, debouncedSearchQuery, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField, apiState.loading, operationStates]);
+  }, [
+    fetchAlerts,
+    searchFilters.priority,
+    searchFilters.status,
+    searchFilters.type,
+    debouncedSearchQuery,
+    apiState.pagination.currentPage,
+    apiState.pagination.pageSize,
+    sortColumn,
+    sortDirection,
+    mapToBackendField,
+    apiState.loading,
+    operationStates,
+  ]);
 
   // Download Overturned Alerts Report
   const downloadOverturnedAlertsReport = () => {
     // Filter for overturned alerts (false positives)
-    const overturnedAlerts = apiState.alerts.filter((alert: Alert) => alert.status === 'false_positive');
-    
+    const overturnedAlerts = apiState.alerts.filter(
+      (alert: Alert) => alert.status === 'false_positive',
+    );
+
     // Create CSV content
     const csvHeaders = [
       'Alert ID',
@@ -328,28 +390,30 @@ const AlertsDashboard: React.FC = () => {
       'Last Updated',
       'Assigned To',
       'Amount',
-      'Currency'
+      'Currency',
     ];
-    
+
     const csvData: string[][] = overturnedAlerts.map((alert: Alert) => [
-      alert.alert_id as string || '',
-      alert.transactionId as string || '',
-      alert.source as string || '',
-      (alert.riskScore as number || 0).toString(),
-      alert.priority as string || '',
-      (alert.confidence as number || 0).toString(),
-      alert.status as string || '',
+      (alert.alert_id as string) || '',
+      (alert.transactionId as string) || '',
+      (alert.source as string) || '',
+      ((alert.riskScore as number) || 0).toString(),
+      (alert.priority as string) || '',
+      ((alert.confidence as number) || 0).toString(),
+      (alert.status as string) || '',
       new Date(alert.lastUpdated as string).toLocaleDateString(),
-      alert.assignee as string || 'Unassigned',
+      (alert.assignee as string) || 'Unassigned',
       (alert.amount as number)?.toString() || 'N/A',
-      alert.currency as string || 'N/A'
+      (alert.currency as string) || 'N/A',
     ]);
-    
+
     const csvContent = [
       csvHeaders.join(','),
-      ...csvData.map((row: string[]) => row.map((field: string) => `"${field}"`).join(','))
+      ...csvData.map((row: string[]) =>
+        row.map((field: string) => `"${field}"`).join(','),
+      ),
     ].join('\n');
-    
+
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -367,9 +431,17 @@ const AlertsDashboard: React.FC = () => {
     let filtered = apiState.alerts;
 
     // Apply client-side custom date filtering if needed
-    if (searchFilters.timeRange === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+    if (
+      searchFilters.timeRange === 'custom' &&
+      customDateRange.startDate &&
+      customDateRange.endDate
+    ) {
       filtered = apiState.alerts.filter((alert: Alert) => {
-        return isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange);
+        return isDateInRange(
+          alert.createdAt as string,
+          searchFilters.timeRange,
+          customDateRange,
+        );
       });
     }
 
@@ -385,44 +457,53 @@ const AlertsDashboard: React.FC = () => {
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
-    setApiState(prev => ({
+    setApiState((prev) => ({
       ...prev,
-      pagination: { ...prev.pagination, currentPage: page }
+      pagination: { ...prev.pagination, currentPage: page },
     }));
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    setApiState(prev => ({
+    setApiState((prev) => ({
       ...prev,
-      pagination: { ...prev.pagination, pageSize: newPageSize, currentPage: 1 }
+      pagination: { ...prev.pagination, pageSize: newPageSize, currentPage: 1 },
     }));
   };
 
-  const handleSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
+  const handleSort = (
+    column: keyof Alert | string,
+    direction: 'asc' | 'desc',
+  ) => {
     setSortColumn(column);
     setSortDirection(direction);
     // Reset to first page when sorting changes
-    setApiState(prev => ({
+    setApiState((prev) => ({
       ...prev,
-      pagination: { ...prev.pagination, currentPage: 1 }
+      pagination: { ...prev.pagination, currentPage: 1 },
     }));
   };
 
-  const handleFilterChange = (key: keyof AlertsSearchFilters, value: string) => {
-    setSearchFilters(prev => ({ ...prev, [key]: value }));
+  const handleFilterChange = (
+    key: keyof AlertsSearchFilters,
+    value: string,
+  ) => {
+    setSearchFilters((prev) => ({ ...prev, [key]: value }));
     // Reset to first page when filters change
-    setApiState(prev => ({
+    setApiState((prev) => ({
       ...prev,
-      pagination: { ...prev.pagination, currentPage: 1 }
+      pagination: { ...prev.pagination, currentPage: 1 },
     }));
   };
 
   const handleRowClick = async (alert: Alert) => {
     try {
       // Add to loading state
-      setOperationStates(prev => ({ 
-        ...prev, 
-        loadingDetails: new Set([...prev.loadingDetails, alert.alert_id as string]) 
+      setOperationStates((prev) => ({
+        ...prev,
+        loadingDetails: new Set([
+          ...prev.loadingDetails,
+          alert.alert_id as string,
+        ]),
       }));
 
       // Log alert access before fetching details
@@ -430,28 +511,30 @@ const AlertsDashboard: React.FC = () => {
       const timestamp = new Date().toISOString();
 
       // Fetch detailed alert data from API
-      const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
-      
+      const detailedAlert = await triageService.getAlertById(
+        alert.alert_id as string,
+      );
+
       // Transform backend data to UI format and show modal
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
       setShowModal(true);
-      
     } catch (error) {
       console.error('Failed to fetch alert details:', error);
-      
+
       // Fallback to showing the existing alert data
       setSelectedAlert(alert);
       setShowModal(true);
-      
+
       // TODO: Show error toast notification
       // For now, just log the error
       console.warn('Using cached alert data due to API error');
-      
     } finally {
       // Remove from loading state
-      setOperationStates(prev => ({ 
-        ...prev, 
-        loadingDetails: new Set([...prev.loadingDetails].filter(id => id !== alert.alert_id)) 
+      setOperationStates((prev) => ({
+        ...prev,
+        loadingDetails: new Set(
+          [...prev.loadingDetails].filter((id) => id !== alert.alert_id),
+        ),
       }));
     }
   };
@@ -483,38 +566,44 @@ const AlertsDashboard: React.FC = () => {
     setSelectedMessage(null);
   };
 
-  const handleConvertToCase = async (alert: Alert, caseData?: ConvertToCaseData) => {
+  const handleConvertToCase = async (
+    alert: Alert,
+    caseData?: ConvertToCaseData,
+  ) => {
     const alertId = alert.alert_id as string;
-    
+
     try {
       // Set loading state
-      setOperationStates(prev => ({
+      setOperationStates((prev) => ({
         ...prev,
-        convertingToCase: new Set([...prev.convertingToCase, alertId])
+        convertingToCase: new Set([...prev.convertingToCase, alertId]),
       }));
 
       // Call API to convert alert to case
       if (caseData) {
         // Map UI priority values to backend priority values
-        const priorityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
-          'low': 'LOW',
-          'medium': 'MEDIUM', 
-          'high': 'HIGH'
+        const priorityMap: Record<
+          string,
+          'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+        > = {
+          low: 'LOW',
+          medium: 'MEDIUM',
+          high: 'HIGH',
         };
-        
+
         const convertData: ConvertToCaseDto = {
           priority: priorityMap[caseData.priority] || 'MEDIUM',
-          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML'
+          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML',
         };
-        
+
         await triageService.convertAlertToCase(alertId, convertData);
       } else {
         // Default conversion without case data
         const convertData: ConvertToCaseDto = {
           priority: alert.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-          caseType: 'FRAUD' // Default case type
+          caseType: 'FRAUD', // Default case type
         };
-        
+
         await triageService.convertAlertToCase(alertId, convertData);
       }
 
@@ -523,11 +612,13 @@ const AlertsDashboard: React.FC = () => {
 
       handleCloseModal();
     } catch (error) {
-      
       // Enhanced error handling
       let errorMessage = 'Failed to convert alert to case';
       if (error instanceof Error) {
-        if (error.message.includes('403') || error.message.includes('permission')) {
+        if (
+          error.message.includes('403') ||
+          error.message.includes('permission')
+        ) {
           errorMessage = 'You do not have permission to convert this alert';
         } else if (error.message.includes('404')) {
           errorMessage = 'Alert not found';
@@ -537,13 +628,13 @@ const AlertsDashboard: React.FC = () => {
           errorMessage = error.message;
         }
       }
-      
+
       // TODO: Show error toast notification instead of console log
       console.error('Convert to case error:', errorMessage);
       throw error;
     } finally {
       // Remove loading state
-      setOperationStates(prev => {
+      setOperationStates((prev) => {
         const newSet = new Set(prev.convertingToCase);
         newSet.delete(alertId);
         return { ...prev, convertingToCase: newSet };
@@ -553,29 +644,34 @@ const AlertsDashboard: React.FC = () => {
 
   const handleCloseAlert = async (alert: Alert, justification?: string) => {
     const alertId = alert.alert_id as string;
-    
+
     try {
       // Set loading state
-      setOperationStates(prev => ({
+      setOperationStates((prev) => ({
         ...prev,
-        closingAlert: new Set([...prev.closingAlert, alertId])
+        closingAlert: new Set([...prev.closingAlert, alertId]),
       }));
 
       // Call API to close alert
-      await triageService.closeAlert(alertId, justification || 'Closed from dashboard');
+      await triageService.closeAlert(
+        alertId,
+        justification || 'Closed from dashboard',
+      );
 
       // Refresh alerts to get updated data
       await refreshAlerts();
 
       handleCloseModal();
-
     } catch (error) {
       console.error('❌ Error closing alert:', error);
-      
+
       // Enhanced error handling
       let errorMessage = 'Failed to close alert';
       if (error instanceof Error) {
-        if (error.message.includes('403') || error.message.includes('permission')) {
+        if (
+          error.message.includes('403') ||
+          error.message.includes('permission')
+        ) {
           errorMessage = 'You do not have permission to close this alert';
         } else if (error.message.includes('404')) {
           errorMessage = 'Alert not found';
@@ -585,13 +681,13 @@ const AlertsDashboard: React.FC = () => {
           errorMessage = error.message;
         }
       }
-      
+
       // TODO: Show error toast notification instead of console log
       console.error('Close alert error:', errorMessage);
       throw error; // Re-throw to keep modal open
     } finally {
       // Remove loading state
-      setOperationStates(prev => {
+      setOperationStates((prev) => {
         const newSet = new Set(prev.closingAlert);
         newSet.delete(alertId);
         return { ...prev, closingAlert: newSet };
@@ -612,11 +708,16 @@ const AlertsDashboard: React.FC = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'critical': return 'text-red-600 bg-red-50';
-      case 'high': return 'text-orange-600 bg-orange-50';
-      case 'medium': return 'text-yellow-600 bg-yellow-50';
-      case 'low': return 'text-green-600 bg-green-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'critical':
+        return 'text-red-600 bg-red-50';
+      case 'high':
+        return 'text-orange-600 bg-orange-50';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'low':
+        return 'text-green-600 bg-green-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -647,7 +748,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => (
         <div className="font-medium text-gray-900">{value as string}</div>
-      )
+      ),
     },
     {
       key: 'transactionId',
@@ -663,7 +764,7 @@ const AlertsDashboard: React.FC = () => {
         >
           {value as string}
         </button>
-      )
+      ),
     },
     {
       key: 'source',
@@ -676,7 +777,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => (
         <span className="text-sm text-gray-600">{value as string}</span>
-      )
+      ),
     },
     {
       key: 'riskScore',
@@ -684,39 +785,47 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => (
         <div className="flex items-center">
-          <span className={`font-medium ${(value as number) >= 80 ? 'text-red-600' : (value as number) >= 60 ? 'text-yellow-600' : 'text-green-600'}`}>
+          <span
+            className={`font-medium ${(value as number) >= 80 ? 'text-red-600' : (value as number) >= 60 ? 'text-yellow-600' : 'text-green-600'}`}
+          >
             {value as number}
           </span>
         </div>
-      )
+      ),
     },
     {
       key: 'priority',
       header: 'Priority',
       sortable: true,
       render: (value) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(value as string)}`}>
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(value as string)}`}
+        >
           {(value as string).toUpperCase()}
         </span>
-      )
+      ),
     },
     {
       key: 'confidence',
       header: 'Confidence %',
       sortable: true,
       render: (value) => (
-        <div className="text-sm font-medium text-gray-900">{value as number}%</div>
-      )
+        <div className="text-sm font-medium text-gray-900">
+          {value as number}%
+        </div>
+      ),
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
       render: (value) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}>
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}
+        >
           {(value as string).replace(/_/g, ' ').toUpperCase()}
         </span>
-      )
+      ),
     },
     {
       key: 'lastUpdated',
@@ -728,11 +837,11 @@ const AlertsDashboard: React.FC = () => {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
           })}
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   // Loading state render
@@ -759,7 +868,9 @@ const AlertsDashboard: React.FC = () => {
           <div className="flex items-center justify-center min-h-96">
             <div className="text-center">
               <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">Error Loading Alerts</h3>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                Error Loading Alerts
+              </h3>
               <p className="mt-2 text-gray-600">{apiState.error}</p>
             </div>
           </div>
@@ -775,9 +886,12 @@ const AlertsDashboard: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Alerts Dashboard</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Alerts Dashboard
+              </h1>
               <p className="mt-2 text-gray-600">
-                Triage and investigate alerts, convert to cases, and manage alert workflows
+                Triage and investigate alerts, convert to cases, and manage
+                alert workflows
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -818,14 +932,16 @@ const AlertsDashboard: React.FC = () => {
           onCustomDateRangeChange={setCustomDateRange}
           onSearch={(query) => {
             // Update search filters immediately for input field, debounce is handled separately
-            setSearchFilters(prev => ({ ...prev, query }));
+            setSearchFilters((prev) => ({ ...prev, query }));
           }}
         />
 
         {/* Results Summary */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} alerts
+            Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to{' '}
+            {Math.min(currentPage * pageSize, totalItems)} of {totalItems}{' '}
+            alerts
             {apiState.loading && (
               <span className="ml-2">
                 <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
@@ -857,7 +973,8 @@ const AlertsDashboard: React.FC = () => {
               <span className="text-sm text-gray-600">per page</span>
             </div>
             <div className="text-sm text-gray-600">
-              Sorted by {sortColumn} ({sortDirection === 'asc' ? 'ascending' : 'descending'})
+              Sorted by {sortColumn} (
+              {sortDirection === 'asc' ? 'ascending' : 'descending'})
             </div>
           </div>
         </div>

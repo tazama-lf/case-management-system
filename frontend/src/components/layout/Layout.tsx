@@ -5,11 +5,7 @@ import Header from './Header';
 import { NAVIGATION_ITEMS } from '../../constants/navigation';
 import type { LayoutProps } from '../../types/navigation.types';
 
-const Layout: React.FC<LayoutProps> = ({ 
-  children, 
-  title, 
-  breadcrumbs 
-}) => {
+const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Mock user for now
@@ -21,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({
     initials: 'JD',
     tenantId: 'tenant-123',
     roles: ['investigator', 'analyst'] as string[],
-    permissions: ['read:alerts', 'write:cases', 'read:analytics']
+    permissions: ['read:alerts', 'write:cases', 'read:analytics'],
   };
 
   const handleLogout = () => {
@@ -39,7 +35,7 @@ const Layout: React.FC<LayoutProps> = ({
     <div className="h-screen flex bg-gray-50">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         >
@@ -48,10 +44,12 @@ const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      `}
+      >
         <Sidebar
           navigation={NAVIGATION_ITEMS}
           user={user}
@@ -72,9 +70,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
-          <div className="h-full">
-            {children || <Outlet />}
-          </div>
+          <div className="h-full">{children || <Outlet />}</div>
         </main>
       </div>
     </div>

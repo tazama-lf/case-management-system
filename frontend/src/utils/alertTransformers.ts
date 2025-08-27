@@ -1,11 +1,14 @@
-import type { Alert as TriageAlert, Priority, AlertStatus } from '../types/triage.types';
+import type {
+  Alert as TriageAlert,
+  Priority,
+  AlertStatus,
+} from '../types/triage.types';
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
 /**
  * Transform backend Alert to UI Alert format
  */
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
-
   const transformedAlert: UIAlert = {
     // Backend fields
     alert_id: backendAlert.alert_id,
@@ -22,7 +25,7 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     confidence_per: backendAlert.confidence_per,
     created_at: backendAlert.created_at,
     case_id: backendAlert.case_id,
-    
+
     // UI-specific mapped fields
     id: backendAlert.alert_id,
     transactionId: extractTransactionId(backendAlert.transaction),
@@ -70,7 +73,9 @@ export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
 /**
  * Map Priority enum to UI severity string
  */
-function mapPriorityToSeverity(priority: Priority): 'low' | 'medium' | 'high' | 'critical' {
+function mapPriorityToSeverity(
+  priority: Priority,
+): 'low' | 'medium' | 'high' | 'critical' {
   switch (priority) {
     case 'LOW':
       return 'low';
@@ -88,7 +93,9 @@ function mapPriorityToSeverity(priority: Priority): 'low' | 'medium' | 'high' | 
 /**
  * Map UI severity back to Priority enum
  */
-export function mapSeverityToPriority(severity: 'low' | 'medium' | 'high' | 'critical'): Priority {
+export function mapSeverityToPriority(
+  severity: 'low' | 'medium' | 'high' | 'critical',
+): Priority {
   switch (severity) {
     case 'low':
       return 'LOW';
@@ -106,7 +113,16 @@ export function mapSeverityToPriority(severity: 'low' | 'medium' | 'high' | 'cri
 /**
  * Map AlertStatus enum to UI status string
  */
-function mapAlertStatusToUIStatus(status: AlertStatus): 'new' | 'investigating' | 'closed' | 'converted' | 'autoclosed_confirmed' | 'autoclosed_refuted' | 'sent_for_investigation' {
+function mapAlertStatusToUIStatus(
+  status: AlertStatus,
+):
+  | 'new'
+  | 'investigating'
+  | 'closed'
+  | 'converted'
+  | 'autoclosed_confirmed'
+  | 'autoclosed_refuted'
+  | 'sent_for_investigation' {
   switch (status) {
     case 'NEW':
       return 'new';
@@ -130,7 +146,16 @@ function mapAlertStatusToUIStatus(status: AlertStatus): 'new' | 'investigating' 
 /**
  * Map UI status back to AlertStatus enum
  */
-export function mapUIStatusToAlertStatus(status: 'new' | 'investigating' | 'closed' | 'converted' | 'autoclosed_confirmed' | 'autoclosed_refuted' | 'sent_for_investigation'): AlertStatus {
+export function mapUIStatusToAlertStatus(
+  status:
+    | 'new'
+    | 'investigating'
+    | 'closed'
+    | 'converted'
+    | 'autoclosed_confirmed'
+    | 'autoclosed_refuted'
+    | 'sent_for_investigation',
+): AlertStatus {
   switch (status) {
     case 'new':
       return 'NEW';
@@ -156,13 +181,15 @@ export function mapUIStatusToAlertStatus(status: 'new' | 'investigating' | 'clos
  */
 function extractTransactionId(transaction: any): string | undefined {
   if (!transaction) return undefined;
-  
+
   // Try common transaction ID fields
-  return transaction.transactionId || 
-         transaction.txnId || 
-         transaction.id || 
-         transaction.TxId ||
-         undefined;
+  return (
+    transaction.transactionId ||
+    transaction.txnId ||
+    transaction.id ||
+    transaction.TxId ||
+    undefined
+  );
 }
 
 /**
@@ -170,13 +197,14 @@ function extractTransactionId(transaction: any): string | undefined {
  */
 function extractAmount(transaction: any): number | undefined {
   if (!transaction) return undefined;
-  
+
   // Try common amount fields
-  const amount = transaction.amount || 
-                transaction.AmtRaw || 
-                transaction.TxAmt ||
-                transaction.value;
-                
+  const amount =
+    transaction.amount ||
+    transaction.AmtRaw ||
+    transaction.TxAmt ||
+    transaction.value;
+
   return typeof amount === 'number' ? amount : undefined;
 }
 
@@ -185,18 +213,22 @@ function extractAmount(transaction: any): number | undefined {
  */
 function extractCurrency(transaction: any): string | undefined {
   if (!transaction) return undefined;
-  
+
   // Try common currency fields
-  return transaction.currency || 
-         transaction.ccy || 
-         transaction.CcyCode ||
-         transaction.currencyCode ||
-         'USD'; // Default fallback
+  return (
+    transaction.currency ||
+    transaction.ccy ||
+    transaction.CcyCode ||
+    transaction.currencyCode ||
+    'USD'
+  ); // Default fallback
 }
 
 /**
  * Transform array of backend alerts to UI alerts
  */
-export function transformBackendAlertsToUI(backendAlerts: TriageAlert[]): UIAlert[] {
+export function transformBackendAlertsToUI(
+  backendAlerts: TriageAlert[],
+): UIAlert[] {
   return backendAlerts.map(transformBackendAlertToUI);
 }

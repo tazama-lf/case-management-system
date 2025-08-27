@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../../types/alertsdashboard.types';
 import useDebounce from '../../hooks/useDebounce';
 import triageService from '../../services/triageservice';
@@ -12,7 +16,10 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
-  onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
+  onCustomDateRangeChange: (range: {
+    startDate: string;
+    endDate: string;
+  }) => void;
   onSearch?: (query: string) => void; // For real-time search callback
 }
 
@@ -29,7 +36,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
-  onSearch
+  onSearch,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
@@ -37,7 +44,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     priorities: [],
     statuses: [],
     alertTypes: [],
-    sources: []
+    sources: [],
   });
   const [loadingOptions, setLoadingOptions] = useState(true);
 
@@ -57,8 +64,12 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         setFilterOptions({
           priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
           statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
-          alertTypes: ['Transaction Monitoring', 'AML Screening', 'Velocity Check'],
-          sources: ['REST API', 'Transaction Monitoring System']
+          alertTypes: [
+            'Transaction Monitoring',
+            'AML Screening',
+            'Velocity Check',
+          ],
+          sources: ['REST API', 'Transaction Monitoring System'],
         });
       } finally {
         setLoadingOptions(false);
@@ -75,10 +86,12 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     }
   }, [debouncedQuery, onSearch, searchFilters.query]);
 
-  const hasActiveFilters = Object.entries(searchFilters).some(([key, value]) => {
-    if (key === 'query') return false; // Don't count search query as filter
-    return value && value !== '';
-  });
+  const hasActiveFilters = Object.entries(searchFilters).some(
+    ([key, value]) => {
+      if (key === 'query') return false; // Don't count search query as filter
+      return value && value !== '';
+    },
+  );
 
   const handleTimeRangeChange = (value: string) => {
     onFilterChange('timeRange', value);
@@ -89,7 +102,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     }
   };
 
-  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+  const handleCustomDateChange = (
+    field: 'startDate' | 'endDate',
+    value: string,
+  ) => {
     const newRange = { ...customDateRange, [field]: value };
     onCustomDateRangeChange(newRange);
   };
@@ -99,9 +115,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       case 'priority':
         return value.charAt(0) + value.slice(1).toLowerCase();
       case 'status':
-        return value.split('_').map(word => 
-          word.charAt(0) + word.slice(1).toLowerCase()
-        ).join(' ');
+        return value
+          .split('_')
+          .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+          .join(' ');
       default:
         return value;
     }
@@ -158,7 +175,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           {loadingOptions ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-2 text-sm text-gray-500">Loading filter options...</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Loading filter options...
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -265,7 +284,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           {/* Custom Date Range Picker */}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Custom Date Range</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                Custom Date Range
+              </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -274,7 +295,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.startDate}
-                    onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                    onChange={(e) =>
+                      handleCustomDateChange('startDate', e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -285,7 +308,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.endDate}
-                    onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                    onChange={(e) =>
+                      handleCustomDateChange('endDate', e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

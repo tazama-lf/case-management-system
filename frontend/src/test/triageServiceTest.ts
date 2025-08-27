@@ -8,9 +8,16 @@ export const testTriageService = () => {
   const hasGetAlertById = typeof triageService.getAlertById === 'function';
   const hasUpdateAlert = typeof triageService.updateAlert === 'function';
   const hasCloseAlert = typeof triageService.closeAlert === 'function';
-  const hasConvertAlertToCase = typeof triageService.convertAlertToCase === 'function';
+  const hasConvertAlertToCase =
+    typeof triageService.convertAlertToCase === 'function';
 
-  return hasGetAlerts && hasGetAlertById && hasUpdateAlert && hasCloseAlert && hasConvertAlertToCase;
+  return (
+    hasGetAlerts &&
+    hasGetAlertById &&
+    hasUpdateAlert &&
+    hasCloseAlert &&
+    hasConvertAlertToCase
+  );
 };
 
 // Example usage patterns
@@ -27,7 +34,7 @@ export const exampleUsage = {
       priority: 'HIGH',
       status: 'PENDING',
       page: 1,
-      limit: 20
+      limit: 20,
     };
     return triageService.getAlerts(filters);
   },
@@ -41,7 +48,7 @@ export const exampleUsage = {
   async updateAlert(id: string) {
     return triageService.updateAlert(id, {
       priority: 'MEDIUM',
-      confidence_per: 85
+      confidence_per: 85,
     });
   },
 
@@ -54,7 +61,7 @@ export const exampleUsage = {
   async convertToCase(id: string) {
     return triageService.convertAlertToCase(id, {
       priority: 'MEDIUM',
-      caseType: 'INVESTIGATION'
+      caseType: 'INVESTIGATION',
     });
-  }
+  },
 };

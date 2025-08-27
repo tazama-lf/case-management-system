@@ -8,14 +8,13 @@ interface HeaderComponentProps extends HeaderProps {
   setSidebarOpen?: (open: boolean) => void;
 }
 
-const Header: React.FC<HeaderComponentProps> = ({ 
-  user, 
-  breadcrumbs, 
+const Header: React.FC<HeaderComponentProps> = ({
+  user,
+  breadcrumbs,
   title,
   sidebarOpen,
-  setSidebarOpen 
+  setSidebarOpen,
 }) => {
-
   return (
     <header className="sticky top-0 z-40 bg-white shadow-sm">
       <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
@@ -43,8 +42,12 @@ const Header: React.FC<HeaderComponentProps> = ({
             <div className="hidden lg:block">
               {title ? (
                 <div>
-                  <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-                  {breadcrumbs && <Breadcrumb items={breadcrumbs} className="mt-1" />}
+                  <h1 className="text-2xl font-semibold text-gray-900">
+                    {title}
+                  </h1>
+                  {breadcrumbs && (
+                    <Breadcrumb items={breadcrumbs} className="mt-1" />
+                  )}
                 </div>
               ) : (
                 <Breadcrumb items={breadcrumbs} />
@@ -54,12 +57,13 @@ const Header: React.FC<HeaderComponentProps> = ({
 
           {/* Right side - notifications and user menu */}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-
             {/* User info on larger screens */}
             <div className="hidden lg:flex lg:items-center lg:gap-x-2">
               <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-gray-700">
-                  {user?.initials || user?.username?.slice(0, 2).toUpperCase() || 'U'}
+                  {user?.initials ||
+                    user?.username?.slice(0, 2).toUpperCase() ||
+                    'U'}
                 </span>
               </div>
               <div className="text-sm">
@@ -77,7 +81,9 @@ const Header: React.FC<HeaderComponentProps> = ({
         {/* Mobile breadcrumbs */}
         <div className="lg:hidden pb-4">
           {title && (
-            <h1 className="text-xl font-semibold text-gray-900 mb-2">{title}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 mb-2">
+              {title}
+            </h1>
           )}
           <Breadcrumb items={breadcrumbs} />
         </div>

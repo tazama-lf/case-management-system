@@ -3,9 +3,9 @@ import React from 'react';
 // Constants matching backend Prisma schema
 export const Priority = {
   LOW: 'LOW',
-  MEDIUM: 'MEDIUM', 
+  MEDIUM: 'MEDIUM',
   HIGH: 'HIGH',
-  CRITICAL: 'CRITICAL'
+  CRITICAL: 'CRITICAL',
 } as const;
 
 export const AlertStatus = {
@@ -15,21 +15,21 @@ export const AlertStatus = {
   CONVERTED: 'CONVERTED',
   AUTOCLOSED_CONFIRMED: 'AUTOCLOSED_CONFIRMED',
   AUTOCLOSED_REFUTED: 'AUTOCLOSED_REFUTED',
-  SENT_FOR_INVESTIGATION: 'SENT_FOR_INVESTIGATION'
+  SENT_FOR_INVESTIGATION: 'SENT_FOR_INVESTIGATION',
 } as const;
 
 export const AlertType = {
   TRANSACTION_MONITORING: 'TRANSACTION_MONITORING',
   SANCTIONS_SCREENING: 'SANCTIONS_SCREENING',
   AML_SCREENING: 'AML_SCREENING',
-  FRAUD_DETECTION: 'FRAUD_DETECTION'
+  FRAUD_DETECTION: 'FRAUD_DETECTION',
 } as const;
 
 export const CaseStatus = {
   OPEN: 'OPEN',
-  INVESTIGATING: 'INVESTIGATING', 
+  INVESTIGATING: 'INVESTIGATING',
   CLOSED: 'CLOSED',
-  ESCALATED: 'ESCALATED'
+  ESCALATED: 'ESCALATED',
 } as const;
 
 // Action History types
@@ -48,21 +48,22 @@ export interface ActionHistory {
 export const CaseType = {
   FRAUD: 'FRAUD',
   AML: 'AML',
-  FRAUD_AND_AML: 'FRAUD_AND_AML'
+  FRAUD_AND_AML: 'FRAUD_AND_AML',
 } as const;
 
 export const CaseCreationType = {
   MANUAL: 'MANUAL',
-  ALERT_CONVERSION: 'ALERT_CONVERSION'
+  ALERT_CONVERSION: 'ALERT_CONVERSION',
 } as const;
 
 // Type unions from constants
-export type Priority = typeof Priority[keyof typeof Priority];
-export type AlertStatus = typeof AlertStatus[keyof typeof AlertStatus];
-export type AlertType = typeof AlertType[keyof typeof AlertType];
-export type CaseStatus = typeof CaseStatus[keyof typeof CaseStatus];
-export type CaseType = typeof CaseType[keyof typeof CaseType];
-export type CaseCreationType = typeof CaseCreationType[keyof typeof CaseCreationType];
+export type Priority = (typeof Priority)[keyof typeof Priority];
+export type AlertStatus = (typeof AlertStatus)[keyof typeof AlertStatus];
+export type AlertType = (typeof AlertType)[keyof typeof AlertType];
+export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
+export type CaseType = (typeof CaseType)[keyof typeof CaseType];
+export type CaseCreationType =
+  (typeof CaseCreationType)[keyof typeof CaseCreationType];
 
 // Core Alert interface matching backend schema
 export interface Alert {

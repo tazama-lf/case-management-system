@@ -23,7 +23,14 @@ export interface Alert extends Record<string, unknown> {
   alert_data: any;
   transaction: any;
   network_map: any;
-  alert_status: 'NEW' | 'INVESTIGATING' | 'CLOSED' | 'CONVERTED' | 'AUTOCLOSED_CONFIRMED' | 'AUTOCLOSED_REFUTED' | 'SENT_FOR_INVESTIGATION';
+  alert_status:
+    | 'NEW'
+    | 'INVESTIGATING'
+    | 'CLOSED'
+    | 'CONVERTED'
+    | 'AUTOCLOSED_CONFIRMED'
+    | 'AUTOCLOSED_REFUTED'
+    | 'SENT_FOR_INVESTIGATION';
   confidence_per: number;
   created_at: string;
   case_id?: string;

@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       // Brand Colors for Tazama Case Management System
@@ -80,9 +77,9 @@ export default {
         },
         // Alert priority colors
         priority: {
-          low: '#22c55e',    // Green
+          low: '#22c55e', // Green
           medium: '#f59e0b', // Amber
-          high: '#f97316',   // Orange
+          high: '#f97316', // Orange
           critical: '#dc2626', // Red
         },
         // Case status colors
@@ -116,11 +113,11 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
       },
       fontSize: {
-        'xs': ['0.75rem', { lineHeight: '1rem' }],
-        'sm': ['0.875rem', { lineHeight: '1.25rem' }],
-        'base': ['1rem', { lineHeight: '1.5rem' }],
-        'lg': ['1.125rem', { lineHeight: '1.75rem' }],
-        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
+        xs: ['0.75rem', { lineHeight: '1rem' }],
+        sm: ['0.875rem', { lineHeight: '1.25rem' }],
+        base: ['1rem', { lineHeight: '1.5rem' }],
+        lg: ['1.125rem', { lineHeight: '1.75rem' }],
+        xl: ['1.25rem', { lineHeight: '1.75rem' }],
         '2xl': ['1.5rem', { lineHeight: '2rem' }],
         '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
         '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
@@ -129,28 +126,28 @@ export default {
       },
       // Spacing
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
+        18: '4.5rem',
+        88: '22rem',
+        128: '32rem',
       },
       // Border radius
       borderRadius: {
-        'sm': '0.25rem',
-        'md': '0.375rem',
-        'lg': '0.5rem',
-        'xl': '0.75rem',
+        sm: '0.25rem',
+        md: '0.375rem',
+        lg: '0.5rem',
+        xl: '0.75rem',
         '2xl': '1rem',
         '3xl': '1.5rem',
       },
       // Box shadows
       boxShadow: {
-        'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-        'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-        'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-        'popup': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-        'inner': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+        sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        card: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        popup: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
       },
       // Animation
       animation: {
@@ -183,26 +180,26 @@ export default {
       },
       // Grid template columns
       gridTemplateColumns: {
-        'sidebar': '250px 1fr',
+        sidebar: '250px 1fr',
         'sidebar-collapsed': '64px 1fr',
-        'dashboard': 'repeat(auto-fit, minmax(300px, 1fr))',
+        dashboard: 'repeat(auto-fit, minmax(300px, 1fr))',
       },
       // Z-index
       zIndex: {
-        'dropdown': '1000',
-        'sticky': '1020',
-        'fixed': '1030',
+        dropdown: '1000',
+        sticky: '1020',
+        fixed: '1030',
         'modal-backdrop': '1040',
-        'modal': '1050',
-        'popover': '1060',
-        'tooltip': '1070',
-        'toast': '1080',
+        modal: '1050',
+        popover: '1060',
+        tooltip: '1070',
+        toast: '1080',
       },
     },
   },
   plugins: [
     // Custom component classes
-    function({ addComponents, theme }) {
+    function ({ addComponents, theme }) {
       addComponents({
         // Button variants
         '.btn': {
@@ -264,7 +261,7 @@ export default {
             color: theme('colors.white'),
           },
         },
-        
+
         // Card components
         '.card': {
           backgroundColor: theme('colors.white'),
@@ -273,7 +270,7 @@ export default {
           padding: theme('spacing.6'),
           border: `1px solid ${theme('colors.gray.200')}`,
         },
-        
+
         // Form elements
         '.input': {
           width: '100%',
@@ -291,7 +288,7 @@ export default {
             color: theme('colors.gray.400'),
           },
         },
-        
+
         // Priority badges
         '.badge-priority-low': {
           backgroundColor: theme('colors.success.100'),
@@ -325,7 +322,7 @@ export default {
           fontSize: theme('fontSize.xs'),
           fontWeight: theme('fontWeight.medium'),
         },
-        
+
         // Status badges
         '.badge-status': {
           padding: `${theme('spacing.1')} ${theme('spacing.2')}`,
@@ -333,7 +330,7 @@ export default {
           fontSize: theme('fontSize.xs'),
           fontWeight: theme('fontWeight.medium'),
         },
-        
+
         // Layout helpers
         '.page-container': {
           maxWidth: theme('maxWidth.7xl'),
@@ -346,7 +343,7 @@ export default {
         '.sidebar-collapsed-width': {
           width: '64px',
         },
-      })
-    }
+      });
+    },
   ],
-}
+};
