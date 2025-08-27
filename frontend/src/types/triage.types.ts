@@ -74,13 +74,14 @@ export interface Alert {
   source?: string;
   txtp?: string;
   message: string;
-  alert_data: any;
-  transaction: any;
-  network_map: any;
+  alert_data: unknown;
+  transaction: unknown;
+  network_map: unknown;
   alert_status: AlertStatus;
   confidence_per: number;
   created_at: string;
   case_id?: string;
+  prediction_outcome?: string;
 }
 
 // Case interface matching backend schema
@@ -137,6 +138,23 @@ export interface UpdateAlertDto {
 export interface ConvertToCaseDto {
   priority: Priority;
   caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
+  caseOwnerUserId?: string;
+  // Optional risk info extracted from alert.alert_data.tadpResult.typologyResult[0]
+  riskCategory?: string;
+  riskScore?: number;
+  riskComponents?: RiskComponent[];
+}
+
+// Risk types extracted from alert data
+export interface RiskComponent {
+  id: string;
+  wght: number;
+}
+
+export interface RiskCategory {
+  id: string;
+  result: number;
+  ruleResults: RiskComponent[];
 }
 
 // Convert Alert to Case Response
@@ -156,9 +174,9 @@ export interface CloseAlertDto {
 export interface SubmitAlertDto {
   result: {
     message: string;
-    report: any;
-    transaction: any;
-    networkMap: any;
+  report: unknown;
+  transaction: unknown;
+  networkMap: unknown;
   };
 }
 
@@ -167,8 +185,11 @@ export interface SubmitAlertDto {
 // Convert to Case Modal Data
 export interface ConvertToCaseData {
   caseId?: string;
-  assignedTo: string;
-  priority: Priority;
+  assignedTo?: string;
+  caseOwnerUserId?: string;
+  // UI uses lowercase priority values ('low'|'medium'|'high'), but backend uses uppercase Priority.
+  // Accept either so UI and API mapping are both supported.
+  priority: 'low' | 'medium' | 'high' | Priority;
   caseType: CaseType;
   linkedCases: string[];
   notes: string;
@@ -180,7 +201,7 @@ export interface AlertTableColumn {
   key: keyof Alert | string;
   header: string;
   sortable?: boolean;
-  render?: (value: any, alert: Alert) => React.ReactNode;
+  render?: (value: unknown, alert: Alert) => React.ReactNode;
   width?: string;
   align?: 'left' | 'center' | 'right';
 }
@@ -211,7 +232,7 @@ export interface ApiError {
   message: string;
   statusCode?: number;
   error?: string;
-  details?: any;
+  details?: unknown;
 }
 
 // Enhanced API Error Response interface
@@ -221,7 +242,7 @@ export interface ApiErrorResponse {
   error: string;
   timestamp?: string;
   path?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Service response wrapper

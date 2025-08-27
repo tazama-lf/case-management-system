@@ -7,6 +7,7 @@ import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
 import TransactionMessagesModal from '../components/common/TransactionMessagesModal';
 import MessagePayloadModal from '../components/common/MessagePayloadModal';
+<<<<<<< HEAD
 import type {
   Alert,
   AlertsSearchFilters,
@@ -14,6 +15,10 @@ import type {
   TransactionMessage,
 } from '../types/alertsdashboard.types';
 import type { ConvertToCaseData } from '../components/common/ConvertToCaseModal';
+=======
+import type { Alert, AlertsSearchFilters, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
+import type { ConvertToCaseData } from '../types/triage.types';
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { AlertsFilter, ConvertToCaseDto } from '../types/triage.types';
@@ -110,12 +115,17 @@ const AlertsDashboard: React.FC = () => {
     },
   });
 
+<<<<<<< HEAD
   // State for tracking fetched source values
   const [fetchedSources, setFetchedSources] = useState<Record<string, string>>(
     {},
   );
   const [loadingSources, setLoadingSources] = useState<Set<string>>(new Set());
 
+=======
+  // State for tracking fetched source values (not used currently)
+  
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
   // Operation states for loading indicators
   const [operationStates, setOperationStates] = useState<OperationStates>({
     convertingToCase: new Set(),
@@ -254,10 +264,6 @@ const AlertsDashboard: React.FC = () => {
 
   const refreshAlerts = useCallback(async () => {
     const filters: AlertsFilter = {
-      priority: searchFilters.priority || undefined,
-      status: searchFilters.status || undefined,
-      type: searchFilters.type || undefined,
-      search: debouncedSearchQuery || undefined,
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -265,6 +271,7 @@ const AlertsDashboard: React.FC = () => {
     };
 
     await fetchAlerts(filters);
+<<<<<<< HEAD
   }, [
     fetchAlerts,
     searchFilters.priority,
@@ -277,14 +284,15 @@ const AlertsDashboard: React.FC = () => {
     sortDirection,
     mapToBackendField,
   ]);
+=======
+  }, [fetchAlerts, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 
   // Load alerts on component mount and when filters change
+  // Load alerts on component mount and when pagination/sort change. Filters (search, type, priority, status)
+  // are applied client-side in `filteredAndSortedAlerts` to avoid refetching on every filter interaction.
   useEffect(() => {
     const filters: AlertsFilter = {
-      priority: searchFilters.priority || undefined,
-      status: searchFilters.status || undefined,
-      type: searchFilters.type || undefined,
-      search: debouncedSearchQuery || undefined, // Use debounced query
       page: apiState.pagination.currentPage,
       limit: apiState.pagination.pageSize,
       sortBy: mapToBackendField(sortColumn),
@@ -292,6 +300,7 @@ const AlertsDashboard: React.FC = () => {
     };
 
     fetchAlerts(filters);
+<<<<<<< HEAD
   }, [
     fetchAlerts,
     searchFilters.priority,
@@ -304,6 +313,9 @@ const AlertsDashboard: React.FC = () => {
     sortDirection,
     mapToBackendField,
   ]);
+=======
+  }, [fetchAlerts, apiState.pagination.currentPage, apiState.pagination.pageSize, sortColumn, sortDirection, mapToBackendField]);
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 
   // Debounce search query
   useEffect(() => {
@@ -427,9 +439,11 @@ const AlertsDashboard: React.FC = () => {
   };
 
   // Filter and sort logic
+  // Client-side filtering, sorting and pagination
   const filteredAndSortedAlerts = useMemo(() => {
-    let filtered = apiState.alerts;
+    let filtered = apiState.alerts.slice();
 
+<<<<<<< HEAD
     // Apply client-side custom date filtering if needed
     if (
       searchFilters.timeRange === 'custom' &&
@@ -441,19 +455,119 @@ const AlertsDashboard: React.FC = () => {
           alert.createdAt as string,
           searchFilters.timeRange,
           customDateRange,
+=======
+    // Text query filter (search across alert id, message, transaction id)
+    if (debouncedSearchQuery && debouncedSearchQuery.trim() !== '') {
+      const q = debouncedSearchQuery.trim().toLowerCase();
+      filtered = filtered.filter((a: Alert) => {
+        const alertId = String(a.alert_id || '').toLowerCase();
+        const message = String(a.message || '').toLowerCase();
+        const txId = String(a.transactionId || '').toLowerCase();
+        const source = String(a.source || '').toLowerCase();
+        const type = String(a.alert_type || '').toLowerCase();
+        const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
+        const networkMap = a.network_map ? JSON.stringify(a.network_map).toLowerCase() : '';
+
+        return (
+          alertId.includes(q) ||
+          message.includes(q) ||
+          txId.includes(q) ||
+          source.includes(q) ||
+          type.includes(q) ||
+          transactionJson.includes(q) ||
+          networkMap.includes(q)
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
         );
       });
     }
 
-    return filtered;
-  }, [apiState.alerts, searchFilters.timeRange, customDateRange]);
+    // Source filter
+    if (searchFilters.source) {
+      filtered = filtered.filter(a => (a.source || '').toLowerCase() === searchFilters.source.toLowerCase());
+    }
 
-  // Use API pagination instead of client-side pagination
-  const paginatedAlerts = filteredAndSortedAlerts;
-  const totalItems = apiState.pagination.totalItems;
-  const totalPages = apiState.pagination.totalPages;
-  const currentPage = apiState.pagination.currentPage;
+    // Type filter
+    if (searchFilters.type) {
+      filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === searchFilters.type.toLowerCase());
+    }
+
+    // Priority filter
+    if (searchFilters.priority) {
+      filtered = filtered.filter(a => (a.priority || '').toLowerCase() === searchFilters.priority.toLowerCase());
+    }
+
+    // Status filter
+    if (searchFilters.status) {
+      filtered = filtered.filter(a => (a.alert_status || '').toLowerCase() === searchFilters.status.toLowerCase());
+    }
+
+    // Time range filter
+    if (searchFilters.timeRange) {
+      filtered = filtered.filter((alert: Alert) => isDateInRange(alert.createdAt as string, searchFilters.timeRange, customDateRange));
+    }
+
+    // Sorting (client-side)
+    const getValue = (item: Alert, key: string) => {
+      const v = item[key as keyof Alert] as unknown;
+      if (v === undefined || v === null) return '';
+      if (typeof v === 'string') return v.toLowerCase();
+      if (typeof v === 'number') return v;
+      if (v instanceof Date) return v.getTime();
+      return String(v);
+    };
+
+    filtered.sort((a: Alert, b: Alert) => {
+      const aVal = getValue(a, sortColumn as string);
+      const bVal = getValue(b, sortColumn as string);
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [apiState.alerts, debouncedSearchQuery, searchFilters.source, searchFilters.type, searchFilters.priority, searchFilters.status, searchFilters.timeRange, customDateRange, sortColumn, sortDirection]);
+
+  // Apply client-side pagination to the filtered results
   const pageSize = apiState.pagination.pageSize;
+  const currentPage = apiState.pagination.currentPage;
+  const totalItems = filteredAndSortedAlerts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const paginatedAlerts = filteredAndSortedAlerts.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize);
+
+  // Compute available alert types from fetched alerts for the filters UI
+  const alertTypes = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.alert_type) set.add(a.alert_type);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  // Compute available priorities, statuses, and sources from fetched alerts
+  const priorities = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.priority) set.add(String(a.priority));
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  const statuses = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.alert_status) set.add(a.alert_status);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    apiState.alerts.forEach((a) => {
+      if (a.source) set.add(a.source);
+    });
+    return Array.from(set).sort();
+  }, [apiState.alerts]);
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
@@ -505,10 +619,6 @@ const AlertsDashboard: React.FC = () => {
           alert.alert_id as string,
         ]),
       }));
-
-      // Log alert access before fetching details
-      const currentUser = 'John Doe'; // In real implementation, get from auth context
-      const timestamp = new Date().toISOString();
 
       // Fetch detailed alert data from API
       const detailedAlert = await triageService.getAlertById(
@@ -590,10 +700,53 @@ const AlertsDashboard: React.FC = () => {
           medium: 'MEDIUM',
           high: 'HIGH',
         };
+<<<<<<< HEAD
 
         const convertData: ConvertToCaseDto = {
           priority: priorityMap[caseData.priority] || 'MEDIUM',
           caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML',
+=======
+        
+        // Extract risk info from alert.alert_data.tadpResult.typologyResult[0] if present
+        type LocalRiskComponent = { id: string; wght: number };
+        let riskCategory: string | undefined;
+        let riskScore: number | undefined;
+        let riskComponents: LocalRiskComponent[] | undefined;
+
+        const maybeTadp = alert.alert_data as unknown;
+        let typology: Record<string, unknown> | undefined;
+        if (maybeTadp && typeof maybeTadp === 'object') {
+          const tadp = (maybeTadp as Record<string, unknown>)['tadpResult'];
+          if (tadp && typeof tadp === 'object') {
+            const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+            if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+              typology = typologyResult[0] as Record<string, unknown>;
+            }
+          }
+        }
+
+        if (typology) {
+          riskCategory = typology['id'] as string | undefined;
+          const maybeResult = typology['result'];
+          riskScore = typeof maybeResult === 'number' ? (maybeResult as number) : undefined;
+          const maybeRules = typology['ruleResults'];
+          if (Array.isArray(maybeRules)) {
+            riskComponents = maybeRules.map((r) => {
+              const rec = r as Record<string, unknown>;
+              return { id: rec['id'] as string, wght: rec['wght'] as number };
+            });
+          }
+        }
+
+        const convertData: ConvertToCaseDto = {
+          priority: priorityMap[caseData.priority as string] || 'MEDIUM',
+          caseType: caseData.caseType as 'FRAUD' | 'AML' | 'FRAUD_AND_AML',
+          // pass through optional case owner id when provided by modal
+          caseOwnerUserId: caseData.caseOwnerUserId,
+          riskCategory,
+          riskScore,
+          riskComponents,
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
         };
 
         await triageService.convertAlertToCase(alertId, convertData);
@@ -663,8 +816,13 @@ const AlertsDashboard: React.FC = () => {
 
       handleCloseModal();
     } catch (error) {
+<<<<<<< HEAD
       console.error('❌ Error closing alert:', error);
 
+=======
+      console.error('Error closing alert:', error);
+      
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
       // Enhanced error handling
       let errorMessage = 'Failed to close alert';
       if (error instanceof Error) {
@@ -686,8 +844,12 @@ const AlertsDashboard: React.FC = () => {
       console.error('Close alert error:', errorMessage);
       throw error; // Re-throw to keep modal open
     } finally {
+<<<<<<< HEAD
       // Remove loading state
       setOperationStates((prev) => {
+=======
+      setOperationStates(prev => {
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
         const newSet = new Set(prev.closingAlert);
         newSet.delete(alertId);
         return { ...prev, closingAlert: newSet };
@@ -930,10 +1092,17 @@ const AlertsDashboard: React.FC = () => {
           onClearFilters={clearFilters}
           customDateRange={customDateRange}
           onCustomDateRangeChange={setCustomDateRange}
+<<<<<<< HEAD
           onSearch={(query) => {
             // Update search filters immediately for input field, debounce is handled separately
             setSearchFilters((prev) => ({ ...prev, query }));
           }}
+=======
+          alertTypes={alertTypes}
+          priorities={priorities}
+          statuses={statuses}
+          sources={sources}
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
         />
 
         {/* Results Summary */}

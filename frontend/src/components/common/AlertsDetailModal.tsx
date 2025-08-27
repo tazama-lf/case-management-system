@@ -13,9 +13,8 @@ import type {
 import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
 import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
-import ConvertToCaseModal, {
-  type ConvertToCaseData,
-} from './ConvertToCaseModal';
+import ConvertToCaseModal from './ConvertToCaseModal';
+import type { ConvertToCaseData } from '../../types/triage.types';
 
 interface AlertsDetailModalProps {
   alertId: string | null;
@@ -43,6 +42,7 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   confidence_per: alert.confidence_per,
   created_at: alert.created_at,
   case_id: alert.case_id,
+  prediction_outcome: alert.prediction_outcome,
 });
 
 // Risk score calculation and breakdown
@@ -54,6 +54,7 @@ const getRiskScore = (alert: TriageAlert): number => {
     HIGH: 2,
     CRITICAL: 3,
   };
+  console.log('Calculating risk score for alert:', alert);
 
   const baseScore = alert.confidence_per || 50;
   const weight = priorityWeights[alert.priority] || 1;
@@ -62,9 +63,37 @@ const getRiskScore = (alert: TriageAlert): number => {
 
 // Risk breakdown components
 const getRiskBreakdown = (alert: TriageAlert) => {
-  const totalScore = getRiskScore(alert);
+  // Try to extract typology/rule results from alert.alert_data (TADP-style)
+  try {
+    const maybe = alert.alert_data as unknown;
+    if (maybe && typeof maybe === 'object') {
+      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      if (tadp && typeof tadp === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+          const typ = typologyResult[0] as Record<string, unknown>;
+          const maybeRules = typ['ruleResults'];
+          if (Array.isArray(maybeRules)) {
+            // Map ruleResults to the table shape { name, type, score }
+            return maybeRules.map((r) => {
+              const rec = r as Record<string, unknown>;
+              const id = (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
+              // Use available fields for display; prefer a human label if present
+              const name = (rec['label'] as string) || (rec['name'] as string) || id;
+              const type = (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
+              const wght = typeof rec['wght'] === 'number' ? (rec['wght'] as number) : Number(rec['weight'] || 0);
+              return { name, type, score: wght };
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore parsing errors and fall back to synthetic breakdown
+  }
 
-  // Generate realistic breakdown based on alert properties
+  // Fallback: synthesize breakdown based on computed risk score
+  const totalScore = getRiskScore(alert);
   const components = [
     {
       name: 'Multiple ATM Withdrawals',
@@ -83,21 +112,73 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     },
   ];
 
-  // Add fourth component if high risk
   if (alert.priority === 'HIGH' || alert.priority === 'CRITICAL') {
     components.push({
       name: 'Aggregated Transaction Mirroring',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.33), // Adjust for 4 components
+      score: Math.round(totalScore * 0.33)
     });
-
-    // Rebalance other components
     components[0].score = Math.round(totalScore * 0.22);
     components[1].score = Math.round(totalScore * 0.22);
     components[2].score = Math.round(totalScore * 0.23);
   }
 
   return components;
+};
+
+// Extract typology info (id/label/result) from alert.alert_data.tadpResult.typologyResult[0]
+const extractTypologyInfo = (alert: TriageAlert) => {
+  try {
+    const maybe = alert.alert_data as unknown;
+    if (maybe && typeof maybe === 'object') {
+      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      if (tadp && typeof tadp === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
+        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+          const typ = typologyResult[0] as Record<string, unknown>;
+          const id = typ['id'] as string | undefined;
+          const label = (typ['label'] as string) || (typ['name'] as string) || id;
+          const result = typeof typ['result'] === 'number' ? (typ['result'] as number) : undefined;
+          return { id, label, result };
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { id: undefined, label: undefined, result: undefined };
+};
+
+// Utility: escape HTML for safe insertion
+const escapeHtml = (unsafe: string) => {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+// Utility: simple JSON syntax highlighter that returns HTML
+const syntaxHighlightJson = (obj: unknown) => {
+  const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  const escaped = escapeHtml(String(json));
+
+  // Wrap JSON tokens in spans with Tailwind-compatible classes
+  const highlighted = escaped
+    // keys
+    .replace(/("(.*?)")(?=\s*:)/g, '<span class="text-indigo-700 font-medium">$1</span>')
+    // strings
+    .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+  // numbers (including optional exponent)
+  .replace(/(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi, '$1<span class="text-red-600">$2</span>')
+    // booleans
+    .replace(/(:\s*)(true|false)/gi, '$1<span class="text-yellow-600">$2</span>')
+    // null
+    .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+
+  // Preserve line breaks inside a <pre> by returning raw HTML
+  return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
 };
 
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
@@ -137,7 +218,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         try {
           const history = await triageService.getAlertActionHistory(alertId);
           setActionHistory(history);
-        } catch (historyError) {
+        } catch {
           setActionHistory([]);
         } finally {
           setLoadingHistory(false);
@@ -161,7 +242,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
     ) {
       setShowConvertModal(true);
-    } 
+  }
   };
 
   const handleConfirmConvert = async (caseData: ConvertToCaseData) => {
@@ -169,7 +250,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       // Call the parent's onConvertToCase with additional parameters
       if (alert && onConvertToCase) {
         await onConvertToCase(convertToLegacyAlert(alert), caseData);
-        // Refresh alert details after successful conversion
         if (onAlertUpdated) {
           onAlertUpdated();
         }
@@ -178,19 +258,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error converting alert to case:', error);
-      // Keep modal open to show error
       throw error;
     }
   };
 
   const handleCloseAlert = () => {
-    // Only show close modal if alert is in an open state
-    if (
-      alert &&
-      (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
-    ) {
+    if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       setShowCloseModal(true);
-    } 
+  }
   };
 
   const handleConfirmCloseAlert = async (
@@ -198,11 +273,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     justification: string,
   ) => {
     try {
-      // Call the parent's onCloseAlert with additional parameters
       if (alert && onCloseAlert) {
-        // Pass the justification information
         await onCloseAlert(convertToLegacyAlert(alert), justification);
-        // Refresh alert details after successful closure
         if (onAlertUpdated) {
           onAlertUpdated();
         }
@@ -211,12 +283,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error closing alert:', error);
-      // Keep modal open to show error
       throw error;
     }
   };
 
-  // Don't render if not open
   if (!isOpen) {
     return null;
   }
@@ -434,16 +504,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       Transaction Data
                     </h4>
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                      <div>
-                        <span className="text-sm font-medium text-gray-500">
-                          Transaction Data:
-                        </span>
-                        <div className="text-sm text-gray-900 font-mono bg-gray-100 p-2 rounded mt-1">
-                          {alert.transaction
-                            ? JSON.stringify(alert.transaction, null, 2)
-                            : 'No transaction data'}
-                        </div>
-                      </div>
+                          {alert.transaction ? (
+                            <pre
+                              className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                              dangerouslySetInnerHTML={{ __html: syntaxHighlightJson(alert.transaction) }}
+                            />
+                          ) : (
+                            <div className="text-sm text-gray-600">No transaction data</div>
+                          )}
                     </div>
                   </div>
                 </div>
@@ -549,15 +617,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                 <div className="mb-4">
                   <div className="flex items-center space-x-4 text-sm">
-                    <span className="text-gray-500">Risk Category:</span>
-                    <span className="font-medium text-gray-900">
-                      False promotions, phishing, or social engineering scams
-                    </span>
-                    <span className="text-gray-500">•</span>
-                    <span className="text-gray-500">Risk Score:</span>
-                    <span className="font-medium text-red-600 text-base">
-                      {getRiskScore(alert)}
-                    </span>
+                    {(() => {
+                      const typ = extractTypologyInfo(alert);
+                      return (
+                        <>
+                          <span className="text-gray-500">Risk Category:</span>
+                          <span className="font-medium text-gray-900">{typ.label || typ.id || 'Unknown'}</span>
+                          <span className="text-gray-500">•</span>
+                          <span className="text-gray-500">Risk Score:</span>
+                          <span className="font-medium text-red-600 text-base">{typ.result ?? getRiskScore(alert)}</span>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -603,7 +674,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               Aggregate
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                              {getRiskScore(alert)}
+                              {(() => {
+                                const typ = extractTypologyInfo(alert);
+                                return typ.result ?? getRiskScore(alert);
+                              })()}
                             </td>
                           </tr>
                         </tbody>

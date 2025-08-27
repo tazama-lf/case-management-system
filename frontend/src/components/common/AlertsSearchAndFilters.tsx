@@ -5,8 +5,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../../types/alertsdashboard.types';
-import useDebounce from '../../hooks/useDebounce';
-import triageService from '../../services/triageservice';
+// triageService not needed for client-side filter options
 
 interface AlertsSearchAndFiltersProps {
   searchFilters: AlertsSearchFilters;
@@ -16,11 +15,20 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
+<<<<<<< HEAD
   onCustomDateRangeChange: (range: {
     startDate: string;
     endDate: string;
   }) => void;
   onSearch?: (query: string) => void; // For real-time search callback
+=======
+  onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
+  // onSearch deprecated; search is handled by parent via `searchFilters.query`
+  alertTypes?: string[];
+  priorities?: string[];
+  statuses?: string[];
+  sources?: string[];
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }
 
 interface FilterOptions {
@@ -36,7 +44,13 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
+<<<<<<< HEAD
   onSearch,
+=======
+  
+  alertTypes
+  ,priorities, statuses, sources
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
@@ -46,13 +60,11 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     alertTypes: [],
     sources: [],
   });
-  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [loadingOptions] = useState(false);
 
-  // Debounced search with 300ms delay
-  const debouncedQuery = useDebounce(searchFilters.query, 300);
-
-  // Load filter options from backend
+  // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
+<<<<<<< HEAD
     const loadFilterOptions = async () => {
       try {
         setLoadingOptions(true);
@@ -75,16 +87,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         setLoadingOptions(false);
       }
     };
+=======
+    setFilterOptions({
+      priorities: (priorities && priorities.length > 0) ? priorities : ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+      statuses: (statuses && statuses.length > 0) ? statuses : ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'false_positive'],
+      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AML'],
+      sources: (sources && sources.length > 0) ? sources : ['REST API', 'NATS']
+    });
+  }, [alertTypes, priorities, statuses, sources]);
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 
-    loadFilterOptions();
-  }, []);
-
-  // Trigger search when debounced query changes
-  useEffect(() => {
-    if (onSearch && debouncedQuery !== searchFilters.query) {
-      onSearch(debouncedQuery);
-    }
-  }, [debouncedQuery, onSearch, searchFilters.query]);
 
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
@@ -192,11 +204,11 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Types</option>
-                  {filterOptions.alertTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
+                    {(alertTypes && alertTypes.length > 0 ? alertTypes : filterOptions.alertTypes).map((type: string) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
                 </select>
               </div>
 
