@@ -5,6 +5,7 @@ import { CloseAlertDto } from './dto/close-alert.dto';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { AuthenticatedRequest } from 'src/auth/auth.types';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(TazamaAuthGuard)
@@ -13,9 +14,9 @@ export class TriageController {
 
   @Post('')
   @RequireCMSTestRole()
-  async submitAlert(@Body() dto: SubmitAlertDto, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
+  async submitAlert(@Body() dto: SubmitAlertDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
     const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
 
     return alert;
@@ -28,24 +29,24 @@ export class TriageController {
 
   @Patch(':alertId')
   @RequireCMSTestRole()
-  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
+  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
     return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
   }
 
   @Patch(':alertId/close')
   @RequireCMSTestRole()
   async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
     return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
   }
 
   @Get()
   @RequireCMSTestRole()
   async getUserAlerts(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
@@ -56,7 +57,7 @@ export class TriageController {
     @Query('sortBy') sortBy = 'created_at',
     @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user.token.tenantId;
     return this.triageService.getAlertsForUser({
       tenantId,
       priority,
@@ -73,9 +74,9 @@ export class TriageController {
 
   @Get(':alertId')
   @RequireCMSTestRole()
-  async getAlertDetails(@Param('alertId') alertId: string, @Req() req) {
-    const userId = req.user.user_id;
-    const tenantId = req.user.tenantId;
+  async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
 }

@@ -4,6 +4,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { AuthenticatedRequest } from 'src/auth/auth.types';
 
 @Controller('api/v1/task')
 @UseGuards(TazamaAuthGuard)
@@ -12,22 +13,22 @@ export class TaskController {
 
   @Post()
   @RequireCMSTestRole()
-  async createTask(@Body() createTaskDto: CreateTaskDto) {
-    const userId = 'c98db341-beb6-457c-98e0-406cc1c71662';
+  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
     return this.taskService.createTask(createTaskDto, userId);
   }
 
   @Patch(':taskId/reassign')
   @RequireCMSTestRole()
-  async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string) {
-    const userId = 'c98db341-beb6-457c-98e0-406cc1c71662';
+  async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
     return this.taskService.reassignTask(taskId, userId, assignedUserId);
   }
 
   @Patch(':taskId')
   @RequireCMSTestRole()
-  async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req) {
-    const userId = req.user.user_id;
+  async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
     return this.taskService.updateTask(taskId, dto, userId);
   }
 }

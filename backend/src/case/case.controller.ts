@@ -4,6 +4,7 @@ import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { AuthenticatedRequest } from 'src/auth/auth.types';
 
 @Controller('api/v1/cases')
 @UseGuards(TazamaAuthGuard)
@@ -12,8 +13,8 @@ export class CaseController {
 
   @Post()
   @RequireCMSTestRole()
-  async createCase(@Body() dto: CreateCaseDto, @Req() req) {
-    const userId = req.user.user_id;
+  async createCase(@Body() dto: CreateCaseDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
     return this.caseService.createCase(dto, userId);
   }
 
@@ -25,8 +26,8 @@ export class CaseController {
 
   @Post(':caseId')
   @RequireCMSTestRole()
-  async updateCase(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req) {
-    const userId = req.user.user_id;
+  async updateCase(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
     return this.caseService.updateCase(caseId, dto, userId);
   }
 }
