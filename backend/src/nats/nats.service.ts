@@ -17,10 +17,10 @@ export class NatsStartupService implements OnModuleInit {
     try {
       const { StartupFactory } = await import('@tazama-lf/frms-coe-startup-lib');
       this.startupService = new StartupFactory();
-      this.logger.log('NATS Relay Plugin initialized');
+      this.logger.log('NATS Relay Plugin initialized', NatsStartupService.name);
       await this.startupService.init(this.handleMessage.bind(this), this.logger);
     } catch (error) {
-      this.logger.error('Failed to initialize NATS Relay Plugin', { error });
+      this.logger.error(`Failed to initialize NATS Relay Plugin : ${error.message}`, NatsStartupService.name);
       throw error as Error;
     }
   }
@@ -28,19 +28,19 @@ export class NatsStartupService implements OnModuleInit {
   async handleMessage(req: AlertMessageDto) {
     const tenantId = req.transaction.TenantId ?? 'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1';
 
-    this.logger.log(`Request: ${JSON.stringify(req)}`, 'NatsStartupService');
+    this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
 
     try {
       await this.triageService.handleNewAlert(req, 'SYSTEM', tenantId, 'NATS');
-      this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`);
+      this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`, NatsStartupService.name);
 
-      this.logger.log('Alert published to NATS');
+      this.logger.log('Alert published to NATS', NatsStartupService.name);
     } catch (err) {
-      this.logger.error('Failed to persist or publish alert', {
-        error: err instanceof Error ? err.message : err,
-        tenantId,
-        alertData: req.report,
-      });
+      this.logger.error(
+        `Failed to persist or publish alert | error=${err instanceof Error ? err.message : err} | tenantId=${tenantId} | alertData=${JSON.stringify(req.report)}`,
+        err instanceof Error ? err.stack : undefined,
+        NatsStartupService.name,
+      );
     }
   }
 }

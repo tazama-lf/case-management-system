@@ -22,7 +22,7 @@ model AuditLog {
 model Alert {
   alert_id           String             @id @default(uuid()) @db.Uuid
   tenant_id          String             @db.Uuid
-  priority           Priority?          @default(LOW)
+  priority           Priority?          @default(NEW)
   alert_type         AlertType?
   prediction_outcome PredictionOutcome? @default(FALSE_POSITIVE)
   source             String?            @db.VarChar(50)
@@ -31,11 +31,10 @@ model Alert {
   alert_data         Json               @db.JsonB
   transaction        Json               @db.JsonB
   network_map        Json               @db.JsonB
-  alert_status       AlertStatus        @default(NEW)
   confidence_per     Int
   created_at         DateTime           @default(now()) @db.Timestamp(6)
-  case_id            String?            @db.Uuid
-  case               Case?              @relation(fields: [case_id], references: [case_id])
+  case_id            String             @unique @db.Uuid
+  case               Case               @relation(fields: [case_id], references: [case_id])
 
   @@map("alerts")
 }
@@ -52,7 +51,7 @@ model Case {
   parent_id            String?          @db.Uuid
   case_type            CaseType?
   case_creation_type   CaseCreationType
-  alerts               Alert[]
+  alert                Alert?
   tasks                Task[]
   comments             Comment[]
 
@@ -62,7 +61,7 @@ model Case {
 model Task {
   task_id          String     @id @default(uuid()) @db.Uuid
   case_id          String     @db.Uuid
-  status           String
+  status           TaskStatus @default(UNASSIGNED_01)
   assigned_user_id String     @db.Uuid
   name             String?
   description      String?
@@ -122,33 +121,37 @@ model Report {
 }
 
 enum Priority {
-  LOW
-  MEDIUM
-  HIGH
+  NEW
+  URGENT
   CRITICAL
+  BREACH
 }
 
 enum CaseStatus {
-  DRAFT
-  PENDING_CASE_CREATION
-  READY_FOR_ASSIGNMENT
-  ASSIGNED
-  IN_PROGRESS
-  SUSPENDED
-  PENDING_FINAL_APPROVAL
-  REOPENED
-  PENDING_REOPENING_APPROVAL
-  ABANDONED
-  CLOSED
+  DRAFT_00
+  PENDING_CASE_CREATION_APPROVAL_01
+  READY_FOR_ASSIGNMENT_02
+  RETURNED_03
+  ASSIGNED_10
+  IN_PROGRESS_20
+  SUSPENDED_21
+  PENDING_FINAL_APPROVAL_22
+  PENDING_REOPENING_30
+  REOPENED_31
+  AUTOCLOSED_CONFIRMED_71
+  AUTOCLOSED_REFUTED_72
+  CLOSED_REFUTED_81
+  CLOSED_CONFIRMED_82
+  CLOSED_INCONCLUSIVE_83
+  ABANDONED_99
 }
 
-enum AlertStatus {
-  NEW
-  AUTOCLOSED_CONFIRMED
-  AUTOCLOSED_REFUTED
-  CLOSED
-  CONVERTED
-  SENT_FOR_INVESTIGATION
+enum TaskStatus {
+  UNASSIGNED_01
+  ASSIGNED_10
+  IN_PROGRESS_20
+  COMPLETED_30
+  BLOCKED_21
 }
 
 enum CaseType {

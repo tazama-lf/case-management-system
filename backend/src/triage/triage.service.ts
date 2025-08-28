@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CloseAlertDto } from './dto/close-alert.dto';
+import { CreateCaseDto } from '../case/dto/create-case.dto';
+import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ConvertAlertToCase } from './dto/convert-alert-to-case.dto';
 import { AuditLogService } from '../audit/auditLog.service';
+import { CaseService } from '../case/case.service';
+import { TaskService } from '../task/task.service';
+import { CommentService } from '../comment/comment.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AlertStatus, Priority, CaseCreationType, CaseStatus, AlertType, Prisma } from '@prisma/client';
+import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus } from '@prisma/client';
+import { Outcome } from 'src/audit/types/outcome';
 
 @Injectable()
 export class TriageService {
@@ -14,24 +20,53 @@ export class TriageService {
     private readonly logger: LoggerService,
     private prisma: PrismaService,
     private audit: AuditLogService,
+    private caseService: CaseService,
+    private taskService: TaskService,
+    private commentService: CommentService,
+    private configService: ConfigService,
   ) {}
 
   async handleNewAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
     const txtp = alert.transaction.TxTp;
 
     try {
+      const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
+      const caseDetail: CreateCaseDto = {
+        tenantId,
+        caseCreatorUserId: userId,
+        caseOwnerUserId: systemUuid,
+        status: CaseStatus.DRAFT_00,
+        priority: Priority.NEW,
+        caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+      };
+
+      const createdCase = await this.caseService.createCase(caseDetail, userId);
+
+      const createdTask = await this.taskService.createTask(
+        {
+          caseId: createdCase.case_id,
+          assignedUserId: userId,
+          status: TaskStatus.ASSIGNED_10,
+          name: 'Triage Alert',
+          description: `Created for triaging alert for case:${createdCase.case_id}`,
+        },
+        userId,
+      );
+
+      this.logger.log(`Task created: ${createdTask.task_id}`, TriageService.name);
+
       const newAlert = await this.prisma.alert.create({
         data: {
           tenant_id: tenantId,
-          priority: Priority.LOW,
+          priority: Priority.NEW,
           source: source,
           txtp: txtp,
-          alert_status: AlertStatus.NEW,
           message: String(alert.message),
           alert_data: JSON.parse(JSON.stringify(alert.report)),
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: 0,
+          case_id: createdCase.case_id,
         },
       });
       await this.audit.logAction({
@@ -39,12 +74,12 @@ export class TriageService {
         operation: 'ALERT_CREATED',
         entityName: 'Alert',
         actionPerformed: `Created new alert ${newAlert.alert_id}`,
-        outcome: 'SUCCESS',
+        outcome: Outcome.SUCCESS,
       });
 
       return newAlert;
     } catch (error) {
-      this.logger.error('Error creating alert', error);
+      this.logger.error(`Error creating alert :${error.message}`, TriageService.name);
       throw new InternalServerErrorException('Failed to create alert');
     }
   }
@@ -61,10 +96,6 @@ export class TriageService {
       throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
     }
 
-    if (existingAlert.alert_status === AlertStatus.CLOSED) {
-      throw new BadRequestException(`Alert ${alertId} is closed status and can not be updated`);
-    }
-
     try {
       const updatedAlert = await this.prisma.alert.update({
         where: { alert_id: alertId },
@@ -76,6 +107,12 @@ export class TriageService {
         },
       });
 
+      const createCommentDto = new CreateCommentDto();
+      createCommentDto.caseId = updatedAlert.case_id;
+      createCommentDto.note = dto.note;
+
+      this.commentService.addComment(createCommentDto, userId);
+
       await this.audit.logAction({
         userId,
         operation: 'ALERT_UPDATED',
@@ -85,12 +122,12 @@ export class TriageService {
           (dto.confidence_per !== undefined ? `, confidence_per=${dto.confidence_per}` : '') +
           (dto.priority !== undefined ? `, priority=${dto.priority}` : '') +
           (dto.alertType !== undefined ? `, alert_type=${dto.alertType}` : ''),
-        outcome: 'SUCCESS',
+        outcome: Outcome.SUCCESS,
       });
 
       return updatedAlert;
     } catch (error) {
-      this.logger.error(`Update failed for alert ${alertId}`, error);
+      this.logger.error(`Update failed for alert ${alertId} : ${error.message}`, TriageService.name);
       throw new InternalServerErrorException('Failed to update alert');
     }
   }
@@ -107,27 +144,36 @@ export class TriageService {
       throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
     }
 
-    if (alert.alert_status === AlertStatus.CLOSED) {
-      throw new BadRequestException(`Alert ${alertId} is already closed`);
-    }
-
     try {
-      const closedAlert = await this.prisma.alert.update({
-        where: { alert_id: alertId },
-        data: { alert_status: AlertStatus.CLOSED },
-      });
+      const existingCase = await this.caseService.retrieveCase(alert?.case_id, userId);
+
+      if (
+        existingCase.status === CaseStatus.CLOSED_CONFIRMED_82 ||
+        existingCase.status === CaseStatus.CLOSED_REFUTED_81 ||
+        existingCase.status === CaseStatus.CLOSED_INCONCLUSIVE_83
+      ) {
+        throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
+      }
+
+      const closedCase = await this.caseService.updateCase(existingCase.case_id, { status: closeAlertDto.status }, userId);
+
+      const createCommentDto = new CreateCommentDto();
+      createCommentDto.caseId = closedCase.case_id;
+      createCommentDto.note = closeAlertDto.reason;
+
+      this.commentService.addComment(createCommentDto, userId);
 
       await this.audit.logAction({
         userId,
         operation: 'ALERT_CLOSED',
         entityName: 'Alert',
-        actionPerformed: `Closed alert ${alertId} with reason: ${closeAlertDto.reason}  at ${new Date().toISOString()}`,
-        outcome: 'SUCCESS',
+        actionPerformed: `Closed case for alert ${alertId} with reason: ${closeAlertDto.reason}  at ${new Date().toISOString()}`,
+        outcome: Outcome.SUCCESS,
       });
 
-      return closedAlert;
+      return closedCase;
     } catch (error) {
-      this.logger.error(`Close failed for alert ${alertId}`, error);
+      this.logger.error(`Failed to close case for alert ${alertId} : ${error.message}`, TriageService.name);
       throw new InternalServerErrorException('Failed to close alert');
     }
   }
@@ -135,7 +181,6 @@ export class TriageService {
   async getAlertsForUser(params: {
     tenantId: string;
     priority?: string;
-    status?: string;
     type?: string;
     alertType?: string;
     search?: string;
@@ -145,9 +190,7 @@ export class TriageService {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const { tenantId, priority, status, search, source, page, limit, sortBy, sortOrder } = params;
-    const type = params.type;
-    const alertType = params.alertType;
+    const { tenantId, priority, type, alertType, search, source, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -174,13 +217,6 @@ export class TriageService {
         throw new BadRequestException(`Invalid priority: ${priority}`);
       }
       whereClause.priority = priority.toUpperCase() as Priority;
-    }
-
-    if (status) {
-      if (!Object.values(AlertStatus).includes(status.toUpperCase() as AlertStatus)) {
-        throw new BadRequestException(`Invalid status: ${status}`);
-      }
-      whereClause.alert_status = status.toUpperCase() as AlertStatus;
     }
 
     if (alertType) {
@@ -214,12 +250,6 @@ export class TriageService {
           priority: { equals: search.toUpperCase() as Priority },
         });
       }
-
-      if (Object.values(AlertStatus).includes(search.toUpperCase() as AlertStatus)) {
-        searchConditions.push({
-          alert_status: { equals: search.toUpperCase() as AlertStatus },
-        });
-      }
       if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
         searchConditions.push({
           alert_type: { equals: search.toUpperCase() as AlertType },
@@ -239,7 +269,6 @@ export class TriageService {
           txtp: true,
           priority: true,
           confidence_per: true,
-          alert_status: true,
           source: true,
           alert_type: true,
           created_at: true,
@@ -256,7 +285,7 @@ export class TriageService {
         totalPages: Math.ceil(totalCount / limit),
       };
     } catch (error) {
-      this.logger.error('Failed to fetch alerts', error);
+      this.logger.error(`Failed to fetch alerts : ${error.message}`, TriageService.name);
       throw new InternalServerErrorException('Unable to fetch alert list');
     }
   }
@@ -270,7 +299,6 @@ export class TriageService {
           txtp: true,
           priority: true,
           confidence_per: true,
-          alert_status: true,
           created_at: true,
           source: true,
           message: true,
@@ -290,7 +318,7 @@ export class TriageService {
         throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
       }
 
-      this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`);
+      this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, TriageService.name);
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...sanitizedAlert } = alert;
@@ -298,68 +326,8 @@ export class TriageService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
 
-      this.logger.error(`Failed to fetch alert ${alertId}`, error);
+      this.logger.error(`Failed to fetch alert ${alertId} : ${error.message}`, TriageService.name);
       throw new InternalServerErrorException('Unable to retrieve alert details');
-    }
-  }
-
-  async convertToCase(alertId: string, convertAlertToCase: ConvertAlertToCase, userId: string, tenantId: string) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert ${alertId} not found`);
-    }
-
-    if (alert.tenant_id !== tenantId) {
-      throw new NotFoundException(`Alert ${alertId} not accessible for this tenant`);
-    }
-
-    if (alert.alert_status === AlertStatus.CLOSED) {
-      throw new BadRequestException(`Alert ${alertId} is already closed`);
-    }
-
-    if (alert.alert_status === AlertStatus.CONVERTED) {
-      throw new BadRequestException(`Alert ${alertId} is already converted to a case`);
-    }
-
-    const casePriority = convertAlertToCase.priority ?? alert.priority;
-    const caseOwner = convertAlertToCase.caseOwnerUserId ?? userId;
-    try {
-      const newCase = await this.prisma.case.create({
-        data: {
-          case_creator_user_id: userId,
-          case_owner_user_id: caseOwner,
-          tenant_id: alert.tenant_id,
-          priority: casePriority,
-          status: CaseStatus.DRAFT,
-          parent_id: null,
-          case_type: convertAlertToCase.caseType,
-          case_creation_type: CaseCreationType.MANUAL,
-        },
-      });
-
-      await this.prisma.alert.update({
-        where: { alert_id: alertId },
-        data: {
-          alert_status: AlertStatus.CONVERTED,
-          case_id: newCase.case_id,
-        },
-      });
-
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_CONVERTED_TO_CASE',
-        entityName: 'Alert',
-        actionPerformed: `Converted alert ${alertId} to case ${newCase.case_id}`,
-        outcome: 'SUCCESS',
-      });
-
-      return newCase;
-    } catch (error) {
-      this.logger.error(`Failed to create convert alert ${alertId} to case`, error);
-      throw new InternalServerErrorException('Failed to convert alert to case');
     }
   }
 

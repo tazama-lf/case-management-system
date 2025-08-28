@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
+import { Outcome } from 'src/audit/types/outcome';
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +26,7 @@ export class AuthController {
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
-        outcome: 'success',
+        outcome: Outcome.SUCCESS,
       });
       const response: any = {
         message: 'Login successful',
@@ -41,7 +42,7 @@ export class AuthController {
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
-        outcome: 'failure',
+        outcome: Outcome.FAILURE,
       });
       this.logger.warn(`Login failed for user ${body.username}: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
