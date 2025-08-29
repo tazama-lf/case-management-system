@@ -388,25 +388,12 @@ export class TriageService {
       // Story 1A
       // === 1. Get AI prediction and update alert ===
       const prediction = await this.predictAlert();
-      const {
-        confidence_per: predictedConfidence,
-        priority: predictedPriority,
-        alertType: predictedAlertType,
-        isTruePositive: predictedTruePositive,
-      } = prediction;
+      const { confidence_per: predictedConfidence, alertType: predictedAlertType, isTruePositive: predictedTruePositive } = prediction;
       this.logger.log(
-        `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, priority=${predictedPriority}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
+        `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
         TriageService.name,
       );
-      await this.updateAlertAndUpdateTriageTask(
-        alertId,
-        triageTaskId,
-        predictedPriority,
-        predictedAlertType,
-        predictedConfidence,
-        userId,
-        tenantId,
-      );
+      await this.updateAlertAndUpdateTriageTask(alertId, triageTaskId, predictedAlertType, predictedConfidence, userId, tenantId);
 
       // Story 1F
       // === 2. Confidence below threshold → Investigation case ===
@@ -664,7 +651,6 @@ export class TriageService {
   private async updateAlertAndUpdateTriageTask(
     alertId: string,
     taskId: string,
-    predictedPriority: Priority,
     predictedAlertType: AlertType,
     predictedConfidence: number,
     userId: string,
@@ -672,7 +658,6 @@ export class TriageService {
   ): Promise<void> {
     try {
       const updateDto = new UpdateAlertDto();
-      updateDto.priority = predictedPriority;
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;
       updateDto.note = 'Updated alert data with AI outcome';
@@ -682,7 +667,7 @@ export class TriageService {
       await this.taskService.updateTask(
         taskId,
         {
-          description: `AI prediction applied: Priority=${predictedPriority}, Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
+          description: `AI prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
         },
         userId,
       );
