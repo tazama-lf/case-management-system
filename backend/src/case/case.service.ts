@@ -67,7 +67,12 @@ export class CaseService {
     try {
       const updatedCase = await this.prismaService.case.update({
         where: { case_id: caseId },
-        data: updateData,
+        data: {
+          case_type: updateData.caseType,
+          priority: updateData.priority,
+          status: updateData.status,
+          case_owner_user_id: updateData.caseOwnerUserId,
+        },
       });
 
       this.logger.log(`Case updated successfully: ${updatedCase.case_id}`, CaseService.name);
@@ -77,7 +82,6 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
         outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
       });
 
       return updatedCase;
@@ -87,9 +91,8 @@ export class CaseService {
         userId,
         operation: 'updateCase',
         entityName: CaseService.name,
-        actionPerformed: `Error updating case: ${error.message}`,
+        actionPerformed: 'Error updating case',
         outcome: Outcome.FAILURE,
-        performedAt: new Date(),
       });
       throw error;
     }

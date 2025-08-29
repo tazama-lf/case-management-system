@@ -9,16 +9,16 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 @Injectable()
 export class TaskService {
   constructor(
-    private prismaService: PrismaService,
-    private readonly loggerService: LoggerService,
+    private prisma: PrismaService,
+    private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
   ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
-    this.loggerService.log('Creating task', TaskService.name);
+    this.logger.log('Creating task', TaskService.name);
 
     try {
-      const task = await this.prismaService.task.create({
+      const task = await this.prisma.task.create({
         data: {
           case_id: taskDTO.caseId,
           status: taskDTO.status,
@@ -28,7 +28,7 @@ export class TaskService {
         },
       });
 
-      this.loggerService.log(`Task created: ${task.task_id}`, TaskService.name);
+      this.logger.log(`Task created: ${task.task_id}`, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Created task ${task.task_id}`,
@@ -40,7 +40,7 @@ export class TaskService {
 
       return task;
     } catch (error) {
-      this.loggerService.error('Error creating task', error, TaskService.name);
+      this.logger.error('Error creating task', error, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Error creating task: ${JSON.stringify(taskDTO)}`,
@@ -54,15 +54,15 @@ export class TaskService {
   }
 
   async reassignTask(taskId: string, userId: string, assignedUserId: string) {
-    this.loggerService.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
+    this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
-      const updatedTask = await this.prismaService.task.update({
+      const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: { assigned_user_id: assignedUserId },
       });
 
-      this.loggerService.log(`Task reassigned: ${updatedTask.task_id}`, TaskService.name);
+      this.logger.log(`Task reassigned: ${updatedTask.task_id}`, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Reassigned task ${taskId} to user ${assignedUserId}`,
@@ -74,16 +74,16 @@ export class TaskService {
 
       return updatedTask;
     } catch (error) {
-      this.loggerService.error(`Error reassigning task ${taskId}`, error, TaskService.name);
+      this.logger.error(`Error reassigning task ${taskId}`, error, TaskService.name);
       throw error;
     }
   }
 
   async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
-    this.loggerService.log(`Updating task ${taskId}`, TaskService.name);
+    this.logger.log(`Updating task ${taskId}`, TaskService.name);
 
     try {
-      const updatedTask = await this.prismaService.task.update({
+      const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
           status: updateData.status,
@@ -93,7 +93,7 @@ export class TaskService {
         },
       });
 
-      this.loggerService.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
+      this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Updated task ${taskId}`,
@@ -105,7 +105,7 @@ export class TaskService {
 
       return updatedTask;
     } catch (error) {
-      this.loggerService.error(`Error updating task ${taskId}`, error, TaskService.name);
+      this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
@@ -114,6 +114,46 @@ export class TaskService {
         outcome: Outcome.FAILURE,
         performedAt: new Date(),
       });
+      throw error;
+    }
+  }
+
+  async getTasksByCaseId(caseId: string, userId?: string) {
+    this.logger.log('Retrieving tasks by case', TaskService.name);
+    try {
+      const where = { case_id: caseId };
+
+      const tasks = await this.prisma.task.findMany({
+        where,
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+
+      if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getTasksByCaseId',
+          entityName: TaskService.name,
+          actionPerformed: `Successfully retrieved tasks for case : ${caseId}`,
+          outcome: Outcome.SUCCESS,
+          performedAt: new Date(),
+        });
+      }
+
+      return tasks;
+    } catch (error) {
+      this.logger.error('Error retrieving tasks', error, TaskService.name);
+      if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getTasksByCaseId',
+          entityName: TaskService.name,
+          actionPerformed: `Error retrieving tasks for case : ${caseId}`,
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+      }
       throw error;
     }
   }
