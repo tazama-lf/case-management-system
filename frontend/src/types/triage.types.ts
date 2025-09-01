@@ -104,6 +104,8 @@ export interface AlertsFilter {
   priority?: string;
   status?: string;
   type?: string;
+  alertType?: string;
+  source?: string;
   search?: string;
   page?: number;
   limit?: number;

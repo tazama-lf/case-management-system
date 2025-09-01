@@ -6,6 +6,59 @@ import type {
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
 /**
+ * Extract alert type from available data sources
+ */
+function extractAlertType(backendAlert: any): string {
+  // First check if alert_type is directly available
+  if (backendAlert.alert_type) {
+    return backendAlert.alert_type;
+  }
+  
+  // Try to derive from typology information
+  try {
+    const typologyResults = backendAlert.alert_data?.tadpResult?.typologyResult;
+    if (Array.isArray(typologyResults) && typologyResults.length > 0) {
+      const typologyId = typologyResults[0]?.id;
+      if (typologyId && typeof typologyId === 'string') {
+        // Extract meaningful part from typology ID like "typology-processor@1.0.0"
+        if (typologyId.includes('typology')) return 'AML_SCREENING';
+        if (typologyId.includes('fraud')) return 'FRAUD_DETECTION';
+        if (typologyId.includes('sanction')) return 'SANCTIONS_SCREENING';
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to extract alert type from typology data:', error);
+  }
+  
+  // Fallback to transaction type or default
+  const txType = backendAlert.txtp;
+  if (txType) {
+    if (txType.includes('pacs')) return 'TRANSACTION_MONITORING';
+    if (txType.includes('pain')) return 'TRANSACTION_MONITORING';
+  }
+  
+  return 'TRANSACTION_MONITORING'; // Default fallback
+}
+
+/**
+ * Extract risk score from alert_data.tadpResult.typologyResult
+ */
+function extractRiskScore(alertData: any): number {
+  try {
+    const typologyResults = alertData?.tadpResult?.typologyResult;
+    if (Array.isArray(typologyResults) && typologyResults.length > 0) {
+      // Get the first typology result's score
+      const result = typologyResults[0]?.result;
+      return typeof result === 'number' ? result : 0;
+    }
+    return 0;
+  } catch (error) {
+    console.warn('Failed to extract risk score from alert data:', error);
+    return 0;
+  }
+}
+
+/**
  * Transform backend Alert to UI Alert format
  */
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
@@ -14,7 +67,7 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     alert_id: backendAlert.alert_id,
     tenant_id: backendAlert.tenant_id || 'default-tenant',
     priority: backendAlert.priority,
-    alert_type: backendAlert.alert_type,
+    alert_type: extractAlertType(backendAlert),
     source: backendAlert.source,
     txtp: backendAlert.txtp,
     message: backendAlert.message,
@@ -33,7 +86,7 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     description: backendAlert.message,
     type: backendAlert.alert_type || 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
-    riskScore: backendAlert.confidence_per,
+    riskScore: extractRiskScore(backendAlert.alert_data) || backendAlert.confidence_per || 0,
     confidence: backendAlert.confidence_per,
     status: mapAlertStatusToUIStatus(backendAlert.alert_status),
     createdAt: backendAlert.created_at,

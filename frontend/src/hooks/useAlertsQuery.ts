@@ -3,6 +3,7 @@ import { useDebounce } from 'use-debounce';
 import { useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { useNotifications } from '../providers/NotificationProvider';
+import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsFilter } from '../types/triage.types';
 import type { AlertStatus } from '../types/triage.types';
 
@@ -43,7 +44,7 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
   });
 
   return {
-    alerts: data?.alerts || [],
+    alerts: (data?.alerts || []).map(alert => transformBackendAlertToUI(alert)),
     pagination: data?.pagination || {
       currentPage: 1,
       totalPages: 1,
@@ -172,25 +173,17 @@ export const useAlertOperations = () => {
 
 // Hook for filter options
 export const useAlertFilterOptions = () => {
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: alertsQueryKeys.filterOptions(),
-    queryFn: () => triageService.getFilterOptions(),
-    staleTime: 600000, // 10 minutes - filter options don't change often
-    gcTime: 3600000, // 1 hour
-  });
+  // For now, return static filter options since backend doesn't support this endpoint yet
+  const filterOptions = {
+    priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+    statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'AUTOCLOSED_CONFIRMED', 'AUTOCLOSED_REFUTED', 'SENT_FOR_INVESTIGATION'],
+    alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],
+    sources: ['REST API', 'NATS'],
+  };
 
   return {
-    filterOptions: data || {
-      priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-      statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
-      alertTypes: ['FRAUD', 'AML', 'FRAUD_AML'],
-      sources: ['REST API', 'NATS'],
-    },
-    isLoading,
-    error: error as Error | null,
+    filterOptions,
+    isLoading: false,
+    error: null,
   };
 };

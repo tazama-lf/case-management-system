@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationProvider } from '../../providers/NotificationProvider';
-import { useAlerts, useAlertDetails, useAlertOperations } from '../../hooks/useAlertsQuery';
+import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
 // Test component that uses the hook
 const TestComponent = () => {

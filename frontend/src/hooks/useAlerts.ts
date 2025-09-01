@@ -3,7 +3,6 @@ import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
-import type { AlertsFilter as ApiAlertsFilter } from '../types/triage.types';
 
 // Helper function to check if date is within time range
 const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {

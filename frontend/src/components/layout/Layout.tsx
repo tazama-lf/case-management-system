@@ -27,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
     window.location.href = '/login';
   };
 
-  const handleNavigate = (href: string) => {
+  const handleNavigate = (_href: string) => {
     // Navigation is handled by React Router
   };
 

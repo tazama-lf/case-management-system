@@ -52,11 +52,16 @@ class TriageService {
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.status) params.append('status', filters.status);
     if (filters.type) params.append('type', filters.type);
+    if (filters.alertType) params.append('alertType', filters.alertType);
+    if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+    
+    // Request full details including alert_data for risk score calculation
+    params.append('includeData', 'true');
 
     const queryString = params.toString();
     const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
@@ -71,8 +76,30 @@ class TriageService {
     }>(url);
 
     // Transform to expected frontend format
+    const alerts = backendResponse.data || [];
+    
+    // Optionally fetch detailed data for each alert to get risk scores
+    // This adds extra API calls but ensures we have complete data
+    const detailedAlerts = await Promise.all(
+      alerts.map(async (alert) => {
+        try {
+          // Try to get detailed alert data
+          const detailedAlert = await this.getAlertById(alert.alert_id);
+          // Preserve alert_type from list response if detailed response doesn't have it
+          return {
+            ...detailedAlert,
+            alert_type: detailedAlert.alert_type || alert.alert_type,
+          };
+        } catch (error) {
+          // If individual fetch fails, return the basic alert
+          console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
+          return alert;
+        }
+      })
+    );
+
     return {
-      alerts: backendResponse.data || [],
+      alerts: detailedAlerts,
       pagination: {
         currentPage: backendResponse.page || 1,
         totalPages: backendResponse.totalPages || 1,

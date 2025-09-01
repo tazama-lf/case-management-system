@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  ArrowDownTrayIcon, 
-  ExclamationTriangleIcon
+import React, { useState } from 'react';
+import {
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/common/AlertsDetailModal';
@@ -13,27 +12,146 @@ import ResultsSummary from '../components/common/ResultsSummary';
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import { useAlerts } from '../hooks/useAlerts';
-import { useAlertOperations } from '../hooks/useAlertOperations';
+import { useAlerts, useAlertOperations, useAlertFilterOptions } from '../hooks/useAlertsQuery';
 
 const AlertsDashboard: React.FC = () => {
-  const {
-    paginatedAlerts,
-    pagination,
-    filters,
-    sort,
-    loading,
-    error,
-    lastUpdated,
-    setFilters,
-    setSort,
-    setPage,
-    setPageSize,
-    refreshAlerts,
-    allAlerts
-  } = useAlerts();
+  // State for filters and pagination
+  const [filters, setFilters] = useState({
+    query: '',
+    source: '',
+    type: '',
+    priority: '',
+    status: '',
+    timeRange: '',
+    customDateRange: undefined as { startDate: string; endDate: string } | undefined
+  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sort, setSort] = useState({ column: 'created_at', direction: 'desc' as 'asc' | 'desc' });
 
-  const { operationStates, handleConvertToCase, handleCloseAlert } = useAlertOperations(refreshAlerts);
+  // React Query hooks - fetch all alerts without filters
+  const { alerts: allAlerts, isLoading, error, refetch } = useAlerts({
+    search: filters.query,
+    page,
+    limit: pageSize
+  });
+
+  // Client-side filtering and sorting
+  const filteredAndSortedAlerts = React.useMemo(() => {
+    let filtered = allAlerts;
+
+    // Filter by status
+    if (filters.status) {
+      filtered = filtered.filter(alert => 
+        alert.alert_status?.toLowerCase() === filters.status.toLowerCase()
+      );
+    }
+
+    // Filter by priority
+    if (filters.priority) {
+      filtered = filtered.filter(alert => 
+        alert.priority?.toLowerCase() === filters.priority.toLowerCase()
+      );
+    }
+
+    // Filter by alert type
+    if (filters.type) {
+      filtered = filtered.filter(alert => 
+        alert.alert_type?.toLowerCase() === filters.type.toLowerCase()
+      );
+    }
+
+    // Filter by source
+    if (filters.source) {
+      filtered = filtered.filter(alert => 
+        alert.source?.toLowerCase() === filters.source.toLowerCase()
+      );
+    }
+
+    // Sort the filtered results
+    if (sort.column) {
+      filtered.sort((a, b) => {
+        const aValue = (a as any)[sort.column];
+        const bValue = (b as any)[sort.column];
+        
+        // Handle different data types
+        let comparison = 0;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+          comparison = aValue - bValue;
+        } else if (aValue instanceof Date && bValue instanceof Date) {
+          comparison = aValue.getTime() - bValue.getTime();
+        } else {
+          // Fallback to string comparison
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+        
+        return sort.direction === 'desc' ? -comparison : comparison;
+      });
+    }
+
+    return filtered;
+  }, [allAlerts, filters.status, filters.priority, filters.type, filters.source, sort]);
+
+  // Client-side pagination
+  const paginatedAlerts = React.useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredAndSortedAlerts.slice(startIndex, endIndex);
+  }, [filteredAndSortedAlerts, page, pageSize]);
+
+  // Update pagination info for filtered results
+  const clientPagination = React.useMemo(() => {
+    const totalItems = filteredAndSortedAlerts.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    return {
+      currentPage: page,
+      totalPages,
+      totalItems,
+      pageSize,
+      onPageChange: setPage,
+    };
+  }, [filteredAndSortedAlerts.length, pageSize, page]);
+
+  const {
+    convertToCase,
+    closeAlert,
+  } = useAlertOperations();
+
+  // Get filter options
+  const { filterOptions } = useAlertFilterOptions();
+
+  // Computed values
+  const loading = isLoading;
+  const lastUpdated = new Date(); // You can track this in React Query if needed
+
+  // Alert operation handlers
+  const handleConvertToCase = async (alert: Alert, caseData?: any) => {
+    try {
+      await convertToCase({ 
+        alertId: alert.alert_id as string, 
+        data: caseData || {} 
+      });
+      refetch(); // Refresh the alerts list
+    } catch (error) {
+      console.error('Failed to convert alert to case:', error);
+    }
+  };
+
+  const handleCloseAlert = async (alert: Alert, status: string, notes: string) => {
+    try {
+      await closeAlert({ 
+        alertId: alert.alert_id as string, 
+        status: status as any, 
+        notes 
+      });
+      refetch(); // Refresh the alerts list
+    } catch (error) {
+      console.error('Failed to close alert:', error);
+    }
+  };
 
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -85,8 +203,8 @@ const AlertsDashboard: React.FC = () => {
   };
   
   const downloadOverturnedAlertsReport = () => {
-    // Filter for overturned alerts (false positives)
-    const overturnedAlerts = allAlerts.filter((alert: Alert) => alert.status === 'false_positive');
+    // Filter for overturned alerts (false positives) from current alerts
+    const overturnedAlerts = filteredAndSortedAlerts.filter((alert: any) => alert.status === 'false_positive');
     
     // Create CSV content
     const csvHeaders = [
@@ -103,7 +221,7 @@ const AlertsDashboard: React.FC = () => {
       'Currency'
     ];
     
-    const csvData: string[][] = overturnedAlerts.map((alert: Alert) => [
+    const csvData: string[][] = overturnedAlerts.map((alert: any) => [
       alert.alert_id as string || '',
       alert.transactionId as string || '',
       alert.source as string || '',
@@ -135,6 +253,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const getPriorityColor = (priority: string) => {
+    if (!priority) return 'text-gray-600 bg-gray-50';
     switch (priority.toLowerCase()) {
       case 'critical': return 'text-red-600 bg-red-50';
       case 'high': return 'text-orange-600 bg-orange-50';
@@ -145,6 +264,7 @@ const AlertsDashboard: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
+    if (!status) return 'text-gray-600 bg-gray-50';
     switch (status.toUpperCase()) {
       case 'NEW':
         return 'text-blue-600 bg-blue-50';
@@ -166,7 +286,7 @@ const AlertsDashboard: React.FC = () => {
   // Define table columns
   const columns: AlertsTableColumn<Alert>[] = [
     {
-      key: 'id',
+      key: 'alert_id',
       header: 'Alert ID',
       sortable: true,
       render: (value) => (
@@ -174,7 +294,7 @@ const AlertsDashboard: React.FC = () => {
       )
     },
     {
-      key: 'transactionId',
+      key: 'txtp',
       header: 'Transaction ID',
       sortable: true,
       render: (value) => (
@@ -185,7 +305,7 @@ const AlertsDashboard: React.FC = () => {
           }}
           className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
         >
-          {value as string}
+          {value as string || 'N/A'}
         </button>
       )
     },
@@ -206,26 +326,40 @@ const AlertsDashboard: React.FC = () => {
       key: 'riskScore',
       header: 'Risk Score',
       sortable: true,
-      render: (value) => (
-        <div className="flex items-center">
-          <span className={`font-medium ${(value as number) >= 80 ? 'text-red-600' : (value as number) >= 60 ? 'text-yellow-600' : 'text-green-600'}`}>
-            {value as number}
-          </span>
-        </div>
-      )
+      render: (value) => {
+        const score = value as number || 0;
+        const getScoreColor = (score: number) => {
+          if (score >= 80) return 'text-red-600 bg-red-50';
+          if (score >= 60) return 'text-orange-600 bg-orange-50';
+          if (score >= 40) return 'text-yellow-600 bg-yellow-50';
+          if (score > 0) return 'text-green-600 bg-green-50';
+          return 'text-gray-600 bg-gray-50';
+        };
+        
+        return (
+          <div className="flex items-center">
+            <span className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(score)}`}>
+              {score}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'priority',
       header: 'Priority',
       sortable: true,
-      render: (value) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(value as string)}`}>
-          {(value as string).toUpperCase()}
-        </span>
-      )
+      render: (value) => {
+        const priority = value as string || 'Unknown';
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(priority)}`}>
+            {priority.toUpperCase()}
+          </span>
+        );
+      }
     },
     {
-      key: 'confidence',
+      key: 'confidence_per',
       header: 'Confidence %',
       sortable: true,
       render: (value) => (
@@ -233,17 +367,20 @@ const AlertsDashboard: React.FC = () => {
       )
     },
     {
-      key: 'status',
+      key: 'alert_status',
       header: 'Status',
       sortable: true,
-      render: (value) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as string)}`}>
-          {(value as string).replace(/_/g, ' ').toUpperCase()}
-        </span>
-      )
+      render: (value) => {
+        const status = value as string || 'Unknown';
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+            {status.replace(/_/g, ' ').toUpperCase()}
+          </span>
+        );
+      }
     },
     {
-      key: 'lastUpdated',
+      key: 'created_at',
       header: 'Last Updated',
       sortable: true,
       render: (value) => (
@@ -264,7 +401,7 @@ const AlertsDashboard: React.FC = () => {
   }
 
   if (error && paginatedAlerts.length === 0) {
-    return <div>Error: {error}</div>;
+    return <div>Error: {error?.message || 'An error occurred while loading alerts'}</div>;
   }
 
   return (
@@ -282,7 +419,7 @@ const AlertsDashboard: React.FC = () => {
                   Error refreshing data
                 </h3>
                 <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
+                  <p>{error?.message || 'An error occurred while loading alerts'}</p>
                 </div>
               </div>
             </div>
@@ -292,18 +429,32 @@ const AlertsDashboard: React.FC = () => {
         {/* Search and Filters */}
         <AlertsSearchAndFilters
           searchFilters={filters}
-          onFilterChange={(key, value) => setFilters({ [key]: value })}
-          onClearFilters={() => setFilters({ query: '', source: '', type: '', priority: '', status: '', timeRange: '' })}
-          customDateRange={filters.customDateRange}
-          onCustomDateRangeChange={(range) => setFilters({ customDateRange: range })}
-          alertTypes={[]}
-          priorities={[]}
-          statuses={[]}
-          sources={[]}
+          onFilterChange={(key, value) => {
+            setFilters(prev => ({ ...prev, [key]: value }));
+            setPage(1); // Reset to first page when filters change
+          }}
+          onClearFilters={() => {
+            setFilters({ 
+              query: '', 
+              source: '', 
+              type: '', 
+              priority: '', 
+              status: '', 
+              timeRange: '',
+              customDateRange: undefined
+            });
+            setPage(1); // Reset to first page when clearing filters
+          }}
+          customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
+          onCustomDateRangeChange={(range) => setFilters(prev => ({ ...prev, customDateRange: range }))}
+          alertTypes={filterOptions.alertTypes}
+          priorities={filterOptions.priorities}
+          statuses={filterOptions.statuses}
+          sources={filterOptions.sources}
         />
 
         <ResultsSummary
-          pagination={pagination}
+          pagination={clientPagination}
           loading={loading}
           lastUpdated={lastUpdated}
           onPageSizeChange={setPageSize}
@@ -313,17 +464,14 @@ const AlertsDashboard: React.FC = () => {
         {/* Alerts Table */}
         <div className="bg-white rounded-lg shadow">
           <AlertsTable
-            data={paginatedAlerts}
+            data={paginatedAlerts as any}
             columns={columns}
-            onSort={(column, direction) => setSort(column, direction)}
+            onSort={(column, direction) => setSort({ column: String(column), direction })}
             sortColumn={sort.column}
             sortDirection={sort.direction}
             onRowClick={handleRowClick}
             emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
-            pagination={{
-              ...pagination,
-              onPageChange: setPage,
-            }}
+            pagination={clientPagination}
           />
         </div>
       </div>
@@ -335,7 +483,7 @@ const AlertsDashboard: React.FC = () => {
         onClose={handleCloseModal}
         onConvertToCase={handleConvertToCase}
         onCloseAlert={handleCloseAlert}
-        onAlertUpdated={refreshAlerts}
+        onAlertUpdated={refetch}
       />
 
       {/* Transaction Messages Modal */}

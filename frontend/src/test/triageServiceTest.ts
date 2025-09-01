@@ -54,14 +54,14 @@ export const exampleUsage = {
 
   // Close alert
   async closeAlert(id: string) {
-    return triageService.closeAlert(id, 'Resolved - false positive');
+    return triageService.closeAlert(id, 'CLOSED', 'Resolved - false positive');
   },
 
   // Convert to case
   async convertToCase(id: string) {
     return triageService.convertAlertToCase(id, {
       priority: 'MEDIUM',
-      caseType: 'INVESTIGATION',
+      caseType: 'FRAUD',
     });
   },
 };

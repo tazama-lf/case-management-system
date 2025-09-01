@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { FixedSizeList } from 'react-window';
+// import { List } from 'react-window';
 import type { Alert } from '../../types/triage.types';
 
 interface VirtualizedAlertTableProps {
@@ -193,16 +193,18 @@ const VirtualizedAlertTable: React.FC<VirtualizedAlertTableProps> = ({
         <div className="flex-shrink-0 w-36 text-right">Created</div>
       </div>
 
-      {/* Virtualized List */}
-      <FixedSizeList
-        height={height}
-        itemCount={alerts.length}
-        itemSize={itemHeight}
-        itemData={itemData}
-        overscanCount={5}
-      >
-        {AlertRow}
-      </FixedSizeList>
+      {/* Simple List - TODO: Implement virtualization properly */}
+      <div style={{ height, overflow: 'auto' }}>
+        {alerts.map((alert, index) => (
+          <div key={alert.alert_id || index} style={{ height: itemHeight }}>
+            <AlertRow 
+              index={index} 
+              style={{ height: itemHeight }}
+              data={itemData}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
