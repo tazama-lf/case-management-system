@@ -166,6 +166,7 @@ export interface ConvertToCaseResponse {
 
 // Close Alert DTO
 export interface CloseAlertDto {
+  status?: AlertStatus;
   reason: string;
 }
 

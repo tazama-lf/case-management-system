@@ -6,11 +6,11 @@ import {
   XCircleIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
-import type { Alert as TriageAlert, ActionHistory } from '../../types/triage.types';
+import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../../types/triage.types';
 import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
 import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
-import ConvertToCaseModal from './ConvertToCaseModal';
+import ConvertToCaseModal from './UpdateAlertModal';
 import type { ConvertToCaseData } from '../../types/triage.types';
 
 interface AlertsDetailModalProps {
@@ -18,7 +18,7 @@ interface AlertsDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConvertToCase?: (alert: LegacyAlert, caseData?: ConvertToCaseData) => void;
-  onCloseAlert?: (alert: LegacyAlert, justification?: string) => void;
+  onCloseAlert?: (alert: LegacyAlert, status: AlertStatus, notes: string) => void;
   onAlertUpdated?: () => void; // Callback to refresh the alerts list
 }
 
@@ -258,13 +258,13 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const handleCloseAlert = () => {
     if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
       setShowCloseModal(true);
-  }
+    }
   };
 
-  const handleConfirmCloseAlert = async (_alertId: string, justification: string) => {
+  const handleConfirmCloseAlert = async (_alertId: string, status: AlertStatus, notes: string) => {
     try {
       if (alert && onCloseAlert) {
-        await onCloseAlert(convertToLegacyAlert(alert), justification);
+        await onCloseAlert(convertToLegacyAlert(alert), status, notes);
         if (onAlertUpdated) {
           onAlertUpdated();
         }
@@ -396,17 +396,17 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
-                      {/* Only show Convert to Case if status allows converting */}
-                      {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
+            {/* Only show Update Alert if status allows modifying */}
+            {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
                         <button
                           onClick={() => {
                             handleConvert();
                           }}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                          title="Convert this alert to a case for further investigation"
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              title="Update this alert with new details"
                         >
                           <DocumentDuplicateIcon className="h-4 w-4 mr-1.5" />
-                          Convert to Case
+              Update Alert
                         </button>
                       )}
                       
@@ -670,7 +670,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           isOpen={showConvertModal}
           onClose={() => setShowConvertModal(false)}
           alert={convertToLegacyAlert(alert)}
-          onConfirmConvert={handleConfirmConvert}
+            onConfirmUpdate={handleConfirmConvert}
         />
       )}
     </div>

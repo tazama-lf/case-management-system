@@ -1,35 +1,37 @@
 import apiClient from './apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory } from '../types/triage.types';
+import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
 
   // Error handling utility
-  private handleError(error: any, operation: string): Error {
+  private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
-    
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
+
+    const err = error as { response?: { data?: unknown }; message?: string } | undefined;
+    if (err?.response?.data) {
+      const apiError = err.response.data as ApiErrorResponse;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
-    
-    if (error.message) {
-      return new Error(error.message);
+
+    if (err?.message) {
+      return new Error(err.message);
     }
-    
+
     return new Error(`Failed to ${operation}`);
   }
 
   // Response validation utility
-  private validateAlertResponse(data: any): Alert {
+  private validateAlertResponse(data: unknown): Alert {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid alert data received');
     }
-    
-    if (!data.alert_id) {
+
+    const d = data as { alert_id?: unknown };
+    if (!d.alert_id) {
       throw new Error('Alert ID is missing from response');
     }
-    
+
     return data as Alert;
   }
 
@@ -86,7 +88,12 @@ class TriageService {
     sources: string[];
   }> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/filter-options`);
+      const response = await apiClient.get<{
+        priorities: string[];
+        statuses: string[];
+        alertTypes: string[];
+        sources: string[];
+      }>(`${this.baseUrl}/filter-options`);
       return response;
     } catch (error) {
       throw this.handleError(error, 'fetch filter options');
@@ -123,10 +130,12 @@ class TriageService {
     }
   }
 
+  
+
   // PATCH /api/v1/triage/alerts/:alertId/close
-  async closeAlert(alertId: string, justification: string): Promise<Alert> {
+  async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
     try {
-      const data: CloseAlertDto = { reason: justification };
+      const data: CloseAlertDto = { status, reason: notes };
       const response = await apiClient.patch<Alert>(`${this.baseUrl}/${alertId}/close`, data);
       return this.validateAlertResponse(response);
     } catch (error) {

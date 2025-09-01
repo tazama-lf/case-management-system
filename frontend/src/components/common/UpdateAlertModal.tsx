@@ -8,7 +8,9 @@ interface ConvertToCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   alert: Alert;
-  onConfirmConvert: (caseData: ConvertToCaseDataType) => void;
+  // onConfirmConvert kept for backward compatibility; prefer using onConfirmUpdate when available
+  onConfirmConvert?: (caseData: ConvertToCaseDataType) => void;
+  onConfirmUpdate?: (caseData: ConvertToCaseDataType) => void;
 }
 
 
@@ -17,6 +19,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   onClose,
   alert,
   onConfirmConvert,
+  onConfirmUpdate,
 }) => {
   const [caseType, setCaseType] = useState<'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''>('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | ''>('');
@@ -45,7 +48,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
 
     if (!caseType || !priority) {
       // Basic validation
-      window.alert('Please select a Case Type and Priority Level.');
+      window.alert('Please select an Alert Type and Priority Level.');
       return;
     }
 
@@ -61,14 +64,20 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
         notes: notes.trim(),
         alertId: alert.alert_id,
         caseOwnerUserId: chosenOwner,
-        // risk fields will be populated by parent (AlertsDashboard) from alert data, but include here for preview
+        // risk fields will be populated by parent (AlertsDashboard) from alert data
         ...extractRiskFromAlert(alert)
       };
 
-      await onConfirmConvert(caseData);
+      // Prefer the new onConfirmUpdate handler when provided; fall back to onConfirmConvert for compatibility
+      if (onConfirmUpdate) {
+        await onConfirmUpdate(caseData);
+      } else if (onConfirmConvert) {
+        await onConfirmConvert(caseData);
+      }
+
       handleCancel();
     } catch (error) {
-      console.error('Error converting alert to case:', error);
+      console.error('Error updating alert:', error);
       // Error handling will be done by parent component
     } finally {
       setIsSubmitting(false);
@@ -154,7 +163,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
-                Convert Alert to Case
+                Update Alert
               </h3>
               <button
                 onClick={handleCancel}
@@ -170,7 +179,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
               {/* Case Type */}
               <div>
                 <label htmlFor="caseType" className="block text-sm font-medium text-gray-700 mb-2">
-                  Case Type <span className="text-red-500">*</span>
+                  Alert Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="caseType"
@@ -179,7 +188,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="" disabled>Select a case type</option>
+                  <option value="" disabled>Select an alert type</option>
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML (Anti-Money Laundering)</option>
                   <option value="FRAUD_AND_AML">Fraud and AML</option>
@@ -189,7 +198,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
               {/* Case Priority Level (radio) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Case Priority Level <span className="text-red-500">*</span>
+                  Alert Priority Level <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {(['low', 'medium', 'high'] as const).map((priorityLevel) => (
@@ -267,7 +276,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label htmlFor="linkCases" className="ml-2 text-sm font-medium text-gray-700">
-                    Link to Other Cases
+                    Link to Other Alerts
                   </label>
                 </div>
 
@@ -279,7 +288,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                         type="text"
                         value={caseSearchQuery}
                         onChange={(e) => setCaseSearchQuery(e.target.value)}
-                        placeholder="Search case ID or title..."
+                        placeholder="Search alert ID or title..."
                         className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                       <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -307,9 +316,9 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                     )}
 
                     {/* Linked Cases */}
-                    {linkedCases.length > 0 && (
+                        {linkedCases.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-700">Linked Cases:</p>
+                        <p className="text-sm font-medium text-gray-700">Linked Alerts:</p>
                         <div className="flex flex-wrap gap-2">
                           {linkedCases.map((caseId) => (
                             <span
@@ -360,10 +369,10 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-amber-800">
-                      Confirm Case Creation
+                      Confirm Update
                     </h3>
                     <div className="mt-2 text-sm text-amber-700">
-                      <p>This action will convert the alert into a case and mark the original alert as "Converted". This action cannot be undone.</p>
+                      <p>This action will update the alert with the provided details. When the Update Alert endpoint is available the frontend will post these changes to the server.</p>
                     </div>
                   </div>
                 </div>
@@ -379,7 +388,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
               disabled={isSubmitting}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating Case...' : 'Create Case'}
+              {isSubmitting ? 'Updating...' : 'Save Changes'}
             </button>
             <button
               type="button"
