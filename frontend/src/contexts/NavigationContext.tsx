@@ -7,7 +7,9 @@ interface NavigationProviderProps {
   children: React.ReactNode;
 }
 
-const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => {
+const NavigationProvider: React.FC<NavigationProviderProps> = ({
+  children,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
@@ -22,7 +24,7 @@ const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => 
       initials: 'JD',
       tenantId: 'tenant-123',
       roles: ['investigator', 'analyst'],
-      permissions: ['read:alerts', 'write:cases', 'read:analytics']
+      permissions: ['read:alerts', 'write:cases', 'read:analytics'],
     };
     setUser(mockUser);
   }, []);

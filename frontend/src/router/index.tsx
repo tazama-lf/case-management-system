@@ -19,9 +19,9 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: (
-        <ProtectedRoute>
-          <LayoutWithProvider />
-        </ProtectedRoute>
+      <ProtectedRoute>
+        <LayoutWithProvider />
+      </ProtectedRoute>
     ),
     children: [
       {
@@ -35,17 +35,17 @@ export const router = createBrowserRouter([
       {
         path: 'supervisor',
         element: (
-            <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
-              <SupervisorDashboard />
-            </ProtectedRoute>
+          <ProtectedRoute requiredRoles={['supervisor', 'admin']}>
+            <SupervisorDashboard />
+          </ProtectedRoute>
         ),
       },
       {
         path: 'admin',
         element: (
-            <ProtectedRoute requiredRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
         ),
       },
     ],

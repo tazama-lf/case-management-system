@@ -21,7 +21,9 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   onConfirmConvert,
   onConfirmUpdate,
 }) => {
-  const [caseType, setCaseType] = useState<'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''>('');
+  const [caseType, setCaseType] = useState<
+    'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''
+  >('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [showLinkCases, setShowLinkCases] = useState(false);
   const [linkedCases, setLinkedCases] = useState<string[]>([]);
@@ -37,9 +39,16 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   const existingCases: { id: string; title: string }[] = [];
 
   const filteredCases = caseSearchQuery
+<<<<<<< HEAD
+    ? existingCases.filter(
+        (caseItem) =>
+          caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
+          caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase()),
+=======
     ? existingCases.filter((caseItem) =>
         caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
         caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
       )
     : [];
 
@@ -53,7 +62,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const chosenOwner = caseOwnerUserId === 'other' ? (otherOwnerInput.trim() || undefined) : caseOwnerUserId;
 
@@ -131,15 +140,19 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   };
 
   const handleRemoveLinkedCase = (caseId: string) => {
-    setLinkedCases(linkedCases.filter(id => id !== caseId));
+    setLinkedCases(linkedCases.filter((id) => id !== caseId));
   };
 
   const getPriorityColor = (priorityLevel: string) => {
     switch (priorityLevel) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-orange-400 bg-orange-50 border-orange-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'high':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'medium':
+        return 'text-orange-400 bg-orange-50 border-orange-200';
+      case 'low':
+        return 'text-green-600 bg-green-50 border-green-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
@@ -184,7 +197,11 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                 <select
                   id="caseType"
                   value={caseType}
-                  onChange={(e) => setCaseType(e.target.value as 'FRAUD' | 'AML' | 'FRAUD_AND_AML')}
+                  onChange={(e) =>
+                    setCaseType(
+                      e.target.value as 'FRAUD' | 'AML' | 'FRAUD_AND_AML',
+                    )
+                  }
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -215,7 +232,9 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                         name="priority"
                         value={priorityLevel}
                         checked={priority === priorityLevel}
-                        onChange={(e) => setPriority(e.target.value as typeof priority)}
+                        onChange={(e) =>
+                          setPriority(e.target.value as typeof priority)
+                        }
                         className="sr-only"
                       />
                       <div className="flex items-center">
@@ -230,7 +249,9 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                             <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
                           )}
                         </div>
-                        <span className="text-sm font-medium capitalize">{priorityLevel}</span>
+                        <span className="text-sm font-medium capitalize">
+                          {priorityLevel}
+                        </span>
                       </div>
                     </label>
                   ))}
@@ -305,12 +326,18 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                               onClick={() => handleAddLinkedCase(caseItem.id)}
                               className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                             >
-                              <div className="font-medium text-sm text-gray-900">{caseItem.id}</div>
-                              <div className="text-xs text-gray-500">{caseItem.title}</div>
+                              <div className="font-medium text-sm text-gray-900">
+                                {caseItem.id}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {caseItem.title}
+                              </div>
                             </button>
                           ))
                         ) : (
-                          <div className="px-3 py-2 text-sm text-gray-500">No cases found</div>
+                          <div className="px-3 py-2 text-sm text-gray-500">
+                            No cases found
+                          </div>
                         )}
                       </div>
                     )}
@@ -344,7 +371,10 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
 
               {/* Notes */}
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="notes"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Notes <span className="text-gray-500">(Optional)</span>
                 </label>
                 <textarea
@@ -363,8 +393,16 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-amber-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">

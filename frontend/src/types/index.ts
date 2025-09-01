@@ -18,24 +18,24 @@ export type {
   AlertTableAction,
   AlertsSearchFilters,
   ApiError,
-  ServiceResponse
+  ServiceResponse,
 } from './triage.types';
 
 // Export the Alert types with specific names to avoid conflicts
 export type { Alert as TriageAlert } from './triage.types';
-export type { 
+export type {
   Alert as UIAlert,
-  TransactionMessage 
+  TransactionMessage,
 } from './alertsdashboard.types';
 
 // Export the constants
-export { 
+export {
   Priority as PriorityValues,
   AlertStatus as AlertStatusValues,
   AlertType as AlertTypeValues,
   CaseStatus as CaseStatusValues,
   CaseType as CaseTypeValues,
-  CaseCreationType as CaseCreationTypeValues 
+  CaseCreationType as CaseCreationTypeValues,
 } from './triage.types';
 
 // Utility functions

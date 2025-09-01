@@ -231,7 +231,9 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
             <div className="flex-1 overflow-hidden">
               <div className="h-full border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-700">XML Payload</h4>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    XML Payload
+                  </h4>
                 </div>
                 <div className="p-4 overflow-auto h-full bg-gray-900">
                   <pre className="text-sm text-green-400 font-mono whitespace-pre-wrap">

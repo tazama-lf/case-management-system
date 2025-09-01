@@ -1,4 +1,3 @@
- 
 import { JwtStrategy } from '../../src/auth/jwt.strategy';
 import * as fs from 'fs';
 

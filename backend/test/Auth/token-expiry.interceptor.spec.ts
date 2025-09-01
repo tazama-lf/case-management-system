@@ -1,4 +1,3 @@
- 
 import { TokenExpiryInterceptor } from '../../src/auth/token-expiry.interceptor';
 import { AuthService } from '../../src/auth/auth.service';
 import { ExecutionContext, UnauthorizedException, CallHandler } from '@nestjs/common';
@@ -14,7 +13,7 @@ describe('TokenExpiryInterceptor', () => {
     authService = {
       isTokenExpired: jest.fn(),
     };
-  interceptor = new TokenExpiryInterceptor(authService as AuthService);
+    interceptor = new TokenExpiryInterceptor(authService as AuthService);
     context = {
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue({

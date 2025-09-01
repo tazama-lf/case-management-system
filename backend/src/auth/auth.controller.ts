@@ -3,7 +3,8 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
-import { AuthGuard } from '@nestjs/passport';
+import { TazamaAuthGuard } from './tazama-auth.guard';
+import { Outcome } from 'src/audit/types/outcome';
 
 @Controller('auth')
 export class AuthController {
@@ -17,13 +18,15 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: { username: string; password: string }) {
     try {
+      this.logger.log(`Attempting login for user ${body.username}`);
       const result = await this.authService.login(body.username, body.password);
+      this.logger.log(`User ${JSON.stringify(result)} logged in successfully`);
       await this.auditLogService.logAction({
         userId: 'unknown',
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
-        outcome: 'success',
+        outcome: Outcome.SUCCESS,
       });
       const response: any = {
         message: 'Login successful',
@@ -39,20 +42,20 @@ export class AuthController {
         operation: 'login',
         entityName: 'user',
         actionPerformed: 'login',
-        outcome: 'failure',
+        outcome: Outcome.FAILURE,
       });
-      this.logger.warn(`Login failed for user ${body.username}: ${error.message}`);
+      this.logger.warn(`Login failed for user ${body.username}: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(TazamaAuthGuard)
   @Get('me')
   getMe(@User() user: any) {
     return user;
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(TazamaAuthGuard)
   @Get('audit-logs')
   async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
     return this.auditLogService.getLogs(Number(limit), Number(offset));

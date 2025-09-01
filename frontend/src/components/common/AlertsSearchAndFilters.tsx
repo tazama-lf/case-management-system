@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../../types/alertsdashboard.types';
 // triageService not needed for client-side filter options
 
@@ -11,12 +15,20 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
+<<<<<<< HEAD
+  onCustomDateRangeChange: (range: {
+    startDate: string;
+    endDate: string;
+  }) => void;
+  onSearch?: (query: string) => void; // For real-time search callback
+=======
   onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
   // onSearch deprecated; search is handled by parent via `searchFilters.query`
   alertTypes?: string[];
   priorities?: string[];
   statuses?: string[];
   sources?: string[];
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }
 
 interface FilterOptions {
@@ -32,9 +44,13 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
+<<<<<<< HEAD
+  onSearch,
+=======
   
   alertTypes
   ,priorities, statuses, sources
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
@@ -42,12 +58,36 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     priorities: [],
     statuses: [],
     alertTypes: [],
-    sources: []
+    sources: [],
   });
   const [loadingOptions] = useState(false);
 
   // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
+<<<<<<< HEAD
+    const loadFilterOptions = async () => {
+      try {
+        setLoadingOptions(true);
+        const options = await triageService.getFilterOptions();
+        setFilterOptions(options);
+      } catch (error) {
+        console.error('Failed to load filter options:', error);
+        // Fallback to static options if API fails
+        setFilterOptions({
+          priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+          statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
+          alertTypes: [
+            'Transaction Monitoring',
+            'AML Screening',
+            'Velocity Check',
+          ],
+          sources: ['REST API', 'Transaction Monitoring System'],
+        });
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+=======
     setFilterOptions({
       priorities: (priorities && priorities.length > 0) ? priorities : ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
       statuses: (statuses && statuses.length > 0) ? statuses : ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'false_positive'],
@@ -55,12 +95,15 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       sources: (sources && sources.length > 0) ? sources : ['REST API', 'NATS']
     });
   }, [alertTypes, priorities, statuses, sources]);
+>>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 
 
-  const hasActiveFilters = Object.entries(searchFilters).some(([key, value]) => {
-    if (key === 'query') return false; // Don't count search query as filter
-    return value && value !== '';
-  });
+  const hasActiveFilters = Object.entries(searchFilters).some(
+    ([key, value]) => {
+      if (key === 'query') return false; // Don't count search query as filter
+      return value && value !== '';
+    },
+  );
 
   const handleTimeRangeChange = (value: string) => {
     onFilterChange('timeRange', value);
@@ -71,7 +114,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     }
   };
 
-  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+  const handleCustomDateChange = (
+    field: 'startDate' | 'endDate',
+    value: string,
+  ) => {
     const newRange = { ...customDateRange, [field]: value };
     onCustomDateRangeChange(newRange);
   };
@@ -81,9 +127,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       case 'priority':
         return value.charAt(0) + value.slice(1).toLowerCase();
       case 'status':
-        return value.split('_').map(word => 
-          word.charAt(0) + word.slice(1).toLowerCase()
-        ).join(' ');
+        return value
+          .split('_')
+          .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+          .join(' ');
       default:
         return value;
     }
@@ -140,7 +187,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           {loadingOptions ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-2 text-sm text-gray-500">Loading filter options...</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Loading filter options...
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -247,7 +296,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           {/* Custom Date Range Picker */}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Custom Date Range</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                Custom Date Range
+              </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,7 +307,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.startDate}
-                    onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                    onChange={(e) =>
+                      handleCustomDateChange('startDate', e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -267,7 +320,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.endDate}
-                    onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                    onChange={(e) =>
+                      handleCustomDateChange('endDate', e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

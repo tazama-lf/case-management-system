@@ -10,7 +10,7 @@ import 'reflect-metadata';
 process.env.STARTUP_TYPE = 'nats';
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { NatsStartupService } from '../src/nats/nats.startup';
+import { NatsStartupService } from '../src/nats/nats.service';
 import { TriageService } from '../src/triage/triage.service';
 import { Priority, AlertStatus } from '@prisma/client';
 import { validate } from 'class-validator';
@@ -83,11 +83,7 @@ describe('NatsStartupService', () => {
     expect(service).toBeDefined();
   });
 
-
-
   describe('handleMessage', () => {
-
-
     const validAlertPayload = {
       result: {
         tenant_id: 'test-tenant',
@@ -107,7 +103,7 @@ describe('NatsStartupService', () => {
         confidence_per: 85,
         case_id: 'test-case-123',
         userId: 'test-user',
-      }
+      },
     };
 
     // Use the new ResultDto structure for AlertMessageDto
@@ -134,7 +130,7 @@ describe('NatsStartupService', () => {
             networkMap: validAlertPayload.result.network_map,
           },
         },
-  validAlertPayload.result.userId,
+        validAlertPayload.result.userId,
         validAlertPayload.result.transaction.tenantId,
         'NATS',
       );
@@ -147,10 +143,10 @@ describe('NatsStartupService', () => {
       };
       mockValidate.mockResolvedValue([validationError] as any);
 
-  await service.handleMessage(validAlertPayload);
+      await service.handleMessage(validAlertPayload);
 
-  expect(triageService.handleNewAlert).not.toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
+      expect(triageService.handleNewAlert).not.toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle missing tenantId', async () => {
@@ -159,14 +155,14 @@ describe('NatsStartupService', () => {
         result: {
           ...validAlertPayload.result,
           transaction: { TxTp: 'test-txtp' }, // Missing tenantId
-        }
+        },
       };
       mockPlainToInstance.mockReturnValue({
         ...validAlertDto,
         result: {
           ...validAlertDto.result,
           transaction: { TxTp: 'test-txtp' },
-        }
+        },
       } as any);
 
       await service.handleMessage(invalidPayload);
@@ -181,14 +177,14 @@ describe('NatsStartupService', () => {
         result: {
           ...validAlertPayload.result,
           transaction: { tenantId: 'test-tenant' }, // Missing TxTp
-        }
+        },
       };
       mockPlainToInstance.mockReturnValue({
         ...validAlertDto,
         result: {
           ...validAlertDto.result,
           transaction: { tenantId: 'test-tenant' },
-        }
+        },
       } as any);
 
       await service.handleMessage(invalidPayload);
@@ -202,10 +198,10 @@ describe('NatsStartupService', () => {
       const error = new Error('Triage service failed');
       (triageService.handleNewAlert as jest.Mock).mockRejectedValue(error);
 
-  await service.handleMessage(validAlertPayload);
+      await service.handleMessage(validAlertPayload);
 
-  expect(triageService.handleNewAlert).toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
+      expect(triageService.handleNewAlert).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     it('should handle non-Error exceptions from triage service', async () => {
@@ -213,10 +209,10 @@ describe('NatsStartupService', () => {
       const error = 'String error';
       (triageService.handleNewAlert as jest.Mock).mockRejectedValue(error);
 
-  await service.handleMessage(validAlertPayload);
+      await service.handleMessage(validAlertPayload);
 
-  expect(triageService.handleNewAlert).toHaveBeenCalled();
-  expect(mockLoggerService.error).toHaveBeenCalled();
+      expect(triageService.handleNewAlert).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
 
     describe('NATS message subscription edge cases', () => {
@@ -234,36 +230,40 @@ describe('NatsStartupService', () => {
         const badJson = '{invalidJson:';
         // Simulate the subscription loop
         const sc = { decode: () => badJson };
-    // msg variable removed (was unused)
+        // msg variable removed (was unused)
         // Patch handleMessage to not be called
         service.handleMessage = jest.fn();
         // Simulate the try/catch block
         try {
-      const data = sc.decode();
+          const data = sc.decode();
           await service.handleMessage(JSON.parse(data));
         } catch (err) {
           mockLoggerService.error('Failed to process NATS message', { error: err });
         }
         expect(mockLoggerService.error).toHaveBeenCalledWith(
           'Failed to process NATS message',
-          expect.objectContaining({ error: expect.any(Error) })
+          expect.objectContaining({ error: expect.any(Error) }),
         );
         expect(service.handleMessage).not.toHaveBeenCalled();
       });
 
       it('should log error if unexpected error occurs before handleMessage', async () => {
-        const sc = { decode: () => { throw new Error('decode failed'); } };
-    // msg variable removed (was unused)
+        const sc = {
+          decode: () => {
+            throw new Error('decode failed');
+          },
+        };
+        // msg variable removed (was unused)
         service.handleMessage = jest.fn();
         try {
-      const data = sc.decode();
+          const data = sc.decode();
           await service.handleMessage(JSON.parse(data));
         } catch (err) {
           mockLoggerService.error('Failed to process NATS message', { error: err });
         }
         expect(mockLoggerService.error).toHaveBeenCalledWith(
           'Failed to process NATS message',
-          expect.objectContaining({ error: expect.any(Error) })
+          expect.objectContaining({ error: expect.any(Error) }),
         );
         expect(service.handleMessage).not.toHaveBeenCalled();
       });
@@ -290,7 +290,7 @@ describe('NatsStartupService', () => {
             networkMap: validAlertPayload.result.network_map,
           },
         },
-  validAlertPayload.result.userId,
+        validAlertPayload.result.userId,
         validAlertPayload.result.transaction.tenantId,
         'NATS',
       );

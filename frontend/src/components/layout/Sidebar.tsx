@@ -10,7 +10,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
 
   const hasAccess = (item: NavItem): boolean => {
     if (!item.roles || !user?.roles) return true;
-    return item.roles.some(role => user.roles.includes(role));
+    return item.roles.some((role) => user.roles.includes(role));
   };
 
   const isActive = (href: string): boolean => {
@@ -21,10 +21,10 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
   };
 
   const toggleExpanded = (href: string) => {
-    setExpandedItems(prev =>
+    setExpandedItems((prev) =>
       prev.includes(href)
-        ? prev.filter(item => item !== href)
-        : [...prev, href]
+        ? prev.filter((item) => item !== href)
+        : [...prev, href],
     );
   };
 
@@ -44,16 +44,19 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
               onClick={() => toggleExpanded(item.href)}
               className={`
                 group flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm font-semibold leading-6 transition-colors duration-200
-                ${active 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
+                ${
+                  active
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
                 }
                 ${level > 0 ? 'ml-6' : ''}
               `}
             >
               <Icon
                 className={`h-6 w-6 shrink-0 ${
-                  active ? 'text-blue-700' : 'text-gray-400 group-hover:text-blue-700'
+                  active
+                    ? 'text-blue-700'
+                    : 'text-gray-400 group-hover:text-blue-700'
                 }`}
                 aria-hidden="true"
               />
@@ -74,16 +77,19 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
               to={item.href}
               className={`
                 group flex w-full items-center gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors duration-200
-                ${active 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
+                ${
+                  active
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
                 }
                 ${level > 0 ? 'ml-6' : ''}
               `}
             >
               <Icon
                 className={`h-6 w-6 shrink-0 ${
-                  active ? 'text-blue-700' : 'text-gray-400 group-hover:text-blue-700'
+                  active
+                    ? 'text-blue-700'
+                    : 'text-gray-400 group-hover:text-blue-700'
                 }`}
                 aria-hidden="true"
               />
@@ -96,12 +102,12 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
             </Link>
           )}
         </div>
-        
+
         {hasChildren && isExpanded && (
           <ul className="mt-1 space-y-1">
-            {item.children!.filter(hasAccess).map(child => 
-              renderNavItem(child, level + 1)
-            )}
+            {item
+              .children!.filter(hasAccess)
+              .map((child) => renderNavItem(child, level + 1))}
           </ul>
         )}
       </li>
@@ -127,7 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>
             <ul role="list" className="-mx-2 space-y-1">
-              {navigation.filter(hasAccess).map(item => renderNavItem(item))}
+              {navigation.filter(hasAccess).map((item) => renderNavItem(item))}
             </ul>
           </li>
 

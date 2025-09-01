@@ -8,20 +8,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import {
-  AlertStatus,
-  Priority,
-  CaseType,
-  CaseStatus,
-  CaseCreationType,
-  AlertType,
-} from '@prisma/client';
+import { AlertStatus, Priority, CaseType, CaseStatus, CaseCreationType, AlertType } from '@prisma/client';
 
-import {
-  Logger,
-  NotFoundException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
 import { ConvertAlertToCase } from 'src/triage/dto/convert-alert-to-case.dto';
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
@@ -30,7 +19,7 @@ const createMockPrismaService = () => ({
   alert: {
     create: jest.fn(),
     findUnique: jest.fn(),
-    findFirst:jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
@@ -38,7 +27,6 @@ const createMockPrismaService = () => ({
   case: {
     create: jest.fn(),
   },
-
 });
 
 describe('TriageService', () => {
@@ -140,96 +128,84 @@ describe('TriageService', () => {
   });
 
   describe('updateAlertData', () => {
-  const alertId = 'alert-123';
-  const userId = 'test-user-id';
-  const tenantId = 'test-tenant-id';
+    const alertId = 'alert-123';
+    const userId = 'test-user-id';
+    const tenantId = 'test-tenant-id';
 
-  const mockUpdateDto: UpdateAlertDto = {
-    confidence_per: 85,
-    priority: Priority.HIGH,
-    alertType: AlertType.FRAUD, // Added because service updates alert_type
-  };
-
-  const mockExistingAlert = {
-    alert_id: alertId,
-    tenant_id: tenantId,
-    priority: Priority.LOW,
-    source: 'test-source',
-    txtp: null,
-    message: 'Test alert message',
-    alert_data: { test: 'report data' },
-    transaction: { test: 'transaction data' },
-    network_map: { test: 'network data' },
-    confidence_per: 0,
-    alert_status: AlertStatus.NEW,
-    case_id: null,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
-
-  it('should update alert successfully', async () => {
-    const updatedAlert = {
-      ...mockExistingAlert,
+    const mockUpdateDto: UpdateAlertDto = {
       confidence_per: 85,
       priority: Priority.HIGH,
-      alert_type: AlertType.FRAUD,
+      alertType: AlertType.FRAUD, // Added because service updates alert_type
     };
 
-    prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
-    prismaService.alert.update.mockResolvedValue(updatedAlert);
+    const mockExistingAlert = {
+      alert_id: alertId,
+      tenant_id: tenantId,
+      priority: Priority.LOW,
+      source: 'test-source',
+      txtp: null,
+      message: 'Test alert message',
+      alert_data: { test: 'report data' },
+      transaction: { test: 'transaction data' },
+      network_map: { test: 'network data' },
+      confidence_per: 0,
+      alert_status: AlertStatus.NEW,
+      case_id: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
 
-    const result = await service.updateAlertData(
-      alertId,
-      mockUpdateDto,
-      userId,
-      tenantId,
-    );
+    it('should update alert successfully', async () => {
+      const updatedAlert = {
+        ...mockExistingAlert,
+        confidence_per: 85,
+        priority: Priority.HIGH,
+        alert_type: AlertType.FRAUD,
+      };
 
-    expect(prismaService.alert.findFirst).toHaveBeenCalledWith({
-      where: { alert_id: alertId, tenant_id: tenantId },
+      prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
+      prismaService.alert.update.mockResolvedValue(updatedAlert);
+
+      const result = await service.updateAlertData(alertId, mockUpdateDto, userId, tenantId);
+
+      expect(prismaService.alert.findFirst).toHaveBeenCalledWith({
+        where: { alert_id: alertId, tenant_id: tenantId },
+      });
+      expect(prismaService.alert.update).toHaveBeenCalledWith({
+        where: { alert_id: alertId },
+        data: {
+          confidence_per: mockUpdateDto.confidence_per,
+          priority: mockUpdateDto.priority,
+          alert_type: mockUpdateDto.alertType,
+        },
+      });
+      expect(auditService.logAction).toHaveBeenCalled();
+      expect(result).toEqual(updatedAlert);
     });
-    expect(prismaService.alert.update).toHaveBeenCalledWith({
-      where: { alert_id: alertId },
-      data: {
-        confidence_per: mockUpdateDto.confidence_per,
-        priority: mockUpdateDto.priority,
-        alert_type: mockUpdateDto.alertType,
-      },
+
+    it('should throw NotFoundException when alert not found', async () => {
+      prismaService.alert.findFirst.mockResolvedValue(null);
+
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
-    expect(auditService.logAction).toHaveBeenCalled();
-    expect(result).toEqual(updatedAlert);
+
+    it('should throw BadRequestException when alert is closed', async () => {
+      const closedAlert = { ...mockExistingAlert, alert_status: AlertStatus.CLOSED };
+
+      prismaService.alert.findFirst.mockResolvedValue(closedAlert);
+
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, tenantId)).rejects.toThrow(
+        `Alert ${alertId} is closed status and can not be updated`,
+      );
+    });
+
+    it('should handle database errors during update operation', async () => {
+      prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
+      prismaService.alert.update.mockRejectedValue(new Error('Database error'));
+
+      await expect(service.updateAlertData(alertId, mockUpdateDto, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
+    });
   });
-
-  it('should throw NotFoundException when alert not found', async () => {
-    prismaService.alert.findFirst.mockResolvedValue(null);
-
-    await expect(
-      service.updateAlertData(alertId, mockUpdateDto, userId, tenantId),
-    ).rejects.toThrow(NotFoundException);
-  });
-
-  it('should throw BadRequestException when alert is closed', async () => {
-    const closedAlert = { ...mockExistingAlert, alert_status: AlertStatus.CLOSED };
-
-    prismaService.alert.findFirst.mockResolvedValue(closedAlert);
-
-    await expect(
-      service.updateAlertData(alertId, mockUpdateDto, userId, tenantId),
-    ).rejects.toThrow(
-      `Alert ${alertId} is closed status and can not be updated`,
-    );
-  });
-
-  it('should handle database errors during update operation', async () => {
-    prismaService.alert.findFirst.mockResolvedValue(mockExistingAlert);
-    prismaService.alert.update.mockRejectedValue(new Error('Database error'));
-
-    await expect(
-      service.updateAlertData(alertId, mockUpdateDto, userId, tenantId),
-    ).rejects.toThrow(InternalServerErrorException);
-  });
-});
-
 
   describe('manualCloseAlert', () => {
     const alertId = 'alert-123';
@@ -273,14 +249,7 @@ describe('TriageService', () => {
     it('should throw NotFoundException when alert not found', async () => {
       prismaService.alert.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.manualCloseAlert(
-          alertId,
-          closeAlertDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when alert not accessible for tenant', async () => {
@@ -291,14 +260,7 @@ describe('TriageService', () => {
 
       prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
 
-      await expect(
-        service.manualCloseAlert(
-          alertId,
-          closeAlertDto,
-          userId,
-          'test-tenant-id',
-        ),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when alert is already closed', async () => {
@@ -806,7 +768,7 @@ describe('TriageService', () => {
     const convertDto: ConvertAlertToCase = {
       priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
-      caseOwnerUserId: 'test-user-id'
+      caseOwnerUserId: 'test-user-id',
     };
 
     const mockExistingAlert = {

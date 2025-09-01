@@ -10,6 +10,10 @@ export { default as AlertsDetailModal } from './common/AlertsDetailModal';
 export { default as AlertsSearchAndFilters } from './common/AlertsSearchAndFilters';
 
 // Types
-export type { AlertsSearchFilters, AlertsTableColumn, AlertsTableAction } from '../types/alertsdashboard.types';
+export type {
+  AlertsSearchFilters,
+  AlertsTableColumn,
+  AlertsTableAction,
+} from '../types/alertsdashboard.types';
 
-// Form Components 
+// Form Components

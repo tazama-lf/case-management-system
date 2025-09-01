@@ -1,5 +1,5 @@
 import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
-import { IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsOptional, IsEnum, IsNumber, IsString, MaxLength } from 'class-validator';
 
 export class UpdateAlertDto {
   @IsOptional()
@@ -17,4 +17,8 @@ export class UpdateAlertDto {
   @IsOptional()
   @IsEnum(PredictionOutcome)
   predictionOutcome?: PredictionOutcome;
+
+  @IsString()
+  @MaxLength(500)
+  note: string;
 }

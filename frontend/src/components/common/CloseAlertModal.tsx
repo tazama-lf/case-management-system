@@ -28,7 +28,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     try {
       await onConfirmClose(alert.alert_id, status, notes.trim());
       setNotes('');
@@ -61,9 +61,7 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
         <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                Close Alert
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900">Close Alert</h3>
               <button
                 onClick={handleCancel}
                 className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -78,7 +76,10 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
                 Alert Details
               </h4>
               <div className="space-y-1 text-sm text-gray-600">
-                <p><span className="font-medium">Alert ID:</span> {alert.alert_id}</p>
+                <p>
+                  <span className="font-medium">Alert ID:</span>{' '}
+                  {alert.alert_id}
+                </p>
               </div>
             </div>
 
@@ -119,8 +120,16 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
@@ -128,7 +137,11 @@ const CloseAlertModal: React.FC<CloseAlertModalProps> = ({
                       Confirm Alert Closure
                     </h3>
                     <div className="mt-2 text-sm text-yellow-700">
-                      <p>This action will permanently close the alert and cannot be undone. Please ensure you have thoroughly reviewed the alert before proceeding.</p>
+                      <p>
+                        This action will permanently close the alert and cannot
+                        be undone. Please ensure you have thoroughly reviewed
+                        the alert before proceeding.
+                      </p>
                     </div>
                   </div>
                 </div>

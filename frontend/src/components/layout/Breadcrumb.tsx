@@ -13,22 +13,21 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
 
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const pathSegments = location.pathname.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [
-      { name: 'Dashboard', href: '/' }
-    ];
+    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: '/' }];
 
     let currentPath = '';
     pathSegments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       const isLast = index === pathSegments.length - 1;
-      
+
       // Capitalize and format segment name
-      const name = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
-      
+      const name =
+        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+
       breadcrumbs.push({
         name,
         href: isLast ? undefined : currentPath,
-        current: isLast
+        current: isLast,
       });
     });
 

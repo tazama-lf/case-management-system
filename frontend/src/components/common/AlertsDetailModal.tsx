@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  XMarkIcon, 
+import {
+  XMarkIcon,
   ExclamationTriangleIcon,
   DocumentDuplicateIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../../types/triage.types';
 import type { Alert as LegacyAlert } from '../../types/alertsdashboard.types';
@@ -46,10 +46,10 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
 const getRiskScore = (alert: TriageAlert): number => {
   // For now, use confidence_per as base score multiplied by priority weight
   const priorityWeights = {
-    'LOW': 1,
-    'MEDIUM': 1.5,
-    'HIGH': 2,
-    'CRITICAL': 3
+    LOW: 1,
+    MEDIUM: 1.5,
+    HIGH: 2,
+    CRITICAL: 3,
   };
   console.log('Calculating risk score for alert:', alert);
 
@@ -95,18 +95,18 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     {
       name: 'Multiple ATM Withdrawals',
       type: 'Velocity',
-      score: Math.round(totalScore * 0.31) // ~31% of total
+      score: Math.round(totalScore * 0.31), // ~31% of total
     },
     {
       name: 'High-Value Cash Transactions',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.34) // ~34% of total
+      score: Math.round(totalScore * 0.34), // ~34% of total
     },
     {
       name: 'Geographic Distribution',
-      type: 'Pattern', 
-      score: Math.round(totalScore * 0.34) // ~34% of total
-    }
+      type: 'Pattern',
+      score: Math.round(totalScore * 0.34), // ~34% of total
+    },
   ];
 
   if (alert.priority === 'HIGH' || alert.priority === 'CRITICAL') {
@@ -220,9 +220,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         } finally {
           setLoadingHistory(false);
         }
-
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load alert details');
+        setError(
+          err instanceof Error ? err.message : 'Failed to load alert details',
+        );
       } finally {
         setLoading(false);
       }
@@ -233,7 +234,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   const handleConvert = () => {
     // Only show convert modal if alert is in an open state
-    if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
+    if (
+      alert &&
+      (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
+    ) {
       setShowConvertModal(true);
   }
   };
@@ -286,10 +290,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-          <div className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity" aria-hidden="true"></div>
+          <div
+            className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity"
+            aria-hidden="true"
+          ></div>
           <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-sm text-gray-600">Loading alert details...</p>
+            <p className="mt-4 text-sm text-gray-600">
+              Loading alert details...
+            </p>
           </div>
         </div>
       </div>
@@ -301,10 +310,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-          <div className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity" aria-hidden="true"></div>
+          <div
+            className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity"
+            aria-hidden="true"
+          ></div>
           <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
             <ExclamationTriangleIcon className="h-12 w-12 text-red-600 mx-auto" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Error Loading Alert</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              Error Loading Alert
+            </h3>
             <p className="mt-2 text-sm text-gray-600">{error}</p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
@@ -393,7 +407,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     >
                       {alert.priority}
                     </span>
-                    
+
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
             {/* Only show Update Alert if status allows modifying */}
@@ -409,9 +423,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               Update Alert
                         </button>
                       )}
-                      
+
                       {/* Only show Close Alert if status allows closing */}
-                      {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
+                      {(alert?.alert_status === 'NEW' ||
+                        alert?.alert_status === 'INVESTIGATING') && (
                         <button
                           onClick={() => {
                             handleCloseAlert();
@@ -445,7 +460,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         <span className="text-sm font-medium text-gray-500">
                           Alert ID:
                         </span>
-                        <p className="text-sm text-gray-900">{alert.alert_id}</p>
+                        <p className="text-sm text-gray-900">
+                          {alert.alert_id}
+                        </p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-gray-500">
@@ -516,39 +533,51 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
                     </h4>
-                    
+
                     {loadingHistory ? (
                       <div className="flex items-center justify-center py-4">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <span className="ml-2 text-sm text-gray-600">Loading...</span>
+                        <span className="ml-2 text-sm text-gray-600">
+                          Loading...
+                        </span>
                       </div>
                     ) : actionHistory.length > 0 ? (
                       <div className="space-y-3 max-h-64 overflow-y-auto">
                         {actionHistory.map((action) => (
-                          <div key={action.audit_log_id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                            <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                              action.outcome === 'SUCCESS' 
-                                ? 'bg-green-100 text-green-600' 
-                                : action.outcome === 'FAILURE'
-                                ? 'bg-red-100 text-red-600'
-                                : 'bg-blue-100 text-blue-600'
-                            }`}>
+                          <div
+                            key={action.audit_log_id}
+                            className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
+                          >
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                                action.outcome === 'SUCCESS'
+                                  ? 'bg-green-100 text-green-600'
+                                  : action.outcome === 'FAILURE'
+                                    ? 'bg-red-100 text-red-600'
+                                    : 'bg-blue-100 text-blue-600'
+                              }`}
+                            >
                               <ClockIcon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
-                                <span className="font-medium">{action.action_performed}</span>
+                                <span className="font-medium">
+                                  {action.action_performed}
+                                </span>
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(action.performed_at).toLocaleString('en-US', {
-                                  month: 'numeric',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit',
-                                  hour12: true
-                                })}
+                                {new Date(action.performed_at).toLocaleString(
+                                  'en-US',
+                                  {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: true,
+                                  },
+                                )}
                               </p>
                             </div>
                           </div>
@@ -556,7 +585,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       </div>
                     ) : (
                       <div className="text-center py-4">
-                        <p className="text-sm text-gray-500">No action history available</p>
+                        <p className="text-sm text-gray-500">
+                          No action history available
+                        </p>
                       </div>
                     )}
                   </div>
@@ -648,7 +679,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         </div>

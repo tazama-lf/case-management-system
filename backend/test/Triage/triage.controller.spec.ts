@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/unbound-method */
- 
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
@@ -92,7 +91,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
-        alert_type:null,
+        alert_type: null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -127,7 +126,7 @@ describe('TriageController', () => {
         alert_id: 'alert-456',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
-        alert_type:null,
+        alert_type: null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -177,7 +176,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.HIGH,
-        alert_type:null,
+        alert_type: null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -226,7 +225,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
-        alert_type:null,
+        alert_type: null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -265,7 +264,7 @@ describe('TriageController', () => {
         alert_id: 'alert-123',
         tenant_id: 'test-tenant-id',
         priority: Priority.LOW,
-        alert_type:null,
+        alert_type: null,
         source: 'test-source',
         txtp: null,
         message: 'Test alert message',
@@ -342,7 +341,19 @@ describe('TriageController', () => {
 
       triageService.getAlertsForUser.mockResolvedValue(expectedResult);
 
-      const result = await controller.getUserAlerts(mockRequest, 'HIGH', 'NEW', 'PAYMENT', 'AML','test search', 'REST API',2, 5, 'priority', 'asc');
+      const result = await controller.getUserAlerts(
+        mockRequest,
+        'HIGH',
+        'NEW',
+        'PAYMENT',
+        'AML',
+        'test search',
+        'REST API',
+        2,
+        5,
+        'priority',
+        'asc',
+      );
 
       expect(triageService.getAlertsForUser).toHaveBeenCalledWith({
         tenantId: 'test-tenant-id',
@@ -410,5 +421,4 @@ describe('TriageController', () => {
       expect(triageService.getAlertDetails).toHaveBeenCalledWith('alert-123', 'test-tenant-id', 'test-user-id');
     });
   });
-
 });
