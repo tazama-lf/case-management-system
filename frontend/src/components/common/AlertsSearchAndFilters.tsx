@@ -15,20 +15,12 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
-<<<<<<< HEAD
-  onCustomDateRangeChange: (range: {
-    startDate: string;
-    endDate: string;
-  }) => void;
-  onSearch?: (query: string) => void; // For real-time search callback
-=======
   onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
   // onSearch deprecated; search is handled by parent via `searchFilters.query`
   alertTypes?: string[];
   priorities?: string[];
   statuses?: string[];
   sources?: string[];
->>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }
 
 interface FilterOptions {
@@ -44,13 +36,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
-<<<<<<< HEAD
-  onSearch,
-=======
   
   alertTypes
   ,priorities, statuses, sources
->>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
@@ -64,30 +52,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
-<<<<<<< HEAD
-    const loadFilterOptions = async () => {
-      try {
-        setLoadingOptions(true);
-        const options = await triageService.getFilterOptions();
-        setFilterOptions(options);
-      } catch (error) {
-        console.error('Failed to load filter options:', error);
-        // Fallback to static options if API fails
-        setFilterOptions({
-          priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-          statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED'],
-          alertTypes: [
-            'Transaction Monitoring',
-            'AML Screening',
-            'Velocity Check',
-          ],
-          sources: ['REST API', 'Transaction Monitoring System'],
-        });
-      } finally {
-        setLoadingOptions(false);
-      }
-    };
-=======
     setFilterOptions({
       priorities: (priorities && priorities.length > 0) ? priorities : ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
       statuses: (statuses && statuses.length > 0) ? statuses : ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'false_positive'],
@@ -95,7 +59,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       sources: (sources && sources.length > 0) ? sources : ['REST API', 'NATS']
     });
   }, [alertTypes, priorities, statuses, sources]);
->>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
 
 
   const hasActiveFilters = Object.entries(searchFilters).some(

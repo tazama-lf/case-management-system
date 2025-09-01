@@ -39,16 +39,9 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   const existingCases: { id: string; title: string }[] = [];
 
   const filteredCases = caseSearchQuery
-<<<<<<< HEAD
-    ? existingCases.filter(
-        (caseItem) =>
-          caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
-          caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase()),
-=======
     ? existingCases.filter((caseItem) =>
         caseItem.id.toLowerCase().includes(caseSearchQuery.toLowerCase()) ||
         caseItem.title.toLowerCase().includes(caseSearchQuery.toLowerCase())
->>>>>>> 16888ea837950b9ae0579a0d99edfef61a745bb1
       )
     : [];
 
