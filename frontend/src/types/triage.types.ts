@@ -2,10 +2,10 @@ import React from 'react';
 
 // Constants matching backend Prisma schema
 export const Priority = {
-  LOW: 'LOW',
-  MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH',
+  NEW: 'NEW',
+  URGENT: 'URGENT',
   CRITICAL: 'CRITICAL',
+  BREACH: 'BREACH',
 } as const;
 
 export const AlertStatus = {
@@ -70,14 +70,13 @@ export interface Alert {
   alert_id: string;
   tenant_id: string;
   priority: Priority;
-  alert_type?: AlertType;
+  alert_type?: AlertType | null;
   source?: string;
   txtp?: string;
   message: string;
   alert_data: unknown;
   transaction: unknown;
   network_map: unknown;
-  alert_status: AlertStatus;
   confidence_per: number;
   created_at: string;
   case_id?: string;

@@ -15,22 +15,14 @@ export interface Alert extends Record<string, unknown> {
   // Backend fields (matching TriageAlert)
   alert_id: string;
   tenant_id: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  alert_type?: string;
+  priority: 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
+  alert_type?: string | null;
   source?: string;
   txtp?: string;
   message: string;
-  alert_data: any;
-  transaction: any;
-  network_map: any;
-  alert_status:
-    | 'NEW'
-    | 'INVESTIGATING'
-    | 'CLOSED'
-    | 'CONVERTED'
-    | 'AUTOCLOSED_CONFIRMED'
-    | 'AUTOCLOSED_REFUTED'
-    | 'SENT_FOR_INVESTIGATION';
+  alert_data: unknown;
+  transaction: unknown;
+  network_map: unknown;
   confidence_per: number;
   created_at: string;
   case_id?: string;
@@ -42,7 +34,6 @@ export interface AlertsSearchFilters {
   source: string;
   type: string; // Alert type filter
   priority: string; // Priority filter
-  status: string; // Status filter
   timeRange: string;
   startDate?: string;
   endDate?: string;

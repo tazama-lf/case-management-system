@@ -37,7 +37,7 @@ export class TriageController {
 
   @Patch(':alertId/close')
   @RequireCMSTestRole()
-  async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req) {
+  async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
@@ -70,6 +70,14 @@ export class TriageController {
       sortBy,
       sortOrder,
     });
+  }
+
+  @Get(':alertId/action-history')
+  @RequireCMSTestRole()
+  async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
   }
 
   @Get(':alertId')
