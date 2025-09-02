@@ -19,13 +19,11 @@ interface AlertsSearchAndFiltersProps {
   // onSearch deprecated; search is handled by parent via `searchFilters.query`
   alertTypes?: string[];
   priorities?: string[];
-  statuses?: string[];
   sources?: string[];
 }
 
 interface FilterOptions {
   priorities: string[];
-  statuses: string[];
   alertTypes: string[];
   sources: string[];
 }
@@ -38,13 +36,12 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onCustomDateRangeChange,
   
   alertTypes
-  ,priorities, statuses, sources
+  ,priorities, sources
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priorities: [],
-    statuses: [],
     alertTypes: [],
     sources: [],
   });
@@ -53,12 +50,11 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
     setFilterOptions({
-      priorities: (priorities && priorities.length > 0) ? priorities : ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-      statuses: (statuses && statuses.length > 0) ? statuses : ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'false_positive'],
-      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AML'],
-      sources: (sources && sources.length > 0) ? sources : ['REST API', 'NATS']
+      priorities: (priorities && priorities.length > 0) ? priorities : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'TRANSACTION_MONITORING'],
+      sources: (sources && sources.length > 0) ? sources : ['System A', 'System B', 'External']
     });
-  }, [alertTypes, priorities, statuses, sources]);
+  }, [alertTypes, priorities, sources]);
 
 
   const hasActiveFilters = Object.entries(searchFilters).some(
@@ -189,25 +185,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   {filterOptions.priorities.map((priority) => (
                     <option key={priority} value={priority}>
                       {formatDisplayValue(priority, 'priority')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={searchFilters.status}
-                  onChange={(e) => onFilterChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Statuses</option>
-                  {filterOptions.statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {formatDisplayValue(status, 'status')}
                     </option>
                   ))}
                 </select>

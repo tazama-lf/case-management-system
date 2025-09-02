@@ -8,8 +8,7 @@ const mockAlerts: Alert[] = [
     alert_id: 'ALERT-001',
     tenant_id: 'tenant-1',
     case_id: undefined,
-    alert_status: 'NEW',
-    priority: 'HIGH',
+    priority: 'CRITICAL',
     source: 'FRAUD_DETECTION',
     alert_type: 'FRAUD_DETECTION',
     message: 'Suspicious transaction pattern detected',
@@ -41,8 +40,7 @@ const mockAlerts: Alert[] = [
     alert_id: 'ALERT-002',
     tenant_id: 'tenant-1',
     case_id: 'CASE-001',
-    alert_status: 'INVESTIGATING',
-    priority: 'MEDIUM',
+    priority: 'URGENT',
     source: 'SANCTIONS_SCREENING',
     alert_type: 'SANCTIONS_SCREENING',
     message: 'Potential sanctions list match found',
@@ -85,7 +83,6 @@ export const handlers = [
   http.get('/api/v1/triage/alerts', ({ request }) => {
     const url = new URL(request.url);
     const search = url.searchParams.get('search') || '';
-    const status = url.searchParams.get('status');
     const priority = url.searchParams.get('priority');
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
@@ -99,11 +96,6 @@ export const handlers = [
           alert.alert_id.toLowerCase().includes(search.toLowerCase()) ||
           alert.message.toLowerCase().includes(search.toLowerCase())
       );
-    }
-
-    // Apply status filter
-    if (status) {
-      filteredAlerts = filteredAlerts.filter((alert) => alert.alert_status === status);
     }
 
     // Apply priority filter
@@ -190,7 +182,6 @@ export const handlers = [
     mockAlerts[alertIndex] = {
       ...mockAlerts[alertIndex],
       case_id: caseId,
-      alert_status: 'CONVERTED',
     };
 
     return HttpResponse.json({
@@ -211,11 +202,10 @@ export const handlers = [
       );
     }
 
-    // Update alert status
-    mockAlerts[alertIndex] = {
-      ...mockAlerts[alertIndex],
-      alert_status: 'CLOSED',
-    };
+    // Update alert (no status to update since alerts don't have status anymore)
+    // mockAlerts[alertIndex] = {
+    //   ...mockAlerts[alertIndex],
+    // };
 
     return HttpResponse.json(mockAlerts[alertIndex]);
   }),

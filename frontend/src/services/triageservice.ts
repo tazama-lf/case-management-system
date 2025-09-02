@@ -50,7 +50,6 @@ class TriageService {
     const params = new URLSearchParams();
 
     if (filters.priority) params.append('priority', filters.priority);
-    if (filters.status) params.append('status', filters.status);
     if (filters.type) params.append('type', filters.type);
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);

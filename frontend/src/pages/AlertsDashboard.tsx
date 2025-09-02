@@ -21,7 +21,6 @@ const AlertsDashboard: React.FC = () => {
     source: '',
     type: '',
     priority: '',
-    status: '',
     timeRange: '',
     customDateRange: undefined as { startDate: string; endDate: string } | undefined
   });
@@ -39,13 +38,6 @@ const AlertsDashboard: React.FC = () => {
   // Client-side filtering and sorting
   const filteredAndSortedAlerts = React.useMemo(() => {
     let filtered = allAlerts;
-
-    // Filter by status
-    if (filters.status) {
-      filtered = filtered.filter(alert => 
-        alert.alert_status?.toLowerCase() === filters.status.toLowerCase()
-      );
-    }
 
     // Filter by priority
     if (filters.priority) {
@@ -92,7 +84,7 @@ const AlertsDashboard: React.FC = () => {
     }
 
     return filtered;
-  }, [allAlerts, filters.status, filters.priority, filters.type, filters.source, sort]);
+  }, [allAlerts, filters.priority, filters.type, filters.source, sort]);
 
   // Client-side pagination
   const paginatedAlerts = React.useMemo(() => {
@@ -255,31 +247,11 @@ const AlertsDashboard: React.FC = () => {
   const getPriorityColor = (priority: string) => {
     if (!priority) return 'text-gray-600 bg-gray-50';
     switch (priority.toLowerCase()) {
-      case 'critical': return 'text-red-600 bg-red-50';
-      case 'high': return 'text-orange-600 bg-orange-50';
-      case 'medium': return 'text-yellow-600 bg-yellow-50';
-      case 'low': return 'text-green-600 bg-green-50';
+      case 'breach': return 'text-red-600 bg-red-50';
+      case 'critical': return 'text-orange-600 bg-orange-50';
+      case 'urgent': return 'text-yellow-600 bg-yellow-50';
+      case 'new': return 'text-blue-600 bg-blue-50';
       default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    if (!status) return 'text-gray-600 bg-gray-50';
-    switch (status.toUpperCase()) {
-      case 'NEW':
-        return 'text-blue-600 bg-blue-50';
-      case 'AUTOCLOSED_CONFIRMED':
-        return 'text-green-600 bg-green-50';
-      case 'AUTOCLOSED_REFUTED':
-        return 'text-red-600 bg-red-50';
-      case 'CLOSED':
-        return 'text-gray-600 bg-gray-50';
-      case 'CONVERTED':
-        return 'text-purple-600 bg-purple-50';
-      case 'SENT_FOR_INVESTIGATION':
-        return 'text-pink-600 bg-pink-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -319,7 +291,7 @@ const AlertsDashboard: React.FC = () => {
       header: 'Alert Type',
       sortable: true,
       render: (value) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
+        <span className="text-sm text-gray-600">{value === null ? 'NULL' : (value as string || 'N/A')}</span>
       )
     },
     {
@@ -365,19 +337,6 @@ const AlertsDashboard: React.FC = () => {
       render: (value) => (
         <div className="text-sm font-medium text-gray-900">{value as number}%</div>
       )
-    },
-    {
-      key: 'alert_status',
-      header: 'Status',
-      sortable: true,
-      render: (value) => {
-        const status = value as string || 'Unknown';
-        return (
-          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
-            {status.replace(/_/g, ' ').toUpperCase()}
-          </span>
-        );
-      }
     },
     {
       key: 'created_at',
@@ -435,11 +394,10 @@ const AlertsDashboard: React.FC = () => {
           }}
           onClearFilters={() => {
             setFilters({ 
-              query: '', 
-              source: '', 
-              type: '', 
-              priority: '', 
-              status: '', 
+              query: '',
+              source: '',
+              type: '',
+              priority: '',
               timeRange: '',
               customDateRange: undefined
             });
@@ -449,7 +407,6 @@ const AlertsDashboard: React.FC = () => {
           onCustomDateRangeChange={(range) => setFilters(prev => ({ ...prev, customDateRange: range }))}
           alertTypes={filterOptions.alertTypes}
           priorities={filterOptions.priorities}
-          statuses={filterOptions.statuses}
           sources={filterOptions.sources}
         />
 

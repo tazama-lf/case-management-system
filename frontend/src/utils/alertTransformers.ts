@@ -8,15 +8,21 @@ import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 /**
  * Extract alert type from available data sources
  */
-function extractAlertType(backendAlert: any): string {
+function extractAlertType(backendAlert: unknown): string | null {
+  const alert = backendAlert as any;
   // First check if alert_type is directly available
-  if (backendAlert.alert_type) {
-    return backendAlert.alert_type;
+  if (alert.alert_type) {
+    return alert.alert_type;
+  }
+  
+  // If alert_type is explicitly null, return null
+  if (alert.alert_type === null) {
+    return null;
   }
   
   // Try to derive from typology information
   try {
-    const typologyResults = backendAlert.alert_data?.tadpResult?.typologyResult;
+    const typologyResults = alert.alert_data?.tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
       const typologyId = typologyResults[0]?.id;
       if (typologyId && typeof typologyId === 'string') {
@@ -31,7 +37,7 @@ function extractAlertType(backendAlert: any): string {
   }
   
   // Fallback to transaction type or default
-  const txType = backendAlert.txtp;
+  const txType = alert.txtp;
   if (txType) {
     if (txType.includes('pacs')) return 'TRANSACTION_MONITORING';
     if (txType.includes('pain')) return 'TRANSACTION_MONITORING';
@@ -43,9 +49,10 @@ function extractAlertType(backendAlert: any): string {
 /**
  * Extract risk score from alert_data.tadpResult.typologyResult
  */
-function extractRiskScore(alertData: any): number {
+function extractRiskScore(alertData: unknown): number {
   try {
-    const typologyResults = alertData?.tadpResult?.typologyResult;
+    const data = alertData as any;
+    const typologyResults = data?.tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
       // Get the first typology result's score
       const result = typologyResults[0]?.result;
@@ -67,14 +74,13 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     alert_id: backendAlert.alert_id,
     tenant_id: backendAlert.tenant_id || 'default-tenant',
     priority: backendAlert.priority,
-    alert_type: extractAlertType(backendAlert),
+    alert_type: extractAlertType(backendAlert) || undefined,
     source: backendAlert.source,
     txtp: backendAlert.txtp,
     message: backendAlert.message,
     alert_data: backendAlert.alert_data,
     transaction: backendAlert.transaction,
     network_map: backendAlert.network_map,
-    alert_status: backendAlert.alert_status,
     confidence_per: backendAlert.confidence_per,
     created_at: backendAlert.created_at,
     case_id: backendAlert.case_id,
@@ -84,11 +90,10 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     transactionId: extractTransactionId(backendAlert.transaction),
     title: backendAlert.message,
     description: backendAlert.message,
-    type: backendAlert.alert_type || 'Unknown',
+    type: extractAlertType(backendAlert) || 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
     riskScore: extractRiskScore(backendAlert.alert_data) || backendAlert.confidence_per || 0,
     confidence: backendAlert.confidence_per,
-    status: mapAlertStatusToUIStatus(backendAlert.alert_status),
     createdAt: backendAlert.created_at,
     updatedAt: backendAlert.created_at,
     lastUpdated: backendAlert.created_at,
@@ -102,41 +107,19 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
 }
 
 /**
- * Transform UI Alert back to backend Alert format
- */
-export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
-  return {
-    alert_id: uiAlert.alert_id,
-    tenant_id: uiAlert.tenant_id,
-    priority: uiAlert.priority,
-    alert_type: uiAlert.alert_type as any,
-    source: uiAlert.source,
-    txtp: uiAlert.txtp,
-    message: uiAlert.message,
-    alert_data: uiAlert.alert_data,
-    transaction: uiAlert.transaction,
-    network_map: uiAlert.network_map,
-    alert_status: uiAlert.alert_status,
-    confidence_per: uiAlert.confidence_per,
-    created_at: uiAlert.created_at,
-    case_id: uiAlert.case_id,
-  };
-}
-
-/**
  * Map Priority enum to UI severity string
  */
 function mapPriorityToSeverity(
   priority: Priority,
 ): 'low' | 'medium' | 'high' | 'critical' {
   switch (priority) {
-    case 'LOW':
+    case 'NEW':
       return 'low';
-    case 'MEDIUM':
+    case 'URGENT':
       return 'medium';
-    case 'HIGH':
-      return 'high';
     case 'CRITICAL':
+      return 'high';
+    case 'BREACH':
       return 'critical';
     default:
       return 'medium';
@@ -151,49 +134,37 @@ export function mapSeverityToPriority(
 ): Priority {
   switch (severity) {
     case 'low':
-      return 'LOW';
+      return 'NEW';
     case 'medium':
-      return 'MEDIUM';
+      return 'URGENT';
     case 'high':
-      return 'HIGH';
-    case 'critical':
       return 'CRITICAL';
+    case 'critical':
+      return 'BREACH';
     default:
-      return 'MEDIUM';
+      return 'NEW';
   }
 }
 
 /**
- * Map AlertStatus enum to UI status string
+ * Transform UI Alert back to backend format
  */
-function mapAlertStatusToUIStatus(
-  status: AlertStatus,
-):
-  | 'new'
-  | 'investigating'
-  | 'closed'
-  | 'converted'
-  | 'autoclosed_confirmed'
-  | 'autoclosed_refuted'
-  | 'sent_for_investigation' {
-  switch (status) {
-    case 'NEW':
-      return 'new';
-    case 'INVESTIGATING':
-      return 'investigating';
-    case 'CLOSED':
-      return 'closed';
-    case 'CONVERTED':
-      return 'converted';
-    case 'AUTOCLOSED_CONFIRMED':
-      return 'autoclosed_confirmed';
-    case 'AUTOCLOSED_REFUTED':
-      return 'autoclosed_refuted';
-    case 'SENT_FOR_INVESTIGATION':
-      return 'sent_for_investigation';
-    default:
-      return 'new';
-  }
+export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
+  return {
+    alert_id: uiAlert.alert_id,
+    tenant_id: uiAlert.tenant_id,
+    priority: uiAlert.priority,
+    alert_type: uiAlert.alert_type as any,
+    source: uiAlert.source,
+    txtp: uiAlert.txtp,
+    message: uiAlert.message,
+    alert_data: uiAlert.alert_data,
+    transaction: uiAlert.transaction,
+    network_map: uiAlert.network_map,
+    confidence_per: uiAlert.confidence_per,
+    created_at: uiAlert.created_at,
+    case_id: uiAlert.case_id,
+  };
 }
 
 /**
@@ -232,15 +203,15 @@ export function mapUIStatusToAlertStatus(
 /**
  * Extract transaction ID from transaction object
  */
-function extractTransactionId(transaction: any): string | undefined {
-  if (!transaction) return undefined;
-
-  // Try common transaction ID fields
+function extractTransactionId(transaction: unknown): string | undefined {
+  if (!transaction || typeof transaction !== 'object') return undefined;
+  
+  const txn = transaction as any;
   return (
-    transaction.transactionId ||
-    transaction.txnId ||
-    transaction.id ||
-    transaction.TxId ||
+    txn.transactionId ||
+    txn.txnId ||
+    txn.id ||
+    txn.TxId ||
     undefined
   );
 }
@@ -248,31 +219,32 @@ function extractTransactionId(transaction: any): string | undefined {
 /**
  * Extract amount from transaction object
  */
-function extractAmount(transaction: any): number | undefined {
-  if (!transaction) return undefined;
-
-  // Try common amount fields
+function extractAmount(transaction: unknown): number | undefined {
+  if (!transaction || typeof transaction !== 'object') return undefined;
+  
+  const txn = transaction as any;
   const amount =
-    transaction.amount ||
-    transaction.AmtRaw ||
-    transaction.TxAmt ||
-    transaction.value;
+    txn.amount ||
+    txn.AmtRaw ||
+    txn.TxAmt ||
+    txn.value;
 
-  return typeof amount === 'number' ? amount : undefined;
+  return typeof amount === 'number' ? amount : parseFloat(amount) || undefined;
 }
 
 /**
  * Extract currency from transaction object
  */
-function extractCurrency(transaction: any): string | undefined {
-  if (!transaction) return undefined;
+function extractCurrency(transaction: unknown): string | undefined {
+  if (!transaction || typeof transaction !== 'object') return undefined;
 
+  const txn = transaction as any;
   // Try common currency fields
   return (
-    transaction.currency ||
-    transaction.ccy ||
-    transaction.CcyCode ||
-    transaction.currencyCode ||
+    txn.currency ||
+    txn.ccy ||
+    txn.CcyCode ||
+    txn.currencyCode ||
     'USD'
   ); // Default fallback
 }

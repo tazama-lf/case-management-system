@@ -175,8 +175,7 @@ export const useAlertOperations = () => {
 export const useAlertFilterOptions = () => {
   // For now, return static filter options since backend doesn't support this endpoint yet
   const filterOptions = {
-    priorities: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-    statuses: ['NEW', 'INVESTIGATING', 'CLOSED', 'CONVERTED', 'AUTOCLOSED_CONFIRMED', 'AUTOCLOSED_REFUTED', 'SENT_FOR_INVESTIGATION'],
+    priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],
     sources: ['REST API', 'NATS'],
   };
