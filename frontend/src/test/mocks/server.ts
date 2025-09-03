@@ -1,6 +1,6 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import type { Alert, ActionHistory } from '../../types/triage.types';
+import type { Alert, ActionHistory } from '../../features/alerts/types/triage.types';
 
 // Mock data
 const mockAlerts: Alert[] = [

@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { NavigationContextType } from '../types/navigation.types';
+import type { NavigationContextType } from '../features/shared/types/navigation.types';
 
 const NavigationContext = createContext<NavigationContextType | undefined>(
   undefined,
