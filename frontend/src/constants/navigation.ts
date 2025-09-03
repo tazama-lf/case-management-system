@@ -31,12 +31,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   },
 ];
 
-export const ROLE_HIERARCHY = {
-  admin: ['admin', 'supervisor', 'analyst', 'investigator'],
-  supervisor: ['supervisor', 'analyst', 'investigator'],
-  analyst: ['analyst', 'investigator'],
-  investigator: ['investigator'],
-};
+// Re-export the role hierarchy from the config
+export { ROLE_HIERARCHY } from '../config/roles.config';
 
 export const ROUTES = {
   ALERTS: '/alerts',

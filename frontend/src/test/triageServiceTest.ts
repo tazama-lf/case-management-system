@@ -47,7 +47,7 @@ export const exampleUsage = {
   // Update alert
   async updateAlert(id: string) {
     return triageService.updateAlert(id, {
-      priority: 'MEDIUM',
+      priority: 'URGENT',
       confidence_per: 85,
     });
   },
@@ -60,7 +60,7 @@ export const exampleUsage = {
   // Convert to case
   async convertToCase(id: string) {
     return triageService.convertAlertToCase(id, {
-      priority: 'MEDIUM',
+      priority: 'URGENT',
       caseType: 'FRAUD',
     });
   },
