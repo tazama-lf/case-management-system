@@ -201,9 +201,8 @@ export interface ConvertToCaseData {
   caseId?: string;
   assignedTo?: string;
   caseOwnerUserId?: string;
-  // UI uses lowercase priority values ('low'|'medium'|'high'), but backend uses uppercase Priority.
-  // Accept either so UI and API mapping are both supported.
-  priority: 'low' | 'medium' | 'high' | Priority;
+  // UI uses lowercase priority values ('new'|'urgent'|'critical'|'breach'), but backend uses uppercase Priority.
+  priority: 'new' | 'urgent' | 'critical' | 'breach' | Priority;
   caseType: CaseType;
   linkedCases: string[];
   notes: string;

@@ -4,6 +4,22 @@ import triageService from '../services/triageservice';
 import type { Alert } from '../types/alertsdashboard.types';
 import type { ConvertToCaseData, ConvertToCaseDto, AlertStatus } from '../types/triage.types';
 
+// Helper function to map UI priority values to backend Priority enum
+function mapUIPriorityToBackend(uiPriority?: string): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
+  switch (uiPriority) {
+    case 'new':
+      return 'NEW';
+    case 'urgent':
+      return 'URGENT';
+    case 'critical':
+      return 'CRITICAL';
+    case 'breach':
+      return 'BREACH';
+    default:
+      return 'NEW';
+  }
+}
+
 interface OperationStates {
   convertingToCase: Set<string>;
   closingAlert: Set<string>;
@@ -24,7 +40,7 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
     setOperationStates(prev => ({ ...prev, convertingToCase: new Set(prev.convertingToCase).add(alertId) }));
     try {
         const convertData: ConvertToCaseDto = {
-            priority: (caseData?.priority.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL') || 'MEDIUM',
+            priority: mapUIPriorityToBackend(caseData?.priority) || 'NEW',
             caseType: caseData?.caseType || 'FRAUD',
             caseOwnerUserId: caseData?.caseOwnerUserId,
           };

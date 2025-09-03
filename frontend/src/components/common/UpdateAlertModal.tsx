@@ -24,7 +24,7 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
   const [caseType, setCaseType] = useState<
     'FRAUD' | 'AML' | 'FRAUD_AND_AML' | ''
   >('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | ''>('');
+  const [priority, setPriority] = useState<'new' | 'urgent' | 'critical' | 'breach' | ''>('');
   const [showLinkCases, setShowLinkCases] = useState(false);
   const [linkedCases, setLinkedCases] = useState<string[]>([]);
   const [caseSearchQuery, setCaseSearchQuery] = useState('');
@@ -138,12 +138,14 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
 
   const getPriorityColor = (priorityLevel: string) => {
     switch (priorityLevel) {
-      case 'high':
+      case 'breach':
         return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium':
+      case 'critical':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'urgent':
         return 'text-orange-400 bg-orange-50 border-orange-200';
-      case 'low':
-        return 'text-green-600 bg-green-50 border-green-200';
+      case 'new':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
@@ -210,8 +212,8 @@ const ConvertToCaseModal: React.FC<ConvertToCaseModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Alert Priority Level <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['low', 'medium', 'high'] as const).map((priorityLevel) => (
+                <div className="grid grid-cols-4 gap-3">
+                  {(['new', 'urgent', 'critical', 'breach'] as const).map((priorityLevel) => (
                     <label
                       key={priorityLevel}
                       className={`relative flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 ${
