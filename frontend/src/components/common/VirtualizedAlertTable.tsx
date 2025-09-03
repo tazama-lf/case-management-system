@@ -45,29 +45,31 @@ const AlertRow: React.FC<AlertRowProps> = ({ index, style, data }) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toUpperCase()) {
+      case 'BREACH':
+        return 'text-red-600 bg-red-50';
       case 'CRITICAL':
         return 'text-red-600 bg-red-50';
-      case 'HIGH':
+      case 'URGENT':
         return 'text-orange-600 bg-orange-50';
-      case 'MEDIUM':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'LOW':
-        return 'text-green-600 bg-green-50';
+      case 'NEW':
+        return 'text-blue-600 bg-blue-50';
       default:
         return 'text-gray-600 bg-gray-50';
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'NEW':
+  const getTypeColor = (alertType: string | null | undefined) => {
+    if (!alertType) return 'text-gray-600 bg-gray-50';
+    
+    switch (alertType.toUpperCase()) {
+      case 'FRAUD_DETECTION':
+        return 'text-red-600 bg-red-50';
+      case 'SANCTIONS_SCREENING':
+        return 'text-orange-600 bg-orange-50';
+      case 'AML_SCREENING':
+        return 'text-purple-600 bg-purple-50';
+      case 'TRANSACTION_MONITORING':
         return 'text-blue-600 bg-blue-50';
-      case 'INVESTIGATING':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'CLOSED':
-        return 'text-gray-600 bg-gray-50';
-      case 'CONVERTED':
-        return 'text-green-600 bg-green-50';
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -115,10 +117,10 @@ const AlertRow: React.FC<AlertRowProps> = ({ index, style, data }) => {
         </span>
       </div>
 
-      {/* Status */}
+      {/* Alert Type */}
       <div className="flex-shrink-0 w-28">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(alert.alert_status)}`}>
-          {alert.alert_status}
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(alert.alert_type)}`}>
+          {alert.alert_type || 'N/A'}
         </span>
       </div>
 

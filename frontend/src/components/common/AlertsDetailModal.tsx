@@ -12,6 +12,7 @@ import triageService from '../../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
 import ConvertToCaseModal from './UpdateAlertModal';
 import type { ConvertToCaseData } from '../../types/triage.types';
+import { useCase, canActOnCase } from '../../hooks/useCase';
 
 interface AlertsDetailModalProps {
   alertId: string | null;
@@ -35,7 +36,6 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   alert_data: alert.alert_data,
   transaction: alert.transaction,
   network_map: alert.network_map,
-  alert_status: alert.alert_status,
   confidence_per: alert.confidence_per,
   created_at: alert.created_at,
   case_id: alert.case_id,
@@ -46,10 +46,10 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
 const getRiskScore = (alert: TriageAlert): number => {
   // For now, use confidence_per as base score multiplied by priority weight
   const priorityWeights = {
-    LOW: 1,
-    MEDIUM: 1.5,
-    HIGH: 2,
-    CRITICAL: 3,
+    NEW: 1,
+    URGENT: 1.5,
+    CRITICAL: 2,
+    BREACH: 3,
   };
   console.log('Calculating risk score for alert:', alert);
 
@@ -109,7 +109,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     },
   ];
 
-  if (alert.priority === 'HIGH' || alert.priority === 'CRITICAL') {
+  if (alert.priority === 'CRITICAL' || alert.priority === 'BREACH') {
     components.push({
       name: 'Aggregated Transaction Mirroring',
       type: 'Pattern',
@@ -195,6 +195,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Fetch case details to determine action availability
+  const { data: caseDetails } = useCase(alert?.case_id);
+
+  // Determine if actions can be performed on this alert based on case status
+  const canPerformActions = canActOnCase(caseDetails?.status);
+
   // Fetch alert details when alertId changes and modal is open
   useEffect(() => {
     const fetchAlertDetails = async () => {
@@ -233,11 +239,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   }, [alertId, isOpen]);
 
   const handleConvert = () => {
-    // Only show convert modal if alert is in an open state
-    if (
-      alert &&
-      (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')
-    ) {
+    // Only show convert modal if case allows actions
+    if (alert && canPerformActions) {
       setShowConvertModal(true);
   }
   };
@@ -260,7 +263,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   };
 
   const handleCloseAlert = () => {
-    if (alert && (alert.alert_status === 'NEW' || alert.alert_status === 'INVESTIGATING')) {
+    if (alert && canPerformActions) {
       setShowCloseModal(true);
     }
   };
@@ -410,8 +413,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
-            {/* Only show Update Alert if status allows modifying */}
-            {(alert?.alert_status === 'NEW' || alert?.alert_status === 'INVESTIGATING') && (
+            {/* Only show Update Alert if case allows actions */}
+            {canPerformActions && (
                         <button
                           onClick={() => {
                             handleConvert();
@@ -424,9 +427,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         </button>
                       )}
 
-                      {/* Only show Close Alert if status allows closing */}
-                      {(alert?.alert_status === 'NEW' ||
-                        alert?.alert_status === 'INVESTIGATING') && (
+                      {/* Only show Close Alert if case allows actions */}
+                      {canPerformActions && (
                         <button
                           onClick={() => {
                             handleCloseAlert();
@@ -482,10 +484,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       </div>
                       <div>
                         <span className="text-sm font-medium text-gray-500">
-                          Status:
+                          Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {alert.alert_status}
+                          {caseDetails?.status || 'Loading...'}
                         </p>
                       </div>
                     </div>

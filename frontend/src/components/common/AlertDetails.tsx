@@ -95,14 +95,14 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toUpperCase()) {
+      case 'BREACH':
+        return 'text-red-600 bg-red-100';
       case 'CRITICAL':
         return 'text-red-600 bg-red-100';
-      case 'HIGH':
+      case 'URGENT':
         return 'text-orange-600 bg-orange-100';
-      case 'MEDIUM':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'LOW':
-        return 'text-green-600 bg-green-100';
+      case 'NEW':
+        return 'text-blue-600 bg-blue-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
@@ -197,9 +197,9 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <label className="block text-sm font-medium text-gray-700">Alert Type</label>
               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                {alert.alert_status}
+                {alert.alert_type || 'N/A'}
               </span>
             </div>
             <div>
