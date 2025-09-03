@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { NAVIGATION_ITEMS } from '../../constants/navigation';
-import { useAuth } from '../auth/contexts/AuthContext';
+import { useAuth } from '../../../features/auth/components/AuthContext';
 import type { LayoutProps } from '../../types/navigation.types';
 
 const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {

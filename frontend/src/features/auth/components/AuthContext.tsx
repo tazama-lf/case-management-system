@@ -117,6 +117,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
+  // Backend claim utility functions
+  const hasBackendClaim = (claim: string): boolean => {
+    return authService.hasBackendClaim(claim);
+  };
+
+  const hasCMSTestRole = (): boolean => {
+    return authService.hasCMSTestRole();
+  };
+
+  const validateBackendAccess = (): boolean => {
+    return authService.validateBackendAccess();
+  };
+
   const value: AuthContextType = {
     isAuthenticated,
     user,
@@ -126,6 +139,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     clearError,
+    hasBackendClaim,
+    hasCMSTestRole,
+    validateBackendAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from 'use-debounce';
 import { useMemo } from 'react';
 import triageService from '../services/triageservice';
-import { useNotifications } from '../../shared/providers/NotificationProvider';
+import { useNotifications } from '../../../shared/providers/NotificationProvider';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsFilter } from '../types/triage.types';
 import type { AlertStatus } from '../types/triage.types';

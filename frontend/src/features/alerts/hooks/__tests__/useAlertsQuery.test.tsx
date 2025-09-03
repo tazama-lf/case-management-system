@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NotificationProvider } from '../../../shared/providers/NotificationProvider';
+import { NotificationProvider } from '../../../../shared/providers/NotificationProvider';
 import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
 // Test component that uses the hook
@@ -132,7 +132,7 @@ describe('useAlerts', () => {
 
   it('should handle API errors', async () => {
     // Mock API to return error
-    const { server } = await import('../test/mocks/server');
+    const { server } = await import('../../../../test/mocks/server');
     const { http, HttpResponse } = await import('msw');
     
     server.use(

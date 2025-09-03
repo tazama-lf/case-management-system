@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from '../../../shared/services/apiClient';
 import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
 
 class TriageService {

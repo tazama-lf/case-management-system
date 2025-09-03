@@ -5,7 +5,7 @@ import {
   EyeSlashIcon,
   LockClosedIcon,
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../components/AuthContext';
 import type { LoginCredentials } from '../types/auth.types';
 
 interface LoginProps {

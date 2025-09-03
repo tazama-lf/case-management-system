@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import {
-  ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/AlertsDetailModal';
 import TransactionMessagesModal from '../components/TransactionMessagesModal';
 import MessagePayloadModal from '../components/MessagePayloadModal';
-import DashboardHeader from '../../dashboard/components/DashboardHeader';
-import ResultsSummary from '../../shared/components/ui/ResultsSummary';
+import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
+import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
@@ -193,56 +190,6 @@ const AlertsDashboard: React.FC = () => {
     setShowMessagePayload(false);
     setSelectedMessage(null);
   };
-  
-  const downloadOverturnedAlertsReport = () => {
-    // Filter for overturned alerts (false positives) from current alerts
-    const overturnedAlerts = filteredAndSortedAlerts.filter((alert: any) => alert.status === 'false_positive');
-    
-    // Create CSV content
-    const csvHeaders = [
-      'Alert ID',
-      'Transaction ID',
-      'Source',
-      'Risk Score',
-      'Priority',
-      'Confidence %',
-      'Status',
-      'Last Updated',
-      'Assigned To',
-      'Amount',
-      'Currency'
-    ];
-    
-    const csvData: string[][] = overturnedAlerts.map((alert: any) => [
-      alert.alert_id as string || '',
-      alert.transactionId as string || '',
-      alert.source as string || '',
-      (alert.riskScore as number || 0).toString(),
-      alert.priority as string || '',
-      (alert.confidence as number || 0).toString(),
-      alert.status as string || '',
-      new Date(alert.lastUpdated as string).toLocaleDateString(),
-      alert.assignee as string || 'Unassigned',
-      (alert.amount as number)?.toString() || 'N/A',
-      alert.currency as string || 'N/A'
-    ]);
-    
-    const csvContent = [
-      csvHeaders.join(','),
-      ...csvData.map((row: string[]) => row.map((field: string) => `"${field}"`).join(','))
-    ].join('\n');
-    
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `overturned-alerts-report-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
 
   const getPriorityColor = (priority: string) => {
     if (!priority) return 'text-gray-600 bg-gray-50';
@@ -355,33 +302,46 @@ const AlertsDashboard: React.FC = () => {
     }
   ];
 
+  // Main loading and error states
   if (loading && paginatedAlerts.length === 0) {
-    return <div>Loading...</div>;
+    return (
+      <PageContainer
+        title="Alerts Dashboard"
+        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+      >
+        <LoadingState loading={true}>
+          <div />
+        </LoadingState>
+      </PageContainer>
+    );
   }
 
   if (error && paginatedAlerts.length === 0) {
-    return <div>Error: {error?.message || 'An error occurred while loading alerts'}</div>;
+    return (
+      <PageContainer
+        title="Alerts Dashboard"
+        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+      >
+        <LoadingState error={error?.message || 'An error occurred while loading alerts'}>
+          <div />
+        </LoadingState>
+      </PageContainer>
+    );
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-full mx-auto">
-        <DashboardHeader onDownloadReport={downloadOverturnedAlertsReport} />
-
+    <PageContainer
+      title="Alerts Dashboard"
+      subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+    >
         {/* API Error Banner */}
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Error refreshing data
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error?.message || 'An error occurred while loading alerts'}</p>
-                </div>
-              </div>
-            </div>
+          <div className="mb-4">
+            <Notification
+              type="error"
+              title="Error refreshing data"
+              message={error?.message || 'An error occurred while loading alerts'}
+            />
           </div>
         )}
 
@@ -431,7 +391,6 @@ const AlertsDashboard: React.FC = () => {
             pagination={clientPagination}
           />
         </div>
-      </div>
 
       {/* Alert Detail Modal */}
       <AlertsDetailModal
@@ -457,7 +416,7 @@ const AlertsDashboard: React.FC = () => {
         onClose={handleCloseMessagePayload}
         message={selectedMessage}
       />
-    </div>
+    </PageContainer>
   );
 };
 
