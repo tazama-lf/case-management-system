@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NotificationProvider } from '../providers/NotificationProvider';
+import { NotificationProvider } from '../../../shared/providers/NotificationProvider';
 import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
 // Test component that uses the hook

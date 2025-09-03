@@ -5,6 +5,14 @@ export { default as Sidebar } from './components/layout/Sidebar';
 export { default as Breadcrumb } from './components/layout/Breadcrumb';
 export { default as LayoutWithProvider } from './components/layout/LayoutWithProvider';
 
+// Contexts
+export { default as NavigationContext } from './contexts/NavigationContext';
+export { default as NavigationProvider } from './contexts/NavigationContext';
+
+// Providers
+export { NotificationProvider, useNotifications } from './providers/NotificationProvider';
+export { QueryProvider } from './providers/QueryProvider';
+
 // Hooks
 export { default as useDebounce } from './hooks/useDebounce';
 export { useNavigation } from './hooks/useNavigation';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavigationContext from './NavigationContext';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../../auth/components/AuthContext';
 import type { NavigationContextType, User } from '../types/navigation.types';
 
 interface NavigationProviderProps {
