@@ -42,7 +42,7 @@ model Alert {
 model Case {
   case_id              String           @id @default(uuid()) @db.Uuid
   case_creator_user_id String           @db.Uuid
-  case_owner_user_id   String           @db.Uuid
+  case_owner_user_id   String?          @db.Uuid
   tenant_id            String           @db.Uuid
   status               CaseStatus
   priority             Priority         @default(NEW)
@@ -62,7 +62,7 @@ model Task {
   task_id          String     @id @default(uuid()) @db.Uuid
   case_id          String     @db.Uuid
   status           TaskStatus @default(UNASSIGNED_01)
-  assigned_user_id String     @db.Uuid
+  assigned_user_id String?    @db.Uuid
   name             String?
   description      String?
   created_at       DateTime   @default(now()) @db.Timestamp(6)
