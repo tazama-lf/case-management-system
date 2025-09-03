@@ -1,53 +1,86 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Logger } from '@nestjs/common';
 import { TaskService } from '../../src/task/task.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
+import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
+import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
+import { TaskStatus } from '@prisma/client';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { Outcome } from '../../src/audit/types/outcome';
 
 describe('TaskService', () => {
   let service: TaskService;
-  let mockPrismaService: jest.Mocked<PrismaService>;
-  let mockAuditLogService: jest.Mocked<AuditLogService>;
+
+  const mockPrismaService = {
+    task: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
+
+  const mockAuditLogService = {
+    logAction: jest.fn(),
+    logPermissionDenied: jest.fn(),
+    getLogs: jest.fn(),
+    getActionHistoryForAlert: jest.fn(),
+  };
+
+  const mockLogger = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    verbose: jest.fn(),
+  };
+
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    verbose: jest.fn(),
+  };
 
   const mockTask = {
-    task_id: 'test-task-1',
-    task_title: 'Test Task',
-    task_description: 'Test task description',
-    task_status: 'PENDING',
-    task_priority: 'MEDIUM',
+    task_id: 'task-123',
+    case_id: 'case-123',
+    assigned_user_id: 'user-123',
+    status: TaskStatus.ASSIGNED_10,
+    name: 'Test Task',
+    description: 'Test task description',
     created_at: new Date(),
     updated_at: new Date(),
-    task_assignee: 'test-user',
-    task_created_by: 'test-creator',
-    case_id: 'test-case-1',
   };
 
   beforeEach(async () => {
-    mockPrismaService = {
-      task: {
-        findMany: jest.fn().mockResolvedValue([mockTask]),
-        findUnique: jest.fn().mockResolvedValue(mockTask),
-        create: jest.fn().mockResolvedValue(mockTask),
-        update: jest.fn().mockResolvedValue(mockTask),
-        delete: jest.fn().mockResolvedValue(mockTask),
-      },
-    } as any;
-
-    mockAuditLogService = {
-      logAction: jest.fn().mockResolvedValue(undefined),
-    } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TaskService,
-        { provide: PrismaService, useValue: mockPrismaService },
-        { provide: AuditLogService, useValue: mockAuditLogService },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: AuditLogService,
+          useValue: mockAuditLogService,
+        },
+        {
+          provide: Logger,
+          useValue: mockLogger,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
       ],
     }).compile();
 
     service = module.get<TaskService>(TaskService);
-  });
 
-  afterEach(() => {
+    // Reset all mocks
     jest.clearAllMocks();
   });
 
@@ -55,102 +88,300 @@ describe('TaskService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('findAll', () => {
-    it('should return all tasks', async () => {
-      const result = await service.findAll();
+  describe('createTask', () => {
+    const createTaskDto: CreateTaskDto = {
+      caseId: 'case-123',
+      assignedUserId: 'user-456',
+      status: TaskStatus.UNASSIGNED_01,
+      name: 'New Task',
+      description: 'New task description',
+    };
 
-      expect(result).toEqual([mockTask]);
-      expect(mockPrismaService.task.findMany).toHaveBeenCalledTimes(1);
-    });
+    const createdByUserId = 'user-123';
 
-    it('should handle database errors', async () => {
-      const error = new Error('Database error');
-      mockPrismaService.task.findMany.mockRejectedValue(error);
+    it('should create a task successfully', async () => {
+      mockPrismaService.task.create.mockResolvedValue(mockTask);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
 
-      await expect(service.findAll()).rejects.toThrow('Database error');
-    });
-  });
-
-  describe('findOne', () => {
-    it('should return a task by id', async () => {
-      const result = await service.findOne('test-task-1');
-
-      expect(result).toEqual(mockTask);
-      expect(mockPrismaService.task.findUnique).toHaveBeenCalledWith({
-        where: { task_id: 'test-task-1' },
-      });
-    });
-
-    it('should return null for non-existent task', async () => {
-      mockPrismaService.task.findUnique.mockResolvedValue(null);
-
-      const result = await service.findOne('non-existent');
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('create', () => {
-    it('should create a new task', async () => {
-      const createTaskDto = {
-        task_title: 'New Task',
-        task_description: 'New task description',
-        task_priority: 'HIGH' as any,
-        case_id: 'test-case-1',
-      };
-
-      const result = await service.create(createTaskDto, 'test-user');
+      const result = await service.createTask(createTaskDto, createdByUserId);
 
       expect(result).toEqual(mockTask);
       expect(mockPrismaService.task.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          task_title: createTaskDto.task_title,
-          task_description: createTaskDto.task_description,
-          task_priority: createTaskDto.task_priority,
-          case_id: createTaskDto.case_id,
-          task_created_by: 'test-user',
-        }),
+        data: {
+          case_id: createTaskDto.caseId,
+          status: createTaskDto.status,
+          assigned_user_id: createTaskDto.assignedUserId,
+          name: createTaskDto.name,
+          description: createTaskDto.description,
+        },
+      });
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId: createdByUserId,
+        actionPerformed: `Created task ${mockTask.task_id}`,
+        entityName: 'TaskService',
+        operation: 'createTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
+      });
+    });
+
+    it('should handle database errors during task creation', async () => {
+      const dbError = new Error('Database connection failed');
+      mockPrismaService.task.create.mockRejectedValue(dbError);
+
+      await expect(
+        service.createTask(createTaskDto, createdByUserId),
+      ).rejects.toThrow('Database connection failed');
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        'Error creating task',
+        dbError,
+        TaskService.name,
+      );
+    });
+
+    it('should handle database errors properly', async () => {
+      const dbError = new Error('Database connection failed');
+      mockPrismaService.task.create.mockRejectedValue(dbError);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      await expect(service.createTask(createTaskDto, createdByUserId))
+        .rejects.toThrow('Database connection failed');
+
+      expect(mockPrismaService.task.create).toHaveBeenCalled();
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId: createdByUserId,
+        actionPerformed: `Error creating task: ${JSON.stringify(createTaskDto)}`,
+        entityName: 'TaskService',
+        operation: 'createTask',
+        outcome: 'FAILURE',
+        performedAt: expect.any(Date) as Date,
       });
     });
   });
 
-  describe('update', () => {
-    it('should update a task', async () => {
-      const updateTaskDto = {
-        task_title: 'Updated Task',
-        task_description: 'Updated description',
-        task_status: 'IN_PROGRESS' as any,
-      };
+  describe('reassignTask', () => {
+    const taskId = 'task-123';
+    const newAssigneeId = 'user-789';
+    const reassignedByUserId = 'user-456';
 
-      const result = await service.update('test-task-1', updateTaskDto, 'test-user');
+    it('should reassign a task successfully', async () => {
+      const reassignedTask = { ...mockTask, assigned_user_id: newAssigneeId };
+
+      mockPrismaService.task.update.mockResolvedValue(reassignedTask);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      const result = await service.reassignTask(taskId, reassignedByUserId, newAssigneeId);
+
+      expect(result).toEqual(reassignedTask);
+      expect(mockPrismaService.task.update).toHaveBeenCalledWith({
+        where: { task_id: taskId },
+        data: { assigned_user_id: newAssigneeId },
+      });
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId: reassignedByUserId,
+        actionPerformed: `Reassigned task ${taskId} to user ${newAssigneeId}`,
+        entityName: 'TaskService',
+        operation: 'reassignTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
+      });
+    });
+
+    it('should handle database errors during task reassignment', async () => {
+      const dbError = new Error('Database update failed');
+      mockPrismaService.task.update.mockRejectedValue(dbError);
+
+      await expect(
+        service.reassignTask(taskId, reassignedByUserId, newAssigneeId),
+      ).rejects.toThrow('Database update failed');
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        `Error reassigning task ${taskId}`,
+        dbError,
+        TaskService.name,
+      );
+    });
+  });
+
+  describe('updateTask', () => {
+    const taskId = 'task-123';
+    const updateTaskDto: UpdateTaskDto = {
+      status: TaskStatus.IN_PROGRESS_20,
+      name: 'Updated Task Name',
+      description: 'Updated task description',
+    };
+    const updatedByUserId = 'user-456';
+
+    it('should update a task successfully', async () => {
+      const updatedTask = { ...mockTask, ...updateTaskDto };
+
+      mockPrismaService.task.update.mockResolvedValue(updatedTask);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      const result = await service.updateTask(taskId, updateTaskDto, updatedByUserId);
+
+      expect(result).toEqual(updatedTask);
+      expect(mockPrismaService.task.update).toHaveBeenCalledWith({
+        where: { task_id: taskId },
+        data: {
+          status: updateTaskDto.status,
+          assigned_user_id: updateTaskDto.assignedUserId,
+          name: updateTaskDto.name,
+          description: updateTaskDto.description,
+        },
+      });
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId: updatedByUserId,
+        actionPerformed: `Updated task ${taskId}`,
+        entityName: 'TaskService',
+        operation: 'updateTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
+      });
+    });
+
+    it('should update with partial data', async () => {
+      const partialUpdate: UpdateTaskDto = { status: TaskStatus.COMPLETED_30 };
+      const partiallyUpdatedTask = { ...mockTask, status: TaskStatus.COMPLETED_30 };
+
+      mockPrismaService.task.update.mockResolvedValue(partiallyUpdatedTask);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      const result = await service.updateTask(taskId, partialUpdate, updatedByUserId);
+
+      expect(result).toEqual(partiallyUpdatedTask);
+      expect(mockPrismaService.task.update).toHaveBeenCalledWith({
+        where: { task_id: taskId },
+        data: {
+          status: partialUpdate.status,
+          assigned_user_id: partialUpdate.assignedUserId,
+          name: partialUpdate.name,
+          description: partialUpdate.description,
+        },
+      });
+    });
+
+    it('should handle database errors during task update', async () => {
+      const dbError = new Error('Database update failed');
+      mockPrismaService.task.update.mockRejectedValue(dbError);
+
+      await expect(
+        service.updateTask(taskId, updateTaskDto, updatedByUserId),
+      ).rejects.toThrow('Database update failed');
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        `Error updating task ${taskId}`,
+        dbError,
+        TaskService.name,
+      );
+    });
+
+    it('should handle empty update object', async () => {
+      const emptyUpdate: UpdateTaskDto = {};
+      
+      mockPrismaService.task.update.mockResolvedValue(mockTask);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      const result = await service.updateTask(taskId, emptyUpdate, updatedByUserId);
 
       expect(result).toEqual(mockTask);
       expect(mockPrismaService.task.update).toHaveBeenCalledWith({
-        where: { task_id: 'test-task-1' },
-        data: expect.objectContaining({
-          task_title: updateTaskDto.task_title,
-          task_description: updateTaskDto.task_description,
-          task_status: updateTaskDto.task_status,
-          task_last_updated_by: 'test-user',
-        }),
+        where: { task_id: taskId },
+        data: {
+          status: emptyUpdate.status,
+          assigned_user_id: emptyUpdate.assignedUserId,
+          name: emptyUpdate.name,
+          description: emptyUpdate.description,
+        },
       });
     });
   });
 
-  describe('remove', () => {
-    it('should delete a task', async () => {
-      const result = await service.remove('test-task-1', 'test-user');
+  describe('getTasksByCaseId', () => {
+    const caseId = 'case-123';
 
-      expect(result).toEqual(mockTask);
-      expect(mockPrismaService.task.delete).toHaveBeenCalledWith({
-        where: { task_id: 'test-task-1' },
+    it('should return tasks for a given case ID', async () => {
+      const tasks = [mockTask, { ...mockTask, task_id: 'task-456' }];
+      mockPrismaService.task.findMany.mockResolvedValue(tasks);
+
+      const result = await service.getTasksByCaseId(caseId);
+
+      expect(result).toEqual(tasks);
+      expect(mockPrismaService.task.findMany).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        orderBy: {
+          created_at: 'desc',
+        },
       });
-      expect(mockAuditLogService.logAction).toHaveBeenCalledWith(
-        'test-user',
-        'DELETE_TASK',
-        'Task',
-        'test-task-1'
+    });
+
+    it('should return empty array when no tasks found', async () => {
+      mockPrismaService.task.findMany.mockResolvedValue([]);
+
+      const result = await service.getTasksByCaseId(caseId);
+
+      expect(result).toEqual([]);
+      expect(mockPrismaService.task.findMany).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+    });
+
+    it('should handle database errors during task retrieval', async () => {
+      const dbError = new Error('Database query failed');
+      mockPrismaService.task.findMany.mockRejectedValue(dbError);
+
+      await expect(service.getTasksByCaseId(caseId)).rejects.toThrow(
+        'Database query failed',
       );
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        'Error retrieving tasks',
+        dbError,
+        TaskService.name,
+      );
+    });
+
+    it('should return tasks with audit logging when userId is provided', async () => {
+      const tasks = [mockTask];
+      const userId = 'user-123';
+      mockPrismaService.task.findMany.mockResolvedValue(tasks);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      const result = await service.getTasksByCaseId(caseId, userId);
+
+      expect(result).toEqual(tasks);
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getTasksByCaseId',
+        entityName: 'TaskService',
+        actionPerformed: `Successfully retrieved tasks for case : ${caseId}`,
+        outcome: 'SUCCESS',
+        performedAt: expect.any(Date) as Date,
+      });
+    });
+
+    it('should handle database errors with audit logging when userId is provided', async () => {
+      const dbError = new Error('Database query failed');
+      const userId = 'user-123';
+      mockPrismaService.task.findMany.mockRejectedValue(dbError);
+      mockAuditLogService.logAction.mockResolvedValue(undefined);
+
+      await expect(service.getTasksByCaseId(caseId, userId)).rejects.toThrow(
+        'Database query failed',
+      );
+
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getTasksByCaseId',
+        entityName: 'TaskService',
+        actionPerformed: `Error retrieving tasks for case : ${caseId}`,
+        outcome: 'FAILURE',
+        performedAt: expect.any(Date) as Date,
+      });
     });
   });
 });

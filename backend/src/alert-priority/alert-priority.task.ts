@@ -11,6 +11,10 @@ export class AlertPriorityTask {
   @Cron(CronExpression.EVERY_HOUR)
   async handleHourlyCron() {
     this.logger.log('Running hourly alert priority recalculation task');
-    await this.priorityService.runRecalculation();
+    try {
+      await this.priorityService.runRecalculation();
+    } catch (error) {
+      this.logger.error('Error in hourly alert priority recalculation task:', error);
+    }
   }
 }
