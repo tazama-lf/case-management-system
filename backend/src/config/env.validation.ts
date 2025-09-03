@@ -1,12 +1,5 @@
 import { plainToClass } from 'class-transformer';
-import {
-  IsEnum,
-  IsString,
-  IsUUID,
-  IsOptional,
-  IsNumberString,
-  validateSync,
-} from 'class-validator';
+import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync } from 'class-validator';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -40,9 +33,6 @@ class EnvironmentVariables {
   @IsString()
   CERT_PATH_PUBLIC: string;
 
-  @IsString()
-  CERT_PATH_PRIVATE: string;
-
   @IsEnum(StartupType)
   STARTUP_TYPE: StartupType;
 
@@ -61,6 +51,15 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   SIDECAR_HOST?: string;
+
+  @IsNumberString()
+  CONFIDENCE_THRESHOLD: string;
+
+  @IsString()
+  AI_TRIAGE_ENABLED: string;
+
+  @IsString()
+  CLIENT_SYSTEM_INTERDICTION_ENABLED: string;
 }
 
 export const validate = (config: Record<string, unknown>) => {
