@@ -12,7 +12,7 @@ import triageService from '../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
 import ConvertToCaseModal from './UpdateAlertModal';
 import type { ConvertToCaseData } from '../types/triage.types';
-import { useCase, canActOnCase } from '../cases/hooks/useCase';
+import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 
 interface AlertsDetailModalProps {
   alertId: string | null;

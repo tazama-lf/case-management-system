@@ -16,7 +16,7 @@ const Header: React.FC<HeaderComponentProps> = ({
   setSidebarOpen,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
+    <header className="sticky top-0 z-40 bg-white">
       <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Mobile menu button - only visible on mobile/tablet screens */}

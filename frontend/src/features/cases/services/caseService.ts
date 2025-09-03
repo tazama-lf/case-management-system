@@ -1,5 +1,5 @@
-import apiClient from '../shared/services/apiClient';
-import type { Case, ApiErrorResponse } from '../alerts/types/triage.types';
+import apiClient from '../../../shared/services/apiClient';
+import type { Case, ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export class CaseService {
   private baseUrl = '/api/v1/cases';

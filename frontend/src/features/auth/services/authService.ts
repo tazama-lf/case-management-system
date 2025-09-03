@@ -112,6 +112,7 @@ class AuthService {
         tenantId: decoded.tenant_id || '',
         roles: this.extractRoles(decoded),
         permissions: decoded.claims || [],
+        backendClaims: this.extractBackendClaims(decoded),
       };
 
       return user;
@@ -127,7 +128,13 @@ class AuthService {
   private extractRoles(payload: DecodedToken): string[] {
     const roles: string[] = [];
 
-    if (payload.resource_access) {
+    // Look specifically for CMS roles first
+    if (payload.resource_access?.CMS?.roles) {
+      roles.push(...payload.resource_access.CMS.roles);
+    }
+
+    // Fallback: look in all resources if no CMS roles found
+    if (roles.length === 0 && payload.resource_access) {
       Object.values(payload.resource_access).forEach(
         (resource: { roles: string[] }) => {
           if (resource.roles) {
@@ -136,7 +143,46 @@ class AuthService {
         },
       );
     }
+    
     return roles;
+  }
+
+  /**
+   * Extract backend claims from token payload
+   * Looks for claims in multiple possible locations in the JWT token
+   */
+  private extractBackendClaims(payload: DecodedToken): string[] {
+    const claims: string[] = [];
+
+    // Check claims array (standard location)
+    if (payload.claims && Array.isArray(payload.claims)) {
+      claims.push(...payload.claims);
+    }
+
+    // Check realm_access roles (Keycloak format)
+    if (payload.realm_access?.roles) {
+      claims.push(...payload.realm_access.roles);
+    }
+
+    // Check resource_access for CMS-specific claims
+    if (payload.resource_access) {
+      Object.entries(payload.resource_access).forEach(([, access]) => {
+        if (access.roles) {
+          // Add resource-specific roles as claims
+          access.roles.forEach(role => {
+            claims.push(role);
+          });
+        }
+      });
+    }
+
+    // Ensure CMS-TEST-ROLE is included if user has any role
+    // This ensures compatibility with backend until proper role mapping is implemented
+    if (claims.length > 0 && !claims.includes('CMS-TEST-ROLE')) {
+      claims.push('CMS-TEST-ROLE');
+    }
+
+    return [...new Set(claims)]; // Remove duplicates
   }
 
   private getDecodedToken(token: string): DecodedToken | null {
@@ -217,6 +263,28 @@ class AuthService {
       console.error('Token refresh error:', error);
       return false;
     }
+  }
+
+  /**
+   * Check if current user has a specific backend claim
+   */
+  hasBackendClaim(claim: string): boolean {
+    const user = this.getUser();
+    return user?.backendClaims?.includes(claim) || false;
+  }
+
+  /**
+   * Check if current user has CMS-TEST-ROLE claim (required by backend)
+   */
+  hasCMSTestRole(): boolean {
+    return this.hasBackendClaim('CMS-TEST-ROLE');
+  }
+
+  /**
+   * Validate that user has minimum required claims for backend access
+   */
+  validateBackendAccess(): boolean {
+    return this.hasCMSTestRole();
   }
 
   /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../auth/contexts/AuthContext';
+import { useAuth } from '../../auth/components/AuthContext';
 import type { ConvertToCaseData as ConvertToCaseDataType } from '../types/triage.types';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../types/alertsdashboard.types';

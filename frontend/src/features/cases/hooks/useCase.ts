@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { caseService } from '../services/caseService';
-import type { Case } from '../alerts/types/triage.types';
+import type { Case } from '../../alerts/types/triage.types';
 
 export const useCase = (caseId: string | undefined) => {
   return useQuery<Case, Error>({

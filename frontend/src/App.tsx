@@ -1,8 +1,8 @@
 import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './features/auth/components/AuthContext';
-import { QueryProvider } from './features/shared/providers/QueryProvider';
-import { NotificationProvider } from './features/shared/providers/NotificationProvider';
-import { SkipToContent } from './features/shared/components/ui/AccessibilityComponents';
+import { QueryProvider } from './shared/providers/QueryProvider';
+import { NotificationProvider } from './shared/providers/NotificationProvider';
+import { SkipToContent } from './shared/components/ui/AccessibilityComponents';
 import { router } from './router';
 import './index.css';
 
