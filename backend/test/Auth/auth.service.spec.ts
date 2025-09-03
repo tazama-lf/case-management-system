@@ -237,13 +237,9 @@ describe('AuthService', () => {
       configService.get.mockReturnValue(mockAuthUrl);
       httpService.post.mockReturnValue(of({ data: null }));
 
-      const result = await service.login(username, password);
-
-      expect(result).toEqual({
-        message: 'Login successful',
-        token: undefined,
-        expiresIn: null,
-      });
+      await expect(service.login(username, password)).rejects.toThrow(
+        new ServiceUnavailableException('Authentication service unavailable')
+      );
     });
   });
 

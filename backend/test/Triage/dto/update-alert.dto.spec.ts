@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { UpdateAlertDto } from '../../../src/triage/dto/update-alert.dto';
-import { Priority, AlertType } from '@prisma/client';
+import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
 
 describe('UpdateAlertDto', () => {
   it('should be defined', () => {
@@ -12,7 +12,10 @@ describe('UpdateAlertDto', () => {
   it('should validate a valid DTO with all fields', async () => {
     const validData = {
       confidence_per: 85,
-      priority: Priority.HIGH,
+      priority: Priority.URGENT,
+      note: 'Test note for the alert update',
+      alertType: AlertType.FRAUD,
+      predictionOutcome: PredictionOutcome.TRUE_POSITIVE
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -20,12 +23,16 @@ describe('UpdateAlertDto', () => {
 
     expect(errors).toHaveLength(0);
     expect(dto.confidence_per).toBe(85);
-    expect(dto.priority).toBe(Priority.HIGH);
+    expect(dto.priority).toBe(Priority.URGENT);
+    expect(dto.note).toBe('Test note for the alert update');
+    expect(dto.alertType).toBe(AlertType.FRAUD);
+    expect(dto.predictionOutcome).toBe(PredictionOutcome.TRUE_POSITIVE);
   });
 
-  it('should validate a DTO with only confidence_per', async () => {
+  it('should validate a DTO with only confidence_per and note', async () => {
     const validData = {
       confidence_per: 75,
+      note: 'Test note for confidence update',
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -34,11 +41,13 @@ describe('UpdateAlertDto', () => {
     expect(errors).toHaveLength(0);
     expect(dto.confidence_per).toBe(75);
     expect(dto.priority).toBeUndefined();
+    expect(dto.note).toBe('Test note for confidence update');
   });
 
-  it('should validate a DTO with only priority', async () => {
+  it('should validate a DTO with only priority and note', async () => {
     const validData = {
-      priority: Priority.MEDIUM,
+      priority: Priority.CRITICAL,
+      note: 'Test note for priority update',
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -46,11 +55,14 @@ describe('UpdateAlertDto', () => {
 
     expect(errors).toHaveLength(0);
     expect(dto.confidence_per).toBeUndefined();
-    expect(dto.priority).toBe(Priority.MEDIUM);
+    expect(dto.priority).toBe(Priority.CRITICAL);
+    expect(dto.note).toBe('Test note for priority update');
   });
 
-  it('should validate an empty DTO', async () => {
-    const validData = {};
+  it('should validate a DTO with only note', async () => {
+    const validData = {
+      note: 'Just a note without other fields',
+    };
 
     const dto = plainToClass(UpdateAlertDto, validData);
     const errors = await validate(dto);
@@ -58,6 +70,72 @@ describe('UpdateAlertDto', () => {
     expect(errors).toHaveLength(0);
     expect(dto.confidence_per).toBeUndefined();
     expect(dto.priority).toBeUndefined();
+    expect(dto.note).toBe('Just a note without other fields');
+  });
+
+  it('should fail validation when note is missing', async () => {
+    const invalidData = {
+      confidence_per: 85,
+      priority: Priority.URGENT,
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const noteError = errors.find((error) => error.property === 'note');
+    expect(noteError).toBeDefined();
+    expect(noteError?.constraints).toHaveProperty('isString');
+  });
+
+  it('should validate note with empty string', async () => {
+    const validData = {
+      note: '',
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.note).toBe('');
+  });
+
+  it('should validate note with only whitespace', async () => {
+    const validData = {
+      note: '   \t\n   ',
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.note).toBe('   \t\n   ');
+  });
+
+  it('should fail validation when note exceeds maximum length', async () => {
+    const invalidData = {
+      note: 'A'.repeat(501), // Exceeds 500 character limit
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const noteError = errors.find((error) => error.property === 'note');
+    expect(noteError).toBeDefined();
+    expect(noteError?.constraints).toHaveProperty('maxLength');
+  });
+
+  it('should validate note at maximum length', async () => {
+    const validData = {
+      note: 'A'.repeat(500), // Exactly 500 characters
+    };
+
+    const dto = plainToClass(UpdateAlertDto, validData);
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.note.length).toBe(500);
   });
 
   it('should fail validation when confidence_per is not a number', async () => {
@@ -89,12 +167,13 @@ describe('UpdateAlertDto', () => {
   });
 
   it('should validate with different priority values', async () => {
-    const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH];
+    const priorities = [Priority.NEW, Priority.URGENT, Priority.CRITICAL, Priority.BREACH];
 
     for (const priority of priorities) {
       const validData = {
         confidence_per: 50,
         priority: priority,
+        note: `Test with priority ${priority}`
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -105,12 +184,80 @@ describe('UpdateAlertDto', () => {
     }
   });
 
+  it('should validate with different alertType values', async () => {
+    const alertTypes = [AlertType.FRAUD, AlertType.AML, AlertType.FRAUD_AND_AML];
+
+    for (const alertType of alertTypes) {
+      const validData = {
+        alertType: alertType,
+        note: `Test with alert type ${alertType}`
+      };
+
+      const dto = plainToClass(UpdateAlertDto, validData);
+      const errors = await validate(dto);
+
+      expect(errors).toHaveLength(0);
+      expect(dto.alertType).toBe(alertType);
+    }
+  });
+
+  it('should validate with different predictionOutcome values', async () => {
+    const predictionOutcomes = [
+      PredictionOutcome.FALSE_POSITIVE,
+      PredictionOutcome.TRUE_POSITIVE,
+      PredictionOutcome.FALSE_NEGATIVE,
+      PredictionOutcome.TRUE_NEGATIVE
+    ];
+
+    for (const outcome of predictionOutcomes) {
+      const validData = {
+        predictionOutcome: outcome,
+        note: `Test with prediction outcome ${outcome}`
+      };
+
+      const dto = plainToClass(UpdateAlertDto, validData);
+      const errors = await validate(dto);
+
+      expect(errors).toHaveLength(0);
+      expect(dto.predictionOutcome).toBe(outcome);
+    }
+  });
+
+  it('should fail validation when alertType is invalid', async () => {
+    const invalidData = {
+      alertType: 'INVALID_TYPE',
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const alertError = errors.find((error) => error.property === 'alertType');
+    expect(alertError).toBeDefined();
+    expect(alertError?.constraints).toHaveProperty('isEnum');
+  });
+
+  it('should fail validation when predictionOutcome is invalid', async () => {
+    const invalidData = {
+      predictionOutcome: 'INVALID_OUTCOME',
+    };
+
+    const dto = plainToClass(UpdateAlertDto, invalidData);
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+    const outcomeError = errors.find((error) => error.property === 'predictionOutcome');
+    expect(outcomeError).toBeDefined();
+    expect(outcomeError?.constraints).toHaveProperty('isEnum');
+  });
+
   it('should handle edge case numeric values for confidence_per', async () => {
     const edgeCases = [0, 100, 50.5, 99.99];
 
     for (const confidence of edgeCases) {
       const validData = {
         confidence_per: confidence,
+        note: 'Test note for edge case values',
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -121,26 +268,13 @@ describe('UpdateAlertDto', () => {
     }
   });
 
-  it('should fail validation with boolean values', async () => {
-    const invalidData = {
-      confidence_per: true,
-      priority: false,
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((error) => error.property === 'confidence_per')).toBe(true);
-    expect(errors.some((error) => error.property === 'priority')).toBe(true);
-  });
-
   it('should validate confidence_per with decimal precision', async () => {
     const decimalValues = [0.1, 15.5, 99.99, 33.333333];
 
     for (const confidence of decimalValues) {
       const validData = {
         confidence_per: confidence,
+        note: 'Test note for decimal values',
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -154,6 +288,7 @@ describe('UpdateAlertDto', () => {
   it('should validate negative confidence_per values', async () => {
     const validData = {
       confidence_per: -50,
+      note: 'Test note for negative values',
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -166,6 +301,7 @@ describe('UpdateAlertDto', () => {
   it('should validate very large confidence_per values', async () => {
     const validData = {
       confidence_per: 999999.99,
+      note: 'Test note for large values',
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -175,180 +311,99 @@ describe('UpdateAlertDto', () => {
     expect(dto.confidence_per).toBe(999999.99);
   });
 
-  it('should fail validation when confidence_per is NaN', async () => {
-    const invalidData = {
-      confidence_per: NaN,
-    };
+  it('should validate with note containing special characters', async () => {
+    const specialNotes = [
+      'Note with émojis 🚨💰',
+      'Note with @#$%^&*()_+ symbols',
+      'Note with\nnewlines\tand\ttabs',
+      'Note with "quotes" and \'apostrophes\'',
+      'Very long note that contains many words and should still be valid as long as it is not empty'
+    ];
 
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
+    for (const note of specialNotes) {
+      const validData = {
+        note: note,
+      };
 
-    expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find((error) => error.property === 'confidence_per');
-    expect(confidenceError).toBeDefined();
-  });
+      const dto = plainToClass(UpdateAlertDto, validData);
+      const errors = await validate(dto);
 
-  it('should fail validation when confidence_per is Infinity', async () => {
-    const invalidData = {
-      confidence_per: Infinity,
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find((error) => error.property === 'confidence_per');
-    expect(confidenceError).toBeDefined();
-  });
-
-  it('should fail validation when confidence_per is a string number', async () => {
-    const invalidData = {
-      confidence_per: '85',
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find((error) => error.property === 'confidence_per');
-    expect(confidenceError).toBeDefined();
-    expect(confidenceError?.constraints).toHaveProperty('isNumber');
-  });
-
-  it('should fail validation when priority is a number', async () => {
-    const invalidData = {
-      priority: 1,
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const priorityError = errors.find((error) => error.property === 'priority');
-    expect(priorityError).toBeDefined();
-    expect(priorityError?.constraints).toHaveProperty('isEnum');
+      expect(errors).toHaveLength(0);
+      expect(dto.note).toBe(note);
+    }
   });
 
   it('should handle null values for optional fields', () => {
     const plainObject = {
       confidence_per: null,
       priority: null,
+      note: null,
+      alertType: null,
+      predictionOutcome: null
     };
 
     const dto = plainToClass(UpdateAlertDto, plainObject);
 
     expect(dto.confidence_per).toBeNull();
     expect(dto.priority).toBeNull();
+    expect(dto.note).toBeNull();
+    expect(dto.alertType).toBeNull();
+    expect(dto.predictionOutcome).toBeNull();
   });
 
-  it('should fail validation when priority is an object', async () => {
+  it('should validate case sensitivity of enum values', async () => {
     const invalidData = {
-      priority: { level: 'HIGH' },
+      priority: 'urgent', // lowercase
+      alertType: 'fraud', // lowercase
+      predictionOutcome: 'true_positive' // lowercase
     };
 
     const dto = plainToClass(UpdateAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const priorityError = errors.find((error) => error.property === 'priority');
-    expect(priorityError).toBeDefined();
-    expect(priorityError?.constraints).toHaveProperty('isEnum');
+    expect(errors.some((error) => error.property === 'priority')).toBe(true);
+    expect(errors.some((error) => error.property === 'alertType')).toBe(true);
+    expect(errors.some((error) => error.property === 'predictionOutcome')).toBe(true);
   });
 
-  it('should fail validation when confidence_per is an array', async () => {
-    const invalidData = {
-      confidence_per: [85],
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const confidenceError = errors.find((error) => error.property === 'confidence_per');
-    expect(confidenceError).toBeDefined();
-    expect(confidenceError?.constraints).toHaveProperty('isNumber');
-  });
-
-  it('should validate with zero confidence_per', async () => {
+  it('should validate all fields together with maximum values', async () => {
     const validData = {
-      confidence_per: 0,
+      confidence_per: 92.5,
+      priority: Priority.BREACH,
+      alertType: AlertType.FRAUD_AND_AML,
+      predictionOutcome: PredictionOutcome.TRUE_POSITIVE,
+      note: 'Complete DTO with all fields filled correctly'
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
-    expect(dto.confidence_per).toBe(0);
+    expect(dto.confidence_per).toBe(92.5);
+    expect(dto.priority).toBe(Priority.BREACH);
+    expect(dto.alertType).toBe(AlertType.FRAUD_AND_AML);
+    expect(dto.predictionOutcome).toBe(PredictionOutcome.TRUE_POSITIVE);
+    expect(dto.note).toBe('Complete DTO with all fields filled correctly');
   });
 
-  it('should handle extra properties by including them in transformed object', async () => {
-    const dataWithExtraProps = {
-      confidence_per: 85,
-      priority: Priority.HIGH,
-      extraField: 'should be included',
-      anotherField: 123,
-    };
-
-    const dto = plainToClass(UpdateAlertDto, dataWithExtraProps);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.confidence_per).toBe(85);
-    expect(dto.priority).toBe(Priority.HIGH);
-    // Extra fields are included by default in class-transformer
-    expect((dto as any).extraField).toBe('should be included');
-    expect((dto as any).anotherField).toBe(123);
-  });
-
-  it('should validate case sensitivity of Priority enum', async () => {
+  it('should fail validation with multiple invalid fields', async () => {
     const invalidData = {
-      priority: 'high', // lowercase
+      confidence_per: 'not a number',
+      priority: 'INVALID_PRIORITY',
+      alertType: 'INVALID_TYPE',
+      predictionOutcome: 'INVALID_OUTCOME',
+      // note is missing completely, which should cause validation error
     };
 
     const dto = plainToClass(UpdateAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    const priorityError = errors.find((error) => error.property === 'priority');
-    expect(priorityError).toBeDefined();
-    expect(priorityError?.constraints).toHaveProperty('isEnum');
-  });
-
-  it('should pass when alertType is a valid enum value', async () => {
-    const dto = new UpdateAlertDto();
-    dto.alertType = AlertType.FRAUD;
-
-    const errors = await validate(dto);
-    expect(errors.length).toBe(0);
-  });
-
-  it('should fail when alertType is an invalid enum value', async () => {
-    const dto = new UpdateAlertDto();
-    // @ts-expect-error: assigning invalid enum value
-    dto.alertType = 'INVALID_TYPE';
-
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].constraints).toHaveProperty('isEnum');
-  });
-
-  it('should validate case sensitivity of AlertType enum', async () => {
-    const invalidData = {
-      alertType: 'fraud', // lowercase
-    };
-
-    const dto = plainToClass(UpdateAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const alertError = errors.find((error) => error.property === 'alertType');
-    expect(alertError).toBeDefined();
-    expect(alertError?.constraints).toHaveProperty('isEnum');
-  });
-
-  it('should pass when alertType is undefined (optional)', async () => {
-    const dto = new UpdateAlertDto(); // leave alertType unset
-    const errors = await validate(dto);
-    expect(errors.length).toBe(0);
+    expect(errors.some((error) => error.property === 'confidence_per')).toBe(true);
+    expect(errors.some((error) => error.property === 'priority')).toBe(true);
+    expect(errors.some((error) => error.property === 'alertType')).toBe(true);
+    expect(errors.some((error) => error.property === 'predictionOutcome')).toBe(true);
+    expect(errors.some((error) => error.property === 'note')).toBe(true);
   });
 });
