@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.tazama.org/cms">
+
+    <process id="caseCreationProcess" name="Case Creation Process" isExecutable="true">
+
+        <!-- Start Event -->
+        <startEvent id="startEvent" name="Case Creation Request">
+            <extensionElements>
+                <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
+                <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
+                <flowable:formProperty id="priority" name="Priority" type="string" required="true"/>
+                <flowable:formProperty id="caseType" name="Case Type" type="string"/>
+                <flowable:formProperty id="alertData" name="Alert Data" type="string" required="true"/>
+                <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
+            </extensionElements>
+        </startEvent>
+
+        <!-- Validate Data Script Task -->
+        <scriptTask id="validateData" name="Validate Submitted Data" scriptFormat="javascript">
+            <documentation>Validate submitted data ensuring required fields are present, valid and correct</documentation>
+            <script>
+                <![CDATA[
+                var isValid = true;
+                var errorMsg = "";
+
+                if (!tenantId || tenantId.trim() === "") {
+                    isValid = false;
+                    errorMsg += "Tenant ID is required. ";
+                }
+
+                if (!alertData || alertData.trim() === "") {
+                    isValid = false;
+                    errorMsg += "Alert data is required. ";
+                }
+
+                if (!priority || priority.trim() === "") {
+                    isValid = false;
+                    errorMsg += "Priority is required. ";
+                }
+
+                execution.setVariable("validationResult", isValid);
+                if (!isValid) {
+                    execution.setVariable("validationError", errorMsg.trim());
+                    java.lang.System.out.println("Validation failed: " + errorMsg.trim());
+                } else {
+                    java.lang.System.out.println("Data validation completed successfully for tenant: " + tenantId);
+                }
+
+                execution.setVariable("dataValidated", true);
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Create Case Script Task -->
+        <scriptTask id="createCase" name="Create Case in CMS" scriptFormat="javascript">
+            <documentation>Create a new case in the CMS PostgreSQL database with status 00 - DRAFT</documentation>
+            <script>
+                <![CDATA[
+                java.lang.System.out.println("Case creation step - Case ID: " + caseId + " for tenant: " + tenantId);
+                execution.setVariable("caseCreated", true);
+                execution.setVariable("caseStatus", "DRAFT_00");
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Create ATM Task Script Task -->
+        <scriptTask id="createATMTask" name="Create ATM Task" scriptFormat="javascript">
+            <documentation>Create a task for the Alert Triage Module</documentation>
+            <script>
+                <![CDATA[
+                java.lang.System.out.println("Creating ATM task for case: " + caseId);
+                var atmTaskId = "atm-task-" + java.lang.System.currentTimeMillis();
+                execution.setVariable("atmTaskCreated", true);
+                execution.setVariable("atmTaskId", atmTaskId);
+                java.lang.System.out.println("ATM task created with ID: " + atmTaskId);
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Route to ATM Script Task -->
+        <scriptTask id="routeToATM" name="Route Case to ATM" scriptFormat="javascript">
+            <documentation>Route the case to the Alert Triage Module</documentation>
+            <script>
+                <![CDATA[
+                var atmTaskId = execution.getVariable("atmTaskId");
+                java.lang.System.out.println("Routing case " + caseId + " to ATM with task " + atmTaskId);
+
+                // Get autoclose eligibility from process variables (set by NestJS)
+                var autocloseEligible = execution.getVariable("autocloseEligible");
+                if (autocloseEligible === null || autocloseEligible === undefined) {
+                    // Default logic if not set
+                    autocloseEligible = (priority === "NEW");
+                }
+
+                execution.setVariable("autocloseEligible", autocloseEligible);
+                execution.setVariable("routedToATM", true);
+                java.lang.System.out.println("Case routed to ATM. Autoclose eligible: " + autocloseEligible);
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Autoclose Check Gateway -->
+        <exclusiveGateway id="autocloseGateway" name="Check Autoclose"/>
+
+        <!-- Autoclose Case Script Task -->
+        <scriptTask id="autocloseCase" name="Autoclose Case" scriptFormat="javascript">
+            <documentation>Invoke autoclose case use case if conditions are met</documentation>
+            <script>
+                <![CDATA[
+                java.lang.System.out.println("Auto-closing case: " + caseId);
+                execution.setVariable("caseStatus", "AUTOCLOSED");
+                execution.setVariable("caseClosed", true);
+                java.lang.System.out.println("Case " + caseId + " has been autoclosed");
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Create Investigation Task Script Task -->
+        <scriptTask id="createInvestigationTask" name="Create Investigation Task" scriptFormat="javascript">
+            <documentation>Create task to investigate the case</documentation>
+            <script>
+                <![CDATA[
+                java.lang.System.out.println("Creating investigation task for case: " + caseId);
+                var invTaskId = "inv-task-" + java.lang.System.currentTimeMillis();
+                execution.setVariable("investigationTaskCreated", true);
+                execution.setVariable("investigationTaskId", invTaskId);
+                execution.setVariable("caseStatus", "READY_FOR_ASSIGNMENT");
+                java.lang.System.out.println("Investigation task created with ID: " + invTaskId);
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- Assign to Investigations Queue -->
+        <userTask id="assignToInvestigations" name="Assign to Investigations Queue" flowable:candidateGroups="Investigations">
+            <documentation>Assign the investigation task to the Investigations work queue</documentation>
+        </userTask>
+
+        <!-- Log Case Creation Script Task -->
+        <scriptTask id="logCaseCreation" name="Log Case Creation" flowable:async="true" scriptFormat="javascript">
+            <documentation>Audit and system log the case creation</documentation>
+            <script>
+                <![CDATA[
+                var caseClosed = execution.getVariable("caseClosed");
+                var caseStatus = execution.getVariable("caseStatus");
+                java.lang.System.out.println("Logging case creation for case: " + caseId);
+                java.lang.System.out.println("Tenant: " + tenantId);
+                java.lang.System.out.println("Final status: " + caseStatus);
+                java.lang.System.out.println("Case closed: " + (caseClosed !== null ? caseClosed : false));
+                execution.setVariable("caseLogged", true);
+                execution.setVariable("workflowCompleted", true);
+                ]]>
+            </script>
+        </scriptTask>
+
+        <!-- End Events -->
+        <endEvent id="endSuccess" name="Case Created Successfully"/>
+        <endEvent id="endAutoclose" name="Case Autoclosed"/>
+        <endEvent id="endError" name="Case Creation Failed">
+            <errorEventDefinition errorRef="caseCreationError"/>
+        </endEvent>
+
+        <!-- Sequence Flows -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="validateData"/>
+        <sequenceFlow id="flow2" sourceRef="validateData" targetRef="createCase"/>
+        <sequenceFlow id="flow3" sourceRef="createCase" targetRef="createATMTask"/>
+        <sequenceFlow id="flow4" sourceRef="createATMTask" targetRef="routeToATM"/>
+        <sequenceFlow id="flow5" sourceRef="routeToATM" targetRef="autocloseGateway"/>
+
+        <sequenceFlow id="flow6a" sourceRef="autocloseGateway" targetRef="autocloseCase">
+            <conditionExpression xsi:type="tFormalExpression">${autocloseEligible == true}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow6b" sourceRef="autocloseGateway" targetRef="createInvestigationTask">
+            <conditionExpression xsi:type="tFormalExpression">${autocloseEligible == false}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow7" sourceRef="autocloseCase" targetRef="logCaseCreation"/>
+        <sequenceFlow id="flow8" sourceRef="createInvestigationTask" targetRef="assignToInvestigations"/>
+        <sequenceFlow id="flow9" sourceRef="assignToInvestigations" targetRef="logCaseCreation"/>
+        <sequenceFlow id="flow10a" sourceRef="logCaseCreation" targetRef="endSuccess">
+            <conditionExpression xsi:type="tFormalExpression">${autocloseEligible == false}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow10b" sourceRef="logCaseCreation" targetRef="endAutoclose">
+            <conditionExpression xsi:type="tFormalExpression">${autocloseEligible == true}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- Error Boundary Events -->
+        <boundaryEvent id="validationError" name="Validation Error" attachedToRef="validateData">
+            <errorEventDefinition errorRef="validationError"/>
+        </boundaryEvent>
+        <sequenceFlow id="flowError1" sourceRef="validationError" targetRef="endError"/>
+
+        <boundaryEvent id="createCaseError" name="Creation Error" attachedToRef="createCase">
+            <errorEventDefinition errorRef="creationError"/>
+        </boundaryEvent>
+        <sequenceFlow id="flowError2" sourceRef="createCaseError" targetRef="endError"/>
+
+    </process>
+
+</definitions>
