@@ -3,28 +3,15 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { NAVIGATION_ITEMS } from '../../constants/navigation';
+import { useAuth } from '../../contexts/AuthContext';
 import type { LayoutProps } from '../../types/navigation.types';
 
 const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Mock user for now
-  const user = {
-    user_id: 'user-123',
-    username: 'john.doe',
-    email: 'john.doe@tazama.org',
-    name: 'John Doe',
-    initials: 'JD',
-    tenantId: 'tenant-123',
-    roles: ['investigator', 'analyst'] as string[],
-    permissions: ['read:alerts', 'write:cases', 'read:analytics'],
-  };
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    // Remove auth token from localStorage
-    localStorage.removeItem('authToken');
-    // Redirect to login
-    window.location.href = '/login';
+    logout();
   };
 
   const handleNavigate = (_href: string) => {
@@ -52,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
       >
         <Sidebar
           navigation={NAVIGATION_ITEMS}
-          user={user}
+          user={user || undefined}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />
@@ -61,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          user={user}
+          user={user || undefined}
           breadcrumbs={breadcrumbs}
           title={title}
           sidebarOpen={sidebarOpen}

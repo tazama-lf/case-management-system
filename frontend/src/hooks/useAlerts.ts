@@ -107,7 +107,6 @@ const initialState: AlertsState = {
     source: '',
     type: '',
     priority: '',
-    status: '',
     timeRange: '',
   },
   sort: {
@@ -188,9 +187,9 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         filtered = filtered.filter(a => (a.priority || '').toLowerCase() === state.filters.priority.toLowerCase());
       }
 
-      // Status filter
-      if (state.filters.status) {
-        filtered = filtered.filter(a => (a.alert_status || '').toLowerCase() === state.filters.status.toLowerCase());
+      // Alert type filter
+      if (state.filters.type) {
+        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
       }
 
       // Time range filter

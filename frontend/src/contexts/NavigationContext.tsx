@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavigationContext from './NavigationContext';
+import { useAuth } from './AuthContext';
 import type { NavigationContextType, User } from '../types/navigation.types';
 
 interface NavigationProviderProps {
@@ -12,22 +13,13 @@ const NavigationProvider: React.FC<NavigationProviderProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
 
-  // Mock user for development - TODO: Replace with actual auth
+  // Sync with auth context user
   useEffect(() => {
-    const mockUser: User = {
-      user_id: 'user-123',
-      username: 'john.doe',
-      email: 'john.doe@tazama.org',
-      name: 'John Doe',
-      initials: 'JD',
-      tenantId: 'tenant-123',
-      roles: ['investigator', 'analyst'],
-      permissions: ['read:alerts', 'write:cases', 'read:analytics'],
-    };
-    setUser(mockUser);
-  }, []);
+    setUser(authUser);
+  }, [authUser]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
