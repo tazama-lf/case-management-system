@@ -8,7 +8,7 @@ import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
 import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
-import type { ManualTriageDto } from '../types/triage.types';
+import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/triage.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
@@ -102,8 +102,31 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
+  // Utility function to extract transaction ID from alert data
+  const extractTransactionId = (alert: Alert): string => {
+    try {
+      const transaction = alert.transaction as any;
+      if (transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
+        return transaction.FIToFIPmtSts.GrpHdr.MsgId;
+      }
+      // Fallback to txtp if MsgId not found
+      return alert.txtp || 'Unknown';
+    } catch {
+      return alert.txtp || 'Unknown';
+    }
+  };
+
+  // Utility function to convert Alert to TriageAlert for modal compatibility
+  const convertToTriageAlert = (alert: Alert): TriageAlert => {
+    return {
+      ...alert,
+      alert_type: (alert.alert_type as AlertType) || null, // Cast string to AlertType
+    };
+  };
+
   // Transaction modal handlers
-  const handleTransactionIdClick = (transactionId: string) => {
+  const handleTransactionIdClick = (alert: Alert) => {
+    const transactionId = extractTransactionId(alert);
     setSelectedTransactionId(transactionId);
     setShowTransactionMessages(true);
   };
@@ -149,17 +172,22 @@ const AlertsDashboard: React.FC = () => {
       key: 'txtp',
       header: 'Transaction ID',
       sortable: true,
-      render: (value) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleTransactionIdClick(value as string);
-          }}
-          className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-        >
-          {value as string || 'N/A'}
-        </button>
-      )
+      render: (_, alert) => {
+        const transactionId = extractTransactionId(alert);
+        
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTransactionIdClick(alert);
+            }}
+            className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            title={`Transaction ID: ${transactionId}`}
+          >
+            {transactionId.length > 12 ? `${transactionId.substring(0, 12)}...` : transactionId}
+          </button>
+        );
+      }
     },
     {
       key: 'source',
@@ -345,7 +373,7 @@ const AlertsDashboard: React.FC = () => {
       {selectedAlert && (
         <ManualTriageModal
           isOpen={showManualTriageModal}
-          alert={selectedAlert}
+          alert={convertToTriageAlert(selectedAlert)}
           onClose={() => {
             setShowManualTriageModal(false);
             setSelectedAlert(null);
