@@ -571,8 +571,7 @@ export class TriageService {
       const task = await this.taskService.createTask(
         {
           caseId: newCase.case_id,
-          assignedUserId: userId,
-          status: TaskStatus.ASSIGNED_10,
+          status: TaskStatus.UNASSIGNED_01,
           name: 'Investigate case',
           description: `Investigation task for ${caseType} case ${newCase.case_id}`,
         },
@@ -610,8 +609,7 @@ export class TriageService {
       const createdTask = await this.taskService.createTask(
         {
           caseId,
-          assignedUserId: userId,
-          status: TaskStatus.ASSIGNED_10,
+          status: TaskStatus.UNASSIGNED_01,
           name: 'Investigate case',
           description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
         },
