@@ -1,29 +1,33 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Priority } from '@prisma/client';
 
 @Injectable()
 export class AlertPriorityService implements OnModuleInit {
   private readonly logger = new Logger(AlertPriorityService.name);
-  private intervalRef: NodeJS.Timeout | null = null;
-  private urgencyThresholds: number[] = [0.33, 0.66, 1.0];
-  private defaultSlaHours: number = 72;
-  private updateIntervalMs: number = 3600000; // 1 hour in milliseconds
+  private urgencyThresholds: number[];
+  private defaultSlaHours: number;
 
   constructor(
-    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly prisma: PrismaService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    // Load configuration values
+    this.urgencyThresholds = [
+      parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
+      parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
+      parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
+    ];
+    this.defaultSlaHours = parseInt(
+      this.configService.get<string>('DEFAULT_SLA_HOURS', '72'),
+      10,
+    );
+  }
 
   onModuleInit() {
-    const interval = setInterval(() => {
-      this.runRecalculation().catch((err) => this.logger.error(err));
-    }, this.updateIntervalMs);
-
-    this.schedulerRegistry.addInterval('alert-priority-interval', interval);
-    this.intervalRef = interval;
     this.logger.log(
-      `Alert priority recalculation scheduled every ${this.updateIntervalMs / 1000} seconds.`,
+      `Alert priority service initialized. Recalculation will run via scheduled task every hour.`,
     );
   }
 
@@ -46,38 +50,48 @@ export class AlertPriorityService implements OnModuleInit {
           (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
         const slaProgress = elapsedHours / slaHours;
 
-        const [urgentThreshold, criticalThreshold, breachThreshold] =
-          this.urgencyThresholds;
-        let urgency = 'New';
+        // Get priority_score from alert (provided by AI model) or use SLA progress as fallback
+        const priorityScore = (alert as any).priority_score ?? slaProgress;
 
-        if (slaProgress > breachThreshold) {
-          urgency = 'Breach';
-        } else if (slaProgress > criticalThreshold) {
-          urgency = 'Critical';
-        } else if (slaProgress > urgentThreshold) {
-          urgency = 'Urgent';
+        // Determine priority based on priority_score thresholds
+        let priority: Priority = Priority.NEW;
+        if (priorityScore >= this.urgencyThresholds[2]) {
+          priority = Priority.BREACH;
+        } else if (priorityScore >= this.urgencyThresholds[1]) {
+          priority = Priority.CRITICAL;
+        } else if (priorityScore >= this.urgencyThresholds[0]) {
+          priority = Priority.URGENT;
         } else {
-          urgency = 'New';
+          priority = Priority.NEW;
         }
 
-        const priorityScore = 0.5; // Default priority score
-
         const updatedData = { ...alertData };
-        updatedData.priority_score = priorityScore;
-        updatedData.urgency = urgency;
         updatedData.sla_hours = slaHours;
         updatedData.sla_progress = Number(slaProgress.toFixed(4));
         updatedData.last_priority_update = now.toISOString();
 
+        // Update alert priority and priority_score
         await this.prisma.alert.update({
           where: { alert_id: alert.alert_id },
           data: {
+            priority: priority,
+            priority_score: priorityScore,
             alert_data: updatedData,
           },
         });
 
+        // Update associated case priority if it exists
+        if (alert.case_id) {
+          await this.prisma.case.update({
+            where: { case_id: alert.case_id },
+            data: {
+              priority: priority,
+            },
+          });
+        }
+
         this.logger.debug(
-          `Alert ${alert.alert_id}: priority=${priorityScore} urgency=${urgency}`,
+          `Alert ${alert.alert_id}: priority_score=${priorityScore} priority=${priority}`,
         );
       } catch (err) {
         this.logger.error(

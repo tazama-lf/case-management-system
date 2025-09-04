@@ -3,20 +3,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AlertPriorityTask } from '../../src/alert-priority/alert-priority.task';
 import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('AlertPriorityTask', () => {
   let task: AlertPriorityTask;
   let mockAlertPriorityService: jest.Mocked<AlertPriorityService>;
+  let mockConfigService: jest.Mocked<ConfigService>;
 
   beforeEach(async () => {
     mockAlertPriorityService = {
       runRecalculation: jest.fn().mockResolvedValue(undefined),
     } as any;
 
+    mockConfigService = {
+      get: jest.fn().mockReturnValue('0 * * * *'),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertPriorityTask,
         { provide: AlertPriorityService, useValue: mockAlertPriorityService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -31,29 +38,29 @@ describe('AlertPriorityTask', () => {
     expect(task).toBeDefined();
   });
 
-  it('should call AlertPriorityService.runRecalculation on handleHourlyCron', async () => {
-    await task.handleHourlyCron();
-
+  it('should call AlertPriorityService.runRecalculation on handleAlertPriorityUpdate', async () => {
+    await task.handleAlertPriorityUpdate();
     expect(mockAlertPriorityService.runRecalculation).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle errors in runRecalculation gracefully', async () => {
+  it('should propagate errors from runRecalculation', async () => {
     const error = new Error('Service error');
-    const loggerSpy = jest.spyOn(task['logger'], 'error');
     mockAlertPriorityService.runRecalculation.mockRejectedValue(error);
 
-    // Should not throw error
-    await expect(task.handleHourlyCron()).resolves.not.toThrow();
+    // Expect the method to reject because the task does not catch errors
+    await expect(task.handleAlertPriorityUpdate()).rejects.toThrow('Service error');
     expect(mockAlertPriorityService.runRecalculation).toHaveBeenCalledTimes(1);
-    expect(loggerSpy).toHaveBeenCalledWith('Error in hourly alert priority recalculation task:', error);
   });
 
-  it('should log when starting hourly task', async () => {
-    const loggerSpy = jest.spyOn(task['logger'], 'log');
+  it('should log when starting and completing alert priority update task', async () => {
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-    await task.handleHourlyCron();
+    await task.handleAlertPriorityUpdate();
 
-    expect(loggerSpy).toHaveBeenCalledWith('Running hourly alert priority recalculation task');
+    expect(consoleSpy).toHaveBeenCalledWith('Running alert priority update task...');
     expect(mockAlertPriorityService.runRecalculation).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).toHaveBeenCalledWith('Alert priority update task completed.');
+
+    consoleSpy.mockRestore();
   });
 });

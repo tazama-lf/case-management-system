@@ -60,6 +60,21 @@ class EnvironmentVariables {
 
   @IsString()
   CLIENT_SYSTEM_INTERDICTION_ENABLED: string;
+
+  @IsNumberString()
+  PRIORITY_FIRST_HALF: string;
+
+  @IsNumberString()
+  PRIORITY_SECOND_HALF: string;
+
+  @IsNumberString()
+  PRIORITY_THIRD_HALF: string;
+
+  @IsNumberString()
+  DEFAULT_SLA_HOURS: string;
+
+  @IsString()
+  ALERT_PRIORITY_CRON_SCHEDULE: string;
 }
 
 export const validate = (config: Record<string, unknown>) => {
