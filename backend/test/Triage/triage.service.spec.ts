@@ -1273,10 +1273,9 @@ describe('TriageService', () => {
       expect(mockTaskService.createTask).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId,
-          assignedUserId: userId,
           name: 'Investigate case',
           description: taskName, // taskName is the investigateTaskDesc parameter
-          status: 'ASSIGNED_10',
+          status: 'UNASSIGNED_01',
         }),
         userId
       );

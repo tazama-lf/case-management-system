@@ -1,5 +1,5 @@
-import triageService from '../services/triageservice';
-import type { AlertsFilter } from '../types/triage.types';
+import triageService from '../features/alerts/services/triageservice';
+import type { AlertsFilter } from '../features/alerts/types/triage.types';
 
 // This file just tests that our service can be imported and used
 export const testTriageService = () => {
