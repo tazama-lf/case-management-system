@@ -26,14 +26,6 @@ export class TriageController {
     return { status: 'ok' };
   }
 
-  // @Post('ingest')
-  // async processIncomingAlert(@Body() req: AlertMessageDto) {
-  //   const userId = 'c98db341-beb6-457c-98e0-406cc1c71662';
-  //   const tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
-
-  //   return await this.triageService.processIncomingAlert(req, userId, tenantId);
-  // }
-
   @Patch(':alertId')
   @RequireCMSTestRole()
   async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {

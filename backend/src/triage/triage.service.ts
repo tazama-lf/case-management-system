@@ -64,7 +64,6 @@ export class TriageService {
       default: {
         this.logger.log(`Triage disabled, creating investigation task for alert: ${alert.alert_id}`, TriageService.name);
 
-        // 1. Directly create investigation task
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
@@ -142,6 +141,11 @@ export class TriageService {
       const triageTask = triageTasks.find((t) => t.name === 'Triage Alert' && t.status !== TaskStatus.COMPLETED_30);
 
       if (triageTask) {
+        if (triageTask.assigned_user_id && triageTask.assigned_user_id !== userId) {
+          throw new BadRequestException(
+            `User ${userId} is not allowed to complete triage task ${triageTask.task_id}, assigned to ${triageTask.assigned_user_id}`,
+          );
+        }
         await this.taskService.updateTask(
           triageTask.task_id,
           { status: TaskStatus.COMPLETED_30, description: manualTriageDto.note },
@@ -177,7 +181,11 @@ export class TriageService {
           userId,
         );
 
-        await this.caseService.updateCase(alert.case_id, { status: CaseStatus.READY_FOR_ASSIGNMENT_02 }, userId);
+        await this.caseService.updateCase(
+          alert.case_id,
+          { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: manualTriageDto.alertType },
+          userId,
+        );
 
         this.logger.log(
           `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Sent to investigation`,
@@ -239,52 +247,6 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to update alert');
     }
   }
-
-  // async manualCloseAlert(alertId: string, closeAlertDto: CloseAlertDto, userId: string, tenantId: string) {
-  //   const alert = await this.prisma.alert.findFirst({
-  //     where: {
-  //       alert_id: alertId,
-  //       tenant_id: tenantId,
-  //     },
-  //   });
-
-  //   if (!alert) {
-  //     throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
-  //   }
-
-  //   try {
-  //     const existingCase = await this.caseService.retrieveCase(alert?.case_id);
-
-  //     if (
-  //       existingCase.status === CaseStatus.CLOSED_CONFIRMED_82 ||
-  //       existingCase.status === CaseStatus.CLOSED_REFUTED_81 ||
-  //       existingCase.status === CaseStatus.CLOSED_INCONCLUSIVE_83
-  //     ) {
-  //       throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
-  //     }
-
-  //     const closedCase = await this.caseService.updateCase(existingCase.case_id, { status: closeAlertDto.status }, userId);
-
-  //     const createCommentDto = new CreateCommentDto();
-  //     createCommentDto.caseId = closedCase.case_id;
-  //     createCommentDto.note = closeAlertDto.reason;
-
-  //     this.commentService.addComment(createCommentDto, userId);
-
-  //     await this.audit.logAction({
-  //       userId,
-  //       operation: 'ALERT_CLOSED',
-  //       entityName: 'Alert',
-  //       actionPerformed: `Closed case for alert ${alertId} with reason: ${closeAlertDto.reason}  at ${new Date().toISOString()}`,
-  //       outcome: Outcome.SUCCESS,
-  //     });
-
-  //     return closedCase;
-  //   } catch (error) {
-  //     this.logger.error(`Failed to close case for alert ${alertId} : ${error.message}`, TriageService.name);
-  //     throw new InternalServerErrorException('Failed to close alert');
-  //   }
-  // }
 
   async getAlertsForUser(params: {
     tenantId: string;
