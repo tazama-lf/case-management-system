@@ -23,6 +23,7 @@ model Alert {
   alert_id           String             @id @default(uuid()) @db.Uuid
   tenant_id          String             @db.Uuid
   priority           Priority?          @default(NEW)
+  priority_score     Float?
   alert_type         AlertType?
   prediction_outcome PredictionOutcome? @default(FALSE_POSITIVE)
   source             String?            @db.VarChar(50)
