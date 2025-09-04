@@ -56,7 +56,7 @@ class EnvironmentVariables {
   CONFIDENCE_THRESHOLD: string;
 
   @IsString()
-  AI_TRIAGE_ENABLED: string;
+  TRIAGE_TYPE: string;
 
   @IsString()
   CLIENT_SYSTEM_INTERDICTION_ENABLED: string;
