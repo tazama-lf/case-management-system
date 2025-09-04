@@ -1,11 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { UpdateAlertDto } from './dto/update-alert.dto';
-import { CloseAlertDto } from './dto/close-alert.dto';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireCMSTestRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
+import { ManualTriageDto } from './dto/manual-triage.dto';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(TazamaAuthGuard)
@@ -27,20 +26,20 @@ export class TriageController {
     return { status: 'ok' };
   }
 
+  // @Post('ingest')
+  // async processIncomingAlert(@Body() req: AlertMessageDto) {
+  //   const userId = 'c98db341-beb6-457c-98e0-406cc1c71662';
+  //   const tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
+
+  //   return await this.triageService.processIncomingAlert(req, userId, tenantId);
+  // }
+
   @Patch(':alertId')
   @RequireCMSTestRole()
-  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req: AuthenticatedRequest) {
+  async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
-    return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
-  }
-
-  @Patch(':alertId/close')
-  @RequireCMSTestRole()
-  async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
+    return this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
   }
 
   @Get()

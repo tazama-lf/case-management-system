@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Logger } from '@nestjs/common';
@@ -16,7 +16,7 @@ jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => {});
 describe('AlertPriorityService', () => {
   let service: AlertPriorityService;
   let prismaService: any;
-  let schedulerRegistry: any;
+  let configService: any;
 
   const mockDate = new Date('2023-01-01T12:00:00.000Z');
 
@@ -30,26 +30,41 @@ describe('AlertPriorityService', () => {
         findMany: jest.fn(),
         update: jest.fn(),
       },
+      case: {
+        update: jest.fn(),
+      },
     };
 
-    const mockSchedulerRegistry = {
-      addInterval: jest.fn(),
+    const mockConfigService = {
+      get: jest.fn((key: string, defaultValue?: any) => {
+        switch (key) {
+          case 'PRIORITY_FIRST_HALF':
+            return 0.33;
+          case 'PRIORITY_SECOND_HALF':
+            return 0.66;
+          case 'PRIORITY_THIRD_HALF':
+            return 1.0;
+          case 'DEFAULT_SLA_HOURS':
+            return 72;
+          case 'ALERT_PRIORITY_UPDATE_INTERVAL_MS':
+            return 3600000;
+          default:
+            return defaultValue;
+        }
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertPriorityService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: SchedulerRegistry, useValue: mockSchedulerRegistry },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<AlertPriorityService>(AlertPriorityService);
     prismaService = module.get<PrismaService>(PrismaService);
-    schedulerRegistry = mockSchedulerRegistry;
-
-    // Mock setInterval to prevent actual scheduling during tests
-    global.setInterval = jest.fn().mockReturnValue('mock-interval-id' as any);
+    configService = mockConfigService;
   });
 
   afterEach(() => {
@@ -62,35 +77,14 @@ describe('AlertPriorityService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should schedule interval and add to scheduler registry', () => {
+    it('should log initialization message', () => {
       const loggerSpy = jest.spyOn(service['logger'], 'log');
       
       service.onModuleInit();
 
-      expect(global.setInterval).toHaveBeenCalledWith(
-        expect.any(Function),
-        3600000 // 1 hour in milliseconds
-      );
-      expect(schedulerRegistry.addInterval).toHaveBeenCalledWith(
-        'alert-priority-interval',
-        'mock-interval-id'
-      );
       expect(loggerSpy).toHaveBeenCalledWith(
-        'Alert priority recalculation scheduled every 3600 seconds.'
+        'Alert priority service initialized. Recalculation will run via scheduled task every hour.'
       );
-    });
-
-    it('should catch and log errors from runRecalculation', () => {
-      jest.spyOn(service, 'runRecalculation').mockRejectedValue(new Error('Test error'));
-      
-      service.onModuleInit();
-
-      // Get the callback function passed to setInterval
-      const setIntervalCallback = (global.setInterval as jest.Mock).mock.calls[0][0];
-      
-      // Execute the callback - it should catch and log the error
-      // The callback itself is async but doesn't return a promise, it catches errors internally
-      expect(() => setIntervalCallback()).not.toThrow();
     });
   });
 
@@ -106,7 +100,7 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).not.toHaveBeenCalled();
     });
 
-    it('should process alerts and update priority correctly for NEW urgency', async () => {
+    it('should process alerts and update priority correctly for NEW priority', async () => {
       const loggerSpy = jest.spyOn(service['logger'], 'log');
       const debugSpy = jest.spyOn(service['logger'], 'debug');
       
@@ -114,6 +108,8 @@ describe('AlertPriorityService', () => {
         alert_id: 'alert-123',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
         alert_data: { sla_hours: 72 },
+        priority_score: null, // No AI priority score provided
+        case_id: null, // No associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -126,10 +122,10 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-123' },
         data: {
+          priority: 'NEW',
+          priority_score: expectedSlaProgress,
           alert_data: {
             sla_hours: 72,
-            priority_score: 0.5,
-            urgency: 'New',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
@@ -138,14 +134,16 @@ describe('AlertPriorityService', () => {
 
       expect(loggerSpy).toHaveBeenCalledWith('Starting alert priority recalculation job...');
       expect(loggerSpy).toHaveBeenCalledWith('Alert priority recalculation job complete.');
-      expect(debugSpy).toHaveBeenCalledWith('Alert alert-123: priority=0.5 urgency=New');
+      expect(debugSpy).toHaveBeenCalledWith(`Alert alert-123: priority_score=${expectedSlaProgress} priority=NEW`);
     });
 
-    it('should process alerts and update priority correctly for URGENT urgency', async () => {
+    it('should process alerts and update priority correctly for URGENT priority', async () => {
       const mockAlert = {
         alert_id: 'alert-456',
         created_at: new Date('2023-01-01T00:00:00.000Z'), // 12 hours ago
         alert_data: { sla_hours: 24 }, // Short SLA for testing
+        priority_score: 0.5, // AI provided priority score above 0.33 threshold
+        case_id: 'case-456', // Associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -153,27 +151,37 @@ describe('AlertPriorityService', () => {
 
       await service.runRecalculation();
 
-      const expectedSlaProgress = 12 / 24; // 12 hours elapsed / 24 hours SLA = 0.5 (above 0.33 threshold)
+      const expectedSlaProgress = 12 / 24; // 12 hours elapsed / 24 hours SLA = 0.5
       
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-456' },
         data: {
+          priority: 'URGENT',
+          priority_score: 0.5,
           alert_data: {
             sla_hours: 24,
-            priority_score: 0.5,
-            urgency: 'Urgent',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
         },
       });
+
+      // Should also update associated case priority
+      expect(prismaService.case.update).toHaveBeenCalledWith({
+        where: { case_id: 'case-456' },
+        data: {
+          priority: 'URGENT',
+        },
+      });
     });
 
-    it('should process alerts and update priority correctly for CRITICAL urgency', async () => {
+    it('should process alerts and update priority correctly for CRITICAL priority', async () => {
       const mockAlert = {
         alert_id: 'alert-789',
         created_at: new Date('2022-12-31T18:00:00.000Z'), // 18 hours ago
         alert_data: { sla_hours: 24 },
+        priority_score: 0.75, // AI provided priority score above 0.66 threshold
+        case_id: 'case-789', // Associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -181,27 +189,37 @@ describe('AlertPriorityService', () => {
 
       await service.runRecalculation();
 
-      const expectedSlaProgress = 18 / 24; // 18 hours elapsed / 24 hours SLA = 0.75 (above 0.66 threshold)
+      const expectedSlaProgress = 18 / 24; // 18 hours elapsed / 24 hours SLA = 0.75
       
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-789' },
         data: {
+          priority: 'CRITICAL',
+          priority_score: 0.75,
           alert_data: {
             sla_hours: 24,
-            priority_score: 0.5,
-            urgency: 'Critical',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
         },
       });
+
+      // Should also update associated case priority
+      expect(prismaService.case.update).toHaveBeenCalledWith({
+        where: { case_id: 'case-789' },
+        data: {
+          priority: 'CRITICAL',
+        },
+      });
     });
 
-    it('should process alerts and update priority correctly for BREACH urgency', async () => {
+    it('should process alerts and update priority correctly for BREACH priority', async () => {
       const mockAlert = {
         alert_id: 'alert-breach',
         created_at: new Date('2022-12-31T00:00:00.000Z'), // 36 hours ago
         alert_data: { sla_hours: 24 },
+        priority_score: 1.2, // AI provided priority score above 1.0 threshold
+        case_id: 'case-breach', // Associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -209,18 +227,26 @@ describe('AlertPriorityService', () => {
 
       await service.runRecalculation();
 
-      const expectedSlaProgress = 36 / 24; // 36 hours elapsed / 24 hours SLA = 1.5 (above 1.0 threshold)
+      const expectedSlaProgress = 36 / 24; // 36 hours elapsed / 24 hours SLA = 1.5
       
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-breach' },
         data: {
+          priority: 'BREACH',
+          priority_score: 1.2,
           alert_data: {
             sla_hours: 24,
-            priority_score: 0.5,
-            urgency: 'Breach',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
+        },
+      });
+
+      // Should also update associated case priority
+      expect(prismaService.case.update).toHaveBeenCalledWith({
+        where: { case_id: 'case-breach' },
+        data: {
+          priority: 'BREACH',
         },
       });
     });
@@ -230,6 +256,8 @@ describe('AlertPriorityService', () => {
         alert_id: 'alert-default-sla',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
         alert_data: {}, // No sla_hours provided
+        priority_score: null, // No AI priority score
+        case_id: null, // No associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -242,10 +270,10 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-default-sla' },
         data: {
+          priority: 'NEW',
+          priority_score: expectedSlaProgress,
           alert_data: {
             sla_hours: 72,
-            priority_score: 0.5,
-            urgency: 'New',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
@@ -258,6 +286,8 @@ describe('AlertPriorityService', () => {
         alert_id: 'alert-no-data',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
         alert_data: null,
+        priority_score: null,
+        case_id: null, // No associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -270,10 +300,10 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-no-data' },
         data: {
+          priority: 'NEW',
+          priority_score: expectedSlaProgress,
           alert_data: {
             sla_hours: 72,
-            priority_score: 0.5,
-            urgency: 'New',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
@@ -286,6 +316,8 @@ describe('AlertPriorityService', () => {
         alert_id: 'alert-invalid-sla',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
         alert_data: { sla_hours: 'invalid' },
+        priority_score: null,
+        case_id: null, // No associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -298,10 +330,10 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-invalid-sla' },
         data: {
+          priority: 'NEW',
+          priority_score: expectedSlaProgress,
           alert_data: {
             sla_hours: 72,
-            priority_score: 0.5,
-            urgency: 'New',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
@@ -318,6 +350,8 @@ describe('AlertPriorityService', () => {
           existing_field: 'preserve_me',
           another_field: 12345
         },
+        priority_score: 0.25, // AI provided priority score
+        case_id: null, // No associated case
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -330,12 +364,12 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 'alert-preserve-data' },
         data: {
+          priority: 'NEW',
+          priority_score: 0.25,
           alert_data: {
             existing_field: 'preserve_me',
             another_field: 12345,
             sla_hours: 48,
-            priority_score: 0.5,
-            urgency: 'New',
             sla_progress: Number(expectedSlaProgress.toFixed(4)),
             last_priority_update: mockDate.toISOString(),
           },
@@ -349,6 +383,7 @@ describe('AlertPriorityService', () => {
         alert_id: 'alert-error',
         created_at: new Date('2023-01-01T11:00:00.000Z'),
         alert_data: { sla_hours: 72 },
+        priority_score: null,
       };
 
       prismaService.alert.findMany.mockResolvedValue([mockAlert]);
@@ -368,11 +403,15 @@ describe('AlertPriorityService', () => {
           alert_id: 'alert-1',
           created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
           alert_data: { sla_hours: 72 },
+          priority_score: null,
+          case_id: null, // No associated case
         },
         {
           alert_id: 'alert-2',
           created_at: new Date('2023-01-01T00:00:00.000Z'), // 12 hours ago
           alert_data: { sla_hours: 24 },
+          priority_score: 0.5, // AI provided score above 0.33 threshold
+          case_id: null, // No associated case
         },
       ];
 
@@ -383,26 +422,22 @@ describe('AlertPriorityService', () => {
 
       expect(prismaService.alert.update).toHaveBeenCalledTimes(2);
       
-      // First alert - NEW urgency
+      // First alert - NEW priority (uses SLA progress as fallback)
       expect(prismaService.alert.update).toHaveBeenNthCalledWith(1, {
         where: { alert_id: 'alert-1' },
-        data: {
-          alert_data: expect.objectContaining({
-            urgency: 'New',
-            sla_progress: Number((1 / 72).toFixed(4)),
-          }),
-        },
+        data: expect.objectContaining({
+          priority: 'NEW',
+          priority_score: 1 / 72, // Raw SLA progress value
+        }),
       });
 
-      // Second alert - URGENT urgency (12/24 = 0.5, above 0.33 threshold)
+      // Second alert - URGENT priority (AI score 0.5 above 0.33 threshold)
       expect(prismaService.alert.update).toHaveBeenNthCalledWith(2, {
         where: { alert_id: 'alert-2' },
-        data: {
-          alert_data: expect.objectContaining({
-            urgency: 'Urgent',
-            sla_progress: Number((12 / 24).toFixed(4)),
-          }),
-        },
+        data: expect.objectContaining({
+          priority: 'URGENT',
+          priority_score: 0.5,
+        }),
       });
     });
 

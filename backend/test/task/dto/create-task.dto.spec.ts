@@ -112,7 +112,7 @@ describe('CreateTaskDto', () => {
       expect(errors[0].constraints).toHaveProperty('isUuid');
     });
 
-    it('should reject missing assignedUserId', async () => {
+    it('should accept missing assignedUserId (optional)', async () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         status: TaskStatus.UNASSIGNED_01,
@@ -121,9 +121,7 @@ describe('CreateTaskDto', () => {
       });
 
       const errors = await validate(dto);
-      expect(errors).toHaveLength(1);
-      expect(errors[0].property).toBe('assignedUserId');
-      expect(errors[0].constraints).toHaveProperty('isUuid');
+      expect(errors).toHaveLength(0);
     });
   });
 
@@ -320,8 +318,8 @@ describe('CreateTaskDto', () => {
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(5);
-      
-      const errorProperties = errors.map(error => error.property);
+
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('caseId');
       expect(errorProperties).toContain('assignedUserId');
       expect(errorProperties).toContain('status');
@@ -333,11 +331,11 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {});
 
       const errors = await validate(dto);
-      expect(errors).toHaveLength(4); // status is optional, so only 4 errors
-      
-      const errorProperties = errors.map(error => error.property);
+      expect(errors).toHaveLength(3); // status is optional, so only 4 errors
+
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('caseId');
-      expect(errorProperties).toContain('assignedUserId');
+      expect(errorProperties).not.toContain('assignedUserId'); // optional
       expect(errorProperties).toContain('name');
       expect(errorProperties).toContain('description');
       expect(errorProperties).not.toContain('status'); // status is optional
