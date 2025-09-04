@@ -1,20 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { AlertPriorityService } from './alert-priority.service';
 
 @Injectable()
 export class AlertPriorityTask {
-  private readonly logger = new Logger(AlertPriorityTask.name);
+  constructor(
+    private readonly priorityService: AlertPriorityService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  constructor(private readonly priorityService: AlertPriorityService) {}
-
-  @Cron(CronExpression.EVERY_HOUR)
-  async handleHourlyCron() {
-    this.logger.log('Running hourly alert priority recalculation task');
-    try {
-      await this.priorityService.runRecalculation();
-    } catch (error) {
-      this.logger.error('Error in hourly alert priority recalculation task:', error);
-    }
+  @Cron(process.env.ALERT_PRIORITY_CRON_SCHEDULE || '0 * * * *')
+  async handleAlertPriorityUpdate() {
+    console.log('Running alert priority update task...');
+    await this.priorityService.runRecalculation();
+    console.log('Alert priority update task completed.');
   }
 }

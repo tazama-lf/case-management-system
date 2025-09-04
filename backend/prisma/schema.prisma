@@ -23,6 +23,7 @@ model Alert {
   alert_id           String             @id @default(uuid()) @db.Uuid
   tenant_id          String             @db.Uuid
   priority           Priority?          @default(NEW)
+  priority_score     Float?
   alert_type         AlertType?
   prediction_outcome PredictionOutcome? @default(FALSE_POSITIVE)
   source             String?            @db.VarChar(50)
@@ -62,7 +63,7 @@ model Task {
   task_id          String     @id @default(uuid()) @db.Uuid
   case_id          String     @db.Uuid
   status           TaskStatus @default(UNASSIGNED_01)
-  assigned_user_id String     @db.Uuid
+  assigned_user_id String?    @db.Uuid
   name             String?
   description      String?
   created_at       DateTime   @default(now()) @db.Timestamp(6)

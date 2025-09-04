@@ -1,10 +1,7 @@
 import { CaseStatus } from '@prisma/client';
-import { IsEnum, IsString } from 'class-validator';
+import { IsEnum } from 'class-validator';
 
 export class CloseAlertDto {
-  @IsString()
-  reason: string;
-
   @IsEnum(CaseStatus)
   status: CaseStatus;
 }
