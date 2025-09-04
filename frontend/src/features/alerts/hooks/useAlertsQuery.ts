@@ -126,7 +126,7 @@ export const useAlertOperations = () => {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: any }) =>
+    mutationFn: ({ alertId, data }: { alertId: string; data: Record<string, unknown> }) =>
       triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
       showSuccess('Alert updated successfully');
@@ -141,31 +141,15 @@ export const useAlertOperations = () => {
     },
   });
 
-  const convertToCaseMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: any }) =>
-      triageService.convertAlertToCase(alertId, data),
-    onSuccess: (_, variables) => {
-      showSuccess('Alert converted to case successfully');
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.detail(variables.alertId) });
-    },
-    onError: (error: Error) => {
-      showError(error.message || 'Failed to convert alert to case');
-    },
-  });
-
   return {
     closeAlert: closeAlertMutation.mutate,
     updateAlert: updateAlertMutation.mutate,
-    convertToCase: convertToCaseMutation.mutate,
     isClosingAlert: closeAlertMutation.isPending,
     isUpdatingAlert: updateAlertMutation.isPending,
-    isConvertingToCase: convertToCaseMutation.isPending,
     // Legacy support for existing components
     operationStates: {
       closingAlert: new Set(closeAlertMutation.isPending ? ['pending'] : []),
       updatingAlert: new Set(updateAlertMutation.isPending ? ['pending'] : []),
-      convertingToCase: new Set(convertToCaseMutation.isPending ? ['pending'] : []),
       loadingDetails: new Set([]),
     },
   };

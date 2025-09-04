@@ -9,7 +9,8 @@ import { PageContainer, LoadingState, Notification } from '../../../shared/compo
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import { useAlerts, useAlertOperations, useAlertFilterOptions } from '../hooks/useAlertsQuery';
+import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
+import type { AlertStatus } from '../types/triage.types';
 
 const AlertsDashboard: React.FC = () => {
   // State for filters and pagination
@@ -25,89 +26,29 @@ const AlertsDashboard: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sort, setSort] = useState({ column: 'created_at', direction: 'desc' as 'asc' | 'desc' });
 
-  // React Query hooks - fetch all alerts without filters
-  const { alerts: allAlerts, isLoading, error, refetch } = useAlerts({
+  // React Query hooks - fetch alerts with server-side filtering/sorting/pagination
+  const { alerts, pagination: serverPagination, isLoading, error, refetch } = useAlerts({
     search: filters.query,
+    priority: filters.priority,
+    type: filters.type,
+    source: filters.source,
+    sortBy: sort.column,
+    sortOrder: sort.direction,
     page,
-    limit: pageSize
+    limit: pageSize,
   });
 
-  // Client-side filtering and sorting
-  const filteredAndSortedAlerts = React.useMemo(() => {
-    let filtered = allAlerts;
+  // Pagination control object using server pagination
+  const tablePagination = React.useMemo(() => ({
+    currentPage: serverPagination.currentPage,
+    totalPages: serverPagination.totalPages,
+    totalItems: serverPagination.totalItems,
+    pageSize: serverPagination.pageSize,
+    onPageChange: (p: number) => setPage(p),
+  }), [serverPagination, setPage]);
 
-    // Filter by priority
-    if (filters.priority) {
-      filtered = filtered.filter(alert => 
-        alert.priority?.toLowerCase() === filters.priority.toLowerCase()
-      );
-    }
-
-    // Filter by alert type
-    if (filters.type) {
-      filtered = filtered.filter(alert => 
-        alert.alert_type?.toLowerCase() === filters.type.toLowerCase()
-      );
-    }
-
-    // Filter by source
-    if (filters.source) {
-      filtered = filtered.filter(alert => 
-        alert.source?.toLowerCase() === filters.source.toLowerCase()
-      );
-    }
-
-    // Sort the filtered results
-    if (sort.column) {
-      filtered.sort((a, b) => {
-        const aValue = (a as any)[sort.column];
-        const bValue = (b as any)[sort.column];
-        
-        // Handle different data types
-        let comparison = 0;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-          comparison = aValue - bValue;
-        } else if (aValue instanceof Date && bValue instanceof Date) {
-          comparison = aValue.getTime() - bValue.getTime();
-        } else {
-          // Fallback to string comparison
-          comparison = String(aValue).localeCompare(String(bValue));
-        }
-        
-        return sort.direction === 'desc' ? -comparison : comparison;
-      });
-    }
-
-    return filtered;
-  }, [allAlerts, filters.priority, filters.type, filters.source, sort]);
-
-  // Client-side pagination
-  const paginatedAlerts = React.useMemo(() => {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredAndSortedAlerts.slice(startIndex, endIndex);
-  }, [filteredAndSortedAlerts, page, pageSize]);
-
-  // Update pagination info for filtered results
-  const clientPagination = React.useMemo(() => {
-    const totalItems = filteredAndSortedAlerts.length;
-    const totalPages = Math.ceil(totalItems / pageSize);
-    
-    return {
-      currentPage: page,
-      totalPages,
-      totalItems,
-      pageSize,
-      onPageChange: setPage,
-    };
-  }, [filteredAndSortedAlerts.length, pageSize, page]);
-
-  const {
-    convertToCase,
-    closeAlert,
-  } = useAlertOperations();
+  // Operations
+  const { closeAlert } = useAlertOperations();
 
   // Get filter options
   const { filterOptions } = useAlertFilterOptions();
@@ -117,23 +58,13 @@ const AlertsDashboard: React.FC = () => {
   const lastUpdated = new Date(); // You can track this in React Query if needed
 
   // Alert operation handlers
-  const handleConvertToCase = async (alert: Alert, caseData?: any) => {
-    try {
-      await convertToCase({ 
-        alertId: alert.alert_id as string, 
-        data: caseData || {} 
-      });
-      refetch(); // Refresh the alerts list
-    } catch (error) {
-      console.error('Failed to convert alert to case:', error);
-    }
-  };
+  // Conversion to case removed from frontend
 
-  const handleCloseAlert = async (alert: Alert, status: string, notes: string) => {
+  const handleCloseAlert = async (alert: Alert, status: AlertStatus, notes: string) => {
     try {
       await closeAlert({ 
         alertId: alert.alert_id as string, 
-        status: status as any, 
+        status,
         notes 
       });
       refetch(); // Refresh the alerts list
@@ -303,7 +234,7 @@ const AlertsDashboard: React.FC = () => {
   ];
 
   // Main loading and error states
-  if (loading && paginatedAlerts.length === 0) {
+  if (loading && alerts.length === 0) {
     return (
       <PageContainer
         title="Alerts Dashboard"
@@ -316,7 +247,7 @@ const AlertsDashboard: React.FC = () => {
     );
   }
 
-  if (error && paginatedAlerts.length === 0) {
+  if (error && alerts.length === 0) {
     return (
       <PageContainer
         title="Alerts Dashboard"
@@ -371,24 +302,27 @@ const AlertsDashboard: React.FC = () => {
         />
 
         <ResultsSummary
-          pagination={clientPagination}
+          pagination={tablePagination}
           loading={loading}
           lastUpdated={lastUpdated}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1); // Reset to first page when page size changes
+          }}
           sort={sort}
         />
 
         {/* Alerts Table */}
         <div className="bg-white rounded-lg shadow">
           <AlertsTable
-            data={paginatedAlerts as any}
+            data={alerts}
             columns={columns}
-            onSort={(column, direction) => setSort({ column: String(column), direction })}
+            onSort={(column, direction) => { setSort({ column: String(column), direction }); setPage(1); }}
             sortColumn={sort.column}
             sortDirection={sort.direction}
             onRowClick={handleRowClick}
             emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
-            pagination={clientPagination}
+            pagination={tablePagination}
           />
         </div>
 
@@ -397,7 +331,7 @@ const AlertsDashboard: React.FC = () => {
         alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
-        onConvertToCase={handleConvertToCase}
+        
         onCloseAlert={handleCloseAlert}
         onAlertUpdated={refetch}
       />

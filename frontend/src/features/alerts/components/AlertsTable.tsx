@@ -243,36 +243,66 @@ const AlertsTable = <T extends Record<string, unknown>>({
               >
                 <button
                   onClick={() =>
-                    pagination.onPageChange(pagination.currentPage - 1)
+                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
                   }
                   disabled={pagination.currentPage <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-                {/* Page Numbers */}
-                {Array.from(
-                  { length: Math.min(5, pagination.totalPages) },
-                  (_, i) => {
-                    const pageNumber = i + 1;
-                    return (
+                {/* Page Numbers with sliding window and ellipses */}
+                {(() => {
+                  const { currentPage, totalPages } = pagination;
+                  const pages: (number | 'ellipsis')[] = [];
+                  const windowSize = 5; // total number buttons to display (excluding first/last if separated by ellipses)
+                  const half = Math.floor(windowSize / 2);
+
+                  // Always include first and last page when there is enough room
+                  const addPage = (p: number) => pages.push(p);
+                  const addEllipsis = () => pages.push('ellipsis');
+
+                  if (totalPages <= windowSize + 2) {
+                    // Small number of pages, show all
+                    for (let p = 1; p <= totalPages; p++) addPage(p);
+                  } else {
+                    // Large number of pages, show window around currentPage
+                    const start = Math.max(2, currentPage - half);
+                    const end = Math.min(totalPages - 1, currentPage + half);
+
+                    addPage(1);
+                    if (start > 2) addEllipsis();
+                    for (let p = start; p <= end; p++) addPage(p);
+                    if (end < totalPages - 1) addEllipsis();
+                    addPage(totalPages);
+                  }
+
+      return pages.map((p, idx) =>
+                    p === 'ellipsis' ? (
+                      <span
+        key={`ellipsis-${idx}`}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
                       <button
-                        key={pageNumber}
-                        onClick={() => pagination.onPageChange(pageNumber)}
+                        key={p}
+                        onClick={() => pagination.onPageChange(p)}
                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          pagination.currentPage === pageNumber
+                          pagination.currentPage === p
                             ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         }`}
+                        aria-current={pagination.currentPage === p ? 'page' : undefined}
                       >
-                        {pageNumber}
+                        {p}
                       </button>
-                    );
-                  },
-                )}
+                    ),
+                  );
+                })()}
                 <button
                   onClick={() =>
-                    pagination.onPageChange(pagination.currentPage + 1)
+                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
                   }
                   disabled={pagination.currentPage >= pagination.totalPages}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

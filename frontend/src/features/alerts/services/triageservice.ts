@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
+import type { Alert, AlertsFilter, UpdateAlertDto, CloseAlertDto, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
@@ -163,8 +163,6 @@ class TriageService {
     }
   }
 
-  
-
   // PATCH /api/v1/triage/alerts/:alertId/close
   async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
     try {
@@ -176,26 +174,7 @@ class TriageService {
     }
   }
 
-  // POST /api/v1/triage/alerts/:alertId/convert-to-case
-  async convertAlertToCase(
-    alertId: string,
-    data: ConvertToCaseDto,
-  ): Promise<ConvertToCaseResponse> {
-    try {
-      const response = await apiClient.post<ConvertToCaseResponse>(
-        `${this.baseUrl}/${alertId}/convert-to-case`,
-        data,
-      );
-
-      if (!response || typeof response !== 'object') {
-        throw new Error('Invalid response from convert to case operation');
-      }
-
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'convert alert to case');
-    }
-  }
+  // Removed convert-to-case functionality from frontend
 }
 
 export default new TriageService();
