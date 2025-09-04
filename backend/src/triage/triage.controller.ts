@@ -79,6 +79,13 @@ export class TriageController {
     return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
   }
 
+  @Get('transactions/:transactionId/messages')
+  @RequireCMSTestRole()
+  async getTransactionMessages(@Param('transactionId') transactionId: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = req.user.token.tenantId;
+    return await this.triageService.getTransactionMessages(transactionId, tenantId);
+  }
+
   @Get(':alertId')
   @RequireCMSTestRole()
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {

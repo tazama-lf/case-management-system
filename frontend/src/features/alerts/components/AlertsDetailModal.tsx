@@ -1,5 +1,3 @@
-import type { AlertType } from '../types/triage.types';
-
 import React, { useState, useEffect } from 'react';
 import {
   XMarkIcon,

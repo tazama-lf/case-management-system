@@ -805,6 +805,55 @@ export class TriageService {
     }
   }
 
+  async getTransactionMessages(transactionId: string, tenantId: string) {
+    try {
+      this.logger.log(`Fetching transaction messages for transaction: ${transactionId}`, this.constructor.name);
+
+      // For now, return mock data since we don't have a transaction messages table
+      // In a real implementation, this would query a transaction messages database
+      const mockMessages = [
+        {
+          id: `msg-${transactionId}-1`,
+          type: 'pacs.008.001.10',
+          description: 'Customer Credit Transfer Initiation',
+          status: 'sent',
+          timestamp: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
+          payload: {
+            msgId: transactionId,
+            msgType: 'pacs.008.001.10',
+            direction: 'outbound',
+            amount: '1000.00',
+            currency: 'USD',
+            creditorAccount: 'ACC-12345',
+            debtorAccount: 'ACC-67890',
+          }
+        },
+        {
+          id: `msg-${transactionId}-2`,
+          type: 'pacs.002.001.12',
+          description: 'Payment Status Report',
+          status: 'received',
+          timestamp: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
+          payload: {
+            msgId: transactionId,
+            msgType: 'pacs.002.001.12',
+            direction: 'inbound',
+            txStatus: 'ACCC',
+            reasonCode: null,
+          }
+        }
+      ];
+
+      return {
+        transactionId,
+        messages: mockMessages
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch transaction messages for ${transactionId}. Error: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to fetch transaction messages');
+    }
+  }
+
   private async predictAlert(): Promise<{
     alertType: AlertType;
     confidence_per: number;
