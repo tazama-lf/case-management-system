@@ -226,8 +226,7 @@ describe('NatsStartupService', () => {
       expect(taskService.createTask).toHaveBeenCalledWith(
         {
           caseId: 'case1',
-          assignedUserId: 'systemId',
-          status: TaskStatus.ASSIGNED_10,
+          status: TaskStatus.UNASSIGNED_01,
           name: 'Investigate case',
           description: 'Task to investigate: case1',
         },
