@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/AlertsDetailModal';
+import ManualTriageModal from '../components/ManualTriageModal';
 import TransactionMessagesModal from '../components/TransactionMessagesModal';
 import MessagePayloadModal from '../components/MessagePayloadModal';
 import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
 import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
+import type { ManualTriageDto } from '../types/triage.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
-import type { AlertStatus } from '../types/triage.types';
 
 const AlertsDashboard: React.FC = () => {
   // State for filters and pagination
@@ -47,8 +48,8 @@ const AlertsDashboard: React.FC = () => {
     onPageChange: (p: number) => setPage(p),
   }), [serverPagination, setPage]);
 
-  // Operations
-  const { closeAlert } = useAlertOperations();
+  // Operations - Manual Triage handles all alert updates and case decisions
+  const { performManualTriage } = useAlertOperations();
 
   // Get filter options
   const { filterOptions } = useAlertFilterOptions();
@@ -58,24 +59,25 @@ const AlertsDashboard: React.FC = () => {
   const lastUpdated = new Date(); // You can track this in React Query if needed
 
   // Alert operation handlers
-  // Conversion to case removed from frontend
+  // Manual Triage now handles all alert updates and case decisions
 
-  const handleCloseAlert = async (alert: Alert, status: AlertStatus, notes: string) => {
+  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
-      await closeAlert({ 
-        alertId: alert.alert_id as string, 
-        status,
-        notes 
+      await performManualTriage({
+        alertId: alert.alert_id as string,
+        data: triageData,
       });
       refetch(); // Refresh the alerts list
     } catch (error) {
-      console.error('Failed to close alert:', error);
+      console.error('Failed to perform manual triage:', error);
+      throw error;
     }
   };
 
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showManualTriageModal, setShowManualTriageModal] = useState(false);
   
   // Transaction modals state
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
@@ -331,10 +333,26 @@ const AlertsDashboard: React.FC = () => {
         alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
-        
-        onCloseAlert={handleCloseAlert}
         onAlertUpdated={refetch}
+        onManualTriage={(alert: Alert) => {
+          setSelectedAlert(alert);
+          setShowModal(false);
+          setShowManualTriageModal(true);
+        }}
       />
+
+      {/* Manual Triage Modal */}
+      {selectedAlert && (
+        <ManualTriageModal
+          isOpen={showManualTriageModal}
+          alert={selectedAlert}
+          onClose={() => {
+            setShowManualTriageModal(false);
+            setSelectedAlert(null);
+          }}
+          onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+        />
+      )}
 
       {/* Transaction Messages Modal */}
       <TransactionMessagesModal

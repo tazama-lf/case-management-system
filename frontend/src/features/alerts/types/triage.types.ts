@@ -140,11 +140,22 @@ export interface AlertsApiResponse {
 
 // DTO interfaces matching backend DTOs
 
+// Manual Triage DTO - matches backend ManualTriageDto
+export interface ManualTriageDto {
+  confidence_per?: number;
+  priority?: Priority;
+  alertType?: AlertType;
+  predictionOutcome?: 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
+  note: string;
+  status: CaseStatus;
+}
+
 // Update Alert DTO
 export interface UpdateAlertDto {
   confidence_per?: number;
   priority?: Priority;
-  alertType?: AlertType;
+  alert_type?: AlertType;
+  note?: string;
 }
 
 // Convert Alert to Case DTO

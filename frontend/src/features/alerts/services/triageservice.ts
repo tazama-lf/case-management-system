@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, CloseAlertDto, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
+import type { Alert, AlertsFilter, UpdateAlertDto, ManualTriageDto, CloseAlertDto, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
@@ -150,7 +150,20 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId
+  // PATCH /api/v1/triage/alerts/:alertId - Manual Triage
+  async performManualTriage(alertId: string, data: ManualTriageDto): Promise<Alert> {
+    try {
+      const response = await apiClient.patch<Alert>(
+        `${this.baseUrl}/${alertId}`,
+        data,
+      );
+      return this.validateAlertResponse(response);
+    } catch (error) {
+      throw this.handleError(error, 'perform manual triage');
+    }
+  }
+
+  // PATCH /api/v1/triage/alerts/:alertId - Update Alert (legacy)
   async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
