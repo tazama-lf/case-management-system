@@ -97,7 +97,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow mb-6">
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4">
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
           {/* Search Input */}
           <div className="flex-1">
