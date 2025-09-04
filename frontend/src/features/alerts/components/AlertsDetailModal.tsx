@@ -1,8 +1,100 @@
+import type { AlertType } from '../types/triage.types';
+
+const UpdateAlertModal: React.FC<{
+  isOpen: boolean;
+  alert: TriageAlert;
+  onClose: () => void;
+  onUpdate: (fields: Partial<TriageAlert>) => Promise<void>;
+}> = ({ isOpen, alert, onClose, onUpdate }) => {
+  const [priority, setPriority] = useState(alert.priority);
+  const [confidence, setConfidence] = useState(alert.confidence_per);
+  const [alertType, setAlertType] = useState<AlertType | ''>(alert.alert_type ?? '');
+  const [source, setSource] = useState(alert.source ?? '');
+  const [message, setMessage] = useState(alert.message);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPriority(alert.priority);
+    setConfidence(alert.confidence_per);
+    setMessage(alert.message);
+  setAlertType(alert.alert_type ?? '');
+    setSource(alert.source ?? '');
+  }, [alert]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await onUpdate({
+        priority,
+        confidence_per: confidence,
+        alert_type: alertType === '' ? null : alertType,
+        source,
+        message,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update alert');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity" onClick={onClose} aria-hidden="true"></div>
+        <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
+          <form onSubmit={handleSubmit} className="bg-white px-6 py-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Update Alert</h3>
+            {error && <div className="text-red-600 mb-2 text-sm">{error}</div>}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value as TriageAlert['priority'])} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="NEW">New</option>
+                <option value="URGENT">Urgent</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="BREACH">Breach</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confidence %</label>
+              <input type="number" value={confidence} onChange={e => setConfidence(Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-md" min={0} max={100} />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+              <select value={alertType ?? ''} onChange={e => setAlertType(e.target.value as AlertType | '')} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="">Select type</option>
+                <option value="TRANSACTION_MONITORING">Transaction Monitoring</option>
+                <option value="AML_SCREENING">AML Screening</option>
+                <option value="FRAUD_DETECTION">Fraud Detection</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+              <input type="text" value={source} onChange={e => setSource(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea value={message} onChange={e => setMessage(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" rows={3} />
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+              <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">{loading ? 'Saving...' : 'Save Changes'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 import React, { useState, useEffect } from 'react';
 import {
   XMarkIcon,
   ExclamationTriangleIcon,
-  DocumentDuplicateIcon,
   XCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
@@ -10,15 +102,14 @@ import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../types/
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
 import CloseAlertModal from './CloseAlertModal';
-import ConvertToCaseModal from './UpdateAlertModal';
-import type { ConvertToCaseData } from '../types/triage.types';
+// Convert-to-case functionality removed
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 
 interface AlertsDetailModalProps {
   alertId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onConvertToCase?: (alert: LegacyAlert, caseData?: ConvertToCaseData) => void;
+  // onConvertToCase removed
   onCloseAlert?: (alert: LegacyAlert, status: AlertStatus, notes: string) => void;
   onAlertUpdated?: () => void; // Callback to refresh the alerts list
 }
@@ -182,7 +273,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   alertId,
   isOpen,
   onClose,
-  onConvertToCase,
+  
   onCloseAlert,
   onAlertUpdated,
 }) => {
@@ -191,7 +282,28 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  // Update alert handler
+  const handleUpdateAlert = () => {
+    if (alert && canPerformActions) {
+      setShowUpdateModal(true);
+    }
+  };
+
+  const handleConfirmUpdateAlert = async (fields: Partial<TriageAlert>) => {
+    try {
+      if (alert) {
+        await triageService.updateAlert(alert.alert_id, fields);
+        if (onAlertUpdated) onAlertUpdated();
+        // Refresh alert details
+        const updated = await triageService.getAlertById(alert.alert_id);
+        setAlert(updated);
+      }
+    } catch (err) {
+      // error handling is in modal
+    }
+  };
+  // const [showConvertModal, setShowConvertModal] = useState(false);
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -238,29 +350,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     fetchAlertDetails();
   }, [alertId, isOpen]);
 
-  const handleConvert = () => {
-    // Only show convert modal if case allows actions
-    if (alert && canPerformActions) {
-      setShowConvertModal(true);
-  }
-  };
+  // Convert-to-case removed
 
-  const handleConfirmConvert = async (caseData: ConvertToCaseData) => {
-    try {
-      // Call the parent's onConvertToCase with additional parameters
-      if (alert && onConvertToCase) {
-        await onConvertToCase(convertToLegacyAlert(alert), caseData);
-        if (onAlertUpdated) {
-          onAlertUpdated();
-        }
-      }
-      setShowConvertModal(false);
-      onClose();
-    } catch (error) {
-      console.error('Error converting alert to case:', error);
-      throw error;
-    }
-  };
+  // Convert-to-case removed
 
   const handleCloseAlert = () => {
     if (alert && canPerformActions) {
@@ -413,26 +505,20 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
-            {/* Only show Update Alert if case allows actions */}
-            {canPerformActions && (
+                      {/* Standalone Update Alert button */}
+                      {canPerformActions && (
                         <button
-                          onClick={() => {
-                            handleConvert();
-                          }}
-              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-              title="Update this alert with new details"
+                          onClick={handleUpdateAlert}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                          title="Update alert details"
                         >
-                          <DocumentDuplicateIcon className="h-4 w-4 mr-1.5" />
-              Update Alert
+                          Update Alert
                         </button>
                       )}
-
                       {/* Only show Close Alert if case allows actions */}
                       {canPerformActions && (
                         <button
-                          onClick={() => {
-                            handleCloseAlert();
-                          }}
+                          onClick={handleCloseAlert}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
                           title="Close this alert with justification"
                         >
@@ -686,6 +772,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         </div>
       </div>
 
+      {/* Update Alert Modal */}
+      {alert && (
+        <UpdateAlertModal
+          isOpen={showUpdateModal}
+          alert={alert}
+          onClose={() => setShowUpdateModal(false)}
+          onUpdate={handleConfirmUpdateAlert}
+        />
+      )}
       {/* Close Alert Modal */}
       {alert && (
         <CloseAlertModal
@@ -696,15 +791,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         />
       )}
 
-      {/* Convert to Case Modal */}
-      {alert && (
-        <ConvertToCaseModal
-          isOpen={showConvertModal}
-          onClose={() => setShowConvertModal(false)}
-          alert={convertToLegacyAlert(alert)}
-            onConfirmUpdate={handleConfirmConvert}
-        />
-      )}
+  {/* Convert-to-case modal removed */}
     </div>
   );
 };
