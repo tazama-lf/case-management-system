@@ -10,7 +10,8 @@ export class CreateTaskDto {
   status?: TaskStatus;
 
   @IsUUID()
-  assignedUserId: string;
+  @IsOptional()
+  assignedUserId?: string;
 
   @IsString()
   name: string;
