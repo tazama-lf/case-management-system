@@ -342,6 +342,7 @@ export class TriageService {
           source: true,
           alert_type: true,
           created_at: true,
+          transaction: true,
         },
       });
 
