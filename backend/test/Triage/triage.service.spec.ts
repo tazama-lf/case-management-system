@@ -42,7 +42,8 @@ describe('TriageService', () => {
   let prismaService: any;
   let auditService: any;
   let caseService: any;
-  let commentService: any;
+  let taskService: any;
+  let configService: any;
 
   beforeEach(async () => {
     const mockPrismaService = createMockPrismaService();
@@ -93,6 +94,7 @@ describe('TriageService', () => {
       createTask: jest.fn(),
       updateTask: jest.fn(),
       findTaskById: jest.fn(),
+      getTasksByCaseId: jest.fn(),
     };
 
     const mockCommentService = {
@@ -148,7 +150,8 @@ describe('TriageService', () => {
     prismaService = module.get(PrismaService);
     auditService = module.get(AuditLogService);
     caseService = module.get(CaseService);
-    commentService = module.get(CommentService);
+    taskService = module.get(TaskService);
+    configService = module.get(ConfigService);
   });
 
   afterEach(() => {
@@ -203,7 +206,8 @@ describe('TriageService', () => {
       confidence_per: 85,
       priority: Priority.URGENT,
       alertType: AlertType.FRAUD, // Added because service updates alert_type
-      note: 'Test update note'
+      note: 'Test update note',
+      predictionOutcome: 'TRUE_POSITIVE'
     };
 
     const mockExistingAlert = {
@@ -243,6 +247,7 @@ describe('TriageService', () => {
           confidence_per: mockUpdateDto.confidence_per,
           priority: mockUpdateDto.priority,
           alert_type: mockUpdateDto.alertType,
+          prediction_outcome: mockUpdateDto.predictionOutcome,
         },
       });
       expect(auditService.logAction).toHaveBeenCalled();
@@ -260,120 +265,6 @@ describe('TriageService', () => {
       prismaService.alert.update.mockRejectedValue(new Error('Database error'));
 
       await expect(service.updateAlertData(alertId, mockUpdateDto, userId, tenantId)).rejects.toThrow(InternalServerErrorException);
-    });
-  });
-
-  describe('manualCloseAlert', () => {
-    const alertId = 'alert-123';
-    const userId = 'test-user-id';
-    const closeAlertDto = { 
-      reason: 'Alert marked as false positive',
-      status: 'CLOSED_CONFIRMED_82' as any
-    };
-
-    const mockExistingAlert = {
-      alert_id: alertId,
-      tenant_id: 'test-tenant-id',
-      priority: Priority.NEW,
-      source: 'test-source',
-      txtp: null,
-      message: 'Test alert message',
-      alert_data: { test: 'report data' },
-      transaction: { test: 'transaction data' },
-      network_map: { test: 'network data' },
-      confidence_per: 0,
-      
-      case_id: null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-
-    it('should close alert successfully', async () => {
-      const mockAlert = {
-        alert_id: alertId,
-        case_id: 'case-123',
-        tenant_id: 'test-tenant-id',
-      };
-
-      const openCase = {
-        case_id: 'case-123',
-        status: CaseStatus.ASSIGNED_10,
-      };
-
-      const closedCase = {
-        case_id: 'case-123',
-        status: CaseStatus.CLOSED_CONFIRMED_82,
-      };
-
-      prismaService.alert.findFirst.mockResolvedValue(mockAlert);
-      caseService.retrieveCase.mockResolvedValue(openCase);
-      caseService.updateCase.mockResolvedValue(closedCase);
-      commentService.addComment.mockResolvedValue({});
-
-      const result = await service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id');
-
-      expect(prismaService.alert.findFirst).toHaveBeenCalled();
-      expect(caseService.retrieveCase).toHaveBeenCalled();
-      expect(caseService.updateCase).toHaveBeenCalled();
-      expect(commentService.addComment).toHaveBeenCalled();
-      expect(auditService.logAction).toHaveBeenCalled();
-      expect(result).toEqual(closedCase);
-    });
-
-    it('should throw NotFoundException when alert not found', async () => {
-      prismaService.alert.findUnique.mockResolvedValue(null);
-
-      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw NotFoundException when alert not accessible for tenant', async () => {
-      const alertWithDifferentTenant = {
-        ...mockExistingAlert,
-        tenant_id: 'different-tenant-id',
-      };
-
-      prismaService.alert.findUnique.mockResolvedValue(alertWithDifferentTenant);
-
-      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException when alert is already closed', async () => {
-      const closedAlert = {
-        ...mockExistingAlert,
-      };
-
-      // Mock the case service to return a case with closed status
-      caseService.retrieveCase.mockResolvedValue({
-        case_id: 'case-123',
-        status: CaseStatus.CLOSED_CONFIRMED_82, // This is a closed status
-      });
-
-      prismaService.alert.findFirst.mockResolvedValue(closedAlert);
-
-      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(
-        'Failed to close alert',
-      );
-    });
-
-    it('should handle database errors during close operation', async () => {
-      const mockAlert = {
-        alert_id: alertId,
-        case_id: 'case-123',
-        tenant_id: 'test-tenant-id',
-      };
-
-      const openCase = {
-        case_id: 'case-123',
-        status: CaseStatus.ASSIGNED_10,
-      };
-
-      prismaService.alert.findFirst.mockResolvedValue(mockAlert);
-      caseService.retrieveCase.mockResolvedValue(openCase);
-      caseService.updateCase.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.manualCloseAlert(alertId, closeAlertDto, userId, 'test-tenant-id')).rejects.toThrow(
-        InternalServerErrorException,
-      );
     });
   });
 
@@ -480,13 +371,218 @@ describe('TriageService', () => {
 
       await expect(service.handleNewAlert(dto, 'user-123', 'tenant-123', 'test-source')).rejects.toThrow(InternalServerErrorException);
     });
+  });
 
-    it('should handle database errors in manualCloseAlert', async () => {
-      prismaService.alert.findUnique.mockResolvedValue(null);
+  describe('handleManualTriage', () => {
+    const alertId = 'alert-123';
+    const userId = 'user-123';
+    const tenantId = 'tenant-123';
+    
+    const mockManualTriageDto = {
+      priorityScore: 0.75, // Use decimal value instead of 75
+      note: 'Manual triage completed',
+      status: CaseStatus.CLOSED_CONFIRMED_82,
+      confidence_per: 90,
+      priority: Priority.URGENT,
+      alertType: AlertType.FRAUD,
+    };
 
-      await expect(service.manualCloseAlert('alert-123', { reason: 'Test close reason', status: CaseStatus.CLOSED_CONFIRMED_82 }, 'user-123', 'tenant-123')).rejects.toThrow(
-        NotFoundException,
+    const mockAlert = {
+      alert_id: alertId,
+      case_id: 'case-123',
+      tenant_id: tenantId,
+      priority: Priority.NEW,
+      priority_score: null,
+      alert_type: AlertType.FRAUD,
+      prediction_outcome: null,
+      source: 'test-source',
+      txtp: null,
+      message: 'Test alert',
+      alert_data: {},
+      transaction: {},
+      network_map: {},
+      confidence_per: 85,
+      created_at: new Date(),
+    };
+
+    beforeEach(() => {
+      // Mock ConfigService for manual triage
+      configService.get.mockImplementation((key: string, defaultValue?: any) => {
+        switch (key) {
+          case 'TRIAGE_TYPE': return 'MANUAL';
+          case 'PRIORITY_FIRST_HALF': return '0.33';
+          case 'PRIORITY_SECOND_HALF': return '0.66';
+          case 'PRIORITY_THIRD_HALF': return '1.0';
+          default: return defaultValue;
+        }
+      });
+
+      // Mock updateAlertData
+      jest.spyOn(service, 'updateAlertData').mockResolvedValue(mockAlert);
+      
+      // Mock case service
+      caseService.retrieveCase.mockResolvedValue({
+        case_id: 'case-123',
+        status: CaseStatus.DRAFT_00,
+      });
+
+      // Mock task service
+      taskService.getTasksByCaseId.mockResolvedValue([
+        {
+          task_id: 'triage-task-123',
+          name: 'Triage Alert',
+          status: 'UNASSIGNED_01',
+          assigned_user_id: null,
+        }
+      ]);
+      
+      taskService.updateTask.mockResolvedValue({
+        task_id: 'triage-task-123',
+        status: 'COMPLETED_30',
+      });
+
+      taskService.createTask.mockResolvedValue({
+        task_id: 'investigation-task-123',
+        status: 'UNASSIGNED_01',
+      });
+
+      caseService.updateCase.mockResolvedValue({
+        case_id: 'case-123',
+        status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+      });
+    });
+
+    it('should handle manual triage with case closure', async () => {
+      const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
+
+      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
+        priorityScore: 0.75,
+        priority: Priority.CRITICAL, // Should be calculated based on priorityScore (0.75 >= 0.66)
+      }), userId, tenantId);
+
+      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('case-123');
+      expect(taskService.updateTask).toHaveBeenCalledWith(
+        'triage-task-123',
+        { status: 'COMPLETED_30', description: 'Manual triage completed' },
+        userId
       );
+
+      expect(caseService.updateCase).toHaveBeenCalledWith(
+        'case-123',
+        { status: CaseStatus.CLOSED_CONFIRMED_82 },
+        userId
+      );
+
+      expect(result).toEqual(mockAlert);
+    });
+
+    it('should handle manual triage with investigation creation', async () => {
+      const dtoWithOpenStatus = {
+        ...mockManualTriageDto,
+        status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+      };
+
+      await service.handleManualTriage(alertId, dtoWithOpenStatus, userId, tenantId);
+
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        {
+          caseId: 'case-123',
+          status: 'UNASSIGNED_01',
+          name: 'Investigate Case',
+          description: 'Investigate case: case-123',
+        },
+        userId
+      );
+
+      expect(caseService.updateCase).toHaveBeenCalledWith(
+        'case-123',
+        { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: AlertType.FRAUD },
+        userId
+      );
+    });
+
+    it('should calculate priority correctly based on priorityScore', async () => {
+      // Test NEW priority (score < 0.33)
+      const lowScoreDto = { ...mockManualTriageDto, priorityScore: 0.2 };
+      await service.handleManualTriage(alertId, lowScoreDto, userId, tenantId);
+      
+      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
+        priority: Priority.NEW,
+      }), userId, tenantId);
+
+      // Test URGENT priority (0.33 <= score < 0.66)
+      const mediumScoreDto = { ...mockManualTriageDto, priorityScore: 0.5 };
+      await service.handleManualTriage(alertId, mediumScoreDto, userId, tenantId);
+      
+      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
+        priority: Priority.URGENT,
+      }), userId, tenantId);
+
+      // Test CRITICAL priority (0.66 <= score < 1.0)
+      const highScoreDto = { ...mockManualTriageDto, priorityScore: 0.8 };
+      await service.handleManualTriage(alertId, highScoreDto, userId, tenantId);
+      
+      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
+        priority: Priority.CRITICAL,
+      }), userId, tenantId);
+
+      // Test BREACH priority (score >= 1.0)
+      const maxScoreDto = { ...mockManualTriageDto, priorityScore: 1.0 };
+      await service.handleManualTriage(alertId, maxScoreDto, userId, tenantId);
+      
+      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
+        priority: Priority.BREACH,
+      }), userId, tenantId);
+    });
+
+    it('should throw error when triage type is not MANUAL', async () => {
+      configService.get.mockImplementation((key: string, defaultValue?: any) => {
+        if (key === 'TRIAGE_TYPE') return 'AI';
+        return defaultValue;
+      });
+
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
+        .rejects.toThrow('Cannot update alert alert-123 when triageType is not MANUAL');
+    });
+
+    it('should throw error when user is not assigned to triage task', async () => {
+      taskService.getTasksByCaseId.mockResolvedValue([
+        {
+          task_id: 'triage-task-123',
+          name: 'Triage Alert',
+          status: 'ASSIGNED_11',
+          assigned_user_id: 'other-user',
+        }
+      ]);
+
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
+        .rejects.toThrow('User user-123 is not allowed to complete triage task triage-task-123, assigned to other-user');
+    });
+
+    it('should throw error when case is already closed', async () => {
+      caseService.retrieveCase.mockResolvedValue({
+        case_id: 'case-123',
+        status: CaseStatus.CLOSED_CONFIRMED_82,
+      });
+
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
+        .rejects.toThrow('Case case-123 linked with alert alert-123 is already closed');
+    });
+
+    it('should handle case where no triage task exists', async () => {
+      taskService.getTasksByCaseId.mockResolvedValue([]);
+
+      const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
+
+      expect(taskService.updateTask).not.toHaveBeenCalled();
+      expect(result).toEqual(mockAlert);
+    });
+
+    it('should handle errors in manual triage process', async () => {
+      jest.spyOn(service, 'updateAlertData').mockRejectedValue(new Error('Update failed'));
+
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
+        .rejects.toThrow('Update failed');
     });
   });
 
@@ -1350,15 +1446,324 @@ describe('TriageService', () => {
     });
   });
 
+  describe('processIncomingAlert', () => {
+    let mockAlertMessageDto: any;
+
+    beforeEach(() => {
+      mockAlertMessageDto = {
+        message: 'Test alert message',
+        transaction: {
+          TenantId: 'test-tenant-id',
+          TxTp: 'pacs.008',
+          Pacs008: {
+            FIToFIPmtSts: {
+              GrpHdr: {
+                MsgId: 'test-msg-001',
+                CreDtTm: '2025-09-04T15:30:00.000Z'
+              }
+            }
+          }
+        },
+        networkMap: {
+          active: true,
+          cfg: '1.0.0',
+          messages: []
+        },
+        report: {
+          id: 'test-report-001',
+          cfg: '1.0.0',
+          result: {
+            ruleResults: []
+          }
+        }
+      };
+
+      // Reset all mocks
+      jest.clearAllMocks();
+      
+      // Mock handleNewAlert to return a basic alert
+      jest.spyOn(service, 'handleNewAlert').mockResolvedValue({
+        alert_id: 'alert-123',
+        case_id: 'case-123',
+        tenant_id: 'test-tenant-id',
+        priority: Priority.NEW,
+        alert_type: AlertType.FRAUD,
+        source: 'NATS',
+        message: 'Test alert',
+        alert_data: {},
+        transaction: {},
+        network_map: {},
+        confidence_per: 85,
+        created_at: new Date(),
+        priority_score: null,
+        prediction_outcome: null,
+        txtp: null
+      });
+
+      // Mock handleAITriage
+      jest.spyOn(service, 'handleAITriage').mockResolvedValue(undefined);
+    });
+
+    describe('AI Triage Type', () => {
+      it('should handle AI triage when TRIAGE_TYPE is AI', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'AI';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(service.handleNewAlert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'Test alert message',
+            transaction: mockAlertMessageDto.transaction,
+            networkMap: mockAlertMessageDto.networkMap,
+            report: mockAlertMessageDto.report
+          }),
+          'user-123',
+          'test-tenant-id',
+          'NATS'
+        );
+
+        expect(service.handleAITriage).toHaveBeenCalledWith(
+          'alert-123',
+          'case-123',
+          expect.any(Object),
+          'user-123',
+          'test-tenant-id'
+        );
+
+        expect(taskService.createTask).not.toHaveBeenCalled();
+        expect(caseService.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('should handle AI triage when TRIAGE_TYPE is ai (lowercase)', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'ai';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(service.handleAITriage).toHaveBeenCalled();
+      });
+    });
+
+    describe('Manual Triage Type', () => {
+      it('should create unassigned triage task when TRIAGE_TYPE is MANUAL', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'MANUAL';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        taskService.createTask.mockResolvedValue({
+          task_id: 'task-123',
+          case_id: 'case-123',
+          status: 'UNASSIGNED_01',
+          name: 'Triage Alert',
+          description: 'Manual triage required for alert: alert-123'
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(service.handleNewAlert).toHaveBeenCalled();
+        expect(service.handleAITriage).not.toHaveBeenCalled();
+        
+        expect(taskService.createTask).toHaveBeenCalledWith(
+          {
+            caseId: 'case-123',
+            status: 'UNASSIGNED_01',
+            name: 'Triage Alert',
+            description: 'Manual triage required for alert: alert-123'
+          },
+          'user-123'
+        );
+
+        expect(caseService.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('should handle manual triage when TRIAGE_TYPE is manual (lowercase)', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'manual';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(taskService.createTask).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'UNASSIGNED_01',
+            name: 'Triage Alert'
+          }),
+          'user-123'
+        );
+      });
+    });
+
+    describe('Disabled Triage Type', () => {
+      it('should create investigation task and update case when TRIAGE_TYPE is DISABLED', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'DISABLED';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        taskService.createTask.mockResolvedValue({
+          task_id: 'task-123',
+          case_id: 'case-123',
+          status: 'UNASSIGNED_01',
+          name: 'Investigate Case',
+          description: 'Investigate case: case-123'
+        });
+
+        caseService.updateCase.mockResolvedValue({
+          case_id: 'case-123',
+          status: 'READY_FOR_ASSIGNMENT_02'
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(service.handleNewAlert).toHaveBeenCalled();
+        expect(service.handleAITriage).not.toHaveBeenCalled();
+        
+        expect(taskService.createTask).toHaveBeenCalledWith(
+          {
+            caseId: 'case-123',
+            status: 'UNASSIGNED_01',
+            name: 'Investigate Case',
+            description: 'Investigate case: case-123'
+          },
+          'user-123'
+        );
+
+        expect(caseService.updateCase).toHaveBeenCalledWith(
+          'case-123',
+          {
+            status: 'READY_FOR_ASSIGNMENT_02'
+          },
+          'user-123'
+        );
+      });
+
+      it('should use default behavior when TRIAGE_TYPE is not set', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return defaultValue; // Returns 'DISABLED'
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(taskService.createTask).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'UNASSIGNED_01',
+            name: 'Investigate Case'
+          }),
+          'user-123'
+        );
+
+        expect(caseService.updateCase).toHaveBeenCalledWith(
+          'case-123',
+          expect.objectContaining({
+            status: 'READY_FOR_ASSIGNMENT_02'
+          }),
+          'user-123'
+        );
+      });
+
+      it('should use default behavior for unknown TRIAGE_TYPE', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'UNKNOWN_TYPE';
+          if (key === 'SYSTEM_UUID') return 'system-123';
+          return defaultValue;
+        });
+
+        await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
+
+        expect(taskService.createTask).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'UNASSIGNED_01',
+            name: 'Investigate Case'
+          }),
+          'user-123'
+        );
+      });
+    });
+
+    describe('Error Handling', () => {
+      it('should propagate errors from handleNewAlert', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'AI';
+          return defaultValue;
+        });
+
+        const error = new Error('Failed to create alert');
+        jest.spyOn(service, 'handleNewAlert').mockRejectedValue(error);
+
+        await expect(
+          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
+        ).rejects.toThrow('Failed to create alert');
+      });
+
+      it('should propagate errors from handleAITriage', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'AI';
+          return defaultValue;
+        });
+
+        const error = new Error('AI triage failed');
+        jest.spyOn(service, 'handleAITriage').mockRejectedValue(error);
+
+        await expect(
+          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
+        ).rejects.toThrow('AI triage failed');
+      });
+
+      it('should propagate errors from task creation in manual triage', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'MANUAL';
+          return defaultValue;
+        });
+
+        const error = new Error('Task creation failed');
+        taskService.createTask.mockRejectedValue(error);
+
+        await expect(
+          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
+        ).rejects.toThrow('Task creation failed');
+      });
+
+      it('should propagate errors from case update in disabled triage', async () => {
+        configService.get.mockImplementation((key: string, defaultValue?: any) => {
+          if (key === 'TRIAGE_TYPE') return 'DISABLED';
+          return defaultValue;
+        });
+
+        taskService.createTask.mockResolvedValue({ task_id: 'task-123' });
+        const error = new Error('Case update failed');
+        caseService.updateCase.mockRejectedValue(error);
+
+        await expect(
+          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
+        ).rejects.toThrow('Case update failed');
+      });
+    });
+  });
+
   describe('predictAlert', () => {
     it('should return mock AI prediction', async () => {
-      const result = await service['predictAlert']();
+      const alertId = 'test-alert-123';
+      const result = await service['predictAlert'](alertId);
 
       expect(result).toEqual({
-        priority: expect.any(String),
         confidence_per: expect.any(Number),
         alertType: expect.any(String),
         isTruePositive: expect.any(Boolean),
+        priorityScore: expect.any(Number),
       });
       expect(result.confidence_per).toBeGreaterThanOrEqual(0);
       expect(result.confidence_per).toBeLessThanOrEqual(100);

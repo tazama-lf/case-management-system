@@ -1,9 +1,4 @@
-import {
-  CaseCreationType,
-  CaseStatus,
-  CaseType,
-  Priority,
-} from '@prisma/client';
+import { CaseCreationType, CaseStatus, CaseType, Priority } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateCaseDto {

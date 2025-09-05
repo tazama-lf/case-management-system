@@ -5,7 +5,6 @@ import { NatsStartupService } from 'src/nats/nats.service';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
-import { TaskStatus } from '@prisma/client';
 
 // Mock the external library
 jest.mock('@tazama-lf/frms-coe-startup-lib', () => ({
@@ -25,8 +24,7 @@ describe('NatsStartupService', () => {
     jest.clearAllMocks();
     
     triageService = { 
-      handleNewAlert: jest.fn(), 
-      handleAITriage: jest.fn() 
+      processIncomingAlert: jest.fn() 
     };
     taskService = { 
       createTask: jest.fn() 
@@ -83,7 +81,6 @@ describe('NatsStartupService', () => {
     });
 
   describe('handleMessage', () => {
-    const mockAlert = { alert_id: 'alert1', case_id: 'case1' };
     const mockDto: AlertMessageDto = {
       tenant_id: 'tenant1',
       priority: undefined,
@@ -108,20 +105,18 @@ describe('NatsStartupService', () => {
         transaction: { TenantId: null } as any,
       };
 
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'true';
         if (key === 'SYSTEM_UUID') return 'system-id';
         return 'default-value';
       });
 
       await service.handleMessage(dtoWithoutTenantId);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        dtoWithoutTenantId,
         'system-id',
-        'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1', // Default tenant ID
-        'NATS'
+        'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1'
       );
     });
 
@@ -131,134 +126,100 @@ describe('NatsStartupService', () => {
         transaction: {} as any,
       };
 
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'true';
         if (key === 'SYSTEM_UUID') return 'system-id';
         return 'default-value';
       });
 
       await service.handleMessage(dtoWithoutTenantId);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        dtoWithoutTenantId,
         'system-id',
-        'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1', // Default tenant ID
-        'NATS'
+        'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1'
       );
     });
 
     it('should use default system ID when SYSTEM_UUID is not configured', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'true';
         if (key === 'SYSTEM_UUID') return undefined;
         return 'default-value';
       });
 
       await service.handleMessage(mockDto);
 
-      expect(triageService.handleNewAlert).toHaveBeenCalledWith(
-        expect.anything(),
-        'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9', // Default system ID
-        'tenant1',
-        'NATS'
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        mockDto,
+        'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9',
+        'tenant1'
       );
     });
 
     it('should handle AI triage enabled', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'true';
         if (key === 'SYSTEM_UUID') return 'systemId';
         return 'default-value';
       });
 
       await service.handleMessage(mockDto);
 
-      expect(triageService.handleAITriage).toHaveBeenCalledWith(
-        'alert1', 
-        'case1', 
-        expect.objectContaining({
-          message: 'msg',
-          report: {},
-          transaction: { TenantId: 'tenant1' },
-          networkMap: {},
-        }), 
-        'systemId', 
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        mockDto,
+        'systemId',
         'tenant1'
-      );
-      expect(logger.log).toHaveBeenCalledWith(
-        'AI Triage enabled doing ai triage on: alert1', 
-        NatsStartupService.name
       );
     });
 
     it('should handle AI triage enabled with case-insensitive TRUE', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'TRUE';
         if (key === 'SYSTEM_UUID') return 'systemId';
         return 'default-value';
       });
 
       await service.handleMessage(mockDto);
 
-      expect(triageService.handleAITriage).toHaveBeenCalledWith(
-        'alert1', 
-        'case1', 
-        expect.anything(), 
-        'systemId', 
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        mockDto,
+        'systemId',
         'tenant1'
       );
     });
 
     it('should handle AI triage disabled and create manual task', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'false';
         if (key === 'SYSTEM_UUID') return 'systemId';
         return 'default-value';
       });
 
       await service.handleMessage(mockDto);
 
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        {
-          caseId: 'case1',
-          status: TaskStatus.UNASSIGNED_01,
-          name: 'Investigate case',
-          description: 'Task to investigate: case1',
-        },
-        'systemId'
-      );
-      expect(logger.log).toHaveBeenCalledWith(
-        'AI Triage disabled creating manual investiation task for alert: alert1', 
-        NatsStartupService.name
+      expect(triageService.processIncomingAlert).toHaveBeenCalledWith(
+        mockDto,
+        'systemId',
+        'tenant1'
       );
     });
 
     it('should handle AI triage disabled with default value', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
-      configService.get.mockImplementation((key, defaultValue) => {
-        if (key === 'AI_TRIAGE_ENABLED') return defaultValue; // Will return 'false' (the default)
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
+      configService.get.mockImplementation((key) => {
         if (key === 'SYSTEM_UUID') return 'systemId';
         return 'default-value';
       });
 
       await service.handleMessage(mockDto);
 
-      expect(taskService.createTask).toHaveBeenCalled();
-      expect(triageService.handleAITriage).not.toHaveBeenCalled();
+      expect(triageService.processIncomingAlert).toHaveBeenCalled();
     });
 
     it('should log successful alert ingestion', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
-      configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'false';
-        if (key === 'SYSTEM_UUID') return 'systemId';
-        return 'default-value';
-      });
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
+      configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);
 
@@ -270,7 +231,7 @@ describe('NatsStartupService', () => {
 
     it('should log error if handleNewAlert throws', async () => {
       const error = new Error('fail');
-      triageService.handleNewAlert.mockRejectedValue(error);
+      triageService.processIncomingAlert.mockRejectedValue(error);
       configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);
@@ -284,13 +245,8 @@ describe('NatsStartupService', () => {
 
     it('should log error if handleAITriage throws', async () => {
       const error = new Error('AI triage failed');
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
-      triageService.handleAITriage.mockRejectedValue(error);
-      configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'true';
-        if (key === 'SYSTEM_UUID') return 'systemId';
-        return 'default-value';
-      });
+      triageService.processIncomingAlert.mockRejectedValue(error);
+      configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);
 
@@ -303,13 +259,8 @@ describe('NatsStartupService', () => {
 
     it('should log error if createTask throws', async () => {
       const error = new Error('Task creation failed');
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
-      taskService.createTask.mockRejectedValue(error);
-      configService.get.mockImplementation((key) => {
-        if (key === 'AI_TRIAGE_ENABLED') return 'false';
-        if (key === 'SYSTEM_UUID') return 'systemId';
-        return 'default-value';
-      });
+      triageService.processIncomingAlert.mockRejectedValue(error);
+      configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);
 
@@ -322,7 +273,7 @@ describe('NatsStartupService', () => {
 
     it('should handle non-Error exceptions', async () => {
       const nonErrorException = 'String error';
-      triageService.handleNewAlert.mockRejectedValue(nonErrorException);
+      triageService.processIncomingAlert.mockRejectedValue(nonErrorException);
       configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);
@@ -335,7 +286,7 @@ describe('NatsStartupService', () => {
     });
 
     it('should log the request at the beginning', async () => {
-      triageService.handleNewAlert.mockResolvedValue(mockAlert);
+      triageService.processIncomingAlert.mockResolvedValue(undefined);
       configService.get.mockReturnValue('systemId');
 
       await service.handleMessage(mockDto);

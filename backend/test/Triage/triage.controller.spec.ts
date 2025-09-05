@@ -6,10 +6,10 @@ import { TriageService } from '../../src/triage/triage.service';
 
 const mockTriageService = {
   handleNewAlert: jest.fn(),
-  updateAlertData: jest.fn(),
-  manualCloseAlert: jest.fn(),
+  handleManualTriage: jest.fn(),
   getAlertsForUser: jest.fn(),
   getAlertDetails: jest.fn(),
+  getAlertActionHistory: jest.fn(),
 };
 
 describe('TriageController', () => {
@@ -50,24 +50,23 @@ describe('TriageController', () => {
     expect(result).toBe('submitted');
   });
 
-  it('should update alert', async () => {
+  it('should handle manual triage', async () => {
     const alertId = 'alert1';
-    const dto = { note: 'Test note', confidence_per: 85 } as any;
+    const dto = { action: 'escalate', comment: 'Test comment' } as any;
     const req = { user: { token: { clientId: 'user1', tenantId: 'tenant1' } } } as any;
-    triageService.updateAlertData.mockResolvedValue('updated');
-    const result = await controller.updateAlert(alertId, dto, req);
-    expect(triageService.updateAlertData).toHaveBeenCalledWith(alertId, dto, 'user1', 'tenant1');
-    expect(result).toBe('updated');
+    triageService.handleManualTriage.mockResolvedValue('triaged');
+    const result = await controller.manualTriage(alertId, dto, req);
+    expect(triageService.handleManualTriage).toHaveBeenCalledWith(alertId, dto, 'user1', 'tenant1');
+    expect(result).toBe('triaged');
   });
 
-  it('should close alert', async () => {
+  it('should get alert details', async () => {
     const alertId = 'alert1';
-    const dto = { reason: 'Test reason' } as any;
     const req = { user: { token: { clientId: 'user1', tenantId: 'tenant1' } } } as any;
-    triageService.manualCloseAlert.mockResolvedValue('closed');
-    const result = await controller.closeAlert(alertId, dto, req);
-    expect(triageService.manualCloseAlert).toHaveBeenCalledWith(alertId, dto, 'user1', 'tenant1');
-    expect(result).toBe('closed');
+    triageService.getAlertDetails.mockResolvedValue({ id: 'alert1', status: 'open' });
+    const result = await controller.getAlertDetails(alertId, req);
+    expect(triageService.getAlertDetails).toHaveBeenCalledWith(alertId, 'tenant1', 'user1');
+    expect(result).toEqual({ id: 'alert1', status: 'open' });
   });
 
   it('should get user alerts', async () => {
@@ -118,5 +117,14 @@ describe('TriageController', () => {
     const result = await controller.getAlertDetails(alertId, req);
     expect(triageService.getAlertDetails).toHaveBeenCalledWith(alertId, 'tenant1', 'user1');
     expect(result).toBe('details');
+  });
+
+  it('should get alert action history', async () => {
+    const alertId = 'alert1';
+    const req = { user: { token: { clientId: 'user1', tenantId: 'tenant1' } } } as any;
+    triageService.getAlertActionHistory.mockResolvedValue([{ action: 'created', timestamp: new Date() }]);
+    const result = await controller.getAlertActionHistory(alertId, req);
+    expect(triageService.getAlertActionHistory).toHaveBeenCalledWith(alertId, 'tenant1', 'user1');
+    expect(result).toEqual([{ action: 'created', timestamp: expect.any(Date) }]);
   });
 });
