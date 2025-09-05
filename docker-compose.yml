@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  flowable-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: flowable
+      POSTGRES_PASSWORD: flowable
+      POSTGRES_DB: flowable
+    ports:
+      - "5433:5432"
+    restart: always
+
+  flowable:
+    image: flowable/flowable-rest
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://flowable-db:5432/flowable
+      SPRING_DATASOURCE_USERNAME: flowable
+      SPRING_DATASOURCE_PASSWORD: flowable
+    ports:
+      - "8080:8080"
+    depends_on:
+      - flowable-db
+    restart: always
