@@ -2,23 +2,7 @@
 import { useState, useCallback } from 'react';
 import triageService from '../services/triageservice';
 import type { Alert } from '../types/alertsdashboard.types';
-import type { ConvertToCaseData, ConvertToCaseDto, AlertStatus } from '../types/triage.types';
-
-// Helper function to map UI priority values to backend Priority enum
-function mapUIPriorityToBackend(uiPriority?: string): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
-  switch (uiPriority) {
-    case 'new':
-      return 'NEW';
-    case 'urgent':
-      return 'URGENT';
-    case 'critical':
-      return 'CRITICAL';
-    case 'breach':
-      return 'BREACH';
-    default:
-      return 'NEW';
-  }
-}
+import type { AlertStatus } from '../types/triage.types';
 
 interface OperationStates {
   convertingToCase: Set<string>;
@@ -34,30 +18,6 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
     updatingAlert: new Set(),
     loadingDetails: new Set(),
   });
-
-  const handleConvertToCase = useCallback(async (alert: Alert, caseData?: ConvertToCaseData) => {
-    const alertId = alert.alert_id as string;
-    setOperationStates(prev => ({ ...prev, convertingToCase: new Set(prev.convertingToCase).add(alertId) }));
-    try {
-        const convertData: ConvertToCaseDto = {
-            priority: mapUIPriorityToBackend(caseData?.priority) || 'NEW',
-            caseType: caseData?.caseType || 'FRAUD',
-            caseOwnerUserId: caseData?.caseOwnerUserId,
-          };
-      await triageService.convertAlertToCase(alertId, convertData);
-      refreshAlerts();
-    } catch (error) {
-      console.error('Failed to convert alert to case:', error);
-      // Here you would typically show a toast notification
-      throw error;
-    } finally {
-      setOperationStates(prev => {
-        const newSet = new Set(prev.convertingToCase);
-        newSet.delete(alertId);
-        return { ...prev, convertingToCase: newSet };
-      });
-    }
-  }, [refreshAlerts]);
 
   const handleCloseAlert = useCallback(async (alert: Alert, status: AlertStatus, notes: string) => {
     const alertId = alert.alert_id as string;
@@ -80,7 +40,6 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
 
   return {
     operationStates,
-    handleConvertToCase,
     handleCloseAlert,
   };
 };
