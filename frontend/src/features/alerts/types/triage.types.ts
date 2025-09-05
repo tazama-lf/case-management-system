@@ -19,10 +19,10 @@ export const AlertStatus = {
 } as const;
 
 export const AlertType = {
-  TRANSACTION_MONITORING: 'TRANSACTION_MONITORING',
-  SANCTIONS_SCREENING: 'SANCTIONS_SCREENING',
-  AML_SCREENING: 'AML_SCREENING',
-  FRAUD_DETECTION: 'FRAUD_DETECTION',
+  FRAUD: 'FRAUD',
+  AML: 'AML',
+  FRAUD_AND_AML: 'FRAUD_AND_AML',
+  NONE: 'NONE',
 } as const;
 
 export const CaseStatus = {
@@ -78,7 +78,7 @@ export type CaseCreationType =
   (typeof CaseCreationType)[keyof typeof CaseCreationType];
 
 // Core Alert interface matching backend schema
-export interface Alert {
+export interface Alert extends Record<string, unknown> {
   alert_id: string;
   tenant_id: string;
   priority: Priority;
