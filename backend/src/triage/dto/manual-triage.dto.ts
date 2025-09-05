@@ -10,6 +10,9 @@ export class ManualTriageDto {
   @IsEnum(Priority)
   priority?: Priority;
 
+  @IsNumber()
+  priorityScore: number;
+
   @IsOptional()
   @IsEnum(AlertType)
   alertType?: AlertType;
