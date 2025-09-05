@@ -490,7 +490,7 @@ export class TriageService {
 
       // Story 1A
       // === 1. Get AI prediction and update alert ===
-      const prediction = await this.predictAlert();
+      const prediction = await this.predictAlert(alertId);
       const { confidence_per: predictedConfidence, alertType: predictedAlertType, isTruePositive: predictedTruePositive } = prediction;
       this.logger.log(
         `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
@@ -788,13 +788,16 @@ export class TriageService {
     }
   }
 
-  private async predictAlert(): Promise<{
+  public async predictAlert(alertId: string): Promise<{
+    priorityScore: number;
     alertType: AlertType;
     confidence_per: number;
     isTruePositive: boolean; // true = real alarm, false = false alarm
   }> {
     // --- Placeholder AI Prediction ---
+    this.logger.log(`Prediction for alert ${alertId} completed`, this.constructor.name);
     return {
+      priorityScore: 0.37,
       alertType: AlertType.FRAUD,
       confidence_per: 97,
       isTruePositive: true,
