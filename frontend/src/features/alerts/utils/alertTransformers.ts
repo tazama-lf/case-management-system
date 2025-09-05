@@ -2,17 +2,22 @@ import type {
   Alert as TriageAlert,
   Priority,
   AlertStatus,
+  AlertType,
 } from '../types/triage.types';
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
 /**
  * Extract alert type from available data sources
  */
-function extractAlertType(backendAlert: unknown): string | null {
+function extractAlertType(backendAlert: unknown): AlertType | null {
   const alert = backendAlert as any;
   // First check if alert_type is directly available
   if (alert.alert_type) {
-    return alert.alert_type;
+    // Validate it's a proper AlertType
+    const validTypes = ['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'];
+    if (validTypes.includes(alert.alert_type)) {
+      return alert.alert_type as AlertType;
+    }
   }
   
   // If alert_type is explicitly null, return null
@@ -27,9 +32,9 @@ function extractAlertType(backendAlert: unknown): string | null {
       const typologyId = typologyResults[0]?.id;
       if (typologyId && typeof typologyId === 'string') {
         // Extract meaningful part from typology ID like "typology-processor@1.0.0"
-        if (typologyId.includes('typology')) return 'AML_SCREENING';
-        if (typologyId.includes('fraud')) return 'FRAUD_DETECTION';
-        if (typologyId.includes('sanction')) return 'SANCTIONS_SCREENING';
+        if (typologyId.includes('typology')) return 'AML';
+        if (typologyId.includes('fraud')) return 'FRAUD';
+        if (typologyId.includes('sanction')) return 'AML';
       }
     }
   } catch (error) {
@@ -39,11 +44,11 @@ function extractAlertType(backendAlert: unknown): string | null {
   // Fallback to transaction type or default
   const txType = alert.txtp;
   if (txType) {
-    if (txType.includes('pacs')) return 'TRANSACTION_MONITORING';
-    if (txType.includes('pain')) return 'TRANSACTION_MONITORING';
+    if (txType.includes('pacs')) return 'FRAUD';
+    if (txType.includes('pain')) return 'FRAUD';
   }
   
-  return 'TRANSACTION_MONITORING'; // Default fallback
+  return 'FRAUD'; // Default fallback
 }
 
 /**

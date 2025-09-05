@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
 import { AlertsTable, AlertsSearchAndFilters } from '../components';
 import AlertsDetailModal from '../components/AlertsDetailModal';
+import ManualTriageModal from '../components/ManualTriageModal';
 import TransactionMessagesModal from '../components/TransactionMessagesModal';
 import MessagePayloadModal from '../components/MessagePayloadModal';
+import AlertsTableSkeleton from '../components/AlertsTableSkeleton';
 import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
-import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
+import { PageContainer, Notification } from '../../../shared/components/ui';
+import ErrorFallback from '../../../shared/components/ErrorFallback';
+import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
+import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/triage.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import { useAlerts, useAlertOperations, useAlertFilterOptions } from '../hooks/useAlertsQuery';
+import { extractTransactionIdFromAlert } from '../utils/transactionUtils';
+import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
 
 const AlertsDashboard: React.FC = () => {
-  // State for filters and pagination
+  const { isAIMode, isManualMode, isDisabledMode } = useSystemConfig();
+
   const [filters, setFilters] = useState({
     query: '',
     source: '',
@@ -25,134 +33,56 @@ const AlertsDashboard: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sort, setSort] = useState({ column: 'created_at', direction: 'desc' as 'asc' | 'desc' });
 
-  // React Query hooks - fetch all alerts without filters
-  const { alerts: allAlerts, isLoading, error, refetch } = useAlerts({
+  const { alerts, pagination: serverPagination, isLoading, error, refetch } = useAlerts({
     search: filters.query,
+    priority: filters.priority,
+    type: filters.type,
+    source: filters.source,
+    sortBy: sort.column,
+    sortOrder: sort.direction,
     page,
-    limit: pageSize
+    limit: pageSize,
   });
 
-  // Client-side filtering and sorting
-  const filteredAndSortedAlerts = React.useMemo(() => {
-    let filtered = allAlerts;
+  const tablePagination = React.useMemo(() => ({
+    currentPage: serverPagination.currentPage,
+    totalPages: serverPagination.totalPages,
+    totalItems: serverPagination.totalItems,
+    pageSize: serverPagination.pageSize,
+    onPageChange: (p: number) => setPage(p),
+  }), [serverPagination, setPage]);
 
-    // Filter by priority
-    if (filters.priority) {
-      filtered = filtered.filter(alert => 
-        alert.priority?.toLowerCase() === filters.priority.toLowerCase()
-      );
-    }
-
-    // Filter by alert type
-    if (filters.type) {
-      filtered = filtered.filter(alert => 
-        alert.alert_type?.toLowerCase() === filters.type.toLowerCase()
-      );
-    }
-
-    // Filter by source
-    if (filters.source) {
-      filtered = filtered.filter(alert => 
-        alert.source?.toLowerCase() === filters.source.toLowerCase()
-      );
-    }
-
-    // Sort the filtered results
-    if (sort.column) {
-      filtered.sort((a, b) => {
-        const aValue = (a as any)[sort.column];
-        const bValue = (b as any)[sort.column];
-        
-        // Handle different data types
-        let comparison = 0;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-          comparison = aValue - bValue;
-        } else if (aValue instanceof Date && bValue instanceof Date) {
-          comparison = aValue.getTime() - bValue.getTime();
-        } else {
-          // Fallback to string comparison
-          comparison = String(aValue).localeCompare(String(bValue));
-        }
-        
-        return sort.direction === 'desc' ? -comparison : comparison;
-      });
-    }
-
-    return filtered;
-  }, [allAlerts, filters.priority, filters.type, filters.source, sort]);
-
-  // Client-side pagination
-  const paginatedAlerts = React.useMemo(() => {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredAndSortedAlerts.slice(startIndex, endIndex);
-  }, [filteredAndSortedAlerts, page, pageSize]);
-
-  // Update pagination info for filtered results
-  const clientPagination = React.useMemo(() => {
-    const totalItems = filteredAndSortedAlerts.length;
-    const totalPages = Math.ceil(totalItems / pageSize);
-    
-    return {
-      currentPage: page,
-      totalPages,
-      totalItems,
-      pageSize,
-      onPageChange: setPage,
-    };
-  }, [filteredAndSortedAlerts.length, pageSize, page]);
-
-  const {
-    convertToCase,
-    closeAlert,
-  } = useAlertOperations();
-
-  // Get filter options
+  const { performManualTriage } = useAlertOperations();
   const { filterOptions } = useAlertFilterOptions();
-
-  // Computed values
+  const { success, error: showError } = useToast();
   const loading = isLoading;
-  const lastUpdated = new Date(); // You can track this in React Query if needed
+  const lastUpdated = new Date(); 
 
-  // Alert operation handlers
-  const handleConvertToCase = async (alert: Alert, caseData?: any) => {
+  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
-      await convertToCase({ 
-        alertId: alert.alert_id as string, 
-        data: caseData || {} 
+      await performManualTriage({
+        alertId: alert.alert_id as string,
+        data: triageData,
       });
+      success('Triage Complete', 'Alert triage completed successfully');
       refetch(); // Refresh the alerts list
     } catch (error) {
-      console.error('Failed to convert alert to case:', error);
-    }
-  };
-
-  const handleCloseAlert = async (alert: Alert, status: string, notes: string) => {
-    try {
-      await closeAlert({ 
-        alertId: alert.alert_id as string, 
-        status: status as any, 
-        notes 
-      });
-      refetch(); // Refresh the alerts list
-    } catch (error) {
-      console.error('Failed to close alert:', error);
+      console.error('Failed to perform manual triage:', error);
+      showError('Triage Failed', 'Failed to perform triage. Please try again.');
+      throw error;
     }
   };
 
   // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
-  
+  const [showManualTriageModal, setShowManualTriageModal] = useState(false);
+
   // Transaction modals state
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
-
-  const handleRowClick = async (alert: Alert) => {
+  const [selectedAlertForTransaction, setSelectedAlertForTransaction] = useState<Alert | null>(null);  const handleRowClick = async (alert: Alert) => {
     try {
       const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
@@ -169,9 +99,17 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
+  // Utility function to convert Alert to TriageAlert for modal compatibility
+  const convertToTriageAlert = (alert: Alert): TriageAlert => {
+    return {
+      ...alert,
+      alert_type: (alert.alert_type as AlertType) || null, 
+    };
+  };
+
   // Transaction modal handlers
-  const handleTransactionIdClick = (transactionId: string) => {
-    setSelectedTransactionId(transactionId);
+  const handleTransactionIdClick = (alert: Alert) => {
+    setSelectedAlertForTransaction(alert);
     setShowTransactionMessages(true);
   };
 
@@ -183,7 +121,7 @@ const AlertsDashboard: React.FC = () => {
 
   const handleCloseTransactionMessages = () => {
     setShowTransactionMessages(false);
-    setSelectedTransactionId('');
+    setSelectedAlertForTransaction(null);
   };
 
   const handleCloseMessagePayload = () => {
@@ -208,25 +146,38 @@ const AlertsDashboard: React.FC = () => {
       key: 'alert_id',
       header: 'Alert ID',
       sortable: true,
-      render: (value) => (
-        <div className="font-medium text-gray-900">{value as string}</div>
-      )
+      render: (value) => {
+        const alertId = value as string;
+        return (
+          <div 
+            className="font-medium text-gray-900"
+            title={`Alert ID: ${alertId}`}
+          >
+            {alertId.length > 8 ? `${alertId.substring(0, 8)}...` : alertId}
+          </div>
+        );
+      }
     },
     {
       key: 'txtp',
       header: 'Transaction ID',
       sortable: true,
-      render: (value) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleTransactionIdClick(value as string);
-          }}
-          className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-        >
-          {value as string || 'N/A'}
-        </button>
-      )
+      render: (_, alert) => {
+        const transactionId = extractTransactionIdFromAlert(alert);
+        
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTransactionIdClick(alert);
+            }}
+            className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            title={`Transaction ID: ${transactionId}`}
+          >
+            {transactionId.length > 8 ? `${transactionId.substring(0, 8)}...` : transactionId}
+          </button>
+        );
+      }
     },
     {
       key: 'source',
@@ -302,29 +253,42 @@ const AlertsDashboard: React.FC = () => {
     }
   ];
 
+  // Get dynamic subtitle based on triage mode
+  const getSubtitle = () => {
+    if (isAIMode) {
+      return "AI-automated triage with confidence-based routing and manual review for uncertain cases";
+    } else if (isManualMode) {
+      return "Manual triage and investigation - all alerts require human review";
+    } else if (isDisabledMode) {
+      return "Direct investigation mode - alerts bypass triage and go straight to cases";
+    }
+    return "Triage and investigate alerts, convert to cases, and manage alert workflows";
+  };
+
   // Main loading and error states
-  if (loading && paginatedAlerts.length === 0) {
+  if (loading && alerts.length === 0) {
     return (
       <PageContainer
         title="Alerts Dashboard"
-        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+        subtitle={getSubtitle()}
       >
-        <LoadingState loading={true}>
-          <div />
-        </LoadingState>
+        <AlertsTableSkeleton rows={pageSize} />
       </PageContainer>
     );
   }
 
-  if (error && paginatedAlerts.length === 0) {
+  if (error && alerts.length === 0) {
     return (
       <PageContainer
         title="Alerts Dashboard"
-        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+        subtitle={getSubtitle()}
       >
-        <LoadingState error={error?.message || 'An error occurred while loading alerts'}>
-          <div />
-        </LoadingState>
+        <ErrorFallback 
+          error={error as Error}
+          resetError={() => refetch()}
+          title="Failed to load alerts"
+          showRetry={true}
+        />
       </PageContainer>
     );
   }
@@ -332,7 +296,7 @@ const AlertsDashboard: React.FC = () => {
   return (
     <PageContainer
       title="Alerts Dashboard"
-      subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+      subtitle={getSubtitle()}
     >
         {/* API Error Banner */}
         {error && (
@@ -371,24 +335,27 @@ const AlertsDashboard: React.FC = () => {
         />
 
         <ResultsSummary
-          pagination={clientPagination}
+          pagination={tablePagination}
           loading={loading}
           lastUpdated={lastUpdated}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1); // Reset to first page when page size changes
+          }}
           sort={sort}
         />
 
         {/* Alerts Table */}
         <div className="bg-white rounded-lg shadow">
           <AlertsTable
-            data={paginatedAlerts as any}
+            data={alerts}
             columns={columns}
-            onSort={(column, direction) => setSort({ column: String(column), direction })}
+            onSort={(column, direction) => { setSort({ column: String(column), direction }); setPage(1); }}
             sortColumn={sort.column}
             sortDirection={sort.direction}
             onRowClick={handleRowClick}
             emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
-            pagination={clientPagination}
+            pagination={tablePagination}
           />
         </div>
 
@@ -397,16 +364,32 @@ const AlertsDashboard: React.FC = () => {
         alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
-        onConvertToCase={handleConvertToCase}
-        onCloseAlert={handleCloseAlert}
         onAlertUpdated={refetch}
+        onManualTriage={(alert: Alert) => {
+          setSelectedAlert(alert);
+          setShowModal(false);
+          setShowManualTriageModal(true);
+        }}
       />
+
+      {/* Manual Triage Modal */}
+      {selectedAlert && (
+        <ManualTriageModal
+          isOpen={showManualTriageModal}
+          alert={convertToTriageAlert(selectedAlert)}
+          onClose={() => {
+            setShowManualTriageModal(false);
+            setSelectedAlert(null);
+          }}
+          onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+        />
+      )}
 
       {/* Transaction Messages Modal */}
       <TransactionMessagesModal
         isOpen={showTransactionMessages}
         onClose={handleCloseTransactionMessages}
-        transactionId={selectedTransactionId}
+        alert={selectedAlertForTransaction}
         onMessageClick={handleTransactionMessageClick}
       />
 

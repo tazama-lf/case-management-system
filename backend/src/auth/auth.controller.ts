@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UnauthorizedException,
-  Get,
-  UseGuards,
-  HttpCode,
-  Query,
-} from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, HttpCode, Query } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -53,10 +44,7 @@ export class AuthController {
         actionPerformed: 'login',
         outcome: Outcome.FAILURE,
       });
-      this.logger.warn(
-        `Login failed for user ${body.username}: ${error.message}`,
-        AuthController.name,
-      );
+      this.logger.warn(`Login failed for user ${body.username}: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }
   }

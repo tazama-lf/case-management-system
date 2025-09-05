@@ -7,8 +7,7 @@ export const IS_PUBLIC_KEY = 'isPublic';
  * Decorator to specify required claims for a route
  * @param claims - Array of required claims (all must be present)
  */
-export const RequireClaims = (...claims: string[]) =>
-  SetMetadata(CLAIMS_KEY, claims);
+export const RequireClaims = (...claims: string[]) => SetMetadata(CLAIMS_KEY, claims);
 
 /**
  * Decorator to mark a route as public (no authentication required)
@@ -25,7 +24,7 @@ export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
  * Common Tazama claims for convenience
  */
 export const TazamaClaims = {
-  CMS_TEST_ROLE: 'CMS-TEST-ROLE',
+  ALERT_TRIAGE: 'alert-triage',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -37,7 +36,5 @@ export const TazamaClaims = {
 /**
  * Convenience decorators for common Tazama roles
  */
-export const RequireCMSTestRole = () =>
-  RequireClaim(TazamaClaims.CMS_TEST_ROLE);
-export const RequireAccountManagement = () =>
-  RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);
+export const RequireAlertTriageRole = () => RequireClaim(TazamaClaims.ALERT_TRIAGE);
+export const RequireAccountManagement = () => RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);

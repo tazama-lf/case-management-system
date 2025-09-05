@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ManualTriageDto } from './dto/manual-triage.dto';
 
@@ -12,7 +12,7 @@ export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
@@ -27,7 +27,7 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
@@ -35,7 +35,7 @@ export class TriageController {
   }
 
   @Get()
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getUserAlerts(
     @Req() req: AuthenticatedRequest,
     @Query('priority') priority?: string,
@@ -64,7 +64,7 @@ export class TriageController {
   }
 
   @Get(':alertId/action-history')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
@@ -72,7 +72,7 @@ export class TriageController {
   }
 
   @Get(':alertId')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;

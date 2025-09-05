@@ -19,16 +19,11 @@ export class AlertPriorityService implements OnModuleInit {
       parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
       parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
     ];
-    this.defaultSlaHours = parseInt(
-      this.configService.get<string>('DEFAULT_SLA_HOURS', '72'),
-      10,
-    );
+    this.defaultSlaHours = parseInt(this.configService.get<string>('DEFAULT_SLA_HOURS', '72'), 10);
   }
 
   onModuleInit() {
-    this.logger.log(
-      `Alert priority service initialized. Recalculation will run via scheduled task every hour.`,
-    );
+    this.logger.log('Alert priority service initialized. Recalculation will run via scheduled task every hour.');
   }
 
   async runRecalculation() {
@@ -46,8 +41,7 @@ export class AlertPriorityService implements OnModuleInit {
         const slaHours = Number(alertData.sla_hours) || this.defaultSlaHours;
         const createdAt = new Date(alert.created_at);
         const now = new Date();
-        const elapsedHours =
-          (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        const elapsedHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
         const slaProgress = elapsedHours / slaHours;
 
         // Get priority_score from alert (provided by AI model) or use SLA progress as fallback
@@ -90,14 +84,9 @@ export class AlertPriorityService implements OnModuleInit {
           });
         }
 
-        this.logger.debug(
-          `Alert ${alert.alert_id}: priority_score=${priorityScore} priority=${priority}`,
-        );
+        this.logger.debug(`Alert ${alert.alert_id}: priority_score=${priorityScore} priority=${priority}`);
       } catch (err) {
-        this.logger.error(
-          `Failed to process alert ${alert.alert_id}: ${err}`,
-          (err as Error).stack,
-        );
+        this.logger.error(`Failed to process alert ${alert.alert_id}: ${err}`, (err as Error).stack);
       }
     }
 

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { useNotifications } from '../../../shared/providers/NotificationProvider';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsFilter } from '../types/triage.types';
+import type { Alert, AlertsFilter, ManualTriageDto } from '../types/triage.types';
 import type { AlertStatus } from '../types/triage.types';
 
 // Query keys for consistent cache management
@@ -126,7 +126,7 @@ export const useAlertOperations = () => {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: any }) =>
+    mutationFn: ({ alertId, data }: { alertId: string; data: Record<string, unknown> }) =>
       triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
       showSuccess('Alert updated successfully');
@@ -141,31 +141,34 @@ export const useAlertOperations = () => {
     },
   });
 
-  const convertToCaseMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: any }) =>
-      triageService.convertAlertToCase(alertId, data),
-    onSuccess: (_, variables) => {
-      showSuccess('Alert converted to case successfully');
+  const manualTriageMutation = useMutation({
+    mutationFn: ({ alertId, data }: { alertId: string; data: ManualTriageDto }) =>
+      triageService.performManualTriage(alertId, data),
+    onSuccess: (data, variables) => {
+      showSuccess('Manual triage completed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.detail(variables.alertId) });
+      queryClient.setQueryData(
+        alertsQueryKeys.detail(variables.alertId),
+        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+      );
     },
     onError: (error: Error) => {
-      showError(error.message || 'Failed to convert alert to case');
+      showError(error.message || 'Failed to complete manual triage');
     },
   });
 
   return {
     closeAlert: closeAlertMutation.mutate,
     updateAlert: updateAlertMutation.mutate,
-    convertToCase: convertToCaseMutation.mutate,
+    performManualTriage: manualTriageMutation.mutate,
     isClosingAlert: closeAlertMutation.isPending,
     isUpdatingAlert: updateAlertMutation.isPending,
-    isConvertingToCase: convertToCaseMutation.isPending,
+    isPerformingManualTriage: manualTriageMutation.isPending,
     // Legacy support for existing components
     operationStates: {
       closingAlert: new Set(closeAlertMutation.isPending ? ['pending'] : []),
       updatingAlert: new Set(updateAlertMutation.isPending ? ['pending'] : []),
-      convertingToCase: new Set(convertToCaseMutation.isPending ? ['pending'] : []),
+      performingManualTriage: new Set(manualTriageMutation.isPending ? ['pending'] : []),
       loadingDetails: new Set([]),
     },
   };

@@ -19,10 +19,10 @@ export const AlertStatus = {
 } as const;
 
 export const AlertType = {
-  TRANSACTION_MONITORING: 'TRANSACTION_MONITORING',
-  SANCTIONS_SCREENING: 'SANCTIONS_SCREENING',
-  AML_SCREENING: 'AML_SCREENING',
-  FRAUD_DETECTION: 'FRAUD_DETECTION',
+  FRAUD: 'FRAUD',
+  AML: 'AML',
+  FRAUD_AND_AML: 'FRAUD_AND_AML',
+  NONE: 'NONE',
 } as const;
 
 export const CaseStatus = {
@@ -78,7 +78,7 @@ export type CaseCreationType =
   (typeof CaseCreationType)[keyof typeof CaseCreationType];
 
 // Core Alert interface matching backend schema
-export interface Alert {
+export interface Alert extends Record<string, unknown> {
   alert_id: string;
   tenant_id: string;
   priority: Priority;
@@ -140,11 +140,23 @@ export interface AlertsApiResponse {
 
 // DTO interfaces matching backend DTOs
 
+// Manual Triage DTO - matches backend ManualTriageDto
+export interface ManualTriageDto {
+  confidence_per?: number;
+  priority?: Priority;
+  priorityScore: number;
+  alertType?: AlertType;
+  predictionOutcome?: 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
+  note: string;
+  status: CaseStatus;
+}
+
 // Update Alert DTO
 export interface UpdateAlertDto {
   confidence_per?: number;
   priority?: Priority;
-  alertType?: AlertType;
+  alert_type?: AlertType;
+  note?: string;
 }
 
 // Convert Alert to Case DTO

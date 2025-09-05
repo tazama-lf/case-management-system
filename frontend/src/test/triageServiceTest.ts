@@ -8,15 +8,12 @@ export const testTriageService = () => {
   const hasGetAlertById = typeof triageService.getAlertById === 'function';
   const hasUpdateAlert = typeof triageService.updateAlert === 'function';
   const hasCloseAlert = typeof triageService.closeAlert === 'function';
-  const hasConvertAlertToCase =
-    typeof triageService.convertAlertToCase === 'function';
 
   return (
     hasGetAlerts &&
     hasGetAlertById &&
     hasUpdateAlert &&
-    hasCloseAlert &&
-    hasConvertAlertToCase
+  hasCloseAlert
   );
 };
 
@@ -57,11 +54,5 @@ export const exampleUsage = {
     return triageService.closeAlert(id, 'CLOSED', 'Resolved - false positive');
   },
 
-  // Convert to case
-  async convertToCase(id: string) {
-    return triageService.convertAlertToCase(id, {
-      priority: 'URGENT',
-      caseType: 'FRAUD',
-    });
-  },
+  // convert-to-case removed
 };
