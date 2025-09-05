@@ -7,22 +7,19 @@ import {
 import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../types/triage.types';
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
-// Manual triage now handles all alert updates and case decisions
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
+import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 
 interface AlertsDetailModalProps {
   alertId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  // onConvertToCase removed
   onCloseAlert?: (alert: LegacyAlert, status: AlertStatus, notes: string) => void;
-  onAlertUpdated?: () => void; // Callback to refresh the alerts list
-  onManualTriage?: (alert: LegacyAlert) => void; // Callback to trigger manual triage
+  onAlertUpdated?: () => void; 
+  onManualTriage?: (alert: LegacyAlert) => void;
 }
 
-// Temporary adapter to convert new Alert format to legacy format for modals
 const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
-  // Backend fields - pass through
   alert_id: alert.alert_id,
   tenant_id: alert.tenant_id,
   priority: alert.priority,
@@ -41,7 +38,6 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
 
 // Risk score calculation and breakdown
 const getRiskScore = (alert: TriageAlert): number => {
-  // For now, use confidence_per as base score multiplied by priority weight
   const priorityWeights = {
     NEW: 1,
     URGENT: 1.5,
@@ -52,12 +48,11 @@ const getRiskScore = (alert: TriageAlert): number => {
 
   const baseScore = alert.confidence_per || 50;
   const weight = priorityWeights[alert.priority] || 1;
-  return Math.round(baseScore * weight * 10); // Scale to reasonable range
+  return Math.round(baseScore * weight * 10); 
 };
 
 // Risk breakdown components
 const getRiskBreakdown = (alert: TriageAlert) => {
-  // Try to extract typology/rule results from alert.alert_data (TADP-style)
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
@@ -68,11 +63,9 @@ const getRiskBreakdown = (alert: TriageAlert) => {
           const typ = typologyResult[0] as Record<string, unknown>;
           const maybeRules = typ['ruleResults'];
           if (Array.isArray(maybeRules)) {
-            // Map ruleResults to the table shape { name, type, score }
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
               const id = (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
-              // Use available fields for display; prefer a human label if present
               const name = (rec['label'] as string) || (rec['name'] as string) || id;
               const type = (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
               const wght = typeof rec['wght'] === 'number' ? (rec['wght'] as number) : Number(rec['weight'] || 0);
@@ -158,20 +151,13 @@ const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
   const escaped = escapeHtml(String(json));
 
-  // Wrap JSON tokens in spans with Tailwind-compatible classes
   const highlighted = escaped
-    // keys
     .replace(/("(.*?)")(?=\s*:)/g, '<span class="text-indigo-700 font-medium">$1</span>')
-    // strings
     .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
-  // numbers (including optional exponent)
-  .replace(/(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi, '$1<span class="text-red-600">$2</span>')
-    // booleans
+    .replace(/(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi, '$1<span class="text-red-600">$2</span>')
     .replace(/(:\s*)(true|false)/gi, '$1<span class="text-yellow-600">$2</span>')
-    // null
     .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
 
-  // Preserve line breaks inside a <pre> by returning raw HTML
   return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
 };
 
@@ -181,22 +167,21 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onClose,
   onManualTriage,
 }) => {
+  // System configuration for triage mode
+  const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
+  
   const [alert, setAlert] = useState<TriageAlert | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
-  // Removed UpdateAlert and CloseAlert modal states - now handled by Manual Triage
   
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Fetch case details to determine action availability
   const { data: caseDetails } = useCase(alert?.case_id);
 
-  // Determine if actions can be performed on this alert based on case status
   const canPerformActions = canActOnCase(caseDetails?.status);
 
-  // Fetch alert details when alertId changes and modal is open
   useEffect(() => {
     const fetchAlertDetails = async () => {
       if (!alertId || !isOpen) {
@@ -362,15 +347,25 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
-                      {/* Manual Triage button - replaces separate Update/Close buttons */}
-                      {canPerformActions && onManualTriage && (
+                      {/* Manual Triage button - only show in MANUAL mode or DISABLED mode for updates, not in AI mode */}
+                      {canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && (
                         <button
                           onClick={() => onManualTriage(convertToLegacyAlert(alert))}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                          title="Perform manual triage - update alert and make case decision"
+                          title={isManualMode 
+                            ? "Perform manual triage - update alert and make case decision" 
+                            : "Update alert details - direct investigation mode"
+                          }
                         >
-                          Update Alert
+                          {isManualMode ? "Update Alert" : "Update Alert"}
                         </button>
+                      )}
+                      
+                      {/* AI Mode indicator - show when in AI mode */}
+                      {isAIMode && (
+                        <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
+                          AI Processed
+                        </span>
                       )}
                     </div>
                   </div>

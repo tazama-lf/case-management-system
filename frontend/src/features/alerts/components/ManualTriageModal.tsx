@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Alert, ManualTriageDto, Priority, AlertType, CaseStatus } from '../types/triage.types';
+import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 
 interface ManualTriageModalProps {
   isOpen: boolean;
@@ -10,6 +11,9 @@ interface ManualTriageModalProps {
 }
 
 const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, onClose, onSubmit }) => {
+  // System configuration for triage mode
+  const { isManualMode, isDisabledMode } = useSystemConfig();
+  
   const [priority, setPriority] = useState<Priority>(alert.priority);
   const [confidence, setConfidence] = useState(alert.confidence_per);
   const [alertType, setAlertType] = useState<AlertType | ''>(alert.alert_type ?? '');
@@ -67,7 +71,17 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
         <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-2xl w-full">
           <div className="bg-white px-6 py-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Update Alert: {alert.alert_id}</h3>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  {isManualMode ? "Update Alert" : "Update Alert"}: {alert.alert_id}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {isManualMode 
+                    ? "Review alert details and make triage decision with case routing"
+                    : "Update alert information - direct investigation mode"
+                  }
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
@@ -128,36 +142,49 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   </select>
                 </div>
 
-                {/* Prediction Outcome */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prediction Outcome</label>
-                  <select 
-                    value={predictionOutcome} 
-                    onChange={e => setPredictionOutcome(e.target.value as 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE')} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="FALSE_POSITIVE">False Positive</option>
-                    <option value="TRUE_POSITIVE">True Positive</option>
-                    <option value="FALSE_NEGATIVE">False Negative</option>
-                    <option value="TRUE_NEGATIVE">True Negative</option>
-                  </select>
-                </div>
+                {/* Prediction Outcome - Only show in MANUAL mode, hidden in DISABLED mode */}
+                {isManualMode && !isDisabledMode && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Prediction Outcome</label>
+                    <select 
+                      value={predictionOutcome} 
+                      onChange={e => setPredictionOutcome(e.target.value as 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE')} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="FALSE_POSITIVE">False Positive</option>
+                      <option value="TRUE_POSITIVE">True Positive</option>
+                      <option value="FALSE_NEGATIVE">False Negative</option>
+                      <option value="TRUE_NEGATIVE">True Negative</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
-              {/* Case Status */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Case Status</label>
-                <select 
-                  value={status} 
-                  onChange={e => setStatus(e.target.value as CaseStatus)} 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="READY_FOR_ASSIGNMENT_02">Ready for Assignment (Investigation)</option>
-                  <option value="CLOSED_CONFIRMED_82">Closed - Confirmed</option>
-                  <option value="CLOSED_REFUTED_81">Closed - Refuted</option>
-                  <option value="CLOSED_INCONCLUSIVE_83">Closed - Inconclusive</option>
-                </select>
-              </div>
+              {/* Case Status - Only show in MANUAL mode, simplified in DISABLED mode */}
+              {isManualMode && !isDisabledMode && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Case Status</label>
+                  <select 
+                    value={status} 
+                    onChange={e => setStatus(e.target.value as CaseStatus)} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="READY_FOR_ASSIGNMENT_02">Ready for Assignment (Investigation)</option>
+                    <option value="CLOSED_CONFIRMED_82">Closed - Confirmed</option>
+                    <option value="CLOSED_REFUTED_81">Closed - Refuted</option>
+                    <option value="CLOSED_INCONCLUSIVE_83">Closed - Inconclusive</option>
+                  </select>
+                </div>
+              )}
+
+              {/* In DISABLED mode, automatically route to investigation */}
+              {isDisabledMode && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-700">
+                    <strong>Direct Investigation Mode:</strong> This alert will be automatically routed to investigation upon update.
+                  </p>
+                </div>
+              )}
 
               {/* Triage Notes */}
               <div className="mb-6">
@@ -189,7 +216,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   disabled={loading || !note.trim()} 
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Processing...' : 'Complete Triage'}
+                  {loading ? 'Processing...' : (isManualMode ? 'Complete Triage' : 'Update Alert')}
                 </button>
               </div>
             </form>

@@ -789,7 +789,7 @@ export class TriageService {
             currency: 'USD',
             creditorAccount: 'ACC-12345',
             debtorAccount: 'ACC-67890',
-          }
+          },
         },
         {
           id: `msg-${transactionId}-2`,
@@ -803,13 +803,13 @@ export class TriageService {
             direction: 'inbound',
             txStatus: 'ACCC',
             reasonCode: null,
-          }
-        }
+          },
+        },
       ];
 
       return {
         transactionId,
-        messages: mockMessages
+        messages: mockMessages,
       };
     } catch (error) {
       this.logger.error(`Failed to fetch transaction messages for ${transactionId}. Error: ${error.message}`, error.stack);
