@@ -9,7 +9,6 @@ interface AlertDetailsContextType {
   isLoading: boolean;
   onClose: () => void;
   onUpdate?: (alert: Alert) => void;
-  onConvertToCase?: (alert: Alert) => void;
   onCloseAlert?: (alert: Alert) => void;
 }
 
@@ -29,7 +28,6 @@ interface AlertDetailsRootProps {
   isLoading?: boolean;
   onClose: () => void;
   onUpdate?: (alert: Alert) => void;
-  onConvertToCase?: (alert: Alert) => void;
   onCloseAlert?: (alert: Alert) => void;
   children: React.ReactNode;
   className?: string;
@@ -41,7 +39,6 @@ const AlertDetailsRoot: React.FC<AlertDetailsRootProps> = ({
   isLoading = false,
   onClose,
   onUpdate,
-  onConvertToCase,
   onCloseAlert,
   children,
   className = '',
@@ -52,7 +49,6 @@ const AlertDetailsRoot: React.FC<AlertDetailsRootProps> = ({
     isLoading,
     onClose,
     onUpdate,
-    onConvertToCase,
     onCloseAlert,
   };
 
@@ -248,22 +244,21 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
 
 interface AlertDetailsActionsProps {
   className?: string;
-  actions?: ('update' | 'convert' | 'close')[];
+  actions?: ('update' | 'close')[];
 }
 
 const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
   className = '',
-  actions = ['update', 'convert', 'close'],
+  actions = ['update', 'close'],
 }) => {
-  const { alert, onUpdate, onConvertToCase, onCloseAlert } = useAlertDetailsContext();
+  const { alert, onUpdate, onCloseAlert } = useAlertDetailsContext();
 
   if (!alert) return null;
 
   const canUpdate = actions.includes('update') && onUpdate;
-  const canConvert = actions.includes('convert') && onConvertToCase;
   const canClose = actions.includes('close') && onCloseAlert;
 
-  if (!canUpdate && !canConvert && !canClose) {
+  if (!canUpdate && !canClose) {
     return null;
   }
 
@@ -278,14 +273,7 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
             Update Alert
           </button>
         )}
-        {canConvert && (
-          <button
-            onClick={() => onConvertToCase(alert)}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-          >
-            Convert to Case
-          </button>
-        )}
+  {/* Convert to Case removed */}
         {canClose && (
           <button
             onClick={() => onCloseAlert(alert)}

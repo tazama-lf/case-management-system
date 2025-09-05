@@ -21,7 +21,7 @@ const TestComponent = () => {
     <div>
       <div data-testid="alerts-count">{alerts.length}</div>
       <button onClick={() => refetch()}>Refetch</button>
-      {alerts.map((alert: any) => (
+  {alerts.map((alert) => (
         <div key={alert.alert_id} data-testid={`alert-${alert.alert_id}`}>
           {alert.message}
         </div>
@@ -157,10 +157,8 @@ describe('useAlertOperations', () => {
   const TestAlertOperations = () => {
     const { 
       updateAlert, 
-      convertToCase, 
       closeAlert,
       isUpdatingAlert,
-      isConvertingToCase,
       isClosingAlert
     } = useAlertOperations();
 
@@ -171,12 +169,6 @@ describe('useAlertOperations', () => {
       });
     };
 
-    const handleConvert = () => {
-      convertToCase({
-        alertId: 'ALERT-001',
-        data: { priority: 'HIGH', caseType: 'FRAUD' }
-      });
-    };
 
     const handleClose = () => {
       closeAlert({ 
@@ -190,9 +182,6 @@ describe('useAlertOperations', () => {
       <div>
         <button onClick={handleUpdate} disabled={isUpdatingAlert}>
           Update Alert
-        </button>
-        <button onClick={handleConvert} disabled={isConvertingToCase}>
-          Convert to Case
         </button>
         <button onClick={handleClose} disabled={isClosingAlert}>
           Close Alert
