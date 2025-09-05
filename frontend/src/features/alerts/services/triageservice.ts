@@ -1,6 +1,13 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ManualTriageDto, CloseAlertDto, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
-import type { TransactionMessage } from '../types/alertsdashboard.types';
+import type { Alert } from '../types/alertsdashboard.types';
+import type { 
+  ManualTriageDto, 
+  UpdateAlertDto, 
+  CloseAlertDto, 
+  AlertStatus,
+  AlertsFilter,
+  ActionHistory
+} from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
@@ -9,16 +16,15 @@ class TriageService {
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
-    const err = error as { response?: { data?: unknown }; message?: string } | undefined;
+    const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
     if (err?.response?.data) {
-      const apiError = err.response.data as ApiErrorResponse;
+      const apiError = err.response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
 
     if (err?.message) {
       return new Error(err.message);
     }
-
 
     return new Error(`Failed to ${operation}`);
   }
@@ -188,20 +194,8 @@ class TriageService {
     }
   }
 
-  // GET /api/v1/triage/alerts/transactions/:transactionId/messages
-  async getTransactionMessages(transactionId: string): Promise<TransactionMessage[]> {
-    try {
-      const response = await apiClient.get<{
-        transactionId: string;
-        messages: TransactionMessage[];
-      }>(`${this.baseUrl}/transactions/${transactionId}/messages`);
-      return response.messages || [];
-    } catch (error) {
-      throw this.handleError(error, 'fetch transaction messages');
-    }
-  }
-
   // Removed convert-to-case functionality from frontend
+  // Removed getTransactionMessages - now extracted from alert data using transactionUtils
 }
 
 export default new TriageService();

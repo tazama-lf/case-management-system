@@ -4,14 +4,18 @@ import AlertsDetailModal from '../components/AlertsDetailModal';
 import ManualTriageModal from '../components/ManualTriageModal';
 import TransactionMessagesModal from '../components/TransactionMessagesModal';
 import MessagePayloadModal from '../components/MessagePayloadModal';
+import AlertsTableSkeleton from '../components/AlertsTableSkeleton';
 import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
-import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
+import { PageContainer, Notification } from '../../../shared/components/ui';
+import ErrorFallback from '../../../shared/components/ErrorFallback';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/triage.types';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
+import { extractTransactionIdFromAlert } from '../utils/transactionUtils';
 import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
 
 const AlertsDashboard: React.FC = () => {
@@ -50,6 +54,7 @@ const AlertsDashboard: React.FC = () => {
 
   const { performManualTriage } = useAlertOperations();
   const { filterOptions } = useAlertFilterOptions();
+  const { success, error: showError } = useToast();
   const loading = isLoading;
   const lastUpdated = new Date(); 
 
@@ -59,9 +64,11 @@ const AlertsDashboard: React.FC = () => {
         alertId: alert.alert_id as string,
         data: triageData,
       });
+      success('Triage Complete', 'Alert triage completed successfully');
       refetch(); // Refresh the alerts list
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
+      showError('Triage Failed', 'Failed to perform triage. Please try again.');
       throw error;
     }
   };
@@ -70,14 +77,12 @@ const AlertsDashboard: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
-  
+
   // Transaction modals state
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
-
-  const handleRowClick = async (alert: Alert) => {
+  const [selectedAlertForTransaction, setSelectedAlertForTransaction] = useState<Alert | null>(null);  const handleRowClick = async (alert: Alert) => {
     try {
       const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
@@ -94,20 +99,6 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
-  // Utility function to extract transaction ID from alert data
-  const extractTransactionId = (alert: Alert): string => {
-    try {
-      const transaction = alert.transaction as any;
-      if (transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
-        return transaction.FIToFIPmtSts.GrpHdr.MsgId;
-      }
-      // Fallback to txtp if MsgId not found
-      return alert.txtp || 'Unknown';
-    } catch {
-      return alert.txtp || 'Unknown';
-    }
-  };
-
   // Utility function to convert Alert to TriageAlert for modal compatibility
   const convertToTriageAlert = (alert: Alert): TriageAlert => {
     return {
@@ -118,8 +109,7 @@ const AlertsDashboard: React.FC = () => {
 
   // Transaction modal handlers
   const handleTransactionIdClick = (alert: Alert) => {
-    const transactionId = extractTransactionId(alert);
-    setSelectedTransactionId(transactionId);
+    setSelectedAlertForTransaction(alert);
     setShowTransactionMessages(true);
   };
 
@@ -131,7 +121,7 @@ const AlertsDashboard: React.FC = () => {
 
   const handleCloseTransactionMessages = () => {
     setShowTransactionMessages(false);
-    setSelectedTransactionId('');
+    setSelectedAlertForTransaction(null);
   };
 
   const handleCloseMessagePayload = () => {
@@ -173,7 +163,7 @@ const AlertsDashboard: React.FC = () => {
       header: 'Transaction ID',
       sortable: true,
       render: (_, alert) => {
-        const transactionId = extractTransactionId(alert);
+        const transactionId = extractTransactionIdFromAlert(alert);
         
         return (
           <button
@@ -282,9 +272,7 @@ const AlertsDashboard: React.FC = () => {
         title="Alerts Dashboard"
         subtitle={getSubtitle()}
       >
-        <LoadingState loading={true}>
-          <div />
-        </LoadingState>
+        <AlertsTableSkeleton rows={pageSize} />
       </PageContainer>
     );
   }
@@ -295,9 +283,12 @@ const AlertsDashboard: React.FC = () => {
         title="Alerts Dashboard"
         subtitle={getSubtitle()}
       >
-        <LoadingState error={error?.message || 'An error occurred while loading alerts'}>
-          <div />
-        </LoadingState>
+        <ErrorFallback 
+          error={error as Error}
+          resetError={() => refetch()}
+          title="Failed to load alerts"
+          showRetry={true}
+        />
       </PageContainer>
     );
   }
@@ -398,7 +389,7 @@ const AlertsDashboard: React.FC = () => {
       <TransactionMessagesModal
         isOpen={showTransactionMessages}
         onClose={handleCloseTransactionMessages}
-        transactionId={selectedTransactionId}
+        alert={selectedAlertForTransaction}
         onMessageClick={handleTransactionMessageClick}
       />
 

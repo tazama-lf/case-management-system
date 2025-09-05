@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { TransactionMessage } from '../types/alertsdashboard.types';
-import triageService from '../services/triageservice';
+import type { TransactionMessage, Alert } from '../types/alertsdashboard.types';
+import { extractTransactionMessagesFromAlert, extractTransactionIdFromAlert } from '../utils/transactionUtils';
 
 interface TransactionMessagesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  transactionId: string;
+  alert: Alert | null;
   onMessageClick: (message: TransactionMessage) => void;
 }
 
 const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   isOpen,
   onClose,
-  transactionId,
+  alert,
   onMessageClick,
 }) => {
   const [messages, setMessages] = useState<TransactionMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch transaction messages when modal opens or transactionId changes
+  // Extract transaction messages from alert data when modal opens or alert changes
   useEffect(() => {
-    const fetchTransactionMessages = async () => {
-      if (!isOpen || !transactionId) {
+    const extractMessages = () => {
+      if (!isOpen || !alert) {
         setMessages([]);
         return;
       }
@@ -32,22 +32,25 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
       setError(null);
 
       try {
-        const fetchedMessages = await triageService.getTransactionMessages(transactionId);
-        setMessages(fetchedMessages);
+        const transactionId = extractTransactionIdFromAlert(alert);
+        const extractedMessages = extractTransactionMessagesFromAlert(alert.transaction, transactionId);
+        setMessages(extractedMessages);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load transaction messages');
+        setError(err instanceof Error ? err.message : 'Failed to extract transaction messages');
         setMessages([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTransactionMessages();
-  }, [isOpen, transactionId]);
+    extractMessages();
+  }, [isOpen, alert]);
 
   if (!isOpen) {
     return null;
   }
+
+  const transactionId = alert ? extractTransactionIdFromAlert(alert) : 'Unknown';
 
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto">
