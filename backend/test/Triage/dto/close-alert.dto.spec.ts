@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { CloseAlertDto } from '../../../src/triage/dto/close-alert.dto';
@@ -9,231 +8,187 @@ describe('CloseAlertDto', () => {
     expect(CloseAlertDto).toBeDefined();
   });
 
-  it('should validate a valid DTO with reason and status', async () => {
-    const validData = {
-      reason: 'Alert resolved after investigation',
-      status: CaseStatus.CLOSED_CONFIRMED_82,
-    };
+  it('should create an instance', () => {
+    const dto = new CloseAlertDto();
+    expect(dto).toBeInstanceOf(CloseAlertDto);
+  });
 
-    const dto = plainToClass(CloseAlertDto, validData);
+  it('should validate a valid DTO', async () => {
+    const dto = new CloseAlertDto();
+    dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+
     const errors = await validate(dto);
-
     expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('Alert resolved after investigation');
     expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
   });
 
-  it('should validate a valid DTO with reason only', async () => {
-    const validData = {
-      reason: 'Alert resolved after investigation',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('Alert resolved after investigation');
-  });
-
-  it('should validate a DTO with multiline reason', async () => {
-    const validData = {
-      reason: 'Alert closed due to:\n- False positive\n- Insufficient evidence\n- Duplicate of case #123',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toContain('False positive');
-  });
-
-  it('should validate a DTO with special characters in reason', async () => {
-    const validData = {
-      reason: 'Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('Alert #456 closed at 2024-01-01T10:30:00Z due to user@domain.com verification');
-  });
-
-  it('should validate a DTO with very long reason', async () => {
-    const longReason = 'A'.repeat(1000); // 1000 character reason
-    const validData = {
-      reason: longReason,
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe(longReason);
-    expect(dto.reason.length).toBe(1000);
-  });
-
-  it('should fail validation when reason is missing', async () => {
-    const invalidData = {
+  it('should validate using plainToClass', async () => {
+    const data = {
       status: CaseStatus.CLOSED_CONFIRMED_82,
     };
 
-    const dto = plainToClass(CloseAlertDto, invalidData);
+    const dto = plainToClass(CloseAlertDto, data);
     const errors = await validate(dto);
 
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
+    expect(errors).toHaveLength(0);
+    expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
   });
 
-  it('should fail validation when status is invalid', async () => {
-    const invalidData = {
-      reason: 'Valid reason',
-      status: 'INVALID_STATUS',
-    };
+  describe('status validation', () => {
+    it('should accept valid CaseStatus enum values', async () => {
+      const validStatuses = [
+        CaseStatus.CLOSED_CONFIRMED_82,
+        CaseStatus.CLOSED_REFUTED_81,
+        CaseStatus.CLOSED_INCONCLUSIVE_83,
+        CaseStatus.AUTOCLOSED_CONFIRMED_71,
+        CaseStatus.AUTOCLOSED_REFUTED_72,
+        CaseStatus.ASSIGNED_10,
+        CaseStatus.IN_PROGRESS_20,
+        CaseStatus.READY_FOR_ASSIGNMENT_02
+      ];
 
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
+      for (const status of validStatuses) {
+        const dto = new CloseAlertDto();
+        dto.status = status;
 
-    expect(errors.length).toBeGreaterThan(0);
-    const statusError = errors.find((error) => error.property === 'status');
-    expect(statusError).toBeDefined();
-    expect(statusError?.constraints).toHaveProperty('isEnum');
+        const errors = await validate(dto);
+        expect(errors).toHaveLength(0);
+        expect(dto.status).toBe(status);
+      }
+    });
+
+    it('should reject invalid status values', async () => {
+      const dto = new CloseAlertDto();
+      // @ts-expect-error - intentionally setting invalid value for testing
+      dto.status = 'INVALID_STATUS';
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('status');
+      expect(errors[0].constraints).toHaveProperty('isEnum');
+    });
+
+    it('should reject missing status', async () => {
+      const dto = new CloseAlertDto();
+      // Don't set status
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('status');
+    });
+
+    it('should reject null status', async () => {
+      const dto = new CloseAlertDto();
+      // @ts-expect-error - intentionally setting null value for testing
+      dto.status = null;
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('status');
+    });
+
+    it('should reject undefined status', async () => {
+      const dto = new CloseAlertDto();
+      // @ts-expect-error - intentionally setting undefined value for testing
+      dto.status = undefined;
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('status');
+    });
   });
 
-  it('should validate with different valid CaseStatus values', async () => {
-    const validStatuses = [
-      CaseStatus.CLOSED_CONFIRMED_82,
-      CaseStatus.CLOSED_REFUTED_81,
-      CaseStatus.CLOSED_INCONCLUSIVE_83,
-      CaseStatus.ABANDONED_99,
-    ];
-
-    for (const status of validStatuses) {
-      const validData = {
-        reason: `Alert closed with status ${status}`,
-        status: status,
+  describe('DTO transformation and serialization', () => {
+    it('should transform plain object to DTO instance', () => {
+      const plainObject = {
+        status: CaseStatus.CLOSED_REFUTED_81,
       };
 
-      const dto = plainToClass(CloseAlertDto, validData);
+      const dto = plainToClass(CloseAlertDto, plainObject);
+      
+      expect(dto).toBeInstanceOf(CloseAlertDto);
+      expect(dto.status).toBe(CaseStatus.CLOSED_REFUTED_81);
+    });
+
+    it('should serialize DTO to JSON', () => {
+      const dto = new CloseAlertDto();
+      dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+
+      const serialized = JSON.stringify(dto);
+      const parsed = JSON.parse(serialized);
+
+      expect(parsed.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+    });
+
+    it('should handle different case status scenarios', async () => {
+      const testCases = [
+        { status: CaseStatus.CLOSED_CONFIRMED_82, description: 'closed confirmed case' },
+        { status: CaseStatus.CLOSED_REFUTED_81, description: 'closed refuted case' },
+        { status: CaseStatus.CLOSED_INCONCLUSIVE_83, description: 'closed inconclusive case' },
+      ];
+
+      for (const testCase of testCases) {
+        const dto = plainToClass(CloseAlertDto, { status: testCase.status });
+        const errors = await validate(dto);
+
+        expect(errors).toHaveLength(0);
+        expect(dto.status).toBe(testCase.status);
+      }
+    });
+
+    it('should support property enumeration', () => {
+      const dto = new CloseAlertDto();
+      dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+
+      const keys = Object.keys(dto);
+      expect(keys).toContain('status');
+    });
+
+    it('should support different instantiation patterns', () => {
+      // Direct instantiation
+      const dto1 = new CloseAlertDto();
+      dto1.status = CaseStatus.CLOSED_CONFIRMED_82;
+      expect(dto1.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+
+      // Object assign pattern
+      const dto2 = Object.assign(new CloseAlertDto(), {
+        status: CaseStatus.CLOSED_REFUTED_81
+      });
+      expect(dto2.status).toBe(CaseStatus.CLOSED_REFUTED_81);
+
+      // plainToClass pattern
+      const dto3 = plainToClass(CloseAlertDto, {
+        status: CaseStatus.CLOSED_CONFIRMED_82
+      });
+      expect(dto3.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty object transformation', async () => {
+      const dto = plainToClass(CloseAlertDto, {});
+      const errors = await validate(dto);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some(error => error.property === 'status')).toBeTruthy();
+    });
+
+    it('should maintain type safety', () => {
+      const dto = new CloseAlertDto();
+      dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+
+      // TypeScript should prevent this, but testing runtime behavior
+      expect(typeof dto.status).toBe('string');
+      expect(Object.values(CaseStatus)).toContain(dto.status);
+    });
+
+    it('should validate with partial data', async () => {
+      const partialData = { status: CaseStatus.AUTOCLOSED_CONFIRMED_71 };
+      const dto = plainToClass(CloseAlertDto, partialData);
       const errors = await validate(dto);
 
       expect(errors).toHaveLength(0);
-      expect(dto.status).toBe(status);
-    }
-  });
-
-  it('should fail validation when reason is not a string', async () => {
-    const invalidData = {
-      reason: 123,
-    };
-
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
-  });
-
-  it('should fail validation when reason is null', async () => {
-    const invalidData = {
-      reason: null,
-    };
-
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
-  });
-
-  it('should fail validation when reason is boolean', async () => {
-    const invalidData = {
-      reason: false,
-    };
-
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
-  });
-
-  it('should fail validation when reason is an object', async () => {
-    const invalidData = {
-      reason: { message: 'Invalid object' },
-    };
-
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
-  });
-
-  it('should fail validation when reason is an array', async () => {
-    const invalidData = {
-      reason: ['reason1', 'reason2'],
-    };
-
-    const dto = plainToClass(CloseAlertDto, invalidData);
-    const errors = await validate(dto);
-
-    expect(errors.length).toBeGreaterThan(0);
-    const reasonError = errors.find((error) => error.property === 'reason');
-    expect(reasonError).toBeDefined();
-    expect(reasonError?.constraints).toHaveProperty('isString');
-  });
-
-  it('should validate an empty string reason', async () => {
-    const validData = {
-      reason: '',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('');
-  });
-
-  it('should validate a reason with only whitespace', async () => {
-    const validData = {
-      reason: '   \n\t  ',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('   \n\t  ');
-  });
-
-  it('should handle unicode characters in reason', async () => {
-    const validData = {
-      reason: '🚨 Alert closed due to émergency resolution 中文测试',
-      status: CaseStatus.CLOSED_CONFIRMED_82, // Status is required
-    };
-
-    const dto = plainToClass(CloseAlertDto, validData);
-    const errors = await validate(dto);
-
-    expect(errors).toHaveLength(0);
-    expect(dto.reason).toBe('🚨 Alert closed due to émergency resolution 中文测试');
+      expect(dto.status).toBe(CaseStatus.AUTOCLOSED_CONFIRMED_71);
+    });
   });
 });
