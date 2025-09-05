@@ -154,7 +154,7 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         filtered = filtered.filter((a: Alert) => {
           const alertId = String(a.alert_id || '').toLowerCase();
           const message = String(a.message || '').toLowerCase();
-          const txId = String(a.transactionId || '').toLowerCase();
+          const txId = String(a.txtp || '').toLowerCase();
           const source = String(a.source || '').toLowerCase();
           const type = String(a.alert_type || '').toLowerCase();
           const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
@@ -194,7 +194,7 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
 
       // Time range filter
       if (state.filters.timeRange) {
-        filtered = filtered.filter((alert: Alert) => isDateInRange(alert.createdAt as string, state.filters.timeRange, state.filters.customDateRange));
+        filtered = filtered.filter((alert: Alert) => isDateInRange(alert.created_at as string, state.filters.timeRange, state.filters.customDateRange));
       }
 
       // Sorting

@@ -51,7 +51,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   useEffect(() => {
     setFilterOptions({
       priorities: (priorities && priorities.length > 0) ? priorities : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
-      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'TRANSACTION_MONITORING'],
+      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AND_AML'],
       sources: (sources && sources.length > 0) ? sources : ['System A', 'System B', 'External']
     });
   }, [alertTypes, priorities, sources]);

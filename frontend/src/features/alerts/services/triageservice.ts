@@ -1,5 +1,13 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { Alert, AlertsFilter, UpdateAlertDto, ConvertToCaseDto, CloseAlertDto, ConvertToCaseResponse, ApiErrorResponse, ActionHistory, AlertStatus } from '../types/triage.types';
+import type { Alert } from '../types/alertsdashboard.types';
+import type { 
+  ManualTriageDto, 
+  UpdateAlertDto, 
+  CloseAlertDto, 
+  AlertStatus,
+  AlertsFilter,
+  ActionHistory
+} from '../types/triage.types';
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
@@ -8,16 +16,15 @@ class TriageService {
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
-    const err = error as { response?: { data?: unknown }; message?: string } | undefined;
+    const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
     if (err?.response?.data) {
-      const apiError = err.response.data as ApiErrorResponse;
+      const apiError = err.response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
 
     if (err?.message) {
       return new Error(err.message);
     }
-
 
     return new Error(`Failed to ${operation}`);
   }
@@ -150,7 +157,20 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId
+  // PATCH /api/v1/triage/alerts/:alertId - Manual Triage
+  async performManualTriage(alertId: string, data: ManualTriageDto): Promise<Alert> {
+    try {
+      const response = await apiClient.patch<Alert>(
+        `${this.baseUrl}/${alertId}`,
+        data,
+      );
+      return this.validateAlertResponse(response);
+    } catch (error) {
+      throw this.handleError(error, 'perform manual triage');
+    }
+  }
+
+  // PATCH /api/v1/triage/alerts/:alertId - Update Alert (legacy)
   async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
@@ -163,8 +183,6 @@ class TriageService {
     }
   }
 
-  
-
   // PATCH /api/v1/triage/alerts/:alertId/close
   async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
     try {
@@ -176,26 +194,8 @@ class TriageService {
     }
   }
 
-  // POST /api/v1/triage/alerts/:alertId/convert-to-case
-  async convertAlertToCase(
-    alertId: string,
-    data: ConvertToCaseDto,
-  ): Promise<ConvertToCaseResponse> {
-    try {
-      const response = await apiClient.post<ConvertToCaseResponse>(
-        `${this.baseUrl}/${alertId}/convert-to-case`,
-        data,
-      );
-
-      if (!response || typeof response !== 'object') {
-        throw new Error('Invalid response from convert to case operation');
-      }
-
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'convert alert to case');
-    }
-  }
+  // Removed convert-to-case functionality from frontend
+  // Removed getTransactionMessages - now extracted from alert data using transactionUtils
 }
 
 export default new TriageService();

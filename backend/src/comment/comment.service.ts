@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -21,9 +17,7 @@ export class CommentService {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
     try {
       if (!createCommentDto.caseId && !createCommentDto.taskId) {
-        throw new BadRequestException(
-          'Either caseId or taskId must be provided',
-        );
+        throw new BadRequestException('Either caseId or taskId must be provided');
       }
 
       if (createCommentDto.caseId && createCommentDto.taskId) {
@@ -89,17 +83,11 @@ export class CommentService {
     }
   }
 
-  async getCommentsByCaseOrTask(
-    caseId?: string,
-    taskId?: string,
-    userId?: string,
-  ) {
+  async getCommentsByCaseOrTask(caseId?: string, taskId?: string, userId?: string) {
     this.logger.log('Retrieving comments by case or task', CommentService.name);
     try {
       if (!caseId && !taskId) {
-        throw new BadRequestException(
-          'Either caseId or taskId must be provided',
-        );
+        throw new BadRequestException('Either caseId or taskId must be provided');
       }
 
       if (caseId && taskId) {
@@ -128,11 +116,7 @@ export class CommentService {
 
       return comments;
     } catch (error) {
-      this.logger.error(
-        'Error retrieving comments',
-        error,
-        CommentService.name,
-      );
+      this.logger.error('Error retrieving comments', error, CommentService.name);
       if (userId) {
         this.auditLogService.logAction({
           userId,

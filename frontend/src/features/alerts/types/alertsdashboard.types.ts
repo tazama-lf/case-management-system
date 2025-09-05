@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Re-export Alert from triage types to maintain consistency
+export type { Alert, Priority, AlertType } from './triage.types';
+
 // Transaction message interface
 export interface TransactionMessage {
   id: string;
@@ -7,25 +10,6 @@ export interface TransactionMessage {
   description: string;
   timestamp: string;
   status: 'sent' | 'received' | 'processing' | 'failed';
-}
-
-// Extended Alert interface for UI display
-// We'll use intersection types to avoid conflicts
-export interface Alert extends Record<string, unknown> {
-  // Backend fields (matching TriageAlert)
-  alert_id: string;
-  tenant_id: string;
-  priority: 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
-  alert_type?: string | null;
-  source?: string;
-  txtp?: string;
-  message: string;
-  alert_data: unknown;
-  transaction: unknown;
-  network_map: unknown;
-  confidence_per: number;
-  created_at: string;
-  case_id?: string;
 }
 
 // Search and filter interfaces
