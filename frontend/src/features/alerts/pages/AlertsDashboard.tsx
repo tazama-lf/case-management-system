@@ -6,6 +6,7 @@ import TransactionMessagesModal from '../components/TransactionMessagesModal';
 import MessagePayloadModal from '../components/MessagePayloadModal';
 import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
 import { PageContainer, LoadingState, Notification } from '../../../shared/components/ui';
+import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 
 import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
 import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/triage.types';
@@ -14,7 +15,8 @@ import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
 
 const AlertsDashboard: React.FC = () => {
-  // State for filters and pagination
+  const { isAIMode, isManualMode, isDisabledMode } = useSystemConfig();
+
   const [filters, setFilters] = useState({
     query: '',
     source: '',
@@ -27,7 +29,6 @@ const AlertsDashboard: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sort, setSort] = useState({ column: 'created_at', direction: 'desc' as 'asc' | 'desc' });
 
-  // React Query hooks - fetch alerts with server-side filtering/sorting/pagination
   const { alerts, pagination: serverPagination, isLoading, error, refetch } = useAlerts({
     search: filters.query,
     priority: filters.priority,
@@ -39,7 +40,6 @@ const AlertsDashboard: React.FC = () => {
     limit: pageSize,
   });
 
-  // Pagination control object using server pagination
   const tablePagination = React.useMemo(() => ({
     currentPage: serverPagination.currentPage,
     totalPages: serverPagination.totalPages,
@@ -48,18 +48,10 @@ const AlertsDashboard: React.FC = () => {
     onPageChange: (p: number) => setPage(p),
   }), [serverPagination, setPage]);
 
-  // Operations - Manual Triage handles all alert updates and case decisions
   const { performManualTriage } = useAlertOperations();
-
-  // Get filter options
   const { filterOptions } = useAlertFilterOptions();
-
-  // Computed values
   const loading = isLoading;
-  const lastUpdated = new Date(); // You can track this in React Query if needed
-
-  // Alert operation handlers
-  // Manual Triage now handles all alert updates and case decisions
+  const lastUpdated = new Date(); 
 
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
@@ -120,7 +112,7 @@ const AlertsDashboard: React.FC = () => {
   const convertToTriageAlert = (alert: Alert): TriageAlert => {
     return {
       ...alert,
-      alert_type: (alert.alert_type as AlertType) || null, // Cast string to AlertType
+      alert_type: (alert.alert_type as AlertType) || null, 
     };
   };
 
@@ -263,12 +255,24 @@ const AlertsDashboard: React.FC = () => {
     }
   ];
 
+  // Get dynamic subtitle based on triage mode
+  const getSubtitle = () => {
+    if (isAIMode) {
+      return "AI-automated triage with confidence-based routing and manual review for uncertain cases";
+    } else if (isManualMode) {
+      return "Manual triage and investigation - all alerts require human review";
+    } else if (isDisabledMode) {
+      return "Direct investigation mode - alerts bypass triage and go straight to cases";
+    }
+    return "Triage and investigate alerts, convert to cases, and manage alert workflows";
+  };
+
   // Main loading and error states
   if (loading && alerts.length === 0) {
     return (
       <PageContainer
         title="Alerts Dashboard"
-        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+        subtitle={getSubtitle()}
       >
         <LoadingState loading={true}>
           <div />
@@ -281,7 +285,7 @@ const AlertsDashboard: React.FC = () => {
     return (
       <PageContainer
         title="Alerts Dashboard"
-        subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+        subtitle={getSubtitle()}
       >
         <LoadingState error={error?.message || 'An error occurred while loading alerts'}>
           <div />
@@ -293,7 +297,7 @@ const AlertsDashboard: React.FC = () => {
   return (
     <PageContainer
       title="Alerts Dashboard"
-      subtitle="Triage and investigate alerts, convert to cases, and manage alert workflows"
+      subtitle={getSubtitle()}
     >
         {/* API Error Banner */}
         {error && (

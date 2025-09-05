@@ -12,6 +12,7 @@ import { CaseModule } from './case/case.module';
 import { CommentModule } from './comment/comment.module';
 import { TaskModule } from './task/task.module';
 import { NatsModule } from './nats/nats.module';
+import { SystemConfigModule } from './config/config.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -29,6 +30,7 @@ import { validate } from './config/env.validation';
     CaseModule,
     TaskModule,
     AuthModule,
+    SystemConfigModule,
   ],
   providers: [
     PrismaService,
