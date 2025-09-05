@@ -134,6 +134,26 @@ export class TriageService {
     }
 
     try {
+      const urgencyThresholds = [
+        parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
+        parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
+        parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
+      ];
+
+      let priority: Priority = Priority.NEW;
+      const priorityScore = manualTriageDto.priorityScore ?? 0.33;
+
+      if (priorityScore >= urgencyThresholds[2]) {
+        priority = Priority.BREACH;
+      } else if (priorityScore >= urgencyThresholds[1]) {
+        priority = Priority.CRITICAL;
+      } else if (priorityScore >= urgencyThresholds[0]) {
+        priority = Priority.URGENT;
+      } else {
+        priority = Priority.NEW;
+      }
+
+      manualTriageDto.priority = priority;
       const alert = await this.updateAlertData(alertId, manualTriageDto, userId, tenantId);
       const existingCase = await this.caseService.retrieveCase(alert.case_id);
 
@@ -470,7 +490,7 @@ export class TriageService {
 
       // Story 1A
       // === 1. Get AI prediction and update alert ===
-      const prediction = await this.predictAlert();
+      const prediction = await this.predictAlert(alertId);
       const { confidence_per: predictedConfidence, alertType: predictedAlertType, isTruePositive: predictedTruePositive } = prediction;
       this.logger.log(
         `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
@@ -768,62 +788,16 @@ export class TriageService {
     }
   }
 
-  async getTransactionMessages(transactionId: string, tenantId: string) {
-    try {
-      this.logger.log(`Fetching transaction messages for transaction: ${transactionId}`, this.constructor.name);
-
-      // For now, return mock data since we don't have a transaction messages table
-      // In a real implementation, this would query a transaction messages database
-      const mockMessages = [
-        {
-          id: `msg-${transactionId}-1`,
-          type: 'pacs.008.001.10',
-          description: 'Customer Credit Transfer Initiation',
-          status: 'sent',
-          timestamp: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
-          payload: {
-            msgId: transactionId,
-            msgType: 'pacs.008.001.10',
-            direction: 'outbound',
-            amount: '1000.00',
-            currency: 'USD',
-            creditorAccount: 'ACC-12345',
-            debtorAccount: 'ACC-67890',
-          },
-        },
-        {
-          id: `msg-${transactionId}-2`,
-          type: 'pacs.002.001.12',
-          description: 'Payment Status Report',
-          status: 'received',
-          timestamp: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
-          payload: {
-            msgId: transactionId,
-            msgType: 'pacs.002.001.12',
-            direction: 'inbound',
-            txStatus: 'ACCC',
-            reasonCode: null,
-          },
-        },
-      ];
-
-      return {
-        transactionId,
-        messages: mockMessages,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to fetch transaction messages for ${transactionId}. Error: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to fetch transaction messages');
-    }
-  }
-
-  private async predictAlert(): Promise<{
+  public async predictAlert(alertId: string): Promise<{
+    priorityScore: number;
     alertType: AlertType;
     confidence_per: number;
     isTruePositive: boolean; // true = real alarm, false = false alarm
   }> {
     // --- Placeholder AI Prediction ---
+    this.logger.log(`Prediction for alert ${alertId} completed`, this.constructor.name);
     return {
+      priorityScore: 0.37,
       alertType: AlertType.FRAUD,
       confidence_per: 97,
       isTruePositive: true,

@@ -16,7 +16,10 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
   
   const [priority, setPriority] = useState<Priority>(alert.priority);
   const [confidence, setConfidence] = useState(alert.confidence_per);
-  const [alertType, setAlertType] = useState<AlertType | ''>(alert.alert_type ?? '');
+  const [priorityScore, setPriorityScore] = useState<number>(0.33); // Default to first threshold
+    const [alertType, setAlertType] = React.useState<AlertType | undefined>(
+    alert.alert_type || undefined
+  );
   const [predictionOutcome, setPredictionOutcome] = useState<'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'>('FALSE_POSITIVE');
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<CaseStatus>('CLOSED_REFUTED_81');
@@ -26,7 +29,8 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
   React.useEffect(() => {
     setPriority(alert.priority);
     setConfidence(alert.confidence_per);
-    setAlertType(alert.alert_type ?? '');
+    setPriorityScore(0.33); // Reset to default
+    setAlertType(alert.alert_type || undefined);
     setNote('');
     setPredictionOutcome('FALSE_POSITIVE');
     setStatus('CLOSED_REFUTED_81');
@@ -44,12 +48,13 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     setError(null);
 
     try {
-      const triageData: ManualTriageDto = {
+            const triageData: ManualTriageDto = {
         confidence_per: confidence,
         priority,
-        alertType: alertType as AlertType,
+        priorityScore,
+        alertType,
         predictionOutcome,
-        note: note.trim(),
+        note,
         status,
       };
 
@@ -127,18 +132,33 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   />
                 </div>
 
+                {/* Priority Score */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority Score</label>
+                  <input 
+                    type="number" 
+                    value={priorityScore} 
+                    onChange={e => setPriorityScore(Number(e.target.value))} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    min={0} 
+                    max={1} 
+                    step={0.01} 
+                  />
+                </div>
+
                 {/* Alert Type */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
                   <select 
-                    value={alertType} 
+                    value={alertType || ''} 
                     onChange={e => setAlertType(e.target.value as AlertType)} 
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select type</option>
-                    <option value="FRAUD">Fraud</option>
-                    <option value="AML">AML</option>
-                    <option value="FRAUD_AND_AML">Fraud and AML</option>
+                    <option value="TRANSACTION_MONITORING">Transaction Monitoring</option>
+                    <option value="SANCTIONS_SCREENING">Sanctions Screening</option>
+                    <option value="AML_SCREENING">AML Screening</option>
+                    <option value="FRAUD_DETECTION">Fraud Detection</option>
                   </select>
                 </div>
 

@@ -156,9 +156,17 @@ const AlertsDashboard: React.FC = () => {
       key: 'alert_id',
       header: 'Alert ID',
       sortable: true,
-      render: (value) => (
-        <div className="font-medium text-gray-900">{value as string}</div>
-      )
+      render: (value) => {
+        const alertId = value as string;
+        return (
+          <div 
+            className="font-medium text-gray-900"
+            title={`Alert ID: ${alertId}`}
+          >
+            {alertId.length > 8 ? `${alertId.substring(0, 8)}...` : alertId}
+          </div>
+        );
+      }
     },
     {
       key: 'txtp',
@@ -176,7 +184,7 @@ const AlertsDashboard: React.FC = () => {
             className="font-mono text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
             title={`Transaction ID: ${transactionId}`}
           >
-            {transactionId.length > 12 ? `${transactionId.substring(0, 12)}...` : transactionId}
+            {transactionId.length > 8 ? `${transactionId.substring(0, 8)}...` : transactionId}
           </button>
         );
       }
