@@ -261,11 +261,12 @@ export class CaseService {
         },
       });
 
-      // Update case status
+      // Update case status and owner
       await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
           status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+          case_owner_user_id: null, // Ensure no owner
           updated_at: new Date(),
         },
       });
@@ -285,6 +286,22 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.auditLogService.logAction({
+        userId: systemUuid,
+        operation: 'assignTask',
+        entityName: CaseService.name,
+        actionPerformed: `Investigation task ${investigationTask.task_id} assigned to Investigations group`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.auditLogService.logAction({
+        userId: systemUuid,
+        operation: 'system_assignTask', // Use a unique operation value for system logs
+        entityName: CaseService.name,
+        actionPerformed: `Investigation task ${investigationTask.task_id} assigned to Investigations group`,
+        outcome: Outcome.SUCCESS,
+      });
+
       return investigationTask;
     } catch (error) {
       this.logger.error(`Failed to create investigation task: ${error.message}`, error.stack, CaseService.name);
@@ -292,9 +309,8 @@ export class CaseService {
     }
   }
 
-  // Keep your existing methods below...
   async createCase(createCaseDTO: CreateCaseDto, userId: string) {
-    // Your existing createCase method
+    //  createCase method
     try {
       this.logger.log('Creating case', CaseService.name);
       const createdCase = await this.prismaService.case.create({
