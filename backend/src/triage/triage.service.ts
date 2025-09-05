@@ -134,6 +134,26 @@ export class TriageService {
     }
 
     try {
+      const urgencyThresholds = [
+        parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
+        parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
+        parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
+      ];
+
+      let priority: Priority = Priority.NEW;
+      const priorityScore = manualTriageDto.priorityScore ?? 0.33;
+
+      if (priorityScore >= urgencyThresholds[2]) {
+        priority = Priority.BREACH;
+      } else if (priorityScore >= urgencyThresholds[1]) {
+        priority = Priority.CRITICAL;
+      } else if (priorityScore >= urgencyThresholds[0]) {
+        priority = Priority.URGENT;
+      } else {
+        priority = Priority.NEW;
+      }
+
+      manualTriageDto.priority = priority;
       const alert = await this.updateAlertData(alertId, manualTriageDto, userId, tenantId);
       const existingCase = await this.caseService.retrieveCase(alert.case_id);
 

@@ -159,12 +159,14 @@ enum CaseType {
   FRAUD
   AML
   FRAUD_AND_AML
+  NONE
 }
 
 enum AlertType {
   FRAUD
   AML
   FRAUD_AND_AML
+  NONE
 }
 
 enum PredictionOutcome {
