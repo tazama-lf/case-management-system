@@ -30,10 +30,7 @@ export class CaseService {
         },
       });
 
-      this.logger.log(
-        `Case created successfully: ${createdCase.case_id}`,
-        CaseService.name,
-      );
+      this.logger.log(`Case created successfully: ${createdCase.case_id}`, CaseService.name);
       this.auditLogService.logAction({
         userId,
         operation: 'createCase',
@@ -43,11 +40,7 @@ export class CaseService {
       });
       return createdCase;
     } catch (error) {
-      this.logger.error(
-        `Error creating case: ${error.message}`,
-        error.stack,
-        CaseService.name,
-      );
+      this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }
@@ -64,18 +57,11 @@ export class CaseService {
       throw new NotFoundException(`Case not found: ${caseId}`);
     }
 
-    this.logger.log(
-      `Case retrieved successfully: ${retrievedCase.case_id}`,
-      CaseService.name,
-    );
+    this.logger.log(`Case retrieved successfully: ${retrievedCase.case_id}`, CaseService.name);
     return retrievedCase;
   }
 
-  async updateCase(
-    caseId: string,
-    updateData: Partial<UpdateCaseDto>,
-    userId: string,
-  ) {
+  async updateCase(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string) {
     this.logger.log(`Updating case: ${caseId}`, CaseService.name);
 
     try {
@@ -89,10 +75,7 @@ export class CaseService {
         },
       });
 
-      this.logger.log(
-        `Case updated successfully: ${updatedCase.case_id}`,
-        CaseService.name,
-      );
+      this.logger.log(`Case updated successfully: ${updatedCase.case_id}`, CaseService.name);
       this.auditLogService.logAction({
         userId,
         operation: 'updateCase',
@@ -103,11 +86,7 @@ export class CaseService {
 
       return updatedCase;
     } catch (error) {
-      this.logger.error(
-        `Error updating case: ${error.message}`,
-        error.stack,
-        CaseService.name,
-      );
+      this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseService.name);
       this.auditLogService.logAction({
         userId,
         operation: 'updateCase',

@@ -7,7 +7,7 @@ import {
   Public,
   RequireClaim,
   TazamaClaims,
-  RequireCMSTestRole,
+ RequireAlertTriageRole,
   RequireAccountManagement,
 } from '../../src/auth/auth.decorator';
 
@@ -102,7 +102,7 @@ describe('Auth Decorators', () => {
 
   describe('TazamaClaims', () => {
     it('should define all expected claim constants', () => {
-      expect(TazamaClaims.CMS_TEST_ROLE).toBe('CMS-TEST-ROLE');
+      expect(TazamaClaims.ALERT_TRIAGE).toBe('alert-triage');
       expect(TazamaClaims.MANAGE_ACCOUNT).toBe('manage-account');
       expect(TazamaClaims.MANAGE_ACCOUNT_LINKS).toBe('manage-account-links');
       expect(TazamaClaims.VIEW_PROFILE).toBe('view-profile');
@@ -113,7 +113,7 @@ describe('Auth Decorators', () => {
 
     it('should have all expected properties', () => {
       const expectedClaims = [
-        'CMS_TEST_ROLE',
+        'ALERT_TRIAGE',
         'MANAGE_ACCOUNT', 
         'MANAGE_ACCOUNT_LINKS',
         'VIEW_PROFILE',
@@ -137,9 +137,9 @@ describe('Auth Decorators', () => {
 
   describe('RequireCMSTestRole decorator', () => {
     it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
-      RequireCMSTestRole();
+     RequireAlertTriageRole();
       
-      expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [TazamaClaims.CMS_TEST_ROLE]);
+      expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [TazamaClaims.ALERT_TRIAGE]);
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -231,11 +231,11 @@ describe('Auth Decorators', () => {
       expect(result).toBe(mockReturnValue);
     });
 
-    it('should return the result of SetMetadata for RequireCMSTestRole', () => {
+    it('should return the result of SetMetadata forRequireAlertTriageRole', () => {
       const mockReturnValue = 'mocked-cms-return';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
       
-      const result = RequireCMSTestRole();
+      const result =RequireAlertTriageRole();
       
       expect(result).toBe(mockReturnValue);
     });
