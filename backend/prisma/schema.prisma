@@ -43,7 +43,7 @@ model Alert {
 model Case {
   case_id              String           @id @default(uuid()) @db.Uuid
   case_creator_user_id String           @db.Uuid
-  case_owner_user_id   String           @db.Uuid
+  case_owner_user_id   String?          @db.Uuid
   tenant_id            String           @db.Uuid
   status               CaseStatus
   priority             Priority         @default(NEW)
