@@ -27,16 +27,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedToken = authService.getToken();
         const storedUser = authService.getUser();
 
+        console.log('🚀 Auth initialization:', {
+          hasStoredToken: !!storedToken,
+          hasStoredUser: !!storedUser,
+          isTokenValid: storedToken ? !authService.isTokenExpired(storedToken) : false,
+          isAuthenticated: authService.isAuthenticated()
+        });
+
         if (storedToken && authService.isAuthenticated()) {
+          console.log('✅ Restoring authenticated session');
           setToken(storedToken);
           setUser(storedUser);
           setIsAuthenticated(true);
         } else {
+          console.log('❌ No valid session found, cleaning up');
           // Clean up if token is expired
           authService.logout();
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('❌ Auth initialization error:', error);
         authService.logout();
       } finally {
         setLoading(false);
@@ -85,20 +94,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
+      console.log('🚀 AuthContext.login() - Starting login...');
       const response = await authService.login(credentials);
 
       if (response.token && response.user) {
+        console.log('✅ AuthContext.login() - Setting auth state', {
+          hasToken: !!response.token,
+          hasUser: !!response.user,
+          userClaims: response.user.backendClaims
+        });
+        
         setToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
+        
+        console.log('✅ AuthContext.login() - Auth state updated successfully');
+      } else {
+        console.log('❌ AuthContext.login() - Missing token or user in response', response);
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Login failed';
+      console.error('❌ AuthContext.login() - Login failed:', errorMessage);
       setError(errorMessage);
       throw error;
     } finally {
       setLoading(false);
+      console.log('🏁 AuthContext.login() - Login process completed');
     }
   };
 
@@ -126,6 +148,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authService.hasCMSTestRole();
   };
 
+  const hasAlertTriageRole = (): boolean => {
+    return authService.hasAlertTriageRole();
+  };
+
   const validateBackendAccess = (): boolean => {
     return authService.validateBackendAccess();
   };
@@ -141,6 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
     hasBackendClaim,
     hasCMSTestRole,
+    hasAlertTriageRole,
     validateBackendAccess,
   };
 

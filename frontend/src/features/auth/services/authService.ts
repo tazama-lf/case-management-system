@@ -18,6 +18,8 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
+      console.log('🚀 Starting login process...');
+      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -31,6 +33,7 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
+      console.log('✅ Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
       // Store token and user data
       if (data.token) {
@@ -39,14 +42,17 @@ class AuthService {
         // Decode JWT and extract user info
         const user = this.decodeToken(data.token);
         if (user) {
+          console.log('✅ User decoded from token successfully');
           this.setUser(user);
           data.user = user;
+        } else {
+          console.log('❌ Failed to decode user from token');
         }
       }
 
       return data;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       throw error;
     }
   }
@@ -101,7 +107,10 @@ class AuthService {
    */
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
-    if (!decoded) return null;
+    if (!decoded) {
+      console.log('❌ decodeToken failed: could not decode token');
+      return null;
+    }
 
     try {
       // Extract user information from the decoded token
@@ -109,15 +118,29 @@ class AuthService {
         user_id: decoded.sub || decoded.clientId || '',
         username: decoded.preferred_username || decoded.username || '',
         email: decoded.email || '',
+        firstName: decoded.given_name || decoded.first_name || '',
+        lastName: decoded.family_name || decoded.last_name || '',
+        fullName: decoded.name || this.buildFullName(decoded.given_name || decoded.first_name, decoded.family_name || decoded.last_name),
         tenantId: decoded.tenant_id || '',
         roles: this.extractRoles(decoded),
         permissions: decoded.claims || [],
         backendClaims: this.extractBackendClaims(decoded),
       };
 
+      console.log('✅ decodeToken success:', {
+        user_id: user.user_id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName,
+        tenantId: user.tenantId,
+        roles: user.roles,
+        backendClaims: user.backendClaims
+      });
+
       return user;
     } catch (error) {
-      console.error('Error extracting user info from decoded token:', error);
+      console.error('❌ Error extracting user info from decoded token:', error);
       return null;
     }
   }
@@ -176,11 +199,40 @@ class AuthService {
       });
     }
 
-    // Ensure CMS-TEST-ROLE is included if user has any role
-    // This ensures compatibility with backend until proper role mapping is implemented
-    if (claims.length > 0 && !claims.includes('CMS-TEST-ROLE')) {
-      claims.push('CMS-TEST-ROLE');
+    // Ensure required backend claims are available
+    // If user has any roles, map them to required backend claims
+    
+    // EXPLICIT check for CMS-TEST-ROLE - this should always be preserved
+    const hasCMSTestRole = claims.includes('CMS-TEST-ROLE');
+    
+    if (claims.length > 0) {
+      // Map common roles to alert-triage claim
+      const alertTriageRoles = ['analyst', 'investigator', 'supervisor', 'admin', 'CMS-TEST-ROLE'];
+      const hasAlertTriageRole = claims.some(claim => 
+        alertTriageRoles.includes(claim) || claim.toLowerCase().includes('alert') || claim.toLowerCase().includes('triage')
+      );
+      
+      if (hasAlertTriageRole && !claims.includes('alert-triage')) {
+        claims.push('alert-triage');
+      }
+      
+      // ALWAYS ensure CMS-TEST-ROLE is present if user has ANY role
+      // This provides backward compatibility
+      if (!claims.includes('CMS-TEST-ROLE')) {
+        claims.push('CMS-TEST-ROLE');
+      }
     }
+
+    console.log('🎯 extractBackendClaims() Debug:', {
+      originalClaims: [...claims].filter(c => c !== 'alert-triage'),
+      hasCMSTestRoleInToken: hasCMSTestRole,
+      finalClaims: claims,
+      payloadStructure: {
+        claims: payload.claims,
+        realm_access: payload.realm_access,
+        resource_access: Object.keys(payload.resource_access || {})
+      }
+    });
 
     return [...new Set(claims)]; // Remove duplicates
   }
@@ -281,10 +333,33 @@ class AuthService {
   }
 
   /**
+   * Check if current user has alert-triage claim (required by backend controllers)
+   */
+  hasAlertTriageRole(): boolean {
+    return this.hasBackendClaim('alert-triage');
+  }
+
+  /**
    * Validate that user has minimum required claims for backend access
    */
   validateBackendAccess(): boolean {
-    return this.hasCMSTestRole();
+    const hasAlertTriage = this.hasAlertTriageRole();
+    const hasCMSTest = this.hasCMSTestRole();
+    const user = this.getUser();
+    const result = hasAlertTriage || hasCMSTest;
+    
+    console.log('🔐 validateBackendAccess() Debug:', {
+      hasAlertTriage,
+      hasCMSTest,
+      userClaims: user?.backendClaims,
+      allUserData: user,
+      result
+    });
+    
+    // Primary requirement: alert-triage claim for accessing controllers
+    // Fallback: CMS-TEST-ROLE for backward compatibility
+    // If user has CMS-TEST-ROLE, they should ALWAYS get access
+    return result;
   }
 
   /**
@@ -293,6 +368,19 @@ class AuthService {
   getAuthHeader(): Record<string, string> {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  /**
+   * Build full name from first and last name
+   */
+  private buildFullName(firstName?: string, lastName?: string): string {
+    const first = firstName?.trim() || '';
+    const last = lastName?.trim() || '';
+    
+    if (first && last) {
+      return `${first} ${last}`;
+    }
+    return first || last || '';
   }
 }
 

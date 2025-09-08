@@ -1,6 +1,7 @@
 // Backend claim constants (must match backend TazamaClaims)
 export const BACKEND_CLAIMS = {
-  CMS_TEST_ROLE: 'CMS-TEST-ROLE',
+  ALERT_TRIAGE: 'alert-triage',  // Primary claim required by all controllers
+  CMS_TEST_ROLE: 'CMS-TEST-ROLE', // Legacy claim for backward compatibility
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -15,6 +16,9 @@ export interface User {
   user_id: string;
   username: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   tenantId: string;
   roles: string[];
   permissions: string[];
@@ -47,6 +51,7 @@ export interface AuthContextType extends AuthState {
   clearError: () => void;
   hasBackendClaim: (claim: string) => boolean;
   hasCMSTestRole: () => boolean;
+  hasAlertTriageRole: () => boolean; // New method for alert-triage claim
   validateBackendAccess: () => boolean;
 }
 
@@ -57,6 +62,11 @@ export interface DecodedToken {
   preferred_username?: string;
   username?: string;
   email?: string;
+  given_name?: string;        // First name
+  family_name?: string;       // Last name
+  name?: string;              // Full name
+  first_name?: string;        // Alternative first name field
+  last_name?: string;         // Alternative last name field
   tenant_id?: string;
   claims?: string[];
   realm_access?: {
