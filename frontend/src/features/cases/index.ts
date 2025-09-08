@@ -6,11 +6,7 @@ export { caseService } from './services/caseService';
 
 // Pages
 export { default as CasesDashboard } from './pages/CasesDashboard';
-
-// Types (to be defined as features are developed)
-// export * from './types/cases.types';
-
-// Components (to be created as features are developed)
-// export { default as CaseDetails } from './components/CaseDetails';
-// export { default as CasesList } from './components/CasesList';
-// export { default as CreateCaseModal } from './components/CreateCaseModal';
+export { default as CasesTable } from './components/CasesTable';
+export { default as CreateCaseModal } from './components/CreateCaseModal';
+export { default as ViewCaseModal } from './components/ViewCaseModal';
+export { default as ReassignCaseModal } from './components/ReassignCaseModal';

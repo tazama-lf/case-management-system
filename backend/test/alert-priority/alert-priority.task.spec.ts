@@ -4,11 +4,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AlertPriorityTask } from '../../src/alert-priority/alert-priority.task';
 import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
 import { ConfigService } from '@nestjs/config';
+import { SchedulerRegistry } from '@nestjs/schedule';
 
 describe('AlertPriorityTask', () => {
   let task: AlertPriorityTask;
   let mockAlertPriorityService: jest.Mocked<AlertPriorityService>;
   let mockConfigService: jest.Mocked<ConfigService>;
+  let mockSchedulerRegistry: jest.Mocked<SchedulerRegistry>;
 
   beforeEach(async () => {
     mockAlertPriorityService = {
@@ -19,11 +21,28 @@ describe('AlertPriorityTask', () => {
       get: jest.fn().mockReturnValue('0 * * * *'),
     } as any;
 
+    mockSchedulerRegistry = {
+      addCronJob: jest.fn(),
+      getCronJob: jest.fn(),
+      deleteCronJob: jest.fn(),
+      getCronJobs: jest.fn() as any,
+      addInterval: jest.fn() as any,
+      getInterval: jest.fn() as any,
+      deleteInterval: jest.fn() as any,
+      getIntervals: jest.fn() as any,
+      addTimeout: jest.fn() as any,
+      getTimeout: jest.fn() as any,
+      deleteTimeout: jest.fn() as any,
+      getTimeouts: jest.fn() as any,
+      doesExist: jest.fn() as any,
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertPriorityTask,
         { provide: AlertPriorityService, useValue: mockAlertPriorityService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: SchedulerRegistry, useValue: mockSchedulerRegistry },
       ],
     }).compile();
 
