@@ -2,12 +2,19 @@ import { SetMetadata } from '@nestjs/common';
 
 export const CLAIMS_KEY = 'claims';
 export const IS_PUBLIC_KEY = 'isPublic';
+export const ANY_CLAIMS_KEY = 'anyClaims'; // New key for "any of these claims" logic
 
 /**
  * Decorator to specify required claims for a route
  * @param claims - Array of required claims (all must be present)
  */
 export const RequireClaims = (...claims: string[]) => SetMetadata(CLAIMS_KEY, claims);
+
+/**
+ * Decorator to specify claims where ANY of them can satisfy the requirement
+ * @param claims - Array of claims (user needs at least one)
+ */
+export const RequireAnyClaims = (...claims: string[]) => SetMetadata(ANY_CLAIMS_KEY, claims);
 
 /**
  * Decorator to mark a route as public (no authentication required)
@@ -25,6 +32,7 @@ export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
  */
 export const TazamaClaims = {
   ALERT_TRIAGE: 'alert-triage',
+  CMS_TEST_ROLE: 'CMS-TEST-ROLE', // Legacy claim for backward compatibility
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -36,5 +44,5 @@ export const TazamaClaims = {
 /**
  * Convenience decorators for common Tazama roles
  */
-export const RequireAlertTriageRole = () => RequireClaim(TazamaClaims.ALERT_TRIAGE);
+export const RequireAlertTriageRole = () => RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE);
 export const RequireAccountManagement = () => RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);
