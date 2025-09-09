@@ -178,10 +178,20 @@ export class TriageService {
       const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.COMPLETED_30);
 
       if (triageTask) {
-        // Auto-assign the task to the current user if not assigned
+        this.logger.log(
+          `Found triage task ${triageTask.task_id} with assigned_user_id: ${triageTask.assigned_user_id}, current userId: ${userId}`,
+          TriageService.name,
+        );
+
+        // Auto-assign the task to the current user if not assigned or assigned to someone else
         if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
+          this.logger.log(`Auto-assigning triage task ${triageTask.task_id} to user ${userId}`, TriageService.name);
           await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId);
+        } else {
+          this.logger.log(`Triage task ${triageTask.task_id} already assigned to current user ${userId}`, TriageService.name);
         }
+      } else {
+        this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
       }
 
       const { status, ...alertFields } = manualTriageDto;
@@ -189,9 +199,14 @@ export class TriageService {
 
       const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId);
       if (triageTask) {
+        this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
           triageTask.task_id,
-          { status: TaskStatus.COMPLETED_30, description: manualTriageDto.note },
+          {
+            status: TaskStatus.COMPLETED_30,
+            description: manualTriageDto.note,
+            assignedUserId: userId,
+          },
           userId,
         );
       }
@@ -221,9 +236,10 @@ export class TriageService {
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
-            status: TaskStatus.UNASSIGNED_01,
+            status: TaskStatus.ASSIGNED_10,
             name: 'Investigate Case',
             description: `Investigate case: ${alert.case_id}`,
+            assignedUserId: userId,
           },
           userId,
         );
