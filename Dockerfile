@@ -2,12 +2,20 @@
 # Tazama Case Management System - Multi-stage Docker Build
 # =============================================================================
 
+# Define a build argument for the npm token
+ARG NPM_TOKEN
+
 # -----------------------------------------------------------------------------
 # Stage 1: Backend Build
 # -----------------------------------------------------------------------------
 FROM node:18-alpine AS backend-builder
+ARG NPM_TOKEN
 
 WORKDIR /app/backend
+
+# Configure npm to use the private registry
+RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
+RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
 # Copy package files and install all dependencies (including dev) for the build
 COPY backend/package*.json ./
@@ -26,8 +34,13 @@ RUN npm run build
 # Stage 2: Frontend Build
 # -----------------------------------------------------------------------------
 FROM node:18-alpine AS frontend-builder
+ARG NPM_TOKEN
 
 WORKDIR /app/frontend
+
+# Configure npm to use the private registry
+RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
+RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
 # Copy package files and install all dependencies (including dev) for the build
 COPY frontend/package*.json ./
@@ -43,6 +56,7 @@ RUN npm run build
 # Stage 3: Production Backend Runtime
 # -----------------------------------------------------------------------------
 FROM node:18-alpine AS backend-production
+ARG NPM_TOKEN
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -52,6 +66,10 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
 
 WORKDIR /app
+
+# Configure npm to use the private registry
+RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
+RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
 # Copy package.json and install production dependencies
 COPY backend/package*.json ./
@@ -84,6 +102,11 @@ CMD ["node", "dist/src/main.js"]
 # Stage 4: Production Frontend Runtime (Nginx)
 # -----------------------------------------------------------------------------
 FROM nginx:alpine AS frontend-production
+ARG NPM_TOKEN
+
+# Configure npm to use the private registry
+RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
+RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
 # Copy built frontend assets
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
