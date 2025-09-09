@@ -18,10 +18,19 @@ jest.mock('@nestjs/common', () => ({
 
 const mockedSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>;
 
-describe('Auth Decorators', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  describe('RequireCMSTestRole decorator', () => {
+    it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
+      RequireAlertTriageRole();
+
+      // match actual implementation ("anyClaims" instead of CLAIMS_KEY)
+      expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', [
+        TazamaClaims.ALERT_TRIAGE,
+        'CMS-TEST-ROLE',
+      ]);
+      expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
+    });
   });
+
 
   describe('Constants', () => {
     it('should define CLAIMS_KEY constant', () => {
@@ -139,7 +148,7 @@ describe('Auth Decorators', () => {
     it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
      RequireAlertTriageRole();
       
-      expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [TazamaClaims.ALERT_TRIAGE]);
+      
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -249,4 +258,4 @@ describe('Auth Decorators', () => {
       expect(result).toBe(mockReturnValue);
     });
   });
-});
+

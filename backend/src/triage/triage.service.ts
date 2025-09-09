@@ -166,13 +166,21 @@ export class TriageService {
       const existingCase = alertWithCase.case;
 
       const triageTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-      const triageTask = triageTasks.find((t) => t.name === 'Triage Alert' && t.status !== TaskStatus.COMPLETED_30);
+      const allTriageTasks = triageTasks.filter((t) => t.name === 'Triage Alert');
+
+      // Check if task already   completed triage task
+      const completedTriageTask = allTriageTasks.find((t) => t.status === TaskStatus.COMPLETED_30);
+      if (completedTriageTask) {
+        throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
+      }
+
+      // Find the active (non-completed) triage task
+      const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.COMPLETED_30);
 
       if (triageTask) {
+        // Auto-assign the task to the current user if not assigned
         if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
-          throw new BadRequestException(
-            `User ${userId} is not allowed to complete triage task ${triageTask.task_id}, assigned to ${triageTask.assigned_user_id ?? 'none'}`,
-          );
+          await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId);
         }
       }
 
