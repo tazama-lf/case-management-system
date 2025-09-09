@@ -63,6 +63,13 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     return Object.keys(errors).length === 0;
   };
 
+  // Trigger validation when form values change
+  React.useEffect(() => {
+    if (note || confidence || priorityScore) {
+      validateForm();
+    }
+  }, [note, confidence, priorityScore]);
+
   React.useEffect(() => {
     setPriority(alert.priority);
     setConfidence(alert.confidence_per);
@@ -73,7 +80,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     setStatus('CLOSED_REFUTED_81');
     setError(null);
     setValidationErrors({});
-  }, [alert]);
+  }, [alert, isOpen]); // Also reset when modal opens/closes
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +92,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
 
     setLoading(true);
     setError(null);
+    setValidationErrors({}); // Clear validation errors when submitting
 
     try {
             const triageData: ManualTriageDto = {

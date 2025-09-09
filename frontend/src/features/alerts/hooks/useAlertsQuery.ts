@@ -119,6 +119,13 @@ export const useAlertOperations = () => {
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
+      
+      // Invalidate case query to update case status in real-time
+      const caseId = data.case_id || 
+        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+      if (caseId) {
+        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+      }
     },
     onError: (error: Error) => {
       showError(error.message || 'Failed to close alert');
@@ -135,6 +142,13 @@ export const useAlertOperations = () => {
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
+      
+      // Invalidate case query to update case status in real-time
+      const caseId = data.case_id || 
+        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+      if (caseId) {
+        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+      }
     },
     onError: (error: Error) => {
       showError(error.message || 'Failed to update alert');
@@ -151,6 +165,13 @@ export const useAlertOperations = () => {
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
+      
+      // Invalidate case query to update case status in real-time
+      const caseId = data.case_id || 
+        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+      if (caseId) {
+        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+      }
     },
     onError: (error: Error) => {
       showError(error.message || 'Failed to complete manual triage');
