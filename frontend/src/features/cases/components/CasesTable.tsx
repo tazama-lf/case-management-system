@@ -1,11 +1,12 @@
 import React from 'react';
+import { EyeIcon, CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export type CaseRow = {
   id: number;
   type: string;
-  typeColor: string; // tailwind ring/background text classes
+  typeColor: string; 
   status: string;
-  statusColor: string; // tailwind classes
+  statusColor: string; 
   typologyId: string;
   score: number;
   createdOn: string;
@@ -61,23 +62,26 @@ const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onRea
                   {c.action === 'Complete' ? (
                     <button
                       onClick={() => onComplete(c)}
-                      className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
+                      <CheckIcon className="h-3 w-3" />
                       Complete
                     </button>
                   ) : (
                     <button
                       onClick={() => onView(c)}
-                      className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
+                      <EyeIcon className="h-3 w-3" />
                       View
                     </button>
                   )}
                   <button
                     onClick={() => onReassign(c)}
-                    className="inline-flex items-center rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
                     disabled={!c.reassignEnabled}
                   >
+                    <ArrowPathIcon className="h-3 w-3" />
                     Reassign
                   </button>
                 </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export type Collaborator = {
   id: string;
@@ -50,7 +51,9 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900">Create New Discussion Thread</h3>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Close">✕</button>
+          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Close">
+            <XMarkIcon className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Content */}
