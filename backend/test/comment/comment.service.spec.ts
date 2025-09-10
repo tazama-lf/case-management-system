@@ -1,145 +1,410 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CommentService } from '../../src/comment/comment.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
+import { CreateCommentDto } from '../../src/comment/dto/create-comment.dto';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { Outcome } from '../../src/audit/types/outcome';
 
 describe('CommentService', () => {
   let service: CommentService;
-  let mockPrismaService: jest.Mocked<PrismaService>;
-  let mockAuditLogService: jest.Mocked<AuditLogService>;
+  let prismaService: PrismaService;
+  let auditLogService: AuditLogService;
+  let loggerService: LoggerService;
 
-  const mockComment = {
-    comment_id: 'test-comment-1',
-    comment_text: 'Test comment',
-    comment_author: 'test-user',
-    created_at: new Date(),
-    updated_at: new Date(),
-    case_id: 'test-case-1',
-    alert_id: null,
+  const mockPrismaService = {
+    comment: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
+
+  const mockAuditLogService = {
+    logAction: jest.fn(),
+  };
+
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
   };
 
   beforeEach(async () => {
-    mockPrismaService = {
-      comment: {
-        findMany: jest.fn().mockResolvedValue([mockComment]),
-        findUnique: jest.fn().mockResolvedValue(mockComment),
-        create: jest.fn().mockResolvedValue(mockComment),
-        update: jest.fn().mockResolvedValue(mockComment),
-        delete: jest.fn().mockResolvedValue(mockComment),
-      },
-    } as any;
-
-    mockAuditLogService = {
-      logAction: jest.fn().mockResolvedValue(undefined),
-    } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommentService,
-        { provide: PrismaService, useValue: mockPrismaService },
-        { provide: AuditLogService, useValue: mockAuditLogService },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: AuditLogService,
+          useValue: mockAuditLogService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
       ],
     }).compile();
 
     service = module.get<CommentService>(CommentService);
+    prismaService = module.get<PrismaService>(PrismaService);
+    auditLogService = module.get<AuditLogService>(AuditLogService);
+    loggerService = module.get<LoggerService>(LoggerService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+  const userId = 'test-user-id';
 
-  describe('findAll', () => {
-    it('should return all comments', async () => {
-      const result = await service.findAll();
+  describe('addComment', () => {
+    it('should return undefined and log error when neither caseId nor taskId provided', async () => {
+      const createCommentDto: CreateCommentDto = {
+        note: 'Test comment without ids',
+      };
 
-      expect(result).toEqual([mockComment]);
-      expect(mockPrismaService.comment.findMany).toHaveBeenCalledTimes(1);
+      const result = await service.addComment(createCommentDto, userId);
+      expect(result).toBeUndefined();
+
+      expect(loggerService.log).toHaveBeenCalledWith(`Adding comment : ${userId}`, CommentService.name);
+      expect(loggerService.error).toHaveBeenCalledWith('Error adding comment', expect.any(BadRequestException), CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'addComment',
+        entityName: CommentService.name,
+        actionPerformed: `Attempt to write a comment: ${createCommentDto.note}`,
+        outcome: 'FAILURE',
+        performedAt: expect.any(Date),
+      });
+      expect(mockPrismaService.comment.create).not.toHaveBeenCalled();
     });
 
-    it('should handle database errors', async () => {
-      const error = new Error('Database error');
-      mockPrismaService.comment.findMany.mockRejectedValue(error);
+    it('should return undefined and log error when both caseId and taskId provided', async () => {
+      const createCommentDto: CreateCommentDto = {
+        note: 'Test comment with both',
+        caseId: '123e4567-e89b-12d3-a456-426614174001',
+        taskId: '123e4567-e89b-12d3-a456-426614174002',
+      };
 
-      await expect(service.findAll()).rejects.toThrow('Database error');
+      const result = await service.addComment(createCommentDto, userId);
+      expect(result).toBeUndefined();
+
+      expect(loggerService.log).toHaveBeenCalledWith(`Adding comment : ${userId}`, CommentService.name);
+      expect(loggerService.error).toHaveBeenCalledWith('Error adding comment', expect.any(BadRequestException), CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'addComment',
+        entityName: CommentService.name,
+        actionPerformed: `Attempt to write a comment: ${createCommentDto.note}`,
+        outcome: 'FAILURE',
+        performedAt: expect.any(Date),
+      });
+      expect(mockPrismaService.comment.create).not.toHaveBeenCalled();
     });
-  });
 
-  describe('findOne', () => {
-    it('should return a comment by id', async () => {
-      const result = await service.findOne('test-comment-1');
+    it('should successfully add comment with caseId', async () => {
+      const createCommentDto: CreateCommentDto = {
+        note: 'Test comment for case',
+        caseId: '123e4567-e89b-12d3-a456-426614174001',
+      };
+
+      const mockComment = {
+        comment_id: 'comment-id-123',
+        user_id: userId,
+        case_id: createCommentDto.caseId,
+        task_id: null,
+        note: createCommentDto.note,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      mockPrismaService.comment.create.mockResolvedValue(mockComment);
+
+      const result = await service.addComment(createCommentDto, userId);
 
       expect(result).toEqual(mockComment);
-      expect(mockPrismaService.comment.findUnique).toHaveBeenCalledWith({
-        where: { comment_id: 'test-comment-1' },
+      expect(loggerService.log).toHaveBeenCalledWith(`Adding comment : ${userId}`, CommentService.name);
+      expect(mockPrismaService.comment.create).toHaveBeenCalledWith({
+        data: {
+          user_id: userId,
+          case_id: createCommentDto.caseId,
+          task_id: null,
+          note: createCommentDto.note,
+        },
       });
     });
 
-    it('should return null for non-existent comment', async () => {
+    it('should successfully add comment with taskId', async () => {
+      const createCommentDto: CreateCommentDto = {
+        note: 'Test comment for task',
+        taskId: '123e4567-e89b-12d3-a456-426614174002',
+      };
+
+      const mockComment = {
+        comment_id: 'comment-id-456',
+        user_id: userId,
+        case_id: null,
+        task_id: createCommentDto.taskId,
+        note: createCommentDto.note,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      mockPrismaService.comment.create.mockResolvedValue(mockComment);
+
+      const result = await service.addComment(createCommentDto, userId);
+
+      expect(result).toEqual(mockComment);
+      expect(loggerService.log).toHaveBeenCalledWith(`Adding comment : ${userId}`, CommentService.name);
+      expect(mockPrismaService.comment.create).toHaveBeenCalledWith({
+        data: {
+          user_id: userId,
+          case_id: null,
+          task_id: createCommentDto.taskId,
+          note: createCommentDto.note,
+        },
+      });
+    });
+
+    it('should return undefined and log error when Prisma throws error', async () => {
+      const createCommentDto: CreateCommentDto = {
+        note: 'Test comment for case',
+        caseId: '123e4567-e89b-12d3-a456-426614174001',
+      };
+
+      const prismaError = new Error('Database connection failed');
+      mockPrismaService.comment.create.mockRejectedValue(prismaError);
+
+      const result = await service.addComment(createCommentDto, userId);
+
+      expect(result).toBeUndefined();
+      expect(loggerService.log).toHaveBeenCalledWith(`Adding comment : ${userId}`, CommentService.name);
+      expect(loggerService.error).toHaveBeenCalledWith('Error adding comment', prismaError, CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'addComment',
+        entityName: CommentService.name,
+        actionPerformed: `Attempt to write a comment: ${createCommentDto.note}`,
+        outcome: 'FAILURE',
+        performedAt: expect.any(Date),
+      });
+    });
+  });
+
+  describe('getComment', () => {
+    const commentId = '123e4567-e89b-12d3-a456-426614174003';
+
+    it('should successfully get comment', async () => {
+      const mockComment = {
+        comment_id: commentId,
+        user_id: userId,
+        case_id: '123e4567-e89b-12d3-a456-426614174001',
+        task_id: null,
+        note: 'Test comment',
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      mockPrismaService.comment.findUnique.mockResolvedValue(mockComment);
+
+      const result = await service.getComment(commentId, userId);
+
+      expect(result).toEqual(mockComment);
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comment', CommentService.name);
+      expect(mockPrismaService.comment.findUnique).toHaveBeenCalledWith({
+        where: {
+          comment_id: commentId,
+        },
+      });
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getComment',
+        entityName: CommentService.name,
+        actionPerformed: `Successfully retrieved comment with ID: ${commentId}`,
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
+      });
+    });
+
+    it('should throw NotFoundException when comment not found', async () => {
       mockPrismaService.comment.findUnique.mockResolvedValue(null);
 
-      const result = await service.findOne('non-existent');
+      await expect(service.getComment(commentId, userId)).rejects.toThrow(NotFoundException);
+      await expect(service.getComment(commentId, userId)).rejects.toThrow('Comment not found');
 
-      expect(result).toBeNull();
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comment', CommentService.name);
+      expect(mockPrismaService.comment.findUnique).toHaveBeenCalledWith({
+        where: {
+          comment_id: commentId,
+        },
+      });
     });
-  });
 
-  describe('create', () => {
-    it('should create a new comment', async () => {
-      const createCommentDto = {
-        comment_text: 'New comment',
-        case_id: 'test-case-1',
-      };
+    it('should handle and re-throw Prisma errors', async () => {
+      const prismaError = new Error('Database connection failed');
+      mockPrismaService.comment.findUnique.mockRejectedValue(prismaError);
 
-      const result = await service.create(createCommentDto, 'test-user');
+      await expect(service.getComment(commentId, userId)).rejects.toThrow(prismaError);
 
-      expect(result).toEqual(mockComment);
-      expect(mockPrismaService.comment.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          comment_text: createCommentDto.comment_text,
-          case_id: createCommentDto.case_id,
-          comment_author: 'test-user',
-        }),
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comment', CommentService.name);
+      expect(loggerService.error).toHaveBeenCalledWith('Error retrieving comment', prismaError, CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getComment',
+        entityName: CommentService.name,
+        actionPerformed: `Error retrieving comment with ID: ${commentId}`,
+        outcome: Outcome.FAILURE,
+        performedAt: expect.any(Date),
       });
     });
   });
 
-  describe('update', () => {
-    it('should update a comment', async () => {
-      const updateData = {
-        comment_text: 'Updated comment',
-      };
+  describe('getCommentsByCaseOrTask', () => {
+    const caseId = '123e4567-e89b-12d3-a456-426614174001';
+    const taskId = '123e4567-e89b-12d3-a456-426614174002';
 
-      const result = await service.update('test-comment-1', updateData, 'test-user');
+    it('should throw BadRequestException when neither caseId nor taskId provided', async () => {
+      await expect(service.getCommentsByCaseOrTask()).rejects.toThrow(BadRequestException);
+      await expect(service.getCommentsByCaseOrTask()).rejects.toThrow('Either caseId or taskId must be provided');
 
-      expect(result).toEqual(mockComment);
-      expect(mockPrismaService.comment.update).toHaveBeenCalledWith({
-        where: { comment_id: 'test-comment-1' },
-        data: expect.objectContaining({
-          comment_text: updateData.comment_text,
-          updated_at: expect.any(Date),
-        }),
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+    });
+
+    it('should throw BadRequestException when both caseId and taskId provided', async () => {
+      await expect(service.getCommentsByCaseOrTask(caseId, taskId, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.getCommentsByCaseOrTask(caseId, taskId, userId)).rejects.toThrow('Cannot provide both caseId and taskId');
+
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+    });
+
+    it('should successfully get comments by caseId', async () => {
+      const mockComments = [
+        {
+          comment_id: 'comment-1',
+          user_id: userId,
+          case_id: caseId,
+          task_id: null,
+          note: 'Test comment 1',
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          comment_id: 'comment-2',
+          user_id: userId,
+          case_id: caseId,
+          task_id: null,
+          note: 'Test comment 2',
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ];
+
+      mockPrismaService.comment.findMany.mockResolvedValue(mockComments);
+
+      const result = await service.getCommentsByCaseOrTask(caseId, undefined, userId);
+
+      expect(result).toEqual(mockComments);
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+      expect(mockPrismaService.comment.findMany).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getCommentsByCaseOrTask',
+        entityName: CommentService.name,
+        actionPerformed: `Successfully retrieved comments for case ID: ${caseId}`,
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
       });
     });
-  });
 
-  describe('remove', () => {
-    it('should delete a comment', async () => {
-      const result = await service.remove('test-comment-1', 'test-user');
+    it('should successfully get comments by taskId', async () => {
+      const mockComments = [
+        {
+          comment_id: 'comment-3',
+          user_id: userId,
+          case_id: null,
+          task_id: taskId,
+          note: 'Test comment for task',
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ];
 
-      expect(result).toEqual(mockComment);
-      expect(mockPrismaService.comment.delete).toHaveBeenCalledWith({
-        where: { comment_id: 'test-comment-1' },
+      mockPrismaService.comment.findMany.mockResolvedValue(mockComments);
+
+      const result = await service.getCommentsByCaseOrTask(undefined, taskId, userId);
+
+      expect(result).toEqual(mockComments);
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+      expect(mockPrismaService.comment.findMany).toHaveBeenCalledWith({
+        where: { task_id: taskId },
+        orderBy: {
+          created_at: 'desc',
+        },
       });
-      expect(mockAuditLogService.logAction).toHaveBeenCalledWith(
-        'test-user',
-        'DELETE_COMMENT',
-        'Comment',
-        'test-comment-1'
-      );
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getCommentsByCaseOrTask',
+        entityName: CommentService.name,
+        actionPerformed: `Successfully retrieved comments for task ID: ${taskId}`,
+        outcome: Outcome.SUCCESS,
+        performedAt: expect.any(Date),
+      });
+    });
+
+    it('should successfully get comments by caseId without userId for audit', async () => {
+      const mockComments = [
+        {
+          comment_id: 'comment-4',
+          user_id: 'another-user',
+          case_id: caseId,
+          task_id: null,
+          note: 'Another test comment',
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ];
+
+      mockPrismaService.comment.findMany.mockResolvedValue(mockComments);
+
+      const result = await service.getCommentsByCaseOrTask(caseId);
+
+      expect(result).toEqual(mockComments);
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+      expect(mockPrismaService.comment.findMany).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+      expect(auditLogService.logAction).not.toHaveBeenCalled();
+    });
+
+    it('should handle and re-throw Prisma errors', async () => {
+      const prismaError = new Error('Database connection failed');
+      mockPrismaService.comment.findMany.mockRejectedValue(prismaError);
+
+      await expect(service.getCommentsByCaseOrTask(caseId, undefined, userId)).rejects.toThrow(prismaError);
+
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by case or task', CommentService.name);
+      expect(loggerService.error).toHaveBeenCalledWith('Error retrieving comments', prismaError, CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'getCommentsByCaseOrTask',
+        entityName: CommentService.name,
+        actionPerformed: `Error retrieving comments for case ID: ${caseId}`,
+        outcome: Outcome.FAILURE,
+        performedAt: expect.any(Date),
+      });
     });
   });
 });

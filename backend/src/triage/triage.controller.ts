@@ -1,11 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { UpdateAlertDto } from './dto/update-alert.dto';
-import { CloseAlertDto } from './dto/close-alert.dto';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
+import { ManualTriageDto } from './dto/manual-triage.dto';
 
 @Controller('api/v1/triage/alerts')
 @UseGuards(TazamaAuthGuard)
@@ -13,7 +12,7 @@ export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
@@ -28,23 +27,15 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @RequireCMSTestRole()
-  async updateAlert(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req: AuthenticatedRequest) {
+  @RequireAlertTriageRole()
+  async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
-    return this.triageService.updateAlertData(alertId, dto, userId, tenantId);
-  }
-
-  @Patch(':alertId/close')
-  @RequireCMSTestRole()
-  async closeAlert(@Param('alertId') alertId: string, @Body() dto: CloseAlertDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    return this.triageService.manualCloseAlert(alertId, dto, userId, tenantId);
+    return this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
   }
 
   @Get()
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getUserAlerts(
     @Req() req: AuthenticatedRequest,
     @Query('priority') priority?: string,
@@ -73,7 +64,7 @@ export class TriageController {
   }
 
   @Get(':alertId/action-history')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
@@ -81,7 +72,7 @@ export class TriageController {
   }
 
   @Get(':alertId')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;

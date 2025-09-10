@@ -50,6 +50,7 @@ CREATE TABLE "public"."alerts" (
     "network_map" JSONB NOT NULL,
     "alert_status" "public"."AlertStatus" NOT NULL DEFAULT 'NEW',
     "confidence_per" INTEGER NOT NULL,
+    "priority_score" DOUBLE PRECISION,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "case_id" UUID,
 

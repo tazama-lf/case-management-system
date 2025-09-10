@@ -54,10 +54,7 @@ export class TaskService {
   }
 
   async reassignTask(taskId: string, userId: string, assignedUserId: string) {
-    this.logger.log(
-      `Reassigning task ${taskId} to user ${assignedUserId}`,
-      TaskService.name,
-    );
+    this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
       const updatedTask = await this.prisma.task.update({
@@ -65,10 +62,7 @@ export class TaskService {
         data: { assigned_user_id: assignedUserId },
       });
 
-      this.logger.log(
-        `Task reassigned: ${updatedTask.task_id}`,
-        TaskService.name,
-      );
+      this.logger.log(`Task reassigned: ${updatedTask.task_id}`, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Reassigned task ${taskId} to user ${assignedUserId}`,
@@ -80,20 +74,12 @@ export class TaskService {
 
       return updatedTask;
     } catch (error) {
-      this.logger.error(
-        `Error reassigning task ${taskId}`,
-        error,
-        TaskService.name,
-      );
+      this.logger.error(`Error reassigning task ${taskId}`, error, TaskService.name);
       throw error;
     }
   }
 
-  async updateTask(
-    taskId: string,
-    updateData: Partial<UpdateTaskDto>,
-    userId: string,
-  ) {
+  async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
     this.logger.log(`Updating task ${taskId}`, TaskService.name);
 
     try {
@@ -119,11 +105,7 @@ export class TaskService {
 
       return updatedTask;
     } catch (error) {
-      this.logger.error(
-        `Error updating task ${taskId}`,
-        error,
-        TaskService.name,
-      );
+      this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
       this.auditLogService.logAction({
         userId,
         actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
