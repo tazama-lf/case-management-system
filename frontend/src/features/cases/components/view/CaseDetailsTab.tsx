@@ -1,4 +1,5 @@
 import React from 'react';
+import { PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../CasesTable';
 
 interface CaseDetailsTabProps {
@@ -38,7 +39,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
               <div className="text-gray-500">Priority</div>
               <div className="inline-flex items-center gap-2">
                 <span className="inline-flex w-fit items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Medium</span>
-                <button className="rounded p-1 text-gray-500 hover:bg-gray-100" title="Edit Priority">✏️</button>
+                <button className="rounded p-1 text-gray-500 hover:bg-gray-100" title="Edit Priority">
+                  <PencilIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -90,14 +93,14 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         <div className="text-sm font-semibold text-gray-700">Recent Activity</div>
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="flex items-start gap-2 text-sm text-gray-700">
-            <span className="mt-0.5 text-gray-400">🕒</span>
+            <ClockIcon className="mt-0.5 h-4 w-4 text-gray-400" />
             <div>
               Alert Triage task completed by John Smith
               <div className="text-xs text-gray-500">9/5/2025, 9:06:55 AM</div>
             </div>
           </div>
           <div className="mt-3 flex items-start gap-2 text-sm text-gray-700">
-            <span className="mt-0.5 text-gray-400">🕒</span>
+            <ClockIcon className="mt-0.5 h-4 w-4 text-gray-400" />
             <div>
               Investigation task started by Sarah Johnson
               <div className="text-xs text-gray-500">9/5/2025, 9:06:55 AM</div>

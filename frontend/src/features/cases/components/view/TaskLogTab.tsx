@@ -1,4 +1,5 @@
 import React from 'react';
+import { CogIcon } from '@heroicons/react/24/outline';
 
 const StatusBadge: React.FC<{ status: 'Complete' | 'In-Progress' | 'Pending' }>= ({ status }) => {
   const map = {
@@ -55,7 +56,7 @@ const TaskLogTab: React.FC = () => {
         </div>
         <div>
           <button className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">
-            <span>⚙️</span>
+            <CogIcon className="h-4 w-4" />
             <span>Status: All</span>
           </button>
         </div>

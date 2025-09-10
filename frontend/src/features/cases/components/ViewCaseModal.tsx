@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowDownTrayIcon, ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './CasesTable';
 import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
@@ -41,17 +42,17 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
                 className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
                 title="Back to Details"
               >
-                ← Back
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back
               </button>
             )}
-            <button className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
-              <span className="text-base">⬇️</span>
+            <button className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Download
             </button>
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
