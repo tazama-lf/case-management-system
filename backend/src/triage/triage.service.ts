@@ -53,7 +53,7 @@ export class TriageService {
             caseId: alert.case_id,
             status: TaskStatus.UNASSIGNED_01,
             name: 'Triage Alert',
-            description: `Manual triage required for alert: ${alert.alert_id}`,
+            description: 'Task for Manual Triage',
           },
           userId,
         );
@@ -152,23 +152,59 @@ export class TriageService {
       } else {
         priority = Priority.NEW;
       }
-
       manualTriageDto.priority = priority;
-      const alert = await this.updateAlertData(alertId, manualTriageDto, userId, tenantId);
-      const existingCase = await this.caseService.retrieveCase(alert.case_id);
 
-      const triageTasks = (await this.taskService.getTasksByCaseId(alert.case_id)) ?? [];
-      const triageTask = triageTasks.find((t) => t.name === 'Triage Alert' && t.status !== TaskStatus.COMPLETED_30);
+      const alertWithCase = await this.prisma.alert.findUnique({
+        where: { alert_id: alertId },
+        include: { case: true },
+      });
+
+      if (!alertWithCase || !alertWithCase.case) {
+        throw new BadRequestException(`No case found for alert ${alertId}`);
+      }
+
+      const existingCase = alertWithCase.case;
+
+      const triageTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+      const allTriageTasks = triageTasks.filter((t) => t.name === 'Triage Alert');
+
+      // Check if task already   completed triage task
+      const completedTriageTask = allTriageTasks.find((t) => t.status === TaskStatus.COMPLETED_30);
+      if (completedTriageTask) {
+        throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
+      }
+
+      // Find the active (non-completed) triage task
+      const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.COMPLETED_30);
 
       if (triageTask) {
-        if (triageTask.assigned_user_id && triageTask.assigned_user_id !== userId) {
-          throw new BadRequestException(
-            `User ${userId} is not allowed to complete triage task ${triageTask.task_id}, assigned to ${triageTask.assigned_user_id}`,
-          );
+        this.logger.log(
+          `Found triage task ${triageTask.task_id} with assigned_user_id: ${triageTask.assigned_user_id}, current userId: ${userId}`,
+          TriageService.name,
+        );
+
+        // Auto-assign the task to the current user if not assigned or assigned to someone else
+        if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
+          this.logger.log(`Auto-assigning triage task ${triageTask.task_id} to user ${userId}`, TriageService.name);
+          await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId);
+        } else {
+          this.logger.log(`Triage task ${triageTask.task_id} already assigned to current user ${userId}`, TriageService.name);
         }
+      } else {
+        this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
+      }
+
+      const { status, ...alertFields } = manualTriageDto;
+      const updateAlertDto: UpdateAlertDto = { ...alertFields };
+
+      const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId);
+      if (triageTask) {
+        this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
           triageTask.task_id,
-          { status: TaskStatus.COMPLETED_30, description: manualTriageDto.note },
+          {
+            status: TaskStatus.COMPLETED_30,
+          },
           userId,
         );
       }
@@ -183,11 +219,15 @@ export class TriageService {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
       }
 
-      if (manualTriageDto?.status && closableStatuses.includes(manualTriageDto.status)) {
-        await this.caseService.updateCase(alert.case_id, { status: manualTriageDto.status }, userId);
+      if (manualTriageDto?.status && closableStatuses.includes(status)) {
+        await this.caseService.updateCase(
+          alert.case_id,
+          { status: status, caseType: manualTriageDto.alertType, priority: priority },
+          userId,
+        );
 
         this.logger.log(
-          `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${manualTriageDto.status}`,
+          `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${status}`,
           TriageService.name,
         );
       } else {
@@ -203,7 +243,7 @@ export class TriageService {
 
         await this.caseService.updateCase(
           alert.case_id,
-          { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: manualTriageDto.alertType },
+          { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: manualTriageDto.alertType, priority: priority },
           userId,
         );
 
@@ -240,6 +280,7 @@ export class TriageService {
           priority: dto.priority,
           alert_type: dto.alertType,
           prediction_outcome: dto.predictionOutcome,
+          priority_score: dto.priorityScore,
         },
       });
 
@@ -491,12 +532,25 @@ export class TriageService {
       // Story 1A
       // === 1. Get AI prediction and update alert ===
       const prediction = await this.predictAlert(alertId);
-      const { confidence_per: predictedConfidence, alertType: predictedAlertType, isTruePositive: predictedTruePositive } = prediction;
+      const {
+        confidence_per: predictedConfidence,
+        alertType: predictedAlertType,
+        isTruePositive: predictedTruePositive,
+        priorityScore: predictedPriorityScore,
+      } = prediction;
       this.logger.log(
         `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
         TriageService.name,
       );
-      await this.updateAlertAndUpdateTriageTask(alertId, triageTaskId, predictedAlertType, predictedConfidence, userId, tenantId);
+      await this.updateAlertAndUpdateTriageTask(
+        alertId,
+        triageTaskId,
+        predictedAlertType,
+        predictedConfidence,
+        predictedPriorityScore,
+        userId,
+        tenantId,
+      );
 
       // Story 1F
       // === 2. Confidence below threshold → Investigation case ===
@@ -754,6 +808,7 @@ export class TriageService {
     taskId: string,
     predictedAlertType: AlertType,
     predictedConfidence: number,
+    predictedPriorityScore: number,
     userId: string,
     tenantId: string,
   ): Promise<void> {
@@ -761,6 +816,7 @@ export class TriageService {
       const updateDto = new UpdateAlertDto();
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;
+      updateDto.priorityScore = predictedPriorityScore;
       updateDto.note = 'Updated alert data with AI outcome';
 
       await this.updateAlertData(alertId, updateDto, userId, tenantId);
