@@ -484,7 +484,7 @@ describe('TriageService', () => {
       // Then complete the task
       expect(taskService.updateTask).toHaveBeenCalledWith(
         'triage-task-123',
-        { status: 'COMPLETED_30', description: 'Manual triage completed', assignedUserId: userId },
+        { status: 'COMPLETED_30' },
         userId
       );
 
@@ -515,10 +515,9 @@ describe('TriageService', () => {
       expect(taskService.createTask).toHaveBeenCalledWith(
         {
           caseId: 'case-123',
-          status: 'ASSIGNED_10',
+          status: 'UNASSIGNED_01',
           name: 'Investigate Case',
           description: 'Investigate case: case-123',
-          assignedUserId: userId,
         },
         userId
       );
@@ -1693,7 +1692,7 @@ describe('TriageService', () => {
             caseId: 'case-123',
             status: 'UNASSIGNED_01',
             name: 'Triage Alert',
-            description: 'Manual triage required for alert: alert-123'
+            description: 'Task for Manual Triage'
           },
           'user-123'
         );
