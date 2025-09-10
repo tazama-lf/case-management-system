@@ -4,7 +4,7 @@ import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireCMSTestRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
@@ -20,7 +20,7 @@ export class CaseController {
    * This endpoint is called by external systems (Alert Triage Module, API Portal)
    */
   @Post('system-transmission')
-  @RequireCMSTestRole() // Added the missing decorator
+  @RequireAlertTriageRole()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create case via system-to-system transmission',
@@ -51,7 +51,7 @@ export class CaseController {
    * Manual case creation endpoint
    */
   @Post()
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Create case manually',
     description: 'Manual case creation by an analyst or supervisor',
@@ -72,7 +72,7 @@ export class CaseController {
    * Get case by ID
    */
   @Get(':caseId')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Retrieve case by ID',
     description: 'Get detailed information about a specific case',
@@ -90,7 +90,7 @@ export class CaseController {
    * Update case
    */
   @Post(':caseId')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Update case',
     description: 'Update case details such as status, priority, or assignment',
@@ -111,7 +111,7 @@ export class CaseController {
    * Remove this in production
    */
   @Get('debug-token')
-  @RequireCMSTestRole()
+  @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Debug JWT token',
     description: 'Debug endpoint to inspect JWT token contents - remove in production',

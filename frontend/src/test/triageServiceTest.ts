@@ -1,5 +1,5 @@
-import triageService from '../services/triageservice';
-import type { AlertsFilter } from '../types/triage.types';
+import triageService from '../features/alerts/services/triageservice';
+import type { AlertsFilter } from '../features/alerts/types/triage.types';
 
 // This file just tests that our service can be imported and used
 export const testTriageService = () => {
@@ -8,15 +8,12 @@ export const testTriageService = () => {
   const hasGetAlertById = typeof triageService.getAlertById === 'function';
   const hasUpdateAlert = typeof triageService.updateAlert === 'function';
   const hasCloseAlert = typeof triageService.closeAlert === 'function';
-  const hasConvertAlertToCase =
-    typeof triageService.convertAlertToCase === 'function';
 
   return (
     hasGetAlerts &&
     hasGetAlertById &&
     hasUpdateAlert &&
-    hasCloseAlert &&
-    hasConvertAlertToCase
+  hasCloseAlert
   );
 };
 
@@ -47,7 +44,7 @@ export const exampleUsage = {
   // Update alert
   async updateAlert(id: string) {
     return triageService.updateAlert(id, {
-      priority: 'MEDIUM',
+      priority: 'URGENT',
       confidence_per: 85,
     });
   },
@@ -57,11 +54,5 @@ export const exampleUsage = {
     return triageService.closeAlert(id, 'CLOSED', 'Resolved - false positive');
   },
 
-  // Convert to case
-  async convertToCase(id: string) {
-    return triageService.convertAlertToCase(id, {
-      priority: 'MEDIUM',
-      caseType: 'FRAUD',
-    });
-  },
+  // convert-to-case removed
 };

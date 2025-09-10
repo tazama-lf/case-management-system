@@ -1,10 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-  IsNumber,
-  IsEnum,
-  ValidateNested,
-} from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Priority } from '@prisma/client';
 import { TransactionDTO } from './Transaction.dto';

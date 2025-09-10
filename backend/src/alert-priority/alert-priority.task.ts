@@ -1,16 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { AlertPriorityService } from './alert-priority.service';
+import { CronJob } from 'cron';
 
 @Injectable()
-export class AlertPriorityTask {
-  private readonly logger = new Logger(AlertPriorityTask.name);
+export class AlertPriorityTask implements OnModuleInit {
+  constructor(
+    private readonly priorityService: AlertPriorityService,
+    private readonly configService: ConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
+  ) {}
 
-  constructor(private readonly priorityService: AlertPriorityService) {}
+  async onModuleInit() {
+    const expression = this.configService.get<string>('ALERT_PRIORITY_CRON_SCHEDULE') || '0 * * * *';
+    const job = new CronJob(expression, async () => {
+      await this.handleAlertPriorityUpdate();
+    });
+    this.schedulerRegistry.addCronJob('alertPriorityUpdate', job);
+    job.start();
+  }
 
-  @Cron(CronExpression.EVERY_HOUR)
-  async handleHourlyCron() {
-    this.logger.log('Running hourly alert priority recalculation task');
+  async handleAlertPriorityUpdate() {
+    console.log('Running alert priority update task...');
     await this.priorityService.runRecalculation();
+    console.log('Alert priority update task completed.');
   }
 }

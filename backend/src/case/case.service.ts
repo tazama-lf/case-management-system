@@ -119,19 +119,49 @@ export class CaseService {
       // Step 5: Route to ATM
       await this.routeToATM(createdCase.case.case_id, createdCase.atmTask.task_id, systemUuid);
 
-      // Step 6: Check for autoclose
-      if (this.checkAutocloseEligibility(payload)) {
-        await this.autocloseCase(createdCase.case.case_id, systemUuid);
+      // Step 6: Check for autoclose and distinguish confirmed/refuted
+      const confidence = payload.confidencePercentage || 0;
+      const fraudType = payload.fraudType || '';
+      // Diagram: Confidence >= 95% and True Positive (e.g., Money-Laundering, Fraud Only, Transaction Blocked)
+      if (confidence >= 95) {
+        // If true positive (fraudType is one of the types that should be confirmed)
+        if (['Money-Laundering', 'Fraud Only', 'Transaction Blocked'].includes(fraudType)) {
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.AUTOCLOSED_CONFIRMED_71);
+        } else {
+          // False positive
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.AUTOCLOSED_REFUTED_72);
+        }
       } else {
-        // Create investigation task and assign to queue
+        // Confidence < 95%: Prioritize and investigate
         await this.createInvestigationTask(createdCase.case.case_id, systemUuid);
+        // Set ATM task to COMPLETE_30 as per requirements
+        await this.prismaService.task.update({
+          where: { task_id: createdCase.atmTask.task_id },
+          data: {
+            status: TaskStatus.COMPLETED_30,
+            updated_at: new Date(),
+          },
+        });
+        // Audit log for ATM task completion
+        await this.auditLogService.logAction({
+          userId: systemUuid,
+          operation: 'completeATMTask',
+          entityName: CaseService.name,
+          actionPerformed: `ATM task ${createdCase.atmTask.task_id} set to COMPLETE_30`,
+          outcome: Outcome.SUCCESS,
+        });
       }
 
       this.logger.log(`Case ${createdCase.case.case_id} created successfully via system transmission`, CaseService.name);
 
+      // Fetch the latest case status after autoclose/investigation
+      const finalCase = await this.prismaService.case.findUnique({
+        where: { case_id: createdCase.case.case_id },
+      });
+
       return {
         caseId: createdCase.case.case_id,
-        status: createdCase.case.status,
+        status: finalCase?.status || createdCase.case.status,
         processInstanceId: processInstance.id,
       };
     } catch (error) {
@@ -221,12 +251,12 @@ export class CaseService {
   /**
    * Autoclose a case
    */
-  private async autocloseCase(caseId: string, systemUuid: string) {
+  private async autocloseCase(caseId: string, systemUuid: string, status: CaseStatus) {
     try {
       await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
-          status: CaseStatus.AUTOCLOSED_REFUTED_72,
+          status: status,
           updated_at: new Date(),
         },
       });
@@ -235,11 +265,11 @@ export class CaseService {
         userId: systemUuid,
         operation: 'autocloseCase',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} autoclosed`,
+        actionPerformed: `Case ${caseId} autoclosed with status ${status}`,
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Case ${caseId} autoclosed`, CaseService.name);
+      this.logger.log(`Case ${caseId} autoclosed with status ${status}`, CaseService.name);
     } catch (error) {
       this.logger.error(`Failed to autoclose case: ${error.message}`, error.stack, CaseService.name);
       throw error;

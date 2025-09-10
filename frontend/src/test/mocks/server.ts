@@ -1,6 +1,6 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import type { Alert, ActionHistory } from '../../types/triage.types';
+import type { Alert, ActionHistory } from '../../features/alerts/types/triage.types';
 
 // Mock data
 const mockAlerts: Alert[] = [
@@ -9,8 +9,8 @@ const mockAlerts: Alert[] = [
     tenant_id: 'tenant-1',
     case_id: undefined,
     priority: 'CRITICAL',
-    source: 'FRAUD_DETECTION',
-    alert_type: 'FRAUD_DETECTION',
+    source: 'FRAUD',
+    alert_type: 'FRAUD',
     message: 'Suspicious transaction pattern detected',
     confidence_per: 85,
     created_at: '2024-01-15T10:30:00Z',
@@ -41,8 +41,8 @@ const mockAlerts: Alert[] = [
     tenant_id: 'tenant-1',
     case_id: 'CASE-001',
     priority: 'URGENT',
-    source: 'SANCTIONS_SCREENING',
-    alert_type: 'SANCTIONS_SCREENING',
+    source: 'AML',
+    alert_type: 'AML',
     message: 'Potential sanctions list match found',
     confidence_per: 75,
     created_at: '2024-01-14T15:45:00Z',
@@ -143,10 +143,10 @@ export const handlers = [
     return HttpResponse.json(history);
   }),
 
-  // Update alert
+  // Manual triage endpoint
   http.patch('/api/v1/triage/alerts/:alertId', async ({ params, request }) => {
     const { alertId } = params;
-    const updates = await request.json() as Partial<Alert>;
+    const updates = await request.json() as any;
     
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
@@ -156,13 +156,53 @@ export const handlers = [
       );
     }
 
-    // Update the mock alert
-    mockAlerts[alertIndex] = {
-      ...mockAlerts[alertIndex],
-      ...updates,
-    };
-
-    return HttpResponse.json(mockAlerts[alertIndex]);
+    // Check if this is a manual triage request (has specific fields)
+    if (updates.priorityScore !== undefined || updates.predictionOutcome !== undefined) {
+      // This is a manual triage request - validate AlertType
+      if (updates.alertType && !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)) {
+        return HttpResponse.json(
+          {
+            message: [
+              "alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML, NONE"
+            ],
+            error: "Bad Request",
+            statusCode: 400
+          },
+          { status: 400 }
+        );
+      }
+      
+      const updatedAlert = {
+        ...mockAlerts[alertIndex],
+        priority: updates.priority || mockAlerts[alertIndex].priority,
+        confidence_per: updates.confidence_per || mockAlerts[alertIndex].confidence_per,
+        alert_type: updates.alertType || mockAlerts[alertIndex].alert_type,
+        prediction_outcome: updates.predictionOutcome,
+      };
+      
+      mockAlerts[alertIndex] = updatedAlert;
+      
+      // Add action history entry
+      const newHistoryEntry: ActionHistory = {
+        audit_log_id: `LOG-${Date.now()}`,
+        user_id: 'test-user@example.com',
+        operation: 'MANUAL_TRIAGE',
+        entity_name: String(alertId),
+        action_performed: `Manual triage completed - ${updates.note || 'No notes provided'}`,
+        outcome: 'SUCCESS',
+        performed_at: new Date().toISOString(),
+      };
+      mockActionHistory.push(newHistoryEntry);
+      
+      return HttpResponse.json(updatedAlert);
+    } else {
+      // Regular alert update
+      mockAlerts[alertIndex] = {
+        ...mockAlerts[alertIndex],
+        ...updates,
+      };
+      return HttpResponse.json(mockAlerts[alertIndex]);
+    }
   }),
 
   // Convert alert to case

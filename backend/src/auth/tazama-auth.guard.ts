@@ -1,18 +1,8 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
-import type {
-  TazamaToken,
-  ClaimValidationResult,
-  AuthenticatedUser,
-} from './auth.types';
-import { CLAIMS_KEY, IS_PUBLIC_KEY } from './auth.decorator';
+import type { TazamaToken, ClaimValidationResult, AuthenticatedUser } from './auth.types';
+import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
 
 @Injectable()
 export class TazamaAuthGuard implements CanActivate {
@@ -24,24 +14,16 @@ export class TazamaAuthGuard implements CanActivate {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
     // Check if route is public
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [context.getHandler(), context.getClass()]);
 
     if (isPublic) {
-      this.logger.log(
-        'Public route accessed, skipping authentication',
-        logContext,
-      );
+      this.logger.log('Public route accessed, skipping authentication', logContext);
       return true;
     }
 
     // Get required claims from decorator
-    const requiredClaims = this.reflector.getAllAndOverride<string[]>(
-      CLAIMS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredClaims = this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [context.getHandler(), context.getClass()]);
+    const anyRequiredClaims = this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [context.getHandler(), context.getClass()]);
 
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
@@ -52,40 +34,55 @@ export class TazamaAuthGuard implements CanActivate {
       throw new UnauthorizedException('No Bearer token provided');
     }
 
-    if (!requiredClaims || requiredClaims.length === 0) {
-      this.logger.warn(
-        'No required claims specified for protected route',
-        logContext,
-      );
+    // Check if we have either type of claims requirement
+    if ((!requiredClaims || requiredClaims.length === 0) && (!anyRequiredClaims || anyRequiredClaims.length === 0)) {
+      this.logger.warn('No required claims specified for protected route', logContext);
       throw new UnauthorizedException('No required claims specified');
     }
 
     try {
       const token = authHeader.split(' ')[1];
 
+      // Determine which claims to validate
+      const claimsToValidate = requiredClaims || anyRequiredClaims || [];
+
       // Validate token and claims using tazama-auth-lib
-      const validated: ClaimValidationResult = validateTokenAndClaims(
-        token,
-        requiredClaims,
-      );
+      const validated: ClaimValidationResult = validateTokenAndClaims(token, claimsToValidate);
 
-      // Check if all required claims are present and valid
-      const hasAllClaims = requiredClaims.every(
-        (claim) => validated[claim] === true,
-      );
-      const validClaims = requiredClaims.filter(
-        (claim) => validated[claim] === true,
-      );
-      const invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
+      let hasValidAccess = false;
+      let validClaims: string[] = [];
+      let invalidClaims: string[] = [];
 
-      if (!hasAllClaims) {
-        this.logger.warn(
-          `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
-          logContext,
-        );
-        throw new UnauthorizedException(
-          `Missing or invalid claims: ${invalidClaims.join(', ')}`,
-        );
+      if (requiredClaims && requiredClaims.length > 0) {
+        // ALL required claims must be present
+        const hasAllClaims = requiredClaims.every((claim) => validated[claim] === true);
+        validClaims = requiredClaims.filter((claim) => validated[claim] === true);
+        invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
+        hasValidAccess = hasAllClaims;
+
+        if (!hasAllClaims) {
+          this.logger.warn(
+            `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
+            logContext,
+          );
+        }
+      } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
+        // ANY of the required claims can satisfy the requirement
+        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim] === true);
+        validClaims = anyRequiredClaims.filter((claim) => validated[claim] === true);
+        invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
+        hasValidAccess = hasAnyClaim;
+
+        if (!hasAnyClaim) {
+          this.logger.warn(
+            `User missing any required claims. Required (any of): [${anyRequiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
+            logContext,
+          );
+        }
+      }
+
+      if (!hasValidAccess) {
+        throw new UnauthorizedException(`Missing or invalid claims: ${invalidClaims.join(', ')}`);
       }
 
       // Extract token payload (you might need to decode the JWT to get the full TazamaToken)
@@ -109,10 +106,7 @@ export class TazamaAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       const err = error as Error;
-      this.logger.error(
-        `Authentication failed: ${err.name}: ${err.message}`,
-        logContext,
-      );
+      this.logger.error(`Authentication failed: ${err.name}: ${err.message}`, logContext);
 
       if (error instanceof UnauthorizedException) {
         throw error;

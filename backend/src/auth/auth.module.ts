@@ -9,13 +9,7 @@ import { TazamaAuthGuard } from './tazama-auth.guard';
 import { LoggerModule } from 'src/logger/logger.module';
 
 @Module({
-  imports: [
-    ConfigModule,
-    PrismaModule,
-    HttpModule,
-    AuditLogModule,
-    LoggerModule,
-  ],
+  imports: [ConfigModule, PrismaModule, HttpModule, AuditLogModule, LoggerModule],
   providers: [TazamaAuthGuard, AuthService],
   exports: [TazamaAuthGuard, AuthService],
   controllers: [AuthController],
