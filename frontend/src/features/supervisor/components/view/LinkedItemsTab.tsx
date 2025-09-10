@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import RelatedCaseModal from '../modals/RelatedCaseModal';
 import RelatedAlertModal from '../modals/RelatedAlertModal';
 import TransactionMessagesModal from '../modals/TransactionMessagesModal';
-import { MessagePayloadModal } from '../../../alerts';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2">
@@ -57,7 +56,6 @@ const LinkedItemsTab: React.FC = () => {
   const [selectedCaseModal, setSelectedCaseModal] = useState<string | null>(null);
   const [selectedAlertModal, setSelectedAlertModal] = useState<string | null>(null);
   const [selectedTransactionModal, setSelectedTransactionModal] = useState<string | null>(null);
-  const [selectedMessagePayload, setSelectedMessagePayload] = useState<any | null>(null);
   const [expandedTypologies, setExpandedTypologies] = useState<Set<string>>(new Set());
 
   const toggleTypology = (id: string) => {
@@ -175,12 +173,6 @@ const LinkedItemsTab: React.FC = () => {
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28392')}>ADPSPKR28392 – Increased Debtor Activity</LinkItem>
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28393')}>ADPSPKR28393 – Multiple Same-Amount Transfers</LinkItem>
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28394')}>ADPSPKR28394 – Unusual Geographic Pattern</LinkItem>
-            <div className="mt-2 space-y-1">
-              <div className="text-xs text-gray-500">Message Payloads:</div>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[0])}>View pacs.008 Payload</LinkItem>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[1])}>View pacs.002 Payload</LinkItem>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[2])}>View camt.056 Payload</LinkItem>
-            </div>
           </div>
         </div>
       </Section>
@@ -222,12 +214,6 @@ const LinkedItemsTab: React.FC = () => {
         onClose={() => setSelectedTransactionModal(null)}
         transactionId={selectedTransactionModal || ''}
         messages={selectedTransactionModal ? mockTransactionMessages : []}
-      />
-
-      <MessagePayloadModal
-        isOpen={selectedMessagePayload !== null}
-        onClose={() => setSelectedMessagePayload(null)}
-        message={selectedMessagePayload}
       />
     </div>
   );

@@ -235,8 +235,8 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
                     XML Payload
                   </h4>
                 </div>
-                <div className="p-4 overflow-auto h-full bg-gray-900">
-                  <pre className="text-sm text-green-400 font-mono whitespace-pre-wrap">
+                <div className="p-4 overflow-auto h-full bg-white">
+                  <pre className="text-sm text-gray-800 font-mono whitespace-pre-wrap">
                     {xmlPayload}
                   </pre>
                 </div>
