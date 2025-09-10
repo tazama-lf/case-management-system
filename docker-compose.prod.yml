@@ -1,0 +1,172 @@
+# =============================================================================
+# Docker Compose for Production Environment
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: tazama-cms-db-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tazama_cms}
+      POSTGRES_USER: ${DB_USER:-tazama_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tazama_user} -d ${DB_NAME:-tazama_cms}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: tazama-cms-redis-prod
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-production
+    container_name: tazama-cms-backend-prod
+    restart: always
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER:-tazama_user}:${DB_PASSWORD}@database:5432/${DB_NAME:-tazama_cms}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://localhost}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-production
+    container_name: tazama-cms-frontend-prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # Load Balancer (HAProxy)
+  loadbalancer:
+    image: haproxy:2.8-alpine
+    container_name: tazama-cms-lb
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NATS Messaging
+  nats:
+    image: nats:2.10-alpine
+    container_name: tazama-cms-nats-prod
+    restart: always
+    command: ["--jetstream", "--http_port", "8222", "--auth", "${NATS_TOKEN}"]
+    networks:
+      - tazama-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  tazama-network:
+    driver: bridge

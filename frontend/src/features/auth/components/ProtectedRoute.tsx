@@ -17,6 +17,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
+  console.log('🛡️ ProtectedRoute Debug:', {
+    isAuthenticated,
+    loading,
+    requireBackendAccess,
+    requiredRoles,
+    userExists: !!user,
+    path: location.pathname
+  });
+
   // Show loading spinner while checking authentication
   if (loading) {
     return (
@@ -28,20 +37,40 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    console.log('🚫 ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check backend access if required
   if (requireBackendAccess && !authService.validateBackendAccess()) {
+    console.log('🚫 ProtectedRoute: Backend access validation failed');
+    const hasAlertTriage = authService.hasAlertTriageRole();
+    const hasCMSTestRole = authService.hasCMSTestRole();
+    
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Backend Access Required
           </h2>
           <p className="text-gray-600 mb-4">
-            Your account doesn't have the required claims to access the backend services. 
-            Please contact your administrator to get the CMS-TEST-ROLE claim added to your account.
+            Your account doesn't have the required claims to access the backend services.
+          </p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium mb-2">Required Claims Status:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li className={hasAlertTriage ? 'text-green-600' : 'text-red-600'}>
+                  alert-triage: {hasAlertTriage ? '✓ Available' : '✗ Missing'}
+                </li>
+                <li className={hasCMSTestRole ? 'text-green-600' : 'text-red-600'}>
+                  CMS-TEST-ROLE: {hasCMSTestRole ? '✓ Available' : '✗ Missing'}
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Please contact your administrator to get the required claims added to your account.
           </p>
           <button
             onClick={() => window.history.back()}

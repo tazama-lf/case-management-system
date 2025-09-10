@@ -26,7 +26,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/alerts');
+      console.log('Login: User is authenticated, redirecting to /alerts');
+      navigate('/alerts', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -44,15 +45,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
 
     try {
+      console.log('Login: Starting login process...');
       await login(credentials);
 
       // Call onLoginSuccess callback if provided
       if (onLoginSuccess) {
+        console.log('Login: Calling onLoginSuccess callback');
         onLoginSuccess();
-      } else {
-        // Navigate to alerts dashboard on successful login
-        navigate('/alerts');
       }
+      // Don't manually navigate here - let the useEffect handle it
+      // The login function will update isAuthenticated, which will trigger the useEffect
+      console.log('Login: Login function completed, waiting for auth state update...');
     } catch (error) {
       // Error is handled by the context
       console.error('Login failed:', error);
