@@ -103,9 +103,7 @@ Application settings are configured primarily via environment variables. See `.e
 
 ### Project setup
 
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+
 
 ## **_3. Configuration_**
 
@@ -147,14 +145,30 @@ $ npm install
 
 ### Compile and run the project
 
-## Compile and run the project
-
-### Compile and run the project
-
-### Compile and run the project
 
 ```bash
 # development
+
+
+
+
+############prisma
+# Install Prisma and Client
+$ npm install prisma --save-dev
+$ npm install @prisma/client
+
+# Initialize Prisma
+$ npx prisma init
+
+# After editing schema.prisma → Create migration
+$ npx prisma migrate dev --name init
+
+# Push schema to DB without migration history (optional)
+$ npx prisma db push
+
+# Generate Prisma Client (run after every schema change)
+$ npx prisma generate
+
 $ npm run start
 
 # watch mode
