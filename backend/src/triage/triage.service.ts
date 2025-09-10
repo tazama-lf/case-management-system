@@ -53,7 +53,7 @@ export class TriageService {
             caseId: alert.case_id,
             status: TaskStatus.UNASSIGNED_01,
             name: 'Triage Alert',
-            description: `Manual triage required for alert: ${alert.alert_id}`,
+            description: 'Task for Manual Triage',
           },
           userId,
         );
@@ -204,8 +204,6 @@ export class TriageService {
           triageTask.task_id,
           {
             status: TaskStatus.COMPLETED_30,
-            description: manualTriageDto.note,
-            assignedUserId: userId,
           },
           userId,
         );
@@ -236,10 +234,9 @@ export class TriageService {
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
-            status: TaskStatus.ASSIGNED_10,
+            status: TaskStatus.UNASSIGNED_01,
             name: 'Investigate Case',
             description: `Investigate case: ${alert.case_id}`,
-            assignedUserId: userId,
           },
           userId,
         );
