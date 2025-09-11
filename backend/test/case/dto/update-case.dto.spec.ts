@@ -9,6 +9,35 @@ describe('UpdateCaseDto', () => {
     dto = new UpdateCaseDto();
   });
 
+  describe('constructor and initialization', () => {
+    it('should create instance with constructor', () => {
+      const newDto = new UpdateCaseDto();
+      expect(newDto).toBeInstanceOf(UpdateCaseDto);
+      expect(newDto.constructor.name).toBe('UpdateCaseDto');
+    });
+
+    it('should initialize properties correctly', () => {
+      const newDto = new UpdateCaseDto();
+      expect(newDto.status).toBeUndefined();
+      expect(newDto.priority).toBeUndefined();
+      expect(newDto.caseType).toBeUndefined();
+      expect(newDto.caseOwnerUserId).toBeUndefined();
+    });
+
+    it('should allow property assignment', () => {
+      const newDto = new UpdateCaseDto();
+      newDto.status = CaseStatus.DRAFT_00;
+      newDto.priority = Priority.NEW;
+      newDto.caseType = CaseType.FRAUD;
+      newDto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174000';
+
+      expect(newDto.status).toBe(CaseStatus.DRAFT_00);
+      expect(newDto.priority).toBe(Priority.NEW);
+      expect(newDto.caseType).toBe(CaseType.FRAUD);
+      expect(newDto.caseOwnerUserId).toBe('123e4567-e89b-12d3-a456-426614174000');
+    });
+  });
+
   describe('status validation', () => {
     it('should pass with valid CaseStatus enum values', async () => {
       const validStatuses = [
@@ -44,6 +73,13 @@ describe('UpdateCaseDto', () => {
       const statusErrors = errors.filter(error => error.property === 'status');
       expect(statusErrors.length).toBeGreaterThan(0);
     });
+
+    it('should fail with invalid status value', async () => {
+      (dto as any).status = 'INVALID_STATUS';
+      const errors = await validate(dto);
+      const statusErrors = errors.filter(error => error.property === 'status');
+      expect(statusErrors.length).toBeGreaterThan(0);
+    });
   });
 
   describe('priority validation', () => {
@@ -66,6 +102,14 @@ describe('UpdateCaseDto', () => {
       const priorityErrors = errors.filter(error => error.property === 'priority');
       expect(priorityErrors).toHaveLength(0);
     });
+
+    it('should fail with invalid priority value', async () => {
+      dto.status = CaseStatus.DRAFT_00; // Required field
+      (dto as any).priority = 'INVALID_PRIORITY';
+      const errors = await validate(dto);
+      const priorityErrors = errors.filter(error => error.property === 'priority');
+      expect(priorityErrors.length).toBeGreaterThan(0);
+    });
   });
 
   describe('caseType validation', () => {
@@ -87,6 +131,14 @@ describe('UpdateCaseDto', () => {
       const errors = await validate(dto);
       const caseTypeErrors = errors.filter(error => error.property === 'caseType');
       expect(caseTypeErrors).toHaveLength(0);
+    });
+
+    it('should fail with invalid caseType value', async () => {
+      dto.status = CaseStatus.DRAFT_00; // Required field
+      (dto as any).caseType = 'INVALID_CASE_TYPE';
+      const errors = await validate(dto);
+      const caseTypeErrors = errors.filter(error => error.property === 'caseType');
+      expect(caseTypeErrors.length).toBeGreaterThan(0);
     });
   });
 
@@ -113,6 +165,40 @@ describe('UpdateCaseDto', () => {
       const errors = await validate(dto);
       const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
       expect(ownerIdErrors).toHaveLength(0);
+    });
+  });
+
+  describe('property getters and setters', () => {
+    it('should test all property getters', () => {
+      // Test getting undefined values
+      expect(dto.status).toBeUndefined();
+      expect(dto.priority).toBeUndefined();
+      expect(dto.caseType).toBeUndefined();
+      expect(dto.caseOwnerUserId).toBeUndefined();
+
+      // Set values and test getters
+      dto.status = CaseStatus.DRAFT_00;
+      dto.priority = Priority.NEW;
+      dto.caseType = CaseType.FRAUD;
+      dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174000';
+
+      expect(dto.status).toBe(CaseStatus.DRAFT_00);
+      expect(dto.priority).toBe(Priority.NEW);
+      expect(dto.caseType).toBe(CaseType.FRAUD);
+      expect(dto.caseOwnerUserId).toBe('123e4567-e89b-12d3-a456-426614174000');
+    });
+
+    it('should test property enumeration', () => {
+      dto.status = CaseStatus.DRAFT_00;
+      dto.priority = Priority.NEW;
+      dto.caseType = CaseType.FRAUD;
+      dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174000';
+
+      const keys = Object.keys(dto);
+      expect(keys).toContain('status');
+      expect(keys).toContain('priority');
+      expect(keys).toContain('caseType');
+      expect(keys).toContain('caseOwnerUserId');
     });
   });
 
@@ -149,10 +235,10 @@ describe('UpdateCaseDto', () => {
 
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
-      
+
       const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
       expect(ownerIdErrors.length).toBeGreaterThan(0);
-      
+
       const statusErrors = errors.filter(error => error.property === 'status');
       expect(statusErrors).toHaveLength(0);
     });
@@ -164,7 +250,7 @@ describe('UpdateCaseDto', () => {
 
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
-      
+
       const statusErrors = errors.filter(error => error.property === 'status');
       expect(statusErrors.length).toBeGreaterThan(0);
     });
@@ -172,13 +258,13 @@ describe('UpdateCaseDto', () => {
 
   describe('enum value validation', () => {
     it('should fail with invalid enum values', async () => {
-      const invalidDto = {
-        status: 'INVALID_STATUS',
-        priority: 'INVALID_PRIORITY',
-        caseType: 'INVALID_TYPE'
-      };
+      const invalidDto = Object.assign(new UpdateCaseDto(), {
+        status: 'INVALID_STATUS' as any,
+        priority: 'INVALID_PRIORITY' as any,
+        caseType: 'INVALID_TYPE' as any
+      });
 
-      const errors = await validate(Object.assign(new UpdateCaseDto(), invalidDto));
+      const errors = await validate(invalidDto);
       expect(errors.length).toBeGreaterThan(0);
 
       const statusErrors = errors.filter(error => error.property === 'status');
@@ -188,6 +274,33 @@ describe('UpdateCaseDto', () => {
       expect(statusErrors.length).toBeGreaterThan(0);
       expect(priorityErrors.length).toBeGreaterThan(0);
       expect(caseTypeErrors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('object methods', () => {
+    it('should test toString functionality', () => {
+      dto.status = CaseStatus.DRAFT_00;
+      const stringRepresentation = dto.toString();
+      expect(typeof stringRepresentation).toBe('string');
+      expect(stringRepresentation).toContain('[object Object]');
+    });
+
+    it('should test valueOf functionality', () => {
+      dto.status = CaseStatus.DRAFT_00;
+      const valueOfResult = dto.valueOf();
+      expect(valueOfResult).toBe(dto);
+    });
+
+    it('should test hasOwnProperty functionality', () => {
+      dto.status = CaseStatus.DRAFT_00;
+      expect(dto.hasOwnProperty('status')).toBe(true);
+      expect(dto.hasOwnProperty('priority')).toBe(true); // property exists, even if not set
+      expect(dto.hasOwnProperty('nonExistentProperty')).toBe(false);
+    });
+
+    it('should test propertyIsEnumerable functionality', () => {
+      dto.status = CaseStatus.DRAFT_00;
+      expect(dto.propertyIsEnumerable('status')).toBe(true);
     });
   });
 });
