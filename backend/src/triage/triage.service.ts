@@ -15,6 +15,7 @@ import { Outcome } from 'src/audit/types/outcome';
 import { UpdateCaseDto } from 'src/case/dto/update-case.dto';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ManualTriageDto } from './dto/manual-triage.dto';
+import { Prediction } from './types/Prediction';
 
 @Injectable()
 export class TriageService {
@@ -134,24 +135,8 @@ export class TriageService {
     }
 
     try {
-      const urgencyThresholds = [
-        parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
-        parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
-        parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
-      ];
-
-      let priority: Priority = Priority.NEW;
       const priorityScore = manualTriageDto.priorityScore ?? 0.33;
-
-      if (priorityScore >= urgencyThresholds[2]) {
-        priority = Priority.BREACH;
-      } else if (priorityScore >= urgencyThresholds[1]) {
-        priority = Priority.CRITICAL;
-      } else if (priorityScore >= urgencyThresholds[0]) {
-        priority = Priority.URGENT;
-      } else {
-        priority = Priority.NEW;
-      }
+      const priority = this.determinePriority(priorityScore);
       manualTriageDto.priority = priority;
 
       const alertWithCase = await this.prisma.alert.findUnique({
@@ -531,7 +516,7 @@ export class TriageService {
 
       // Story 1A
       // === 1. Get AI prediction and update alert ===
-      const prediction = await this.predictAlert(alertId);
+      const prediction: Prediction = await this.predictAlert(alertId);
       const {
         confidence_per: predictedConfidence,
         alertType: predictedAlertType,
@@ -542,12 +527,15 @@ export class TriageService {
         `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
         TriageService.name,
       );
+      const priority = this.determinePriority(predictedPriorityScore);
       await this.updateAlertAndUpdateTriageTask(
         alertId,
         triageTaskId,
         predictedAlertType,
         predictedConfidence,
         predictedPriorityScore,
+        priority,
+        predictedTruePositive,
         userId,
         tenantId,
       );
@@ -564,6 +552,8 @@ export class TriageService {
           triageTaskId,
           'Investigate Case as confidence is below threshold',
           'Triage complete - AI predicted confidence percentage below threshold manual investigation needed',
+          priority,
+          predictedAlertType,
         );
       }
 
@@ -594,8 +584,8 @@ export class TriageService {
             },
             userId,
           );
-          await this.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, caseId, prediction);
-          await this.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, caseId, prediction);
+          await this.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, caseId, priority);
+          await this.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, caseId, priority);
           return;
         }
 
@@ -607,8 +597,9 @@ export class TriageService {
             caseId,
             userId,
             triageTaskId,
-            'Investigate Case for fraud',
+            'Investigate Case for AML',
             'Triage complete - AI predicted confidence percentage above threshold and true positive with case type aml',
+            priority,
             CaseType.AML,
           );
         }
@@ -636,6 +627,7 @@ export class TriageService {
             triageTaskId,
             'Investigate Case for fraud',
             'Triage complete - AI predicted confidence percentage above threshold and true positive with case type fraud and transaction occured',
+            priority,
             CaseType.FRAUD,
           );
         }
@@ -699,7 +691,7 @@ export class TriageService {
     userId: string,
     tenantId: string,
     parentCaseId: string,
-    prediction?: any,
+    priority: Priority,
   ): Promise<any> {
     try {
       // Create new case
@@ -708,7 +700,7 @@ export class TriageService {
           caseCreatorUserId: userId,
           caseOwnerUserId: userId,
           tenantId,
-          priority: prediction?.priority ?? null,
+          priority: priority,
           status: CaseStatus.READY_FOR_ASSIGNMENT_02,
           parentId: parentCaseId,
           caseType,
@@ -756,6 +748,7 @@ export class TriageService {
     taskId: string,
     investigateTaskDesc: string,
     triageTaskDesc: string,
+    priority: Priority,
     caseType?: CaseType,
   ): Promise<any> {
     try {
@@ -776,6 +769,7 @@ export class TriageService {
       // Update case status
       const updateCaseDto: Partial<UpdateCaseDto> = {
         status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+        priority: priority,
       };
       if (caseType) updateCaseDto.caseType = caseType;
 
@@ -809,11 +803,16 @@ export class TriageService {
     predictedAlertType: AlertType,
     predictedConfidence: number,
     predictedPriorityScore: number,
+    priority: Priority,
+    predictedTruePositive: boolean,
     userId: string,
     tenantId: string,
   ): Promise<void> {
     try {
       const updateDto = new UpdateAlertDto();
+
+      updateDto.predictionOutcome = predictedTruePositive ? 'TRUE_POSITIVE' : 'FALSE_POSITIVE';
+      updateDto.priority = priority;
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;
       updateDto.priorityScore = predictedPriorityScore;
@@ -837,10 +836,28 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      this.logger.log(`Alert ${alertId} updated and triage task ${taskId} annotated successfully.`, this.constructor.name);
+      this.logger.log(`Alert ${alertId} updated and triage task ${taskId} annotated successfully.`, TriageService.name);
     } catch (error) {
       this.logger.error(`Failed to update alert ${alertId} and triage task ${taskId}. Error: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to update alert and triage task');
+    }
+  }
+
+  private determinePriority(priorityScore: number): Priority {
+    const urgencyThresholds = [
+      parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
+      parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
+      parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
+    ];
+
+    if (priorityScore >= urgencyThresholds[2]) {
+      return Priority.BREACH;
+    } else if (priorityScore >= urgencyThresholds[1]) {
+      return Priority.CRITICAL;
+    } else if (priorityScore >= urgencyThresholds[0]) {
+      return Priority.URGENT;
+    } else {
+      return Priority.NEW;
     }
   }
 
@@ -851,7 +868,7 @@ export class TriageService {
     isTruePositive: boolean; // true = real alarm, false = false alarm
   }> {
     // --- Placeholder AI Prediction ---
-    this.logger.log(`Prediction for alert ${alertId} completed`, this.constructor.name);
+    this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
       alertType: AlertType.FRAUD,
