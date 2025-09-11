@@ -182,7 +182,7 @@ export class TriageService {
       const { status, ...alertFields } = manualTriageDto;
       const updateAlertDto: UpdateAlertDto = { ...alertFields };
 
-      const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId);
+      const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId, triageTask?.task_id);
       if (triageTask) {
         this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
@@ -216,21 +216,25 @@ export class TriageService {
           TriageService.name,
         );
       } else {
-        await this.taskService.createTask(
-          {
-            caseId: alert.case_id,
-            status: TaskStatus.UNASSIGNED_01,
-            name: 'Investigate Case',
-            description: `Investigate case: ${alert.case_id}`,
-          },
-          userId,
-        );
-
         await this.caseService.updateCase(
           alert.case_id,
           { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: manualTriageDto.alertType, priority: priority },
           userId,
         );
+        if (manualTriageDto.alertType === AlertType.FRAUD_AND_AML) {
+          await this.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
+          await this.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
+        } else {
+          await this.taskService.createTask(
+            {
+              caseId: alert.case_id,
+              status: TaskStatus.UNASSIGNED_01,
+              name: 'Investigate Case',
+              description: `Investigate case: ${alert.case_id}`,
+            },
+            userId,
+          );
+        }
 
         this.logger.log(
           `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Sent to investigation`,
@@ -245,7 +249,7 @@ export class TriageService {
     }
   }
 
-  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string) {
+  async updateAlertData(alertId: string, dto: UpdateAlertDto, userId: string, tenantId: string, taskId?: string) {
     const existingAlert = await this.prisma.alert.findFirst({
       where: {
         alert_id: alertId,
@@ -270,7 +274,7 @@ export class TriageService {
       });
 
       const createCommentDto = new CreateCommentDto();
-      createCommentDto.caseId = updatedAlert.case_id;
+      createCommentDto.taskId = taskId;
       createCommentDto.note = dto.note;
 
       this.commentService.addComment(createCommentDto, userId);
@@ -818,7 +822,7 @@ export class TriageService {
       updateDto.priorityScore = predictedPriorityScore;
       updateDto.note = 'Updated alert data with AI outcome';
 
-      await this.updateAlertData(alertId, updateDto, userId, tenantId);
+      await this.updateAlertData(alertId, updateDto, userId, tenantId, taskId);
 
       await this.taskService.updateTask(
         taskId,
