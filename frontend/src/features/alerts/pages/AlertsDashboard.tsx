@@ -16,47 +16,39 @@ import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import { extractTransactionIdFromAlert } from '../utils/transactionUtils';
-import { useAlerts, useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
+import { useAlerts } from '../hooks/useAlerts';
+import { useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
 
 const AlertsDashboard: React.FC = () => {
   const { isAIMode, isManualMode, isDisabledMode } = useSystemConfig();
 
-  const [filters, setFilters] = useState({
-    query: '',
-    source: '',
-    type: '',
-    priority: '',
-    timeRange: '',
-    customDateRange: undefined as { startDate: string; endDate: string } | undefined
-  });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sort, setSort] = useState({ column: 'created_at', direction: 'desc' as 'asc' | 'desc' });
-
-  const { alerts, pagination: serverPagination, isLoading, error, refetch } = useAlerts({
-    search: filters.query,
-    priority: filters.priority,
-    type: filters.type,
-    source: filters.source,
-    sortBy: sort.column,
-    sortOrder: sort.direction,
-    page,
-    limit: pageSize,
-  });
+  // Use client-side filtering hook
+  const {
+    paginatedAlerts: alerts,
+    pagination,
+    loading,
+    error,
+    filters,
+    sort,
+    lastUpdated,
+    setFilters,
+    setSort,
+    setPage,
+    setPageSize,
+    refreshAlerts,
+  } = useAlerts();
 
   const tablePagination = React.useMemo(() => ({
-    currentPage: serverPagination.currentPage,
-    totalPages: serverPagination.totalPages,
-    totalItems: serverPagination.totalItems,
-    pageSize: serverPagination.pageSize,
+    currentPage: pagination.currentPage,
+    totalPages: pagination.totalPages,
+    totalItems: pagination.totalItems,
+    pageSize: pagination.pageSize,
     onPageChange: (p: number) => setPage(p),
-  }), [serverPagination, setPage]);
+  }), [pagination, setPage]);
 
   const { performManualTriage } = useAlertOperations();
   const { filterOptions } = useAlertFilterOptions();
   const { success, error: showError } = useToast();
-  const loading = isLoading;
-  const lastUpdated = new Date(); 
 
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
@@ -65,7 +57,7 @@ const AlertsDashboard: React.FC = () => {
         data: triageData,
       });
       success('Triage Complete', 'Alert triage completed successfully');
-      refetch(); // Refresh the alerts list
+      refreshAlerts(); // Refresh the alerts list
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
       showError('Triage Failed', 'Failed to perform triage. Please try again.');
@@ -272,7 +264,7 @@ const AlertsDashboard: React.FC = () => {
         title="Alerts Dashboard"
         subtitle={getSubtitle()}
       >
-        <AlertsTableSkeleton rows={pageSize} />
+        <AlertsTableSkeleton rows={pagination.pageSize} />
       </PageContainer>
     );
   }
@@ -284,8 +276,8 @@ const AlertsDashboard: React.FC = () => {
         subtitle={getSubtitle()}
       >
         <ErrorFallback 
-          error={error as Error}
-          resetError={() => refetch()}
+          error={error ? new Error(error) : undefined}
+          resetError={() => refreshAlerts()}
           title="Failed to load alerts"
           showRetry={true}
         />
@@ -304,7 +296,7 @@ const AlertsDashboard: React.FC = () => {
             <Notification
               type="error"
               title="Error refreshing data"
-              message={error?.message || 'An error occurred while loading alerts'}
+              message={error || 'An error occurred while loading alerts'}
             />
           </div>
         )}
@@ -313,11 +305,11 @@ const AlertsDashboard: React.FC = () => {
         <AlertsSearchAndFilters
           searchFilters={filters}
           onFilterChange={(key, value) => {
-            setFilters(prev => ({ ...prev, [key]: value }));
+            setFilters({ ...filters, [key]: value });
             setPage(1); // Reset to first page when filters change
           }}
           onClearFilters={() => {
-            setFilters({ 
+            setFilters({
               query: '',
               source: '',
               type: '',
@@ -328,7 +320,7 @@ const AlertsDashboard: React.FC = () => {
             setPage(1); // Reset to first page when clearing filters
           }}
           customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
-          onCustomDateRangeChange={(range) => setFilters(prev => ({ ...prev, customDateRange: range }))}
+          onCustomDateRangeChange={(range) => setFilters({ ...filters, customDateRange: range })}
           alertTypes={filterOptions.alertTypes}
           priorities={filterOptions.priorities}
           sources={filterOptions.sources}
@@ -342,7 +334,7 @@ const AlertsDashboard: React.FC = () => {
             setPageSize(size);
             setPage(1); // Reset to first page when page size changes
           }}
-          sort={sort}
+          sort={{ column: String(sort.column), direction: sort.direction }}
         />
 
         {/* Alerts Table */}
@@ -350,7 +342,10 @@ const AlertsDashboard: React.FC = () => {
           <AlertsTable
             data={alerts}
             columns={columns}
-            onSort={(column, direction) => { setSort({ column: String(column), direction }); setPage(1); }}
+            onSort={(column, direction) => { 
+              setSort(String(column), direction); 
+              setPage(1); 
+            }}
             sortColumn={sort.column}
             sortDirection={sort.direction}
             onRowClick={handleRowClick}
@@ -364,7 +359,7 @@ const AlertsDashboard: React.FC = () => {
         alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
         onClose={handleCloseModal}
-        onAlertUpdated={refetch}
+        onAlertUpdated={refreshAlerts}
         onManualTriage={(alert: Alert) => {
           setSelectedAlert(alert);
           setShowModal(false);
