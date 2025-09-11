@@ -25,7 +25,7 @@ model Alert {
   priority           Priority?          @default(NEW)
   priority_score     Float?
   alert_type         AlertType?
-  prediction_outcome PredictionOutcome? @default(FALSE_POSITIVE)
+  prediction_outcome PredictionOutcome? @default(TRUE_POSITIVE)
   source             String?            @db.VarChar(50)
   txtp               String?            @db.VarChar(50)
   message            String             @db.VarChar(100)
