@@ -68,7 +68,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
               const rec = r as Record<string, unknown>;
               const id = (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
               const name = (rec['label'] as string) || (rec['name'] as string) || id;
-              const type = (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
+              const type = (rec['subRuleRef'] as string) || (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
               const wght = typeof rec['wght'] === 'number' ? (rec['wght'] as number) : Number(rec['weight'] || 0);
               return { name, type, score: wght };
             });
@@ -557,50 +557,52 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 >
                   {showRules && (
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Risk Component
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Score
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {getRiskBreakdown(alert).map((component, index) => (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {component.name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {component.type}
+                      <div className="max-h-80 overflow-y-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Risk Component
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Score
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {getRiskBreakdown(alert).map((component, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {component.name}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                  {component.type}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {component.score}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="bg-gray-50 sticky bottom-0">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                Total Score
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {component.score}
+                                Aggregate
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                                {(() => {
+                                  const typ = extractTypologyInfo(alert);
+                                  return typ.result ?? getRiskScore(alert);
+                                })()}
                               </td>
                             </tr>
-                          ))}
-                          <tr className="bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              Total Score
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              Aggregate
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                              {(() => {
-                                const typ = extractTypologyInfo(alert);
-                                return typ.result ?? getRiskScore(alert);
-                              })()}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
