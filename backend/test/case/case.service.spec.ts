@@ -69,7 +69,7 @@ describe('CaseService', () => {
       tenantId: 'tenant-123',
       caseCreatorUserId: 'creator-123',
       caseOwnerUserId: 'owner-123',
-      status: CaseStatus.DRAFT_00,
+      status: CaseStatus.STATUS_00_DRAFT,
       priority: Priority.NEW,
       caseType: CaseType.FRAUD,
       caseCreationType: CaseCreationType.MANUAL,
@@ -81,7 +81,7 @@ describe('CaseService', () => {
         tenant_id: 'tenant-123',
         case_creator_user_id: 'creator-123',
         case_owner_user_id: 'owner-123',
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         case_type: CaseType.FRAUD,
         case_creation_type: CaseCreationType.MANUAL,
@@ -144,7 +144,7 @@ describe('CaseService', () => {
         tenant_id: 'tenant-123',
         case_creator_user_id: 'creator-123',
         case_owner_user_id: 'owner-123',
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         case_type: CaseType.FRAUD,
         case_creation_type: CaseCreationType.MANUAL,
@@ -202,7 +202,7 @@ describe('CaseService', () => {
     const caseId = 'case-123';
     const userId = 'user-123';
     const updateCaseDto: Partial<UpdateCaseDto> = {
-      status: CaseStatus.CLOSED_CONFIRMED_82,
+      status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
       priority: Priority.URGENT,
       caseType: CaseType.AML,
       caseOwnerUserId: 'new-owner-123',
@@ -214,7 +214,7 @@ describe('CaseService', () => {
         tenant_id: 'tenant-123',
         case_creator_user_id: 'creator-123',
         case_owner_user_id: 'new-owner-123',
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.URGENT,
         case_type: CaseType.AML,
         case_creation_type: CaseCreationType.MANUAL,
@@ -225,7 +225,7 @@ describe('CaseService', () => {
 
       const updatedMockCase = {
         ...mockCase,
-        status: CaseStatus.CLOSED_CONFIRMED_82,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         case_type: CaseType.AML,
         case_owner_user_id: 'new-owner-123',
       };
@@ -288,13 +288,13 @@ describe('CaseService', () => {
     });
 
     it('should update case with partial data', async () => {
-      const partialUpdate = { status: CaseStatus.DRAFT_00 };
+      const partialUpdate = { status: CaseStatus.STATUS_00_DRAFT };
       const mockCase = {
         case_id: 'case-123',
         tenant_id: 'tenant-123',
         case_creator_user_id: 'creator-123',
         case_owner_user_id: 'owner-123',
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         case_type: CaseType.FRAUD,
         case_creation_type: CaseCreationType.MANUAL,
@@ -312,7 +312,7 @@ describe('CaseService', () => {
         data: {
           case_type: undefined,
           priority: undefined,
-          status: CaseStatus.DRAFT_00,
+          status: CaseStatus.STATUS_00_DRAFT,
           case_owner_user_id: undefined,
         },
       });

@@ -12,22 +12,22 @@ describe('UpdateCaseDto', () => {
   describe('status validation', () => {
     it('should pass with valid CaseStatus enum values', async () => {
       const validStatuses = [
-        CaseStatus.DRAFT_00,
-        CaseStatus.PENDING_CASE_CREATION_APPROVAL_01,
-        CaseStatus.READY_FOR_ASSIGNMENT_02,
-        CaseStatus.RETURNED_03,
-        CaseStatus.ASSIGNED_10,
-        CaseStatus.IN_PROGRESS_20,
-        CaseStatus.SUSPENDED_21,
-        CaseStatus.PENDING_FINAL_APPROVAL_22,
-        CaseStatus.PENDING_REOPENING_30,
-        CaseStatus.REOPENED_31,
-        CaseStatus.AUTOCLOSED_CONFIRMED_71,
-        CaseStatus.AUTOCLOSED_REFUTED_72,
-        CaseStatus.CLOSED_REFUTED_81,
-        CaseStatus.CLOSED_CONFIRMED_82,
-        CaseStatus.CLOSED_INCONCLUSIVE_83,
-        CaseStatus.ABANDONED_99
+        CaseStatus.STATUS_00_DRAFT,
+        CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        CaseStatus.STATUS_03_RETURNED,
+        CaseStatus.STATUS_10_ASSIGNED,
+        CaseStatus.STATUS_20_IN_PROGRESS,
+        CaseStatus.STATUS_21_SUSPENDED,
+        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+        CaseStatus.STATUS_30_PENDING_REOPENING,
+        CaseStatus.STATUS_31_REOPENED,
+        CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+        CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+        CaseStatus.STATUS_81_CLOSED_REFUTED,
+        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+        CaseStatus.STATUS_99_ABANDONED
       ];
 
       for (const status of validStatuses) {
@@ -51,7 +51,7 @@ describe('UpdateCaseDto', () => {
       const validPriorities = [Priority.NEW, Priority.URGENT, Priority.CRITICAL, Priority.BREACH];
 
       for (const priority of validPriorities) {
-        dto.status = CaseStatus.DRAFT_00; // Required field
+        dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
         dto.priority = priority;
         const errors = await validate(dto);
         const priorityErrors = errors.filter(error => error.property === 'priority');
@@ -60,7 +60,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should pass when priority is not set (optional field)', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Required field
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
       // Don't set priority
       const errors = await validate(dto);
       const priorityErrors = errors.filter(error => error.property === 'priority');
@@ -73,7 +73,7 @@ describe('UpdateCaseDto', () => {
       const validCaseTypes = [CaseType.FRAUD, CaseType.AML, CaseType.FRAUD_AND_AML];
 
       for (const caseType of validCaseTypes) {
-        dto.status = CaseStatus.DRAFT_00; // Required field
+        dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
         dto.caseType = caseType;
         const errors = await validate(dto);
         const caseTypeErrors = errors.filter(error => error.property === 'caseType');
@@ -82,7 +82,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should pass when caseType is not set (optional field)', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Required field
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
       // Don't set caseType
       const errors = await validate(dto);
       const caseTypeErrors = errors.filter(error => error.property === 'caseType');
@@ -92,7 +92,7 @@ describe('UpdateCaseDto', () => {
 
   describe('caseOwnerUserId validation', () => {
     it('should pass with valid UUID', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Required field
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174000';
       const errors = await validate(dto);
       const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
@@ -100,7 +100,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should fail with invalid UUID format', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Required field
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
       dto.caseOwnerUserId = 'invalid-uuid';
       const errors = await validate(dto);
       const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
@@ -108,7 +108,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should pass when caseOwnerUserId is not set (optional field)', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Required field
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Required field
       // Don't set caseOwnerUserId
       const errors = await validate(dto);
       const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
@@ -118,14 +118,14 @@ describe('UpdateCaseDto', () => {
 
   describe('complete DTO validation', () => {
     it('should pass with only required status field', async () => {
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(0);
     });
 
     it('should pass with all valid fields', async () => {
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174000';
@@ -135,7 +135,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should pass with partial field updates', async () => {
-      dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+      dto.status = CaseStatus.STATUS_82_CLOSED_CONFIRMED;
       dto.priority = Priority.URGENT;
       // Other optional fields not set
 
@@ -144,7 +144,7 @@ describe('UpdateCaseDto', () => {
     });
 
     it('should fail with mixed valid and invalid fields', async () => {
-      dto.status = CaseStatus.DRAFT_00; // Valid and required
+      dto.status = CaseStatus.STATUS_00_DRAFT; // Valid and required
       dto.caseOwnerUserId = 'invalid-uuid'; // Invalid
 
       const errors = await validate(dto);

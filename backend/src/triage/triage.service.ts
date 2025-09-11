@@ -52,7 +52,7 @@ export class TriageService {
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
-            status: TaskStatus.UNASSIGNED_01,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
             name: 'Triage Alert',
             description: 'Task for Manual Triage',
           },
@@ -68,14 +68,14 @@ export class TriageService {
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
-            status: TaskStatus.UNASSIGNED_01,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
             name: 'Investigate Case',
             description: `Investigate case: ${alert.case_id}`,
           },
           userId,
         );
         const updateCaseDto: Partial<UpdateCaseDto> = {
-          status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         };
         await this.caseService.updateCase(alert.case_id, updateCaseDto, userId);
         break;
@@ -92,7 +92,7 @@ export class TriageService {
         tenantId,
         caseCreatorUserId: userId,
         caseOwnerUserId: systemUuid,
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
@@ -154,13 +154,13 @@ export class TriageService {
       const allTriageTasks = triageTasks.filter((t) => t.name === 'Triage Alert');
 
       // Check if task already   completed triage task
-      const completedTriageTask = allTriageTasks.find((t) => t.status === TaskStatus.COMPLETED_30);
+      const completedTriageTask = allTriageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
       if (completedTriageTask) {
         throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
       }
 
       // Find the active (non-completed) triage task
-      const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.COMPLETED_30);
+      const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
       if (triageTask) {
         this.logger.log(
@@ -188,16 +188,16 @@ export class TriageService {
         await this.taskService.updateTask(
           triageTask.task_id,
           {
-            status: TaskStatus.COMPLETED_30,
+            status: TaskStatus.STATUS_30_COMPLETED,
           },
           userId,
         );
       }
 
       const closableStatuses: CaseStatus[] = [
-        CaseStatus.CLOSED_CONFIRMED_82,
-        CaseStatus.CLOSED_REFUTED_81,
-        CaseStatus.CLOSED_INCONCLUSIVE_83,
+        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        CaseStatus.STATUS_81_CLOSED_REFUTED,
+        CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
       ];
 
       if (closableStatuses.includes(existingCase.status)) {
@@ -218,7 +218,7 @@ export class TriageService {
       } else {
         await this.caseService.updateCase(
           alert.case_id,
-          { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: manualTriageDto.alertType, priority: priority },
+          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType: manualTriageDto.alertType, priority: priority },
           userId,
         );
         if (manualTriageDto.alertType === AlertType.FRAUD_AND_AML) {
@@ -228,7 +228,7 @@ export class TriageService {
           await this.taskService.createTask(
             {
               caseId: alert.case_id,
-              status: TaskStatus.UNASSIGNED_01,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
               name: 'Investigate Case',
               description: `Investigate case: ${alert.case_id}`,
             },
@@ -479,7 +479,7 @@ export class TriageService {
         {
           caseId: caseId,
           assignedUserId: userId,
-          status: TaskStatus.ASSIGNED_10,
+          status: TaskStatus.STATUS_10_ASSIGNED,
           name: 'Triage Alert',
           description: `Created for triaging alert for case:${caseId}`,
         },
@@ -569,7 +569,7 @@ export class TriageService {
         );
         return await this.autoCloseCase(
           caseId,
-          CaseStatus.AUTOCLOSED_REFUTED_72,
+          CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
           userId,
           triageTaskId,
           'Triage complete - AI predicted false positive (case auto-closed refuted)',
@@ -583,7 +583,7 @@ export class TriageService {
           await this.taskService.updateTask(
             triageTaskId,
             {
-              status: TaskStatus.COMPLETED_30,
+              status: TaskStatus.STATUS_30_COMPLETED,
               description: 'Triage complete - AI predicted true positive and case contains both fraud and aml',
             },
             userId,
@@ -617,7 +617,7 @@ export class TriageService {
             );
             return await this.autoCloseCase(
               caseId,
-              CaseStatus.AUTOCLOSED_CONFIRMED_71,
+              CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               userId,
               triageTaskId,
               'Triage complete - AI predicted true positive (case auto-closed confirmed)',
@@ -655,7 +655,7 @@ export class TriageService {
         const updatedTask = await this.taskService.updateTask(
           taskId,
           {
-            status: TaskStatus.COMPLETED_30,
+            status: TaskStatus.STATUS_30_COMPLETED,
             description: customDescription ?? `Auto-closed case with status ${status}`,
           },
           userId,
@@ -705,7 +705,7 @@ export class TriageService {
           caseOwnerUserId: userId,
           tenantId,
           priority: priority,
-          status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           parentId: parentCaseId,
           caseType,
           caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
@@ -724,7 +724,7 @@ export class TriageService {
       const task = await this.taskService.createTask(
         {
           caseId: newCase.case_id,
-          status: TaskStatus.UNASSIGNED_01,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate case',
           description: `Investigation task for ${caseType} case ${newCase.case_id}`,
         },
@@ -757,13 +757,13 @@ export class TriageService {
   ): Promise<any> {
     try {
       // Complete triage task first
-      await this.taskService.updateTask(taskId, { status: TaskStatus.COMPLETED_30, description: triageTaskDesc }, userId);
+      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
 
       // Create new investigation task
       const createdTask = await this.taskService.createTask(
         {
           caseId,
-          status: TaskStatus.UNASSIGNED_01,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate case',
           description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
         },
@@ -772,7 +772,7 @@ export class TriageService {
 
       // Update case status
       const updateCaseDto: Partial<UpdateCaseDto> = {
-        status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         priority: priority,
       };
       if (caseType) updateCaseDto.caseType = caseType;
