@@ -1,5 +1,5 @@
-import { TaskStatus } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { TaskStatus } from '@prisma/client';
 
 export class CreateTaskDto {
   @IsUUID()
