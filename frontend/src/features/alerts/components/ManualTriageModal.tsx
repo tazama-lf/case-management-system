@@ -22,7 +22,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
   );
   const [predictionOutcome, setPredictionOutcome] = useState<'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'>('FALSE_POSITIVE');
   const [note, setNote] = useState('');
-  const [status, setStatus] = useState<CaseStatus>('CLOSED_REFUTED_81');
+  const [status, setStatus] = useState<CaseStatus>('STATUS_81_CLOSED_REFUTED');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
@@ -77,7 +77,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     setAlertType(alert.alert_type || undefined);
     setNote('');
     setPredictionOutcome('FALSE_POSITIVE');
-    setStatus('CLOSED_REFUTED_81');
+    setStatus('STATUS_81_CLOSED_REFUTED');
     setError(null);
     setValidationErrors({});
   }, [alert, isOpen]); // Also reset when modal opens/closes
@@ -297,10 +297,10 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   }`}
                   disabled={loading}
                 >
-                  <option value="READY_FOR_ASSIGNMENT_02">Ready for Assignment (Investigation)</option>
-                  <option value="CLOSED_CONFIRMED_82">Closed - Confirmed</option>
-                  <option value="CLOSED_REFUTED_81">Closed - Refuted</option>
-                  <option value="CLOSED_INCONCLUSIVE_83">Closed - Inconclusive</option>
+                  <option value="STATUS_02_READY_FOR_ASSIGNMENT">Ready for Assignment (Investigation)</option>
+                  <option value="STATUS_82_CLOSED_CONFIRMED">Closed - Confirmed</option>
+                  <option value="STATUS_81_CLOSED_REFUTED">Closed - Refuted</option>
+                  <option value="STATUS_83_CLOSED_INCONCLUSIVE">Closed - Inconclusive</option>
                 </select>
               </div>
             )}
