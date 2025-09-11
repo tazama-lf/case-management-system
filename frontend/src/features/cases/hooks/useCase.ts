@@ -23,9 +23,9 @@ export const canActOnCase = (caseStatus: string | undefined): boolean => {
   
   // Based on backend logic in triage.service.ts manualCloseAlert method
   const closedStatuses = [
-    'CLOSED_CONFIRMED_82',
-    'CLOSED_REFUTED_81', 
-    'CLOSED_INCONCLUSIVE_83'
+    'STATUS_82_CLOSED_CONFIRMED',
+    'STATUS_81_CLOSED_REFUTED', 
+    'STATUS_83_CLOSED_INCONCLUSIVE'
   ];
   
   return !closedStatuses.includes(caseStatus);
