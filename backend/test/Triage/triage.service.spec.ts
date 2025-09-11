@@ -72,7 +72,7 @@ describe('TriageService', () => {
         case_id: 'case-123',
         case_creator_user_id: 'user-123',
         case_owner_user_id: 'system-123',
-        status: 'DRAFT_00',
+        status: 'STATUS_00_DRAFT',
         priority: 'NEW',
         case_creation_type: 'AUTOMATIC_SYSTEM',
         tenant_id: 'test-tenant-id',
@@ -80,12 +80,12 @@ describe('TriageService', () => {
       }),
       updateCase: jest.fn().mockResolvedValue({
         case_id: 'case-123',
-        status: 'CLOSED_CONFIRMED_82',
+        status: 'STATUS_82_CLOSED_CONFIRMED',
       }),
       findCaseById: jest.fn(),
       retrieveCase: jest.fn().mockResolvedValue({
         case_id: 'case-123',
-        status: 'DRAFT_00',
+        status: 'STATUS_00_DRAFT',
         case_creator_user_id: 'user-123',
       }),
     };
@@ -381,7 +381,7 @@ describe('TriageService', () => {
     const mockManualTriageDto = {
       priorityScore: 0.75, // Use decimal value instead of 75
       note: 'Manual triage completed',
-      status: CaseStatus.CLOSED_CONFIRMED_82,
+      status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
       confidence_per: 90,
       priority: Priority.URGENT,
       alertType: AlertType.FRAUD,
@@ -422,7 +422,7 @@ describe('TriageService', () => {
         ...mockAlert,
         case: {
           case_id: 'case-123',
-          status: CaseStatus.DRAFT_00,
+          status: CaseStatus.STATUS_00_DRAFT,
           tenant_id: tenantId,
           created_at: new Date(),
           updated_at: new Date(),
@@ -435,7 +435,7 @@ describe('TriageService', () => {
       // Mock case service
       caseService.retrieveCase.mockResolvedValue({
         case_id: 'case-123',
-        status: CaseStatus.DRAFT_00,
+        status: CaseStatus.STATUS_00_DRAFT,
       });
 
       // Mock task service
@@ -443,24 +443,24 @@ describe('TriageService', () => {
         {
           task_id: 'triage-task-123',
           name: 'Triage Alert',
-          status: 'UNASSIGNED_01',
+          status: 'STATUS_01_UNASSIGNED',
           assigned_user_id: null, // Start unassigned, will be auto-assigned
         }
       ]);
       
       taskService.updateTask.mockResolvedValue({
         task_id: 'triage-task-123',
-        status: 'COMPLETED_30',
+        status: 'STATUS_30_COMPLETED',
       });
 
       taskService.createTask.mockResolvedValue({
         task_id: 'investigation-task-123',
-        status: 'UNASSIGNED_01',
+        status: 'STATUS_01_UNASSIGNED',
       });
 
       caseService.updateCase.mockResolvedValue({
         case_id: 'case-123',
-        status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
     });
 
@@ -484,13 +484,13 @@ describe('TriageService', () => {
       // Then complete the task
       expect(taskService.updateTask).toHaveBeenCalledWith(
         'triage-task-123',
-        { status: 'COMPLETED_30' },
+        { status: 'STATUS_30_COMPLETED' },
         userId
       );
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
-        { status: CaseStatus.CLOSED_CONFIRMED_82, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
+        { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
         userId
       );
 
@@ -500,7 +500,7 @@ describe('TriageService', () => {
     it('should handle manual triage with investigation creation', async () => {
       const dtoWithOpenStatus = {
         ...mockManualTriageDto,
-        status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       };
 
       await service.handleManualTriage(alertId, dtoWithOpenStatus, userId, tenantId);
@@ -515,7 +515,7 @@ describe('TriageService', () => {
       expect(taskService.createTask).toHaveBeenCalledWith(
         {
           caseId: 'case-123',
-          status: 'UNASSIGNED_01',
+          status: 'STATUS_01_UNASSIGNED',
           name: 'Investigate Case',
           description: 'Investigate case: case-123',
         },
@@ -524,7 +524,7 @@ describe('TriageService', () => {
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
-        { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
+        { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
         userId
       );
     });
@@ -619,7 +619,7 @@ describe('TriageService', () => {
         {
           task_id: 'triage-task-123',
           name: 'Triage Alert',
-          status: 'COMPLETED_30',
+          status: 'STATUS_30_COMPLETED',
           assigned_user_id: userId,
         }
       ]);
@@ -634,7 +634,7 @@ describe('TriageService', () => {
         ...mockAlert,
         case: {
           case_id: 'case-123',
-          status: CaseStatus.CLOSED_CONFIRMED_82,
+          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
           tenant_id: tenantId,
           created_at: new Date(),
           updated_at: new Date(),
@@ -1069,7 +1069,7 @@ describe('TriageService', () => {
       // Mock TaskService with consistent task_id
       service['taskService'] = {
         createTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123' }),
-        updateTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123', status: 'COMPLETED_30' }),
+        updateTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123', status: 'STATUS_30_COMPLETED' }),
       } as any;
 
       // Mock ConfigService
@@ -1121,15 +1121,15 @@ describe('TriageService', () => {
 
       jest.spyOn(service as any, 'updateAlertAndUpdateTriageTask').mockResolvedValue(undefined);
       jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({ 
-        updatedCase: { caseId: 'case-123', status: 'AUTOCLOSED_REFUTED_72' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'COMPLETED_30' }
+        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' }, 
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
       });
 
       const result = await service.handleAITriage(alertId, caseId, dto, userId, tenantId);
 
       expect(result).toEqual({ 
-        updatedCase: { caseId: 'case-123', status: 'AUTOCLOSED_REFUTED_72' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'COMPLETED_30' }
+        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' }, 
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
       });
     });
 
@@ -1171,7 +1171,7 @@ describe('TriageService', () => {
       // Update taskService to include updateTask method
       service['taskService'] = {
         createTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123' }),
-        updateTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123', status: 'COMPLETED_30' }),
+        updateTask: jest.fn().mockResolvedValue({ task_id: 'triage-task-123', status: 'STATUS_30_COMPLETED' }),
       } as any;
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
@@ -1251,22 +1251,22 @@ describe('TriageService', () => {
 
       jest.spyOn(service as any, 'updateAlertAndUpdateTriageTask').mockResolvedValue(undefined);
       jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({ 
-        updatedCase: { caseId: 'case-123', status: 'AUTOCLOSED_CONFIRMED_71' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'COMPLETED_30' }
+        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' }, 
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
       });
 
       const result = await service.handleAITriage(alertId, caseId, dtoWithInterdiction, userId, tenantId);
 
       expect(service['autoCloseCase']).toHaveBeenCalledWith(
         caseId,
-        CaseStatus.AUTOCLOSED_CONFIRMED_71,
+        CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
         userId,
         'triage-task-123',
         'Triage complete - AI predicted true positive (case auto-closed confirmed)',
       );
       expect(result).toEqual({ 
-        updatedCase: { caseId: 'case-123', status: 'AUTOCLOSED_CONFIRMED_71' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'COMPLETED_30' }
+        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' }, 
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
       });
     });
 
@@ -1334,8 +1334,8 @@ describe('TriageService', () => {
     const taskId = 'task-123';
 
     it('should auto close case successfully', async () => {
-      const mockCase = { case_id: caseId, status: CaseStatus.AUTOCLOSED_REFUTED_72 };
-      const mockTask = { task_id: taskId, status: 'COMPLETED_30' };
+      const mockCase = { case_id: caseId, status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED };
+      const mockTask = { task_id: taskId, status: 'STATUS_30_COMPLETED' };
 
       // Mock the services that are called within the transaction
       service['taskService'] = {
@@ -1351,7 +1351,7 @@ describe('TriageService', () => {
         return [mockCase, mockTask];
       });
 
-      const result = await service['autoCloseCase'](caseId, CaseStatus.AUTOCLOSED_REFUTED_72, userId, taskId);
+      const result = await service['autoCloseCase'](caseId, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, userId, taskId);
 
       expect(result).toEqual({ updatedCase: mockCase, updatedTask: mockTask });
     });
@@ -1374,7 +1374,7 @@ describe('TriageService', () => {
         return await callback(prismaService);
       });
 
-      await expect(service['autoCloseCase'](caseId, CaseStatus.AUTOCLOSED_REFUTED_72, userId, taskId))
+      await expect(service['autoCloseCase'](caseId, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, userId, taskId))
         .rejects.toThrow('Failed to auto close case');
     });
 
@@ -1382,8 +1382,8 @@ describe('TriageService', () => {
       const caseId = 'case-123';
       const userId = 'user-123';
       const taskId = 'task-123';
-      const mockCase = { case_id: caseId, status: CaseStatus.AUTOCLOSED_REFUTED_72 };
-      const mockTask = { task_id: taskId, status: 'COMPLETED_30' };
+      const mockCase = { case_id: caseId, status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED };
+      const mockTask = { task_id: taskId, status: 'STATUS_30_COMPLETED' };
 
       // Mock the services
       service['taskService'] = {
@@ -1400,13 +1400,13 @@ describe('TriageService', () => {
         return result; // This covers lines 660-665 (the return path)
       });
 
-      const result = await service['autoCloseCase'](caseId, CaseStatus.AUTOCLOSED_REFUTED_72, userId, taskId);
+      const result = await service['autoCloseCase'](caseId, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, userId, taskId);
 
       expect(service['taskService'].updateTask).toHaveBeenCalledWith(
         taskId,
         {
-          status: 'COMPLETED_30',
-          description: 'Auto-closed case with status AUTOCLOSED_REFUTED_72',
+          status: 'STATUS_30_COMPLETED',
+          description: 'Auto-closed case with status STATUS_72_AUTOCLOSED_REFUTED',
         },
         userId
       );
@@ -1463,8 +1463,8 @@ describe('TriageService', () => {
 
     it('should create investigation task successfully', async () => {
       const mockTask = { task_id: 'investigation-task-123' };
-      const mockTriageTask = { task_id: triageTaskId, status: 'COMPLETED_30' };
-      const mockCase = { case_id: 'case-123', status: CaseStatus.READY_FOR_ASSIGNMENT_02 };
+      const mockTriageTask = { task_id: triageTaskId, status: 'STATUS_30_COMPLETED' };
+      const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
 
       service['taskService'] = {
         createTask: jest.fn().mockResolvedValue(mockTask),
@@ -1484,7 +1484,7 @@ describe('TriageService', () => {
           caseId,
           name: 'Investigate case',
           description: taskName, // taskName is the investigateTaskDesc parameter
-          status: 'UNASSIGNED_01',
+          status: 'STATUS_01_UNASSIGNED',
         }),
         userId
       );
@@ -1500,11 +1500,11 @@ describe('TriageService', () => {
       // Mock taskService to throw an error
       service['taskService'] = {
         createTask: jest.fn().mockRejectedValue(new Error('Task creation failed')),
-        updateTask: jest.fn().mockResolvedValue({ task_id: triageTaskId, status: 'COMPLETED_30' }),
+        updateTask: jest.fn().mockResolvedValue({ task_id: triageTaskId, status: 'STATUS_30_COMPLETED' }),
       } as any;
 
       service['caseService'] = {
-        updateCase: jest.fn().mockResolvedValue({ case_id: 'case-123', status: CaseStatus.READY_FOR_ASSIGNMENT_02 }),
+        updateCase: jest.fn().mockResolvedValue({ case_id: 'case-123', status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
       } as any;
 
       await expect(service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription))
@@ -1523,7 +1523,7 @@ describe('TriageService', () => {
 
     it('should update alert and triage task successfully', async () => {
       const mockAlert = { alert_id: alertId, alert_type: alertType };
-      const mockTask = { task_id: triageTaskId, status: 'COMPLETED_30' };
+      const mockTask = { task_id: triageTaskId, status: 'STATUS_30_COMPLETED' };
 
       jest.spyOn(service as any, 'updateAlertData').mockResolvedValue(mockAlert);
       service['taskService'] = {
@@ -1677,7 +1677,7 @@ describe('TriageService', () => {
         taskService.createTask.mockResolvedValue({
           task_id: 'task-123',
           case_id: 'case-123',
-          status: 'UNASSIGNED_01',
+          status: 'STATUS_01_UNASSIGNED',
           name: 'Triage Alert',
           description: 'Manual triage required for alert: alert-123'
         });
@@ -1690,7 +1690,7 @@ describe('TriageService', () => {
         expect(taskService.createTask).toHaveBeenCalledWith(
           {
             caseId: 'case-123',
-            status: 'UNASSIGNED_01',
+            status: 'STATUS_01_UNASSIGNED',
             name: 'Triage Alert',
             description: 'Task for Manual Triage'
           },
@@ -1711,7 +1711,7 @@ describe('TriageService', () => {
 
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
-            status: 'UNASSIGNED_01',
+            status: 'STATUS_01_UNASSIGNED',
             name: 'Triage Alert'
           }),
           'user-123'
@@ -1730,14 +1730,14 @@ describe('TriageService', () => {
         taskService.createTask.mockResolvedValue({
           task_id: 'task-123',
           case_id: 'case-123',
-          status: 'UNASSIGNED_01',
+          status: 'STATUS_01_UNASSIGNED',
           name: 'Investigate Case',
           description: 'Investigate case: case-123'
         });
 
         caseService.updateCase.mockResolvedValue({
           case_id: 'case-123',
-          status: 'READY_FOR_ASSIGNMENT_02'
+          status: 'STATUS_02_READY_FOR_ASSIGNMENT'
         });
 
         await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
@@ -1748,7 +1748,7 @@ describe('TriageService', () => {
         expect(taskService.createTask).toHaveBeenCalledWith(
           {
             caseId: 'case-123',
-            status: 'UNASSIGNED_01',
+            status: 'STATUS_01_UNASSIGNED',
             name: 'Investigate Case',
             description: 'Investigate case: case-123'
           },
@@ -1758,7 +1758,7 @@ describe('TriageService', () => {
         expect(caseService.updateCase).toHaveBeenCalledWith(
           'case-123',
           {
-            status: 'READY_FOR_ASSIGNMENT_02'
+            status: 'STATUS_02_READY_FOR_ASSIGNMENT'
           },
           'user-123'
         );
@@ -1775,7 +1775,7 @@ describe('TriageService', () => {
 
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
-            status: 'UNASSIGNED_01',
+            status: 'STATUS_01_UNASSIGNED',
             name: 'Investigate Case'
           }),
           'user-123'
@@ -1784,7 +1784,7 @@ describe('TriageService', () => {
         expect(caseService.updateCase).toHaveBeenCalledWith(
           'case-123',
           expect.objectContaining({
-            status: 'READY_FOR_ASSIGNMENT_02'
+            status: 'STATUS_02_READY_FOR_ASSIGNMENT'
           }),
           'user-123'
         );
@@ -1801,7 +1801,7 @@ describe('TriageService', () => {
 
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
-            status: 'UNASSIGNED_01',
+            status: 'STATUS_01_UNASSIGNED',
             name: 'Investigate Case'
           }),
           'user-123'

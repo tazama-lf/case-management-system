@@ -38,7 +38,7 @@ describe('TaskController', () => {
     id: 'task-123',
     caseId: 'case-123',
     assignedUserId: 'user-123',
-    status: TaskStatus.ASSIGNED_10,
+    status: TaskStatus.STATUS_10_ASSIGNED,
     name: 'Test Task',
     description: 'Test task description',
     createdAt: new Date(),
@@ -70,7 +70,7 @@ describe('TaskController', () => {
     const createTaskDto: CreateTaskDto = {
       caseId: 'case-123',
       assignedUserId: 'user-456',
-      status: TaskStatus.UNASSIGNED_01,
+      status: TaskStatus.STATUS_01_UNASSIGNED,
       name: 'New Task',
       description: 'New task description',
     };
@@ -190,7 +190,7 @@ describe('TaskController', () => {
   describe('updateTask', () => {
     const taskId = 'task-123';
     const updateTaskDto: UpdateTaskDto = {
-      status: TaskStatus.IN_PROGRESS_20,
+      status: TaskStatus.STATUS_20_IN_PROGRESS,
       name: 'Updated Task Name',
       description: 'Updated task description',
     };
@@ -246,9 +246,9 @@ describe('TaskController', () => {
 
     it('should update with partial data', async () => {
       const partialUpdate: UpdateTaskDto = {
-        status: TaskStatus.COMPLETED_30,
+        status: TaskStatus.STATUS_30_COMPLETED,
       };
-      const updatedTask = { ...mockTask, status: TaskStatus.COMPLETED_30 };
+      const updatedTask = { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED };
       mockTaskService.updateTask.mockResolvedValue(updatedTask);
 
       const result = await controller.updateTask(
