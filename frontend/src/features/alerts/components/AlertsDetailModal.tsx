@@ -349,6 +349,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
                       {/* Manual Triage button - only show in MANUAL mode or DISABLED mode for updates, not in AI mode */}
+<<<<<<< HEAD
             {canPerformActions && onManualTriage && isManualMode && !isAIMode && !isDisabledMode && (
               <button
                 onClick={() => onManualTriage(convertToLegacyAlert(alert))}
@@ -359,6 +360,22 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 Update Alert
               </button>
             )}                      {/* AI Mode indicator - show when in AI mode */}
+=======
+                      {canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && (
+                        <button
+                          onClick={() => onManualTriage(convertToLegacyAlert(alert))}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                          title={isManualMode 
+                            ? "Perform manual triage - update alert and make case decision" 
+                            : "Update alert details - direct investigation mode"
+                          }
+                        >
+                          {isManualMode ? "Update Alert" : "Update Alert"}
+                        </button>
+                      )}
+                      
+                      {/* AI Mode indicator - show when in AI mode */}
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
