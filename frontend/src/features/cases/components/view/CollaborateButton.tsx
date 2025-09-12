@@ -1,8 +1,5 @@
 import React from 'react';
-<<<<<<< HEAD
 import { UsersIcon } from '@heroicons/react/24/outline';
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 
 interface CollaborateButtonProps {
   onClick?: () => void;
@@ -16,11 +13,7 @@ const CollaborateButton: React.FC<CollaborateButtonProps> = ({ onClick }) => {
       className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-green-700"
       title="Collaborate"
     >
-<<<<<<< HEAD
       <UsersIcon className="h-4 w-4" />
-=======
-      <span className="text-base">👥</span>
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
       Collaborate
     </button>
   );

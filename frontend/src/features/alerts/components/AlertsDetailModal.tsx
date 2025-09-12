@@ -349,18 +349,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     {/* Actions buttons moved here after priority badge */}
                     <div className="flex items-center space-x-2 ml-4">
                       {/* Manual Triage button - only show in MANUAL mode or DISABLED mode for updates, not in AI mode */}
-<<<<<<< HEAD
-            {canPerformActions && onManualTriage && isManualMode && !isAIMode && !isDisabledMode && (
-              <button
-                onClick={() => onManualTriage(convertToLegacyAlert(alert))}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="Update Alert - Manual Triage"
-              >
-                <PencilSquareIcon className="h-4 w-4 mr-2 inline" />
-                Update Alert
-              </button>
-            )}                      {/* AI Mode indicator - show when in AI mode */}
-=======
                       {canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && (
                         <button
                           onClick={() => onManualTriage(convertToLegacyAlert(alert))}
@@ -375,7 +363,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       )}
                       
                       {/* AI Mode indicator - show when in AI mode */}
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed

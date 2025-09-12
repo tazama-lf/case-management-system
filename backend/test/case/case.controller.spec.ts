@@ -10,6 +10,7 @@ import { AuthenticatedRequest } from '../../src/auth/auth.types';
 
 describe('CaseController', () => {
   let controller: CaseController;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let caseService: jest.Mocked<CaseService>;
 
   const mockCaseService = {

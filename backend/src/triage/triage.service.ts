@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
@@ -173,7 +174,7 @@ export class TriageService {
       const { status, ...alertFields } = manualTriageDto;
       const updateAlertDto: UpdateAlertDto = { ...alertFields };
 
-      const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId, triageTask?.task_id);
+      // const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId, triageTask?.task_id);
       if (triageTask) {
         this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
