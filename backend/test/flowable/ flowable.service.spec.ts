@@ -3,16 +3,15 @@ import { FlowableService } from '../../src/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('FlowableService', () => {
     let service: FlowableService;
-    let configService: ConfigService;
     let loggerService: LoggerService;
-    let mockAxiosInstance: any;
+    let mockAxiosInstance: jest.Mocked<AxiosInstance>;
 
     beforeEach(async () => {
         mockAxiosInstance = {
@@ -20,7 +19,20 @@ describe('FlowableService', () => {
             get: jest.fn(),
             put: jest.fn(),
             delete: jest.fn(),
-        };
+            request: jest.fn(),
+            head: jest.fn(),
+            options: jest.fn(),
+            patch: jest.fn(),
+            postForm: jest.fn(),
+            putForm: jest.fn(),
+            patchForm: jest.fn(),
+            getUri: jest.fn(),
+            defaults: {} as any,
+            interceptors: {
+                request: { use: jest.fn(), eject: jest.fn(), clear: jest.fn() },
+                response: { use: jest.fn(), eject: jest.fn(), clear: jest.fn() }
+            }
+        } as unknown as jest.Mocked<AxiosInstance>;
 
         mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
@@ -30,8 +42,8 @@ describe('FlowableService', () => {
                 {
                     provide: ConfigService,
                     useValue: {
-                        get: jest.fn((key: string, defaultValue?: any) => {
-                            const config = {
+                        get: jest.fn((key: string, defaultValue?: string) => {
+                            const config: Record<string, string> = {
                                 FLOWABLE_URL: 'http://localhost:8080/flowable-rest',
                                 FLOWABLE_USERNAME: 'rest-admin',
                                 FLOWABLE_PASSWORD: 'test',
@@ -52,7 +64,6 @@ describe('FlowableService', () => {
         }).compile();
 
         service = module.get<FlowableService>(FlowableService);
-        configService = module.get<ConfigService>(ConfigService);
         loggerService = module.get<LoggerService>(LoggerService);
     });
 

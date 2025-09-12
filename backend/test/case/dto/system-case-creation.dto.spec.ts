@@ -94,19 +94,22 @@ describe('SystemCaseCreationDto', () => {
         });
 
         it('should fail validation with invalid priority enum', async () => {
-            (dto as any).priority = 'INVALID_PRIORITY';
+            // Type assertion to bypass TypeScript checking for testing
+            (dto as unknown as { priority: string }).priority = 'INVALID_PRIORITY';
             const errors = await validate(dto);
             expect(errors.some(e => e.property === 'priority')).toBe(true);
         });
 
         it('should fail validation with invalid caseType enum', async () => {
-            (dto as any).caseType = 'INVALID_TYPE';
+            // Type assertion to bypass TypeScript checking for testing
+            (dto as unknown as { caseType: string }).caseType = 'INVALID_TYPE';
             const errors = await validate(dto);
             expect(errors.some(e => e.property === 'caseType')).toBe(true);
         });
 
         it('should fail validation with invalid alertType enum', async () => {
-            (dto as any).alertType = 'INVALID_ALERT';
+            // Type assertion to bypass TypeScript checking for testing
+            (dto as unknown as { alertType: string }).alertType = 'INVALID_ALERT';
             const errors = await validate(dto);
             expect(errors.some(e => e.property === 'alertType')).toBe(true);
         });
@@ -126,7 +129,8 @@ describe('SystemCaseCreationDto', () => {
 
     describe('AlertData validation', () => {
         it('should fail validation with missing typology', async () => {
-            (dto.alertData as any).typology = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.alertData as unknown as { typology: undefined }).typology = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
@@ -168,7 +172,8 @@ describe('SystemCaseCreationDto', () => {
 
     describe('TransactionData validation', () => {
         it('should fail validation with missing transactionId', async () => {
-            (dto.transaction as any).transactionId = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { transactionId: undefined }).transactionId = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
@@ -180,13 +185,15 @@ describe('SystemCaseCreationDto', () => {
         });
 
         it('should fail validation with missing amount', async () => {
-            (dto.transaction as any).amount = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { amount: undefined }).amount = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
 
         it('should fail validation with non-numeric amount', async () => {
-            (dto.transaction as any).amount = 'not-a-number';
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { amount: string }).amount = 'not-a-number';
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
@@ -204,25 +211,29 @@ describe('SystemCaseCreationDto', () => {
         });
 
         it('should fail validation with missing currency', async () => {
-            (dto.transaction as any).currency = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { currency: undefined }).currency = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
 
         it('should fail validation with missing debtor', async () => {
-            (dto.transaction as any).debtor = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { debtor: undefined }).debtor = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
 
         it('should fail validation with missing creditor', async () => {
-            (dto.transaction as any).creditor = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { creditor: undefined }).creditor = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
 
         it('should fail validation with missing timestamp', async () => {
-            (dto.transaction as any).timestamp = undefined;
+            // Type assertion for testing invalid scenarios
+            (dto.transaction as unknown as { timestamp: undefined }).timestamp = undefined;
             const errors = await validate(dto);
             expect(errors).not.toHaveLength(0);
         });
