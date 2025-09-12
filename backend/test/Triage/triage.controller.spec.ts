@@ -127,9 +127,4 @@ describe('TriageController', () => {
     expect(triageService.getAlertActionHistory).toHaveBeenCalledWith(alertId, 'tenant1', 'user1');
     expect(result).toEqual([{ action: 'created', timestamp: expect.any(Date) }]);
   });
-
-  it('should return test status', () => {
-    const result = controller.getTest();
-    expect(result).toEqual({ status: 'ok' });
-  });
 });

@@ -4,14 +4,15 @@ import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 export class UpdateCaseDto {
   @IsOptional()
   @IsUUID()
-  caseOwnerUserId: string;
+  caseOwnerUserId?: string;
 
+  @IsOptional()
   @IsEnum(CaseStatus)
-  status: CaseStatus;
+  status?: CaseStatus;
 
   @IsOptional()
   @IsEnum(Priority)
-  priority: Priority;
+  priority?: Priority;
 
   @IsOptional()
   @IsEnum(CaseType)

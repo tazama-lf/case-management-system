@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import RelatedCaseModal from '../modals/RelatedCaseModal';
 import RelatedAlertModal from '../modals/RelatedAlertModal';
 import TransactionMessagesModal from '../modals/TransactionMessagesModal';
 import { MessagePayloadModal } from '../../../alerts';
+=======
+import React from 'react';
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2">
@@ -11,16 +15,24 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </div>
 );
 
+<<<<<<< HEAD
 const LinkItem: React.FC<{ onClick?: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
   <button onClick={onClick} className="block text-indigo-700 hover:underline text-left">
     {children}
   </button>
+=======
+const LinkItem: React.FC<{ href?: string; children: React.ReactNode }> = ({ href = '#', children }) => (
+  <a href={href} className="block text-indigo-700 hover:underline">
+    {children}
+  </a>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 );
 
 const Pill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{children}</span>
 );
 
+<<<<<<< HEAD
 const TypologyItem: React.FC<{ id: string; title: string; score: number; isExpanded: boolean; onToggle: () => void }> = ({ title, score, isExpanded, onToggle }) => (
   <div className="rounded-md border border-gray-200 bg-white">
     <button 
@@ -50,10 +62,17 @@ const TypologyItem: React.FC<{ id: string; title: string; score: number; isExpan
         </div>
       </div>
     )}
+=======
+const TypologyItem: React.FC<{ title: string; score: number }> = ({ title, score }) => (
+  <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+    <div>{title}</div>
+    <div className="text-xs text-gray-500">Risk Score: {score}</div>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
   </div>
 );
 
 const LinkedItemsTab: React.FC = () => {
+<<<<<<< HEAD
   const [selectedCaseModal, setSelectedCaseModal] = useState<string | null>(null);
   const [selectedAlertModal, setSelectedAlertModal] = useState<string | null>(null);
   const [selectedTransactionModal, setSelectedTransactionModal] = useState<string | null>(null);
@@ -150,28 +169,43 @@ const LinkedItemsTab: React.FC = () => {
     }
   ];
 
+=======
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
   return (
     <div className="space-y-6">
       <Section title="Related Items">
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-600">Related Cases</div>
+<<<<<<< HEAD
             <LinkItem onClick={() => setSelectedCaseModal('A-10023')}>Case A-10023 – Investigation</LinkItem>
             <LinkItem onClick={() => setSelectedCaseModal('B-10024')}>Case B-10024 – Under Investigation</LinkItem>
+=======
+            <LinkItem>Case A-10023 – Investigation</LinkItem>
+            <LinkItem>Case B-10024 – Under Investigation</LinkItem>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
           </div>
 
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-600">Related Alerts</div>
+<<<<<<< HEAD
             <LinkItem onClick={() => setSelectedAlertModal('A-001')}>
               A-001 – Alert Type 1<Pill>Active</Pill>
             </LinkItem>
             <LinkItem onClick={() => setSelectedAlertModal('A-002')}>
+=======
+            <LinkItem>
+              A-001 – Alert Type 1<Pill>Active</Pill>
+            </LinkItem>
+            <LinkItem>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
               A-002 – Alert Type 2<Pill>Closed</Pill>
             </LinkItem>
           </div>
 
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-600">Related Transactions</div>
+<<<<<<< HEAD
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28392')}>ADPSPKR28392 – Increased Debtor Activity</LinkItem>
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28393')}>ADPSPKR28393 – Multiple Same-Amount Transfers</LinkItem>
             <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28394')}>ADPSPKR28394 – Unusual Geographic Pattern</LinkItem>
@@ -181,12 +215,18 @@ const LinkedItemsTab: React.FC = () => {
               <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[1])}>View pacs.002 Payload</LinkItem>
               <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[2])}>View camt.056 Payload</LinkItem>
             </div>
+=======
+            <LinkItem>ADPSPKR28392 – Increased Debtor Activity</LinkItem>
+            <LinkItem>ADPSPKR28393 – Multiple Same-Amount Transfers</LinkItem>
+            <LinkItem>ADPSPKR28394 – Unusual Geographic Pattern</LinkItem>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
           </div>
         </div>
       </Section>
 
       <Section title="Typologies Triggered">
         <div className="space-y-2">
+<<<<<<< HEAD
           <TypologyItem 
             id="typology-1"
             title="False promotions, phishing, or social engineering scams" 
@@ -229,6 +269,12 @@ const LinkedItemsTab: React.FC = () => {
         onClose={() => setSelectedMessagePayload(null)}
         message={selectedMessagePayload}
       />
+=======
+          <TypologyItem title="False promotions, phishing, or social engineering scams" score={85} />
+          <TypologyItem title="Duplication of payments from a single account" score={75} />
+        </div>
+      </Section>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
     </div>
   );
 };

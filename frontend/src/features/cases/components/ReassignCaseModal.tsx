@@ -23,7 +23,11 @@ const ReassignCaseModal: React.FC<ReassignCaseModalProps> = ({ open, onClose, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-lg rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
+<<<<<<< HEAD
         <div className="px-6 py-4">
+=======
+        <div className="border-b px-6 py-4">
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
           <h3 className="text-lg font-semibold text-gray-900">Reassign Case</h3>
         </div>
         <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">

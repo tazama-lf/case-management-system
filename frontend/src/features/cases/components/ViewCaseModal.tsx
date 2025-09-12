@@ -1,5 +1,8 @@
 import React from 'react';
+<<<<<<< HEAD
 import { ArrowDownTrayIcon, ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
+=======
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 import type { CaseRow } from './CasesTable';
 import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
@@ -32,7 +35,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
         {/* Header */}
+<<<<<<< HEAD
         <div className="flex items-center justify-between px-6 py-4">
+=======
+        <div className="flex items-center justify-between border-b px-6 py-4">
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
             <CollaborateButton onClick={() => setShowCollaborate(true)} />
@@ -42,6 +49,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
                 className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
                 title="Back to Details"
               >
+<<<<<<< HEAD
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back
               </button>
@@ -53,12 +61,29 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
             <XMarkIcon className="h-5 w-5" />
+=======
+                ← Back
+              </button>
+            )}
+            <button className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
+              <span className="text-base">⬇️</span>
+            </button>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
           </button>
         </div>
 
         {/* Tabs */}
         {!showCollaborate && (
+<<<<<<< HEAD
           <div className="flex items-center gap-2 px-6 pt-3">
+=======
+          <div className="flex items-center gap-2 border-b px-6 pt-3">
+>>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
             {[
               { key: 'details', label: 'Case Details' },
               { key: 'evidence', label: 'Evidence & Documents' },

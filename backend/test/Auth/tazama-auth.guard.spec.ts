@@ -63,6 +63,17 @@ describe('TazamaAuthGuard', () => {
     jest.clearAllMocks();
   });
 
+  // Silence logger output during tests
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('canActivate', () => {
     it('should be defined', () => {
       expect(guard).toBeDefined();
@@ -212,7 +223,7 @@ describe('TazamaAuthGuard', () => {
       const mockTokenPayload: TazamaToken = {
         clientId: 'test-client',
         tenantId: 'test-tenant',
-        claims: ['admin', 'read'],
+        claims: ['admin', 'read', 'write'],
       } as TazamaToken;
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);

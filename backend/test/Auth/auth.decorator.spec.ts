@@ -18,19 +18,10 @@ jest.mock('@nestjs/common', () => ({
 
 const mockedSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>;
 
-  describe('RequireCMSTestRole decorator', () => {
-    it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
-      RequireAlertTriageRole();
-
-      // match actual implementation ("anyClaims" instead of CLAIMS_KEY)
-      expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', [
-        TazamaClaims.ALERT_TRIAGE,
-        'CMS-TEST-ROLE',
-      ]);
-      expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
-    });
+describe('Auth Decorators', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
-
 
   describe('Constants', () => {
     it('should define CLAIMS_KEY constant', () => {
@@ -148,7 +139,7 @@ const mockedSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>
     it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
      RequireAlertTriageRole();
       
-      
+  expect(mockedSetMetadata).toHaveBeenCalledWith("anyClaims", expect.arrayContaining(["alert-triage", "CMS-TEST-ROLE"]));
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -259,3 +250,10 @@ const mockedSetMetadata = SetMetadata as jest.MockedFunction<typeof SetMetadata>
     });
   });
 
+  it('should call SetMetadata with combined claims for RequireClaims and RequireCMSTestRole', () => {
+    RequireClaims('claim1', 'claim2');
+    RequireAlertTriageRole();
+    
+    expect(mockedSetMetadata).toHaveBeenCalledWith("anyClaims", expect.arrayContaining(["alert-triage", "CMS-TEST-ROLE"]));
+  });
+});

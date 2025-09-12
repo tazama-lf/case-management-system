@@ -417,18 +417,6 @@ describe('TriageService', () => {
         }
       });
 
-      // Mock prisma alert.findUnique to return alert with case relationship
-      prismaService.alert.findUnique.mockResolvedValue({
-        ...mockAlert,
-        case: {
-          case_id: 'case-123',
-          status: CaseStatus.DRAFT_00,
-          tenant_id: tenantId,
-          created_at: new Date(),
-          updated_at: new Date(),
-        }
-      });
-
       // Mock updateAlertData
       jest.spyOn(service, 'updateAlertData').mockResolvedValue(mockAlert);
       
@@ -444,7 +432,7 @@ describe('TriageService', () => {
           task_id: 'triage-task-123',
           name: 'Triage Alert',
           status: 'UNASSIGNED_01',
-          assigned_user_id: null, // Start unassigned, will be auto-assigned
+          assigned_user_id: null,
         }
       ]);
       
@@ -473,24 +461,15 @@ describe('TriageService', () => {
       }), userId, tenantId);
 
       expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('case-123');
-      
-      // Should auto-assign the task first
       expect(taskService.updateTask).toHaveBeenCalledWith(
         'triage-task-123',
-        { assignedUserId: userId },
-        userId
-      );
-      
-      // Then complete the task
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { status: 'COMPLETED_30' },
+        { status: 'COMPLETED_30', description: 'Manual triage completed' },
         userId
       );
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
-        { status: CaseStatus.CLOSED_CONFIRMED_82, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
+        { status: CaseStatus.CLOSED_CONFIRMED_82 },
         userId
       );
 
@@ -505,13 +484,6 @@ describe('TriageService', () => {
 
       await service.handleManualTriage(alertId, dtoWithOpenStatus, userId, tenantId);
 
-      // Should auto-assign the task first
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { assignedUserId: userId },
-        userId
-      );
-
       expect(taskService.createTask).toHaveBeenCalledWith(
         {
           caseId: 'case-123',
@@ -524,7 +496,7 @@ describe('TriageService', () => {
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
-        { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
+        { status: CaseStatus.READY_FOR_ASSIGNMENT_02, caseType: AlertType.FRAUD },
         userId
       );
     });
@@ -573,27 +545,8 @@ describe('TriageService', () => {
         .rejects.toThrow('Cannot update alert alert-123 when triageType is not MANUAL');
     });
 
-    it('should throw error when alert has no case', async () => {
-      // Mock prisma alert.findUnique to return alert without case
-      prismaService.alert.findUnique.mockResolvedValueOnce({
-        ...mockAlert,
-        case: null
-      });
-
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('No case found for alert alert-123');
-    });
-
-    it('should throw error when alert is not found', async () => {
-      // Mock prisma alert.findUnique to return null
-      prismaService.alert.findUnique.mockResolvedValueOnce(null);
-
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('No case found for alert alert-123');
-    });
-
-    it('should auto-assign task when user is not assigned to triage task', async () => {
-      taskService.getTasksByCaseId.mockResolvedValueOnce([
+    it('should throw error when user is not assigned to triage task', async () => {
+      taskService.getTasksByCaseId.mockResolvedValue([
         {
           task_id: 'triage-task-123',
           name: 'Triage Alert',
@@ -602,43 +555,14 @@ describe('TriageService', () => {
         }
       ]);
 
-      const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
-
-      // Should auto-assign the task to the current user
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { assignedUserId: userId },
-        userId
-      );
-      
-      expect(result).toEqual(mockAlert);
-    });
-
-    it('should throw error when trying to update completed triage task', async () => {
-      taskService.getTasksByCaseId.mockResolvedValueOnce([
-        {
-          task_id: 'triage-task-123',
-          name: 'Triage Alert',
-          status: 'COMPLETED_30',
-          assigned_user_id: userId,
-        }
-      ]);
-
       await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('Cannot update triage task triage-task-123 as it is already completed');
+        .rejects.toThrow('User user-123 is not allowed to complete triage task triage-task-123, assigned to other-user');
     });
 
     it('should throw error when case is already closed', async () => {
-      // Mock the alert with case to have a closed status
-      prismaService.alert.findUnique.mockResolvedValueOnce({
-        ...mockAlert,
-        case: {
-          case_id: 'case-123',
-          status: CaseStatus.CLOSED_CONFIRMED_82,
-          tenant_id: tenantId,
-          created_at: new Date(),
-          updated_at: new Date(),
-        }
+      caseService.retrieveCase.mockResolvedValue({
+        case_id: 'case-123',
+        status: CaseStatus.CLOSED_CONFIRMED_82,
       });
 
       await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
@@ -646,11 +570,10 @@ describe('TriageService', () => {
     });
 
     it('should handle case where no triage task exists', async () => {
-      taskService.getTasksByCaseId.mockResolvedValueOnce([]);
+      taskService.getTasksByCaseId.mockResolvedValue([]);
 
       const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
 
-      // Should not call updateTask since no triage task exists
       expect(taskService.updateTask).not.toHaveBeenCalled();
       expect(result).toEqual(mockAlert);
     });
@@ -1377,42 +1300,6 @@ describe('TriageService', () => {
       await expect(service['autoCloseCase'](caseId, CaseStatus.AUTOCLOSED_REFUTED_72, userId, taskId))
         .rejects.toThrow('Failed to auto close case');
     });
-
-    it('should execute transaction callback and return array values', async () => {
-      const caseId = 'case-123';
-      const userId = 'user-123';
-      const taskId = 'task-123';
-      const mockCase = { case_id: caseId, status: CaseStatus.AUTOCLOSED_REFUTED_72 };
-      const mockTask = { task_id: taskId, status: 'COMPLETED_30' };
-
-      // Mock the services
-      service['taskService'] = {
-        updateTask: jest.fn().mockResolvedValue(mockTask),
-      } as any;
-
-      service['caseService'] = {
-        updateCase: jest.fn().mockResolvedValue(mockCase),
-      } as any;
-
-      // Mock transaction to execute the callback and return the array
-      prismaService.$transaction.mockImplementation(async (callback: any) => {
-        const result = await callback(prismaService);
-        return result; // This covers lines 660-665 (the return path)
-      });
-
-      const result = await service['autoCloseCase'](caseId, CaseStatus.AUTOCLOSED_REFUTED_72, userId, taskId);
-
-      expect(service['taskService'].updateTask).toHaveBeenCalledWith(
-        taskId,
-        {
-          status: 'COMPLETED_30',
-          description: 'Auto-closed case with status AUTOCLOSED_REFUTED_72',
-        },
-        userId
-      );
-      expect(service['caseService'].updateCase).toHaveBeenCalled();
-      expect(result).toEqual({ updatedCase: mockCase, updatedTask: mockTask });
-    });
   });
 
   describe('createCaseWithInvestigationTask', () => {
@@ -1517,7 +1404,6 @@ describe('TriageService', () => {
     const triageTaskId = 'triage-task-123';
     const alertType = 'FRAUD';
     const confidence = 95;
-    const priorityScore = 85;
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
@@ -1530,7 +1416,7 @@ describe('TriageService', () => {
         updateTask: jest.fn().mockResolvedValue(mockTask),
       } as any;
 
-      await service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, userId, tenantId);
+      await service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, userId, tenantId);
 
       expect(service['updateAlertData']).toHaveBeenCalledWith(
         alertId,
@@ -1544,19 +1430,18 @@ describe('TriageService', () => {
       );
     });
 
-    it('should handle errors during update', async () => {
+    it('should handle errors in updateAlertAndUpdateTriageTask', async () => {
       const alertId = 'alert-123';
       const triageTaskId = 'task-123';
       const alertType = AlertType.FRAUD;
       const confidence = 85;
-      const priorityScore = 75;
       const userId = 'test-user-id';
       const tenantId = 'test-tenant-id';
 
       // Mock updateAlertData to throw an error
       jest.spyOn(service as any, 'updateAlertData').mockRejectedValue(new Error('Update failed'));
       
-      await expect(service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, userId, tenantId))
+      await expect(service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, userId, tenantId))
         .rejects.toThrow('Failed to update alert and triage task');
     });
   });
@@ -1692,7 +1577,7 @@ describe('TriageService', () => {
             caseId: 'case-123',
             status: 'UNASSIGNED_01',
             name: 'Triage Alert',
-            description: 'Task for Manual Triage'
+            description: 'Manual triage required for alert: alert-123'
           },
           'user-123'
         );

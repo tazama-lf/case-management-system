@@ -29,13 +29,14 @@ model Alert {
   source             String?            @db.VarChar(50)
   txtp               String?            @db.VarChar(50)
   message            String             @db.VarChar(100)
-  alert_data         Json               @db.JsonB
-  transaction        Json               @db.JsonB
-  network_map        Json               @db.JsonB
+  alert_data         Json
+  transaction        Json
+  network_map        Json
   confidence_per     Int
   created_at         DateTime           @default(now()) @db.Timestamp(6)
   case_id            String             @unique @db.Uuid
   case               Case               @relation(fields: [case_id], references: [case_id])
+  priority_score     Int?
 
   @@map("alerts")
 }
@@ -53,8 +54,8 @@ model Case {
   case_type            CaseType?
   case_creation_type   CaseCreationType
   alert                Alert?
-  tasks                Task[]
   comments             Comment[]
+  tasks                Task[]
 
   @@map("cases")
 }
@@ -62,16 +63,16 @@ model Case {
 model Task {
   task_id          String     @id @default(uuid()) @db.Uuid
   case_id          String     @db.Uuid
-  status           TaskStatus @default(UNASSIGNED_01)
   assigned_user_id String?    @db.Uuid
   name             String?
   description      String?
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
-  case             Case       @relation(fields: [case_id], references: [case_id])
+  status           TaskStatus @default(UNASSIGNED_01)
+  comments         Comment[]
   evidence         Evidence[]
   reports          Report[]
-  comments         Comment[]
+  case             Case       @relation(fields: [case_id], references: [case_id])
 
   @@map("tasks")
 }
@@ -83,8 +84,8 @@ model Comment {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @updatedAt @db.Timestamp(6)
   case_id    String?  @db.Uuid
-  case       Case?    @relation(fields: [case_id], references: [case_id])
   task_id    String?  @db.Uuid
+  case       Case?    @relation(fields: [case_id], references: [case_id])
   task       Task?    @relation(fields: [task_id], references: [task_id])
 
   @@map("comments")
