@@ -27,12 +27,12 @@ describe('UpdateTaskDto', () => {
 
   it('should instantiate with all properties set', () => {
     const dto = new UpdateTaskDto();
-    dto.status = TaskStatus.ASSIGNED_10;
+    dto.status = TaskStatus.STATUS_10_ASSIGNED;
     dto.assignedUserId = '123e4567-e89b-12d3-a456-426614174000';
     dto.name = 'Test Task';
     dto.description = 'Test Description';
     
-    expect(dto.status).toBe(TaskStatus.ASSIGNED_10);
+    expect(dto.status).toBe(TaskStatus.STATUS_10_ASSIGNED);
     expect(dto.assignedUserId).toBe('123e4567-e89b-12d3-a456-426614174000');
     expect(dto.name).toBe('Test Task');
     expect(dto.description).toBe('Test Description');
@@ -120,7 +120,7 @@ describe('UpdateTaskDto', () => {
       expect(dto.constructor.name).toBe('UpdateTaskDto');
       
       // These tests ensure that the property assignments work properly
-      dto.status = TaskStatus.ASSIGNED_10;
+      dto.status = TaskStatus.STATUS_10_ASSIGNED;
       dto.assignedUserId = '123e4567-e89b-12d3-a456-426614174000';
       dto.name = 'Test';
       dto.description = 'Test Description';
@@ -133,7 +133,7 @@ describe('UpdateTaskDto', () => {
 
     it('should handle property enumeration', () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.IN_PROGRESS_20,
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
         assignedUserId: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Task',
         description: 'Test Description'
@@ -150,7 +150,7 @@ describe('UpdateTaskDto', () => {
       // This test ensures all property setter paths are exercised
       const testCases = [
         new UpdateTaskDto(),
-        Object.assign(new UpdateTaskDto(), { status: TaskStatus.COMPLETED_30 }),
+        Object.assign(new UpdateTaskDto(), { status: TaskStatus.STATUS_30_COMPLETED }),
         Object.assign(new UpdateTaskDto(), { assignedUserId: '123e4567-e89b-12d3-a456-426614174000' }),
         Object.assign(new UpdateTaskDto(), { name: 'Test' }),
         Object.assign(new UpdateTaskDto(), { description: 'Test' }),
@@ -166,11 +166,11 @@ describe('UpdateTaskDto', () => {
   describe('status validation', () => {
     it('should accept valid TaskStatus enum values', async () => {
       const validStatuses = [
-        TaskStatus.UNASSIGNED_01,
-        TaskStatus.ASSIGNED_10,
-        TaskStatus.IN_PROGRESS_20,
-        TaskStatus.COMPLETED_30,
-        TaskStatus.BLOCKED_21,
+        TaskStatus.STATUS_01_UNASSIGNED,
+        TaskStatus.STATUS_10_ASSIGNED,
+        TaskStatus.STATUS_20_IN_PROGRESS,
+        TaskStatus.STATUS_30_COMPLETED,
+        TaskStatus.STATUS_21_BLOCKED,
       ];
 
       for (const status of validStatuses) {
@@ -294,7 +294,7 @@ describe('UpdateTaskDto', () => {
 
     it('should accept undefined name (optional)', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.IN_PROGRESS_20,
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
       });
 
       const errors = await validate(dto);
@@ -355,7 +355,7 @@ describe('UpdateTaskDto', () => {
 
     it('should accept undefined description (optional)', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.COMPLETED_30,
+        status: TaskStatus.STATUS_30_COMPLETED,
       });
 
       const errors = await validate(dto);
@@ -385,7 +385,7 @@ describe('UpdateTaskDto', () => {
   describe('complete DTO validation', () => {
     it('should pass validation with all valid optional fields', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.IN_PROGRESS_20,
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
         assignedUserId: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Updated Task Name',
         description: 'Updated task description',
@@ -397,7 +397,7 @@ describe('UpdateTaskDto', () => {
 
     it('should pass validation with some optional fields', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.COMPLETED_30,
+        status: TaskStatus.STATUS_30_COMPLETED,
         name: 'Updated Task Name',
       });
 
@@ -407,7 +407,7 @@ describe('UpdateTaskDto', () => {
 
     it('should pass validation with single field', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.BLOCKED_21,
+        status: TaskStatus.STATUS_21_BLOCKED,
       });
 
       const errors = await validate(dto);
@@ -441,7 +441,7 @@ describe('UpdateTaskDto', () => {
 
     it('should handle mixed valid and invalid fields', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
-        status: TaskStatus.ASSIGNED_10, // valid
+        status: TaskStatus.STATUS_10_ASSIGNED, // valid
         assignedUserId: 'invalid-uuid', // invalid
         name: 'Valid Name', // valid
         description: 12345, // invalid
@@ -460,7 +460,7 @@ describe('UpdateTaskDto', () => {
     it('should validate with partial UUID and status update', async () => {
       const dto = plainToInstance(UpdateTaskDto, {
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.ASSIGNED_10,
+        status: TaskStatus.STATUS_10_ASSIGNED,
       });
 
       const errors = await validate(dto);

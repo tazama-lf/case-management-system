@@ -350,6 +350,7 @@ export class CaseService {
           case_owner_user_id: createCaseDTO.caseOwnerUserId,
           status: createCaseDTO.status,
           priority: createCaseDTO.priority,
+          parent_id: createCaseDTO.parentId ?? null,
           case_type: createCaseDTO.caseType,
           case_creation_type: createCaseDTO.caseCreationType,
         },

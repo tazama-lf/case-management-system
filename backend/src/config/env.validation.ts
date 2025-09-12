@@ -52,8 +52,9 @@ class EnvironmentVariables {
   @IsString()
   SIDECAR_HOST?: string;
 
+  @IsOptional()
   @IsNumberString()
-  CONFIDENCE_THRESHOLD: string;
+  CONFIDENCE_THRESHOLD?: string;
 
   @IsString()
   TRIAGE_TYPE: string;

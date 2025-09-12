@@ -344,9 +344,19 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
                 <span className="font-medium">{action.operation}</span>
                 {action.action_performed && ` - ${action.action_performed}`}
               </p>
-              <p className="text-xs text-gray-500">
-                {new Date(action.performed_at).toLocaleString()}
-              </p>
+              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                <span>
+                  {new Date(action.performed_at).toLocaleString()}
+                </span>
+                {action.user_id && (
+                  <>
+                    <span>•</span>
+                    <span className="font-medium">
+                      User: {action.user_id}
+                    </span>
+                  </>
+                )}
+              </div>
               {action.outcome && (
                 <p className="text-xs text-gray-600 mt-1">{action.outcome}</p>
               )}
