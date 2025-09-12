@@ -36,8 +36,6 @@ model Alert {
   created_at         DateTime           @default(now()) @db.Timestamp(6)
   case_id            String             @unique @db.Uuid
   case               Case               @relation(fields: [case_id], references: [case_id])
-  priority_score     Int?
-
   @@map("alerts")
 }
 
@@ -69,7 +67,6 @@ model Task {
   description      String?
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
-  status           TaskStatus @default(UNASSIGNED_01)
   comments         Comment[]
   evidence         Evidence[]
   reports          Report[]

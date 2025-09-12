@@ -45,7 +45,7 @@ export class CaseService {
             tenant_id: payload.tenantId,
             case_creator_user_id: systemUuid, // Use system UUID from config
             case_owner_user_id: systemUuid, // Initially owned by system
-            status: CaseStatus.DRAFT_00,
+            status: CaseStatus.STATUS_00_DRAFT,
             priority: payload.priority || Priority.NEW, // Use Priority enum
             case_type: payload.caseType,
             case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM, // Use enum
@@ -75,7 +75,7 @@ export class CaseService {
         const atmTask = await tx.task.create({
           data: {
             case_id: newCase.case_id,
-            status: TaskStatus.UNASSIGNED_01,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
             assigned_user_id: systemUuid, // Initially assigned to system
             name: 'Alert Triage Module Review',
             description: 'Automatic triage and routing of alert',
@@ -126,10 +126,10 @@ export class CaseService {
       if (confidence >= 95) {
         // If true positive (fraudType is one of the types that should be confirmed)
         if (['Money-Laundering', 'Fraud Only', 'Transaction Blocked'].includes(fraudType)) {
-          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.AUTOCLOSED_CONFIRMED_71);
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED);
         } else {
           // False positive
-          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.AUTOCLOSED_REFUTED_72);
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED);
         }
       } else {
         // Confidence < 95%: Prioritize and investigate
@@ -138,7 +138,7 @@ export class CaseService {
         await this.prismaService.task.update({
           where: { task_id: createdCase.atmTask.task_id },
           data: {
-            status: TaskStatus.COMPLETED_30,
+            status: TaskStatus.STATUS_30_COMPLETED,
             updated_at: new Date(),
           },
         });
@@ -215,7 +215,7 @@ export class CaseService {
       await this.prismaService.task.update({
         where: { task_id: taskId },
         data: {
-          status: TaskStatus.IN_PROGRESS_20,
+          status: TaskStatus.STATUS_20_IN_PROGRESS,
           updated_at: new Date(),
         },
       });
@@ -284,7 +284,7 @@ export class CaseService {
       const investigationTask = await this.prismaService.task.create({
         data: {
           case_id: caseId,
-          status: TaskStatus.UNASSIGNED_01,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
           assigned_user_id: null, // Unassigned initially
           name: 'Investigate Case',
           description: 'Investigate the reported suspicious activity',
@@ -295,7 +295,7 @@ export class CaseService {
       await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
-          status: CaseStatus.READY_FOR_ASSIGNMENT_02,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           case_owner_user_id: null, // Ensure no owner
           updated_at: new Date(),
         },

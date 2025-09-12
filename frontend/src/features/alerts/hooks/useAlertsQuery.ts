@@ -165,16 +165,6 @@ export const useAlertOperations = () => {
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
-<<<<<<< HEAD
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
-      if (caseId) {
-        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
-      }
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
     },
     onError: (error: Error) => {
       showError(error.message || 'Failed to complete manual triage');
