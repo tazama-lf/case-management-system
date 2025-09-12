@@ -14,7 +14,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -28,7 +28,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = 'invalid-uuid';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -42,7 +42,7 @@ describe('CreateCaseDto', () => {
     it('should fail when tenantId is missing', async () => {
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -58,7 +58,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -72,7 +72,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = 'invalid-uuid';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -85,7 +85,7 @@ describe('CreateCaseDto', () => {
     it('should fail when caseCreatorUserId is missing', async () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -101,7 +101,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -115,7 +115,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = 'invalid-uuid';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -128,7 +128,7 @@ describe('CreateCaseDto', () => {
     it('should fail when caseOwnerUserId is missing', async () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -142,15 +142,15 @@ describe('CreateCaseDto', () => {
   describe('status validation', () => {
     it('should pass with valid CaseStatus enum values', async () => {
       const validStatuses = [
-        CaseStatus.DRAFT_00,
-        CaseStatus.PENDING_CASE_CREATION_APPROVAL_01,
-        CaseStatus.READY_FOR_ASSIGNMENT_02,
-        CaseStatus.RETURNED_03,
-        CaseStatus.ASSIGNED_10,
-        CaseStatus.IN_PROGRESS_20,
-        CaseStatus.CLOSED_CONFIRMED_82,
-        CaseStatus.CLOSED_INCONCLUSIVE_83,
-        CaseStatus.ABANDONED_99
+        CaseStatus.STATUS_00_DRAFT,
+        CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        CaseStatus.STATUS_03_RETURNED,
+        CaseStatus.STATUS_10_ASSIGNED,
+        CaseStatus.STATUS_20_IN_PROGRESS,
+        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+        CaseStatus.STATUS_99_ABANDONED
       ];
 
       for (const status of validStatuses) {
@@ -190,7 +190,7 @@ describe('CreateCaseDto', () => {
         dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
         dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
         dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-        dto.status = CaseStatus.DRAFT_00;
+        dto.status = CaseStatus.STATUS_00_DRAFT;
         dto.priority = priority;
         dto.caseType = CaseType.FRAUD;
         dto.caseCreationType = CaseCreationType.MANUAL;
@@ -205,7 +205,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
 
@@ -223,7 +223,7 @@ describe('CreateCaseDto', () => {
         dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
         dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
         dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-        dto.status = CaseStatus.DRAFT_00;
+        dto.status = CaseStatus.STATUS_00_DRAFT;
         dto.priority = Priority.NEW;
         dto.caseType = caseType;
         dto.caseCreationType = CaseCreationType.MANUAL;
@@ -238,7 +238,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseCreationType = CaseCreationType.MANUAL;
 
@@ -257,7 +257,7 @@ describe('CreateCaseDto', () => {
         dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
         dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
         dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-        dto.status = CaseStatus.DRAFT_00;
+        dto.status = CaseStatus.STATUS_00_DRAFT;
         dto.priority = Priority.NEW;
         dto.caseType = CaseType.FRAUD;
         dto.caseCreationType = creationType;
@@ -272,7 +272,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
 
@@ -287,7 +287,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -302,7 +302,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -316,7 +316,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -333,7 +333,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
@@ -346,7 +346,7 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.DRAFT_00;
+      dto.status = CaseStatus.STATUS_00_DRAFT;
       dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;

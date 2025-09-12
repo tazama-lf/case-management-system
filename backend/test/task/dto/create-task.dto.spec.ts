@@ -14,7 +14,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -27,7 +27,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: 'invalid-uuid',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -42,7 +42,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -56,7 +56,7 @@ describe('CreateTaskDto', () => {
     it('should reject missing caseId', async () => {
       const dto = plainToInstance(CreateTaskDto, {
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -73,7 +73,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -86,7 +86,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: 'invalid-uuid',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -101,7 +101,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -115,7 +115,7 @@ describe('CreateTaskDto', () => {
     it('should accept missing assignedUserId (optional)', async () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Test description',
       });
@@ -128,11 +128,11 @@ describe('CreateTaskDto', () => {
   describe('status validation', () => {
     it('should accept valid TaskStatus enum values', async () => {
       const validStatuses = [
-        TaskStatus.UNASSIGNED_01,
-        TaskStatus.ASSIGNED_10,
-        TaskStatus.IN_PROGRESS_20,
-        TaskStatus.COMPLETED_30,
-        TaskStatus.BLOCKED_21,
+        TaskStatus.STATUS_01_UNASSIGNED,
+        TaskStatus.STATUS_10_ASSIGNED,
+        TaskStatus.STATUS_20_IN_PROGRESS,
+        TaskStatus.STATUS_30_COMPLETED,
+        TaskStatus.STATUS_21_BLOCKED,
       ];
 
       for (const status of validStatuses) {
@@ -182,7 +182,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Valid Task Name',
         description: 'Test description',
       });
@@ -196,7 +196,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: longName,
         description: 'Test description',
       });
@@ -209,7 +209,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 12345 as any,
         description: 'Test description',
       });
@@ -224,7 +224,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         description: 'Test description',
       });
 
@@ -240,7 +240,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 'Valid task description',
       });
@@ -254,7 +254,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: longDescription,
       });
@@ -267,7 +267,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
         description: 12345 as any,
       });
@@ -282,7 +282,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.UNASSIGNED_01,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
         name: 'Test Task',
       });
 
@@ -298,7 +298,7 @@ describe('CreateTaskDto', () => {
       const dto = plainToInstance(CreateTaskDto, {
         caseId: '123e4567-e89b-12d3-a456-426614174000',
         assignedUserId: '123e4567-e89b-12d3-a456-426614174001',
-        status: TaskStatus.ASSIGNED_10,
+        status: TaskStatus.STATUS_10_ASSIGNED,
         name: 'Complete Task',
         description: 'Complete task description',
       });

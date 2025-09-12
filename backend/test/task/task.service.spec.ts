@@ -48,7 +48,7 @@ describe('TaskService', () => {
     task_id: 'task-123',
     case_id: 'case-123',
     assigned_user_id: 'user-123',
-    status: TaskStatus.ASSIGNED_10,
+    status: TaskStatus.STATUS_10_ASSIGNED,
     name: 'Test Task',
     description: 'Test task description',
     created_at: new Date(),
@@ -92,7 +92,7 @@ describe('TaskService', () => {
     const createTaskDto: CreateTaskDto = {
       caseId: 'case-123',
       assignedUserId: 'user-456',
-      status: TaskStatus.UNASSIGNED_01,
+      status: TaskStatus.STATUS_01_UNASSIGNED,
       name: 'New Task',
       description: 'New task description',
     };
@@ -207,7 +207,7 @@ describe('TaskService', () => {
   describe('updateTask', () => {
     const taskId = 'task-123';
     const updateTaskDto: UpdateTaskDto = {
-      status: TaskStatus.IN_PROGRESS_20,
+      status: TaskStatus.STATUS_20_IN_PROGRESS,
       name: 'Updated Task Name',
       description: 'Updated task description',
     };
@@ -242,8 +242,8 @@ describe('TaskService', () => {
     });
 
     it('should update with partial data', async () => {
-      const partialUpdate: UpdateTaskDto = { status: TaskStatus.COMPLETED_30 };
-      const partiallyUpdatedTask = { ...mockTask, status: TaskStatus.COMPLETED_30 };
+      const partialUpdate: UpdateTaskDto = { status: TaskStatus.STATUS_30_COMPLETED };
+      const partiallyUpdatedTask = { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED };
 
       mockPrismaService.task.update.mockResolvedValue(partiallyUpdatedTask);
       mockAuditLogService.logAction.mockResolvedValue(undefined);

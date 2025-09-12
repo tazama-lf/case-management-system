@@ -54,7 +54,7 @@ describe('CaseController', () => {
       tenantId: 'tenant-123',
       caseCreatorUserId: 'creator-123',
       caseOwnerUserId: 'owner-123',
-      status: CaseStatus.DRAFT_00,
+      status: CaseStatus.STATUS_00_DRAFT,
       priority: Priority.NEW,
       caseType: CaseType.FRAUD,
       caseCreationType: CaseCreationType.MANUAL,
@@ -81,7 +81,7 @@ describe('CaseController', () => {
       tenant_id: 'tenant-123',
       case_creator_user_id: 'creator-123',
       case_owner_user_id: 'owner-123',
-      status: CaseStatus.DRAFT_00,
+      status: CaseStatus.STATUS_00_DRAFT,
       priority: Priority.NEW,
       case_type: CaseType.FRAUD,
       case_creation_type: CaseCreationType.MANUAL,
@@ -123,7 +123,7 @@ describe('CaseController', () => {
       tenant_id: 'tenant-123',
       case_creator_user_id: 'creator-123',
       case_owner_user_id: 'owner-123',
-      status: CaseStatus.DRAFT_00,
+      status: CaseStatus.STATUS_00_DRAFT,
       priority: Priority.NEW,
       case_type: CaseType.FRAUD,
       case_creation_type: CaseCreationType.MANUAL,
@@ -162,7 +162,7 @@ describe('CaseController', () => {
   describe('updateCase', () => {
     const caseId = 'case-123';
     const updateCaseDto: UpdateCaseDto = {
-      status: CaseStatus.IN_PROGRESS_20,
+      status: CaseStatus.STATUS_20_IN_PROGRESS,
       priority: Priority.URGENT,
       caseType: CaseType.AML,
       caseOwnerUserId: 'new-owner-123',
@@ -189,7 +189,7 @@ describe('CaseController', () => {
       tenant_id: 'tenant-123',
       case_creator_user_id: 'creator-123',
       case_owner_user_id: 'new-owner-123',
-      status: CaseStatus.IN_PROGRESS_20,
+      status: CaseStatus.STATUS_20_IN_PROGRESS,
       priority: Priority.URGENT,
       case_type: CaseType.AML,
       case_creation_type: CaseCreationType.MANUAL,
@@ -226,7 +226,7 @@ describe('CaseController', () => {
     it('should pass all parameters correctly', async () => {
       const testCaseId = 'test-case-789';
       const testUpdateDto: UpdateCaseDto = {
-        status: CaseStatus.CLOSED_CONFIRMED_82,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         priority: Priority.CRITICAL,
         caseOwnerUserId: 'test-owner-789',
       };
@@ -239,7 +239,7 @@ describe('CaseController', () => {
 
     it('should handle minimal update data', async () => {
       const minimalUpdateDto: UpdateCaseDto = {
-        status: CaseStatus.SUSPENDED_21,
+        status: CaseStatus.STATUS_21_SUSPENDED,
         caseOwnerUserId: 'owner-123',
         priority: Priority.NEW,
       };

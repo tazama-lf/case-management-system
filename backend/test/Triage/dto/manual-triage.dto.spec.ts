@@ -9,7 +9,7 @@ describe('ManualTriageDto', () => {
   const createValidBaseData = () => ({
     priorityScore: 75,
     note: 'Test note',
-    status: CaseStatus.CLOSED_CONFIRMED_82,
+    status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
   });
 
   it('should be defined', () => {
@@ -33,7 +33,7 @@ describe('ManualTriageDto', () => {
     
     dto.priorityScore = 85;
     dto.note = 'Manual triage note';
-    dto.status = CaseStatus.CLOSED_CONFIRMED_82;
+    dto.status = CaseStatus.STATUS_82_CLOSED_CONFIRMED;
     dto.confidence_per = 90;
     dto.priority = Priority.URGENT;
     dto.alertType = AlertType.FRAUD;
@@ -41,7 +41,7 @@ describe('ManualTriageDto', () => {
 
     expect(dto.priorityScore).toBe(85);
     expect(dto.note).toBe('Manual triage note');
-    expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+    expect(dto.status).toBe(CaseStatus.STATUS_82_CLOSED_CONFIRMED);
     expect(dto.confidence_per).toBe(90);
     expect(dto.priority).toBe(Priority.URGENT);
     expect(dto.alertType).toBe(AlertType.FRAUD);
@@ -64,7 +64,7 @@ describe('ManualTriageDto', () => {
       expect(errors).toHaveLength(0);
       expect(dto.priorityScore).toBe(75);
       expect(dto.note).toBe('Test note');
-      expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+      expect(dto.status).toBe(CaseStatus.STATUS_82_CLOSED_CONFIRMED);
       expect(dto.confidence_per).toBe(95);
       expect(dto.priority).toBe(Priority.URGENT);
       expect(dto.alertType).toBe(AlertType.FRAUD);
@@ -80,7 +80,7 @@ describe('ManualTriageDto', () => {
       expect(errors).toHaveLength(0);
       expect(dto.priorityScore).toBe(75);
       expect(dto.note).toBe('Test note');
-      expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+      expect(dto.status).toBe(CaseStatus.STATUS_82_CLOSED_CONFIRMED);
     });
 
     it('should handle undefined values for optional fields', async () => {
@@ -129,7 +129,7 @@ describe('ManualTriageDto', () => {
     it('should reject missing priorityScore', async () => {
       const invalidData = {
         note: 'Test note',
-        status: CaseStatus.CLOSED_CONFIRMED_82,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
       };
 
       const dto = plainToClass(ManualTriageDto, invalidData);
@@ -187,7 +187,7 @@ describe('ManualTriageDto', () => {
     it('should reject missing note', async () => {
       const invalidData = {
         priorityScore: 75,
-        status: CaseStatus.CLOSED_CONFIRMED_82,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
       };
 
       const dto = plainToClass(ManualTriageDto, invalidData);
@@ -247,9 +247,9 @@ describe('ManualTriageDto', () => {
   describe('status validation', () => {
     it('should accept valid CaseStatus enum values', async () => {
       const validStatuses = [
-        CaseStatus.READY_FOR_ASSIGNMENT_02,
-        CaseStatus.CLOSED_CONFIRMED_82,
-        CaseStatus.CLOSED_REFUTED_81,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        CaseStatus.STATUS_81_CLOSED_REFUTED,
       ];
 
       for (const status of validStatuses) {
@@ -501,7 +501,7 @@ describe('ManualTriageDto', () => {
       const validData = {
         priorityScore: 95,
         note: 'Comprehensive manual triage with all fields',
-        status: CaseStatus.CLOSED_CONFIRMED_82,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         confidence_per: 90,
         priority: Priority.CRITICAL,
         alertType: AlertType.FRAUD_AND_AML,
@@ -514,7 +514,7 @@ describe('ManualTriageDto', () => {
       expect(errors).toHaveLength(0);
       expect(dto.priorityScore).toBe(95);
       expect(dto.note).toBe('Comprehensive manual triage with all fields');
-      expect(dto.status).toBe(CaseStatus.CLOSED_CONFIRMED_82);
+      expect(dto.status).toBe(CaseStatus.STATUS_82_CLOSED_CONFIRMED);
       expect(dto.confidence_per).toBe(90);
       expect(dto.priority).toBe(Priority.CRITICAL);
       expect(dto.alertType).toBe(AlertType.FRAUD_AND_AML);
@@ -568,7 +568,7 @@ describe('ManualTriageDto', () => {
       const dto = new ManualTriageDto();
       dto.priorityScore = 80;
       dto.note = 'Test note';
-      dto.status = CaseStatus.READY_FOR_ASSIGNMENT_02;
+      dto.status = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
 
       const keys = Object.keys(dto);
       expect(keys).toContain('priorityScore');
@@ -580,7 +580,7 @@ describe('ManualTriageDto', () => {
       
       expect(parsed.priorityScore).toBe(80);
       expect(parsed.note).toBe('Test note');
-      expect(parsed.status).toBe(CaseStatus.READY_FOR_ASSIGNMENT_02);
+      expect(parsed.status).toBe(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);
     });
 
     it('should support different instantiation patterns', () => {
