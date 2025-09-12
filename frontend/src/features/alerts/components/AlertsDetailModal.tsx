@@ -491,20 +491,30 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                                   {action.action_performed}
                                 </span>
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(action.performed_at).toLocaleString(
-                                  'en-US',
-                                  {
-                                    month: 'numeric',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    second: '2-digit',
-                                    hour12: true,
-                                  },
+                              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                <span>
+                                  {new Date(action.performed_at).toLocaleString(
+                                    'en-US',
+                                    {
+                                      month: 'numeric',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      second: '2-digit',
+                                      hour12: true,
+                                    },
+                                  )}
+                                </span>
+                                {action.user_id && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-medium">
+                                      User: {action.user_id}
+                                    </span>
+                                  </>
                                 )}
-                              </p>
+                              </div>
                             </div>
                           </div>
                         ))}
