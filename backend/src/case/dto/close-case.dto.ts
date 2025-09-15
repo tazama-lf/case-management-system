@@ -1,0 +1,90 @@
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
+export enum CaseClosureOutcome {
+    CLOSED_REFUTED = 'STATUS_81_CLOSED_REFUTED',
+    CLOSED_CONFIRMED = 'STATUS_82_CLOSED_CONFIRMED',
+    CLOSED_INCONCLUSIVE = 'STATUS_83_CLOSED_INCONCLUSIVE',
+}
+
+export class CloseCaseDto {
+    @ApiProperty({
+        description: 'Recommended outcome for case closure',
+        enum: CaseClosureOutcome,
+        example: CaseClosureOutcome.CLOSED_CONFIRMED,
+    })
+    @IsEnum(CaseClosureOutcome)
+    @IsNotEmpty()
+    recommendedOutcome: CaseClosureOutcome;
+
+    @ApiProperty({
+        description: 'Final investigation notes or summary',
+        example: 'Investigation completed. Fraud confirmed based on evidence.',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    finalNotes?: string;
+
+    @ApiProperty({
+        description: 'Any final recommendations for the case',
+        example: 'Recommend account suspension and legal action.',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    recommendations?: string;
+}
+
+export class ApproveCaseClosureTaskDto {
+    @ApiProperty({
+        description: 'Task ID for the approval task',
+        example: 'task-123e4567-e89b-12d3-a456-426614174000',
+    })
+    @IsUUID()
+    task_id: string;
+
+    @ApiProperty({
+        description: 'Case ID being closed',
+        example: 'case-123e4567-e89b-12d3-a456-426614174000',
+    })
+    @IsUUID()
+    case_id: string;
+
+    @ApiProperty({
+        description: 'Name of the approval task',
+        example: 'Approve case closure',
+    })
+    @IsString()
+    name: string;
+
+    @ApiProperty({
+        description: 'Description of the approval task',
+        example: 'Review and approve case closure with recommended outcome',
+    })
+    @IsString()
+    description: string;
+
+    @ApiProperty({
+        description: 'Recommended outcome for case closure',
+        enum: CaseClosureOutcome,
+    })
+    @IsEnum(CaseClosureOutcome)
+    recommendedOutcome: CaseClosureOutcome;
+
+    @ApiProperty({
+        description: 'Final notes from investigator',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    finalNotes?: string;
+
+    @ApiProperty({
+        description: 'Recommendations from investigator',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    recommendations?: string;
+}
