@@ -47,7 +47,14 @@ export class TazamaAuthGuard implements CanActivate {
       const claimsToValidate = requiredClaims || anyRequiredClaims || [];
 
       // Validate token and claims using tazama-auth-lib
-      const validated: ClaimValidationResult = validateTokenAndClaims(token, claimsToValidate);
+      const validationRaw = validateTokenAndClaims(token, claimsToValidate);
+
+      // Fix: Ensure correct types for isValid and errors
+      const validated: ClaimValidationResult = {
+        isValid: typeof validationRaw.isValid === 'boolean' ? validationRaw.isValid : false,
+        errors: Array.isArray(validationRaw.errors) ? validationRaw.errors : [],
+        ...validationRaw,
+      };
 
       let hasValidAccess = false;
       let validClaims: string[] = [];

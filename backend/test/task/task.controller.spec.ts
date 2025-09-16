@@ -6,6 +6,10 @@ import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
 import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
 import { TaskStatus } from '@prisma/client';
 import { AuthenticatedRequest } from '../../src/auth/auth.types';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { LogCallback } from '@tazama-lf/frms-coe-lib/lib/helpers/logUtilities';
+import { LumberjackGRPCService } from '@tazama-lf/frms-coe-lib/lib/services/lumberjackGRPCService';
+import { Logger } from 'pino';
 
 describe('TaskController', () => {
   let controller: TaskController;
@@ -14,6 +18,10 @@ describe('TaskController', () => {
     createTask: jest.fn(),
     reassignTask: jest.fn(),
     updateTask: jest.fn(),
+    assignTaskToInvestigator: jest.fn(),
+    getTasks: jest.fn(),
+    getTasksByCaseId: jest.fn(),
+    getTaskById: jest.fn(), // <-- Add this line
   };
 
   const mockUser = {
@@ -45,6 +53,22 @@ describe('TaskController', () => {
     updatedAt: new Date(),
   };
 
+  class MockLoggerService implements LoggerService {
+    trace: (message: string, serviceOperation?: string, id?: string, callback?: LogCallback) => void;
+    logger: Console | Logger;
+    lumberjackService: LumberjackGRPCService | undefined;
+    fatal(message: string | Error, innerError?: unknown, serviceOperation?: string, id?: string, callback?: LogCallback): void {
+      throw new Error('Method not implemented.');
+    }
+    log = jest.fn();
+    error = jest.fn();
+    warn = jest.fn();
+    debug = jest.fn();
+    verbose = jest.fn();
+  }
+
+  const mockLoggerService = new MockLoggerService();
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaskController],
@@ -52,6 +76,10 @@ describe('TaskController', () => {
         {
           provide: TaskService,
           useValue: mockTaskService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();
@@ -298,6 +326,71 @@ describe('TaskController', () => {
         }),
         mockUser.token.clientId,
       );
+    });
+  });
+
+  describe('assignTaskToInvestigator', () => {
+    const taskId = 'task-123';
+    const investigatorId = 'user-456';
+
+    it('should assign a task to investigator successfully', async () => {
+      mockTaskService.assignTaskToInvestigator = jest.fn().mockResolvedValue(mockTask);
+
+      const result = await controller.assignTaskToInvestigator(taskId, investigatorId, mockRequest);
+
+      expect(result).toEqual(mockTask);
+      expect(mockTaskService.assignTaskToInvestigator).toHaveBeenCalledWith(
+        taskId,
+        investigatorId,
+        mockUser.token.clientId,
+      );
+    });
+
+    it('should handle error during assignment', async () => {
+      const error = new BadRequestException('User is not investigator');
+      mockTaskService.assignTaskToInvestigator = jest.fn().mockRejectedValue(error);
+
+      await expect(
+        controller.assignTaskToInvestigator(taskId, investigatorId, mockRequest)
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getTasks', () => {
+    it('should get all tasks', async () => {
+      mockTaskService.getTasks = jest.fn().mockResolvedValue([mockTask]);
+      const result = await controller.getTasks();
+      expect(result).toEqual([mockTask]);
+      expect(mockTaskService.getTasks).toHaveBeenCalled();
+    });
+
+    it('should get tasks filtered by status', async () => {
+      mockTaskService.getTasks = jest.fn().mockResolvedValue([mockTask]);
+      const result = await controller.getTasks(TaskStatus.STATUS_10_ASSIGNED);
+      expect(result).toEqual([mockTask]);
+      expect(mockTaskService.getTasks).toHaveBeenCalledWith(TaskStatus.STATUS_10_ASSIGNED);
+    });
+  });
+
+  describe('getTasksByCaseId', () => {
+    const caseId = 'case-123';
+
+    it('should get tasks by case ID', async () => {
+      mockTaskService.getTasksByCaseId = jest.fn().mockResolvedValue([mockTask]);
+      const result = await controller.getTasksByCaseId(caseId, mockRequest);
+      expect(result).toEqual([mockTask]);
+      expect(mockTaskService.getTasksByCaseId).toHaveBeenCalledWith(caseId, mockUser.token.clientId);
+    });
+  });
+
+  describe('getTaskById', () => {
+    const taskId = 'task-123';
+
+    it('should get task by ID', async () => {
+      mockTaskService.getTaskById = jest.fn().mockResolvedValue(mockTask);
+      const result = await controller.getTaskById(taskId);
+      expect(result).toEqual(mockTask);
+      expect(mockTaskService.getTaskById).toHaveBeenCalledWith(taskId);
     });
   });
 });

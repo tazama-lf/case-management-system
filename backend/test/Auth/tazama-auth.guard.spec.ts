@@ -2,7 +2,8 @@ import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
-import { ClaimValidationResult, TazamaToken } from '../../src/auth/auth.types';
+import { ClaimValidationResult } from '@tazama-lf/auth-lib/lib/interfaces/iTazamaToken';
+import { TazamaToken } from '../../src/auth/auth.types';
 import * as jwt from 'jsonwebtoken';
 
 // Mock the external auth library
@@ -216,6 +217,8 @@ describe('TazamaAuthGuard', () => {
       const mockValidationResult: ClaimValidationResult = {
         admin: true,
         read: true,
+        isValid: false, // match the guard's default
+        errors: false,
       };
 
       mockValidateTokenAndClaims.mockReturnValue(mockValidationResult);

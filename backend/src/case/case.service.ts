@@ -279,7 +279,7 @@ export class CaseService {
   /**
    * Create investigation task and assign to queue
    */
-  private async createInvestigationTask(caseId: string, systemUuid: string) {
+  public async createInvestigationTask(caseId: string, systemUuid: string) {
     try {
       const investigationTask = await this.prismaService.task.create({
         data: {

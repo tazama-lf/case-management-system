@@ -36,6 +36,8 @@ export class TriageService {
       report: req.report,
       transaction: req.transaction,
       networkMap: req.networkMap,
+      aml_suspected: req.aml_suspected,
+      confidence_per: req.confidence_per,
     };
 
     const alert = await this.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
@@ -58,6 +60,8 @@ export class TriageService {
             description: `Manual triage required for alert: ${alert.alert_id}`,
           },
           userId,
+          this.audit,
+          this.logger,
         );
         break;
       }
@@ -74,6 +78,8 @@ export class TriageService {
             description: `Investigate case: ${alert.case_id}`,
           },
           userId,
+          this.audit,
+          this.logger,
         );
         const updateCaseDto: Partial<UpdateCaseDto> = {
           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -85,7 +91,7 @@ export class TriageService {
   }
 
   async handleNewAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
-    const txtp = alert.transaction.TxTp;
+    const txtp = alert.transaction?.TxTp;
 
     try {
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
@@ -110,7 +116,7 @@ export class TriageService {
           alert_data: JSON.parse(JSON.stringify(alert.report)),
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
-          confidence_per: 0,
+          confidence_per: alert.confidence_per ?? 0,
           case_id: createdCase.case_id,
         },
       });
@@ -121,6 +127,51 @@ export class TriageService {
         actionPerformed: `Created new alert ${newAlert.alert_id}`,
         outcome: Outcome.SUCCESS,
       });
+
+      // --- Investigation Task Creation for Non-Auto-Close Alerts ---
+      // Extract business logic fields from nested report structure
+      const typology = alert.report?.tadpResult?.typologyResult?.[0] ?? {};
+  const isTruePositive = typology.review ?? false;
+  const amlSuspected = alert.aml_suspected ?? false;
+  const confidencePer = alert.confidence_per ?? 0;
+      const hasTransaction = !!alert.transaction;
+
+      const shouldAutoClose = confidencePer > 90 && isTruePositive && !amlSuspected && !hasTransaction;
+
+      if (!shouldAutoClose) {
+        // Mark ATM task as COMPLETE after investigation task creation
+        const atmTasks = await this.taskService.getTasksByCaseId(createdCase.case_id);
+        const atmTask = atmTasks.find(t => t.name === 'Alert Triage Module Review');
+        if (atmTask && atmTask.status !== TaskStatus.STATUS_30_COMPLETED) {
+          await this.taskService.updateTask(
+            atmTask.task_id,
+            { status: TaskStatus.STATUS_30_COMPLETED },
+            systemUuid,
+            this.audit
+          );
+          await this.logger.log(`ATM task ${atmTask.task_id} marked as COMPLETE`, TriageService.name);
+        }
+        // Create investigation task for the case
+        await this.taskService.createTask(
+          {
+            caseId: createdCase.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate Case',
+            description: `Investigate case: ${createdCase.case_id}`,
+            candidateGroup: 'Investigations',
+          },
+          systemUuid,
+          this.audit,
+          this.logger,
+        );
+        await this.logger.log(`Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`, TriageService.name);
+        // Gracefully update case status to READY FOR ASSIGNMENT
+        await this.caseService.updateCase(
+          createdCase.case_id,
+          { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
+          systemUuid
+        );
+      }
 
       return newAlert;
     } catch (error) {
@@ -163,7 +214,7 @@ export class TriageService {
         // Auto-assign the task to the current user if not assigned or assigned to someone else
         if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
           this.logger.log(`Auto-assigning triage task ${triageTask.task_id} to user ${userId}`, TriageService.name);
-          await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId);
+          await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId, this.audit);
         } else {
           this.logger.log(`Triage task ${triageTask.task_id} already assigned to current user ${userId}`, TriageService.name);
         }
@@ -183,6 +234,7 @@ export class TriageService {
             status: TaskStatus.STATUS_30_COMPLETED,
           },
           userId,
+          this.audit,
         );
       }
 
@@ -221,6 +273,8 @@ export class TriageService {
               description: `Investigate case: ${alert.case_id}`,
             },
             userId,
+            this.audit,
+            this.logger,
           );
         }
 
@@ -472,6 +526,8 @@ export class TriageService {
           description: `Created for triaging alert for case:${caseId}`,
         },
         userId,
+        this.audit,
+        this.logger,
       );
 
       const triageTaskId = triageTask.task_id;
@@ -575,6 +631,7 @@ export class TriageService {
               description: 'Triage complete - AI predicted true positive and case contains both fraud and aml',
             },
             userId,
+            this.audit,
           );
           await this.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, caseId, priority);
           await this.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, caseId, priority);
@@ -647,6 +704,7 @@ export class TriageService {
             description: customDescription ?? `Auto-closed case with status ${status}`,
           },
           userId,
+          this.audit,
         );
 
         const updateCaseDto = new UpdateCaseDto();
@@ -717,6 +775,8 @@ export class TriageService {
           description: `Investigation task for ${caseType} case ${newCase.case_id}`,
         },
         userId,
+        this.audit,
+        this.logger,
       );
 
       await this.audit.logAction({
@@ -745,7 +805,7 @@ export class TriageService {
   ): Promise<any> {
     try {
       // Complete triage task first
-      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
+  await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId, this.audit);
 
       // Create new investigation task
       const createdTask = await this.taskService.createTask(
@@ -756,6 +816,8 @@ export class TriageService {
           description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
         },
         userId,
+        this.audit,
+        this.logger,
       );
 
       // Update case status
@@ -818,6 +880,7 @@ export class TriageService {
           description: `AI prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
         },
         userId,
+        this.audit,
       );
 
       await this.audit.logAction({
