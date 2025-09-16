@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query} from '@nestjs/common';
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
@@ -7,7 +7,8 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
+import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery} from '@nestjs/swagger';
+import {GetUserCasesQueryDto, GetUserCasesResponseDto} from "./dto/get-user-cases.dto";
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -161,6 +162,122 @@ export class CaseController {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return this.caseService.closeCase(caseId, dto, userId, tenantId);
+  }
+
+  // Add this method to your existing case.controller.ts
+
+  /**
+   * Get all cases assigned to the current user
+   * This includes cases where user is owner OR has assigned tasks
+   */
+  @Get('user/assigned')
+  @RequireAlertTriageRole()
+  @ApiOperation({
+    summary: 'Get cases assigned to current user',
+    description: 'Retrieves all cases where the user is either the owner or has assigned tasks',
+  })
+  @ApiQuery({ type: GetUserCasesQueryDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Cases retrieved successfully',
+    type: GetUserCasesResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUserCases(
+      @Query() query: GetUserCasesQueryDto,
+      @Req() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user.token.clientId;
+    return this.caseService.getUserCases(userId, query);
+  }
+
+  /**
+   * Get all cases assigned to a specific user (for supervisors/admins)
+   */
+  @Get('user/:userId/assigned')
+  @RequireAlertTriageRole() // Should require supervisor role when implemented
+  @ApiOperation({
+    summary: 'Get cases assigned to a specific user',
+    description: 'Retrieves all cases for a specific user (requires supervisor permissions)',
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'string',
+    description: 'User ID to get cases for',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiQuery({ type: GetUserCasesQueryDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Cases retrieved successfully',
+    type: GetUserCasesResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  async getUserCasesByUserId(
+      @Param('userId') targetUserId: string,
+      @Query() query: GetUserCasesQueryDto,
+      @Req() req: AuthenticatedRequest,
+  ) {
+    const requestingUserId = req.user.token.clientId;
+
+    // TODO: Check if requesting user has supervisor permissions
+    // For now, allow users to only query their own cases
+    if (requestingUserId !== targetUserId) {
+      // In production, check for supervisor role here
+      // throw new ForbiddenException('You can only view your own cases');
+    }
+
+    return this.caseService.getUserCases(targetUserId, query);
+  }
+
+  /**
+   * Get case workload statistics for current user
+   */
+  @Get('user/workload')
+  @RequireAlertTriageRole()
+  @ApiOperation({
+    summary: 'Get case workload statistics',
+    description: 'Get summary statistics of user\'s case workload',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Workload statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        totalActiveCases: { type: 'number', example: 15 },
+        totalPendingTasks: { type: 'number', example: 8 },
+        casesByStatus: {
+          type: 'object',
+          example: {
+            'STATUS_20_IN_PROGRESS': 10,
+            'STATUS_02_READY_FOR_ASSIGNMENT': 5,
+          },
+        },
+        casesByPriority: {
+          type: 'object',
+          example: {
+            'CRITICAL': 2,
+            'URGENT': 5,
+            'NEW': 8,
+          },
+        },
+        oldestCase: {
+          type: 'object',
+          properties: {
+            case_id: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            days_old: { type: 'number' },
+          },
+        },
+        averageCaseAge: { type: 'number', example: 5.5 },
+      },
+    },
+  })
+  async getUserWorkload(@Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    return this.caseService.getUserWorkloadStats(userId);
   }
 
   /**

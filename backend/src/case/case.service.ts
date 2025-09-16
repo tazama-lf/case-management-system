@@ -9,6 +9,7 @@ import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
+import {GetUserCasesQueryDto} from "./dto/get-user-cases.dto";
 
 @Injectable()
 export class CaseService {
@@ -595,6 +596,406 @@ export class CaseService {
       return investigationTask;
     } catch (error) {
       this.logger.error(`Failed to create investigation task: ${error.message}`, error.stack, CaseService.name);
+      throw error;
+    }
+  }
+
+  // Add these methods to your existing case.service.ts
+
+  /**
+   * Get all cases assigned to a user
+   * Includes cases where user is owner OR has assigned tasks
+   */
+  async getUserCases(userId: string, query: GetUserCasesQueryDto) {
+    try {
+      this.logger.log(`Getting cases for user ${userId}`, CaseService.name);
+
+      const {
+        status,
+        priority,
+        includeTaskAssignments,
+        includeOwnedCases,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc'
+      } = query;
+
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+
+      // Build where clause
+      const whereConditions: any[] = [];
+
+      // Include owned cases
+      if (includeOwnedCases) {
+        const ownedCasesCondition: any = {
+          case_owner_user_id: userId,
+        };
+        if (status) ownedCasesCondition.status = status;
+        if (priority) ownedCasesCondition.priority = priority;
+        whereConditions.push(ownedCasesCondition);
+      }
+
+      // Include cases where user has assigned tasks
+      if (includeTaskAssignments) {
+        const taskAssignmentCondition: any = {
+          tasks: {
+            some: {
+              assigned_user_id: userId,
+            },
+          },
+        };
+        if (status) taskAssignmentCondition.status = status;
+        if (priority) taskAssignmentCondition.priority = priority;
+        whereConditions.push(taskAssignmentCondition);
+      }
+
+      // If no conditions, return empty result
+      if (whereConditions.length === 0) {
+        return {
+          cases: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+          summary: {
+            totalOwnedCases: 0,
+            totalTaskAssignments: 0,
+            casesByStatus: {},
+            casesByPriority: {},
+          },
+        };
+      }
+
+      // Count total cases
+      const totalCount = await this.prismaService.case.count({
+        where: {
+          OR: whereConditions,
+        },
+      });
+
+      // Get cases with pagination
+      const cases = await this.prismaService.case.findMany({
+        where: {
+          OR: whereConditions,
+        },
+        include: {
+          tasks: {
+            orderBy: {
+              created_at: 'desc',
+            },
+          },
+          alert: {
+            select: {
+              alert_id: true,
+              message: true,
+              confidence_per: true,
+              priority: true,
+              alert_type: true,
+            },
+          },
+          comments: {
+            select: {
+              comment_id: true,
+              created_at: true,
+            },
+            orderBy: {
+              created_at: 'desc',
+            },
+            take: 1, // Just get the latest comment info
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      });
+
+      // Process cases to add user-specific information
+      const processedCases = cases.map(caseItem => {
+        const isOwner = caseItem.case_owner_user_id === userId;
+        const userTasks = caseItem.tasks.filter(task => task.assigned_user_id === userId);
+        const hasTaskAssignment = userTasks.length > 0;
+
+        let userRole: 'owner' | 'task_assignee' | 'both';
+        if (isOwner && hasTaskAssignment) {
+          userRole = 'both';
+        } else if (isOwner) {
+          userRole = 'owner';
+        } else {
+          userRole = 'task_assignee';
+        }
+
+        return {
+          case_id: caseItem.case_id,
+          status: caseItem.status,
+          priority: caseItem.priority,
+          case_type: caseItem.case_type,
+          created_at: caseItem.created_at,
+          updated_at: caseItem.updated_at,
+          user_role: userRole,
+          user_tasks: userTasks.map(task => ({
+            task_id: task.task_id,
+            name: task.name,
+            status: task.status,
+            created_at: task.created_at,
+          })),
+          total_tasks: caseItem.tasks.length,
+          alert: caseItem.alert ? {
+            alert_id: caseItem.alert.alert_id,
+            message: caseItem.alert.message,
+            confidence_per: caseItem.alert.confidence_per,
+          } : undefined,
+          latest_comment_date: caseItem.comments[0]?.created_at,
+        };
+      });
+
+      // Get summary statistics
+      const [ownedCasesCount, taskAssignmentCasesCount] = await Promise.all([
+        this.prismaService.case.count({
+          where: {
+            case_owner_user_id: userId,
+          },
+        }),
+        this.prismaService.case.count({
+          where: {
+            tasks: {
+              some: {
+                assigned_user_id: userId,
+              },
+            },
+          },
+        }),
+      ]);
+
+      // Get cases by status and priority
+      const casesByStatus = await this.prismaService.case.groupBy({
+        by: ['status'],
+        where: {
+          OR: whereConditions,
+        },
+        _count: {
+          case_id: true,
+        },
+      });
+
+      const casesByPriority = await this.prismaService.case.groupBy({
+        by: ['priority'],
+        where: {
+          OR: whereConditions,
+        },
+        _count: {
+          case_id: true,
+        },
+      });
+
+      // Format statistics
+      const statusCounts = casesByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count.case_id;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const priorityCounts = casesByPriority.reduce((acc, item) => {
+        acc[item.priority] = item._count.case_id;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Log the retrieval
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'getUserCases',
+        entityName: CaseService.name,
+        actionPerformed: `Retrieved ${cases.length} cases for user ${userId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return {
+        cases: processedCases,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+        summary: {
+          totalOwnedCases: ownedCasesCount,
+          totalTaskAssignments: taskAssignmentCasesCount,
+          casesByStatus: statusCounts,
+          casesByPriority: priorityCounts,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get user cases: ${error.message}`, error.stack, CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'getUserCases',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to retrieve cases for user ${userId}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Get workload statistics for a user
+   */
+  async getUserWorkloadStats(userId: string) {
+    try {
+      this.logger.log(`Getting workload stats for user ${userId}`, CaseService.name);
+
+      // Get all active cases (not closed/abandoned)
+      const activeCaseStatuses = [
+        CaseStatus.STATUS_00_DRAFT,
+        CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        CaseStatus.STATUS_03_RETURNED,
+        CaseStatus.STATUS_10_ASSIGNED,
+        CaseStatus.STATUS_20_IN_PROGRESS,
+        CaseStatus.STATUS_21_SUSPENDED,
+        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+        CaseStatus.STATUS_30_PENDING_REOPENING,
+        CaseStatus.STATUS_31_REOPENED,
+      ];
+
+      // Get cases and tasks
+      const [activeCases, pendingTasks, allUserCases] = await Promise.all([
+        // Active cases count
+        this.prismaService.case.count({
+          where: {
+            OR: [
+              { case_owner_user_id: userId },
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: userId,
+                  },
+                },
+              },
+            ],
+            status: {
+              in: activeCaseStatuses,
+            },
+          },
+        }),
+
+        // Pending tasks count
+        this.prismaService.task.count({
+          where: {
+            assigned_user_id: userId,
+            status: {
+              in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            },
+          },
+        }),
+
+        // All user cases for statistics
+        this.prismaService.case.findMany({
+          where: {
+            OR: [
+              { case_owner_user_id: userId },
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: userId,
+                  },
+                },
+              },
+            ],
+            status: {
+              in: activeCaseStatuses,
+            },
+          },
+          select: {
+            case_id: true,
+            status: true,
+            priority: true,
+            created_at: true,
+          },
+          orderBy: {
+            created_at: 'asc',
+          },
+        }),
+      ]);
+
+      // Calculate statistics
+      const now = new Date();
+      let oldestCase: { case_id: string; created_at: Date; days_old: number } | null = null;
+      let totalAge = 0;
+
+      if (allUserCases.length > 0) {
+        const oldest = allUserCases[0];
+        const daysOld = Math.floor((now.getTime() - oldest.created_at.getTime()) / (1000 * 60 * 60 * 24));
+
+        oldestCase = {
+          case_id: oldest.case_id,
+          created_at: oldest.created_at,
+          days_old: daysOld,
+        };
+
+        // Calculate average age
+        allUserCases.forEach(c => {
+          const age = (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          totalAge += age;
+        });
+      }
+
+      // Group by status and priority
+      const casesByStatus: Record<string, number> = {};
+      const casesByPriority: Record<string, number> = {};
+
+      allUserCases.forEach(c => {
+        casesByStatus[c.status] = (casesByStatus[c.status] || 0) + 1;
+        casesByPriority[c.priority] = (casesByPriority[c.priority] || 0) + 1;
+      });
+
+      const averageCaseAge = allUserCases.length > 0
+          ? Math.round(totalAge / allUserCases.length * 10) / 10
+          : 0;
+
+      // Get upcoming deadlines (if you have deadline fields)
+      // This is a placeholder - adjust based on your actual schema
+      const upcomingDeadlines = await this.prismaService.task.findMany({
+        where: {
+          assigned_user_id: userId,
+          status: {
+            in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+          },
+        },
+        select: {
+          task_id: true,
+          name: true,
+          case_id: true,
+          created_at: true,
+        },
+        orderBy: {
+          created_at: 'asc',
+        },
+        take: 5,
+      });
+
+      return {
+        totalActiveCases: activeCases,
+        totalPendingTasks: pendingTasks,
+        casesByStatus,
+        casesByPriority,
+        oldestCase,
+        averageCaseAge,
+        upcomingTasks: upcomingDeadlines.map(task => ({
+          task_id: task.task_id,
+          name: task.name,
+          case_id: task.case_id,
+          days_old: Math.floor((now.getTime() - task.created_at.getTime()) / (1000 * 60 * 60 * 24)),
+        })),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get workload stats: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }
