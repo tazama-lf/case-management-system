@@ -41,6 +41,9 @@ export class AlertMessageDto {
   confidence_per: number;
 
   @IsOptional()
+  aml_suspected?: boolean;
+
+  @IsOptional()
   @IsString()
   case_id?: string;
 

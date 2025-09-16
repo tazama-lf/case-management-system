@@ -18,4 +18,8 @@ export class CreateTaskDto {
 
   @IsString()
   description: string;
+
+  @IsString()
+  @IsOptional()
+  candidateGroup?: string;
 }

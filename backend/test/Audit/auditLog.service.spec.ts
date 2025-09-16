@@ -193,6 +193,17 @@ describe('AuditLogService', () => {
         },
       });
     });
+
+    it('should handle errors when creating audit log', async () => {
+      prismaService.auditLog.create.mockRejectedValue(new Error('DB error'));
+      await expect(service.logAction({
+        userId: 'valid-uuid-123',
+        operation: 'test-operation',
+        entityName: 'test-entity',
+        actionPerformed: 'test-action',
+        outcome: 'success',
+      })).rejects.toThrow('DB error');
+    });
   });
 
   describe('logPermissionDenied', () => {
@@ -316,6 +327,49 @@ describe('AuditLogService', () => {
         orderBy: { performed_at: 'desc' },
         take: 10,
         skip: 20,
+      });
+      expect(result).toEqual(mockLogs);
+    });
+  });
+
+  describe('getActionHistoryForAlert', () => {
+    it('should get action history for a given alert ID', async () => {
+      const alertId = 'alert-123';
+      const mockLogs = [
+        {
+          audit_log_id: 'log-1',
+          user_id: 'user-1',
+          operation: 'update',
+          entity_name: 'Alert',
+          action_performed: `Updated alert ${alertId}`,
+          outcome: 'success',
+          performed_at: new Date(),
+        },
+        {
+          audit_log_id: 'log-2',
+          user_id: 'user-2',
+          operation: 'create',
+          entity_name: 'Case',
+          action_performed: `Created case for alert ${alertId}`,
+          outcome: 'success',
+          performed_at: new Date(),
+        },
+      ];
+
+      prismaService.auditLog.findMany.mockResolvedValue(mockLogs);
+
+      const result = await service.getActionHistoryForAlert(alertId);
+
+      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { action_performed: { contains: alertId } },
+            { action_performed: { contains: `alert ${alertId}` } },
+            { action_performed: { contains: `Alert ${alertId}` } },
+          ],
+          entity_name: { in: ['Alert', 'Case'] },
+        },
+        orderBy: { performed_at: 'asc' },
       });
       expect(result).toEqual(mockLogs);
     });
