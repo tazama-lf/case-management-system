@@ -26,6 +26,8 @@ jobs:
 
       - name: PR Conventional Commit Validation
         uses: amannn/action-semantic-pull-request@v5.5.0  # Use a more stable action to validate PR titles
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Define the task types that are valid for conventional commits
           types: |
@@ -40,5 +42,3 @@ jobs:
             test
           # Validate the scope and subject
           requireScope: false
-          # Use a personal access token (GITHUB_TOKEN) stored in GitHub secrets for authentication
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
