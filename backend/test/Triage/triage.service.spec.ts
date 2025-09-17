@@ -1389,6 +1389,7 @@ describe('TriageService', () => {
   describe('createCaseWithInvestigationTask', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
+    const priority = Priority.URGENT;
 
     it('should create case with investigation task successfully', async () => {
       const mockCase = { case_id: 'case-123' };
@@ -1402,7 +1403,7 @@ describe('TriageService', () => {
         createTask: jest.fn().mockResolvedValue(mockTask),
       } as any;
 
-      const result = await service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123');
+      const result = await service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123', priority);
 
       expect(result).toEqual({ caseId: 'case-123', taskId: 'investigation-task-123' });
     });
@@ -1420,7 +1421,7 @@ describe('TriageService', () => {
         createTask: jest.fn().mockResolvedValue({ task_id: 'task-123' }),
       } as any;
 
-      await expect(service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123'))
+      await expect(service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123', priority))
         .rejects.toThrow('Failed to create FRAUD case and task');
     });
   });
@@ -1431,6 +1432,7 @@ describe('TriageService', () => {
     const triageTaskId = 'triage-task-123';
     const taskName = 'Investigation Task';
     const taskDescription = 'Investigation needed';
+    const priority = Priority.URGENT;
 
     it('should create investigation task successfully', async () => {
       const mockTask = { task_id: 'investigation-task-123' };
@@ -1446,7 +1448,7 @@ describe('TriageService', () => {
         updateCase: jest.fn().mockResolvedValue(mockCase),
       } as any;
 
-      const result = await service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription);
+      const result = await service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription, priority);
 
       expect(result).toEqual(mockCase);
       const mockTaskService = service['taskService'];
@@ -1467,6 +1469,7 @@ describe('TriageService', () => {
       const triageTaskId = 'triage-task-123';
       const taskName = 'Investigation Task';
       const taskDescription = 'Investigation needed';
+      const priority = Priority.URGENT;
 
       // Mock taskService to throw an error
       service['taskService'] = {
@@ -1478,7 +1481,7 @@ describe('TriageService', () => {
         updateCase: jest.fn().mockResolvedValue({ case_id: 'case-123', status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
       } as any;
 
-      await expect(service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription))
+      await expect(service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription, priority))
         .rejects.toThrow('Failed to create investigation task');
     });
   });
@@ -1486,8 +1489,11 @@ describe('TriageService', () => {
   describe('updateAlertAndUpdateTriageTask', () => {
     const alertId = 'alert-123';
     const triageTaskId = 'triage-task-123';
-    const alertType = 'FRAUD';
+    const alertType = AlertType.FRAUD;
     const confidence = 95;
+    const priorityScore = 85;
+    const priority = Priority.URGENT;
+    const predictedTruePositive = true;
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
@@ -1500,7 +1506,7 @@ describe('TriageService', () => {
         updateTask: jest.fn().mockResolvedValue(mockTask),
       } as any;
 
-      await service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, userId, tenantId);
+      await service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, priority, predictedTruePositive, userId, tenantId);
 
       expect(service['updateAlertData']).toHaveBeenCalledWith(
         alertId,
@@ -1515,17 +1521,10 @@ describe('TriageService', () => {
     });
 
     it('should handle errors in updateAlertAndUpdateTriageTask', async () => {
-      const alertId = 'alert-123';
-      const triageTaskId = 'task-123';
-      const alertType = AlertType.FRAUD;
-      const confidence = 85;
-      const userId = 'test-user-id';
-      const tenantId = 'test-tenant-id';
-
       // Mock updateAlertData to throw an error
       jest.spyOn(service as any, 'updateAlertData').mockRejectedValue(new Error('Update failed'));
       
-      await expect(service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, userId, tenantId))
+      await expect(service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, priority, predictedTruePositive, userId, tenantId))
         .rejects.toThrow('Failed to update alert and triage task');
     });
   });
