@@ -1,4 +1,4 @@
-import {Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query} from '@nestjs/common';
+import {Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException} from '@nestjs/common';
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
@@ -160,9 +160,11 @@ export class CaseController {
       @Body() dto: CloseCaseDto,
       @Req() req: AuthenticatedRequest,
   ) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    return this.caseService.closeCase(caseId, dto, userId, tenantId);
+    const { clientId, tenantId } = req.user.token;
+    if (!clientId || !tenantId) {
+      throw new BadRequestException('Missing clientId or tenantId in auth token');
+    }
+    return this.caseService.closeCase(caseId, dto, clientId, tenantId);
   }
 
   /**

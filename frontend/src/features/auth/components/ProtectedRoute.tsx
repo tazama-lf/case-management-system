@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
-  console.log('🛡️ ProtectedRoute Debug:', {
+  console.log('ProtectedRoute Debug:', {
     isAuthenticated,
     loading,
     requireBackendAccess,
@@ -37,13 +37,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log('🚫 ProtectedRoute: User not authenticated, redirecting to login');
+    console.log('ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check backend access if required
   if (requireBackendAccess && !authService.validateBackendAccess()) {
-    console.log('🚫 ProtectedRoute: Backend access validation failed');
+    console.log('ProtectedRoute: Backend access validation failed');
     const hasAlertTriage = authService.hasAlertTriageRole();
     const hasCMSTestRole = authService.hasCMSTestRole();
     

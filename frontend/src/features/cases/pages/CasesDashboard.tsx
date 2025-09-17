@@ -2,96 +2,73 @@ import React from 'react';
 import { MagnifyingGlassIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '../../../shared/components/ui';
 import { CasesTable, CreateCaseModal, ViewCaseModal, ReassignCaseModal } from '..';
+import CloseCaseModal from '../components/CloseCaseModal';
+import CasesTableSkeleton from '../components/CasesTableSkeleton';
+import { caseService, type CloseCaseDto } from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
+import { transformBackendCaseToUI } from '../components/CasesTable';
 
 const CasesDashboard: React.FC = () => {
   const [search, setSearch] = React.useState('');
   const [sortBy, setSortBy] = React.useState<'recent' | 'oldest'>('recent');
-  const [caseIdFilter, setCaseIdFilter] = React.useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = React.useState<string>('');
+  const [priorityFilter, setPriorityFilter] = React.useState<string>('');
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [isReassignOpen, setIsReassignOpen] = React.useState(false);
+  const [isCloseCaseOpen, setIsCloseCaseOpen] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState<CaseRow | null>(null);
+  const [cases, setCases] = React.useState<CaseRow[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const cases: CaseRow[] = [
-    {
-      id: 205,
-      type: 'Fraud',
-      typeColor: 'bg-red-50 text-red-700 ring-red-200',
-      status: '10 - ASSIGNED',
-      statusColor: 'bg-gray-100 text-gray-700',
-      typologyId: 'TYP-001',
-      score: 1450,
-      createdOn: '01-03-2023',
-      pickedOn: '-',
-      action: 'View',
-      reassignEnabled: true,
-      assignee: 'John Smith',
-    },
-    {
-      id: 202,
-      type: 'AML',
-      typeColor: 'bg-purple-50 text-purple-700 ring-purple-200',
-      status: '20 - IN PROGRESS',
-      statusColor: 'bg-blue-50 text-blue-700',
-      typologyId: 'TYP-002',
-      score: 1275,
-      createdOn: '20-02-2023',
-      pickedOn: '22-02-2023',
-      action: 'View',
-      reassignEnabled: true,
-      assignee: 'Sarah Johnson',
-    },
-    {
-      id: 102,
-      type: 'Fraud',
-      typeColor: 'bg-red-50 text-red-700 ring-red-200',
-      status: '00 - DRAFT',
-      statusColor: 'bg-gray-100 text-gray-700',
-      typologyId: 'TYP-004',
-      score: 1350,
-      createdOn: '16-02-2023',
-      pickedOn: '-',
-      action: 'Complete',
-      reassignEnabled: true,
-      assignee: 'Michael Brown',
-    },
-    {
-      id: 100,
-      type: 'Fraud',
-      typeColor: 'bg-red-50 text-red-700 ring-red-200',
-      status: '31 - REOPENED',
-      statusColor: 'bg-gray-100 text-gray-700',
-      typologyId: 'TYP-006',
-      score: 1320,
-      createdOn: '14-02-2023',
-      pickedOn: '15-02-2023',
-      action: 'View',
-      reassignEnabled: true,
-      assignee: 'John Smith',
-    },
-  ];
+  // Fetch all cases in the system
+  React.useEffect(() => {
+    const fetchAllCases = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await caseService.getAllCases({
+          status: statusFilter || undefined,
+          priority: priorityFilter || undefined,
+          sortBy: 'updated_at',
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+        });
+        
+        // Transform backend cases to UI format
+        const transformedCases = response.cases.map(transformBackendCaseToUI);
+        setCases(transformedCases);
+      } catch (err) {
+        console.error('Failed to fetch all cases:', err);
+        setError('Failed to load cases. Please try again.');
+        setCases([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const filtered = cases
-    .filter((c) =>
-      [
-        String(c.id),
-        c.type,
-        c.status,
-        c.typologyId,
-        String(c.score),
-        c.createdOn,
-        c.pickedOn,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    )
-    .sort((a, b) => {
-      if (sortBy === 'recent') return b.id - a.id;
-      return a.id - b.id;
-    })
-    .sort((a, b) => (caseIdFilter === 'desc' ? b.id - a.id : a.id - b.id));
+    fetchAllCases();
+  }, [statusFilter, priorityFilter, sortBy]);
+
+  // No mock data - only use real backend data
+
+  // Client-side filtering for search
+  const filtered = cases.filter((c) =>
+    search === '' || [
+      c.id,
+      c.type,
+      c.status,
+      c.typologyId,
+      String(c.score),
+      c.createdOn,
+      c.pickedOn,
+      c.assignee || '',
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
 
   // Handlers
   const handleCreate = (payload: {
@@ -116,7 +93,9 @@ const CasesDashboard: React.FC = () => {
   };
 
   const handleComplete = (row: CaseRow) => {
-    console.log('Complete case', row);
+    console.log('Complete case - opening manual case creation', row);
+    setSelectedRow(row);
+    setIsCreateOpen(true);
   };
 
   const handleOpenReassign = (row: CaseRow) => {
@@ -127,6 +106,83 @@ const CasesDashboard: React.FC = () => {
   const handleReassign = (row: CaseRow, assignee: string, justification?: string) => {
     console.log('Reassign case', row, 'to', assignee, 'justification:', justification);
     setIsReassignOpen(false);
+  };
+
+  const handleCloseCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsCloseCaseOpen(true);
+  };
+
+  const handleCloseCaseSubmit = async (data: CloseCaseDto) => {
+    if (!selectedRow) return;
+    
+    try {
+      const response = await caseService.closeCase(selectedRow.id, data);
+      
+      console.log(`Case ${selectedRow.id} submitted for approval:`, {
+        caseId: selectedRow.id,
+        newStatus: response.closed_case.status,
+        approvalTaskId: response.approval_task.task_id,
+        approvalTaskStatus: response.approval_task.status,
+        recommendedOutcome: data.recommendedOutcome
+      });
+      
+      // Show success message matching acceptance criteria
+      alert(`✅ Case Investigation Complete!\n\n` +
+            `Case ${selectedRow.id} has been submitted for supervisor approval.\n\n` +
+            `📋 Status Updates:\n` +
+            `• Case Status: ${response.closed_case.status}\n` +
+            `• Approval Task: ${response.approval_task.name}\n` +
+            `• Assigned to: ${response.approval_task.assigned_to}\n` +
+            `• Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}\n\n` +
+            `🔔 Supervisor has been notified of the new approval task.`);
+      
+      setIsCloseCaseOpen(false);
+      setSelectedRow(null);
+      
+      // Refresh the cases list to show updated status
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          const transformedCases = response.cases.map(transformBackendCaseToUI);
+          setCases(transformedCases);
+        } catch (err) {
+          console.error('Failed to refresh cases:', err);
+        }
+      };
+      fetchAllCases();
+      
+    } catch (error: any) {
+      console.error('Failed to close case:', error);
+      
+      // Provide specific error messages based on the error
+      let errorMessage = 'Failed to close case. Please try again.';
+      
+      if (error.message?.includes('not in a closeable state')) {
+        errorMessage = `❌ Case cannot be closed.\n\n` +
+                      `This case may not meet the closure requirements:\n` +
+                      `• Case must be "IN PROGRESS" status\n` +
+                      `• Must have an active "Investigate case" task\n` +
+                      `• Task must be assigned to you\n` +
+                      `• All other tasks must be complete\n\n` +
+                      `Please check the case status and try again.`;
+      } else if (error.message?.includes('Unauthorized') || error.message?.includes('403')) {
+        errorMessage = `❌ Access Denied.\n\n` +
+                      `You don't have permission to close this case.\n` +
+                      `Please ensure you are the assigned investigator.`;
+      } else if (error.message?.includes('404')) {
+        errorMessage = `❌ Case Not Found.\n\n` +
+                      `The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+      throw error; // Re-throw so the modal can handle it
+    }
   };
 
   return (
@@ -145,14 +201,34 @@ const CasesDashboard: React.FC = () => {
           <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row">
             <div className="relative w-full sm:max-w-[160px]">
               <select
-                aria-label="Case ID sort"
-                value={caseIdFilter}
-                onChange={(e) => setCaseIdFilter(e.target.value as 'asc' | 'desc')}
+                aria-label="Status filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="desc">Case ID </option>
-                <option value="asc"> Status </option>
-                <option value="asc"> typology ID </option>
+                <option value="">All Statuses</option>
+                <option value="STATUS_10_ASSIGNED">Assigned</option>
+                <option value="STATUS_20_IN_PROGRESS">In Progress</option>
+                <option value="STATUS_00_DRAFT">Draft</option>
+                <option value="STATUS_31_REOPENED">Reopened</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
+                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
+              </div>
+            </div>
+
+            <div className="relative w-full sm:max-w-[160px]">
+              <select
+                aria-label="Priority filter"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="">All Priorities</option>
+                <option value="NEW">New</option>
+                <option value="URGENT">Urgent</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="BREACH">Breach</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                 <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
@@ -191,12 +267,23 @@ const CasesDashboard: React.FC = () => {
       </Card>
 
       <Card className="mt-4">
-        <CasesTable
-          rows={filtered}
-          onView={handleView}
-          onComplete={handleComplete}
-          onReassign={handleOpenReassign}
-        />
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+        
+        {isLoading ? (
+          <CasesTableSkeleton rows={10} />
+        ) : (
+          <CasesTable
+            rows={filtered}
+            onView={handleView}
+            onComplete={handleComplete}
+            onReassign={handleOpenReassign}
+            onCloseCase={handleCloseCase}
+          />
+        )}
       </Card>
 
       {/* Modals */}
@@ -204,6 +291,20 @@ const CasesDashboard: React.FC = () => {
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onCreate={handleCreate}
+        initial={selectedRow ? {
+          caseId: selectedRow.id,
+          caseType: ((): string => {
+            // Map backend case types to modal options
+            const t = (selectedRow.type || '').toUpperCase();
+            if (t.includes('FRAUD')) return 'Fraud';
+            if (t.includes('AML')) return 'Money Laundering';
+            return '';
+          })(),
+          source: '',
+          typologies: selectedRow.alertId ? [selectedRow.alertId.substring(0, 8)] : [],
+          description: selectedRow.alertMessage || '',
+          comments: ''
+        } : undefined}
       />
       <ViewCaseModal
         open={isViewOpen}
@@ -215,6 +316,13 @@ const CasesDashboard: React.FC = () => {
         onClose={() => setIsReassignOpen(false)}
         onReassign={handleReassign}
         row={selectedRow}
+      />
+      <CloseCaseModal
+        open={isCloseCaseOpen}
+        onClose={() => setIsCloseCaseOpen(false)}
+        caseId={selectedRow?.id || ''}
+        caseName={selectedRow ? `${selectedRow.type} Case` : ''}
+        onSubmit={handleCloseCaseSubmit}
       />
     </PageContainer>
   );

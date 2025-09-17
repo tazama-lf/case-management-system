@@ -18,7 +18,7 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      console.log('🚀 Starting login process...');
+      console.log('Starting login process...');
       
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -33,7 +33,7 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
-      console.log('✅ Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
+      console.log('Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
       // Store token and user data
       if (data.token) {
@@ -42,17 +42,17 @@ class AuthService {
         // Decode JWT and extract user info
         const user = this.decodeToken(data.token);
         if (user) {
-          console.log('✅ User decoded from token successfully');
+          console.log('User decoded from token successfully');
           this.setUser(user);
           data.user = user;
         } else {
-          console.log('❌ Failed to decode user from token');
+          console.log('Failed to decode user from token');
         }
       }
 
       return data;
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       throw error;
     }
   }
@@ -108,7 +108,7 @@ class AuthService {
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded) {
-      console.log('❌ decodeToken failed: could not decode token');
+      console.log('decodeToken failed: could not decode token');
       return null;
     }
 
@@ -127,7 +127,7 @@ class AuthService {
         backendClaims: this.extractBackendClaims(decoded),
       };
 
-      console.log('✅ decodeToken success:', {
+      console.log('decodeToken success:', {
         user_id: user.user_id,
         username: user.username,
         firstName: user.firstName,
@@ -140,7 +140,7 @@ class AuthService {
 
       return user;
     } catch (error) {
-      console.error('❌ Error extracting user info from decoded token:', error);
+      console.error('Error extracting user info from decoded token:', error);
       return null;
     }
   }
@@ -223,7 +223,7 @@ class AuthService {
       }
     }
 
-    console.log('🎯 extractBackendClaims() Debug:', {
+    console.log('extractBackendClaims() Debug:', {
       originalClaims: [...claims].filter(c => c !== 'alert-triage'),
       hasCMSTestRoleInToken: hasCMSTestRole,
       finalClaims: claims,
@@ -348,7 +348,7 @@ class AuthService {
     const user = this.getUser();
     const result = hasAlertTriage || hasCMSTest;
     
-    console.log('🔐 validateBackendAccess() Debug:', {
+    console.log('validateBackendAccess() Debug:', {
       hasAlertTriage,
       hasCMSTest,
       userClaims: user?.backendClaims,

@@ -2,7 +2,7 @@ import React from 'react';
 import { EyeIcon, CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export type CaseRow = {
-  id: number;
+  id: string; // Changed from number to string to match backend case_id
   type: string;
   typeColor: string; 
   status: string;
@@ -14,6 +14,53 @@ export type CaseRow = {
   action: 'View' | 'Complete';
   reassignEnabled: boolean;
   assignee?: string;
+  // Additional fields from backend
+  priority: string;
+  userRole: 'owner' | 'task_assignee' | 'both';
+  totalTasks: number;
+  alertId?: string;
+  alertMessage?: string;
+  confidencePercent?: number;
+};
+
+// Utility functions to transform backend data
+export const getStatusColor = (status: string): string => {
+  const statusColors: Record<string, string> = {
+    // New format
+    'STATUS_00_DRAFT': 'bg-gray-100 text-gray-700',
+    'STATUS_02_READY_FOR_ASSIGNMENT': 'bg-indigo-50 text-indigo-700',
+    'STATUS_10_ASSIGNED': 'bg-blue-50 text-blue-700',
+    'STATUS_20_IN_PROGRESS': 'bg-yellow-50 text-yellow-700',
+    'STATUS_22_PENDING_FINAL_APPROVAL': 'bg-purple-50 text-purple-700',
+    'STATUS_31_REOPENED': 'bg-orange-50 text-orange-700',
+    'STATUS_81_CLOSED_REFUTED': 'bg-red-50 text-red-700',
+    'STATUS_82_CLOSED_CONFIRMED': 'bg-green-50 text-green-700',
+    'STATUS_83_CLOSED_INCONCLUSIVE': 'bg-gray-50 text-gray-700',
+  };
+  return statusColors[status] || 'bg-gray-100 text-gray-700';
+};
+
+export const getTypeColor = (caseType: string): string => {
+  const typeColors: Record<string, string> = {
+    'FRAUD': 'bg-red-50 text-red-700 ring-red-200',
+    'AML': 'bg-purple-50 text-purple-700 ring-purple-200',
+    'FRAUD_AND_AML': 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+  };
+  return typeColors[caseType] || 'bg-gray-50 text-gray-700 ring-gray-200';
+};
+
+export const getPriorityColor = (priority: string): string => {
+  const priorityColors: Record<string, string> = {
+    'NEW': 'bg-blue-50 text-blue-700 ring-blue-200',
+    'URGENT': 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+    'CRITICAL': 'bg-orange-50 text-orange-700 ring-orange-200',
+    'BREACH': 'bg-red-50 text-red-700 ring-red-200',
+  };
+  return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
+};
+
+export const formatStatus = (status: string): string => {
+  return status;
 };
 
 interface CasesTableProps {
