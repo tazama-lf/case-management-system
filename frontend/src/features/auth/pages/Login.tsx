@@ -26,7 +26,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('Login: User is authenticated, redirecting to /alerts');
+      console.log('User is authenticated, redirecting to /alerts');
       navigate('/alerts', { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -45,17 +45,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
 
     try {
-      console.log('Login: Starting login process...');
+      console.log('Starting login process...');
       await login(credentials);
 
       // Call onLoginSuccess callback if provided
       if (onLoginSuccess) {
-        console.log('Login: Calling onLoginSuccess callback');
+        console.log('Calling onLoginSuccess callback');
         onLoginSuccess();
       }
       // Don't manually navigate here - let the useEffect handle it
       // The login function will update isAuthenticated, which will trigger the useEffect
-      console.log('Login: Login function completed, waiting for auth state update...');
+      console.log('Login function completed, waiting for auth state update...');
     } catch (error) {
       // Error is handled by the context
       console.error('Login failed:', error);
@@ -198,14 +198,53 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             {/* Development Info */}
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-yellow-800 text-xs font-medium mb-1">
-                  Development Mode
+                <p className="text-yellow-800 text-xs font-medium mb-2">
+                  Development Mode - Test Users
                 </p>
-                <p className="text-yellow-700 text-xs">
-                  Use:{' '}
-                  <code className="bg-yellow-100 px-1 rounded">test-user</code>{' '}
-                  / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-yellow-700 text-xs">
+                      <span className="font-medium">Test User:</span>{' '}
+                      <code className="bg-yellow-100 px-1 rounded">test-user</code>{' '}
+                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCredentials({ username: 'test-user', password: 'abc.123' })}
+                      className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
+                    >
+                      Fill
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-yellow-700 text-xs">
+                      <span className="font-medium">Supervisor:</span>{' '}
+                      <code className="bg-yellow-100 px-1 rounded">supervisor</code>{' '}
+                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCredentials({ username: 'supervisor', password: 'abc.123' })}
+                      className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
+                    >
+                      Fill
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-yellow-700 text-xs">
+                      <span className="font-medium">Investigator:</span>{' '}
+                      <code className="bg-yellow-100 px-1 rounded">investigator</code>{' '}
+                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCredentials({ username: 'investigator', password: 'abc.123' })}
+                      className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
+                    >
+                      Fill
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

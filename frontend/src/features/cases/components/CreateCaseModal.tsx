@@ -5,7 +5,6 @@ interface CreateCaseModalProps {
   open: boolean;
   onClose: () => void;
   onCreate: (payload: {
-    caseId?: string;
     caseType: string;
     source: string;
     typologies: string[];
@@ -16,9 +15,20 @@ interface CreateCaseModalProps {
     linkToExistingCaseId?: string;
     draft?: boolean;
   }) => void;
+  // Optional initial values to prefill the form
+  initial?: {
+    caseId?: string;
+    caseType?: string;
+    source?: string;
+    typologies?: string[];
+    description?: string;
+    assignee?: string;
+    comments?: string;
+    linkToExistingCaseId?: string;
+  };
 }
 
-const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate }) => {
+const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate, initial }) => {
   const [caseId, setCaseId] = React.useState('');
   const [caseType, setCaseType] = React.useState('');
   const [source, setSource] = React.useState('');
@@ -32,18 +42,18 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
 
   React.useEffect(() => {
     if (!open) return;
-    // reset form when opened
-    setCaseId('');
-    setCaseType('');
-    setSource('');
+    // Prefill with provided initial values or reset to defaults when opened
+    setCaseId(initial?.caseId || '');
+    setCaseType(initial?.caseType || '');
+    setSource(initial?.source || '');
     setTypologyInput('');
-    setTypologies([]);
-    setDescription('');
-    setAssignee('Assign Automatically');
+    setTypologies(initial?.typologies || []);
+    setDescription(initial?.description || '');
+    setAssignee(initial?.assignee || 'Assign Automatically');
     setAttachments([]);
-    setComments('');
-    setLinkToExistingCaseId('');
-  }, [open]);
+    setComments(initial?.comments || '');
+    setLinkToExistingCaseId(initial?.linkToExistingCaseId || '');
+  }, [open, initial]);
 
   if (!open) return null;
 
@@ -73,7 +83,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
 
   const submit = (draft = false) => {
     onCreate({
-      caseId: caseId || undefined,
       caseType,
       source,
       typologies,
@@ -97,16 +106,15 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
         </div>
         <div className="px-6 py-4 overflow-y-auto flex-1">
           <div className="space-y-4">
-            {/* Case ID */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Case ID</label>
-              <input
-                value={caseId}
-                onChange={(e) => setCaseId(e.target.value)}
-                placeholder="C 39103"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
+            {/* Case ID (auto-generated and not editable) */}
+            {caseId && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Case ID (auto-generated)</label>
+                <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  {caseId}
+                </div>
+              </div>
+            )}
 
             {/* Case Type and Source */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
