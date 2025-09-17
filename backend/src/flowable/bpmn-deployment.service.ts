@@ -7,8 +7,8 @@ import * as path from 'path';
 @Injectable()
 export class BpmnDeploymentService implements OnModuleInit {
   constructor(
-    private readonly flowableService: FlowableService,
-    private readonly logger: LoggerService,
+      private readonly flowableService: FlowableService,
+      private readonly logger: LoggerService,
   ) {}
 
   async onModuleInit() {
@@ -23,6 +23,9 @@ export class BpmnDeploymentService implements OnModuleInit {
       // Deploy case creation process
       await this.deployCaseCreationProcess(bpmnFilesPath);
 
+      // Deploy case closure approval process
+      await this.deployCaseClosureApprovalProcess(bpmnFilesPath);
+
       this.logger.log('All BPMN processes deployed successfully', BpmnDeploymentService.name);
     } catch (error) {
       this.logger.error(`Failed to deploy BPMN processes: ${error.message}`, error.stack, BpmnDeploymentService.name);
@@ -32,13 +35,25 @@ export class BpmnDeploymentService implements OnModuleInit {
 
   private async deployCaseCreationProcess(bpmnPath: string) {
     const bpmnFilePath = path.join(bpmnPath, 'case-creation.bpmn20.xml');
-
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-
       await this.flowableService.deployProcess(bpmnXml, 'CaseCreationProcess');
-
       this.logger.log('Case creation process deployed', BpmnDeploymentService.name);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private async deployCaseClosureApprovalProcess(bpmnPath: string) {
+    const bpmnFilePath = path.join(bpmnPath, 'case-closure-approval.bpmn20.xml');
+    try {
+      const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
+      await this.flowableService.deployProcess(bpmnXml, 'CaseClosureApprovalProcess');
+      this.logger.log('Case closure approval process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
         this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
