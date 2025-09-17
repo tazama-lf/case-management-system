@@ -9,6 +9,7 @@ import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery} from '@nestjs/swagger';
 import {GetUserCasesQueryDto, GetUserCasesResponseDto} from "./dto/get-user-cases.dto";
+import {GetAllCasesQueryDto, GetAllCasesResponseDto} from "./dto/get-all-cases.dto";
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -164,7 +165,38 @@ export class CaseController {
     return this.caseService.closeCase(caseId, dto, userId, tenantId);
   }
 
-  // Add this method to your existing case.controller.ts
+  /**
+   * SUPERVISOR ENDPOINTS
+   * Get all cases in the system (requires supervisor role)
+   */
+  @Get('all')
+  @RequireAlertTriageRole() // TODO: Change to @RequireSupervisorRole()
+  @ApiOperation({
+    summary: 'Get all cases (Supervisor only)',
+    description: 'Retrieves all cases in the system with filtering options. Requires supervisor permissions.',
+  })
+  @ApiQuery({ type: GetAllCasesQueryDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Cases retrieved successfully',
+    type: GetAllCasesResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
+  async getAllCases(
+      @Query() query: GetAllCasesQueryDto,
+      @Req() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user.token.clientId;
+
+    // TODO: Verify supervisor role
+    // const hasSupervisorRole = await this.authService.userHasRole(userId, 'SUPERVISOR');
+    // if (!hasSupervisorRole) {
+    //   throw new ForbiddenException('This endpoint requires supervisor permissions');
+    // }
+
+    return this.caseService.getAllCases(query, userId);
+  }
 
   /**
    * Get all cases assigned to the current user

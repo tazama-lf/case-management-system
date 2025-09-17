@@ -10,6 +10,7 @@ import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
 import {GetUserCasesQueryDto} from "./dto/get-user-cases.dto";
+import {GetAllCasesQueryDto} from "./dto/get-all-cases.dto";
 
 @Injectable()
 export class CaseService {
@@ -836,6 +837,242 @@ export class CaseService {
         operation: 'getUserCases',
         entityName: CaseService.name,
         actionPerformed: `Failed to retrieve cases for user ${userId}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Get all cases with filtering and pagination (Supervisor only)
+   */
+  async getAllCases(query: GetAllCasesQueryDto, supervisorId: string) {
+    try {
+      this.logger.log(`Supervisor ${supervisorId} retrieving all cases`, CaseService.name);
+
+      const {
+        status,
+        priority,
+        caseType,
+        ownerId,
+        tenantId,
+        unassignedOnly,
+        createdAfter,
+        createdBefore,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = query;
+
+      // Build where clause
+      const whereClause: any = {};
+
+      if (status) whereClause.status = status;
+      if (priority) whereClause.priority = priority;
+      if (caseType) whereClause.case_type = caseType;
+      if (ownerId) whereClause.case_owner_user_id = ownerId;
+      if (tenantId) whereClause.tenant_id = tenantId;
+
+      // Handle unassigned filter - FIXED: Only check for null, not empty string
+      if (unassignedOnly) {
+        whereClause.case_owner_user_id = null;
+      }
+
+      // Date range filters
+      if (createdAfter || createdBefore) {
+        whereClause.created_at = {};
+        if (createdAfter) {
+          whereClause.created_at.gte = new Date(createdAfter);
+        }
+        if (createdBefore) {
+          whereClause.created_at.lte = new Date(createdBefore);
+        }
+      }
+
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const totalCount = await this.prismaService.case.count({
+        where: whereClause,
+      });
+
+      // Get cases with related data
+      const cases = await this.prismaService.case.findMany({
+        where: whereClause,
+        include: {
+          tasks: {
+            select: {
+              task_id: true,
+              status: true,
+              assigned_user_id: true,
+              name: true,
+            },
+          },
+          alert: {
+            select: {
+              alert_id: true,
+              message: true,
+              confidence_per: true,
+              alert_type: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      });
+
+      // Process cases to add computed fields
+      const processedCases = cases.map((caseItem) => {
+        const completedTasks = caseItem.tasks.filter(
+            (t) => t.status === TaskStatus.STATUS_30_COMPLETED
+        ).length;
+
+        const pendingTasks = caseItem.tasks.filter(
+            (t) => t.status !== TaskStatus.STATUS_30_COMPLETED
+        ).length;
+
+        // Get assigned user info
+        const assignedUsers = [...new Set(caseItem.tasks.map(t => t.assigned_user_id).filter(Boolean))];
+
+        return {
+          case_id: caseItem.case_id,
+          tenant_id: caseItem.tenant_id,
+          case_creator_user_id: caseItem.case_creator_user_id,
+          case_owner_user_id: caseItem.case_owner_user_id,
+          status: caseItem.status,
+          priority: caseItem.priority,
+          case_type: caseItem.case_type,
+          created_at: caseItem.created_at,
+          updated_at: caseItem.updated_at,
+          total_tasks: caseItem.tasks.length,
+          completed_tasks: completedTasks,
+          pending_tasks: pendingTasks,
+          alert: caseItem.alert,
+          assigned_to: assignedUsers.length > 0 ? {
+            user_id: caseItem.case_owner_user_id || assignedUsers[0],
+            task_count: assignedUsers.length,
+          } : undefined,
+        };
+      });
+
+      // Get statistics - FIXED: Only check for null in unassigned count
+      const [statusStats, priorityStats, typeStats, unassignedCount] = await Promise.all([
+        // Cases by status
+        this.prismaService.case.groupBy({
+          by: ['status'],
+          where: whereClause,
+          _count: { case_id: true },
+        }),
+        // Cases by priority
+        this.prismaService.case.groupBy({
+          by: ['priority'],
+          where: whereClause,
+          _count: { case_id: true },
+        }),
+        // Cases by type
+        this.prismaService.case.groupBy({
+          by: ['case_type'],
+          where: whereClause,
+          _count: { case_id: true },
+        }),
+        // Unassigned cases count - FIXED: Only check for null
+        this.prismaService.case.count({
+          where: {
+            case_owner_user_id: null,
+          },
+        }),
+      ]);
+
+      // Format statistics
+      const casesByStatus = statusStats.reduce((acc, item) => {
+        acc[item.status] = item._count.case_id;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const casesByPriority = priorityStats.reduce((acc, item) => {
+        acc[item.priority] = item._count.case_id;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const casesByType = typeStats.reduce((acc, item) => {
+        if (item.case_type) {
+          acc[item.case_type] = item._count.case_id;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Calculate average tasks per case
+      const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
+      const averageTasksPerCase = cases.length > 0 ? Math.round(totalTasks / cases.length * 10) / 10 : 0;
+
+      // Get oldest unassigned case if relevant - FIXED: Only check for null
+      let oldestUnassignedCase: { case_id: string; created_at: Date; days_old: number } | undefined;
+      if (unassignedCount > 0) {
+        const oldestUnassigned = await this.prismaService.case.findFirst({
+          where: {
+            case_owner_user_id: null,
+          },
+          orderBy: { created_at: 'asc' },
+          select: {
+            case_id: true,
+            created_at: true,
+          },
+        });
+
+        if (oldestUnassigned) {
+          const now = new Date();
+          const daysOld = Math.floor(
+              (now.getTime() - oldestUnassigned.created_at.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          oldestUnassignedCase = {
+            case_id: oldestUnassigned.case_id,
+            created_at: oldestUnassigned.created_at,
+            days_old: daysOld,
+          };
+        }
+      }
+
+      // Log the action
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'getAllCases',
+        entityName: CaseService.name,
+        actionPerformed: `Supervisor retrieved ${cases.length} cases (total: ${totalCount})`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return {
+        cases: processedCases,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+        statistics: {
+          totalCases: totalCount,
+          casesByStatus,
+          casesByPriority,
+          casesByType,
+          unassignedCases: unassignedCount,
+          averageTasksPerCase,
+          oldestUnassignedCase,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get all cases: ${error.message}`, error.stack, CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'getAllCases',
+        entityName: CaseService.name,
+        actionPerformed: 'Failed to retrieve all cases',
         outcome: Outcome.FAILURE,
       });
 
