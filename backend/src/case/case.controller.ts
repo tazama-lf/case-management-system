@@ -5,7 +5,7 @@ import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole, RequireInvestigatorRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery} from '@nestjs/swagger';
 import {GetUserCasesQueryDto, GetUserCasesResponseDto} from "./dto/get-user-cases.dto";
@@ -75,7 +75,7 @@ export class CaseController {
    * This endpoint is called by investigators to close a case and submit for approval
    */
   @Put(':caseId/close')
-  @RequireAlertTriageRole() // Should be RequireInvestigatorRole() when available
+  @RequireInvestigatorRole() // Investigators can close cases
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Close a case and submit for approval',

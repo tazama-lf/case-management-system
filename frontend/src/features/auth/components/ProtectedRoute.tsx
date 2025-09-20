@@ -6,15 +6,28 @@ import authService from '../services/authService';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
-  requireBackendAccess?: boolean; // New prop to validate backend claims
+  requireBackendAccess?: boolean;
+  requireInvestigator?: boolean; // Require CMS_INVESTIGATOR claim
+  requireSupervisor?: boolean; // Require CMS_SUPERVISOR claim
+  requireAdmin?: boolean; // Require alert-triage or CMS-TEST-ROLE claim
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRoles = [],
-  requireBackendAccess = true, // Default to true since most routes need backend access
+  requireBackendAccess = true,
+  requireInvestigator = false,
+  requireSupervisor = false,
+  requireAdmin = false,
 }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { 
+    isAuthenticated, 
+    user, 
+    loading, 
+    hasInvestigatorRole, 
+    hasSupervisorRole, 
+    hasAdminRole 
+  } = useAuth();
   const location = useLocation();
 
   console.log('ProtectedRoute Debug:', {
@@ -46,6 +59,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     console.log('ProtectedRoute: Backend access validation failed');
     const hasAlertTriage = authService.hasAlertTriageRole();
     const hasCMSTestRole = authService.hasCMSTestRole();
+    const hasInvestigator = authService.hasInvestigatorRole();
+    const hasSupervisor = authService.hasSupervisorRole();
     
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -61,16 +76,86 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <p className="font-medium mb-2">Required Claims Status:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li className={hasAlertTriage ? 'text-green-600' : 'text-red-600'}>
-                  alert-triage: {hasAlertTriage ? '✓ Available' : '✗ Missing'}
+                  alert-triage (Admin): {hasAlertTriage ? '✓ Available' : '✗ Missing'}
                 </li>
                 <li className={hasCMSTestRole ? 'text-green-600' : 'text-red-600'}>
-                  CMS-TEST-ROLE: {hasCMSTestRole ? '✓ Available' : '✗ Missing'}
+                  CMS-TEST-ROLE (Legacy): {hasCMSTestRole ? '✓ Available' : '✗ Missing'}
+                </li>
+                <li className={hasInvestigator ? 'text-green-600' : 'text-red-600'}>
+                  CMS_INVESTIGATOR: {hasInvestigator ? '✓ Available' : '✗ Missing'}
+                </li>
+                <li className={hasSupervisor ? 'text-green-600' : 'text-red-600'}>
+                  CMS_SUPERVISOR: {hasSupervisor ? '✓ Available' : '✗ Missing'}
                 </li>
               </ul>
             </div>
           </div>
           <p className="text-sm text-gray-500 mb-4">
             Please contact your administrator to get the required claims added to your account.
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            className="btn btn-primary"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check specific role requirements
+  if (requireInvestigator && !hasInvestigatorRole()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Investigator Access Required
+          </h2>
+          <p className="text-gray-600 mb-4">
+            You need CMS_INVESTIGATOR role to access this page.
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            className="btn btn-primary"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (requireSupervisor && !hasSupervisorRole()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Supervisor Access Required
+          </h2>
+          <p className="text-gray-600 mb-4">
+            You need CMS_SUPERVISOR role to access this page.
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            className="btn btn-primary"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (requireAdmin && !hasAdminRole()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Admin Access Required
+          </h2>
+          <p className="text-gray-600 mb-4">
+            You need alert-triage or admin role to access this page.
           </p>
           <button
             onClick={() => window.history.back()}

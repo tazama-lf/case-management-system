@@ -36,7 +36,6 @@ export interface LayoutProps {
 
 export interface SidebarProps {
   navigation: NavItem[];
-  user?: User;
   onNavigate?: (href: string) => void;
   onLogout?: () => void;
 }

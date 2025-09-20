@@ -131,7 +131,7 @@ export class TaskService {
   async getInvestigationQueue() {
     try {
       return await this.prisma.task.findMany({
-        where: { candidateGroup: 'Investigations' },
+        where: { status: TaskStatus.STATUS_10_ASSIGNED },
         orderBy: { created_at: 'desc' },
       });
     } catch (error) {
@@ -233,19 +233,13 @@ export class TaskService {
   // Get all tasks (optionally filtered by status)
   async getTasks(status?: string) {
     try {
-      const where = status
-        ? { status: status as TaskStatus }
-        : {};
+      const where = status ? { status: status as TaskStatus } : {};
       return await this.prisma.task.findMany({
         where,
         orderBy: { created_at: 'desc' },
       });
     } catch (error) {
-      this.logger.error(
-        'Error retrieving tasks',
-        error,
-        TaskService.name,
-      );
+      this.logger.error('Error retrieving tasks', error, TaskService.name);
       throw error;
     }
   }
@@ -257,11 +251,7 @@ export class TaskService {
         where: { task_id: taskId },
       });
     } catch (error) {
-      this.logger.error(
-        `Error retrieving task ${taskId}`,
-        error,
-        TaskService.name,
-      );
+      this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
       throw error;
     }
   }
@@ -297,12 +287,9 @@ export class TaskService {
       },
       'test-supervisor-id',
       this.auditLogService,
-      this.logger
+      this.logger,
     );
     // Mock notification
-    this.logger.log(
-      `Notification: User test-investigator-id assigned to task for case ${caseId}`,
-      TaskService.name
-    );
+    this.logger.log(`Notification: User test-investigator-id assigned to task for case ${caseId}`, TaskService.name);
   }
 }

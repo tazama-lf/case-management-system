@@ -152,6 +152,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authService.hasAlertTriageRole();
   };
 
+  const hasInvestigatorRole = (): boolean => {
+    return authService.hasInvestigatorRole();
+  };
+
+  const hasSupervisorRole = (): boolean => {
+    return authService.hasSupervisorRole();
+  };
+
+  const hasAdminRole = (): boolean => {
+    return authService.hasAdminRole();
+  };
+
   const validateBackendAccess = (): boolean => {
     return authService.validateBackendAccess();
   };
@@ -168,6 +180,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasBackendClaim,
     hasCMSTestRole,
     hasAlertTriageRole,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasAdminRole,
+    hasAnyRole: authService.hasAnyRole.bind(authService),
+    hasAllRoles: authService.hasAllRoles.bind(authService),
     validateBackendAccess,
   };
 

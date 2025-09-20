@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LayoutWithProvider from '../shared/components/layout/LayoutWithProvider';
 import ProtectedRoute from '../features/auth/components/ProtectedRoute';
+import RoleBasedRedirect from '../shared/components/navigation/RoleBasedRedirect';
 import Login from '../features/auth/pages/Login';
 import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
 import CasesDashboard from '../features/cases/pages/CasesDashboard';
@@ -14,7 +15,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Navigate to="/alerts" replace />,
+    element: (
+      <ProtectedRoute>
+        <RoleBasedRedirect />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/',
@@ -26,19 +31,35 @@ export const router = createBrowserRouter([
     children: [
       {
         path: 'alerts',
-        element: <AlertsDashboard />,
+        element: (
+          <ProtectedRoute requireAdmin>
+            <AlertsDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'cases',
-        element: <CasesDashboard />,
+        element: (
+          <ProtectedRoute requireInvestigator>
+            <CasesDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'supervisor',
-        element: <SupervisorDashboard />,
+        element: (
+          <ProtectedRoute requireSupervisor>
+            <SupervisorDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'admin',
-        element: <AdminDashboard />,
+        element: (
+          <ProtectedRoute requireAdmin>
+            <AdminDashboard />
+          </ProtectedRoute>
+        ),
       },
     ],
   },

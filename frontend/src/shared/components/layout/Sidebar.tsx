@@ -2,15 +2,35 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../../features/auth/components/AuthContext';
 import type { SidebarProps, NavItem } from '../../types/navigation.types';
 
-const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { 
+    hasAdminRole, 
+    hasInvestigatorRole, 
+    hasSupervisorRole, 
+    hasBackendClaim 
+  } = useAuth();
 
   const hasAccess = (item: NavItem): boolean => {
-    if (!item.roles || !user?.roles) return true;
-    return item.roles.some((role) => user.roles.includes(role));
+    if (!item.roles || item.roles.length === 0) return true;
+    
+    // Check each role requirement
+    return item.roles.some((role) => {
+      switch (role) {
+        case 'alert-triage':
+          return hasAdminRole();
+        case 'CMS_INVESTIGATOR':
+          return hasInvestigatorRole();
+        case 'CMS_SUPERVISOR':
+          return hasSupervisorRole();
+        default:
+          return hasBackendClaim(role);
+      }
+    });
   };
 
   const isActive = (href: string): boolean => {
