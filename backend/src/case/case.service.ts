@@ -1,94 +1,58 @@
 
 
 // Mapping functions for enums with runtime validation
-function mapCaseStatusToPrisma(status: string): string {
-  if (!Object.values(CaseStatus).includes(status as CaseStatus)) {
-    throw new Error(`Invalid CaseStatus value: ${status}`);
-  }
+
+// Enum types as string literal unions matching schema.prisma
+export type CaseStatus =
+  | 'STATUS_00_DRAFT'
+  | 'STATUS_01_PENDING_CASE_CREATION_APPROVAL'
+  | 'STATUS_02_READY_FOR_ASSIGNMENT'
+  | 'STATUS_03_RETURNED'
+  | 'STATUS_10_ASSIGNED'
+  | 'STATUS_20_IN_PROGRESS'
+  | 'STATUS_21_SUSPENDED'
+  | 'STATUS_22_PENDING_FINAL_APPROVAL'
+  | 'STATUS_30_PENDING_REOPENING'
+  | 'STATUS_31_REOPENED'
+  | 'STATUS_71_AUTOCLOSED_CONFIRMED'
+  | 'STATUS_72_AUTOCLOSED_REFUTED'
+  | 'STATUS_81_CLOSED_REFUTED'
+  | 'STATUS_82_CLOSED_CONFIRMED'
+  | 'STATUS_83_CLOSED_INCONCLUSIVE'
+  | 'STATUS_99_ABANDONED';
+
+export type TaskStatus =
+  | 'STATUS_01_UNASSIGNED'
+  | 'STATUS_10_ASSIGNED'
+  | 'STATUS_20_IN_PROGRESS'
+  | 'STATUS_30_COMPLETED'
+  | 'STATUS_21_BLOCKED';
+
+export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
+export type CaseType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
+export type CaseCreationType = 'MANUAL' | 'AUTOMATIC_SYSTEM';
+
+
+function mapCaseStatusToPrisma(status: CaseStatus): CaseStatus {
   return status;
 }
-
-function mapTaskStatusToPrisma(status: string): string {
-  if (!Object.values(TaskStatus).includes(status as TaskStatus)) {
-    throw new Error(`Invalid TaskStatus value: ${status}`);
-  }
+function mapTaskStatusToPrisma(status: TaskStatus): TaskStatus {
   return status;
 }
-
-function mapPriorityToPrisma(priority: string): string {
-  if (!Object.values(Priority).includes(priority as Priority)) {
-    throw new Error(`Invalid Priority value: ${priority}`);
-  }
+function mapPriorityToPrisma(priority: Priority): Priority {
   return priority;
 }
-
-function mapCaseTypeToPrisma(type: string): string {
-  if (!Object.values(CaseType).includes(type as CaseType)) {
-    throw new Error(`Invalid CaseType value: ${type}`);
-  }
+function mapCaseTypeToPrisma(type: CaseType): CaseType {
   return type;
 }
-
-function mapCaseCreationTypeToPrisma(type: string): string {
-  if (!Object.values(CaseCreationType).includes(type as CaseCreationType)) {
-    throw new Error(`Invalid CaseCreationType value: ${type}`);
-  }
+function mapCaseCreationTypeToPrisma(type: CaseCreationType): CaseCreationType {
   return type;
 }
 
 // Mapping functions for enums
 
 // Prisma enums as string literal unions
-export const CaseStatus = {
-  STATUS_00_DRAFT: 'STATUS_00_DRAFT',
-  STATUS_01_PENDING_CASE_CREATION_APPROVAL: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
-  STATUS_02_READY_FOR_ASSIGNMENT: 'STATUS_02_READY_FOR_ASSIGNMENT',
-  STATUS_03_RETURNED: 'STATUS_03_RETURNED',
-  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
-  STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
-  STATUS_21_SUSPENDED: 'STATUS_21_SUSPENDED',
-  STATUS_22_PENDING_FINAL_APPROVAL: 'STATUS_22_PENDING_FINAL_APPROVAL',
-  STATUS_30_PENDING_REOPENING: 'STATUS_30_PENDING_REOPENING',
-  STATUS_31_REOPENED: 'STATUS_31_REOPENED',
-  STATUS_71_AUTOCLOSED_CONFIRMED: 'STATUS_71_AUTOCLOSED_CONFIRMED',
-  STATUS_72_AUTOCLOSED_REFUTED: 'STATUS_72_AUTOCLOSED_REFUTED',
-  STATUS_81_CLOSED_REFUTED: 'STATUS_81_CLOSED_REFUTED',
-  STATUS_82_CLOSED_CONFIRMED: 'STATUS_82_CLOSED_CONFIRMED',
-  STATUS_83_CLOSED_INCONCLUSIVE: 'STATUS_83_CLOSED_INCONCLUSIVE',
-  STATUS_99_ABANDONED: 'STATUS_99_ABANDONED',
-} as const;
-export type CaseStatus = typeof CaseStatus[keyof typeof CaseStatus];
-
-export const TaskStatus = {
-  STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
-  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
-  STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
-  STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
-  STATUS_21_BLOCKED: 'STATUS_21_BLOCKED',
-} as const;
-export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
-
-export const Priority = {
-  NEW: 'NEW',
-  URGENT: 'URGENT',
-  CRITICAL: 'CRITICAL',
-  BREACH: 'BREACH',
-} as const;
-export type Priority = typeof Priority[keyof typeof Priority];
-
-export const CaseCreationType = {
-  MANUAL: 'MANUAL',
-  AUTOMATIC_SYSTEM: 'AUTOMATIC_SYSTEM',
-} as const;
-export type CaseCreationType = typeof CaseCreationType[keyof typeof CaseCreationType];
-
-export const CaseType = {
-  FRAUD: 'FRAUD',
-  AML: 'AML',
-  FRAUD_AND_AML: 'FRAUD_AND_AML',
-  NONE: 'NONE',
-} as const;
-export type CaseType = typeof CaseType[keyof typeof CaseType];
+// Remove local enum objects/types, use Prisma-generated types above
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
@@ -120,11 +84,11 @@ export class CaseService {
       throw new NotFoundException('Case not found');
     }
     // Step 2: Check case status
-    if (caseData.status !== CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
+  if (caseData.status !== 'STATUS_22_PENDING_FINAL_APPROVAL') {
       throw new ConflictException({
         message: 'Case is not in an approvable state',
         currentStatus: caseData.status,
-        requiredStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+  requiredStatus: 'STATUS_22_PENDING_FINAL_APPROVAL',
       });
     }
     // Step 3: Find the "Approve case closure" task
@@ -138,7 +102,7 @@ export class CaseService {
     if (approvalTask.assigned_user_id !== null && approvalTask.assigned_user_id !== supervisorId) {
       throw new ForbiddenException('Task is not assigned to Supervisors work queue');
     }
-    if (approvalTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
+  if (approvalTask.status !== 'STATUS_01_UNASSIGNED') {
       throw new ConflictException('Approve case closure task must be unassigned');
     }
     // Step 5: Check recommended outcome
@@ -156,7 +120,7 @@ export class CaseService {
     }
     // Step 6: Ensure all other tasks are complete
     const incompleteTasks = caseData.tasks.filter(
-      (task) => task.task_id !== approvalTask.task_id && task.status !== TaskStatus.STATUS_30_COMPLETED
+  (task) => task.task_id !== approvalTask.task_id && task.status !== 'STATUS_30_COMPLETED'
     );
     if (incompleteTasks.length > 0) {
       throw new ConflictException('All other tasks must be complete before approval');
@@ -173,7 +137,7 @@ export class CaseService {
         await tx.task.update({
           where: { task_id: approvalTask.task_id },
           data: {
-            status: mapTaskStatusToPrisma(TaskStatus.STATUS_30_COMPLETED),
+            status: mapTaskStatusToPrisma('STATUS_30_COMPLETED'),
             assigned_user_id: supervisorId,
             updated_at: new Date(),
           },
@@ -246,7 +210,7 @@ export class CaseService {
         approvalTask = await tx.task.create({
           data: {
             case_id: caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
+            status: 'STATUS_01_UNASSIGNED',
             assigned_user_id: null, // Unassigned, visible to all supervisors
             name: 'Approve case closure',
             description: 'Supervisor approval required for case closure',
@@ -257,7 +221,7 @@ export class CaseService {
         await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            status: 'STATUS_22_PENDING_FINAL_APPROVAL',
             updated_at: new Date(),
           },
         });
@@ -327,11 +291,11 @@ export class CaseService {
     const errors: string[] = [];
 
     // Check case status (must be IN_PROGRESS)
-    if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+  if (caseData.status !== 'STATUS_20_IN_PROGRESS') {
       throw new ConflictException({
         message: 'Case is not in a closeable state',
         currentStatus: caseData.status,
-        requiredStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+  requiredStatus: 'STATUS_20_IN_PROGRESS',
       });
     }
 
@@ -356,7 +320,7 @@ export class CaseService {
 
     if (!investigationTask) {
       errors.push('Investigation task not found');
-    } else if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS) {
+  } else if (investigationTask.status !== 'STATUS_20_IN_PROGRESS') {
       errors.push(`Investigation task must be in progress (current: ${investigationTask.status})`);
     }
 
@@ -364,7 +328,7 @@ export class CaseService {
     const incompleteTasks = caseData.tasks.filter(
         (task) =>
             task.task_id !== investigationTask?.task_id &&
-            task.status !== TaskStatus.STATUS_30_COMPLETED,
+            task.status !== 'STATUS_30_COMPLETED',
     );
 
     if (incompleteTasks.length > 0) {
@@ -432,10 +396,10 @@ export class CaseService {
             tenant_id: payload.tenantId,
             case_creator_user_id: systemUuid, // Use system UUID from config
             case_owner_user_id: systemUuid, // Initially owned by system
-            status: mapCaseStatusToPrisma(CaseStatus.STATUS_00_DRAFT),
-            priority: mapPriorityToPrisma(payload.priority || Priority.NEW),
+            status: mapCaseStatusToPrisma('STATUS_00_DRAFT'),
+            priority: mapPriorityToPrisma(payload.priority || 'NEW'),
             case_type: payload.caseType ? mapCaseTypeToPrisma(payload.caseType) : undefined,
-            case_creation_type: mapCaseCreationTypeToPrisma(CaseCreationType.AUTOMATIC_SYSTEM),
+            case_creation_type: mapCaseCreationTypeToPrisma('AUTOMATIC_SYSTEM'),
           },
         });
 
@@ -445,7 +409,7 @@ export class CaseService {
             data: {
               case_id: newCase.case_id,
               tenant_id: payload.tenantId,
-              priority: payload.priority || Priority.NEW,
+              priority: payload.priority || 'NEW',
               alert_type: payload.alertType,
               message: payload.message || 'System generated alert',
               alert_data: JSON.parse(JSON.stringify(payload.alertData)), // Ensure proper JSON
@@ -462,7 +426,7 @@ export class CaseService {
         const atmTask = await tx.task.create({
           data: {
             case_id: newCase.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
+            status: 'STATUS_01_UNASSIGNED',
             assigned_user_id: systemUuid, // Initially assigned to system
             name: 'Alert Triage Module Review',
             description: 'Automatic triage and routing of alert',
@@ -513,10 +477,10 @@ export class CaseService {
       if (confidence >= 95) {
         // If true positive (fraudType is one of the types that should be confirmed)
         if (['Money-Laundering', 'Fraud Only', 'Transaction Blocked'].includes(fraudType)) {
-          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED);
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, 'STATUS_71_AUTOCLOSED_CONFIRMED');
         } else {
           // False positive
-          await this.autocloseCase(createdCase.case.case_id, systemUuid, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED);
+          await this.autocloseCase(createdCase.case.case_id, systemUuid, 'STATUS_72_AUTOCLOSED_REFUTED');
         }
       } else {
         // Confidence < 95%: Prioritize and investigate
@@ -525,7 +489,7 @@ export class CaseService {
         await this.prismaService.task.update({
           where: { task_id: createdCase.atmTask.task_id },
           data: {
-            status: TaskStatus.STATUS_30_COMPLETED,
+            status: 'STATUS_30_COMPLETED',
             updated_at: new Date(),
           },
         });
@@ -594,7 +558,7 @@ export class CaseService {
       await this.prismaService.task.update({
         where: { task_id: taskId },
         data: {
-          status: TaskStatus.STATUS_20_IN_PROGRESS,
+          status: 'STATUS_20_IN_PROGRESS',
           updated_at: new Date(),
         },
       });
@@ -650,7 +614,7 @@ export class CaseService {
       const investigationTask = await this.prismaService.task.create({
         data: {
           case_id: caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
+          status: 'STATUS_01_UNASSIGNED',
           assigned_user_id: null,
           name: 'Investigate Case',
           description: 'Investigate the reported suspicious activity',
@@ -660,7 +624,7 @@ export class CaseService {
       await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          status: 'STATUS_02_READY_FOR_ASSIGNMENT',
           case_owner_user_id: null,
           updated_at: new Date(),
         },
@@ -1023,11 +987,11 @@ export class CaseService {
       // Process cases to add computed fields
       const processedCases = cases.map((caseItem) => {
         const completedTasks = caseItem.tasks.filter(
-            (t) => t.status === TaskStatus.STATUS_30_COMPLETED
+            (t) => t.status === 'STATUS_30_COMPLETED'
         ).length;
 
         const pendingTasks = caseItem.tasks.filter(
-            (t) => t.status !== TaskStatus.STATUS_30_COMPLETED
+            (t) => t.status !== 'STATUS_30_COMPLETED'
         ).length;
 
         // Get assigned user info
@@ -1181,17 +1145,17 @@ export class CaseService {
       this.logger.log(`Getting workload stats for user ${userId}`, CaseService.name);
 
       // Get all active cases (not closed/abandoned)
-      const activeCaseStatuses = [
-        CaseStatus.STATUS_00_DRAFT,
-        CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        CaseStatus.STATUS_03_RETURNED,
-        CaseStatus.STATUS_10_ASSIGNED,
-        CaseStatus.STATUS_20_IN_PROGRESS,
-        CaseStatus.STATUS_21_SUSPENDED,
-        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        CaseStatus.STATUS_30_PENDING_REOPENING,
-        CaseStatus.STATUS_31_REOPENED,
+      const activeCaseStatuses: CaseStatus[] = [
+        'STATUS_00_DRAFT',
+        'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+        'STATUS_02_READY_FOR_ASSIGNMENT',
+        'STATUS_03_RETURNED',
+        'STATUS_10_ASSIGNED',
+        'STATUS_20_IN_PROGRESS',
+        'STATUS_21_SUSPENDED',
+        'STATUS_22_PENDING_FINAL_APPROVAL',
+        'STATUS_30_PENDING_REOPENING',
+        'STATUS_31_REOPENED',
       ];
 
       // Get cases and tasks
@@ -1220,7 +1184,7 @@ export class CaseService {
           where: {
             assigned_user_id: userId,
             status: {
-              in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+              in: ['STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS'],
             },
           },
         }),
@@ -1295,7 +1259,7 @@ export class CaseService {
         where: {
           assigned_user_id: userId,
           status: {
-            in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            in: ['STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS'],
           },
         },
         select: {
@@ -1338,8 +1302,8 @@ export class CaseService {
           tenant_id: createCaseDTO.tenantId,
           case_creator_user_id: createCaseDTO.caseCreatorUserId,
           case_owner_user_id: createCaseDTO.caseOwnerUserId,
-          status: mapCaseStatusToPrisma(createCaseDTO.status),
-          priority: mapPriorityToPrisma(createCaseDTO.priority),
+    status: mapCaseStatusToPrisma(createCaseDTO.status),
+    priority: mapPriorityToPrisma(createCaseDTO.priority),
           parent_id: createCaseDTO.parentId ?? null,
           case_type: createCaseDTO.caseType ? mapCaseTypeToPrisma(createCaseDTO.caseType) : undefined,
           case_creation_type: mapCaseCreationTypeToPrisma(createCaseDTO.caseCreationType),
@@ -1387,9 +1351,9 @@ export class CaseService {
       const updatedCase = await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
-          case_type: updateData.caseType ? mapCaseTypeToPrisma(updateData.caseType) : undefined,
-          priority: updateData.priority ? mapPriorityToPrisma(updateData.priority) : undefined,
-          status: updateData.status ? mapCaseStatusToPrisma(updateData.status) : undefined,
+    case_type: updateData.caseType ? mapCaseTypeToPrisma(updateData.caseType) : undefined,
+    priority: updateData.priority ? mapPriorityToPrisma(updateData.priority) : undefined,
+    status: updateData.status ? mapCaseStatusToPrisma(updateData.status) : undefined,
           case_owner_user_id: updateData.caseOwnerUserId,
         },
       });

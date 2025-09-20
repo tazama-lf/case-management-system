@@ -270,8 +270,9 @@ export class TriageService {
         CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
       ];
 
-      if (closableStatuses.includes(existingCase.status)) {
-        throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
+        // Fix: ensure type compatibility by casting status to local CaseStatus
+        if (closableStatuses.includes(existingCase.status as CaseStatus)) {
+          throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
       }
 
       // Map manualTriageDto.status from manual-triage.dto to create-case.dto values if needed

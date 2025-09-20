@@ -1,27 +1,61 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CaseStatus, Priority } from '../case.service';
+import type { CaseStatus, Priority } from '../case.service';
 
 export class GetUserCasesQueryDto {
     @ApiProperty({
         description: 'Filter by case status',
-        enum: CaseStatus,
+        enum: [
+            'STATUS_00_DRAFT',
+            'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+            'STATUS_02_READY_FOR_ASSIGNMENT',
+            'STATUS_03_RETURNED',
+            'STATUS_10_ASSIGNED',
+            'STATUS_20_IN_PROGRESS',
+            'STATUS_21_SUSPENDED',
+            'STATUS_22_PENDING_FINAL_APPROVAL',
+            'STATUS_30_PENDING_REOPENING',
+            'STATUS_31_REOPENED',
+            'STATUS_71_AUTOCLOSED_CONFIRMED',
+            'STATUS_72_AUTOCLOSED_REFUTED',
+            'STATUS_81_CLOSED_REFUTED',
+            'STATUS_82_CLOSED_CONFIRMED',
+            'STATUS_83_CLOSED_INCONCLUSIVE',
+            'STATUS_99_ABANDONED',
+        ],
         required: false,
         example: 'STATUS_20_IN_PROGRESS',
     })
     @IsOptional()
-    @IsEnum(CaseStatus)
+    @IsEnum([
+        'STATUS_00_DRAFT',
+        'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+        'STATUS_02_READY_FOR_ASSIGNMENT',
+        'STATUS_03_RETURNED',
+        'STATUS_10_ASSIGNED',
+        'STATUS_20_IN_PROGRESS',
+        'STATUS_21_SUSPENDED',
+        'STATUS_22_PENDING_FINAL_APPROVAL',
+        'STATUS_30_PENDING_REOPENING',
+        'STATUS_31_REOPENED',
+        'STATUS_71_AUTOCLOSED_CONFIRMED',
+        'STATUS_72_AUTOCLOSED_REFUTED',
+        'STATUS_81_CLOSED_REFUTED',
+        'STATUS_82_CLOSED_CONFIRMED',
+        'STATUS_83_CLOSED_INCONCLUSIVE',
+        'STATUS_99_ABANDONED',
+    ] as const)
     status?: CaseStatus;
 
     @ApiProperty({
         description: 'Filter by priority',
-        enum: Priority,
+        enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
         required: false,
         example: 'URGENT',
     })
     @IsOptional()
-    @IsEnum(Priority)
+    @IsEnum(['NEW', 'URGENT', 'CRITICAL', 'BREACH'] as const)
     priority?: Priority;
 
     @ApiProperty({
@@ -149,14 +183,31 @@ export class CaseWithTasksDto {
 
     @ApiProperty({
         description: 'Case status',
-        enum: CaseStatus,
+        enum: [
+            'STATUS_00_DRAFT',
+            'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+            'STATUS_02_READY_FOR_ASSIGNMENT',
+            'STATUS_03_RETURNED',
+            'STATUS_10_ASSIGNED',
+            'STATUS_20_IN_PROGRESS',
+            'STATUS_21_SUSPENDED',
+            'STATUS_22_PENDING_FINAL_APPROVAL',
+            'STATUS_30_PENDING_REOPENING',
+            'STATUS_31_REOPENED',
+            'STATUS_71_AUTOCLOSED_CONFIRMED',
+            'STATUS_72_AUTOCLOSED_REFUTED',
+            'STATUS_81_CLOSED_REFUTED',
+            'STATUS_82_CLOSED_CONFIRMED',
+            'STATUS_83_CLOSED_INCONCLUSIVE',
+            'STATUS_99_ABANDONED',
+        ],
         example: 'STATUS_20_IN_PROGRESS',
     })
     status: CaseStatus;
 
     @ApiProperty({
         description: 'Case priority',
-        enum: Priority,
+        enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
         example: 'URGENT',
     })
     priority: Priority;
