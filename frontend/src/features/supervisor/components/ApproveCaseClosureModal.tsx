@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { CaseForSupervisor, ApproveCaseClosureDto } from '../services/supervisorService';
+
+// Type definitions
+interface CaseForSupervisor {
+  case_id: string;
+  case_type: string;
+  status: string;
+  priority: string;
+  investigator_name?: string;
+  owner_name?: string;
+  recommended_outcome?: string;
+  final_notes?: string;
+  recommendations?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApproveCaseClosureDto {
+  approved: boolean;
+  supervisor_notes?: string;
+  final_outcome?: string;
+  rejection_reason?: string;
+}
 
 interface ApproveCaseClosureModalProps {
   open: boolean;
