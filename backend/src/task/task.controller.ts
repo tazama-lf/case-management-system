@@ -4,7 +4,7 @@ import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireAlertTriageRole } from '../auth/auth.decorator';
+import { RequireAlertTriageRole, RequireAnyValidRole } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
 
@@ -92,13 +92,13 @@ export class TaskController {
   }
 
   @Get()
-  @RequireAlertTriageRole()
+  @RequireAnyValidRole()
   async getTasks(@Query('status') status?: string) {
     return this.taskService.getTasks(status);
   }
 
   @Get('case/:caseId')
-  @RequireAlertTriageRole()
+  @RequireAnyValidRole()
   async getTasksByCaseId(
     @Param('caseId') caseId: string,
     @Req() req: AuthenticatedRequest,

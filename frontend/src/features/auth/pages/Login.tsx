@@ -26,8 +26,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('User is authenticated, redirecting to /alerts');
-      navigate('/alerts', { replace: true });
+      console.log('User is authenticated, redirecting to role-based dashboard');
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 

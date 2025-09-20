@@ -3,7 +3,26 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/components/AuthContext';
 
 const RoleBasedRedirect: React.FC = () => {
-  const { hasAdminRole, hasInvestigatorRole, hasSupervisorRole, loading } = useAuth();
+  const { hasAdminRole, hasInvestigatorRole, hasSupervisorRole, loading, user } = useAuth();
+
+  const adminRole = hasAdminRole();
+  const investigatorRole = hasInvestigatorRole();
+  const supervisorRole = hasSupervisorRole();
+
+  console.log('RoleBasedRedirect Debug:', {
+    loading,
+    user: user ? {
+      username: user.username,
+      backendClaims: user.backendClaims,
+      roles: user.roles
+    } : null,
+    roleChecks: {
+      hasAdminRole: adminRole,
+      hasInvestigatorRole: investigatorRole,
+      hasSupervisorRole: supervisorRole
+    },
+    redirectDecision: supervisorRole ? 'supervisor' : investigatorRole ? 'cases' : adminRole ? 'alerts' : 'login'
+  });
 
   // Show loading while auth state is being determined
   if (loading) {
@@ -15,14 +34,18 @@ const RoleBasedRedirect: React.FC = () => {
   }
 
   // Redirect users to their appropriate dashboard based on their role
-  // Priority: Admin > Supervisor > Investigator
-  if (hasAdminRole()) {
-    return <Navigate to="/alerts" replace />;
-  } else if (hasSupervisorRole()) {
+  // Priority: Supervisor > Investigator > Admin (most specific roles first)
+  if (supervisorRole) {
+    console.log('Redirecting to /supervisor (supervisor role)');
     return <Navigate to="/supervisor" replace />;
-  } else if (hasInvestigatorRole()) {
+  } else if (investigatorRole) {
+    console.log('Redirecting to /cases (investigator role)');
     return <Navigate to="/cases" replace />;
+  } else if (adminRole) {
+    console.log('Redirecting to /alerts (admin role)');
+    return <Navigate to="/alerts" replace />;
   } else {
+    console.log('No recognized role, redirecting to /login');
     // If user has no recognized role, redirect to login
     return <Navigate to="/login" replace />;
   }
