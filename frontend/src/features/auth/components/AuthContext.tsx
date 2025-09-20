@@ -139,35 +139,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
-  // Backend claim utility functions
-  const hasBackendClaim = (claim: string): boolean => {
-    return authService.hasBackendClaim(claim);
-  };
-
-  const hasCMSTestRole = (): boolean => {
-    return authService.hasCMSTestRole();
-  };
-
-  const hasAlertTriageRole = (): boolean => {
-    return authService.hasAlertTriageRole();
-  };
-
-  const hasInvestigatorRole = (): boolean => {
-    return authService.hasInvestigatorRole();
-  };
-
-  const hasSupervisorRole = (): boolean => {
-    return authService.hasSupervisorRole();
-  };
-
-  const hasAdminRole = (): boolean => {
-    return authService.hasAdminRole();
-  };
-
-  const validateBackendAccess = (): boolean => {
-    return authService.validateBackendAccess();
-  };
-
   const value: AuthContextType = {
     isAuthenticated,
     user,
@@ -177,15 +148,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     clearError,
-    hasBackendClaim,
-    hasCMSTestRole,
-    hasAlertTriageRole,
-    hasInvestigatorRole,
-    hasSupervisorRole,
-    hasAdminRole,
+    hasBackendClaim: authService.hasBackendClaim.bind(authService),
+    hasCMSTestRole: authService.hasCMSTestRole.bind(authService),
+    hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
+    hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
+    hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
+    hasAdminRole: authService.hasAdminRole.bind(authService),
     hasAnyRole: authService.hasAnyRole.bind(authService),
     hasAllRoles: authService.hasAllRoles.bind(authService),
-    validateBackendAccess,
+    validateBackendAccess: authService.validateBackendAccess.bind(authService),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

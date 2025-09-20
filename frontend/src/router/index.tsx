@@ -17,18 +17,14 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <ProtectedRoute>
-        <RoleBasedRedirect />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/',
-    element: (
-      <ProtectedRoute>
         <LayoutWithProvider />
       </ProtectedRoute>
     ),
     children: [
+      {
+        index: true,
+        element: <RoleBasedRedirect />,
+      },
       {
         path: 'alerts',
         element: (

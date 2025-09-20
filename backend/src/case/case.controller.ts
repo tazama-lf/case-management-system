@@ -1,15 +1,20 @@
-import {Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole, RequireInvestigatorRole } from 'src/auth/auth.decorator';
+import {
+  RequireAlertTriageRole,
+  RequireInvestigatorRole,
+  RequireInvestigatorOrSupervisorRole,
+  RequireAnyValidRole,
+} from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
-import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery} from '@nestjs/swagger';
-import {GetUserCasesQueryDto, GetUserCasesResponseDto} from "./dto/get-user-cases.dto";
-import {GetAllCasesQueryDto, GetAllCasesResponseDto} from "./dto/get-all-cases.dto";
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
+import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -155,11 +160,7 @@ export class CaseController {
     status: 500,
     description: 'Internal Server Error - System error during case closure',
   })
-  async closeCase(
-      @Param('caseId') caseId: string,
-      @Body() dto: CloseCaseDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId } = req.user.token;
     if (!clientId || !tenantId) {
       throw new BadRequestException('Missing clientId or tenantId in auth token');
@@ -172,7 +173,7 @@ export class CaseController {
    * Get all cases in the system (requires supervisor role)
    */
   @Get('all')
-  @RequireAlertTriageRole() // TODO: Change to @RequireSupervisorRole()
+  @RequireAnyValidRole() // Allow any valid CMS role to access cases
   @ApiOperation({
     summary: 'Get all cases (Supervisor only)',
     description: 'Retrieves all cases in the system with filtering options. Requires supervisor permissions.',
@@ -185,10 +186,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
-  async getAllCases(
-      @Query() query: GetAllCasesQueryDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
 
     // TODO: Verify supervisor role
@@ -205,7 +203,7 @@ export class CaseController {
    * This includes cases where user is owner OR has assigned tasks
    */
   @Get('user/assigned')
-  @RequireAlertTriageRole()
+  @RequireAnyValidRole() // Allow any valid CMS role to access their assigned cases
   @ApiOperation({
     summary: 'Get cases assigned to current user',
     description: 'Retrieves all cases where the user is either the owner or has assigned tasks',
@@ -217,10 +215,7 @@ export class CaseController {
     type: GetUserCasesResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserCases(
-      @Query() query: GetUserCasesQueryDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async getUserCases(@Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.caseService.getUserCases(userId, query);
   }
@@ -249,9 +244,9 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   async getUserCasesByUserId(
-      @Param('userId') targetUserId: string,
-      @Query() query: GetUserCasesQueryDto,
-      @Req() req: AuthenticatedRequest,
+    @Param('userId') targetUserId: string,
+    @Query() query: GetUserCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     const requestingUserId = req.user.token.clientId;
 
@@ -285,16 +280,16 @@ export class CaseController {
         casesByStatus: {
           type: 'object',
           example: {
-            'STATUS_20_IN_PROGRESS': 10,
-            'STATUS_02_READY_FOR_ASSIGNMENT': 5,
+            STATUS_20_IN_PROGRESS: 10,
+            STATUS_02_READY_FOR_ASSIGNMENT: 5,
           },
         },
         casesByPriority: {
           type: 'object',
           example: {
-            'CRITICAL': 2,
-            'URGENT': 5,
-            'NEW': 8,
+            CRITICAL: 2,
+            URGENT: 5,
+            NEW: 8,
           },
         },
         oldestCase: {
@@ -318,7 +313,7 @@ export class CaseController {
    * Get case by ID
    */
   @Get(':caseId')
-  @RequireAlertTriageRole()
+  @RequireAnyValidRole() // Allow any valid CMS role to view case details
   @ApiOperation({
     summary: 'Retrieve case by ID',
     description: 'Get detailed information about a specific case',
@@ -336,7 +331,7 @@ export class CaseController {
    * Update case
    */
   @Post(':caseId')
-  @RequireAlertTriageRole()
+  @RequireAnyValidRole() // Allow any valid CMS role to update cases
   @ApiOperation({
     summary: 'Update case',
     description: 'Update case details such as status, priority, or assignment',
