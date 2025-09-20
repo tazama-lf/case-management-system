@@ -39,7 +39,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
       >
         <Sidebar
           navigation={NAVIGATION_ITEMS}
-          user={user || undefined}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />

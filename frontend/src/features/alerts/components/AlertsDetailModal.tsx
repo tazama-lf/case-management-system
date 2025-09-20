@@ -3,7 +3,6 @@ import {
   XMarkIcon,
   ExclamationTriangleIcon,
   ClockIcon,
-  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../types/triage.types';
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';

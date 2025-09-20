@@ -199,34 +199,8 @@ class AuthService {
       });
     }
 
-    // Ensure required backend claims are available
-    // If user has any roles, map them to required backend claims
-    
-    // EXPLICIT check for CMS-TEST-ROLE - this should always be preserved
-    const hasCMSTestRole = claims.includes('CMS-TEST-ROLE');
-    
-    if (claims.length > 0) {
-      // Map common roles to alert-triage claim
-      const alertTriageRoles = ['analyst', 'investigator', 'supervisor', 'admin', 'CMS-TEST-ROLE'];
-      const hasAlertTriageRole = claims.some(claim => 
-        alertTriageRoles.includes(claim) || claim.toLowerCase().includes('alert') || claim.toLowerCase().includes('triage')
-      );
-      
-      if (hasAlertTriageRole && !claims.includes('alert-triage')) {
-        claims.push('alert-triage');
-      }
-      
-      // ALWAYS ensure CMS-TEST-ROLE is present if user has ANY role
-      // This provides backward compatibility
-      if (!claims.includes('CMS-TEST-ROLE')) {
-        claims.push('CMS-TEST-ROLE');
-      }
-    }
-
-    console.log('extractBackendClaims() Debug:', {
-      originalClaims: [...claims].filter(c => c !== 'alert-triage'),
-      hasCMSTestRoleInToken: hasCMSTestRole,
-      finalClaims: claims,
+    console.log('extractBackendClaims() Debug - Raw claims found:', {
+      originalClaims: claims,
       payloadStructure: {
         claims: payload.claims,
         realm_access: payload.realm_access,
@@ -234,7 +208,13 @@ class AuthService {
       }
     });
 
-    return [...new Set(claims)]; // Remove duplicates
+    // Remove duplicates and return claims as-is
+    // The claims should come directly from the JWT token without modification
+    const finalClaims = [...new Set(claims)];
+    
+    console.log('extractBackendClaims() Final claims:', finalClaims);
+    
+    return finalClaims;
   }
 
   private getDecodedToken(token: string): DecodedToken | null {
@@ -340,25 +320,63 @@ class AuthService {
   }
 
   /**
+   * Check if current user has CMS_INVESTIGATOR claim
+   */
+  hasInvestigatorRole(): boolean {
+    return this.hasBackendClaim('CMS_INVESTIGATOR');
+  }
+
+  /**
+   * Check if current user has CMS_SUPERVISOR claim
+   */
+  hasSupervisorRole(): boolean {
+    return this.hasBackendClaim('CMS_SUPERVISOR');
+  }
+
+  /**
+   * Check if current user has admin role (alert-triage gives admin access)
+   */
+  hasAdminRole(): boolean {
+    return this.hasAlertTriageRole() || this.hasCMSTestRole();
+  }
+
+  /**
+   * Check if user has any of the specified roles/claims
+   */
+  hasAnyRole(roles: string[]): boolean {
+    return roles.some(role => this.hasBackendClaim(role));
+  }
+
+  /**
+   * Check if user has all of the specified roles/claims
+   */
+  hasAllRoles(roles: string[]): boolean {
+    return roles.every(role => this.hasBackendClaim(role));
+  }
+
+  /**
    * Validate that user has minimum required claims for backend access
    */
   validateBackendAccess(): boolean {
     const hasAlertTriage = this.hasAlertTriageRole();
     const hasCMSTest = this.hasCMSTestRole();
+    const hasInvestigator = this.hasInvestigatorRole();
+    const hasSupervisor = this.hasSupervisorRole();
     const user = this.getUser();
-    const result = hasAlertTriage || hasCMSTest;
+    
+    // Allow access if user has any of the valid role claims
+    const result = hasAlertTriage || hasCMSTest || hasInvestigator || hasSupervisor;
     
     console.log('validateBackendAccess() Debug:', {
       hasAlertTriage,
       hasCMSTest,
+      hasInvestigator,
+      hasSupervisor,
       userClaims: user?.backendClaims,
       allUserData: user,
       result
     });
     
-    // Primary requirement: alert-triage claim for accessing controllers
-    // Fallback: CMS-TEST-ROLE for backward compatibility
-    // If user has CMS-TEST-ROLE, they should ALWAYS get access
     return result;
   }
 

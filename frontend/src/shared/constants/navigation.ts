@@ -11,23 +11,25 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Alerts Dashboard',
     href: '/alerts',
     icon: ExclamationTriangleIcon,
+    roles: ['alert-triage'], // Admin access only
   },
   {
     name: 'Cases Dashboard',
     href: '/cases',
     icon: FolderIcon,
+    roles: ['CMS_INVESTIGATOR'], // Investigators only
   },
   {
     name: 'Supervisor Dashboard',
     href: '/supervisor',
     icon: UserGroupIcon,
-    // roles: ['supervisor', 'admin'],
+    roles: ['CMS_SUPERVISOR'], // Supervisors only
   },
   {
     name: 'Admin Dashboard',
     href: '/admin',
     icon: Cog6ToothIcon,
-    // roles: ['admin'],
+    roles: ['alert-triage'], // Admin access only
   },
 ];
 
