@@ -8,7 +8,11 @@ import { FlowableService } from '../../src/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
-import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client';
+import { CaseStatus, Priority, CaseType, CaseCreationType } from '../../src/case/dto/create-case.dto';
+enum TaskStatus {
+  STATUS_01_UNASSIGNED = 'UNASSIGNED_01',
+  STATUS_30_COMPLETED = 'COMPLETED_30',
+}
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Outcome } from '../../src/audit/types/outcome';
 
@@ -236,7 +240,7 @@ describe('CaseService', () => {
     const caseId = 'case-123';
     const userId = 'user-123';
     const updateCaseDto: Partial<UpdateCaseDto> = {
-      status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+  status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
       priority: Priority.URGENT,
       caseType: CaseType.AML,
       caseOwnerUserId: 'new-owner-123',
@@ -248,7 +252,7 @@ describe('CaseService', () => {
         tenant_id: 'tenant-123',
         case_creator_user_id: 'creator-123',
         case_owner_user_id: 'new-owner-123',
-        status: CaseStatus.STATUS_00_DRAFT,
+  status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.URGENT,
         case_type: CaseType.AML,
         case_creation_type: CaseCreationType.MANUAL,
@@ -259,7 +263,7 @@ describe('CaseService', () => {
 
       const updatedMockCase = {
         ...mockCase,
-        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+  status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         case_type: CaseType.AML,
         case_owner_user_id: 'new-owner-123',
       };
@@ -322,7 +326,7 @@ describe('CaseService', () => {
     });
 
     it('should update case with partial data', async () => {
-      const partialUpdate = { status: CaseStatus.STATUS_00_DRAFT };
+  const partialUpdate = { status: CaseStatus.STATUS_00_DRAFT };
       const mockCase = {
         case_id: 'case-123',
         tenant_id: 'tenant-123',
@@ -339,7 +343,7 @@ describe('CaseService', () => {
 
       mockPrismaService.case.update.mockResolvedValue(mockCase);
 
-      const result = await service.updateCase(caseId, partialUpdate, userId);
+  const result = await service.updateCase(caseId, { status: CaseStatus.STATUS_00_DRAFT }, userId);
 
       expect(mockPrismaService.case.update).toHaveBeenCalledWith({
         where: { case_id: caseId },
@@ -433,7 +437,7 @@ describe('CaseService', () => {
           confidencePercentage: 0, // Should be valid
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -464,7 +468,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -496,7 +500,7 @@ describe('CaseService', () => {
           riskScore: 15,
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         prismaService.$transaction.mockImplementation(async (fn) => {
@@ -533,7 +537,7 @@ describe('CaseService', () => {
           riskScore: 20, // Exactly 20
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -577,7 +581,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-        const mockCase = { case_id: 'case-1', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         prismaService.$transaction.mockImplementation(async (fn) => {
@@ -597,7 +601,7 @@ describe('CaseService', () => {
         expect(prismaService.case.update).toHaveBeenCalledWith({
           where: { case_id: 'case-1' },
           data: {
-            status: CaseStatus.AUTOCLOSED_CONFIRMED_71,
+            status: CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
             updated_at: expect.any(Date),
           },
         });
@@ -606,7 +610,7 @@ describe('CaseService', () => {
           userId: systemUuid,
           operation: 'autocloseCase',
           entityName: CaseService.name,
-          actionPerformed: `Case case-1 autoclosed with status ${CaseStatus.AUTOCLOSED_CONFIRMED_71}`,
+          actionPerformed: `Case case-1 autoclosed with status ${CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED}`,
           outcome: Outcome.SUCCESS,
         });
       });
@@ -620,7 +624,7 @@ describe('CaseService', () => {
           fraudType: 'False-Positive', // Not in the true positive list
         };
 
-        const mockCase = { case_id: 'case-1', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -642,7 +646,7 @@ describe('CaseService', () => {
         expect(prismaService.case.update).toHaveBeenCalledWith({
           where: { case_id: 'case-1' },
           data: {
-            status: CaseStatus.AUTOCLOSED_REFUTED_72,
+            status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
             updated_at: expect.any(Date),
           },
         });
@@ -657,7 +661,7 @@ describe('CaseService', () => {
           // No fraudType specified
         };
 
-        const mockCase = { case_id: 'case-1', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -679,7 +683,7 @@ describe('CaseService', () => {
         expect(prismaService.case.update).toHaveBeenCalledWith({
           where: { case_id: 'case-1' },
           data: {
-            status: CaseStatus.AUTOCLOSED_REFUTED_72,
+            status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
             updated_at: expect.any(Date),
           },
         });
@@ -697,7 +701,7 @@ describe('CaseService', () => {
             fraudType,
           };
 
-          const mockCase = { case_id: `case-${fraudType}`, status: CaseStatus.DRAFT_00 };
+          const mockCase = { case_id: `case-${fraudType}`, status: CaseStatus.STATUS_00_DRAFT };
           const mockTask = { task_id: `atm-task-${fraudType}` };
 
           jest.clearAllMocks();
@@ -721,7 +725,7 @@ describe('CaseService', () => {
           expect(prismaService.case.update).toHaveBeenCalledWith({
             where: { case_id: `case-${fraudType}` },
             data: {
-              status: CaseStatus.AUTOCLOSED_CONFIRMED_71,
+              status: CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               updated_at: expect.any(Date),
             },
           });
@@ -738,7 +742,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-        const mockCase = { case_id: 'case-1', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
         const mockInvTask = { task_id: 'inv-123' };
 
@@ -761,7 +765,7 @@ describe('CaseService', () => {
         expect(prismaService.task.create).toHaveBeenCalledWith({
           data: {
             case_id: 'case-1',
-            status: TaskStatus.UNASSIGNED_01,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
             assigned_user_id: null,
             name: 'Investigate Case',
             description: 'Investigate the reported suspicious activity',
@@ -771,7 +775,7 @@ describe('CaseService', () => {
         expect(prismaService.task.update).toHaveBeenCalledWith({
           where: { task_id: 'atm-task-1' },
           data: {
-            status: TaskStatus.COMPLETED_30,
+            status: TaskStatus.STATUS_30_COMPLETED,
             updated_at: expect.any(Date),
           },
         });
@@ -816,7 +820,7 @@ describe('CaseService', () => {
           transaction: { transactionId: 'txn-1', amount: 100, currency: 'USD', debtor: {}, creditor: {}, timestamp: '2024' },
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -844,7 +848,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -874,7 +878,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-        const mockCase = { case_id: 'case-1', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -909,7 +913,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -952,7 +956,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -987,7 +991,7 @@ describe('CaseService', () => {
           // No priority, confidencePercentage, etc.
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -1022,7 +1026,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-        const mockCase = { case_id: 'case-123', status: CaseStatus.DRAFT_00 };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');

@@ -5,7 +5,7 @@ import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole, RequireSupervisorRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery} from '@nestjs/swagger';
 import {GetUserCasesQueryDto, GetUserCasesResponseDto} from "./dto/get-user-cases.dto";
@@ -18,6 +18,51 @@ import {GetAllCasesQueryDto, GetAllCasesResponseDto} from "./dto/get-all-cases.d
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
 
+  /**
+   * Supervisor approves case closure (User Story 9-A)
+   * Strictly enforces all acceptance criteria
+   */
+  @Put(':caseId/approve-closure')
+  @RequireSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Supervisor approves case closure',
+    description: 'Supervisor reviews and approves the closure of a case, ensuring all preconditions and audit logging.',
+  })
+  @ApiParam({
+    name: 'caseId',
+    type: 'string',
+    description: 'UUID of the case to approve closure for',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        recommendedOutcome: {
+          type: 'string',
+          enum: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'],
+          description: 'Final outcome for the case closure',
+        },
+      },
+      required: ['recommendedOutcome'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Case closure approved' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing information' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to approve cases' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  @ApiResponse({ status: 409, description: 'Conflict - Case is not in an approvable state' })
+  async approveCaseClosure(
+    @Param('caseId') caseId: string,
+    @Body('recommendedOutcome') recommendedOutcome: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const supervisorId = req.user.token.clientId;
+    // Acceptance criteria and system flow are strictly enforced in the service
+    return this.caseService.approveCaseClosure(caseId, supervisorId, recommendedOutcome);
+  }
   /**
    * System-to-system case creation endpoint (User Story #185)
    * This endpoint is called by external systems (Alert Triage Module, API Portal)
@@ -371,3 +416,4 @@ export class CaseController {
     };
   }
 }
+

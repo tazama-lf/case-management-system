@@ -1,7 +1,31 @@
+// import { AlertType, Priority, CaseType } from '@prisma/client';
 import { IsString, IsUUID, IsEnum, IsOptional, IsObject, IsNumber, Min, Max, ValidateNested, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { Priority, CaseType, AlertType } from '@prisma/client';
+// import { Priority, CaseType } from '../case.service';
+export enum AlertType {
+  FRAUD = 'FRAUD',
+  AML = 'AML',
+  FRAUD_AND_AML = 'FRAUD_AND_AML',
+  NONE = 'NONE',
+  SUSPICIOUS = 'SUSPICIOUS',
+  INFO = 'INFO',
+}
+
+export enum Priority {
+  NEW = 'NEW',
+  URGENT = 'URGENT',
+  CRITICAL = 'CRITICAL',
+  BREACH = 'BREACH',
+}
+
+export enum CaseType {
+  FRAUD = 'FRAUD',
+  AML = 'AML',
+  FRAUD_AND_AML = 'FRAUD_AND_AML',
+  NONE = 'NONE',
+}
+// If AlertType is a local enum, import it from the correct file. Otherwise, keep as is or remove if unused.
 
 /**
  * DTO for Alert Data within the system transmission payload

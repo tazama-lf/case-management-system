@@ -176,6 +176,8 @@ enum AlertType {
   AML
   FRAUD_AND_AML
   NONE
+  SUSPICIOUS
+  INFO
 }
 
 enum PredictionOutcome {

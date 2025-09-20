@@ -5,7 +5,7 @@ import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
 import { SystemCaseCreationDto } from '../../src/case/dto/system-case-creation.dto';
 import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
-import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
+import { CaseStatus, Priority, CaseType, CaseCreationType } from '../../src/case/dto/create-case.dto';
 import { AuthenticatedRequest } from '../../src/auth/auth.types';
 
 describe('CaseController', () => {
@@ -55,7 +55,7 @@ describe('CaseController', () => {
       tenantId: 'tenant-123',
       caseCreatorUserId: 'creator-123',
       caseOwnerUserId: 'owner-123',
-      status: CaseStatus.STATUS_00_DRAFT,
+    status: CaseStatus.STATUS_00_DRAFT,
       priority: Priority.NEW,
       caseType: CaseType.FRAUD,
       caseCreationType: CaseCreationType.MANUAL,
@@ -163,7 +163,7 @@ describe('CaseController', () => {
   describe('updateCase', () => {
     const caseId = 'case-123';
     const updateCaseDto: UpdateCaseDto = {
-      status: CaseStatus.STATUS_20_IN_PROGRESS,
+    status: CaseStatus.STATUS_20_IN_PROGRESS,
       priority: Priority.URGENT,
       caseType: CaseType.AML,
       caseOwnerUserId: 'new-owner-123',

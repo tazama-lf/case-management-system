@@ -1,3 +1,94 @@
+
+
+// Mapping functions for enums with runtime validation
+function mapCaseStatusToPrisma(status: string): string {
+  if (!Object.values(CaseStatus).includes(status as CaseStatus)) {
+    throw new Error(`Invalid CaseStatus value: ${status}`);
+  }
+  return status;
+}
+
+function mapTaskStatusToPrisma(status: string): string {
+  if (!Object.values(TaskStatus).includes(status as TaskStatus)) {
+    throw new Error(`Invalid TaskStatus value: ${status}`);
+  }
+  return status;
+}
+
+function mapPriorityToPrisma(priority: string): string {
+  if (!Object.values(Priority).includes(priority as Priority)) {
+    throw new Error(`Invalid Priority value: ${priority}`);
+  }
+  return priority;
+}
+
+function mapCaseTypeToPrisma(type: string): string {
+  if (!Object.values(CaseType).includes(type as CaseType)) {
+    throw new Error(`Invalid CaseType value: ${type}`);
+  }
+  return type;
+}
+
+function mapCaseCreationTypeToPrisma(type: string): string {
+  if (!Object.values(CaseCreationType).includes(type as CaseCreationType)) {
+    throw new Error(`Invalid CaseCreationType value: ${type}`);
+  }
+  return type;
+}
+
+// Mapping functions for enums
+
+// Prisma enums as string literal unions
+export const CaseStatus = {
+  STATUS_00_DRAFT: 'STATUS_00_DRAFT',
+  STATUS_01_PENDING_CASE_CREATION_APPROVAL: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+  STATUS_02_READY_FOR_ASSIGNMENT: 'STATUS_02_READY_FOR_ASSIGNMENT',
+  STATUS_03_RETURNED: 'STATUS_03_RETURNED',
+  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
+  STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
+  STATUS_21_SUSPENDED: 'STATUS_21_SUSPENDED',
+  STATUS_22_PENDING_FINAL_APPROVAL: 'STATUS_22_PENDING_FINAL_APPROVAL',
+  STATUS_30_PENDING_REOPENING: 'STATUS_30_PENDING_REOPENING',
+  STATUS_31_REOPENED: 'STATUS_31_REOPENED',
+  STATUS_71_AUTOCLOSED_CONFIRMED: 'STATUS_71_AUTOCLOSED_CONFIRMED',
+  STATUS_72_AUTOCLOSED_REFUTED: 'STATUS_72_AUTOCLOSED_REFUTED',
+  STATUS_81_CLOSED_REFUTED: 'STATUS_81_CLOSED_REFUTED',
+  STATUS_82_CLOSED_CONFIRMED: 'STATUS_82_CLOSED_CONFIRMED',
+  STATUS_83_CLOSED_INCONCLUSIVE: 'STATUS_83_CLOSED_INCONCLUSIVE',
+  STATUS_99_ABANDONED: 'STATUS_99_ABANDONED',
+} as const;
+export type CaseStatus = typeof CaseStatus[keyof typeof CaseStatus];
+
+export const TaskStatus = {
+  STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
+  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
+  STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
+  STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
+  STATUS_21_BLOCKED: 'STATUS_21_BLOCKED',
+} as const;
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
+
+export const Priority = {
+  NEW: 'NEW',
+  URGENT: 'URGENT',
+  CRITICAL: 'CRITICAL',
+  BREACH: 'BREACH',
+} as const;
+export type Priority = typeof Priority[keyof typeof Priority];
+
+export const CaseCreationType = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC_SYSTEM: 'AUTOMATIC_SYSTEM',
+} as const;
+export type CaseCreationType = typeof CaseCreationType[keyof typeof CaseCreationType];
+
+export const CaseType = {
+  FRAUD: 'FRAUD',
+  AML: 'AML',
+  FRAUD_AND_AML: 'FRAUD_AND_AML',
+  NONE: 'NONE',
+} as const;
+export type CaseType = typeof CaseType[keyof typeof CaseType];
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
@@ -8,18 +99,110 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
+// Enums are string unions from Prisma client, not exported types
 import {GetUserCasesQueryDto} from "./dto/get-user-cases.dto";
 import {GetAllCasesQueryDto} from "./dto/get-all-cases.dto";
 
 @Injectable()
 export class CaseService {
+  /**
+   * Supervisor approves case closure (User Story 9-A)
+   * Strictly enforces all acceptance criteria
+   */
+  async approveCaseClosure(caseId: string, supervisorId: string, recommendedOutcome: string) {
+    // Step 1: Retrieve the case and validate preconditions
+    const caseData = await this.prismaService.case.findUnique({
+      where: { case_id: caseId },
+      include: { tasks: true },
+    });
+    if (!caseData) {
+      throw new NotFoundException('Case not found');
+    }
+    // Step 2: Check case status
+    if (caseData.status !== CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
+      throw new ConflictException({
+        message: 'Case is not in an approvable state',
+        currentStatus: caseData.status,
+        requiredStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      });
+    }
+    // Step 3: Find the "Approve case closure" task
+    const approvalTask = caseData.tasks.find(
+      (task) => task.name === 'Approve case closure'
+    );
+    if (!approvalTask) {
+      throw new BadRequestException('Approve case closure task not found');
+    }
+    // Step 4: Check task assignment and status
+    if (approvalTask.assigned_user_id !== null && approvalTask.assigned_user_id !== supervisorId) {
+      throw new ForbiddenException('Task is not assigned to Supervisors work queue');
+    }
+    if (approvalTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
+      throw new ConflictException('Approve case closure task must be unassigned');
+    }
+    // Step 5: Check recommended outcome
+    const validOutcomes: (
+      'STATUS_81_CLOSED_REFUTED' |
+      'STATUS_82_CLOSED_CONFIRMED' |
+      'STATUS_83_CLOSED_INCONCLUSIVE'
+    )[] = [
+      'STATUS_81_CLOSED_REFUTED',
+      'STATUS_82_CLOSED_CONFIRMED',
+      'STATUS_83_CLOSED_INCONCLUSIVE',
+    ];
+    if (!recommendedOutcome || !validOutcomes.includes(recommendedOutcome as typeof validOutcomes[number])) {
+      throw new BadRequestException('Invalid or missing recommended outcome');
+    }
+    // Step 6: Ensure all other tasks are complete
+    const incompleteTasks = caseData.tasks.filter(
+      (task) => task.task_id !== approvalTask.task_id && task.status !== TaskStatus.STATUS_30_COMPLETED
+    );
+    if (incompleteTasks.length > 0) {
+      throw new ConflictException('All other tasks must be complete before approval');
+    }
+    // Step 7: Update case status and complete approval task
+    await this.prismaService.$transaction(async (tx) => {
+        await tx.case.update({
+          where: { case_id: caseId },
+          data: {
+            status: mapCaseStatusToPrisma(recommendedOutcome as CaseStatus),
+            updated_at: new Date(),
+          },
+        });
+        await tx.task.update({
+          where: { task_id: approvalTask.task_id },
+          data: {
+            status: mapTaskStatusToPrisma(TaskStatus.STATUS_30_COMPLETED),
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+    });
+    // Step 8: Audit log retrieval and approval
+    await this.auditLogService.logAction({
+      userId: supervisorId,
+      operation: 'retrieveCase',
+      entityName: CaseService.name,
+      actionPerformed: `Supervisor retrieved case ${caseId} for approval`,
+      outcome: Outcome.SUCCESS,
+    });
+    await this.auditLogService.logAction({
+      userId: supervisorId,
+      operation: 'approveCaseClosure',
+      entityName: CaseService.name,
+      actionPerformed: `Supervisor approved closure of case ${caseId} with outcome ${recommendedOutcome}`,
+      outcome: Outcome.SUCCESS,
+    });
+    return { message: 'Case closure approved', caseId, outcome: recommendedOutcome };
+  }
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly flowableService: FlowableService,
-      private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly flowableService: FlowableService,
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService,
   ) {}
 
   /**
@@ -48,161 +231,78 @@ export class CaseService {
 
       // Step 3: Retrieve and log the investigation task
       const investigationTask = caseData.tasks.find(
-          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case',
+        (task) => task.name === 'Investigate Case' || task.name === 'Investigate case',
       );
 
-      if (!investigationTask) {
-        throw new BadRequestException('Investigation task not found for this case');
+      // Step 4: Fetch supervisors from KeyCloak using AuthService
+  const supervisors = await this.authService.fetchSupervisors();
+      if (!supervisors || supervisors.length === 0) {
+        throw new BadRequestException('No supervisors found for this tenant');
       }
 
-      // Log retrieval of the task (Acceptance Criteria #1)
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'retrieveTask',
-        entityName: CaseService.name,
-        actionPerformed: `Retrieved investigation task ${investigationTask.task_id} for case closure`,
-        outcome: Outcome.SUCCESS,
-      });
+      // Step 5: Create "Approve case closure" task and assign to supervisors group (unassigned, visible to all supervisors)
+      let approvalTask;
+      await this.prismaService.$transaction(async (tx) => {
+        approvalTask = await tx.task.create({
+          data: {
+            case_id: caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: null, // Unassigned, visible to all supervisors
+            name: 'Approve case closure',
+            description: 'Supervisor approval required for case closure',
+          },
+        });
 
-      // Step 4: Start transaction for case closure
-      const result = await this.prismaService.$transaction(async (tx) => {
-        // Update case status to PENDING_FINAL_APPROVAL (Acceptance Criteria #2)
-        const updatedCase = await tx.case.update({
+        // Update case status to pending final approval
+        await tx.case.update({
           where: { case_id: caseId },
           data: {
             status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
             updated_at: new Date(),
           },
         });
-
-        // Update investigation task status to COMPLETE (Acceptance Criteria #3)
-        await tx.task.update({
-          where: { task_id: investigationTask.task_id },
-          data: {
-            status: TaskStatus.STATUS_30_COMPLETED,
-            updated_at: new Date(),
-          },
-        });
-
-        // Add final notes/recommendations as a comment if provided
-        if (dto.finalNotes || dto.recommendations) {
-          await tx.comment.create({
-            data: {
-              user_id: userId,
-              case_id: caseId,
-              note: `Final Investigation Summary:\n${dto.finalNotes || ''}\n\nRecommendations:\n${
-                  dto.recommendations || ''
-              }\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            },
-          });
-        }
-
-        // Create "Approve case closure" task (Acceptance Criteria #4)
-        const approvalTask = await tx.task.create({
-          data: {
-            case_id: caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED, // Acceptance Criteria #7
-            assigned_user_id: null, // Unassigned initially
-            name: 'Approve case closure', // Acceptance Criteria #4
-            description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
-          },
-        });
-
-        // Store recommended outcome and additional data as a comment linked to the approval task
-        // (Acceptance Criteria #6)
-        await tx.comment.create({
-          data: {
-            user_id: userId,
-            task_id: approvalTask.task_id,
-            note: JSON.stringify({
-              recommendedOutcome: dto.recommendedOutcome,
-              finalNotes: dto.finalNotes,
-              recommendations: dto.recommendations,
-              submittedBy: userId,
-              submittedAt: new Date(),
-            }),
-          },
-        });
-
-        return { updatedCase, approvalTask };
       });
 
-      // Step 5: Assign task to Supervisors group via Flowable (Acceptance Criteria #5)
+      // Step 6: Log the creation of the approval task
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'createApprovalTask',
+        entityName: CaseService.name,
+        actionPerformed: `Created approval task ${approvalTask.task_id} for case ${caseId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      // Step 7: Log the assignment to Supervisors group
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'assignTaskToSupervisors',
+        entityName: CaseService.name,
+        actionPerformed: `Approval task ${approvalTask.task_id} assigned to supervisors group for case ${caseId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      // Step 8: Notify supervisors
       try {
-        // Start or update Flowable process for case closure approval
-        const processInstance = await this.flowableService.startProcessInstance(
-            'caseClosureApprovalProcess',
-            {
-              caseId: caseId,
-              tenantId: tenantId,
-              approvalTaskId: result.approvalTask.task_id,
-              recommendedOutcome: dto.recommendedOutcome,
-              investigatorId: userId,
-              candidateGroup: 'Supervisors', // Acceptance Criteria #5
-            },
-            `closure-${caseId}`,
-        );
-
-        // Get Flowable tasks and assign to Supervisors group
-        const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-        if (flowableTasks && flowableTasks.length > 0) {
-          // The BPMN should automatically assign to Supervisors group
-          this.logger.log('Approval task assigned to Supervisors group in Flowable', CaseService.name);
+        for (const supervisor of supervisors) {
+            await this.notifySupervisors(approvalTask.task_id, caseId, tenantId, supervisor.email);
         }
-      } catch (flowableError) {
-        this.logger.error(
-            `Flowable process creation failed, but case closure continues: ${flowableError.message}`,
-            flowableError.stack,
-            CaseService.name,
-        );
-        // Continue without Flowable - the task is still created in the database
+      } catch (notifyError) {
+        this.logger.error(`Failed to notify supervisors: ${notifyError.message}`, notifyError.stack, CaseService.name);
       }
-
-      // Step 6: Log the creation of the approval task (Acceptance Criteria #9)
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'createTask',
-        entityName: CaseService.name,
-        actionPerformed: `Created "Approve case closure" task ${result.approvalTask.task_id} for case ${caseId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      // Step 7: Log the assignment to Supervisors group (Acceptance Criteria #10)
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'assignTask',
-        entityName: CaseService.name,
-        actionPerformed: `Assigned approval task ${result.approvalTask.task_id} to Supervisors candidate group`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      // Step 8: Notify supervisors (Acceptance Criteria #8)
-      await this.notifySupervisors(result.approvalTask.task_id, caseId, tenantId);
 
       // Log successful case closure submission
       await this.auditLogService.logAction({
         userId,
         operation: 'closeCase',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} closed and submitted for approval with outcome: ${dto.recommendedOutcome}`,
+        actionPerformed: `Case ${caseId} closed and submitted for supervisor approval`,
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Case ${caseId} successfully closed and submitted for approval`, CaseService.name);
-
       return {
         message: 'Case closed successfully and submitted for approval',
-        closed_case: {
-          case_id: result.updatedCase.case_id,
-          status: result.updatedCase.status,
-          updated_at: result.updatedCase.updated_at,
-        },
-        approval_task: {
-          task_id: result.approvalTask.task_id,
-          name: result.approvalTask.name,
-          status: result.approvalTask.status,
-          assigned_to: 'Supervisors',
-        },
+        approvalTaskId: approvalTask.task_id,
+        supervisors: supervisors.map(s => s.id),
       };
     } catch (error) {
       this.logger.error(`Failed to close case ${caseId}: ${error.message}`, error.stack, CaseService.name);
@@ -286,26 +386,19 @@ export class CaseService {
   /**
    * Notify supervisors about new approval task
    */
-  private async notifySupervisors(taskId: string, caseId: string, tenantId: string) {
+  private async notifySupervisors(taskId: string, caseId: string, tenantId: string, supervisorEmail?: string) {
     try {
-      // TODO: Implement notification system
-      // This could be email, in-app notification, webhook, etc.
-      // For now, just log the notification
+      // Example notification logic: log and optionally send email
       this.logger.log(
-          `Notification sent to Supervisors group for approval task ${taskId} on case ${caseId}`,
-          CaseService.name,
+        `Notification sent to supervisor${supervisorEmail ? ' (' + supervisorEmail + ')' : ''} for approval task ${taskId} on case ${caseId}`,
+        CaseService.name,
       );
-
-      // In a real implementation, you might:
-      // 1. Query KeyCloak for users with SUPERVISOR role in the tenant
-      // 2. Send email notifications
-      // 3. Create in-app notifications
-      // 4. Trigger webhooks to external systems
+      // TODO: Integrate with real notification system (email, in-app, webhook, etc.)
     } catch (error) {
       this.logger.error(
-          `Failed to notify supervisors: ${error.message}`,
-          error.stack,
-          CaseService.name,
+        `Failed to notify supervisor${supervisorEmail ? ' (' + supervisorEmail + ')' : ''}: ${error.message}`,
+        error.stack,
+        CaseService.name,
       );
       // Don't throw - notification failure shouldn't stop case closure
     }
@@ -339,10 +432,10 @@ export class CaseService {
             tenant_id: payload.tenantId,
             case_creator_user_id: systemUuid, // Use system UUID from config
             case_owner_user_id: systemUuid, // Initially owned by system
-            status: CaseStatus.STATUS_00_DRAFT,
-            priority: payload.priority || Priority.NEW, // Use Priority enum
-            case_type: payload.caseType,
-            case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM, // Use enum
+            status: mapCaseStatusToPrisma(CaseStatus.STATUS_00_DRAFT),
+            priority: mapPriorityToPrisma(payload.priority || Priority.NEW),
+            case_type: payload.caseType ? mapCaseTypeToPrisma(payload.caseType) : undefined,
+            case_creation_type: mapCaseCreationTypeToPrisma(CaseCreationType.AUTOMATIC_SYSTEM),
           },
         });
 
@@ -1245,11 +1338,11 @@ export class CaseService {
           tenant_id: createCaseDTO.tenantId,
           case_creator_user_id: createCaseDTO.caseCreatorUserId,
           case_owner_user_id: createCaseDTO.caseOwnerUserId,
-          status: createCaseDTO.status,
-          priority: createCaseDTO.priority,
+          status: mapCaseStatusToPrisma(createCaseDTO.status),
+          priority: mapPriorityToPrisma(createCaseDTO.priority),
           parent_id: createCaseDTO.parentId ?? null,
-          case_type: createCaseDTO.caseType,
-          case_creation_type: createCaseDTO.caseCreationType,
+          case_type: createCaseDTO.caseType ? mapCaseTypeToPrisma(createCaseDTO.caseType) : undefined,
+          case_creation_type: mapCaseCreationTypeToPrisma(createCaseDTO.caseCreationType),
         },
       });
 
@@ -1294,9 +1387,9 @@ export class CaseService {
       const updatedCase = await this.prismaService.case.update({
         where: { case_id: caseId },
         data: {
-          case_type: updateData.caseType,
-          priority: updateData.priority,
-          status: updateData.status,
+          case_type: updateData.caseType ? mapCaseTypeToPrisma(updateData.caseType) : undefined,
+          priority: updateData.priority ? mapPriorityToPrisma(updateData.priority) : undefined,
+          status: updateData.status ? mapCaseStatusToPrisma(updateData.status) : undefined,
           case_owner_user_id: updateData.caseOwnerUserId,
         },
       });

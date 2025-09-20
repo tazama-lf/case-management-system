@@ -8,6 +8,33 @@ import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
+  /**
+   * Fetch supervisor users from KeyCloak via auth-service REST API
+   * Returns array of user objects or IDs with SUPERVISOR role
+   */
+  async fetchSupervisors(): Promise<any[]> {
+    const keycloakUrl = this.configService.get<string>('KEYCLOAK_USERS_URL');
+    const supervisorRole = 'SUPERVISOR';
+    if (!keycloakUrl) {
+      this.logger.error('KEYCLOAK_USERS_URL is not set in environment variables');
+      throw new ServiceUnavailableException('User service unavailable');
+    }
+    try {
+      // Example: GET /users?role=SUPERVISOR
+      const response = await firstValueFrom(
+        this.httpService.get(`${keycloakUrl}?role=${supervisorRole}`)
+      );
+      if (!response?.data || !Array.isArray(response.data)) {
+        this.logger.error('KeyCloak did not return a valid user list', AuthService.name);
+        throw new ServiceUnavailableException('User service unavailable');
+      }
+      this.logger.log(`Fetched ${response.data.length} supervisor users from KeyCloak`);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error fetching supervisors from KeyCloak: ${error.message}`);
+      throw new ServiceUnavailableException('Failed to fetch supervisor users');
+    }
+  }
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,

@@ -5,7 +5,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from './dto/create-task.dto';
 import axios from 'axios';
 
 @Injectable()
@@ -289,7 +289,7 @@ export class TaskService {
     await this.createTask(
       {
         caseId,
-        status: 'STATUS_10_ASSIGNED',
+        status: TaskStatus.STATUS_10_ASSIGNED,
         assignedUserId: 'test-investigator-id',
         name: 'Investigate Case',
         description: 'Please investigate this case.',

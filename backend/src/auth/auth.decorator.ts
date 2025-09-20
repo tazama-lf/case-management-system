@@ -1,3 +1,12 @@
+/**
+ * SUPERVISOR role claim (for case approval)
+ */
+export const SUPERVISOR_CLAIM = 'SUPERVISOR';
+
+/**
+ * Decorator to require SUPERVISOR role
+ */
+export const RequireSupervisorRole = () => RequireClaim(SUPERVISOR_CLAIM);
 import { SetMetadata } from '@nestjs/common';
 
 export const CLAIMS_KEY = 'claims';

@@ -11,7 +11,33 @@ import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
 import { CommentService } from '../comment/comment.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus, CaseType } from '@prisma/client';
+// import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus, CaseType } from '@prisma/client';
+import { Priority, CaseCreationType, CaseStatus, CaseType } from '../case/dto/create-case.dto';
+import { AlertType } from '../case/dto/system-case-creation.dto';
+// Use CaseStatus from create-case.dto exclusively for all status assignments/checks
+export enum PredictionOutcome {
+  FALSE_POSITIVE = 'FALSE_POSITIVE',
+  TRUE_POSITIVE = 'TRUE_POSITIVE',
+  FALSE_NEGATIVE = 'FALSE_NEGATIVE',
+  TRUE_NEGATIVE = 'TRUE_NEGATIVE',
+}
+export enum TaskStatus {
+  STATUS_01_UNASSIGNED = 'STATUS_01_UNASSIGNED',
+  STATUS_10_ASSIGNED = 'STATUS_10_ASSIGNED',
+  STATUS_30_COMPLETED = 'STATUS_30_COMPLETED',
+}
+
+// Prisma type workaround
+type AlertWhereInput = {
+  tenant_id: string;
+  priority?: Priority;
+  alert_type?: AlertType;
+  txtp?: string;
+  source?: string;
+  alert_id?: { equals: string };
+  case_id?: { equals: string };
+  OR?: AlertWhereInput[];
+};
 import { Outcome } from 'src/audit/types/outcome';
 import { UpdateCaseDto } from 'src/case/dto/update-case.dto';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
@@ -168,7 +194,7 @@ export class TriageService {
         // Gracefully update case status to READY FOR ASSIGNMENT
         await this.caseService.updateCase(
           createdCase.case_id,
-          { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
+          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
           systemUuid
         );
       }
@@ -248,17 +274,41 @@ export class TriageService {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
       }
 
-      if (manualTriageDto?.status && closableStatuses.includes(manualTriageDto.status)) {
-        await this.caseService.updateCase(alert.case_id, { status: manualTriageDto.status }, userId);
+      // Map manualTriageDto.status from manual-triage.dto to create-case.dto values if needed
+      const statusMap: Record<string, CaseStatus> = {
+        STATUS_00_DRAFT: CaseStatus.STATUS_00_DRAFT,
+        STATUS_01_PENDING_CASE_CREATION_APPROVAL: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+        STATUS_02_READY_FOR_ASSIGNMENT: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        STATUS_03_RETURNED: CaseStatus.STATUS_03_RETURNED,
+        STATUS_10_ASSIGNED: CaseStatus.STATUS_10_ASSIGNED,
+        STATUS_20_IN_PROGRESS: CaseStatus.STATUS_20_IN_PROGRESS,
+        STATUS_21_SUSPENDED: CaseStatus.STATUS_21_SUSPENDED,
+        STATUS_22_PENDING_FINAL_APPROVAL: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+        STATUS_30_PENDING_REOPENING: CaseStatus.STATUS_30_PENDING_REOPENING,
+        STATUS_31_REOPENED: CaseStatus.STATUS_31_REOPENED,
+        STATUS_71_AUTOCLOSED_CONFIRMED: CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+        STATUS_72_AUTOCLOSED_REFUTED: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+        STATUS_81_CLOSED_REFUTED: CaseStatus.STATUS_81_CLOSED_REFUTED,
+        STATUS_82_CLOSED_CONFIRMED: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        STATUS_83_CLOSED_INCONCLUSIVE: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+        STATUS_99_ABANDONED: CaseStatus.STATUS_99_ABANDONED,
+      };
+      const mappedStatus = statusMap[manualTriageDto?.status as keyof typeof statusMap];
+      if (mappedStatus && closableStatuses.includes(mappedStatus)) {
+  await this.caseService.updateCase(alert.case_id, { status: mappedStatus }, userId);
 
         this.logger.log(
           `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${manualTriageDto.status}`,
           TriageService.name,
         );
       } else {
+        // Only assign caseType if manualTriageDto.alertType is a valid CaseType
+        let caseType: CaseType | undefined = undefined;
+        if (manualTriageDto.alertType === AlertType.FRAUD) caseType = CaseType.FRAUD;
+        if (manualTriageDto.alertType === AlertType.AML) caseType = CaseType.AML;
         await this.caseService.updateCase(
           alert.case_id,
-          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType: manualTriageDto.alertType, priority: priority },
+          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType, priority: priority },
           userId,
         );
         if (manualTriageDto.alertType === AlertType.FRAUD_AND_AML) {
@@ -370,7 +420,7 @@ export class TriageService {
       throw new BadRequestException('sortOrder must be "asc" or "desc"');
     }
 
-    const whereClause: Prisma.AlertWhereInput = {
+    const whereClause: AlertWhereInput = {
       tenant_id: tenantId,
     };
 
@@ -396,33 +446,26 @@ export class TriageService {
     }
 
     if (search) {
-      const searchConditions: Prisma.AlertWhereInput[] = [
-        { txtp: { contains: search, mode: 'insensitive' } },
-        { source: { contains: search, mode: 'insensitive' } },
-      ];
+      const searchConditions: AlertWhereInput[] = [];
 
       // Very basic UUID check. A proper validation should be used in a real app.
       if (search.length === 36) {
-        searchConditions.push({ alert_id: { equals: search } });
-        searchConditions.push({ case_id: { equals: search } });
+  searchConditions.push({ alert_id: { equals: search }, tenant_id: tenantId });
+  searchConditions.push({ case_id: { equals: search }, tenant_id: tenantId });
       }
 
       if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
-        searchConditions.push({
-          priority: { equals: search.toUpperCase() as Priority },
-        });
+        searchConditions.push({ priority: search.toUpperCase() as Priority, tenant_id: tenantId });
       }
       if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
-        searchConditions.push({
-          alert_type: { equals: search.toUpperCase() as AlertType },
-        });
+        searchConditions.push({ alert_type: search.toUpperCase() as AlertType, tenant_id: tenantId });
       }
-      whereClause.OR = searchConditions;
+  whereClause.OR = searchConditions;
     }
 
     try {
       const alerts = await this.prisma.alert.findMany({
-        where: whereClause,
+        where: whereClause as any,
         orderBy: { [sortBy]: sortOrder },
         skip: (page - 1) * limit,
         take: limit,
@@ -438,7 +481,7 @@ export class TriageService {
         },
       });
 
-      const totalCount = await this.prisma.alert.count({ where: whereClause });
+  const totalCount = await this.prisma.alert.count({ where: whereClause as any });
 
       return {
         data: alerts,
@@ -594,6 +637,10 @@ export class TriageService {
         this.logger.log(
           `Confidence ${predictedConfidence} below threshold ${confidenceThreshold} for alert ${alertId}. Creating investigation task for case ${caseId}.`,
         );
+        // Only pass CaseType if predictedAlertType is valid
+        let caseType: CaseType | undefined = undefined;
+        if (predictedAlertType === AlertType.FRAUD) caseType = CaseType.FRAUD;
+        if (predictedAlertType === AlertType.AML) caseType = CaseType.AML;
         return await this.createInvestigationTask(
           caseId,
           userId,
@@ -601,7 +648,7 @@ export class TriageService {
           'Investigate Case as confidence is below threshold',
           'Triage complete - AI predicted confidence percentage below threshold manual investigation needed',
           priority,
-          predictedAlertType,
+          caseType,
         );
       }
 
@@ -708,7 +755,7 @@ export class TriageService {
         );
 
         const updateCaseDto = new UpdateCaseDto();
-        updateCaseDto.status = status;
+  updateCaseDto.status = status ?? undefined;
         const updatedCase = await this.caseService.updateCase(caseId, updateCaseDto, userId);
 
         return [updatedCase, updatedTask];
@@ -865,7 +912,7 @@ export class TriageService {
     try {
       const updateDto = new UpdateAlertDto();
 
-      updateDto.predictionOutcome = predictedTruePositive ? 'TRUE_POSITIVE' : 'FALSE_POSITIVE';
+  updateDto.predictionOutcome = predictedTruePositive ? PredictionOutcome.TRUE_POSITIVE : PredictionOutcome.FALSE_POSITIVE;
       updateDto.priority = priority;
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;

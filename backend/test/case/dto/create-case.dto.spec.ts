@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 import { CreateCaseDto } from '../../../src/case/dto/create-case.dto';
-import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
+import { CaseStatus, Priority, CaseType, CaseCreationType } from '../../../src/case/dto/create-case.dto';
 
 describe('CreateCaseDto', () => {
   let dto: CreateCaseDto;
@@ -14,8 +14,8 @@ describe('CreateCaseDto', () => {
       dto.tenantId = '123e4567-e89b-12d3-a456-426614174000';
       dto.caseCreatorUserId = '123e4567-e89b-12d3-a456-426614174001';
       dto.caseOwnerUserId = '123e4567-e89b-12d3-a456-426614174002';
-      dto.status = CaseStatus.STATUS_00_DRAFT;
-      dto.priority = Priority.NEW;
+    dto.status = CaseStatus.STATUS_00_DRAFT;
+    dto.priority = Priority.NEW;
       dto.caseType = CaseType.FRAUD;
       dto.caseCreationType = CaseCreationType.MANUAL;
 
