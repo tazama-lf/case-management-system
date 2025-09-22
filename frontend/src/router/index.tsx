@@ -7,6 +7,7 @@ import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
 import CasesDashboard from '../features/cases/pages/CasesDashboard';
 import SupervisorDashboard from '../features/supervisor/pages/SupervisorDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
+import WorkQueueDashboard from '../features/workqueue/pages/WorkQueueDashboard';
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +47,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireSupervisor>
             <SupervisorDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'work-queue',
+        element: (
+          <ProtectedRoute requireSupervisor>
+            <WorkQueueDashboard />
           </ProtectedRoute>
         ),
       },

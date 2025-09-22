@@ -92,6 +92,14 @@ export interface WorkQueueFilters {
   limit?: number;
 }
 
+export interface WorkQueueResponse {
+  tasks: TaskForSupervisor[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export class TaskService {
   private baseUrl = '/api/v1/task';
 
@@ -222,7 +230,7 @@ export class TaskService {
   }
 
   // GET /api/v1/task/work-queue
-  async getWorkQueue(filters?: WorkQueueFilters): Promise<TasksResponse> {
+  async getWorkQueue(filters?: WorkQueueFilters): Promise<WorkQueueResponse> {
     try {
       const params = new URLSearchParams();
       if (filters) {
@@ -233,7 +241,7 @@ export class TaskService {
         });
       }
       
-      const response = await apiClient.get<TasksResponse>(`${this.baseUrl}/work-queue?${params}`);
+      const response = await apiClient.get<WorkQueueResponse>(`${this.baseUrl}/work-queue?${params}`);
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'get work queue');

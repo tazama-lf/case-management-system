@@ -5,12 +5,7 @@ import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import {
-  RequireAlertTriageRole,
-  RequireInvestigatorRole,
-  RequireInvestigatorOrSupervisorRole,
-  RequireAnyValidRole,
-} from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole, RequireInvestigatorRole, RequireAnyValidRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
@@ -267,7 +262,7 @@ export class CaseController {
   @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: 'Get summary statistics of user\'s case workload',
+    description: "Get summary statistics of user's case workload",
   })
   @ApiResponse({
     status: 200,

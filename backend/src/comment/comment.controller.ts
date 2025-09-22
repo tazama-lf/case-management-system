@@ -3,7 +3,7 @@ import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommentService } from './comment.service';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
-import { RequireAlertTriageRole, RequireAnyValidRole } from 'src/auth/auth.decorator';
+import { RequireAnyValidRole } from 'src/auth/auth.decorator';
 
 @Controller('api/v1/comment')
 @UseGuards(TazamaAuthGuard)
