@@ -7,6 +7,7 @@ import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus } from '@prisma/client';
 import axios from 'axios';
+import { FlowableService } from 'src/flowable/flowable.service';
 
 @Injectable()
 export class TaskService {
@@ -14,6 +15,7 @@ export class TaskService {
     private prisma: PrismaService,
     private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
+    private readonly flowableService: FlowableService,
   ) {}
 
   async createTask(
@@ -120,6 +122,32 @@ export class TaskService {
         operation: 'updateTask',
         outcome: Outcome.FAILURE,
         performedAt: new Date(),
+      });
+      throw error;
+    }
+  }
+
+  async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
+    this.logger.log(`Retrieving tasks for candidateGroup : ${candidateGroup}`, TaskService.name);
+    try {
+      const tasks = this.flowableService.getCandidateGroupTasks(candidateGroup);
+      this.auditLogService.logAction({
+        userId,
+        operation: 'getTasksByCandidateGroup',
+        entityName: TaskService.name,
+        actionPerformed: `Successfully retrieved tasks for candidateGroup : ${candidateGroup}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return tasks;
+    } catch (error) {
+      this.logger.error(`Error retrieving tasks for candidateGroup : ${candidateGroup}`, error, TaskService.name);
+      this.auditLogService.logAction({
+        userId,
+        operation: 'getTasksByCandidateGroup',
+        entityName: TaskService.name,
+        actionPerformed: `Error retrieving tasks for candidateGroup : ${candidateGroup}`,
+        outcome: Outcome.FAILURE,
       });
       throw error;
     }

@@ -73,21 +73,11 @@ export class TaskController {
     return this.taskService.getTasksByCaseId(caseId, userId);
   }
 
-  @Get('work-queue')
-  @RequireAnyValidRole()
-  async getWorkQueue(
-    @Query('role') role?: string,
-    @Query('candidateGroup') candidateGroup?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const filters = {
-      role,
-      candidateGroup,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-    };
-    return this.taskService.getWorkQueue(filters);
+  @Get('work-queues/:candidateGroup')
+  @RequireAlertTriageRole()
+  async getTasksByCandidateGroup(@Param('candidateGroup') candidateGroup: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    return this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
   }
 
   @Get(':taskId')
