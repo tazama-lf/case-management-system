@@ -145,6 +145,20 @@ export class FlowableService {
     }
   }
 
+  async assignTaskToCandidateGroup(taskId: string, group: string) {
+    try {
+      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/identitylinks`, {
+        type: 'candidate',
+        group,
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException(`Failed to assign task to candidate group`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  
   /**
    * Get candidate tasks for a group
    */
