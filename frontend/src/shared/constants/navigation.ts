@@ -3,6 +3,7 @@ import {
   FolderIcon,
   UserGroupIcon,
   Cog6ToothIcon,
+  QueueListIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItem } from '../types/navigation.types';
 
@@ -26,6 +27,12 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     roles: ['CMS_SUPERVISOR'], // Supervisors only
   },
   {
+    name: 'Work Queue',
+    href: '/work-queue',
+    icon: QueueListIcon,
+    roles: ['CMS_SUPERVISOR'], // Supervisors only
+  },
+  {
     name: 'Admin Dashboard',
     href: '/admin',
     icon: Cog6ToothIcon,
@@ -40,6 +47,7 @@ export const ROUTES = {
   ALERTS: '/alerts',
   CASES: '/cases',
   SUPERVISOR: '/supervisor',
+  WORK_QUEUE: '/work-queue',
   ADMIN: '/admin',
   LOGIN: '/login',
 } as const;

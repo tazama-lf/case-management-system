@@ -292,4 +292,58 @@ export class TaskService {
     // Mock notification
     this.logger.log(`Notification: User test-investigator-id assigned to task for case ${caseId}`, TaskService.name);
   }
+
+  /**
+   * Get work queue with filtering options
+   */
+  async getWorkQueue(filters: { role?: string; candidateGroup?: string; page?: number; limit?: number }) {
+    try {
+      const { candidateGroup, page = 1, limit = 20 } = filters;
+
+      const skip = (page - 1) * limit;
+      
+      const where: Record<string, any> = {};
+      
+      // Filter by candidate group if specified
+      if (candidateGroup) {
+        where.candidateGroup = candidateGroup;
+      }
+      
+      // Default to showing assigned tasks (work queue items)
+      where.status = {
+        in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED],
+      };
+
+      const [tasks, total] = await Promise.all([
+        this.prisma.task.findMany({
+          where,
+          include: {
+            case: {
+              select: {
+                case_id: true,
+                priority: true,
+                status: true,
+                created_at: true,
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.task.count({ where }),
+      ]);
+
+      return {
+        tasks,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      this.logger.error('Error retrieving work queue', error, TaskService.name);
+      throw error;
+    }
+  }
 }

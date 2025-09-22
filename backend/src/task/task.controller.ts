@@ -30,33 +30,16 @@ export class TaskController {
 
   @Post()
   @RequireAlertTriageRole()
-  async createTask(
-    @Body() createTaskDto: CreateTaskDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.createTask(
-      createTaskDto,
-      userId,
-      this.auditLogService,
-      this.loggerService
-    );
+    return this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.loggerService);
   }
 
   @Patch(':taskId/reassign')
   @RequireAlertTriageRole()
-  async reassignTask(
-    @Param('taskId') taskId: string,
-    @Body('assignedUserId') assignedUserId: string,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.reassignTask(
-      taskId,
-      userId,
-      assignedUserId,
-      this.auditLogService
-    );
+    return this.taskService.reassignTask(taskId, userId, assignedUserId, this.auditLogService);
   }
 
   @Patch(':taskId/assign')
@@ -67,28 +50,14 @@ export class TaskController {
     @Req() req: AuthenticatedRequest,
   ) {
     const supervisorId = req.user.token.clientId;
-    return this.taskService.assignTaskToInvestigator(
-      taskId,
-      assignedUserId,
-      supervisorId,
-      this.auditLogService
-    );
+    return this.taskService.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, this.auditLogService);
   }
 
   @Patch(':taskId')
   @RequireAlertTriageRole()
-  async updateTask(
-    @Param('taskId') taskId: string,
-    @Body() dto: UpdateTaskDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.updateTask(
-      taskId,
-      dto,
-      userId,
-      this.auditLogService
-    );
+    return this.taskService.updateTask(taskId, dto, userId, this.auditLogService);
   }
 
   @Get()
@@ -99,12 +68,26 @@ export class TaskController {
 
   @Get('case/:caseId')
   @RequireAnyValidRole()
-  async getTasksByCaseId(
-    @Param('caseId') caseId: string,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async getTasksByCaseId(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.getTasksByCaseId(caseId, userId);
+  }
+
+  @Get('work-queue')
+  @RequireAnyValidRole()
+  async getWorkQueue(
+    @Query('role') role?: string,
+    @Query('candidateGroup') candidateGroup?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const filters = {
+      role,
+      candidateGroup,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    };
+    return this.taskService.getWorkQueue(filters);
   }
 
   @Get(':taskId')
