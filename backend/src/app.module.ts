@@ -23,7 +23,7 @@ import { validate } from './config/env.validation';
       validate,
     }),
     PrismaModule,
-    //NatsModule,
+    NatsModule,
     AuditLogModule,
     TriageModule,
     CommentModule,
