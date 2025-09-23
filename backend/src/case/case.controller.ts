@@ -5,7 +5,13 @@ import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole, RequireInvestigatorRole, RequireAnyValidRole } from 'src/auth/auth.decorator';
+import {
+  RequireAlertTriageRole,
+  RequireInvestigatorRole,
+  RequireInvestigatorOrSupervisorRole,
+  RequireAnyValidRole,
+  RequireSupervisorRole,
+} from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
@@ -168,7 +174,7 @@ export class CaseController {
    * Get all cases in the system (requires supervisor role)
    */
   @Get('all')
-  @RequireAnyValidRole() // Allow any valid CMS role to access cases
+  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access all cases
   @ApiOperation({
     summary: 'Get all cases (Supervisor only)',
     description: 'Retrieves all cases in the system with filtering options. Requires supervisor permissions.',
@@ -198,7 +204,7 @@ export class CaseController {
    * This includes cases where user is owner OR has assigned tasks
    */
   @Get('user/assigned')
-  @RequireAnyValidRole() // Allow any valid CMS role to access their assigned cases
+  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access their assigned cases
   @ApiOperation({
     summary: 'Get cases assigned to current user',
     description: 'Retrieves all cases where the user is either the owner or has assigned tasks',
@@ -219,7 +225,7 @@ export class CaseController {
    * Get all cases assigned to a specific user (for supervisors/admins)
    */
   @Get('user/:userId/assigned')
-  @RequireAlertTriageRole() // Should require supervisor role when implemented
+  @RequireSupervisorRole() // Only supervisors can access cases for any user
   @ApiOperation({
     summary: 'Get cases assigned to a specific user',
     description: 'Retrieves all cases for a specific user (requires supervisor permissions)',
@@ -259,7 +265,7 @@ export class CaseController {
    * Get case workload statistics for current user
    */
   @Get('user/workload')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access workload stats
   @ApiOperation({
     summary: 'Get case workload statistics',
     description: "Get summary statistics of user's case workload",

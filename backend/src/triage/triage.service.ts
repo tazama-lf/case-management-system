@@ -20,6 +20,23 @@ import { Prediction } from './types/Prediction';
 
 @Injectable()
 export class TriageService {
+  /**
+   * Gracefully map AlertType to CaseType
+   */
+  private mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
+    switch (alertType) {
+      case AlertType.FRAUD:
+        return CaseType.FRAUD;
+      case AlertType.AML:
+        return CaseType.AML;
+      case AlertType.FRAUD_AND_AML:
+        return CaseType.FRAUD_AND_AML;
+      case AlertType.NONE:
+        return CaseType.NONE;
+      default:
+        return undefined;
+    }
+  }
   constructor(
     private readonly logger: LoggerService,
     private prisma: PrismaService,
@@ -258,7 +275,11 @@ export class TriageService {
       } else {
         await this.caseService.updateCase(
           alert.case_id,
-          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType: manualTriageDto.alertType, priority: priority },
+          {
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            caseType: this.mapAlertTypeToCaseType(manualTriageDto.alertType),
+            priority: priority
+          },
           userId,
         );
         if (manualTriageDto.alertType === AlertType.FRAUD_AND_AML) {
@@ -601,7 +622,7 @@ export class TriageService {
           'Investigate Case as confidence is below threshold',
           'Triage complete - AI predicted confidence percentage below threshold manual investigation needed',
           priority,
-          predictedAlertType,
+          this.mapAlertTypeToCaseType(predictedAlertType),
         );
       }
 
@@ -649,7 +670,7 @@ export class TriageService {
             'Investigate Case for AML',
             'Triage complete - AI predicted confidence percentage above threshold and true positive with case type aml',
             priority,
-            CaseType.AML,
+            this.mapAlertTypeToCaseType(predictedAlertType),
           );
         }
 
@@ -677,7 +698,7 @@ export class TriageService {
             'Investigate Case for fraud',
             'Triage complete - AI predicted confidence percentage above threshold and true positive with case type fraud and transaction occured',
             priority,
-            CaseType.FRAUD,
+            this.mapAlertTypeToCaseType(predictedAlertType),
           );
         }
       }
