@@ -130,7 +130,7 @@ export class TaskService {
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
     this.logger.log(`Retrieving tasks for candidateGroup : ${candidateGroup}`, TaskService.name);
     try {
-      const tasks = this.flowableService.getCandidateGroupTasks(candidateGroup);
+      const tasks = await this.flowableService.getCandidateGroupTasks(candidateGroup);
       this.auditLogService.logAction({
         userId,
         operation: 'getTasksByCandidateGroup',
@@ -329,14 +329,14 @@ export class TaskService {
       const { candidateGroup, page = 1, limit = 20 } = filters;
 
       const skip = (page - 1) * limit;
-      
+
       const where: Record<string, any> = {};
-      
+
       // Filter by candidate group if specified
       if (candidateGroup) {
         where.candidateGroup = candidateGroup;
       }
-      
+
       // Default to showing assigned tasks (work queue items)
       where.status = {
         in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED],

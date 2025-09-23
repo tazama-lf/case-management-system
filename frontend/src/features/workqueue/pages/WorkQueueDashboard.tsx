@@ -3,48 +3,40 @@ import { MagnifyingGlassIcon, ChevronDownIcon, QueueListIcon } from '@heroicons/
 import { PageContainer, Card } from '../../../shared/components/ui';
 import WorkQueueTable from '../components/WorkQueueTable';
 import WorkQueueTableSkeleton from '../components/WorkQueueTableSkeleton';
-import { taskService, type TaskForSupervisor, type WorkQueueFilters } from '../../supervisor/services/taskService';
+import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '../components/WorkQueueErrorBoundary';
+import { flowableWorkQueueService } from '../services/flowableWorkQueueService';
+import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '../types/flowable.types';
 
 const WorkQueueDashboard: React.FC = () => {
   // State for filters and search
   const [search, setSearch] = useState('');
-  const [candidateGroupFilter, setCandidateGroupFilter] = useState<string>('');
+  const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigators');
   const [statusFilter, setStatusFilter] = useState<string>('');
   
   // Data state
-  const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
+  const [tasks, setTasks] = useState<UnifiedWorkQueueTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  
+  // Enhanced error handling
+  const { error, handleError, clearError, getErrorDisplay } = useWorkQueueErrorHandler();
 
   // Available candidate groups for queue selection
-  const candidateGroups = [
-    { value: '', label: 'All Queues' },
-    { value: 'Investigations', label: 'Investigations Queue' },
-    { value: 'Triage', label: 'Triage Queue' },
-    { value: 'Supervisors', label: 'Supervisor Queue' },
-    { value: 'Analysts', label: 'Analyst Queue' },
-  ];
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups();
 
   // Load work queue data
   useEffect(() => {
     const loadWorkQueue = async () => {
       setIsLoading(true);
-      setError(null);
+      clearError();
       
       try {
-        const filters: WorkQueueFilters = {
-          candidateGroup: candidateGroupFilter || undefined,
-          page: 1,
-          limit: 50,
-        };
-        
-        console.log('Loading work queue with filters:', filters);
-        const response = await taskService.getWorkQueue(filters);
-        console.log('Work queue loaded:', response.tasks?.length || 0, 'tasks');
-        setTasks(response.tasks || []);
+        console.log('Loading work queue with candidate group:', candidateGroupFilter);
+        const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+        console.log('Work queue loaded:', workQueueTasks.length, 'tasks');
+        setTasks(workQueueTasks);
       } catch (err) {
         console.error('Failed to load work queue:', err);
-        setError(err as Error);
+        handleError(err);
         setTasks([]);
       } finally {
         setIsLoading(false);
@@ -52,16 +44,16 @@ const WorkQueueDashboard: React.FC = () => {
     };
 
     loadWorkQueue();
-  }, [candidateGroupFilter, statusFilter]);
+  }, [candidateGroupFilter, clearError, handleError]);
 
   // Filter tasks based on search and status
-  const filteredTasks = tasks.filter((task: TaskForSupervisor) => {
+  const filteredTasks = tasks.filter((task: UnifiedWorkQueueTask) => {
     const matchesSearch = search === '' || [
-      task.task_id,
-      task.case_id,
+      task.id,
       task.name || '',
       task.description || '',
       task.candidateGroup || '',
+      task.caseId || '',
     ]
       .join(' ')
       .toLowerCase()
@@ -72,19 +64,41 @@ const WorkQueueDashboard: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAssignTask = (taskData: TaskForSupervisor) => {
-    // TODO: Implement task assignment
-    console.log('Assign task:', taskData.task_id);
+  const handleAssignTask = async (taskData: UnifiedWorkQueueTask) => {
+    try {
+      // TODO: Implement user selection dialog
+      const assigneeUserId = 'placeholder-user-id'; // This should come from a user picker
+      await flowableWorkQueueService.assignTask(taskData.id, assigneeUserId);
+      
+      // Refresh the work queue
+      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+      setTasks(updatedTasks);
+      
+      console.log('Task assigned successfully:', taskData.id);
+    } catch (error) {
+      console.error('Failed to assign task:', error);
+      handleError(error);
+    }
   };
 
-  const handleViewTask = (taskData: TaskForSupervisor) => {
-    // TODO: Implement task viewing
-    console.log('View task:', taskData.task_id);
+  const handleViewTask = (taskData: UnifiedWorkQueueTask) => {
+    // TODO: Implement task viewing modal
+    console.log('View task:', taskData);
   };
 
-  const handleCompleteTask = (taskData: TaskForSupervisor) => {
-    // TODO: Implement task completion
-    console.log('Complete task:', taskData.task_id);
+  const handleCompleteTask = async (taskData: UnifiedWorkQueueTask) => {
+    try {
+      await flowableWorkQueueService.completeTask(taskData.id);
+      
+      // Refresh the work queue
+      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+      setTasks(updatedTasks);
+      
+      console.log('Task completed successfully:', taskData.id);
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      handleError(error);
+    }
   };
 
   return (
@@ -105,7 +119,7 @@ const WorkQueueDashboard: React.FC = () => {
               <select
                 aria-label="Select queue"
                 value={candidateGroupFilter}
-                onChange={(e) => setCandidateGroupFilter(e.target.value)}
+                onChange={(e) => setCandidateGroupFilter(e.target.value as WorkQueueCandidateGroupType)}
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 {candidateGroups.map((group) => (
@@ -128,11 +142,11 @@ const WorkQueueDashboard: React.FC = () => {
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">All Statuses</option>
-                <option value="STATUS_01_UNASSIGNED">Unassigned</option>
-                <option value="STATUS_10_ASSIGNED">Assigned</option>
-                <option value="STATUS_20_IN_PROGRESS">In Progress</option>
-                <option value="STATUS_30_COMPLETED">Completed</option>
-                <option value="STATUS_21_BLOCKED">Blocked</option>
+                <option value="UNASSIGNED">Unassigned</option>
+                <option value="ASSIGNED">Assigned</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="SUSPENDED">Suspended</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                 <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
@@ -163,18 +177,18 @@ const WorkQueueDashboard: React.FC = () => {
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-900">{filteredTasks.length}</div>
               <div className="text-sm text-gray-500">
-                {candidateGroupFilter ? `${candidateGroups.find(g => g.value === candidateGroupFilter)?.label} Tasks` : 'Total Tasks'}
+                {candidateGroups.find(g => g.value === candidateGroupFilter)?.label} Tasks
               </div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-600">
-                {filteredTasks.filter(t => t.status === 'STATUS_01_UNASSIGNED').length}
+                {filteredTasks.filter(t => t.status === 'UNASSIGNED').length}
               </div>
               <div className="text-sm text-gray-500">Unassigned</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {filteredTasks.filter(t => t.status === 'STATUS_10_ASSIGNED').length}
+                {filteredTasks.filter(t => t.status === 'ASSIGNED').length}
               </div>
               <div className="text-sm text-gray-500">Assigned</div>
             </div>
@@ -186,7 +200,41 @@ const WorkQueueDashboard: React.FC = () => {
       <Card>
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
-            <p className="text-red-600 text-sm">Error loading work queue: {error.message}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-red-600 text-sm font-medium">
+                  {getErrorDisplay()?.message || 'Error loading work queue'}
+                </p>
+                {getErrorDisplay()?.actionSuggestion && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {getErrorDisplay()?.actionSuggestion}
+                  </p>
+                )}
+              </div>
+              {getErrorDisplay()?.canRetry && (
+                <button
+                  onClick={() => {
+                    clearError();
+                    // Trigger a refresh
+                    const loadWorkQueue = async () => {
+                      setIsLoading(true);
+                      try {
+                        const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+                        setTasks(workQueueTasks);
+                      } catch (err) {
+                        handleError(err);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    };
+                    loadWorkQueue();
+                  }}
+                  className="ml-4 px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 transition-colors"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           </div>
         )}
         
@@ -197,7 +245,7 @@ const WorkQueueDashboard: React.FC = () => {
             <div className="text-center">
               <QueueListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <div className="text-sm text-gray-500">
-                {candidateGroupFilter ? `No tasks found in ${candidateGroups.find(g => g.value === candidateGroupFilter)?.label}` : 'No tasks found in work queue'}
+                No tasks found in {candidateGroups.find(g => g.value === candidateGroupFilter)?.label}
               </div>
             </div>
           </div>
@@ -214,4 +262,11 @@ const WorkQueueDashboard: React.FC = () => {
   );
 };
 
-export default WorkQueueDashboard;
+// Wrap with error boundary for additional protection
+const WorkQueueDashboardWithErrorBoundary: React.FC = () => (
+  <WorkQueueErrorBoundary>
+    <WorkQueueDashboard />
+  </WorkQueueErrorBoundary>
+);
+
+export default WorkQueueDashboardWithErrorBoundary;
