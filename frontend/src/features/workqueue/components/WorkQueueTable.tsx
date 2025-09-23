@@ -1,12 +1,12 @@
 import React from 'react';
 import { EyeIcon, UserPlusIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/outline';
-import type { TaskForSupervisor } from '../../supervisor/services/taskService';
+import type { UnifiedWorkQueueTask } from '../types/flowable.types';
 
 interface WorkQueueTableProps {
-  tasks: TaskForSupervisor[];
-  onAssign: (task: TaskForSupervisor) => void;
-  onView: (task: TaskForSupervisor) => void;
-  onComplete: (task: TaskForSupervisor) => void;
+  tasks: UnifiedWorkQueueTask[];
+  onAssign: (task: UnifiedWorkQueueTask) => void;
+  onView: (task: UnifiedWorkQueueTask) => void;
+  onComplete: (task: UnifiedWorkQueueTask) => void;
 }
 
 const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
@@ -17,14 +17,14 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
 }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      STATUS_01_UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
-      STATUS_10_ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
-      STATUS_20_IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
-      STATUS_30_COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
-      STATUS_21_BLOCKED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
+      UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
+      ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
+      IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
+      COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
+      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Suspended' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.STATUS_01_UNASSIGNED;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
         {config.label}
@@ -62,7 +62,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     });
   };
 
-  const getAvailableActions = (task: TaskForSupervisor) => {
+  const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions = [];
     
     // View action is always available
@@ -79,7 +79,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     );
 
     // Assign action for unassigned tasks
-    if (task.status === 'STATUS_01_UNASSIGNED') {
+    if (task.status === 'UNASSIGNED') {
       actions.push(
         <button
           key="assign"
@@ -94,7 +94,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
 
     // Complete action for assigned or in-progress tasks
-    if (task.status === 'STATUS_10_ASSIGNED' || task.status === 'STATUS_20_IN_PROGRESS') {
+    if (task.status === 'ASSIGNED' || task.status === 'IN_PROGRESS') {
       actions.push(
         <button
           key="complete"
@@ -145,11 +145,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks.map((task) => (
-              <tr key={task.task_id} className="hover:bg-gray-50">
+              <tr key={task.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={task.task_id}>
-                      {task.task_id.slice(0, 8)}...
+                    <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={task.id}>
+                      {task.id.slice(0, 8)}...
                     </div>
                     {task.name && (
                       <div className="text-xs text-gray-500 truncate max-w-[150px]" title={task.name}>
@@ -159,8 +159,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 truncate max-w-[120px]" title={task.case_id}>
-                    {task.case_id?.slice(0, 8)}...
+                  <div className="text-sm text-gray-900 truncate max-w-[120px]" title={task.caseId || ''}>
+                    {task.caseId?.slice(0, 8)}...
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -172,19 +172,18 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                   {getStatusBadge(task.status)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {/* Priority from related case would be shown here */}
-                  {getPriorityBadge('MEDIUM')}
+                  {getPriorityBadge(task.priority)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center text-sm text-gray-500">
                     <ClockIcon className="h-4 w-4 mr-1" />
-                    {formatDate(task.created_at)}
+                    {formatDate(task.createdAt)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    {task.assigned_user_id ? (
-                      <span className="text-blue-600">Assigned</span>
+                    {task.assignee ? (
+                      <span className="text-blue-600">{task.assigneeName || task.assignee}</span>
                     ) : (
                       <span className="text-gray-400">Unassigned</span>
                     )}

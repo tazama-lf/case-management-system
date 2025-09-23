@@ -13,7 +13,7 @@ export class FlowableService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
   ) {
-    this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://localhost:8080/flowable-rest');
+    this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');
 
     this.flowableAuth = {
       username: this.configService.get<string>('FLOWABLE_USERNAME', 'rest-admin'),

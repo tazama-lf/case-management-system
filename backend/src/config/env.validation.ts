@@ -76,6 +76,18 @@ class EnvironmentVariables {
 
   @IsString()
   ALERT_PRIORITY_CRON_SCHEDULE: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_USERNAME?: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_PASSWORD?: string;
 }
 
 export const validate = (config: Record<string, unknown>) => {
