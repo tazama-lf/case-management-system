@@ -1,53 +1,151 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus, Task, Prisma } from '@prisma/client';
 import axios from 'axios';
 import { FlowableService } from 'src/flowable/flowable.service';
+import { ConfigService } from '@nestjs/config';
 
+// Define types for better type safety
+interface TaskWithCase extends Task {
+  case: {
+    case_id: string;
+    priority: string;
+    status: string;
+    created_at: Date;
+  };
+}
+
+interface FlowableTask {
+  id: string;
+  name?: string;
+  description?: string;
+  assignee?: string;
+  created?: string;
+  dueDate?: string;
+  priority?: number;
+  candidateGroups?: string[];
+  variables?: {
+    postgres_task_id?: string;
+    postgres_case_id?: string;
+    task_status?: string;
+    assignee_user_id?: string;
+    [key: string]: any;
+  };
+}
+
+/**
+ * Enhanced Task Service with Flowable Work Queue Management
+ */
 @Injectable()
 export class TaskService {
-  constructor(
-    private prisma: PrismaService,
-    private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
-    private readonly flowableService: FlowableService,
-  ) {}
+  private readonly systemUserId: string;
 
-  async createTask(
-    taskDTO: CreateTaskDto,
-    userId: string,
-    auditLogService: AuditLogService,
-    loggerService: LoggerService, // Use the real type here!
+  constructor(
+      private prisma: PrismaService,
+      private readonly logger: LoggerService,
+      private readonly auditLogService: AuditLogService,
+      private readonly flowableService: FlowableService,
+      private readonly configService: ConfigService,
   ) {
-    loggerService.log('Creating task', TaskService.name);
+    this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
+  }
+
+  /**
+   * Create a task with Flowable integration - FIXED
+   */
+  async createTask(
+      taskDTO: CreateTaskDto,
+      userId: string,
+      auditLogService: AuditLogService,
+      loggerService: LoggerService,
+  ) {
+    loggerService.log('Creating task with Flowable integration', TaskService.name);
 
     try {
-      const task = await this.prisma.task.create({
-        data: {
-          case_id: taskDTO.caseId,
-          status: taskDTO.status,
-          assigned_user_id: taskDTO.assignedUserId,
+      // Start database transaction
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Create task in database - use correct Prisma relation syntax
+        const taskData: Prisma.TaskCreateInput = {
+          case: {
+            connect: { case_id: taskDTO.caseId }
+          },
+          status: taskDTO.status || TaskStatus.STATUS_01_UNASSIGNED,
           name: taskDTO.name,
           description: taskDTO.description,
-        },
+        };
+
+        // Only add assignedUser relation if provided
+        if (taskDTO.assignedUserId) {
+          taskData.assignedUser = {
+            connect: { user_id: taskDTO.assignedUserId }
+          };
+        }
+
+        const task = await tx.task.create({
+          data: taskData,
+          include: {
+            assignedUser: true,
+            case: true,
+          },
+        });
+
+        // Get case details for tenant ID
+        const caseData = await tx.case.findUnique({
+          where: { case_id: taskDTO.caseId },
+          select: { tenant_id: true },
+        });
+
+        if (!caseData) {
+          throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
+        }
+
+        return { task, tenantId: caseData.tenant_id };
       });
 
-      loggerService.log(`Task created: ${task.task_id}`, TaskService.name);
+      // Create corresponding Flowable task
+      let flowableTaskId: string | null = null;
+      try {
+        const flowableTask = await this.flowableService.createTaskWithContext({
+          name: taskDTO.name,
+          description: taskDTO.description,
+          tenantId: result.tenantId,
+          candidateGroup: taskDTO.candidateGroup || 'Investigations',
+          postgresTaskId: result.task.task_id,
+          postgresCaseId: taskDTO.caseId,
+          status: result.task.status,
+        });
+        flowableTaskId = flowableTask.id;
+
+        // If user is assigned, claim the task in Flowable
+        if (taskDTO.assignedUserId && flowableTaskId) {
+          await this.flowableService.claimTask(flowableTaskId, taskDTO.assignedUserId);
+        }
+
+        loggerService.log(`Created Flowable task ${flowableTaskId} for database task ${result.task.task_id}`, TaskService.name);
+      } catch (flowableError) {
+        loggerService.error(`Failed to create Flowable task: ${flowableError.message}`, flowableError.stack, TaskService.name);
+      }
+
+      // Log successful creation
       auditLogService.logAction({
         userId,
-        actionPerformed: `Created task ${task.task_id}`,
+        actionPerformed: `Created task ${result.task.task_id}`,
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
       });
 
-      return task;
+      return {
+        ...result.task,
+        flowableTaskId,
+        candidateGroup: taskDTO.candidateGroup,
+      };
     } catch (error) {
       loggerService.error('Error creating task', error, TaskService.name);
       auditLogService.logAction({
@@ -62,14 +160,41 @@ export class TaskService {
     }
   }
 
+  /**
+   * Reassign a task to a different user - FIXED
+   */
   async reassignTask(taskId: string, userId: string, assignedUserId: string, auditLogService: AuditLogService) {
     this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
-        data: { assigned_user_id: assignedUserId },
+        data: {
+          assignedUser: {
+            connect: { user_id: assignedUserId }
+          },
+          status: TaskStatus.STATUS_10_ASSIGNED,
+        },
+        include: {
+          assignedUser: true,
+          case: true,
+        },
       });
+
+      // Update in Flowable if integrated
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask && assignedUserId) {
+          await this.flowableService.claimTask(flowableTask.id, assignedUserId);
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to update Flowable task: ${flowableError.message}`, TaskService.name);
+      }
 
       this.logger.log(`Task reassigned: ${updatedTask.task_id}`, TaskService.name);
       this.auditLogService.logAction({
@@ -88,22 +213,79 @@ export class TaskService {
     }
   }
 
-  async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string, auditLogService: AuditLogService) {
+  /**
+   * Update a task - FIXED
+   */
+  async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string, auditLogService: AuditLogService | null) {
     this.logger.log(`Updating task ${taskId}`, TaskService.name);
 
     try {
+      // Prepare update data with proper Prisma relations
+      const updateInput: Prisma.TaskUpdateInput = {
+        status: updateData.status,
+        name: updateData.name,
+        description: updateData.description,
+      };
+
+      // Handle user assignment/unassignment
+      if (updateData.assignedUserId !== undefined) {
+        if (updateData.assignedUserId) {
+          updateInput.assignedUser = {
+            connect: { user_id: updateData.assignedUserId }
+          };
+        } else {
+          updateInput.assignedUser = {
+            disconnect: true
+          };
+        }
+      }
+
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
-        data: {
-          status: updateData.status,
-          assigned_user_id: updateData.assignedUserId,
-          name: updateData.name,
-          description: updateData.description,
+        data: updateInput,
+        include: {
+          assignedUser: true,
+          case: true,
         },
       });
 
+      // Handle Flowable updates
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask) {
+          // Update status in variables
+          if (updateData.status) {
+            await this.flowableService.updateTaskVariable(flowableTask.id, 'task_status', updateData.status);
+          }
+
+          // Handle assignment changes with null checks
+          if (updateData.assignedUserId !== undefined) {
+            if (updateData.assignedUserId) {
+              await this.flowableService.claimTask(flowableTask.id, updateData.assignedUserId);
+            } else {
+              await this.flowableService.unclaimTask(flowableTask.id);
+            }
+          }
+
+          // Complete task if status is completed
+          if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
+            await this.flowableService.completeTask(flowableTask.id);
+          }
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to update Flowable task: ${flowableError.message}`, TaskService.name);
+      }
+
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
-      this.auditLogService.logAction({
+
+      // Use provided auditLogService or fallback to class instance
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
         userId,
         actionPerformed: `Updated task ${taskId}`,
         entityName: TaskService.name,
@@ -115,7 +297,9 @@ export class TaskService {
       return updatedTask;
     } catch (error) {
       this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
-      this.auditLogService.logAction({
+
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
         userId,
         actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
         entityName: TaskService.name,
@@ -127,26 +311,83 @@ export class TaskService {
     }
   }
 
+  /**
+   * Get tasks by candidate group (work queue)
+   */
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
-    this.logger.log(`Retrieving tasks for candidateGroup : ${candidateGroup}`, TaskService.name);
+    this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
+
     try {
-      const tasks = await this.flowableService.getCandidateGroupTasks(candidateGroup);
+      // Get tasks from Flowable
+      const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true) as FlowableTask[];
+
+      // Map Flowable tasks to database tasks
+      const taskIds = flowableTasks
+          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
+          .filter((id): id is string => Boolean(id));
+
+      let dbTasks: TaskWithCase[] = [];
+      if (taskIds.length > 0) {
+        dbTasks = await this.prisma.task.findMany({
+          where: {
+            task_id: { in: taskIds },
+          },
+          include: {
+            case: {
+              select: {
+                case_id: true,
+                priority: true,
+                status: true,
+                created_at: true,
+              },
+            },
+            assignedUser: {
+              select: {
+                user_id: true,
+                username: true,
+                role: true,
+              },
+            },
+          },
+        }) as TaskWithCase[];
+      }
+
+      // Merge Flowable and database information
+      const mergedTasks = flowableTasks.map((ft: FlowableTask) => {
+        const dbTask = dbTasks.find((dt: TaskWithCase) => dt.task_id === ft.variables?.postgres_task_id);
+        return {
+          flowableTaskId: ft.id,
+          taskId: dbTask?.task_id,
+          name: ft.name || dbTask?.name,
+          description: ft.description || dbTask?.description,
+          status: dbTask?.status,
+          assignee: ft.assignee,
+          assignedUser: (dbTask as any)?.assignedUser,
+          candidateGroup: candidateGroup,
+          case: dbTask?.case,
+          created: ft.created,
+          dueDate: ft.dueDate,
+          priority: ft.priority,
+          variables: ft.variables,
+        };
+      });
+
       this.auditLogService.logAction({
         userId,
         operation: 'getTasksByCandidateGroup',
         entityName: TaskService.name,
-        actionPerformed: `Successfully retrieved tasks for candidateGroup : ${candidateGroup}`,
+        actionPerformed: `Successfully retrieved ${mergedTasks.length} tasks for candidateGroup: ${candidateGroup}`,
         outcome: Outcome.SUCCESS,
       });
 
-      return tasks;
+      return mergedTasks;
     } catch (error) {
-      this.logger.error(`Error retrieving tasks for candidateGroup : ${candidateGroup}`, error, TaskService.name);
+      this.logger.error(`Error retrieving tasks for candidateGroup: ${candidateGroup}`, error, TaskService.name);
       this.auditLogService.logAction({
         userId,
         operation: 'getTasksByCandidateGroup',
         entityName: TaskService.name,
-        actionPerformed: `Error retrieving tasks for candidateGroup : ${candidateGroup}`,
+        actionPerformed: `Error retrieving tasks for candidateGroup: ${candidateGroup}`,
         outcome: Outcome.FAILURE,
       });
       throw error;
@@ -154,30 +395,75 @@ export class TaskService {
   }
 
   /**
-   * Get all tasks in the 'Investigations' candidate group (work queue for supervisor/investigator)
+   * Get investigation queue (all unassigned investigation tasks)
    */
   async getInvestigationQueue() {
     try {
-      return await this.prisma.task.findMany({
-        where: { status: TaskStatus.STATUS_10_ASSIGNED },
-        orderBy: { created_at: 'desc' },
-      });
+      // Get from Flowable
+      const flowableTasks = await this.flowableService.getCandidateGroupTasks('Investigations', true) as FlowableTask[];
+
+      // Filter for unassigned tasks only
+      const unassignedTasks = flowableTasks.filter((ft: FlowableTask) => !ft.assignee);
+
+      // Get corresponding database tasks
+      const taskIds = unassignedTasks
+          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
+          .filter((id): id is string => Boolean(id));
+
+      let dbTasks: TaskWithCase[] = [];
+      if (taskIds.length > 0) {
+        dbTasks = await this.prisma.task.findMany({
+          where: {
+            task_id: { in: taskIds },
+            status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED] },
+          },
+          include: {
+            case: true,
+            assignedUser: {
+              select: {
+                user_id: true,
+                username: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        }) as any;
+      }
+
+      return dbTasks;
     } catch (error) {
       this.logger.error('Error retrieving investigation queue', error, TaskService.name);
       throw error;
     }
   }
 
+  /**
+   * Get tasks by case ID
+   */
   async getTasksByCaseId(caseId: string, userId?: string) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
-    try {
-      const where = { case_id: caseId };
 
+    try {
       const tasks = await this.prisma.task.findMany({
-        where,
-        orderBy: {
-          created_at: 'desc',
+        where: { case_id: caseId },
+        include: {
+          assignedUser: {
+            select: {
+              user_id: true,
+              username: true,
+              role: true,
+            },
+          },
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              priority: true,
+            },
+          },
         },
+        orderBy: { created_at: 'desc' },
       });
 
       if (userId) {
@@ -185,7 +471,7 @@ export class TaskService {
           userId,
           operation: 'getTasksByCaseId',
           entityName: TaskService.name,
-          actionPerformed: `Successfully retrieved tasks for case : ${caseId}`,
+          actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
           outcome: Outcome.SUCCESS,
           performedAt: new Date(),
         });
@@ -199,7 +485,7 @@ export class TaskService {
           userId,
           operation: 'getTasksByCaseId',
           entityName: TaskService.name,
-          actionPerformed: `Error retrieving tasks for case : ${caseId}`,
+          actionPerformed: `Error retrieving tasks for case: ${caseId}`,
           outcome: Outcome.FAILURE,
           performedAt: new Date(),
         });
@@ -208,28 +494,61 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, auditLogService: AuditLogService) {
+  /**
+   * Assign task to investigator (Supervisor action) - FIXED
+   */
+  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, auditLogService: AuditLogService | null) {
     this.logger.log(`Assigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
 
-    // 1. Validate investigator role using auth-service REST API
+    // Validate that assignedUserId is not null
+    if (!assignedUserId) {
+      throw new BadRequestException('Assigned user ID cannot be null or undefined');
+    }
+
+    // Validate investigator role using auth-service REST API
     const investigatorRoles = await this.getUserRolesFromAuthService(assignedUserId);
     if (!investigatorRoles.includes('INVESTIGATOR')) {
       this.logger.error(`User ${assignedUserId} does not have INVESTIGATOR role`, null, TaskService.name);
-      throw new Error('Assigned user does not have INVESTIGATOR role');
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
     }
 
     try {
-      // 2. Update task assignment and status
+      // Update task assignment and status in database
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
-          assigned_user_id: assignedUserId,
+          assignedUser: {
+            connect: { user_id: assignedUserId }
+          },
           status: TaskStatus.STATUS_10_ASSIGNED,
+        },
+        include: {
+          assignedUser: true,
+          case: true,
         },
       });
 
-      // 3. Audit log: assignment
-      await this.auditLogService.logAction({
+      // Update in Flowable
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask && assignedUserId) {
+          await this.flowableService.claimTask(flowableTask.id, assignedUserId);
+          await this.flowableService.updateTaskVariable(flowableTask.id, 'assignee_user_id', assignedUserId);
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to update Flowable task: ${flowableError.message}`, TaskService.name);
+      }
+
+      // Use provided auditLogService or fallback to class instance
+      const auditService = auditLogService || this.auditLogService;
+
+      // Audit logs
+      await auditService.logAction({
         userId: supervisorId,
         actionPerformed: `Assigned task ${taskId} to investigator ${assignedUserId}`,
         entityName: TaskService.name,
@@ -238,8 +557,7 @@ export class TaskService {
         performedAt: new Date(),
       });
 
-      // 4. Audit log: retrieval
-      await this.auditLogService.logAction({
+      await auditService.logAction({
         userId: assignedUserId,
         actionPerformed: `Task ${taskId} retrieved by investigator ${assignedUserId}`,
         entityName: TaskService.name,
@@ -248,9 +566,6 @@ export class TaskService {
         performedAt: new Date(),
       });
 
-      // 5. Placeholder for notification logic
-      // TODO: Implement notification logic here
-
       return updatedTask;
     } catch (error) {
       this.logger.error(`Error assigning task ${taskId}`, error, TaskService.name);
@@ -258,12 +573,31 @@ export class TaskService {
     }
   }
 
-  // Get all tasks (optionally filtered by status)
+  /**
+   * Get all tasks with optional filtering
+   */
   async getTasks(status?: string) {
     try {
       const where = status ? { status: status as TaskStatus } : {};
       return await this.prisma.task.findMany({
         where,
+        include: {
+          assignedUser: {
+            select: {
+              user_id: true,
+              username: true,
+              role: true,
+            },
+          },
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              priority: true,
+              created_at: true,
+            },
+          },
+        },
         orderBy: { created_at: 'desc' },
       });
     } catch (error) {
@@ -272,11 +606,39 @@ export class TaskService {
     }
   }
 
-  // Get single task by ID
+  /**
+   * Get single task by ID
+   */
   async getTaskById(taskId: string) {
     try {
       return await this.prisma.task.findUnique({
         where: { task_id: taskId },
+        include: {
+          assignedUser: {
+            select: {
+              user_id: true,
+              username: true,
+              role: true,
+            },
+          },
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              priority: true,
+              created_at: true,
+            },
+          },
+          comments: {
+            orderBy: { created_at: 'desc' },
+          },
+          evidence: {
+            orderBy: { uploaded_at: 'desc' },
+          },
+          reports: {
+            orderBy: { created_at: 'desc' },
+          },
+        },
       });
     } catch (error) {
       this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
@@ -284,16 +646,16 @@ export class TaskService {
     }
   }
 
-  // Helper function: fetch user roles from auth-service REST API
+  /**
+   * Helper function: fetch user roles from auth-service REST API
+   */
   private async getUserRolesFromAuthService(userId: string): Promise<string[]> {
-    // Adjust endpoint and headers as needed for your auth-service
-    const authUrl = process.env.TAZAMA_AUTH_URL || 'http://localhost:3020/v1/auth';
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL', 'http://localhost:3020/v1/auth');
     const endpoint = `${authUrl}/users/${userId}/roles`;
 
     try {
       const response = await axios.get(endpoint);
-      // Adjust parsing if your API returns roles differently
-      return response.data.roles || response.data; // e.g., ['INVESTIGATOR', 'ADMIN']
+      return response.data.roles || response.data;
     } catch (error) {
       this.logger.error('Error fetching user roles', error, TaskService.name);
       throw error;
@@ -301,50 +663,53 @@ export class TaskService {
   }
 
   /**
-   * Mock: Assign an investigation task to a test investigator for workflow validation
+   * Get work queue with comprehensive filtering
    */
-  async assignMockInvestigationTask(caseId: string) {
-    await this.createTask(
-      {
-        caseId,
-        status: 'STATUS_10_ASSIGNED',
-        assignedUserId: 'test-investigator-id',
-        name: 'Investigate Case',
-        description: 'Please investigate this case.',
-        candidateGroup: 'Investigations',
-      },
-      'test-supervisor-id',
-      this.auditLogService,
-      this.logger,
-    );
-    // Mock notification
-    this.logger.log(`Notification: User test-investigator-id assigned to task for case ${caseId}`, TaskService.name);
-  }
-
-  /**
-   * Get work queue with filtering options
-   */
-  async getWorkQueue(filters: { role?: string; candidateGroup?: string; page?: number; limit?: number }) {
+  async getWorkQueue(filters: {
+    role?: string;
+    candidateGroup?: string;
+    page?: number;
+    limit?: number;
+    unassignedOnly?: boolean;
+    assignedToMe?: string;
+  }) {
     try {
-      const { candidateGroup, page = 1, limit = 20 } = filters;
+      const { candidateGroup, page = 1, limit = 20, unassignedOnly = false, assignedToMe } = filters;
 
-      const skip = (page - 1) * limit;
+      // Get tasks from Flowable
+      let flowableTasks: FlowableTask[] = [];
 
-      const where: Record<string, any> = {};
-
-      // Filter by candidate group if specified
       if (candidateGroup) {
-        where.candidateGroup = candidateGroup;
+        flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true) as FlowableTask[];
+      } else if (assignedToMe) {
+        flowableTasks = await this.flowableService.getUserTasks(assignedToMe, true) as FlowableTask[];
+      } else {
+        // Get all work queues
+        const allQueues = ['Supervisors', 'Investigations', 'Analysts'];
+        for (const queue of allQueues) {
+          const tasks = await this.flowableService.getCandidateGroupTasks(queue, true) as FlowableTask[];
+          flowableTasks.push(...tasks);
+        }
       }
 
-      // Default to showing assigned tasks (work queue items)
-      where.status = {
-        in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED],
-      };
+      // Filter for unassigned if requested
+      if (unassignedOnly) {
+        flowableTasks = flowableTasks.filter((ft: FlowableTask) => !ft.assignee);
+      }
 
-      const [tasks, total] = await Promise.all([
-        this.prisma.task.findMany({
-          where,
+      // Paginate
+      const start = (page - 1) * limit;
+      const paginatedTasks = flowableTasks.slice(start, start + limit);
+
+      // Get corresponding database tasks
+      const taskIds = paginatedTasks
+          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
+          .filter((id): id is string => Boolean(id));
+
+      let dbTasks: TaskWithCase[] = [];
+      if (taskIds.length > 0) {
+        dbTasks = await this.prisma.task.findMany({
+          where: { task_id: { in: taskIds } },
           include: {
             case: {
               select: {
@@ -354,23 +719,464 @@ export class TaskService {
                 created_at: true,
               },
             },
+            assignedUser: {
+              select: {
+                user_id: true,
+                username: true,
+                role: true,
+              },
+            },
           },
-          orderBy: { created_at: 'desc' },
-          skip,
-          take: limit,
-        }),
-        this.prisma.task.count({ where }),
-      ]);
+        }) as TaskWithCase[];
+      }
+
+      // Merge and format results
+      const tasks = paginatedTasks.map((ft: FlowableTask) => {
+        const dbTask = dbTasks.find((dt: TaskWithCase) => dt.task_id === ft.variables?.postgres_task_id);
+        return {
+          flowableTaskId: ft.id,
+          taskId: dbTask?.task_id,
+          name: ft.name || dbTask?.name,
+          description: ft.description || dbTask?.description,
+          status: dbTask?.status,
+          assignee: ft.assignee,
+          assignedUser: (dbTask as any)?.assignedUser,
+          candidateGroups: ft.candidateGroups,
+          case: dbTask?.case,
+          created: ft.created,
+          dueDate: ft.dueDate,
+        };
+      });
 
       return {
         tasks,
-        total,
+        total: flowableTasks.length,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(flowableTasks.length / limit),
       };
     } catch (error) {
       this.logger.error('Error retrieving work queue', error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Get work queue statistics
+   */
+  async getWorkQueueStatistics(userId: string) {
+    try {
+      const statistics = await this.flowableService.getWorkQueueStatistics();
+
+      // Add user-specific statistics
+      const userTasks = await this.flowableService.getUserTasks(userId, false) as FlowableTask[];
+
+      return {
+        queues: statistics,
+        userStats: {
+          totalAssigned: userTasks.length,
+          byStatus: userTasks.reduce((acc: any, task: FlowableTask) => {
+            const status = task.variables?.task_status || 'unknown';
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+          }, {}),
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error getting work queue statistics', error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Claim a task from the work queue
+   */
+  async claimTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+    this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
+
+    try {
+      // Update task in database
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: {
+          assignedUser: {
+            connect: { user_id: userId }
+          },
+          status: TaskStatus.STATUS_10_ASSIGNED,
+        },
+        include: {
+          assignedUser: true,
+          case: true,
+        },
+      });
+
+      // Update in Flowable
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask) {
+          await this.flowableService.claimTask(flowableTask.id, userId);
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to claim Flowable task: ${flowableError.message}`, TaskService.name);
+      }
+
+      // Audit log
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
+        userId,
+        actionPerformed: `Claimed task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'claimTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      return updatedTask;
+    } catch (error) {
+      this.logger.error(`Error claiming task ${taskId}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Release a task back to the work queue
+   */
+  async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+    this.logger.log(`User ${userId} releasing task ${taskId}`, TaskService.name);
+
+    try {
+      // Update task in database
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: {
+          assignedUser: {
+            disconnect: true
+          },
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        },
+        include: {
+          case: true,
+        },
+      });
+
+      // Update in Flowable
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask) {
+          await this.flowableService.unclaimTask(flowableTask.id);
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to release Flowable task: ${flowableError.message}`, TaskService.name);
+      }
+
+      // Audit log
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
+        userId,
+        actionPerformed: `Released task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'releaseTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      return updatedTask;
+    } catch (error) {
+      this.logger.error(`Error releasing task ${taskId}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete a task
+   */
+  async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+    this.logger.log(`User ${userId} completing task ${taskId}`, TaskService.name);
+
+    try {
+      // Update task in database
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: {
+          status: TaskStatus.STATUS_30_COMPLETED,
+        },
+        include: {
+          assignedUser: true,
+          case: true,
+        },
+      });
+
+      // Update in Flowable
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask) {
+          await this.flowableService.completeTask(flowableTask.id);
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to complete Flowable task: ${flowableError.message}`, TaskService.name);
+      }
+
+      // Audit log
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
+        userId,
+        actionPerformed: `Completed task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'completeTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      return updatedTask;
+    } catch (error) {
+      this.logger.error(`Error completing task ${taskId}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's assigned tasks - FIXED
+   */
+  async getUserTasks(userId: string, includeCompleted: boolean = false) {
+    try {
+      const statusFilter = includeCompleted
+          ? {}
+          : {
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED
+            }
+          };
+
+      return await this.prisma.task.findMany({
+        where: {
+          assignedUser: {
+            user_id: userId
+          },
+          ...statusFilter,
+        },
+        include: {
+          assignedUser: {
+            select: {
+              user_id: true,
+              username: true,
+              role: true,
+            },
+          },
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              priority: true,
+              created_at: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    } catch (error) {
+      this.logger.error(`Error retrieving tasks for user ${userId}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Get task counts by status - FIXED
+   */
+  async getTaskCounts(filters?: {
+    userId?: string;
+    candidateGroup?: string;
+    caseId?: string;
+  }) {
+    try {
+      const where: any = {};
+
+      if (filters?.userId) {
+        where.assignedUser = {
+          user_id: filters.userId
+        };
+      }
+
+      if (filters?.caseId) {
+        where.case_id = filters.caseId;
+      }
+
+      const counts = await this.prisma.task.groupBy({
+        by: ['status'],
+        where,
+        _count: {
+          status: true,
+        },
+      });
+
+      // Convert to more readable format
+      const statusCounts = counts.reduce((acc, item) => {
+        acc[item.status] = item._count.status;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return {
+        total: counts.reduce((sum, item) => sum + item._count.status, 0),
+        byStatus: statusCounts,
+      };
+    } catch (error) {
+      this.logger.error('Error getting task counts', error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a task (only if not started)
+   */
+  async deleteTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+    this.logger.log(`Deleting task ${taskId}`, TaskService.name);
+
+    try {
+      // Check if task can be deleted (only if unassigned or not in progress)
+      const existingTask = await this.prisma.task.findUnique({
+        where: { task_id: taskId },
+        include: { case: true },
+      });
+
+      if (!existingTask) {
+        throw new NotFoundException(`Task ${taskId} not found`);
+      }
+
+      if (existingTask.status === TaskStatus.STATUS_20_IN_PROGRESS) {
+        throw new BadRequestException('Cannot delete task that is in progress');
+      }
+
+      // Remove from Flowable first (unclaim and mark as deleted in variables)
+      try {
+        const flowableTasks = await this.flowableService.getTenantTasks(existingTask.case_id) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+          const vars = ft.variables || {};
+          return vars.postgres_task_id === taskId;
+        });
+
+        if (flowableTask) {
+          // Unclaim the task if it's assigned
+          if (flowableTask.assignee) {
+            await this.flowableService.unclaimTask(flowableTask.id);
+          }
+          // Mark as deleted in Flowable variables
+          await this.flowableService.updateTaskVariable(flowableTask.id, 'deleted', true);
+          await this.flowableService.updateTaskVariable(flowableTask.id, 'task_status', 'DELETED');
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Failed to update Flowable task for deletion: ${flowableError.message}`, TaskService.name);
+      }
+
+      // Delete from database
+      await this.prisma.task.delete({
+        where: { task_id: taskId },
+      });
+
+      // Audit log
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
+        userId,
+        actionPerformed: `Deleted task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'deleteTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      return { message: 'Task deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Error deleting task ${taskId}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk update task assignments
+   */
+  async bulkAssignTasks(taskIds: string[], assignedUserId: string, supervisorId: string, auditLogService?: AuditLogService) {
+    this.logger.log(`Bulk assigning ${taskIds.length} tasks to user ${assignedUserId}`, TaskService.name);
+
+    if (!assignedUserId) {
+      throw new BadRequestException('Assigned user ID cannot be null or undefined');
+    }
+
+    try {
+      // Validate investigator role
+      const investigatorRoles = await this.getUserRolesFromAuthService(assignedUserId);
+      if (!investigatorRoles.includes('INVESTIGATOR')) {
+        throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+      }
+
+      // Update all tasks in database using proper Prisma transactions
+      const results = await this.prisma.$transaction(async (tx) => {
+        const updatePromises = taskIds.map(async (taskId) => {
+          return tx.task.update({
+            where: { task_id: taskId },
+            data: {
+              assignedUser: {
+                connect: { user_id: assignedUserId }
+              },
+              status: TaskStatus.STATUS_10_ASSIGNED,
+            },
+            include: {
+              case: {
+                select: { case_id: true }
+              }
+            }
+          });
+        });
+
+        return await Promise.all(updatePromises);
+      });
+
+      // Update in Flowable for each task
+      for (const updatedTask of results) {
+        try {
+          const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case.case_id) as FlowableTask[];
+          const flowableTask = flowableTasks.find((ft: FlowableTask) => {
+            const vars = ft.variables || {};
+            return vars.postgres_task_id === updatedTask.task_id;
+          });
+
+          if (flowableTask) {
+            await this.flowableService.claimTask(flowableTask.id, assignedUserId);
+          }
+        } catch (flowableError) {
+          this.logger.warn(`Failed to update Flowable task ${updatedTask.task_id}: ${flowableError.message}`, TaskService.name);
+        }
+      }
+
+      // Audit log
+      const auditService = auditLogService || this.auditLogService;
+      auditService.logAction({
+        userId: supervisorId,
+        actionPerformed: `Bulk assigned ${results.length} tasks to investigator ${assignedUserId}`,
+        entityName: TaskService.name,
+        operation: 'bulkAssignTasks',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      return {
+        message: `Successfully assigned ${results.length} tasks`,
+        assignedCount: results.length,
+      };
+    } catch (error) {
+      this.logger.error('Error in bulk task assignment', error, TaskService.name);
       throw error;
     }
   }
