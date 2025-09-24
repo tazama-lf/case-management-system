@@ -57,6 +57,10 @@ export class TriageService {
       confidence_per: req.confidence_per,
     };
 
+    if (submitAlertDto.report.status === 'NALT') {
+      await this.handleNotAlert(submitAlertDto, userId, tenantId, 'NATS');
+      return;
+    }
     const alert = await this.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
 
@@ -107,6 +111,38 @@ export class TriageService {
     }
   }
 
+  async handleNotAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
+    const txtp = alert.transaction.TxTp;
+
+    try {
+      const newAlert = await this.prisma.alert.create({
+        data: {
+          tenant_id: tenantId,
+          priority: Priority.NEW,
+          source: source,
+          txtp: txtp,
+          message: String(alert.message),
+          alert_data: JSON.parse(JSON.stringify(alert.report)),
+          transaction: JSON.parse(JSON.stringify(alert.transaction)),
+          network_map: JSON.parse(JSON.stringify(alert.networkMap)),
+          confidence_per: 0,
+        },
+      });
+      await this.audit.logAction({
+        userId,
+        operation: 'ALERT_CREATED',
+        entityName: 'Alert',
+        actionPerformed: `Created new alert ${newAlert.alert_id}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return newAlert;
+    } catch (error) {
+      this.logger.error(`Error creating alert :${error.message}`, TriageService.name);
+      throw new InternalServerErrorException('Failed to create alert');
+    }
+  }
+
   async handleNewAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
     const txtp = alert.transaction?.TxTp;
 
@@ -148,9 +184,9 @@ export class TriageService {
       // --- Investigation Task Creation for Non-Auto-Close Alerts ---
       // Extract business logic fields from nested report structure
       const typology = alert.report?.tadpResult?.typologyResult?.[0] ?? {};
-  const isTruePositive = typology.review ?? false;
-  const amlSuspected = alert.aml_suspected ?? false;
-  const confidencePer = alert.confidence_per ?? 0;
+      const isTruePositive = typology.review ?? false;
+      const amlSuspected = alert.aml_suspected ?? false;
+      const confidencePer = alert.confidence_per ?? 0;
       const hasTransaction = !!alert.transaction;
 
       const shouldAutoClose = confidencePer > 90 && isTruePositive && !amlSuspected && !hasTransaction;
@@ -158,14 +194,9 @@ export class TriageService {
       if (!shouldAutoClose) {
         // Mark ATM task as COMPLETE after investigation task creation
         const atmTasks = await this.taskService.getTasksByCaseId(createdCase.case_id);
-        const atmTask = atmTasks.find(t => t.name === 'Alert Triage Module Review');
+        const atmTask = atmTasks.find((t) => t.name === 'Alert Triage Module Review');
         if (atmTask && atmTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-          await this.taskService.updateTask(
-            atmTask.task_id,
-            { status: TaskStatus.STATUS_30_COMPLETED },
-            systemUuid,
-            this.audit
-          );
+          await this.taskService.updateTask(atmTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, systemUuid, this.audit);
           await this.logger.log(`ATM task ${atmTask.task_id} marked as COMPLETE`, TriageService.name);
         }
         // Create investigation task for the case
@@ -181,13 +212,12 @@ export class TriageService {
           this.audit,
           this.logger,
         );
-        await this.logger.log(`Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`, TriageService.name);
-        // Gracefully update case status to READY FOR ASSIGNMENT
-        await this.caseService.updateCase(
-          createdCase.case_id,
-          { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
-          systemUuid
+        await this.logger.log(
+          `Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`,
+          TriageService.name,
         );
+        // Gracefully update case status to READY FOR ASSIGNMENT
+        await this.caseService.updateCase(createdCase.case_id, { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, systemUuid);
       }
 
       return newAlert;
@@ -278,7 +308,7 @@ export class TriageService {
           {
             status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             caseType: this.mapAlertTypeToCaseType(manualTriageDto.alertType),
-            priority: priority
+            priority: priority,
           },
           userId,
         );
@@ -368,12 +398,13 @@ export class TriageService {
     alertType?: string;
     search?: string;
     source?: string;
+    reportStatus?: string;
     page: number;
     limit: number;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    const { tenantId, priority, type, alertType, search, source, page, limit, sortBy, sortOrder } = params;
+    const { tenantId, priority, type, alertType, search, source, reportStatus, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -394,6 +425,13 @@ export class TriageService {
     const whereClause: Prisma.AlertWhereInput = {
       tenant_id: tenantId,
     };
+
+    if (reportStatus) {
+      whereClause.alert_data = {
+        path: ['status'],
+        equals: reportStatus,
+      };
+    }
 
     if (priority) {
       if (!Object.values(Priority).includes(priority.toUpperCase() as Priority)) {
@@ -422,7 +460,6 @@ export class TriageService {
         { source: { contains: search, mode: 'insensitive' } },
       ];
 
-      // Very basic UUID check. A proper validation should be used in a real app.
       if (search.length === 36) {
         searchConditions.push({ alert_id: { equals: search } });
         searchConditions.push({ case_id: { equals: search } });
@@ -449,13 +486,15 @@ export class TriageService {
         take: limit,
         select: {
           alert_id: true,
-          txtp: true,
-          priority: true,
-          confidence_per: true,
-          source: true,
-          alert_type: true,
-          created_at: true,
-          transaction: true,
+          message: true,
+          // txtp: true,
+          // priority: true,
+          // confidence_per: true,
+          // source: true,
+          // alert_type: true,
+          // created_at: true,
+          // transaction: true,
+          alert_data: true,
         },
       });
 
@@ -826,7 +865,12 @@ export class TriageService {
   ): Promise<any> {
     try {
       // Complete triage task first
-  await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId, this.audit);
+      await this.taskService.updateTask(
+        taskId,
+        { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
+        userId,
+        this.audit,
+      );
 
       // Create new investigation task
       const createdTask = await this.taskService.createTask(
