@@ -155,10 +155,10 @@ export class FlowableService {
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException(`Failed to assign task to candidate group`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('Failed to assign task to candidate group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-  
+
   /**
    * Get candidate tasks for a group
    */

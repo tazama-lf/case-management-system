@@ -14,12 +14,12 @@ export class TriageController {
   @Post('')
   @RequireAlertTriageRole()
   async submitAlert(@Body() dto: SubmitAlertDto, @Req() req: AuthenticatedRequest) {
-  const userId = req.user.token.clientId;
-  const tenantId = req.user.token.tenantId;
-  if (!tenantId) throw new BadRequestException('Missing tenantId');
-  if (!userId) throw new BadRequestException('Missing userId');
-  const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
-  return alert;
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
+    return alert;
   }
 
   @Get('test')
@@ -30,11 +30,11 @@ export class TriageController {
   @Patch(':alertId')
   @RequireAlertTriageRole()
   async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {
-  const userId = req.user.token.clientId;
-  const tenantId = req.user.token.tenantId;
-  if (!tenantId) throw new BadRequestException('Missing tenantId');
-  if (!userId) throw new BadRequestException('Missing userId');
-  return this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
   }
 
   @Get()
@@ -70,20 +70,20 @@ export class TriageController {
   @Get(':alertId/action-history')
   @RequireAlertTriageRole()
   async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
-  const userId = req.user.token.clientId;
-  const tenantId = req.user.token.tenantId;
-  if (!tenantId) throw new BadRequestException('Missing tenantId');
-  if (!userId) throw new BadRequestException('Missing userId');
-  return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return this.triageService.getAlertActionHistory(alertId, tenantId, userId);
   }
 
   @Get(':alertId')
   @RequireAlertTriageRole()
   async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
-  const userId = req.user.token.clientId;
-  const tenantId = req.user.token.tenantId;
-  if (!tenantId) throw new BadRequestException('Missing tenantId');
-  if (!userId) throw new BadRequestException('Missing userId');
-  return this.triageService.getAlertDetails(alertId, tenantId, userId);
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
 }

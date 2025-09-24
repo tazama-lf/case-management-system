@@ -262,7 +262,7 @@ export class CaseController {
   @RequireAlertTriageRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: 'Get summary statistics of user\'s case workload',
   })
   @ApiResponse({
     status: 200,

@@ -10,7 +10,7 @@ export interface TazamaToken {
 export interface ClaimValidationResult {
   isValid?: boolean;
   errors?: string[];
-  [claim: string]: boolean | string[] | boolean | undefined;
+  [claim: string]: boolean | string[] | undefined;
 }
 
 export interface AuthenticatedUser {

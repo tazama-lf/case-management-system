@@ -15,7 +15,7 @@ export class SubmitAlertDto {
   @IsObject()
   networkMap: NetworkMap;
 
-    // New fields for triage workflow
-    aml_suspected?: boolean;
-    confidence_per?: number;
+  // New fields for triage workflow
+  aml_suspected?: boolean;
+  confidence_per?: number;
 }
