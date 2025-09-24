@@ -543,7 +543,6 @@ export class TriageService {
 
       this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, TriageService.name);
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...sanitizedAlert } = alert;
       return sanitizedAlert;
     } catch (error) {

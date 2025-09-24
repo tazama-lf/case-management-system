@@ -268,7 +268,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access workload stats
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: 'Get summary statistics of user\'s case workload',
   })
   @ApiResponse({
     status: 200,

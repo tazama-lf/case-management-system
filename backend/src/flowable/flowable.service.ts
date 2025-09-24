@@ -16,8 +16,8 @@ export class FlowableService implements OnModuleInit {
   private readonly candidateGroups = ['Supervisors', 'Investigations', 'Analysts'];
 
   constructor(
-      private readonly configService: ConfigService,
-      private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');
 
@@ -422,7 +422,7 @@ export class FlowableService implements OnModuleInit {
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException(`Failed to assign task to candidate group`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('Failed to assign task to candidate group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -435,14 +435,12 @@ export class FlowableService implements OnModuleInit {
       const identityLinks = await this.getTaskIdentityLinks(taskId);
 
       // Find the link to remove
-      const linkToRemove = identityLinks.find(
-          (link: any) => link.type === 'candidate' && link.group === group.toLowerCase()
-      );
+      const linkToRemove = identityLinks.find((link: any) => link.type === 'candidate' && link.group === group.toLowerCase());
 
       if (linkToRemove) {
         // Remove the identity link
         const response = await this.flowableClient.delete(
-            `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`
+          `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`,
         );
         this.logger.log(`Task ${taskId} removed from candidate group ${group}`, FlowableService.name);
         return response.data;
@@ -486,15 +484,15 @@ export class FlowableService implements OnModuleInit {
       // Enhance tasks with variable information
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-            tasks.map(async (task: any) => {
-              try {
-                const variables = await this.getTaskVariables(task.id);
-                return { ...task, variables };
-              } catch (error) {
-                this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
-                return task;
-              }
-            })
+          tasks.map(async (task: any) => {
+            try {
+              const variables = await this.getTaskVariables(task.id);
+              return { ...task, variables };
+            } catch (error) {
+              this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
+              return task;
+            }
+          }),
         );
         return enhancedTasks;
       }
@@ -524,15 +522,15 @@ export class FlowableService implements OnModuleInit {
       // Enhance tasks with variable information
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-            tasks.map(async (task: any) => {
-              try {
-                const variables = await this.getTaskVariables(task.id);
-                return { ...task, variables };
-              } catch (error) {
-                this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
-                return task;
-              }
-            })
+          tasks.map(async (task: any) => {
+            try {
+              const variables = await this.getTaskVariables(task.id);
+              return { ...task, variables };
+            } catch (error) {
+              this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
+              return task;
+            }
+          }),
         );
         return enhancedTasks;
       }
@@ -547,11 +545,14 @@ export class FlowableService implements OnModuleInit {
   /**
    * Get all tasks for a tenant
    */
-  async getTenantTasks(tenantId: string, filters?: {
-    candidateGroup?: string;
-    assignee?: string;
-    unassigned?: boolean;
-  }) {
+  async getTenantTasks(
+    tenantId: string,
+    filters?: {
+      candidateGroup?: string;
+      assignee?: string;
+      unassigned?: boolean;
+    },
+  ) {
     try {
       const params: any = {
         tenantId,
@@ -600,10 +601,7 @@ export class FlowableService implements OnModuleInit {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(
-          `/service/runtime/tasks/${taskId}/variables`,
-          formattedVariables
-      );
+      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
 
       this.logger.log(`Variables set for task ${taskId}`, FlowableService.name);
       return response.data;
@@ -640,14 +638,11 @@ export class FlowableService implements OnModuleInit {
    */
   async updateTaskVariable(taskId: string, variableName: string, value: any) {
     try {
-      const response = await this.flowableClient.put(
-          `/service/runtime/tasks/${taskId}/variables/${variableName}`,
-          {
-            name: variableName,
-            value,
-            type: this.getVariableType(value),
-          }
-      );
+      const response = await this.flowableClient.put(`/service/runtime/tasks/${taskId}/variables/${variableName}`, {
+        name: variableName,
+        value,
+        type: this.getVariableType(value),
+      });
 
       this.logger.log(`Variable ${variableName} updated for task ${taskId}`, FlowableService.name);
       return response.data;
@@ -725,13 +720,16 @@ export class FlowableService implements OnModuleInit {
    * Sync task with database variables
    * Maps database fields to Flowable task variables
    */
-  async syncTaskWithDatabase(flowableTaskId: string, dbTaskData: {
-    postgres_task_id: string;
-    postgres_case_id: string;
-    task_status: string;
-    assignee_user_id?: string;
-    flowable_case_id?: string;
-  }) {
+  async syncTaskWithDatabase(
+    flowableTaskId: string,
+    dbTaskData: {
+      postgres_task_id: string;
+      postgres_case_id: string;
+      task_status: string;
+      assignee_user_id?: string;
+      flowable_case_id?: string;
+    },
+  ) {
     try {
       const variables = {
         postgres_task_id: dbTaskData.postgres_task_id,
@@ -814,7 +812,7 @@ export class FlowableService implements OnModuleInit {
     } catch (error) {
       return {
         status: 'unhealthy',
-        message: `Flowable connection failed: ${error.message}`
+        message: `Flowable connection failed: ${error.message}`,
       };
     }
   }
