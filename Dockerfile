@@ -8,7 +8,7 @@ ARG NPM_TOKEN
 # -----------------------------------------------------------------------------
 # Stage 1: Backend Build
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS backend-builder
+FROM node:22-alpine AS backend-builder
 ARG NPM_TOKEN
 
 WORKDIR /app/backend
@@ -33,7 +33,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # Stage 2: Frontend Build
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 ARG NPM_TOKEN
 
 WORKDIR /app/frontend
@@ -55,7 +55,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # Stage 3: Production Backend Runtime
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS backend-production
+FROM node:22-alpine AS backend-production
 ARG NPM_TOKEN
 
 # Install dumb-init for proper signal handling
@@ -102,11 +102,6 @@ CMD ["node", "dist/src/main.js"]
 # Stage 4: Production Frontend Runtime (Nginx)
 # -----------------------------------------------------------------------------
 FROM nginx:alpine AS frontend-production
-ARG NPM_TOKEN
-
-# Configure npm to use the private registry
-RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
-RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
 # Copy built frontend assets
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
