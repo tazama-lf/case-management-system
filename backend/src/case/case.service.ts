@@ -312,7 +312,10 @@ export class CaseService {
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);
       this.logger.log(`Using system UUID: ${systemUuid}`, CaseService.name);
 
-      // Step 3: Create case with DRAFT status
+      // Step 3: Ensure system user exists in database
+      await this.ensureSystemUserExists(systemUuid);
+
+      // Step 4: Create case with DRAFT status
       const createdCase = await this.prismaService.$transaction(async (tx) => {
         // Create the case
         const newCase = await tx.case.create({
@@ -346,12 +349,12 @@ export class CaseService {
           });
         }
 
-        // Create ATM task
+        // Create ATM task - FIXED: Don't assign to system user initially
         const atmTask = await tx.task.create({
           data: {
             case_id: newCase.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            assigned_user_id: systemUuid, // Initially assigned to system
+            status: TaskStatus.STATUS_01_UNASSIGNED, // Start as unassigned
+            assigned_user_id: null, // Don't assign to system user
             name: 'Alert Triage Module Review',
             description: 'Automatic triage and routing of alert',
           },
@@ -377,7 +380,7 @@ export class CaseService {
         return { case: newCase, atmTask };
       });
 
-      // Step 4: Start Flowable process
+      // Step 5: Start Flowable process
       const processInstance = await this.flowableService.startProcessInstance(
         'caseCreationProcess',
         {
@@ -391,10 +394,10 @@ export class CaseService {
         createdCase.case.case_id,
       );
 
-      // Step 5: Route to ATM
+      // Step 6: Route to ATM
       await this.routeToATM(createdCase.case.case_id, createdCase.atmTask.task_id, systemUuid);
 
-      // Step 6: Check for autoclose and distinguish confirmed/refuted
+      // Step 7: Check for autoclose and distinguish confirmed/refuted
       const confidence = payload.confidencePercentage || 0;
       const fraudType = payload.fraudType || '';
       // Diagram: Confidence >= 95% and True Positive (e.g., Money-Laundering, Fraud Only, Transaction Blocked)
@@ -451,6 +454,33 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
 
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure system user exists in database
+   */
+  private async ensureSystemUserExists(systemUuid: string) {
+    try {
+      // Check if system user exists
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { user_id: systemUuid },
+      });
+
+      if (!existingUser) {
+        // Create system user
+        await this.prismaService.user.create({
+          data: {
+            user_id: systemUuid,
+            username: 'system-user',
+            role: 'SYSTEM',
+          },
+        });
+        this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }

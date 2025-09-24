@@ -4,7 +4,7 @@ import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireAlertTriageRole, RequireAnyValidRole } from '../auth/auth.decorator';
+import { RequireAlertTriageRole, RequireAnyValidRole, RequireSupervisorRole, RequireInvestigatorRole, RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
 
@@ -43,7 +43,7 @@ export class TaskController {
   }
 
   @Patch(':taskId/assign')
-  @RequireAlertTriageRole()
+    @RequireSupervisorRole()
   async assignTaskToInvestigator(
     @Param('taskId') taskId: string,
     @Body('assignedUserId') assignedUserId: string,
@@ -54,7 +54,7 @@ export class TaskController {
   }
 
   @Patch(':taskId')
-  @RequireAlertTriageRole()
+    @RequireInvestigatorRole()
   async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.updateTask(taskId, dto, userId, this.auditLogService);
@@ -74,14 +74,14 @@ export class TaskController {
   }
 
   @Get('work-queues/:candidateGroup')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   async getTasksByCandidateGroup(@Param('candidateGroup') candidateGroup: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
   }
 
   @Get(':taskId')
-  @RequireAlertTriageRole()
+    @RequireInvestigatorRole()
   async getTaskById(@Param('taskId') taskId: string) {
     return this.taskService.getTaskById(taskId);
   }

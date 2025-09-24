@@ -1,4 +1,6 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, HttpCode, Query } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, HttpCode, Query, ForbiddenException } from '@nestjs/common';
+import { RequireSupervisorRole } from './auth.decorator';
+import { AuthHelperService } from './auth-helper.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -12,7 +14,40 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly auditLogService: AuditLogService,
     private readonly logger: LoggerService,
+    private readonly authHelperService: AuthHelperService,
   ) {}
+  /**
+   * GET /auth/investigators
+   * Returns all users with the investigator role from Keycloak
+   * Only accessible by supervisors
+   */
+  @RequireSupervisorRole()
+  @UseGuards(TazamaAuthGuard)
+  @Get('investigators')
+  async getInvestigators(@User() user: any): Promise<any[]> {
+    // Gracefully handle missing supervisor claim (should not occur due to guard)
+    if (!user?.token?.claims?.includes('CMS_SUPERVISOR')) {
+      return [];
+    }
+    const {
+      AUTH_URL,
+      KEYCLOAK_REALM,
+      CLIENT_ID,
+      CLIENT_SECRET,
+    } = process.env;
+    if (!AUTH_URL || !KEYCLOAK_REALM || !CLIENT_ID || !CLIENT_SECRET) {
+      return [];
+    }
+    // Use a helper method to fetch all users from Keycloak
+    const users = await this.authHelperService.getAllUsersWithRole('CMS_INVESTIGATOR');
+    return users.map(userObj => ({
+      id: userObj.id,
+      username: userObj.username,
+      email: userObj.email,
+      firstName: userObj.firstName,
+      lastName: userObj.lastName,
+    }));
+  }
 
   @Post('login')
   @HttpCode(200)
