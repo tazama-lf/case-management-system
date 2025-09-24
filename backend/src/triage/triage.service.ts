@@ -131,9 +131,9 @@ export class TriageService {
       // --- Investigation Task Creation for Non-Auto-Close Alerts ---
       // Extract business logic fields from nested report structure
       const typology = alert.report?.tadpResult?.typologyResult?.[0] ?? {};
-  const isTruePositive = typology.review ?? false;
-  const amlSuspected = alert.aml_suspected ?? false;
-  const confidencePer = alert.confidence_per ?? 0;
+      const isTruePositive = typology.review ?? false;
+      const amlSuspected = alert.aml_suspected ?? false;
+      const confidencePer = alert.confidence_per ?? 0;
       const hasTransaction = !!alert.transaction;
 
       const shouldAutoClose = confidencePer > 90 && isTruePositive && !amlSuspected && !hasTransaction;
@@ -141,14 +141,9 @@ export class TriageService {
       if (!shouldAutoClose) {
         // Mark ATM task as COMPLETE after investigation task creation
         const atmTasks = await this.taskService.getTasksByCaseId(createdCase.case_id);
-        const atmTask = atmTasks.find(t => t.name === 'Alert Triage Module Review');
+        const atmTask = atmTasks.find((t) => t.name === 'Alert Triage Module Review');
         if (atmTask && atmTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-          await this.taskService.updateTask(
-            atmTask.task_id,
-            { status: TaskStatus.STATUS_30_COMPLETED },
-            systemUuid,
-            this.audit
-          );
+          await this.taskService.updateTask(atmTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, systemUuid, this.audit);
           await this.logger.log(`ATM task ${atmTask.task_id} marked as COMPLETE`, TriageService.name);
         }
         // Create investigation task for the case
@@ -164,13 +159,12 @@ export class TriageService {
           this.audit,
           this.logger,
         );
-        await this.logger.log(`Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`, TriageService.name);
-        // Gracefully update case status to READY FOR ASSIGNMENT
-        await this.caseService.updateCase(
-          createdCase.case_id,
-          { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
-          systemUuid
+        await this.logger.log(
+          `Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`,
+          TriageService.name,
         );
+        // Gracefully update case status to READY FOR ASSIGNMENT
+        await this.caseService.updateCase(createdCase.case_id, { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, systemUuid);
       }
 
       return newAlert;
@@ -483,7 +477,6 @@ export class TriageService {
 
       this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, TriageService.name);
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...sanitizedAlert } = alert;
       return sanitizedAlert;
     } catch (error) {
@@ -805,7 +798,12 @@ export class TriageService {
   ): Promise<any> {
     try {
       // Complete triage task first
-  await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId, this.audit);
+      await this.taskService.updateTask(
+        taskId,
+        { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
+        userId,
+        this.audit,
+      );
 
       // Create new investigation task
       const createdTask = await this.taskService.createTask(

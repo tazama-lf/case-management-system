@@ -29,6 +29,8 @@ export default tseslint.config(
       sourceType: 'module', // Changed to 'module' for NestJS ES modules compatibility
       parserOptions: {
         projectService: true,
+        // Explicit root dir so monorepo sibling (frontend) doesn't cause
+        // typescript-eslint to complain about multiple candidate roots
         tsconfigRootDir: import.meta.dirname,
       },
     },
