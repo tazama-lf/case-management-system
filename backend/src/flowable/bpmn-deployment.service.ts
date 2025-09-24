@@ -7,8 +7,8 @@ import * as path from 'path';
 @Injectable()
 export class BpmnDeploymentService implements OnModuleInit {
   constructor(
-      private readonly flowableService: FlowableService,
-      private readonly logger: LoggerService,
+    private readonly flowableService: FlowableService,
+    private readonly logger: LoggerService,
   ) {}
 
   async onModuleInit() {
