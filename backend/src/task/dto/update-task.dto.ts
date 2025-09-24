@@ -8,7 +8,7 @@ export class UpdateTaskDto {
 
   @IsUUID()
   @IsOptional()
-  assignedUserId?: string;
+  assignedUserId?: string | undefined;
 
   @IsString()
   @IsOptional()
