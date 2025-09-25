@@ -1,4 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from './dto/create-case.dto';
@@ -8,18 +16,26 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
-import {GetUserCasesQueryDto} from "./dto/get-user-cases.dto";
-import {GetAllCasesQueryDto} from "./dto/get-all-cases.dto";
+import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType, CaseType } from '@prisma/client';
+import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
+import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
+import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
+import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
+import { TriageService } from 'src/triage/triage.service';
+import { TaskService } from 'src/task/task.service';
+import { CreateTaskDto } from 'src/task/dto/create-task.dto';
 
 @Injectable()
 export class CaseService {
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly flowableService: FlowableService,
-      private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly flowableService: FlowableService,
+    private readonly configService: ConfigService,
+    @Inject(forwardRef(() => TriageService))
+    private readonly triageService: TriageService,
+    private readonly taskService: TaskService,
   ) {}
 
   /**
@@ -47,9 +63,7 @@ export class CaseService {
       await this.validateCaseClosurePreconditions(caseData, userId);
 
       // Step 3: Retrieve and log the investigation task
-      const investigationTask = caseData.tasks.find(
-          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case',
-      );
+      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
 
       if (!investigationTask) {
         throw new BadRequestException('Investigation task not found for this case');
@@ -91,7 +105,7 @@ export class CaseService {
               user_id: userId,
               case_id: caseId,
               note: `Final Investigation Summary:\n${dto.finalNotes || ''}\n\nRecommendations:\n${
-                  dto.recommendations || ''
+                dto.recommendations || ''
               }\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
             },
           });
@@ -131,16 +145,16 @@ export class CaseService {
       try {
         // Start or update Flowable process for case closure approval
         const processInstance = await this.flowableService.startProcessInstance(
-            'caseClosureApprovalProcess',
-            {
-              caseId: caseId,
-              tenantId: tenantId,
-              approvalTaskId: result.approvalTask.task_id,
-              recommendedOutcome: dto.recommendedOutcome,
-              investigatorId: userId,
-              candidateGroup: 'Supervisors', // Acceptance Criteria #5
-            },
-            `closure-${caseId}`,
+          'caseClosureApprovalProcess',
+          {
+            caseId: caseId,
+            tenantId: tenantId,
+            approvalTaskId: result.approvalTask.task_id,
+            recommendedOutcome: dto.recommendedOutcome,
+            investigatorId: userId,
+            candidateGroup: 'Supervisors', // Acceptance Criteria #5
+          },
+          `closure-${caseId}`,
         );
 
         // Get Flowable tasks and assign to Supervisors group
@@ -151,9 +165,9 @@ export class CaseService {
         }
       } catch (flowableError) {
         this.logger.error(
-            `Flowable process creation failed, but case closure continues: ${flowableError.message}`,
-            flowableError.stack,
-            CaseService.name,
+          `Flowable process creation failed, but case closure continues: ${flowableError.message}`,
+          flowableError.stack,
+          CaseService.name,
         );
         // Continue without Flowable - the task is still created in the database
       }
@@ -220,6 +234,144 @@ export class CaseService {
     }
   }
 
+  async manualCaseCreateForSupervisor(dto: ManualCreateCaseDto, userId: string, tenantId: string) {
+    if (!dto.alertId || !dto.alertType) {
+      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      throw new BadRequestException('alertId and alertType are required');
+    }
+
+    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
+    if (existingAlert.alert_data.status !== 'NALT') {
+      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      throw new BadRequestException('alertId and alertType are required');
+    }
+
+    const priorityScore = dto.priorityScore ?? 0.33;
+    const priority = this.triageService.determinePriority(priorityScore);
+    const caseDetail: CreateCaseDto = {
+      tenantId,
+      caseCreatorUserId: userId,
+      caseOwnerUserId: userId,
+      status: CaseStatus.STATUS_10_ASSIGNED,
+      caseType: this.triageService.mapAlertTypeToCaseType(dto.alertType),
+      priority,
+      caseCreationType: CaseCreationType.MANUAL,
+    };
+
+    try {
+      const createdCase = await this.createCase(caseDetail, userId);
+
+      const updatedAlert = await this.prismaService.alert.update({
+        where: { alert_id: dto.alertId },
+        data: {
+          priority,
+          alert_type: dto.alertType,
+          priority_score: priorityScore,
+          case_id: createdCase.case_id,
+        },
+      });
+      const createTaskDto = new CreateTaskDto();
+      createTaskDto.assignedUserId = userId;
+      createTaskDto.candidateGroup = 'investigator';
+      createTaskDto.name = 'Investigate case';
+      createTaskDto.description = `Investigate case task for case : ${updatedAlert.case_id}`;
+      createTaskDto.caseId = updatedAlert.case_id!;
+      createTaskDto.status = TaskStatus.STATUS_10_ASSIGNED;
+
+      await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
+
+      await this.auditLogService.logAction({
+        userId: userId,
+        operation: 'createManualCase',
+        entityName: CaseService.name,
+        actionPerformed: `Case ${createdCase.case_id} created manually for alert ${dto.alertId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return {
+        success: true,
+        case: createdCase,
+        alert: updatedAlert,
+      };
+    } catch (err) {
+      this.logger.error('manualCaseCreateForAnalyst failed', {
+        error: err,
+        dto,
+        userId,
+        tenantId,
+      });
+      throw new Error(`Failed to create case & link alert: ${err.message}`);
+    }
+  }
+
+  async manualCaseCreateForAnalyst(dto: ManualCreateCaseDto, userId: string, tenantId: string) {
+    if (!dto.alertId || !dto.alertType) {
+      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      throw new BadRequestException('alertId and alertType are required');
+    }
+
+    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
+    if (existingAlert.alert_data.status !== 'NALT') {
+      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      throw new BadRequestException('alertId and alertType are required');
+    }
+
+    const priorityScore = dto.priorityScore ?? 0.33;
+    const priority = this.triageService.determinePriority(priorityScore);
+    const caseDetail: CreateCaseDto = {
+      tenantId,
+      caseCreatorUserId: userId,
+      status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+      caseType: this.triageService.mapAlertTypeToCaseType(dto.alertType),
+      priority,
+      caseCreationType: CaseCreationType.MANUAL,
+    };
+
+    try {
+      const createdCase = await this.createCase(caseDetail, userId);
+
+      const updatedAlert = await this.prismaService.alert.update({
+        where: { alert_id: dto.alertId },
+        data: {
+          priority,
+          alert_type: dto.alertType,
+          priority_score: priorityScore,
+          case_id: createdCase.case_id,
+        },
+      });
+      const createTaskDto = new CreateTaskDto();
+      createTaskDto.candidateGroup = 'supervisors';
+      createTaskDto.name = 'Approve case creation';
+      createTaskDto.description = `Case creation approval required for case: ${updatedAlert.case_id}`;
+      createTaskDto.caseId = updatedAlert.case_id!;
+      createTaskDto.status = TaskStatus.STATUS_01_UNASSIGNED;
+
+      await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
+
+      await this.auditLogService.logAction({
+        userId: userId,
+        operation: 'createManualCase',
+        entityName: CaseService.name,
+        actionPerformed: `Case ${createdCase.case_id} created manually for alert ${dto.alertId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return {
+        success: true,
+        case: createdCase,
+        alert: updatedAlert,
+      };
+    } catch (err) {
+      this.logger.error('manualCaseCreateForAnalyst failed', {
+        error: err,
+        dto,
+        userId,
+        tenantId,
+      });
+      throw new Error(`Failed to create case & link alert: ${err.message}`);
+    }
+  }
+
   /**
    * Validate case closure preconditions
    */
@@ -239,9 +391,7 @@ export class CaseService {
     if (caseData.case_owner_user_id !== userId) {
       // Check if user has an assigned investigation task
       const userTask = caseData.tasks.find(
-          (task) =>
-              task.assigned_user_id === userId &&
-              (task.name === 'Investigate Case' || task.name === 'Investigate case'),
+        (task) => task.assigned_user_id === userId && (task.name === 'Investigate Case' || task.name === 'Investigate case'),
       );
 
       if (!userTask) {
@@ -250,9 +400,7 @@ export class CaseService {
     }
 
     // Check investigation task exists and is in progress
-    const investigationTask = caseData.tasks.find(
-        (task) => task.name === 'Investigate Case' || task.name === 'Investigate case',
-    );
+    const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
 
     if (!investigationTask) {
       errors.push('Investigation task not found');
@@ -262,17 +410,11 @@ export class CaseService {
 
     // Check all other tasks are complete
     const incompleteTasks = caseData.tasks.filter(
-        (task) =>
-            task.task_id !== investigationTask?.task_id &&
-            task.status !== TaskStatus.STATUS_30_COMPLETED,
+      (task) => task.task_id !== investigationTask?.task_id && task.status !== TaskStatus.STATUS_30_COMPLETED,
     );
 
     if (incompleteTasks.length > 0) {
-      errors.push(
-          `All other tasks must be completed. Incomplete tasks: ${incompleteTasks
-              .map((t) => t.name)
-              .join(', ')}`,
-      );
+      errors.push(`All other tasks must be completed. Incomplete tasks: ${incompleteTasks.map((t) => t.name).join(', ')}`);
     }
 
     if (errors.length > 0) {
@@ -291,10 +433,7 @@ export class CaseService {
       // TODO: Implement notification system
       // This could be email, in-app notification, webhook, etc.
       // For now, just log the notification
-      this.logger.log(
-          `Notification sent to Supervisors group for approval task ${taskId} on case ${caseId}`,
-          CaseService.name,
-      );
+      this.logger.log(`Notification sent to Supervisors group for approval task ${taskId} on case ${caseId}`, CaseService.name);
 
       // In a real implementation, you might:
       // 1. Query KeyCloak for users with SUPERVISOR role in the tenant
@@ -302,11 +441,7 @@ export class CaseService {
       // 3. Create in-app notifications
       // 4. Trigger webhooks to external systems
     } catch (error) {
-      this.logger.error(
-          `Failed to notify supervisors: ${error.message}`,
-          error.stack,
-          CaseService.name,
-      );
+      this.logger.error(`Failed to notify supervisors: ${error.message}`, error.stack, CaseService.name);
       // Don't throw - notification failure shouldn't stop case closure
     }
   }
@@ -401,16 +536,16 @@ export class CaseService {
 
       // Step 5: Start Flowable process
       const processInstance = await this.flowableService.startProcessInstance(
-          'caseCreationProcess',
-          {
-            caseId: createdCase.case.case_id,
-            tenantId: payload.tenantId,
-            priority: payload.priority,
-            caseType: payload.caseType,
-            alertData: JSON.stringify(payload.alertData || {}),
-            autocloseEligible: this.checkAutocloseEligibility(payload),
-          },
-          createdCase.case.case_id,
+        'caseCreationProcess',
+        {
+          caseId: createdCase.case.case_id,
+          tenantId: payload.tenantId,
+          priority: payload.priority,
+          caseType: payload.caseType,
+          alertData: JSON.stringify(payload.alertData || {}),
+          autocloseEligible: this.checkAutocloseEligibility(payload),
+        },
+        createdCase.case.case_id,
       );
 
       // Step 6: Route to ATM
@@ -649,7 +784,7 @@ export class CaseService {
         page = 1,
         limit = 20,
         sortBy = 'created_at',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
       } = query;
 
       // Calculate pagination
@@ -747,9 +882,9 @@ export class CaseService {
       });
 
       // Process cases to add user-specific information
-      const processedCases = cases.map(caseItem => {
+      const processedCases = cases.map((caseItem) => {
         const isOwner = caseItem.case_owner_user_id === userId;
-        const userTasks = caseItem.tasks.filter(task => task.assigned_user_id === userId);
+        const userTasks = caseItem.tasks.filter((task) => task.assigned_user_id === userId);
         const hasTaskAssignment = userTasks.length > 0;
 
         let userRole: 'owner' | 'task_assignee' | 'both';
@@ -769,18 +904,20 @@ export class CaseService {
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           user_role: userRole,
-          user_tasks: userTasks.map(task => ({
+          user_tasks: userTasks.map((task) => ({
             task_id: task.task_id,
             name: task.name,
             status: task.status,
             created_at: task.created_at,
           })),
           total_tasks: caseItem.tasks.length,
-          alert: caseItem.alert ? {
-            alert_id: caseItem.alert.alert_id,
-            message: caseItem.alert.message,
-            confidence_per: caseItem.alert.confidence_per,
-          } : undefined,
+          alert: caseItem.alert
+            ? {
+                alert_id: caseItem.alert.alert_id,
+                message: caseItem.alert.message,
+                confidence_per: caseItem.alert.confidence_per,
+              }
+            : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
       });
@@ -825,15 +962,21 @@ export class CaseService {
       });
 
       // Format statistics
-      const statusCounts = casesByStatus.reduce((acc, item) => {
-        acc[item.status] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const statusCounts = casesByStatus.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
-      const priorityCounts = casesByPriority.reduce((acc, item) => {
-        acc[item.priority] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const priorityCounts = casesByPriority.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       // Log the retrieval
       await this.auditLogService.logAction({
@@ -959,16 +1102,12 @@ export class CaseService {
 
       // Process cases to add computed fields
       const processedCases = cases.map((caseItem) => {
-        const completedTasks = caseItem.tasks.filter(
-            (t) => t.status === TaskStatus.STATUS_30_COMPLETED
-        ).length;
+        const completedTasks = caseItem.tasks.filter((t) => t.status === TaskStatus.STATUS_30_COMPLETED).length;
 
-        const pendingTasks = caseItem.tasks.filter(
-            (t) => t.status !== TaskStatus.STATUS_30_COMPLETED
-        ).length;
+        const pendingTasks = caseItem.tasks.filter((t) => t.status !== TaskStatus.STATUS_30_COMPLETED).length;
 
         // Get assigned user info
-        const assignedUsers = [...new Set(caseItem.tasks.map(t => t.assigned_user_id).filter(Boolean))];
+        const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
 
         return {
           case_id: caseItem.case_id,
@@ -984,10 +1123,13 @@ export class CaseService {
           completed_tasks: completedTasks,
           pending_tasks: pendingTasks,
           alert: caseItem.alert,
-          assigned_to: assignedUsers.length > 0 ? {
-            user_id: caseItem.case_owner_user_id || assignedUsers[0],
-            task_count: assignedUsers.length,
-          } : undefined,
+          assigned_to:
+            assignedUsers.length > 0
+              ? {
+                  user_id: caseItem.case_owner_user_id || assignedUsers[0],
+                  task_count: assignedUsers.length,
+                }
+              : undefined,
         };
       });
 
@@ -1020,26 +1162,35 @@ export class CaseService {
       ]);
 
       // Format statistics
-      const casesByStatus = statusStats.reduce((acc, item) => {
-        acc[item.status] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const casesByStatus = statusStats.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
-      const casesByPriority = priorityStats.reduce((acc, item) => {
-        acc[item.priority] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const casesByPriority = priorityStats.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
-      const casesByType = typeStats.reduce((acc, item) => {
-        if (item.case_type) {
-          acc[item.case_type] = item._count.case_id;
-        }
-        return acc;
-      }, {} as Record<string, number>);
+      const casesByType = typeStats.reduce(
+        (acc, item) => {
+          if (item.case_type) {
+            acc[item.case_type] = item._count.case_id;
+          }
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       // Calculate average tasks per case
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
-      const averageTasksPerCase = cases.length > 0 ? Math.round(totalTasks / cases.length * 10) / 10 : 0;
+      const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
 
       // Get oldest unassigned case if relevant - FIXED: Only check for null
       let oldestUnassignedCase: { case_id: string; created_at: Date; days_old: number } | undefined;
@@ -1057,9 +1208,7 @@ export class CaseService {
 
         if (oldestUnassigned) {
           const now = new Date();
-          const daysOld = Math.floor(
-              (now.getTime() - oldestUnassigned.created_at.getTime()) / (1000 * 60 * 60 * 24)
-          );
+          const daysOld = Math.floor((now.getTime() - oldestUnassigned.created_at.getTime()) / (1000 * 60 * 60 * 24));
           oldestUnassignedCase = {
             case_id: oldestUnassigned.case_id,
             created_at: oldestUnassigned.created_at,
@@ -1207,7 +1356,7 @@ export class CaseService {
         };
 
         // Calculate average age
-        allUserCases.forEach(c => {
+        allUserCases.forEach((c) => {
           const age = (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24);
           totalAge += age;
         });
@@ -1217,14 +1366,12 @@ export class CaseService {
       const casesByStatus: Record<string, number> = {};
       const casesByPriority: Record<string, number> = {};
 
-      allUserCases.forEach(c => {
+      allUserCases.forEach((c) => {
         casesByStatus[c.status] = (casesByStatus[c.status] || 0) + 1;
         casesByPriority[c.priority] = (casesByPriority[c.priority] || 0) + 1;
       });
 
-      const averageCaseAge = allUserCases.length > 0
-          ? Math.round(totalAge / allUserCases.length * 10) / 10
-          : 0;
+      const averageCaseAge = allUserCases.length > 0 ? Math.round((totalAge / allUserCases.length) * 10) / 10 : 0;
 
       // Get upcoming deadlines (if you have deadline fields)
       // This is a placeholder - adjust based on your actual schema
@@ -1254,7 +1401,7 @@ export class CaseService {
         casesByPriority,
         oldestCase,
         averageCaseAge,
-        upcomingTasks: upcomingDeadlines.map(task => ({
+        upcomingTasks: upcomingDeadlines.map((task) => ({
           task_id: task.task_id,
           name: task.name,
           case_id: task.case_id,

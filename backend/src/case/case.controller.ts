@@ -16,6 +16,7 @@ import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
+import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -75,6 +76,15 @@ export class CaseController {
   async createCase(@Body() dto: CreateCaseDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.caseService.createCase(dto, userId);
+  }
+
+  @Post('manual')
+  async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId } = req.user.token;
+    if (!clientId || !tenantId) {
+      throw new BadRequestException('Missing clientId or tenantId in auth token');
+    }
+    return this.caseService.manualCaseCreateForAnalyst(dto, clientId, tenantId);
   }
 
   /**
