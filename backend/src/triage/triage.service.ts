@@ -62,6 +62,9 @@ export class TriageService {
       return;
     }
     const alert = await this.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
+    if (!alert.case_id) {
+      throw new InternalServerErrorException('Alert case_id is missing.');
+    }
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
 
     switch (triageType) {
@@ -238,6 +241,9 @@ export class TriageService {
       const priority = this.determinePriority(priorityScore);
       manualTriageDto.priority = priority;
       const alert = await this.updateAlertData(alertId, manualTriageDto, userId, tenantId);
+      if (!alert.case_id) {
+        throw new InternalServerErrorException('Alert case_id is missing.');
+      }
       const existingCase = await this.caseService.retrieveCase(alert.case_id);
 
       const triageTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
