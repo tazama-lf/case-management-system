@@ -5,13 +5,17 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 import { LoggerModule } from '../logger/logger.module';
 import { FlowableModule } from 'src/flowable/flowable.module';
+import { TaskModule } from 'src/task/task.module';
+import { TriageModule } from 'src/triage/triage.module';
 
 @Module({
   imports: [
     PrismaModule,
     AuditLogModule,
     LoggerModule,
-    forwardRef(() => FlowableModule), // Use forwardRef here too
+    forwardRef(() => TriageModule),
+    forwardRef(() => FlowableModule),
+    TaskModule
   ],
   providers: [CaseService],
   exports: [CaseService],

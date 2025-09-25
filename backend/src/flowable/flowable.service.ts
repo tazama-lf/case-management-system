@@ -2,7 +2,7 @@ import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
-import FormData from 'form-data';
+import FormData = require ('form-data') ;
 
 /**
  * Enhanced Flowable Service with Work Queue Management

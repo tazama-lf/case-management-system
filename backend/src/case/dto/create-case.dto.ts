@@ -13,7 +13,8 @@ export class CreateCaseDto {
   caseCreatorUserId: string;
 
   @IsUUID()
-  caseOwnerUserId: string;
+  @IsOptional()
+  caseOwnerUserId?: string;
 
   @IsEnum(CaseStatus)
   status: CaseStatus;

@@ -23,7 +23,7 @@ export class TriageService {
   /**
    * Gracefully map AlertType to CaseType
    */
-  private mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
+  public mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
     switch (alertType) {
       case AlertType.FRAUD:
         return CaseType.FRAUD;
@@ -183,45 +183,6 @@ export class TriageService {
         actionPerformed: `Created new alert ${newAlert.alert_id}`,
         outcome: Outcome.SUCCESS,
       });
-
-      // --- Investigation Task Creation for Non-Auto-Close Alerts ---
-      // Extract business logic fields from nested report structure
-      const typology = alert.report?.tadpResult?.typologyResult?.[0] ?? {};
-      const isTruePositive = typology.review ?? false;
-      const amlSuspected = alert.aml_suspected ?? false;
-      const confidencePer = alert.confidence_per ?? 0;
-      const hasTransaction = !!alert.transaction;
-
-      const shouldAutoClose = confidencePer > 90 && isTruePositive && !amlSuspected && !hasTransaction;
-
-      if (!shouldAutoClose) {
-        // Mark ATM task as COMPLETE after investigation task creation
-        const atmTasks = await this.taskService.getTasksByCaseId(createdCase.case_id);
-        const atmTask = atmTasks.find((t) => t.name === 'Alert Triage Module Review');
-        if (atmTask && atmTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-          await this.taskService.updateTask(atmTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, systemUuid, this.audit);
-          await this.logger.log(`ATM task ${atmTask.task_id} marked as COMPLETE`, TriageService.name);
-        }
-        // Create investigation task for the case
-        await this.taskService.createTask(
-          {
-            caseId: createdCase.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Case',
-            description: `Investigate case: ${createdCase.case_id}`,
-            candidateGroup: 'Investigations',
-          },
-          systemUuid,
-          this.audit,
-          this.logger,
-        );
-        await this.logger.log(
-          `Investigation task created for case ${createdCase.case_id} (alert ${newAlert.alert_id})`,
-          TriageService.name,
-        );
-        // Gracefully update case status to READY FOR ASSIGNMENT
-        await this.caseService.updateCase(createdCase.case_id, { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, systemUuid);
-      }
 
       return newAlert;
     } catch (error) {
@@ -967,7 +928,7 @@ export class TriageService {
     }
   }
 
-  private determinePriority(priorityScore: number): Priority {
+  public determinePriority(priorityScore: number): Priority {
     const urgencyThresholds = [
       parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
       parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
