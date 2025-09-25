@@ -1,261 +1,464 @@
 import React from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import triageService from '../../alerts/services/triageservice';
+import type { Alert } from '../../alerts/types/triage.types';
+
+// Backend enums matching Prisma schema
+export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
+export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
 
 interface CreateCaseModalProps {
   open: boolean;
   onClose: () => void;
   onCreate: (payload: {
-    caseType: string;
-    source: string;
-    typologies: string[];
-    description?: string;
+    alertId?: string;
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
     assignee?: string;
-    attachments?: File[];
-    comments?: string;
-    linkToExistingCaseId?: string;
     draft?: boolean;
   }) => void;
-  // Optional initial values to prefill the form
+  loading?: boolean;
+  error?: string;
   initial?: {
-    caseId?: string;
-    caseType?: string;
-    source?: string;
-    typologies?: string[];
-    description?: string;
+    alertId?: string;
+    priority?: Priority;
+    priorityScore?: number;
+    alertType?: AlertType;
     assignee?: string;
-    comments?: string;
-    linkToExistingCaseId?: string;
   };
 }
 
-const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate, initial }) => {
-  const [caseId, setCaseId] = React.useState('');
-  const [caseType, setCaseType] = React.useState('');
-  const [source, setSource] = React.useState('');
-  const [typologyInput, setTypologyInput] = React.useState('');
-  const [typologies, setTypologies] = React.useState<string[]>([]);
-  const [description, setDescription] = React.useState('');
-  const [assignee, setAssignee] = React.useState('');
-  const [attachments, setAttachments] = React.useState<File[]>([]);
-  const [comments, setComments] = React.useState('');
-  const [linkToExistingCaseId, setLinkToExistingCaseId] = React.useState('');
+const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate, loading, error, initial }) => {
+  // Alert selection state
+  const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
+  const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
+  const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
+  const [isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
+  const [showAlertDropdown, setShowAlertDropdown] = React.useState(false);
+  const [alertSearchError, setAlertSearchError] = React.useState<string>('');
 
+  // Form state
+  const [priority, setPriority] = React.useState<Priority>('NEW');
+  const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
+  const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
+  const [assignee, setAssignee] = React.useState('');
+  const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
+
+  // Calculate priority based on score (same logic as ManualTriageModal)
+  const calculatePriority = (score: number): Priority => {
+    if (score >= 1.0) return 'BREACH';
+    if (score >= 0.66) return 'CRITICAL';
+    if (score >= 0.33) return 'URGENT';
+    return 'NEW';
+  };
+
+  // Update priority when score changes
+  React.useEffect(() => {
+    const newPriority = calculatePriority(priorityScore);
+    setPriority(newPriority);
+  }, [priorityScore]);
+
+  // Load NALT alerts when modal opens
   React.useEffect(() => {
     if (!open) return;
-    // Prefill with provided initial values or reset to defaults when opened
-    setCaseId(initial?.caseId || '');
-    setCaseType(initial?.caseType || '');
-    setSource(initial?.source || '');
-    setTypologyInput('');
-    setTypologies(initial?.typologies || []);
-    setDescription(initial?.description || '');
-    setAssignee(initial?.assignee || 'Assign Automatically');
-    setAttachments([]);
-    setComments(initial?.comments || '');
-    setLinkToExistingCaseId(initial?.linkToExistingCaseId || '');
+    
+    const loadNALTAlerts = async () => {
+      setIsLoadingAlerts(true);
+      setAlertSearchError('');
+      try {
+        const alerts = await triageService.getNALTAlerts();
+        setAvailableAlerts(alerts);
+      } catch (error) {
+        console.error('Failed to load NALT alerts:', error);
+        setAlertSearchError('Failed to load available alerts');
+      } finally {
+        setIsLoadingAlerts(false);
+      }
+    };
+
+    loadNALTAlerts();
+  }, [open]);
+
+  // Reset form when modal opens
+  React.useEffect(() => {
+    if (!open) return;
+    
+    // Reset form state when modal opens
+    setSelectedAlert(null);
+    setPriorityScore(initial?.priorityScore || 0.33);
+    setAlertType(initial?.alertType || 'FRAUD');
+    setAssignee(initial?.assignee || '');
+    setValidationErrors([]);
+    setAlertSearchTerm(''); // Only reset search when modal opens
   }, [open, initial]);
+
+  // Separate effect for handling initial alert selection
+  React.useEffect(() => {
+    if (initial?.alertId && availableAlerts.length > 0 && !selectedAlert && open) {
+      const alert = availableAlerts.find(a => a.alert_id === initial.alertId);
+      if (alert) {
+        setSelectedAlert(alert);
+        setAlertSearchTerm(alert.alert_id);
+      }
+    }
+  }, [availableAlerts, initial?.alertId, selectedAlert, open]);
+
+  // Search alerts as user types (debounced)
+  React.useEffect(() => {
+    if (!open) return;
+    
+    const timeoutId = setTimeout(async () => {
+      if (alertSearchTerm.length === 0) {
+        // Load all NALT alerts when search is empty
+        setIsLoadingAlerts(true);
+        try {
+          const alerts = await triageService.getNALTAlerts();
+          setAvailableAlerts(alerts);
+        } catch (error) {
+          console.error('Failed to load alerts:', error);
+          setAlertSearchError('Failed to load alerts');
+        } finally {
+          setIsLoadingAlerts(false);
+        }
+      } else if (alertSearchTerm.length >= 1) {
+        // Search with any length >= 1 character for alert ID
+        setIsLoadingAlerts(true);
+        setAlertSearchError('');
+        try {
+          const alerts = await triageService.getNALTAlerts(alertSearchTerm);
+          setAvailableAlerts(alerts);
+        } catch (error) {
+          console.error('Failed to search alerts:', error);
+          setAlertSearchError('Failed to search alerts');
+        } finally {
+          setIsLoadingAlerts(false);
+        }
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [alertSearchTerm, open]);
+
+  const handleAlertSearch = (searchTerm: string) => {
+    setAlertSearchTerm(searchTerm);
+    setShowAlertDropdown(true);
+  };
+
+  const handleAlertSelect = (alert: Alert) => {
+    setSelectedAlert(alert);
+    setAlertSearchTerm(alert.alert_id);
+    setShowAlertDropdown(false);
+    
+    // Auto-populate alertType based on selected alert if available
+    if (alert.alert_type) {
+      setAlertType(alert.alert_type as AlertType);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (target && !target.closest('[data-alert-dropdown]')) {
+        setShowAlertDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Enhanced filtering for better search experience with partial matches
+  const filteredAlerts = React.useMemo(() => {
+    if (!alertSearchTerm || alertSearchTerm.length < 2) {
+      return availableAlerts.slice(0, 10); // Show first 10 alerts when no search or less than 2 chars
+    }
+
+    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, ''); // Remove dashes and spaces for flexible matching
+    
+    return availableAlerts.filter(alert => {
+      const alertIdClean = alert.alert_id.toLowerCase().replace(/[-\s]/g, '');
+      
+      // Multiple matching strategies for better results
+      const exactMatch = alert.alert_id.toLowerCase().includes(alertSearchTerm.toLowerCase());
+      const partialMatch = alertIdClean.includes(searchTerm);
+      const startsWithMatch = alertIdClean.startsWith(searchTerm);
+      
+      return exactMatch || partialMatch || startsWithMatch;
+    }).sort((a, b) => {
+      // Prioritize results: exact matches first, then starts-with, then partial
+      const aId = a.alert_id.toLowerCase();
+      const bId = b.alert_id.toLowerCase();
+      const search = alertSearchTerm.toLowerCase();
+      
+      const aStartsWith = aId.startsWith(search);
+      const bStartsWith = bId.startsWith(search);
+      
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      return aId.localeCompare(bId);
+    }).slice(0, 20); // Limit to 20 results for performance
+  }, [availableAlerts, alertSearchTerm]);
 
   if (!open) return null;
 
-  const addTypology = () => {
-    const v = typologyInput.trim();
-    if (!v) return;
-    setTypologies((prev) => Array.from(new Set([...prev, v])));
-    setTypologyInput('');
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+    if (!selectedAlert) errors.push('Alert selection is required');
+    if (!alertType) errors.push('Alert Type is required');
+    if (!priority) errors.push('Priority is required');
+    if (priorityScore < 0 || priorityScore > 1) errors.push('Priority Score must be between 0 and 1');
+    return errors;
   };
 
-  const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length) setAttachments((prev) => [...prev, ...files]);
-  };
-
-  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (files.length) setAttachments((prev) => [...prev, ...files]);
-  };
-
-  const removeAttachment = (idx: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const canCreate = Boolean(caseType && source);
+  const canCreate = Boolean(priority && alertType && selectedAlert);
 
   const submit = (draft = false) => {
+    const errors = validateForm();
+    if (errors.length > 0 && !draft) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors([]);
+
     onCreate({
-      caseType,
-      source,
-      typologies,
-      description: description || undefined,
-      assignee: assignee === 'Assign Automatically' ? undefined : assignee,
-      attachments,
-      comments: comments || undefined,
-      linkToExistingCaseId: linkToExistingCaseId || undefined,
+      alertId: selectedAlert?.alert_id,
+      priority,
+      priorityScore,
+      alertType,
+      assignee: assignee || undefined,
       draft,
     });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">Create New Case</h3>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Close">
-            <XMarkIcon className="h-5 w-5" />
+          <h2 className="text-xl font-semibold text-gray-900">Create Manual Case</h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-50"
+          >
+            <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        <div className="px-6 py-4 overflow-y-auto flex-1">
-          <div className="space-y-4">
-            {/* Case ID (auto-generated and not editable) */}
-            {caseId && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Case ID (auto-generated)</label>
-                <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                  {caseId}
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {/* Error Display */}
+          {(error || validationErrors.length > 0) && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    {error ? 'Error' : 'Please fix the following errors'}
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    {error && <p>{error}</p>}
+                    {validationErrors.map((err, idx) => (
+                      <p key={idx}>• {err}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alert Selection */}
+          <div className="space-y-2" data-alert-dropdown>
+            <label htmlFor="alert-search" className="block text-sm font-medium text-gray-700">
+              Select Alert (NALT Status Only)
+            </label>
+            <div className="relative">
+              <div className="relative">
+                <input
+                  id="alert-search"
+                  type="text"
+                  value={alertSearchTerm}
+                  onChange={(e) => handleAlertSearch(e.target.value)}
+                  onFocus={() => setShowAlertDropdown(true)}
+                  placeholder="Search by Alert ID (min 2 chars, e.g., '837c88')..."
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  autoComplete="off"
+                />
+                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <ChevronDownIcon 
+                  className={`absolute right-3 top-2.5 h-5 w-5 text-gray-400 transition-transform ${showAlertDropdown ? 'rotate-180' : ''}`} 
+                />
+              </div>
+              
+              {/* Alert Dropdown */}
+              {showAlertDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {isLoadingAlerts ? (
+                    <div className="px-4 py-2 text-sm text-gray-500">Loading alerts...</div>
+                  ) : alertSearchError ? (
+                    <div className="px-4 py-2 text-sm text-red-500">{alertSearchError}</div>
+                  ) : filteredAlerts.length === 0 ? (
+                    <div className="px-4 py-2 text-sm text-gray-500">No NALT alerts found</div>
+                  ) : (
+                    filteredAlerts.map((alert) => (
+                      <button
+                        key={alert.alert_id}
+                        onClick={() => handleAlertSelect(alert)}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{alert.alert_id}</div>
+                            <div className="text-xs text-gray-500">
+                              {alert.txtp && `Type: ${alert.txtp}`}
+                              {alert.source && ` | Source: ${alert.source}`}
+                              {alert.alert_type && ` | Alert Type: ${alert.alert_type}`}
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Priority: {alert.priority}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {selectedAlert && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="text-sm">
+                  <div className="font-medium text-blue-900">Selected Alert: {selectedAlert.alert_id}</div>
+                  <div className="text-blue-700 mt-1">
+                    {selectedAlert.txtp && `Type: ${selectedAlert.txtp} | `}
+                    {selectedAlert.source && `Source: ${selectedAlert.source} | `}
+                    Priority: {selectedAlert.priority}
+                  </div>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Case Type and Source */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Case Type *</label>
-                <select
-                  value={caseType}
-                  onChange={(e) => setCaseType(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">Select Case Type</option>
-                  <option>Fraud</option>
-                  <option>Money Laundering</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Source *</label>
-                <select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">Select Source</option>
-                  <option>Customer Complaint</option>
-                  <option>Internal Review</option>
-                </select>
-              </div>
-            </div>
+          {/* Alert Type */}
+          <div className="space-y-2">
+            <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
+              Alert Type *
+            </label>
+            <select
+              id="alert-type"
+              value={alertType}
+              onChange={(e) => setAlertType(e.target.value as AlertType)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="FRAUD">Fraud</option>
+              <option value="AML">AML</option>
+              <option value="FRAUD_AND_AML">Fraud & AML</option>
+              <option value="NONE">None</option>
+            </select>
+          </div>
 
-            {/* Typology */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Typology</label>
-              <div className="flex gap-2">
-                <input
-                  value={typologyInput}
-                  onChange={(e) => setTypologyInput(e.target.value)}
-                  placeholder="Add Typology"
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          {/* Priority Score with Visual Feedback */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Priority Score *
+              <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
+            </label>
+            <div className="space-y-2">
+              <input 
+                type="range" 
+                value={priorityScore} 
+                onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                min={0} 
+                max={1} 
+                step={0.01}
+              />
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>0.0 (NEW)</span>
+                <span>0.33 (URGENT)</span>
+                <span>0.66 (CRITICAL)</span>
+                <span>1.0 (BREACH)</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <input 
+                  type="number" 
+                  value={priorityScore} 
+                  onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
+                  min={0} 
+                  max={1} 
+                  step={0.01}
                 />
-                <button type="button" onClick={addTypology} className="rounded-md border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">
-                  Add
-                </button>
+                <span className={`text-sm font-medium px-2 py-1 rounded ${
+                  priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                  priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
+                  priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                  'text-blue-600 bg-blue-50'
+                }`}>
+                  → {priority}
+                </span>
               </div>
-              {typologies.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {typologies.map((t) => (
-                    <span key={t} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
+          </div>
 
-            {/* Description */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+          {/* Priority - Read-only, calculated from score */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Priority 
+              <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+            </label>
+            <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+              priority === 'BREACH' ? 'text-red-600 border-red-200' :
+              priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
+              priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
+              'text-blue-600 border-blue-200'
+            }`}>
+              {priority}
             </div>
+          </div>
 
-            {/* Assign To */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Assign To</label>
-              <select
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option>Assign Automatically</option>
-                <option>John Smith</option>
-                <option>Sarah Johnson</option>
-                <option>Michael Brown</option>
-              </select>
-            </div>
+          {/* Assignee */}
+          <div className="space-y-2">
+            <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+              Assignee
+            </label>
+            <input
+              id="assignee"
+              type="text"
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Leave empty for automatic assignment"
+            />
+          </div>
+        </div>
 
-            {/* Attachments */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Attachments</label>
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={onDrop}
-                className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-gray-300 p-6 text-center text-sm text-gray-600"
-              >
-                <label className="cursor-pointer rounded-md border bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">
-                  <input type="file" multiple className="hidden" onChange={onPickFiles} />
-                  Upload Files
-                </label>
-                <div className="mt-2 text-xs text-gray-400">or drag and drop files here</div>
-              </div>
-              {attachments.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm text-gray-700">
-                  {attachments.map((f, idx) => (
-                    <li key={idx} className="flex items-center justify-between">
-                      <span>{f.name}</span>
-                      <button type="button" onClick={() => removeAttachment(idx)} className="text-xs text-red-600 hover:underline">Remove</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Comments */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Comments</label>
-              <textarea
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Link to Existing Case */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Link to Existing Case</label>
-              <input
-                value={linkToExistingCaseId}
-                onChange={(e) => setLinkToExistingCaseId(e.target.value)}
-                placeholder="Enter Case ID"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>
-              <button type="button" onClick={() => submit(true)} className="rounded-md border bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Save as Draft</button>
-              <button
-                type="button"
-                onClick={() => submit(false)}
-                disabled={!canCreate}
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-              >
-                Create Case
-              </button>
-            </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <button
+            onClick={() => submit(true)}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : 'Save as Draft'}
+          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => submit(false)}
+              disabled={loading || !canCreate}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating...' : 'Create Case'}
+            </button>
           </div>
         </div>
       </div>
