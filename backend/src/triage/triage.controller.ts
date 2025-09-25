@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query, BadRe
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
+import { RequireAlertTriageRole, RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ManualTriageDto } from './dto/manual-triage.dto';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
@@ -89,4 +89,6 @@ export class TriageController {
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
+
+  
 }

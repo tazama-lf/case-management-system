@@ -241,9 +241,14 @@ export class CaseService {
     }
 
     const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
-    if (existingAlert.alert_data.status !== 'NALT') {
-      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
-      throw new BadRequestException('alertId and alertType are required');
+    if (
+      !existingAlert.alert_data ||
+      typeof existingAlert.alert_data !== 'object' ||
+      !('status' in existingAlert.alert_data) ||
+      (existingAlert.alert_data as any).status !== 'NALT'
+    ) {
+      this.logger.warn('can not create Case alert_data.status is not NALT', '', CaseService.name);
+      throw new BadRequestException('can not create Case alert_data.status is not NALT');
     }
 
     const priorityScore = dto.priorityScore ?? 0.33;
@@ -311,9 +316,14 @@ export class CaseService {
     }
 
     const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
-    if (existingAlert.alert_data.status !== 'NALT') {
-      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
-      throw new BadRequestException('alertId and alertType are required');
+    if (
+      !existingAlert.alert_data ||
+      typeof existingAlert.alert_data !== 'object' ||
+      !('status' in existingAlert.alert_data) ||
+      (existingAlert.alert_data as any).status !== 'NALT'
+    ) {
+      this.logger.warn('can not create Case alert_data.status is not NALT', '', CaseService.name);
+      throw new BadRequestException('can not create Case alert_data.status is not NALT');
     }
 
     const priorityScore = dto.priorityScore ?? 0.33;
