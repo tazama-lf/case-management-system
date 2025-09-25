@@ -77,12 +77,21 @@ export class CaseController {
     const userId = req.user.token.clientId;
     return this.caseService.createCase(dto, userId);
   }
-
+  //
+  /**
+   * Manual case creation endpoint
+   * Calls the correct service method based on user role (analyst or supervisor).
+   */
   @Post('manual')
+  @RequireInvestigatorOrSupervisorRole()
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId } = req.user.token;
+    const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId) {
       throw new BadRequestException('Missing clientId or tenantId in auth token');
+    }
+    const roles = claims || [];
+    if (roles.includes('SUPERVISOR')) {
+      return this.caseService.manualCaseCreateForSupervisor(dto, clientId, tenantId);
     }
     return this.caseService.manualCaseCreateForAnalyst(dto, clientId, tenantId);
   }
