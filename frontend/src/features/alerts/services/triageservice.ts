@@ -61,6 +61,7 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
+    if (filters.reportStatus) params.append('reportStatus', filters.reportStatus);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
