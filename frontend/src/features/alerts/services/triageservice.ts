@@ -195,6 +195,26 @@ class TriageService {
     }
   }
 
+  // Get alerts with NALT reportStatus for case creation
+  async getNALTAlerts(search?: string): Promise<Alert[]> {
+    try {
+      const filters: AlertsFilter = {
+        reportStatus: 'NALT',
+        limit: 100, // Get a reasonable number of NALT alerts
+        page: 1,
+      };
+
+      if (search) {
+        filters.search = search;
+      }
+
+      const response = await this.getAlerts(filters);
+      return response.alerts;
+    } catch (error) {
+      throw this.handleError(error, 'fetch NALT alerts');
+    }
+  }
+
   // Removed convert-to-case functionality from frontend
   // Removed getTransactionMessages - now extracted from alert data using transactionUtils
 }

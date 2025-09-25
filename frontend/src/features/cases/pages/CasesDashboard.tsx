@@ -7,8 +7,11 @@ import CasesTableSkeleton from '../components/CasesTableSkeleton';
 import { caseService, type CloseCaseDto, type CreateCaseDto } from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
+import type { Priority, AlertType } from '../components/CreateCaseModal';
+import { useAuth } from '../../auth/components/AuthContext';
 
 const CasesDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [search, setSearch] = React.useState('');
   const [sortBy, setSortBy] = React.useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = React.useState<string>('');
@@ -19,13 +22,15 @@ const CasesDashboard: React.FC = () => {
   const [isCloseCaseOpen, setIsCloseCaseOpen] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState<CaseRow | null>(null);
   const [cases, setCases] = React.useState<CaseRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [createCaseLoading, setCreateCaseLoading] = React.useState(false);
+  const [createCaseError, setCreateCaseError] = React.useState<string>('');
 
   // Fetch all cases in the system
   React.useEffect(() => {
     const fetchAllCases = async () => {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
       
       try {
@@ -44,7 +49,7 @@ const CasesDashboard: React.FC = () => {
         setError('Failed to load cases. Please try again.');
         setCases([]);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -72,34 +77,38 @@ const CasesDashboard: React.FC = () => {
 
   // Handlers
   const handleCreate = async (payload: {
-    caseType: string;
-    source: string;
-    typologies: string[];
-    description?: string;
+    alertId?: string;
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
     assignee?: string;
-    attachments?: File[];
-    comments?: string;
-    linkToExistingCaseId?: string;
     draft?: boolean;
   }) => {
+    setCreateCaseLoading(true);
+    setCreateCaseError('');
+    
     try {
       // Map frontend payload to backend CreateCaseDto
       const createCaseData: CreateCaseDto = {
-        tenantId: 'default-tenant', // This should come from auth context
-        caseCreatorUserId: 'current-user-id', // This should come from auth context
-        caseOwnerUserId: payload.assignee === 'Assign Automatically' ? 'current-user-id' : 'assigned-user-id', // Map assignee
+        tenantId: user?.tenantId || 'default-tenant', // Use auth context tenant
+        caseCreatorUserId: user?.user_id || 'system-user-id', // Use auth context user ID
+        caseOwnerUserId: payload.assignee || user?.user_id || 'system-user-id', // Use assignee if provided, otherwise current user
         status: payload.draft ? 'STATUS_00_DRAFT' : 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
-        priority: 'NEW', // Default priority, could be made configurable
-        caseType: payload.caseType === 'Fraud' ? 'FRAUD' : 'AML',
+        priority: payload.priority,
+        caseType: payload.alertType, // Use alertType as caseType
         caseCreationType: 'MANUAL', // Manual case creation
-        parentId: payload.linkToExistingCaseId || undefined,
       };
 
+      console.log('Creating case with data:', createCaseData);
+      console.log('Associated with Alert ID:', payload.alertId);
+      console.log('Alert Type:', payload.alertType);
+      
       const newCase = await caseService.createCase(createCaseData);
       console.log('Case created successfully:', newCase);
       
-      // Show success message
-      alert(`✅ Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}`);
+      // Show success message with alert information
+      const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
+      alert(`✅ Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}${alertInfo}`);
       
       setIsCreateOpen(false);
       
@@ -113,15 +122,17 @@ const CasesDashboard: React.FC = () => {
             sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
           });
           setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (error) {
-          console.error('Failed to refresh cases:', error);
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
         }
       };
       
       await fetchAllCases();
     } catch (error) {
-      console.error('Failed to create case:', error);
-      alert(`❌ Failed to create case: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error creating case:', error);
+      setCreateCaseError(error instanceof Error ? error.message : 'Failed to create case');
+    } finally {
+      setCreateCaseLoading(false);
     }
   };
 
@@ -195,13 +206,14 @@ const CasesDashboard: React.FC = () => {
       };
       fetchAllCases();
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to close case:', error);
       
       // Provide specific error messages based on the error
       let errorMessage = 'Failed to close case. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
       
-      if (error.message?.includes('not in a closeable state')) {
+      if (errorString.includes('not in a closeable state')) {
         errorMessage = `❌ Case cannot be closed.\n\n` +
                       `This case may not meet the closure requirements:\n` +
                       `• Case must be "IN PROGRESS" status\n` +
@@ -209,11 +221,11 @@ const CasesDashboard: React.FC = () => {
                       `• Task must be assigned to you\n` +
                       `• All other tasks must be complete\n\n` +
                       `Please check the case status and try again.`;
-      } else if (error.message?.includes('Unauthorized') || error.message?.includes('403')) {
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
         errorMessage = `❌ Access Denied.\n\n` +
                       `You don't have permission to close this case.\n` +
                       `Please ensure you are the assigned investigator.`;
-      } else if (error.message?.includes('404')) {
+      } else if (errorString.includes('404')) {
         errorMessage = `❌ Case Not Found.\n\n` +
                       `The case may have been deleted or moved.`;
       }
@@ -311,7 +323,7 @@ const CasesDashboard: React.FC = () => {
           </div>
         )}
         
-        {isLoading ? (
+        {loading ? (
           <CasesTableSkeleton rows={10} />
         ) : (
           <CasesTable
@@ -327,21 +339,25 @@ const CasesDashboard: React.FC = () => {
       {/* Modals */}
       <CreateCaseModal
         open={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setCreateCaseError('');
+        }}
         onCreate={handleCreate}
+        loading={createCaseLoading}
+        error={createCaseError}
         initial={selectedRow ? {
-          caseId: selectedRow.id,
-          caseType: ((): string => {
-            // Map backend case types to modal options
+          alertId: selectedRow.alertId,
+          alertType: ((): AlertType => {
+            // Map backend alert types to modal options
             const t = (selectedRow.type || '').toUpperCase();
-            if (t.includes('FRAUD')) return 'Fraud';
-            if (t.includes('AML')) return 'Money Laundering';
-            return '';
+            if (t.includes('FRAUD') && t.includes('AML')) return 'FRAUD_AND_AML';
+            if (t.includes('FRAUD')) return 'FRAUD';
+            if (t.includes('AML')) return 'AML';
+            return 'NONE';
           })(),
-          source: '',
-          typologies: selectedRow.alertId ? [selectedRow.alertId.substring(0, 8)] : [],
-          description: selectedRow.alertMessage || '',
-          comments: ''
+          priority: (selectedRow.priority?.toUpperCase() as Priority) || 'NEW',
+          priorityScore: 0.33 // Default priority score
         } : undefined}
       />
       <ViewCaseModal
