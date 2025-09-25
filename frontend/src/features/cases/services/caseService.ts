@@ -79,6 +79,18 @@ export interface CloseCaseDto {
   recommendations?: string;
 }
 
+// Manual Case Creation DTOs matching backend
+export interface CreateCaseDto {
+  parentId?: string;
+  tenantId: string;
+  caseCreatorUserId: string;
+  caseOwnerUserId: string;
+  status: string;
+  priority: string;
+  caseType?: string;
+  caseCreationType: string;
+}
+
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
@@ -153,6 +165,16 @@ export class CaseService {
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'close case');
+    }
+  }
+
+  // POST /api/v1/cases - Manual case creation
+  async createCase(createCaseData: CreateCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.post<Case>(this.baseUrl, createCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'create case');
     }
   }
 

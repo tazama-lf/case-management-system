@@ -118,6 +118,7 @@ export interface AlertsFilter {
   alertType?: string;
   source?: string;
   search?: string;
+  reportStatus?: string; // Added support for reportStatus filtering
   page?: number;
   limit?: number;
   sortBy?: string;

@@ -4,7 +4,7 @@ import { PageContainer, Card } from '../../../shared/components/ui';
 import { CasesTable, CreateCaseModal, ViewCaseModal, ReassignCaseModal } from '..';
 import CloseCaseModal from '../components/CloseCaseModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
-import { caseService, type CloseCaseDto } from '../services/caseService';
+import { caseService, type CloseCaseDto, type CreateCaseDto } from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
 
@@ -71,8 +71,7 @@ const CasesDashboard: React.FC = () => {
   );
 
   // Handlers
-  const handleCreate = (payload: {
-    caseId?: string;
+  const handleCreate = async (payload: {
     caseType: string;
     source: string;
     typologies: string[];
@@ -83,8 +82,47 @@ const CasesDashboard: React.FC = () => {
     linkToExistingCaseId?: string;
     draft?: boolean;
   }) => {
-    console.log('Create case', payload);
-    setIsCreateOpen(false);
+    try {
+      // Map frontend payload to backend CreateCaseDto
+      const createCaseData: CreateCaseDto = {
+        tenantId: 'default-tenant', // This should come from auth context
+        caseCreatorUserId: 'current-user-id', // This should come from auth context
+        caseOwnerUserId: payload.assignee === 'Assign Automatically' ? 'current-user-id' : 'assigned-user-id', // Map assignee
+        status: payload.draft ? 'STATUS_00_DRAFT' : 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+        priority: 'NEW', // Default priority, could be made configurable
+        caseType: payload.caseType === 'Fraud' ? 'FRAUD' : 'AML',
+        caseCreationType: 'MANUAL', // Manual case creation
+        parentId: payload.linkToExistingCaseId || undefined,
+      };
+
+      const newCase = await caseService.createCase(createCaseData);
+      console.log('Case created successfully:', newCase);
+      
+      // Show success message
+      alert(`✅ Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}`);
+      
+      setIsCreateOpen(false);
+      
+      // Refresh the cases list
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (error) {
+          console.error('Failed to refresh cases:', error);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Failed to create case:', error);
+      alert(`❌ Failed to create case: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleView = (row: CaseRow) => {
