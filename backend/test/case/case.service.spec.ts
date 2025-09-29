@@ -1,0 +1,322 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { Test, TestingModule } from '@nestjs/testing';
+import { CaseService } from '../../src/case/case.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogService } from '../../src/audit/auditLog.service';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
+import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
+import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
+import { NotFoundException } from '@nestjs/common';
+import { Outcome } from '../../src/audit/types/outcome';
+
+describe('CaseService', () => {
+  let service: CaseService;
+  let prismaService: jest.Mocked<PrismaService>;
+  let auditLogService: jest.Mocked<AuditLogService>;
+  let loggerService: jest.Mocked<LoggerService>;
+
+  const mockPrismaService = {
+    case: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  const mockAuditLogService = {
+    logAction: jest.fn(),
+  };
+
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CaseService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: AuditLogService,
+          useValue: mockAuditLogService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<CaseService>(CaseService);
+    prismaService = module.get(PrismaService);
+    auditLogService = module.get(AuditLogService);
+    loggerService = module.get(LoggerService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('createCase', () => {
+    const userId = 'user-123';
+    const createCaseDto: CreateCaseDto = {
+      tenantId: 'tenant-123',
+      caseCreatorUserId: 'creator-123',
+      caseOwnerUserId: 'owner-123',
+      status: CaseStatus.STATUS_00_DRAFT,
+      priority: Priority.NEW,
+      caseType: CaseType.FRAUD,
+      caseCreationType: CaseCreationType.MANUAL,
+    };
+
+    it('should successfully create a case', async () => {
+      const mockCase = {
+        case_id: 'case-123',
+        tenant_id: 'tenant-123',
+        case_creator_user_id: 'creator-123',
+        case_owner_user_id: 'owner-123',
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.NEW,
+        case_type: CaseType.FRAUD,
+        case_creation_type: CaseCreationType.MANUAL,
+        created_at: new Date(),
+        updated_at: new Date(),
+        parent_id: null,
+      };
+
+      mockPrismaService.case.create.mockResolvedValue(mockCase);
+
+      const result = await service.createCase(createCaseDto, userId);
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith('Creating case', CaseService.name);
+      expect(mockPrismaService.case.create).toHaveBeenCalledWith({
+        data: {
+          tenant_id: createCaseDto.tenantId,
+          case_creator_user_id: createCaseDto.caseCreatorUserId,
+          case_owner_user_id: createCaseDto.caseOwnerUserId,
+          status: createCaseDto.status,
+          priority: createCaseDto.priority,
+          case_type: createCaseDto.caseType,
+          case_creation_type: createCaseDto.caseCreationType,
+        },
+      });
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Case created successfully: ${mockCase.case_id}`,
+        CaseService.name,
+      );
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'createCase',
+        entityName: CaseService.name,
+        actionPerformed: 'Case created',
+        outcome: Outcome.SUCCESS,
+      });
+      expect(result).toEqual(mockCase);
+    });
+
+    it('should handle errors during case creation', async () => {
+      const error = new Error('Database error');
+      mockPrismaService.case.create.mockRejectedValue(error);
+
+      await expect(service.createCase(createCaseDto, userId)).rejects.toThrow('Database error');
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith('Creating case', CaseService.name);
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        `Error creating case: ${error.message}`,
+        error.stack,
+        CaseService.name,
+      );
+    });
+  });
+
+  describe('retrieveCase', () => {
+    const caseId = 'case-123';
+
+    it('should successfully retrieve a case', async () => {
+      const mockCase = {
+        case_id: 'case-123',
+        tenant_id: 'tenant-123',
+        case_creator_user_id: 'creator-123',
+        case_owner_user_id: 'owner-123',
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.NEW,
+        case_type: CaseType.FRAUD,
+        case_creation_type: CaseCreationType.MANUAL,
+        created_at: new Date(),
+        updated_at: new Date(),
+        parent_id: null,
+      };
+
+      mockPrismaService.case.findUnique.mockResolvedValue(mockCase);
+
+      const result = await service.retrieveCase(caseId);
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Retrieving case: ${caseId}`,
+        CaseService.name,
+      );
+      expect(mockPrismaService.case.findUnique).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+      });
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Case retrieved successfully: ${mockCase.case_id}`,
+        CaseService.name,
+      );
+      expect(result).toEqual(mockCase);
+    });
+
+    it('should throw NotFoundException when case is not found', async () => {
+      mockPrismaService.case.findUnique.mockResolvedValue(null);
+
+      await expect(service.retrieveCase(caseId)).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.case.findUnique).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+      });
+      expect(mockLoggerService.warn).toHaveBeenCalledWith(
+        `Case not found: ${caseId}`,
+        CaseService.name,
+      );
+    });
+
+    it('should handle database errors', async () => {
+      const error = new Error('Database error');
+      mockPrismaService.case.findUnique.mockRejectedValue(error);
+
+      await expect(service.retrieveCase(caseId)).rejects.toThrow('Database error');
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Retrieving case: ${caseId}`,
+        CaseService.name,
+      );
+    });
+  });
+
+  describe('updateCase', () => {
+    const caseId = 'case-123';
+    const userId = 'user-123';
+    const updateCaseDto: Partial<UpdateCaseDto> = {
+      status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+      priority: Priority.URGENT,
+      caseType: CaseType.AML,
+      caseOwnerUserId: 'new-owner-123',
+    };
+
+    it('should successfully update a case', async () => {
+      const mockCase = {
+        case_id: 'case-123',
+        tenant_id: 'tenant-123',
+        case_creator_user_id: 'creator-123',
+        case_owner_user_id: 'new-owner-123',
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.URGENT,
+        case_type: CaseType.AML,
+        case_creation_type: CaseCreationType.MANUAL,
+        created_at: new Date(),
+        updated_at: new Date(),
+        parent_id: null,
+      };
+
+      const updatedMockCase = {
+        ...mockCase,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        case_type: CaseType.AML,
+        case_owner_user_id: 'new-owner-123',
+      };
+
+      mockPrismaService.case.update.mockResolvedValue(updatedMockCase);
+
+      const result = await service.updateCase(caseId, updateCaseDto, userId);
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Updating case: ${caseId}`,
+        CaseService.name,
+      );
+      expect(mockPrismaService.case.update).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        data: {
+          case_type: updateCaseDto.caseType,
+          priority: updateCaseDto.priority,
+          status: updateCaseDto.status,
+          case_owner_user_id: updateCaseDto.caseOwnerUserId,
+        },
+      });
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Case updated successfully: ${updatedMockCase.case_id}`,
+        CaseService.name,
+      );
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'updateCase',
+        entityName: CaseService.name,
+        actionPerformed: `Case updated successfully: ${updatedMockCase.case_id}`,
+        outcome: Outcome.SUCCESS,
+      });
+      expect(result).toEqual(updatedMockCase);
+    });
+
+    it('should handle update errors and log audit failure', async () => {
+      const error = new Error('Database error');
+      mockPrismaService.case.update.mockRejectedValue(error);
+
+      await expect(service.updateCase(caseId, updateCaseDto, userId)).rejects.toThrow(
+        'Database error',
+      );
+
+      expect(mockLoggerService.log).toHaveBeenCalledWith(
+        `Updating case: ${caseId}`,
+        CaseService.name,
+      );
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        `Error updating case: ${error.message}`,
+        error.stack,
+        CaseService.name,
+      );
+      expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
+        userId,
+        operation: 'updateCase',
+        entityName: CaseService.name,
+        actionPerformed: 'Error updating case',
+        outcome: Outcome.FAILURE,
+      });
+    });
+
+    it('should update case with partial data', async () => {
+      const partialUpdate = { status: CaseStatus.STATUS_00_DRAFT };
+      const mockCase = {
+        case_id: 'case-123',
+        tenant_id: 'tenant-123',
+        case_creator_user_id: 'creator-123',
+        case_owner_user_id: 'owner-123',
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.NEW,
+        case_type: CaseType.FRAUD,
+        case_creation_type: CaseCreationType.MANUAL,
+        created_at: new Date(),
+        updated_at: new Date(),
+        parent_id: null,
+      };
+
+      mockPrismaService.case.update.mockResolvedValue(mockCase);
+
+      const result = await service.updateCase(caseId, partialUpdate, userId);
+
+      expect(mockPrismaService.case.update).toHaveBeenCalledWith({
+        where: { case_id: caseId },
+        data: {
+          case_type: undefined,
+          priority: undefined,
+          status: CaseStatus.STATUS_00_DRAFT,
+          case_owner_user_id: undefined,
+        },
+      });
+      expect(result).toEqual(mockCase);
+    });
+  });
+});
