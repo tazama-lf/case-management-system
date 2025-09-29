@@ -6,21 +6,21 @@ import {
   ConflictException,
   Inject,
   forwardRef,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
-import { CloseCaseDto, CaseClosureOutcome } from './dto/close-case.dto';
+import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType, CaseType } from '@prisma/client';
+import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
 import { CreateTaskDto } from 'src/task/dto/create-task.dto';
@@ -234,151 +234,83 @@ export class CaseService {
     }
   }
 
-  async manualCaseCreateForSupervisor(dto: ManualCreateCaseDto, userId: string, tenantId: string) {
+  async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     if (!dto.alertId || !dto.alertType) {
-      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      this.logger.error('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
       throw new BadRequestException('alertId and alertType are required');
     }
 
-    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
-    if (
-      !existingAlert.alert_data ||
-      typeof existingAlert.alert_data !== 'object' ||
-      !('status' in existingAlert.alert_data) ||
-      (existingAlert.alert_data as any).status !== 'NALT'
-    ) {
-      this.logger.warn('can not create Case alert_data.status is not NALT', '', CaseService.name);
-      throw new BadRequestException('can not create Case alert_data.status is not NALT');
+    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, tenantId, userId);
+    if(existingAlert.case_id){
+      this.logger.error(`Case already exist for alertId ${dto.alertId}`, '', CaseService.name);
+      throw new BadRequestException(`Case already exist for alertId ${dto.alertId}`);
+    }
+    const alertStatus = (existingAlert.alert_data as any)?.status;
+    if (alertStatus !== 'NALT') {
+      this.logger.error('Cannot create Case: alert_data.status is not NALT', '', CaseService.name);
+      throw new BadRequestException('Cannot create Case: alert_data.status is not NALT');
     }
 
     const priorityScore = dto.priorityScore ?? 0.33;
     const priority = this.triageService.determinePriority(priorityScore);
-    const caseDetail: CreateCaseDto = {
-      tenantId,
-      caseCreatorUserId: userId,
-      caseOwnerUserId: userId,
-      status: CaseStatus.STATUS_10_ASSIGNED,
-      caseType: this.triageService.mapAlertTypeToCaseType(dto.alertType),
-      priority,
-      caseCreationType: CaseCreationType.MANUAL,
-    };
+    const caseType = this.triageService.mapAlertTypeToCaseType(dto.alertType);
 
     try {
-      const createdCase = await this.createCase(caseDetail, userId);
-
-      const updatedAlert = await this.prismaService.alert.update({
-        where: { alert_id: dto.alertId },
-        data: {
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const caseDetail: CreateCaseDto = {
+          tenantId,
+          caseCreatorUserId: userId,
+          caseOwnerUserId: role === 'SUPERVISOR' ? userId : undefined,
+          status: role === 'SUPERVISOR' ? CaseStatus.STATUS_10_ASSIGNED : CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          caseType,
           priority,
-          alert_type: dto.alertType,
-          priority_score: priorityScore,
-          case_id: createdCase.case_id,
-        },
+          caseCreationType: CaseCreationType.MANUAL,
+        };
+        const createdCase = await this.createCase(caseDetail, userId);
+
+        const updatedAlert = await prisma.alert.update({
+          where: { alert_id: dto.alertId },
+          data: {
+            priority,
+            alert_type: dto.alertType,
+            priority_score: priorityScore,
+            case_id: createdCase.case_id,
+          },
+        });
+
+        const createTaskDto = new CreateTaskDto();
+        createTaskDto.caseId = updatedAlert.case_id!;
+        createTaskDto.name = role === 'SUPERVISOR' ? 'Investigate case' : 'Approve case creation';
+        createTaskDto.description =
+          role === 'SUPERVISOR'
+            ? `Investigate case task for case: ${updatedAlert.case_id}`
+            : `Case creation approval required for case: ${updatedAlert.case_id}`;
+        createTaskDto.status = role === 'SUPERVISOR' ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
+
+        if (role === 'SUPERVISOR') {
+          createTaskDto.candidateGroup = 'investigator';
+          createTaskDto.assignedUserId = userId;
+        } else {
+          createTaskDto.candidateGroup = 'supervisors';
+        }
+
+        await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'createManualCase',
+          entityName: CaseService.name,
+          actionPerformed: `Case ${createdCase.case_id} created manually for alert`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: createdCase, alert: updatedAlert };
       });
-      const createTaskDto = new CreateTaskDto();
-      createTaskDto.assignedUserId = userId;
-      createTaskDto.candidateGroup = 'investigator';
-      createTaskDto.name = 'Investigate case';
-      createTaskDto.description = `Investigate case task for case : ${updatedAlert.case_id}`;
-      createTaskDto.caseId = updatedAlert.case_id!;
-      createTaskDto.status = TaskStatus.STATUS_10_ASSIGNED;
 
-      await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
-
-      await this.auditLogService.logAction({
-        userId: userId,
-        operation: 'createManualCase',
-        entityName: CaseService.name,
-        actionPerformed: `Case ${createdCase.case_id} created manually for alert ${dto.alertId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      return {
-        success: true,
-        case: createdCase,
-        alert: updatedAlert,
-      };
+      return { success: true, ...result };
     } catch (err) {
-      this.logger.error('manualCaseCreateForAnalyst failed', {
-        error: err,
-        dto,
-        userId,
-        tenantId,
-      });
-      throw new Error(`Failed to create case & link alert: ${err.message}`);
-    }
-  }
-
-  async manualCaseCreateForAnalyst(dto: ManualCreateCaseDto, userId: string, tenantId: string) {
-    if (!dto.alertId || !dto.alertType) {
-      this.logger.warn('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
-      throw new BadRequestException('alertId and alertType are required');
-    }
-
-    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, userId, tenantId);
-    if (
-      !existingAlert.alert_data ||
-      typeof existingAlert.alert_data !== 'object' ||
-      !('status' in existingAlert.alert_data) ||
-      (existingAlert.alert_data as any).status !== 'NALT'
-    ) {
-      this.logger.warn('can not create Case alert_data.status is not NALT', '', CaseService.name);
-      throw new BadRequestException('can not create Case alert_data.status is not NALT');
-    }
-
-    const priorityScore = dto.priorityScore ?? 0.33;
-    const priority = this.triageService.determinePriority(priorityScore);
-    const caseDetail: CreateCaseDto = {
-      tenantId,
-      caseCreatorUserId: userId,
-      status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-      caseType: this.triageService.mapAlertTypeToCaseType(dto.alertType),
-      priority,
-      caseCreationType: CaseCreationType.MANUAL,
-    };
-
-    try {
-      const createdCase = await this.createCase(caseDetail, userId);
-
-      const updatedAlert = await this.prismaService.alert.update({
-        where: { alert_id: dto.alertId },
-        data: {
-          priority,
-          alert_type: dto.alertType,
-          priority_score: priorityScore,
-          case_id: createdCase.case_id,
-        },
-      });
-      const createTaskDto = new CreateTaskDto();
-      createTaskDto.candidateGroup = 'supervisors';
-      createTaskDto.name = 'Approve case creation';
-      createTaskDto.description = `Case creation approval required for case: ${updatedAlert.case_id}`;
-      createTaskDto.caseId = updatedAlert.case_id!;
-      createTaskDto.status = TaskStatus.STATUS_01_UNASSIGNED;
-
-      await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
-
-      await this.auditLogService.logAction({
-        userId: userId,
-        operation: 'createManualCase',
-        entityName: CaseService.name,
-        actionPerformed: `Case ${createdCase.case_id} created manually for alert ${dto.alertId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      return {
-        success: true,
-        case: createdCase,
-        alert: updatedAlert,
-      };
-    } catch (err) {
-      this.logger.error('manualCaseCreateForAnalyst failed', {
-        error: err,
-        dto,
-        userId,
-        tenantId,
-      });
-      throw new Error(`Failed to create case & link alert: ${err.message}`);
+      this.logger.error('manualCaseCreate failed', { error: err, dto, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to create case & link alert: ${err.message}`);
     }
   }
 

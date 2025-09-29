@@ -11,6 +11,7 @@ import {
   RequireInvestigatorOrSupervisorRole,
   RequireAnyValidRole,
   RequireSupervisorRole,
+  TazamaClaims,
 } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
@@ -82,18 +83,16 @@ export class CaseController {
    * Manual case creation endpoint
    * Calls the correct service method based on user role (analyst or supervisor).
    */
+
   @Post('manual')
   @RequireInvestigatorOrSupervisorRole()
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId) {
-      throw new BadRequestException('Missing clientId or tenantId in auth token');
-    }
-    const roles = claims || [];
-    if (roles.includes('SUPERVISOR')) {
-      return this.caseService.manualCaseCreateForSupervisor(dto, clientId, tenantId);
-    }
-    return this.caseService.manualCaseCreateForAnalyst(dto, clientId, tenantId);
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
+
+    return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
   }
 
   /**
@@ -287,7 +286,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access workload stats
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: 'Get summary statistics of user\'s case workload',
+    description: "Get summary statistics of user's case workload",
   })
   @ApiResponse({
     status: 200,

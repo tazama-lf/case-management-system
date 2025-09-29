@@ -150,7 +150,8 @@ export class TaskService {
       loggerService.error('Error creating task', error, TaskService.name);
       auditLogService.logAction({
         userId,
-        actionPerformed: `Error creating task: ${JSON.stringify(taskDTO)}`,
+        // actionPerformed: `Error creating task: ${JSON.stringify(taskDTO)}`,
+        actionPerformed: `Error creating task`,
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
@@ -163,7 +164,7 @@ export class TaskService {
   /**
    * Reassign a task to a different user - FIXED
    */
-  async reassignTask(taskId: string, userId: string, assignedUserId: string, auditLogService: AuditLogService) {
+  async reassignTask(taskId: string, userId: string, assignedUserId: string) {
     this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
