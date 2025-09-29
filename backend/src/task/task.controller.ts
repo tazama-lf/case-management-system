@@ -39,7 +39,7 @@ export class TaskController {
   @RequireAlertTriageRole()
   async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.reassignTask(taskId, userId, assignedUserId, this.auditLogService);
+    return this.taskService.reassignTask(taskId, userId, assignedUserId);
   }
 
   @Patch(':taskId/assign')
