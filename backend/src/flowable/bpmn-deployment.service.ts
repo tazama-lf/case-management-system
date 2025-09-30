@@ -26,6 +26,8 @@ export class BpmnDeploymentService implements OnModuleInit {
       // Deploy case closure approval process
       await this.deployCaseClosureApprovalProcess(bpmnFilesPath);
 
+      await this.deployManualCaseCreationProcess(bpmnFilesPath);
+
       this.logger.log('All BPMN processes deployed successfully', BpmnDeploymentService.name);
     } catch (error) {
       this.logger.error(`Failed to deploy BPMN processes: ${error.message}`, error.stack, BpmnDeploymentService.name);
@@ -39,6 +41,21 @@ export class BpmnDeploymentService implements OnModuleInit {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
       await this.flowableService.deployProcess(bpmnXml, 'CaseCreationProcess');
       this.logger.log('Case creation process deployed', BpmnDeploymentService.name);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private async deployManualCaseCreationProcess(bpmnPath: string) {
+    const bpmnFilePath = path.join(bpmnPath, 'manual-case-creation.bpmn20.xml');
+    try {
+      const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
+      await this.flowableService.deployProcess(bpmnXml, 'manualCaseCreationProcess');
+      this.logger.log('Manual Case creation process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
         this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
