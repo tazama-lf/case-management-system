@@ -241,10 +241,11 @@ export class CaseService {
     }
 
     const existingAlert = await this.triageService.getAlertDetails(dto.alertId, tenantId, userId);
-    if(existingAlert.case_id){
-      this.logger.error(`Case already exist for alertId ${dto.alertId}`, '', CaseService.name);
-      throw new BadRequestException(`Case already exist for alertId ${dto.alertId}`);
+    if (existingAlert.case_id) {
+      this.logger.error(`Case already exists for alertId ${dto.alertId}`, '', CaseService.name);
+      throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
     }
+
     const alertStatus = (existingAlert.alert_data as any)?.status;
     if (alertStatus !== 'NALT') {
       this.logger.error('Cannot create Case: alert_data.status is not NALT', '', CaseService.name);
@@ -266,6 +267,7 @@ export class CaseService {
           priority,
           caseCreationType: CaseCreationType.MANUAL,
         };
+
         const createdCase = await this.createCase(caseDetail, userId);
 
         const updatedAlert = await prisma.alert.update({
@@ -294,7 +296,29 @@ export class CaseService {
           createTaskDto.candidateGroup = 'supervisors';
         }
 
-        await this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.logger);
+        await this.prismaService.task.create({
+          data: {
+            case_id: createTaskDto.caseId,
+            name: createTaskDto.name,
+            description: createTaskDto.description,
+            status: createTaskDto.status,
+            candidateGroup: createTaskDto.candidateGroup,
+            assigned_user_id: createTaskDto.assignedUserId ?? null,
+          },
+        });
+
+        await this.flowableService.startProcessInstance(
+          'manualCaseCreationProcess',
+          {
+            caseId: createdCase.case_id,
+            tenantId,
+            role,
+            caseCreatorUserId: userId,
+            priority,
+            caseType,
+          },
+          createdCase.case_id,
+        );
 
         await this.auditLogService.logAction({
           userId,
