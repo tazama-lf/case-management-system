@@ -310,12 +310,9 @@ export class CaseService {
         await this.flowableService.startProcessInstance(
           'manualCaseCreationProcess',
           {
-            caseId: createdCase.case_id,
-            tenantId,
             role,
-            caseCreatorUserId: userId,
-            priority,
-            caseType,
+            assigneeId:userId
+            tenantId,
           },
           createdCase.case_id,
         );
@@ -433,7 +430,7 @@ export class CaseService {
       this.logger.log(`Using system UUID: ${systemUuid}`, CaseService.name);
 
       // Step 3: Ensure system user exists in database
-      await this.ensureSystemUserExists(systemUuid);
+      // await this.ensureSystemUserExists(systemUuid);
 
       // Step 4: Create case with DRAFT status
       const createdCase = await this.prismaService.$transaction(async (tx) => {
@@ -581,29 +578,29 @@ export class CaseService {
   /**
    * Ensure system user exists in database
    */
-  private async ensureSystemUserExists(systemUuid: string) {
-    try {
-      // Check if system user exists
-      const existingUser = await this.prismaService.user.findUnique({
-        where: { user_id: systemUuid },
-      });
+  // private async ensureSystemUserExists(systemUuid: string) {
+  //   try {
+  //     // Check if system user exists
+  //     const existingUser = await this.prismaService.user.findUnique({
+  //       where: { user_id: systemUuid },
+  //     });
 
-      if (!existingUser) {
-        // Create system user
-        await this.prismaService.user.create({
-          data: {
-            user_id: systemUuid,
-            username: 'system-user',
-            role: 'SYSTEM',
-          },
-        });
-        this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
-  }
+  //     if (!existingUser) {
+  //       // Create system user
+  //       await this.prismaService.user.create({
+  //         data: {
+  //           user_id: systemUuid,
+  //           username: 'system-user',
+  //           role: 'SYSTEM',
+  //         },
+  //       });
+  //       this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
+  //     }
+  //   } catch (error) {
+  //     this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
+  //     throw error;
+  //   }
+  // }
 
   // ... All other existing helper methods remain unchanged ...
 

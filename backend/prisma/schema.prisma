@@ -59,14 +59,11 @@ model Case {
   @@map("cases")
 }
 
-// Add this field to your Task model in schema.prisma
-
 model Task {
   task_id          String     @id @default(uuid()) @db.Uuid
   case_id          String     @db.Uuid
   status           TaskStatus @default(STATUS_01_UNASSIGNED)
   assigned_user_id String?    @db.Uuid
-  assignedUser     User?      @relation("UserTasks", fields: [assigned_user_id], references: [user_id])
   name             String?
   description      String?
   candidateGroup   String?    @db.VarChar(50)
@@ -164,13 +161,6 @@ enum CaseType {
   AML
   FRAUD_AND_AML
   NONE
-}
-
-model User {
-  user_id  String @id @default(uuid()) @db.Uuid
-  username String
-  role     String // SUPERVISOR, INVESTIGATOR, ANALYST, etc.
-  tasks    Task[] @relation("UserTasks")
 }
 
 enum AlertType {
