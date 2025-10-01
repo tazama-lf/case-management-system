@@ -185,28 +185,32 @@ export class FlowableService implements OnModuleInit {
   /**
    * Deploy a BPMN process definition to Flowable
    */
-  async deployProcess(bpmnXml: string, deploymentName: string) {
-    try {
-      const formData = new FormData();
-      const buffer = Buffer.from(bpmnXml);
-      formData.append('deployment', buffer, {
-        filename: `${deploymentName}.bpmn20.xml`,
-        contentType: 'text/xml',
-      });
+  async deployProcess(bpmnXml: string, deploymentName: string, tenantId?: string) {
+  try {
+    const formData = new FormData();
+    const buffer = Buffer.from(bpmnXml);
+    formData.append('deployment', buffer, {
+      filename: `${deploymentName}.bpmn20.xml`,
+      contentType: 'text/xml',
+    });
 
-      const response = await this.flowableClient.post('/service/repository/deployments', formData, {
-        headers: {
-          ...formData.getHeaders(),
-        },
-      });
-
-      this.logger.log(`Process deployed successfully: ${response.data.id}`, FlowableService.name);
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to deploy process: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException('Failed to deploy process', HttpStatus.INTERNAL_SERVER_ERROR);
+    const headers: Record<string, string> = { ...formData.getHeaders() };
+    if (tenantId) {
+      headers['tenantId'] = tenantId;
     }
+
+    const response = await this.flowableClient.post('/service/repository/deployments', formData, {
+      headers,
+    });
+
+    this.logger.log(`Process deployed successfully: ${response.data.id}`, FlowableService.name);
+    return response.data;
+  } catch (error) {
+    this.logger.error(`Failed to deploy process: ${error.message}`, error.stack, FlowableService.name);
+    throw new HttpException('Failed to deploy process', HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
+
 
   /**
    * Start a process instance with variables
@@ -216,7 +220,7 @@ export class FlowableService implements OnModuleInit {
       const payload = {
         processDefinitionKey,
         variables: this.formatVariables(variables),
-        businessKey,
+        businessKey
       };
 
       const response = await this.flowableClient.post('/service/runtime/process-instances', payload);
@@ -224,6 +228,7 @@ export class FlowableService implements OnModuleInit {
       this.logger.log(`Process instance started: ${response.data.id}`, FlowableService.name);
       return response.data;
     } catch (error) {
+      console.log(error);
       this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to start process instance', HttpStatus.INTERNAL_SERVER_ERROR);
     }
