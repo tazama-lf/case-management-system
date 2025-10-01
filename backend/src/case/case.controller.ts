@@ -61,28 +61,6 @@ export class CaseController {
   /**
    * Manual case creation endpoint
    */
-  @Post()
-  @RequireAlertTriageRole()
-  @ApiOperation({
-    summary: 'Create case manually',
-    description: 'Manual case creation by an analyst or supervisor',
-  })
-  @ApiBody({ type: CreateCaseDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Case created successfully',
-  })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createCase(@Body() dto: CreateCaseDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    return this.caseService.createCase(dto, userId);
-  }
-  //
-  /**
-   * Manual case creation endpoint
-   * Calls the correct service method based on user role (analyst or supervisor).
-   */
 
   @Post('manual')
   @RequireInvestigatorOrSupervisorRole()
