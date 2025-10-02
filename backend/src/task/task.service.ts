@@ -46,11 +46,11 @@ export class TaskService {
   private readonly systemUserId: string;
 
   constructor(
-      private prisma: PrismaService,
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly flowableService: FlowableService,
-      private readonly configService: ConfigService,
+    private prisma: PrismaService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly flowableService: FlowableService,
+    private readonly configService: ConfigService,
   ) {
     this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
   }
@@ -58,12 +58,7 @@ export class TaskService {
   /**
    * Create a task with Flowable integration - FIXED
    */
-  async createTask(
-      taskDTO: CreateTaskDto,
-      userId: string,
-      auditLogService: AuditLogService,
-      loggerService: LoggerService,
-  ) {
+  async createTask(taskDTO: CreateTaskDto, userId: string, auditLogService: AuditLogService, loggerService: LoggerService) {
     loggerService.log('Creating task with Flowable integration', TaskService.name);
 
     try {
@@ -81,17 +76,11 @@ export class TaskService {
 
         // Only add assignedUser relation if provided
         if (taskDTO.assignedUserId) {
-          taskData.assignedUser = {
-            connect: { user_id: taskDTO.assignedUserId }
-          };
+          taskData.assigned_user_id = taskDTO.assignedUserId;
         }
 
         const task = await tx.task.create({
           data: taskData,
-          include: {
-            assignedUser: true,
-            case: true,
-          },
         });
 
         // Get case details for tenant ID
@@ -171,20 +160,14 @@ export class TaskService {
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
-          assignedUser: {
-            connect: { user_id: assignedUserId }
-          },
+          assigned_user_id: assignedUserId,
           status: TaskStatus.STATUS_10_ASSIGNED,
-        },
-        include: {
-          assignedUser: true,
-          case: true,
         },
       });
 
       // Update in Flowable if integrated
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -231,28 +214,20 @@ export class TaskService {
       // Handle user assignment/unassignment
       if (updateData.assignedUserId !== undefined) {
         if (updateData.assignedUserId) {
-          updateInput.assignedUser = {
-            connect: { user_id: updateData.assignedUserId }
-          };
+          updateInput.assigned_user_id = updateData.assignedUserId;
         } else {
-          updateInput.assignedUser = {
-            disconnect: true
-          };
+          updateInput.assigned_user_id = null;
         }
       }
 
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
-        data: updateInput,
-        include: {
-          assignedUser: true,
-          case: true,
-        },
+        data: updateInput
       });
 
       // Handle Flowable updates
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -320,16 +295,14 @@ export class TaskService {
 
     try {
       // Get tasks from Flowable
-      const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true) as FlowableTask[];
+      const flowableTasks = (await this.flowableService.getCandidateGroupTasks(candidateGroup, true)) as FlowableTask[];
 
       // Map Flowable tasks to database tasks
-      const taskIds = flowableTasks
-          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
-          .filter((id): id is string => Boolean(id));
+      const taskIds = flowableTasks.map((ft: FlowableTask) => ft.variables?.postgres_task_id).filter((id): id is string => Boolean(id));
 
       let dbTasks: TaskWithCase[] = [];
       if (taskIds.length > 0) {
-        dbTasks = await this.prisma.task.findMany({
+        dbTasks = (await this.prisma.task.findMany({
           where: {
             task_id: { in: taskIds },
           },
@@ -341,16 +314,9 @@ export class TaskService {
                 status: true,
                 created_at: true,
               },
-            },
-            assignedUser: {
-              select: {
-                user_id: true,
-                username: true,
-                role: true,
-              },
-            },
+            }
           },
-        }) as TaskWithCase[];
+        })) as TaskWithCase[];
       }
 
       // Merge Flowable and database information
@@ -401,35 +367,26 @@ export class TaskService {
   async getInvestigationQueue() {
     try {
       // Get from Flowable
-      const flowableTasks = await this.flowableService.getCandidateGroupTasks('Investigations', true) as FlowableTask[];
+      const flowableTasks = (await this.flowableService.getCandidateGroupTasks('Investigations', true)) as FlowableTask[];
 
       // Filter for unassigned tasks only
       const unassignedTasks = flowableTasks.filter((ft: FlowableTask) => !ft.assignee);
 
       // Get corresponding database tasks
-      const taskIds = unassignedTasks
-          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
-          .filter((id): id is string => Boolean(id));
+      const taskIds = unassignedTasks.map((ft: FlowableTask) => ft.variables?.postgres_task_id).filter((id): id is string => Boolean(id));
 
       let dbTasks: TaskWithCase[] = [];
       if (taskIds.length > 0) {
-        dbTasks = await this.prisma.task.findMany({
+        dbTasks = (await this.prisma.task.findMany({
           where: {
             task_id: { in: taskIds },
             status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED] },
           },
           include: {
-            case: true,
-            assignedUser: {
-              select: {
-                user_id: true,
-                username: true,
-                role: true,
-              },
-            },
+            case: true
           },
           orderBy: { created_at: 'desc' },
-        }) as any;
+        })) as any;
       }
 
       return dbTasks;
@@ -449,13 +406,6 @@ export class TaskService {
       const tasks = await this.prisma.task.findMany({
         where: { case_id: caseId },
         include: {
-          assignedUser: {
-            select: {
-              user_id: true,
-              username: true,
-              role: true,
-            },
-          },
           case: {
             select: {
               case_id: true,
@@ -518,20 +468,14 @@ export class TaskService {
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
-          assignedUser: {
-            connect: { user_id: assignedUserId }
-          },
+          assigned_user_id:assignedUserId,
           status: TaskStatus.STATUS_10_ASSIGNED,
-        },
-        include: {
-          assignedUser: true,
-          case: true,
-        },
+        }
       });
 
       // Update in Flowable
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -583,13 +527,6 @@ export class TaskService {
       return await this.prisma.task.findMany({
         where,
         include: {
-          assignedUser: {
-            select: {
-              user_id: true,
-              username: true,
-              role: true,
-            },
-          },
           case: {
             select: {
               case_id: true,
@@ -615,13 +552,6 @@ export class TaskService {
       return await this.prisma.task.findUnique({
         where: { task_id: taskId },
         include: {
-          assignedUser: {
-            select: {
-              user_id: true,
-              username: true,
-              role: true,
-            },
-          },
           case: {
             select: {
               case_id: true,
@@ -681,14 +611,14 @@ export class TaskService {
       let flowableTasks: FlowableTask[] = [];
 
       if (candidateGroup) {
-        flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true) as FlowableTask[];
+        flowableTasks = (await this.flowableService.getCandidateGroupTasks(candidateGroup, true)) as FlowableTask[];
       } else if (assignedToMe) {
-        flowableTasks = await this.flowableService.getUserTasks(assignedToMe, true) as FlowableTask[];
+        flowableTasks = (await this.flowableService.getUserTasks(assignedToMe, true)) as FlowableTask[];
       } else {
         // Get all work queues
         const allQueues = ['Supervisors', 'Investigations', 'Analysts'];
         for (const queue of allQueues) {
-          const tasks = await this.flowableService.getCandidateGroupTasks(queue, true) as FlowableTask[];
+          const tasks = (await this.flowableService.getCandidateGroupTasks(queue, true)) as FlowableTask[];
           flowableTasks.push(...tasks);
         }
       }
@@ -703,13 +633,11 @@ export class TaskService {
       const paginatedTasks = flowableTasks.slice(start, start + limit);
 
       // Get corresponding database tasks
-      const taskIds = paginatedTasks
-          .map((ft: FlowableTask) => ft.variables?.postgres_task_id)
-          .filter((id): id is string => Boolean(id));
+      const taskIds = paginatedTasks.map((ft: FlowableTask) => ft.variables?.postgres_task_id).filter((id): id is string => Boolean(id));
 
       let dbTasks: TaskWithCase[] = [];
       if (taskIds.length > 0) {
-        dbTasks = await this.prisma.task.findMany({
+        dbTasks = (await this.prisma.task.findMany({
           where: { task_id: { in: taskIds } },
           include: {
             case: {
@@ -720,15 +648,8 @@ export class TaskService {
                 created_at: true,
               },
             },
-            assignedUser: {
-              select: {
-                user_id: true,
-                username: true,
-                role: true,
-              },
-            },
           },
-        }) as TaskWithCase[];
+        })) as TaskWithCase[];
       }
 
       // Merge and format results
@@ -770,7 +691,7 @@ export class TaskService {
       const statistics = await this.flowableService.getWorkQueueStatistics();
 
       // Add user-specific statistics
-      const userTasks = await this.flowableService.getUserTasks(userId, false) as FlowableTask[];
+      const userTasks = (await this.flowableService.getUserTasks(userId, false)) as FlowableTask[];
 
       return {
         queues: statistics,
@@ -800,20 +721,14 @@ export class TaskService {
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
-          assignedUser: {
-            connect: { user_id: userId }
-          },
+          assigned_user_id:userId,
           status: TaskStatus.STATUS_10_ASSIGNED,
-        },
-        include: {
-          assignedUser: true,
-          case: true,
-        },
+        }
       });
 
       // Update in Flowable
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -855,9 +770,7 @@ export class TaskService {
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
-          assignedUser: {
-            disconnect: true
-          },
+          assigned_user_id:null,
           status: TaskStatus.STATUS_01_UNASSIGNED,
         },
         include: {
@@ -867,7 +780,7 @@ export class TaskService {
 
       // Update in Flowable
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -912,14 +825,13 @@ export class TaskService {
           status: TaskStatus.STATUS_30_COMPLETED,
         },
         include: {
-          assignedUser: true,
           case: true,
         },
       });
 
       // Update in Flowable
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -956,28 +868,19 @@ export class TaskService {
   async getUserTasks(userId: string, includeCompleted: boolean = false) {
     try {
       const statusFilter = includeCompleted
-          ? {}
-          : {
+        ? {}
+        : {
             status: {
-              not: TaskStatus.STATUS_30_COMPLETED
-            }
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
           };
 
       return await this.prisma.task.findMany({
         where: {
-          assignedUser: {
-            user_id: userId
-          },
+          assigned_user_id:userId,
           ...statusFilter,
         },
         include: {
-          assignedUser: {
-            select: {
-              user_id: true,
-              username: true,
-              role: true,
-            },
-          },
           case: {
             select: {
               case_id: true,
@@ -998,17 +901,13 @@ export class TaskService {
   /**
    * Get task counts by status - FIXED
    */
-  async getTaskCounts(filters?: {
-    userId?: string;
-    candidateGroup?: string;
-    caseId?: string;
-  }) {
+  async getTaskCounts(filters?: { userId?: string; candidateGroup?: string; caseId?: string }) {
     try {
       const where: any = {};
 
       if (filters?.userId) {
         where.assignedUser = {
-          user_id: filters.userId
+          user_id: filters.userId,
         };
       }
 
@@ -1025,10 +924,13 @@ export class TaskService {
       });
 
       // Convert to more readable format
-      const statusCounts = counts.reduce((acc, item) => {
-        acc[item.status] = item._count.status;
-        return acc;
-      }, {} as Record<string, number>);
+      const statusCounts = counts.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.status;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       return {
         total: counts.reduce((sum, item) => sum + item._count.status, 0),
@@ -1063,7 +965,7 @@ export class TaskService {
 
       // Remove from Flowable first (unclaim and mark as deleted in variables)
       try {
-        const flowableTasks = await this.flowableService.getTenantTasks(existingTask.case_id) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(existingTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -1128,16 +1030,14 @@ export class TaskService {
           return tx.task.update({
             where: { task_id: taskId },
             data: {
-              assignedUser: {
-                connect: { user_id: assignedUserId }
-              },
+              assigned_user_id:assignedUserId,
               status: TaskStatus.STATUS_10_ASSIGNED,
             },
             include: {
               case: {
-                select: { case_id: true }
-              }
-            }
+                select: { case_id: true },
+              },
+            },
           });
         });
 
@@ -1147,7 +1047,7 @@ export class TaskService {
       // Update in Flowable for each task
       for (const updatedTask of results) {
         try {
-          const flowableTasks = await this.flowableService.getTenantTasks(updatedTask.case.case_id) as FlowableTask[];
+          const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case.case_id)) as FlowableTask[];
           const flowableTask = flowableTasks.find((ft: FlowableTask) => {
             const vars = ft.variables || {};
             return vars.postgres_task_id === updatedTask.task_id;

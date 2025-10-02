@@ -433,14 +433,17 @@ export class CaseService {
    */
   private async ensureSystemUserExists(systemUuid: string) {
     try {
+      // Use the underlying Prisma client from the PrismaService (cast to any to satisfy TypeScript)
+      const prismaClient: any = (this.prismaService as any);
+
       // Check if system user exists
-      const existingUser = await this.prismaService.user.findUnique({
+      const existingUser = await prismaClient.user.findUnique({
         where: { user_id: systemUuid },
       });
 
       if (!existingUser) {
         // Create system user
-        await this.prismaService.user.create({
+        await prismaClient.user.create({
           data: {
             user_id: systemUuid,
             username: 'system-user',

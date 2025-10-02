@@ -14,7 +14,9 @@
 
     <!-- Supervisor path -->
     <userTask id="investigateCase" name="Investigate Case"
-              flowable:candidateGroups="investigator"/>
+              flowable:candidateGroups="investigator"
+              flowable:assignee="${assigneeId}"
+              />
 
     <!-- Analyst/other path -->
     <userTask id="approveCase" name="Approve Case Creation"
