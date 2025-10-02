@@ -6,6 +6,7 @@ import * as path from 'path';
 
 @Injectable()
 export class BpmnDeploymentService implements OnModuleInit {
+  private tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
   constructor(
     private readonly flowableService: FlowableService,
     private readonly logger: LoggerService,
@@ -39,7 +40,7 @@ export class BpmnDeploymentService implements OnModuleInit {
     const bpmnFilePath = path.join(bpmnPath, 'case-creation.bpmn20.xml');
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'CaseCreationProcess');
+      await this.flowableService.deployProcess(bpmnXml, 'CaseCreationProcess', this.tenantId);
       this.logger.log('Case creation process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -54,7 +55,7 @@ export class BpmnDeploymentService implements OnModuleInit {
     const bpmnFilePath = path.join(bpmnPath, 'manual-case-creation.bpmn20.xml');
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'manualCaseCreationProcess');
+      await this.flowableService.deployProcess(bpmnXml, 'manualCaseCreationProcess', this.tenantId);
       this.logger.log('Manual Case creation process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -69,7 +70,7 @@ export class BpmnDeploymentService implements OnModuleInit {
     const bpmnFilePath = path.join(bpmnPath, 'case-closure-approval.bpmn20.xml');
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'CaseClosureApprovalProcess');
+      await this.flowableService.deployProcess(bpmnXml, 'CaseClosureApprovalProcess', this.tenantId);
       this.logger.log('Case closure approval process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
