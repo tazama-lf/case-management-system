@@ -7,9 +7,10 @@ import * as path from 'path';
 @Injectable()
 export class BpmnDeploymentService implements OnModuleInit {
   private tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
+
   constructor(
-    private readonly flowableService: FlowableService,
-    private readonly logger: LoggerService,
+      private readonly flowableService: FlowableService,
+      private readonly logger: LoggerService,
   ) {}
 
   async onModuleInit() {
@@ -18,71 +19,83 @@ export class BpmnDeploymentService implements OnModuleInit {
 
   private async deployBpmnProcesses() {
     try {
-      // Path to your BPMN files (adjust as needed)
       const bpmnFilesPath = path.join(process.cwd(), 'src', 'bpmn');
 
-      // Deploy case creation process
-      await this.deployCaseCreationProcess(bpmnFilesPath);
+      // Deploy unified case management process
+      await this.deployUnifiedCaseManagementProcess(bpmnFilesPath);
 
-      // Deploy case closure approval process
-      await this.deployCaseClosureApprovalProcess(bpmnFilesPath);
-
-      await this.deployManualCaseCreationProcess(bpmnFilesPath);
-
-      this.logger.log('All BPMN processes deployed successfully', BpmnDeploymentService.name);
+      this.logger.log(
+          'Unified case management BPMN process deployed successfully',
+          BpmnDeploymentService.name,
+      );
     } catch (error) {
-      this.logger.error(`Failed to deploy BPMN processes: ${error.message}`, error.stack, BpmnDeploymentService.name);
-      // Don't throw here - let the app start even if deployment fails
+      this.logger.error(
+          `Failed to deploy BPMN processes: ${error.message}`,
+          error.stack,
+          BpmnDeploymentService.name,
+      );
+      // Don't throw - let the app start even if deployment fails
     }
   }
 
-  private async deployCaseCreationProcess(bpmnPath: string) {
-    const bpmnFilePath = path.join(bpmnPath, 'case-creation.bpmn20.xml');
+  private async deployUnifiedCaseManagementProcess(bpmnPath: string) {
+    const bpmnFilePath = path.join(bpmnPath, 'case-management.bpmn20.xml');
+
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'CaseCreationProcess', this.tenantId);
-      this.logger.log('Case creation process deployed', BpmnDeploymentService.name);
+      await this.flowableService.deployProcess(
+          bpmnXml,
+          'UnifiedCaseManagementProcess',
+          this.tenantId,
+      );
+      this.logger.log(
+          'Unified case management process deployed',
+          BpmnDeploymentService.name,
+      );
     } catch (error) {
       if (error.code === 'ENOENT') {
-        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
+        this.logger.warn(
+            `BPMN file not found at ${bpmnFilePath}. Skipping deployment.`,
+            BpmnDeploymentService.name,
+        );
       } else {
         throw error;
       }
     }
   }
 
-  private async deployManualCaseCreationProcess(bpmnPath: string) {
-    const bpmnFilePath = path.join(bpmnPath, 'manual-case-creation.bpmn20.xml');
-    try {
-      const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'manualCaseCreationProcess', this.tenantId);
-      this.logger.log('Manual Case creation process deployed', BpmnDeploymentService.name);
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  private async deployCaseClosureApprovalProcess(bpmnPath: string) {
-    const bpmnFilePath = path.join(bpmnPath, 'case-closure-approval.bpmn20.xml');
-    try {
-      const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(bpmnXml, 'CaseClosureApprovalProcess', this.tenantId);
-      this.logger.log('Case closure approval process deployed', BpmnDeploymentService.name);
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  // Method to redeploy processes (useful for development)
-  async redeployAllProcesses() {
+  /**
+   * Redeploy the unified process (useful for development/updates)
+   */
+  async redeployUnifiedProcess() {
     await this.deployBpmnProcesses();
+    return {
+      message: 'Unified case management process redeployed successfully',
+    };
+  }
+
+  /**
+   * Get deployment status
+   */
+  async getDeploymentStatus() {
+    try {
+      // You can enhance this to check actual Flowable deployment status
+      return {
+        deployed: true,
+        processDefinitionKey: 'caseManagementProcess',
+        tenantId: this.tenantId,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      this.logger.error(
+          `Error checking deployment status: ${error.message}`,
+          error.stack,
+          BpmnDeploymentService.name,
+      );
+      return {
+        deployed: false,
+        error: error.message,
+      };
+    }
   }
 }

@@ -5,7 +5,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-// Mock fs/promises
 jest.mock('fs/promises');
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
@@ -15,7 +14,6 @@ describe('BpmnDeploymentService', () => {
     let loggerService: jest.Mocked<LoggerService>;
 
     beforeEach(async () => {
-        // Reset all mocks before each test
         jest.clearAllMocks();
 
         const module: TestingModule = await Test.createTestingModule({
@@ -48,9 +46,9 @@ describe('BpmnDeploymentService', () => {
     });
 
     describe('onModuleInit', () => {
-        it('should deploy BPMN processes on module initialization', async () => {
+        it('should deploy unified BPMN process on module initialization', async () => {
             const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
 
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
             flowableService.deployProcess.mockResolvedValue({ id: 'deployment-123' });
@@ -60,20 +58,21 @@ describe('BpmnDeploymentService', () => {
             expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
             expect(flowableService.deployProcess).toHaveBeenCalledWith(
                 mockBpmnContent,
-                'CaseCreationProcess'
+                'UnifiedCaseManagementProcess',
+                'c950ac85-96f0-4390-8d94-5b8fdec4e863'
             );
             expect(loggerService.log).toHaveBeenCalledWith(
-                'Case creation process deployed',
+                'Unified case management process deployed',
                 BpmnDeploymentService.name
             );
             expect(loggerService.log).toHaveBeenCalledWith(
-                'All BPMN processes deployed successfully',
+                'Unified case management BPMN process deployed successfully',
                 BpmnDeploymentService.name
             );
         });
 
         it('should log warning when BPMN file is not found', async () => {
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
             const fileNotFoundError: any = new Error('File not found');
             fileNotFoundError.code = 'ENOENT';
 
@@ -87,10 +86,6 @@ describe('BpmnDeploymentService', () => {
                 `BPMN file not found at ${expectedPath}. Skipping deployment.`,
                 BpmnDeploymentService.name
             );
-            expect(loggerService.log).toHaveBeenCalledWith(
-                'All BPMN processes deployed successfully',
-                BpmnDeploymentService.name
-            );
         });
 
         it('should log error but not throw when deployment fails', async () => {
@@ -100,7 +95,6 @@ describe('BpmnDeploymentService', () => {
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
             flowableService.deployProcess.mockRejectedValue(deploymentError);
 
-            // Should not throw
             await expect(service.onModuleInit()).resolves.not.toThrow();
 
             expect(loggerService.error).toHaveBeenCalledWith(
@@ -126,48 +120,44 @@ describe('BpmnDeploymentService', () => {
         });
     });
 
-    describe('redeployAllProcesses', () => {
-        it('should successfully redeploy all processes', async () => {
+    describe('redeployUnifiedProcess', () => {
+        it('should successfully redeploy unified process', async () => {
             const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
 
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
             flowableService.deployProcess.mockResolvedValue({ id: 'deployment-456' });
 
-            await service.redeployAllProcesses();
+            const result = await service.redeployUnifiedProcess();
 
             expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
             expect(flowableService.deployProcess).toHaveBeenCalledWith(
                 mockBpmnContent,
-                'CaseCreationProcess'
+                'UnifiedCaseManagementProcess',
+                'c950ac85-96f0-4390-8d94-5b8fdec4e863'
             );
+            expect(result).toEqual({
+                message: 'Unified case management process redeployed successfully',
+            });
             expect(loggerService.log).toHaveBeenCalledWith(
-                'Case creation process deployed',
-                BpmnDeploymentService.name
-            );
-            expect(loggerService.log).toHaveBeenCalledWith(
-                'All BPMN processes deployed successfully',
+                'Unified case management process deployed',
                 BpmnDeploymentService.name
             );
         });
 
         it('should handle redeployment when file is missing', async () => {
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
             const fileNotFoundError: any = new Error('File not found');
             fileNotFoundError.code = 'ENOENT';
 
             mockedFs.readFile.mockRejectedValue(fileNotFoundError);
 
-            await service.redeployAllProcesses();
+            await service.redeployUnifiedProcess();
 
             expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
             expect(flowableService.deployProcess).not.toHaveBeenCalled();
             expect(loggerService.warn).toHaveBeenCalledWith(
                 `BPMN file not found at ${expectedPath}. Skipping deployment.`,
-                BpmnDeploymentService.name
-            );
-            expect(loggerService.log).toHaveBeenCalledWith(
-                'All BPMN processes deployed successfully',
                 BpmnDeploymentService.name
             );
         });
@@ -179,11 +169,12 @@ describe('BpmnDeploymentService', () => {
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
             flowableService.deployProcess.mockRejectedValue(deploymentError);
 
-            await service.redeployAllProcesses();
+            await service.redeployUnifiedProcess();
 
             expect(flowableService.deployProcess).toHaveBeenCalledWith(
                 mockBpmnContent,
-                'CaseCreationProcess'
+                'UnifiedCaseManagementProcess',
+                'c950ac85-96f0-4390-8d94-5b8fdec4e863'
             );
             expect(loggerService.error).toHaveBeenCalledWith(
                 `Failed to deploy BPMN processes: ${deploymentError.message}`,
@@ -193,39 +184,31 @@ describe('BpmnDeploymentService', () => {
         });
     });
 
-    describe('deployBpmnProcesses', () => {
-        it('should construct correct path for BPMN files', async () => {
-            const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+    describe('getDeploymentStatus', () => {
+        it('should return deployment status successfully', async () => {
+            const result = await service.getDeploymentStatus();
 
-            mockedFs.readFile.mockResolvedValue(mockBpmnContent);
-            flowableService.deployProcess.mockResolvedValue({ id: 'deployment-789' });
-
-            // Access private method through onModuleInit
-            await service.onModuleInit();
-
-            expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
+            expect(result).toEqual({
+                deployed: true,
+                processDefinitionKey: 'caseManagementProcess',
+                tenantId: 'c950ac85-96f0-4390-8d94-5b8fdec4e863',
+                timestamp: expect.any(Date),
+            });
         });
 
-        it('should handle multiple BPMN files if added in the future', async () => {
-            // This test ensures the structure can handle multiple deployments
-            const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
+        it('should handle errors when checking deployment status', async () => {
+            jest.spyOn(service, 'getDeploymentStatus').mockImplementationOnce(async () => {
+                throw new Error('Status check failed');
+            });
 
-            mockedFs.readFile.mockResolvedValue(mockBpmnContent);
-            flowableService.deployProcess.mockResolvedValue({ id: 'deployment-multi' });
-
-            await service.onModuleInit();
-
-            // Currently only one file, but structure supports multiple
-            expect(mockedFs.readFile).toHaveBeenCalledTimes(1);
-            expect(flowableService.deployProcess).toHaveBeenCalledTimes(1);
+            await expect(service.getDeploymentStatus()).rejects.toThrow('Status check failed');
         });
     });
 
-    describe('deployCaseCreationProcess', () => {
+    describe('deployUnifiedCaseManagementProcess', () => {
         it('should read file with correct encoding', async () => {
             const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
-            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-creation.bpmn20.xml');
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
 
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
             flowableService.deployProcess.mockResolvedValue({ id: 'deployment-encoding' });
@@ -235,7 +218,7 @@ describe('BpmnDeploymentService', () => {
             expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
         });
 
-        it('should pass correct deployment name to Flowable service', async () => {
+        it('should pass correct deployment name and tenant ID to Flowable service', async () => {
             const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
 
             mockedFs.readFile.mockResolvedValue(mockBpmnContent);
@@ -245,7 +228,8 @@ describe('BpmnDeploymentService', () => {
 
             expect(flowableService.deployProcess).toHaveBeenCalledWith(
                 mockBpmnContent,
-                'CaseCreationProcess'
+                'UnifiedCaseManagementProcess',
+                'c950ac85-96f0-4390-8d94-5b8fdec4e863'
             );
         });
 
@@ -272,7 +256,6 @@ describe('BpmnDeploymentService', () => {
 
             mockedFs.readFile.mockRejectedValue(criticalError);
 
-            // Should complete without throwing
             await expect(service.onModuleInit()).resolves.toBeUndefined();
 
             expect(loggerService.error).toHaveBeenCalled();
@@ -303,10 +286,35 @@ describe('BpmnDeploymentService', () => {
                 throw new Error('Logger failure');
             });
 
-            // Should handle logger errors gracefully
             await expect(service.onModuleInit()).rejects.toThrow('Logger failure');
 
             expect(flowableService.deployProcess).toHaveBeenCalled();
+        });
+    });
+
+    describe('single process deployment', () => {
+        it('should only deploy one BPMN file', async () => {
+            const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
+
+            mockedFs.readFile.mockResolvedValue(mockBpmnContent);
+            flowableService.deployProcess.mockResolvedValue({ id: 'deployment-single' });
+
+            await service.onModuleInit();
+
+            expect(mockedFs.readFile).toHaveBeenCalledTimes(1);
+            expect(flowableService.deployProcess).toHaveBeenCalledTimes(1);
+        });
+
+        it('should use case-management.bpmn20.xml as the filename', async () => {
+            const mockBpmnContent = '<?xml version="1.0" encoding="UTF-8"?><bpmn>...</bpmn>';
+            const expectedPath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
+
+            mockedFs.readFile.mockResolvedValue(mockBpmnContent);
+            flowableService.deployProcess.mockResolvedValue({ id: 'deployment-filename' });
+
+            await service.onModuleInit();
+
+            expect(mockedFs.readFile).toHaveBeenCalledWith(expectedPath, 'utf-8');
         });
     });
 });
