@@ -18,6 +18,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, A
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
+import {AlertMessageDto} from "../nats/dto/AlertMessageDto.dto";
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -26,10 +27,6 @@ import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
 
-  /**
-   * System-to-system case creation endpoint (User Story #185)
-   * This endpoint is called by external systems (Alert Triage Module, API Portal)
-   */
   @Post('system-transmission')
   @RequireAlertTriageRole()
   @HttpCode(HttpStatus.CREATED)
@@ -53,14 +50,12 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async createCaseSystemTransmission(@Body() dto: SystemCaseCreationDto, @Req() req: AuthenticatedRequest) {
+  async createCaseSystemTransmission(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
     const clientId = req.user.token.clientId;
     return this.caseService.createCaseSystemTransmission(dto, clientId);
   }
 
-  /**
-   * Manual case creation endpoint
-   */
+
 
   @Post('manual')
   @RequireInvestigatorOrSupervisorRole()
@@ -73,9 +68,6 @@ export class CaseController {
     return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
   }
 
-  /**
-   * This endpoint is called by investigators to close a case and submit for approval
-   */
   @Put(':caseId/close')
   @RequireInvestigatorRole() // Investigators can close cases
   @HttpCode(HttpStatus.OK)
@@ -165,10 +157,6 @@ export class CaseController {
     return this.caseService.closeCase(caseId, dto, clientId, tenantId);
   }
 
-  /**
-   * SUPERVISOR ENDPOINTS
-   * Get all cases in the system (requires supervisor role)
-   */
   @Get('all')
   @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access all cases
   @ApiOperation({
@@ -195,10 +183,6 @@ export class CaseController {
     return this.caseService.getAllCases(query, userId);
   }
 
-  /**
-   * Get all cases assigned to the current user
-   * This includes cases where user is owner OR has assigned tasks
-   */
   @Get('user/assigned')
   @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access their assigned cases
   @ApiOperation({
@@ -217,9 +201,6 @@ export class CaseController {
     return this.caseService.getUserCases(userId, query);
   }
 
-  /**
-   * Get all cases assigned to a specific user (for supervisors/admins)
-   */
   @Get('user/:userId/assigned')
   @RequireSupervisorRole() // Only supervisors can access cases for any user
   @ApiOperation({
@@ -257,9 +238,6 @@ export class CaseController {
     return this.caseService.getUserCases(targetUserId, query);
   }
 
-  /**
-   * Get case workload statistics for current user
-   */
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access workload stats
   @ApiOperation({
@@ -306,9 +284,6 @@ export class CaseController {
     return this.caseService.getUserWorkloadStats(userId);
   }
 
-  /**
-   * Get case by ID
-   */
   @Get(':caseId')
   @RequireAnyValidRole() // Allow any valid CMS role to view case details
   @ApiOperation({
@@ -324,9 +299,7 @@ export class CaseController {
     return this.caseService.retrieveCase(caseId);
   }
 
-  /**
-   * Update case
-   */
+
   @Post(':caseId')
   @RequireAnyValidRole() // Allow any valid CMS role to update cases
   @ApiOperation({
@@ -344,10 +317,7 @@ export class CaseController {
     return this.caseService.updateCase(caseId, dto, userId);
   }
 
-  /**
-   * Debug endpoint to check JWT token contents (for troubleshooting)
-   * Remove this in production
-   */
+
   @Get('debug-token')
   @RequireAlertTriageRole()
   @ApiOperation({
