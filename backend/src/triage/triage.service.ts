@@ -179,7 +179,6 @@ export class TriageService {
         },
       });
 
-      // Flowable process for the new alert case
       try {
         await this.flowableService.startProcessInstance(
           'caseManagementProcess',
@@ -746,13 +745,10 @@ export class TriageService {
         return [updatedCase, updatedTask];
       });
 
-      // Flowable process for auto closed case
       try {
         const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
 
         if (processInstance) {
-          // For autoclosed cases, terminate the entire process instance
-          // since the case is definitively closed and no further workflow is needed
           await this.flowableService.terminateProcessInstance(
             processInstance.id,
             `Case automatically closed with status ${status}: ${customDescription || 'System autoclose'}`,
@@ -832,7 +828,6 @@ export class TriageService {
         this.logger,
       );
 
-      // Create Flowable task in investigations queue
       try {
         const flowableTask = await this.flowableService.createTask({
           name: 'Investigate Case',
@@ -889,7 +884,6 @@ export class TriageService {
         this.audit,
       );
 
-      // Create new investigation task
       const createdTask = await this.taskService.createTask(
         {
           caseId,
@@ -903,7 +897,6 @@ export class TriageService {
         this.logger,
       );
 
-      // Update case status
       const updateCaseDto: Partial<UpdateCaseDto> = {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         priority: priority,
@@ -912,11 +905,9 @@ export class TriageService {
 
       const updatedCase = await this.caseService.updateCase(caseId, updateCaseDto, userId);
 
-      // Create Flowable task in investigations queue
       try {
         const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
 
-        // Create standalone Flowable task for investigation
         const flowableTask = await this.flowableService.createTask({
           name: 'Investigate Case',
           description: investigateTaskDesc,
@@ -1046,7 +1037,6 @@ export class TriageService {
     confidence_per: number;
     isTruePositive: boolean;
   }> {
-    // --- Placeholder AI Prediction ---
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
