@@ -16,11 +16,7 @@ export class AuthController {
     private readonly logger: LoggerService,
     private readonly authHelperService: AuthHelperService,
   ) {}
-  /**
-   * GET /auth/investigators
-   * Returns all users with the investigator role from Keycloak
-   * Only accessible by supervisors
-   */
+
   @RequireSupervisorRole()
   @UseGuards(TazamaAuthGuard)
   @Get('investigators')

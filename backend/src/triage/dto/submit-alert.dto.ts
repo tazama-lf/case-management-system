@@ -16,6 +16,5 @@ export class SubmitAlertDto {
   networkMap: NetworkMap;
 
   // New fields for triage workflow
-  aml_suspected?: boolean;
   confidence_per?: number;
 }

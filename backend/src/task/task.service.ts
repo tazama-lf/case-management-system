@@ -9,6 +9,7 @@ import { TaskStatus, Task, Prisma } from '@prisma/client';
 import axios from 'axios';
 import { FlowableService } from 'src/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
+import { AuthHelperService } from '../auth/auth-helper.service';
 
 // Define types for better type safety
 interface TaskWithCase extends Task {
@@ -38,9 +39,6 @@ interface FlowableTask {
   };
 }
 
-/**
- * Enhanced Task Service with Flowable Work Queue Management
- */
 @Injectable()
 export class TaskService {
   private readonly systemUserId: string;
@@ -51,12 +49,13 @@ export class TaskService {
     private readonly auditLogService: AuditLogService,
     private readonly flowableService: FlowableService,
     private readonly configService: ConfigService,
+    private readonly authHelperService: AuthHelperService,
   ) {
     this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
   }
 
   /**
-   * Create a task with Flowable integration - FIXED
+   * Create a task with Flowable integration
    */
   async createTask(taskDTO: CreateTaskDto, userId: string, auditLogService: AuditLogService, loggerService: LoggerService) {
     loggerService.log('Creating task with Flowable integration', TaskService.name);
@@ -446,7 +445,7 @@ export class TaskService {
   }
 
   /**
-   * Assign task to investigator (Supervisor action) - FIXED
+   * Assign task to investigator (Supervisor action)
    */
   async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, auditLogService: AuditLogService | null) {
     this.logger.log(`Assigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
@@ -457,7 +456,7 @@ export class TaskService {
     }
 
     // Validate investigator role using auth-service REST API
-    const investigatorRoles = await this.getUserRolesFromAuthService(assignedUserId);
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
     if (!investigatorRoles.includes('INVESTIGATOR')) {
       this.logger.error(`User ${assignedUserId} does not have INVESTIGATOR role`, null, TaskService.name);
       throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
@@ -577,21 +576,7 @@ export class TaskService {
     }
   }
 
-  /**
-   * Helper function: fetch user roles from auth-service REST API
-   */
-  private async getUserRolesFromAuthService(userId: string): Promise<string[]> {
-    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL', 'http://localhost:3020/v1/auth');
-    const endpoint = `${authUrl}/users/${userId}/roles`;
 
-    try {
-      const response = await axios.get(endpoint);
-      return response.data.roles || response.data;
-    } catch (error) {
-      this.logger.error('Error fetching user roles', error, TaskService.name);
-      throw error;
-    }
-  }
 
   /**
    * Get work queue with comprehensive filtering
@@ -1019,7 +1004,7 @@ export class TaskService {
 
     try {
       // Validate investigator role
-      const investigatorRoles = await this.getUserRolesFromAuthService(assignedUserId);
+      const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
       if (!investigatorRoles.includes('INVESTIGATOR')) {
         throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
       }

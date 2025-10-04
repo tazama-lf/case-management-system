@@ -19,6 +19,7 @@ import { AuditLogService } from 'src/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
+import { TaskValidationUtil } from '../shared/utils/task-validation.util';
 import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TriageService } from 'src/triage/triage.service';
@@ -27,14 +28,14 @@ import { TaskService } from 'src/task/task.service';
 @Injectable()
 export class CaseService {
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly flowableService: FlowableService,
-      private readonly configService: ConfigService,
-      @Inject(forwardRef(() => TriageService))
-      private readonly triageService: TriageService,
-      private readonly taskService: TaskService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly flowableService: FlowableService,
+    private readonly configService: ConfigService,
+    @Inject(forwardRef(() => TriageService))
+    private readonly triageService: TriageService,
+    private readonly taskService: TaskService,
   ) {}
 
   async createCaseSystemTransmission(payload: any, clientId: string) {
@@ -42,42 +43,42 @@ export class CaseService {
       this.logger.log('System-to-system case creation initiated', CaseService.name);
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);
       await this.ensureSystemUserExists(systemUuid);
-
-      const result = await this.triageService.processIncomingAlert(payload, systemUuid, payload.tenantId || clientId);
-
-      if (result.caseId) {
-        await this.flowableService.startProcessInstance(
-            'caseManagementProcess',
-            {
-              caseId: result.caseId,
-              tenantId: payload.tenantId || clientId,
-              creationType: 'AUTOMATIC',
-              creatorUserId: systemUuid,
-              creatorRole: 'SYSTEM',
-              priority: result.priority,
-              caseType: result.caseType,
-              alertData: JSON.stringify(payload),
-              autocloseEligible: result.autocloseEligible,
-            },
-            result.caseId,
-        );
-      }
-
+      await this.triageService.processIncomingAlert(payload, systemUuid, payload.tenantId || clientId);
       await this.auditLogService.logAction({
         userId: systemUuid,
         operation: 'createCase',
         entityName: CaseService.name,
-        actionPerformed: `Automatic case creation triggered via system transmission`,
+        actionPerformed: `Case creation triggered via system transmission`,
         outcome: Outcome.SUCCESS,
       });
-
-      return {
-        message: 'Case creation triggered via system transmission',
-        caseId: result.caseId,
-        autocloseEligible: result.autocloseEligible
-      };
+      return { message: 'Case creation triggered via system transmission' };
     } catch (error) {
       this.logger.error(`Error in system-to-system case creation: ${error.message}`, error.stack, CaseService.name);
+      throw error;
+    }
+  }
+
+
+  private async ensureSystemUserExists(systemUuid: string) {
+    try {
+      // Check if system user exists
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { user_id: systemUuid },
+      });
+
+      if (!existingUser) {
+        // Create system user
+        await this.prismaService.user.create({
+          data: {
+            user_id: systemUuid,
+            username: 'system-user',
+            role: 'SYSTEM',
+          },
+        });
+        this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }
@@ -132,19 +133,19 @@ export class CaseService {
       });
 
       await this.flowableService.startProcessInstance(
-          'caseManagementProcess',
-          {
-            caseId: result.case.case_id,
-            tenantId,
-            creationType: 'MANUAL',
-            creatorUserId: userId,
-            creatorRole: role,
-            priority,
-            caseType,
-            alertData: JSON.stringify(result.alert),
-            autocloseEligible: false,
-          },
-          result.case.case_id,
+        'caseManagementProcess',
+        {
+          caseId: result.case.case_id,
+          tenantId,
+          creationType: 'MANUAL',
+          creatorUserId: userId,
+          creatorRole: role,
+          priority,
+          caseType,
+          alertData: JSON.stringify(result.alert),
+          autocloseEligible: false,
+        },
+        result.case.case_id,
       );
 
       await this.auditLogService.logAction({
@@ -166,20 +167,31 @@ export class CaseService {
     try {
       this.logger.log(`Closing case ${caseId} by user ${userId}`, CaseService.name);
 
-      const caseData = await this.prismaService.case.findUnique({
-        where: { case_id: caseId },
+      const caseData = await this.prismaService.case.findFirst({
+        where: {
+          case_id: caseId,
+          OR: [
+            { case_owner_user_id: userId },
+            {
+              tasks: {
+                some: {
+                  assigned_user_id: userId,
+                  name: { in: ['Investigate Case', 'Investigate case'] },
+                },
+              },
+            },
+          ],
+        },
         include: { tasks: true, alert: true },
       });
 
       if (!caseData) {
-        throw new NotFoundException(`Case ${caseId} not found`);
+        throw new NotFoundException(`Case ${caseId} not found or you don't have permission to close it`);
       }
 
       await this.validateCaseClosurePreconditions(caseData, userId);
 
-      const investigationTask = caseData.tasks.find(
-          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case',
-      );
+      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
 
       if (!investigationTask) {
         throw new BadRequestException('Investigation task not found for this case');
@@ -263,6 +275,24 @@ export class CaseService {
         this.logger.error(`Flowable workflow update failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
       }
 
+      // Create Flowable task for approval in Supervisors queue
+      try {
+        const flowableApprovalTask = await this.flowableService.createTaskWithContext({
+          name: 'Approve case closure',
+          description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
+          tenantId: tenantId,
+          candidateGroup: 'Supervisors',
+          postgresTaskId: result.approvalTask.task_id,
+          postgresCaseId: caseId,
+          status: result.approvalTask.status,
+        });
+
+        this.logger.log(`Created Flowable approval task ${flowableApprovalTask.id} for case closure ${caseId}`, CaseService.name);
+      } catch (flowableError) {
+        this.logger.error(`Failed to create Flowable approval task: ${flowableError.message}`, flowableError.stack, CaseService.name);
+        // Continue without Flowable - the database task still exists
+      }
+
       await this.auditLogService.logAction({
         userId,
         operation: 'createTask',
@@ -308,71 +338,213 @@ export class CaseService {
 
   async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
     try {
-      const updatedCase = await this.prismaService.case.update({
-        where: { case_id: caseId },
-        data: { status: finalOutcome as CaseStatus, updated_at: new Date() },
-      });
+      // Validate pre-conditions per Story 9A acceptance criteria
+      await this.validateApprovalPreconditions(caseId);
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+      const result = await this.prismaService.$transaction(async (tx) => {
+        // Update case status to final outcome (81/82/83)
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: { status: finalOutcome as CaseStatus, updated_at: new Date() },
+        });
 
-      if (processInstance) {
-        const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-        const approvalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
+        // Find and complete the approval task (STATUS_30_COMPLETED)
+        const approvalTask = await tx.task.findFirst({
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+          },
+        });
 
-        if (approvalTask) {
-          await this.flowableService.completeTask(approvalTask.id, {
-            approvalDecision: 'approve',
-            finalOutcome,
-            supervisorComments: comments,
+        if (!approvalTask) {
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        }
+
+        const completedTask = await tx.task.update({
+          where: { task_id: approvalTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+
+        // Add supervisor comments if provided
+        if (comments) {
+          await tx.comment.create({
+            data: {
+              user_id: supervisorId,
+              task_id: approvalTask.task_id,
+              note: `Supervisor Approval: ${comments}`,
+            },
           });
         }
+
+        return { updatedCase, completedTask };
+      });
+
+      // Complete Flowable workflow
+      try {
+        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+
+        if (processInstance) {
+          const tasks = await this.flowableService.getProcessTasks(processInstance.id);
+          const flowableApprovalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
+
+          if (flowableApprovalTask) {
+            await this.flowableService.completeTask(flowableApprovalTask.id, {
+              approvalDecision: 'approve',
+              finalOutcome,
+              supervisorComments: comments,
+            });
+            this.logger.log(`Completed approval task and process should reach endApproved for case ${caseId}`, CaseService.name);
+          } else {
+            this.logger.warn(`No approval task found for case ${caseId}, checking if process is already complete`, CaseService.name);
+            
+            // Check if process is still active - if so, terminate it since approval is done
+            const currentProcessInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+            if (currentProcessInstance) {
+              this.logger.warn(`Process still active after approval for case ${caseId}, terminating`, CaseService.name);
+              await this.flowableService.terminateProcessInstance(
+                currentProcessInstance.id,
+                `Case closure approved - final outcome: ${finalOutcome}`
+              );
+            }
+          }
+        }
+      } catch (flowableError) {
+        this.logger.error(`Flowable approval completion failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
+        // Continue - database transaction already succeeded
       }
 
+      // Audit logging per acceptance criteria
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseClosure',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} closure approved with outcome ${finalOutcome}`,
+        actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
         outcome: Outcome.SUCCESS,
       });
 
-      return { message: 'Case closure approved', case: updatedCase };
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'completeTask',
+        entityName: CaseService.name,
+        actionPerformed: `Completed "Approve case closure" task ${result.completedTask.task_id} for case ${caseId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(`Case ${caseId} closure approved by supervisor ${supervisorId} with outcome ${finalOutcome}`, CaseService.name);
+
+      return {
+        message: 'Case closure approved',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at,
+        },
+        completed_task: {
+          task_id: result.completedTask.task_id,
+          status: result.completedTask.status,
+        },
+      };
     } catch (error) {
       this.logger.error(`Failed to approve case closure: ${error.message}`, error.stack, CaseService.name);
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseClosure',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to approve case closure for case ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
       throw error;
     }
   }
 
   async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
-      const updatedCase = await this.prismaService.case.update({
-        where: { case_id: caseId },
-        data: { status: CaseStatus.STATUS_03_RETURNED, updated_at: new Date() },
+      // Validate pre-conditions
+      await this.validateApprovalPreconditions(caseId);
+
+      const result = await this.prismaService.$transaction(async (tx) => {
+        // Update case status to returned for further investigation
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: { status: CaseStatus.STATUS_03_RETURNED, updated_at: new Date() },
+        });
+
+        // Complete the approval task
+        const approvalTask = await tx.task.findFirst({
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+          },
+        });
+
+        if (!approvalTask) {
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        }
+
+        const completedTask = await tx.task.update({
+          where: { task_id: approvalTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+
+        // Add rejection comments
+        await tx.comment.create({
+          data: {
+            user_id: supervisorId,
+            task_id: approvalTask.task_id,
+            note: `Case closure rejected: ${comments}`,
+          },
+        });
+
+        return { updatedCase, completedTask };
       });
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-
-      if (processInstance) {
-        const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-        const approvalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
-
-        if (approvalTask) {
-          await this.flowableService.completeTask(approvalTask.id, {
-            approvalDecision: 'reject',
-            supervisorComments: comments,
-          });
+      // Complete Flowable workflow
+      try {
+        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+        if (processInstance) {
+          const tasks = await this.flowableService.getProcessTasks(processInstance.id);
+          const flowableApprovalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
+          if (flowableApprovalTask) {
+            await this.flowableService.completeTask(flowableApprovalTask.id, {
+              approvalDecision: 'reject',
+              supervisorComments: comments,
+            });
+            this.logger.log(`Completed rejection task, process should reach endRejected for case ${caseId}`, CaseService.name);
+          } else {
+            this.logger.warn(`No approval task found for case ${caseId} during rejection`, CaseService.name);
+          }
         }
+      } catch (flowableError) {
+        this.logger.error(`Flowable rejection completion failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
       }
 
+      // Audit logging
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'rejectCaseClosure',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} closure rejected`,
+        actionPerformed: `Case ${caseId} closure rejected and returned for investigation`,
         outcome: Outcome.SUCCESS,
       });
 
-      return { message: 'Case closure rejected', case: updatedCase };
+      return {
+        message: 'Case closure rejected',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at,
+        },
+      };
     } catch (error) {
       this.logger.error(`Failed to reject case closure: ${error.message}`, error.stack, CaseService.name);
       throw error;
@@ -381,25 +553,68 @@ export class CaseService {
 
   async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
     try {
-      const updatedCase = await this.prismaService.case.update({
-        where: { case_id: caseId },
-        data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+      // Validate pre-conditions
+      await this.validateApprovalPreconditions(caseId);
+
+      const result = await this.prismaService.$transaction(async (tx) => {
+        // Return case to in-progress status
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+        });
+
+        // Complete the approval task
+        const approvalTask = await tx.task.findFirst({
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+          },
+        });
+
+        if (!approvalTask) {
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        }
+
+        const completedTask = await tx.task.update({
+          where: { task_id: approvalTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+
+        // Add review comments
+        await tx.comment.create({
+          data: {
+            user_id: supervisorId,
+            task_id: approvalTask.task_id,
+            note: `Returned for review: ${comments}`,
+          },
+        });
+
+        return { updatedCase, completedTask };
       });
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-
-      if (processInstance) {
-        const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-        const approvalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
-
-        if (approvalTask) {
-          await this.flowableService.completeTask(approvalTask.id, {
-            approvalDecision: 'returnForReview',
-            supervisorComments: comments,
-          });
+      // Complete Flowable workflow
+      try {
+        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+        if (processInstance) {
+          const tasks = await this.flowableService.getProcessTasks(processInstance.id);
+          const flowableApprovalTask = tasks.find((t: any) => t.name === 'Approve Case Closure');
+          if (flowableApprovalTask) {
+            await this.flowableService.completeTask(flowableApprovalTask.id, {
+              approvalDecision: 'returnForReview',
+              supervisorComments: comments,
+            });
+          }
         }
+      } catch (flowableError) {
+        this.logger.error(`Flowable return for review completion failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
       }
 
+      // Audit logging
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'returnCaseForReview',
@@ -408,7 +623,14 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
-      return { message: 'Case returned for additional review', case: updatedCase };
+      return {
+        message: 'Case returned for additional review',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at,
+        },
+      };
     } catch (error) {
       this.logger.error(`Failed to return case for review: ${error.message}`, error.stack, CaseService.name);
       throw error;
@@ -425,6 +647,12 @@ export class CaseService {
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
 
       if (processInstance) {
+        // For suspended cases, suspend the entire process instance
+        // This pauses all workflow activities until the case is resumed
+        await this.flowableService.suspendProcessInstance(processInstance.id);
+        this.logger.log(`Suspended Flowable process ${processInstance.id} for case ${caseId}`, CaseService.name);
+        
+        // Also complete any active investigation task to properly transition workflow
         const tasks = await this.flowableService.getProcessTasks(processInstance.id);
         const investigationTask = tasks.find((t: any) => t.name === 'Investigate Case');
 
@@ -451,7 +679,52 @@ export class CaseService {
     }
   }
 
-  private async validateCaseClosurePreconditions(caseData: any, userId: string) {
+  private async validateApprovalPreconditions(caseId: string) {
+    const caseData = await this.prismaService.case.findUnique({
+      where: { case_id: caseId },
+      include: {
+        tasks: true,
+      },
+    });
+
+    if (!caseData) {
+      throw new NotFoundException(`Case ${caseId} not found`);
+    }
+
+    // Validate case status per Story 9A acceptance criteria
+    if (caseData.status !== CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
+      throw new ConflictException({
+        message: 'Case is not pending final approval',
+        currentStatus: caseData.status,
+        requiredStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      });
+    }
+
+    // Validate "Approve case closure" task exists and is unassigned using utility
+    const approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks);
+    TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
+
+    const approvalTask = TaskValidationUtil.findApprovalTask(caseData.tasks);
+
+    // Validate all other tasks are completed per acceptance criteria
+    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
+
+    if (!otherTasksValidation.isValid) {
+      throw new BadRequestException({
+        message: 'All other tasks must be completed before approval',
+        incompleteTasks: TaskValidationUtil.filterTasks(caseData.tasks, {
+          excludeTaskIds: [approvalTask.task_id],
+          excludeStatuses: [TaskStatus.STATUS_30_COMPLETED],
+        }).map((task) => ({
+          taskId: task.task_id,
+          name: task.name,
+          status: task.status,
+        })),
+      });
+    }
+  }
+
+  private async validateCaseClosurePreconditions(caseData: any, userId: string): Promise<{ valid: boolean; message: string }> {
     if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
       throw new ConflictException({
         message: 'Case is not in a closeable state',
@@ -460,58 +733,31 @@ export class CaseService {
       });
     }
 
-    if (caseData.case_owner_user_id !== userId) {
-      const userTask = caseData.tasks.find(
-          (task) => task.assigned_user_id === userId && (task.name === 'Investigate Case' || task.name === 'Investigate case'),
-      );
-      if (!userTask) {
-        throw new ForbiddenException('Case is not assigned to you');
-      }
-    }
+    // Permission validation removed - case query already filters by user permissions
 
-    const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
-    const errors: string[] = [];
+    // Use TaskValidationUtil for comprehensive validation
+    const validationResult = TaskValidationUtil.validateCaseClosurePreconditions(caseData.tasks);
 
-    if (!investigationTask) {
-      errors.push('Investigation task not found');
-    } else if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS) {
-      errors.push(`Investigation task must be in progress (current: ${investigationTask.status})`);
-    }
+    TaskValidationUtil.throwIfValidationFails(validationResult, 'Case closure preconditions not met');
 
-    const incompleteTasks = caseData.tasks.filter(
-        (task) => task.task_id !== investigationTask?.task_id && task.status !== TaskStatus.STATUS_30_COMPLETED,
-    );
-
-    if (incompleteTasks.length > 0) {
-      errors.push(`All other tasks must be completed. Incomplete tasks: ${incompleteTasks.map((t) => t.name).join(', ')}`);
-    }
-
-    if (errors.length > 0) {
-      throw new BadRequestException({ message: 'Case closure preconditions not met', errors });
-    }
-  }
-
-
-  private async ensureSystemUserExists(systemUuid: string) {
-    try {
-      const prismaClient: any = this.prismaService as any;
-      const existingUser = await prismaClient.user.findUnique({ where: { user_id: systemUuid } });
-
-      if (!existingUser) {
-        await prismaClient.user.create({
-          data: { user_id: systemUuid, username: 'system-user', role: 'SYSTEM' },
-        });
-        this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
+    return {
+      valid: true,
+      message: 'All case closure preconditions met successfully',
+    };
   }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto) {
     try {
-      const { status, priority, includeTaskAssignments, includeOwnedCases, page = 1, limit = 20, sortBy = 'created_at', sortOrder = 'desc' } = query;
+      const {
+        status,
+        priority,
+        includeTaskAssignments,
+        includeOwnedCases,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = query;
       const skip = (page - 1) * limit;
       const whereConditions: any[] = [];
 
@@ -553,7 +799,7 @@ export class CaseService {
 
       const processedCases = cases.map((caseItem) => {
         const isOwner = caseItem.case_owner_user_id === userId;
-        const userTasks = caseItem.tasks.filter((task) => task.assigned_user_id === userId);
+        const userTasks = TaskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
         const hasTaskAssignment = userTasks.length > 0;
         let userRole: 'owner' | 'task_assignee' | 'both' = isOwner && hasTaskAssignment ? 'both' : isOwner ? 'owner' : 'task_assignee';
 
@@ -565,9 +811,16 @@ export class CaseService {
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           user_role: userRole,
-          user_tasks: userTasks.map((task) => ({ task_id: task.task_id, name: task.name, status: task.status, created_at: task.created_at })),
+          user_tasks: userTasks.map((task) => ({
+            task_id: task.task_id,
+            name: task.name,
+            status: task.status,
+            created_at: task.created_at,
+          })),
           total_tasks: caseItem.tasks.length,
-          alert: caseItem.alert ? { alert_id: caseItem.alert.alert_id, message: caseItem.alert.message, confidence_per: caseItem.alert.confidence_per } : undefined,
+          alert: caseItem.alert
+            ? { alert_id: caseItem.alert.alert_id, message: caseItem.alert.message, confidence_per: caseItem.alert.confidence_per }
+            : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
       });
@@ -579,13 +832,30 @@ export class CaseService {
         this.prismaService.case.groupBy({ by: ['priority'], where: { OR: whereConditions }, _count: { case_id: true } }),
       ]);
 
-      const statusCounts = casesByStatus.reduce((acc, item) => { acc[item.status] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const priorityCounts = casesByPriority.reduce((acc, item) => { acc[item.priority] = item._count.case_id; return acc; }, {} as Record<string, number>);
+      const statusCounts = casesByStatus.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const priorityCounts = casesByPriority.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       return {
         cases: processedCases,
         pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) },
-        summary: { totalOwnedCases: ownedCasesCount, totalTaskAssignments: taskAssignmentCasesCount, casesByStatus: statusCounts, casesByPriority: priorityCounts },
+        summary: {
+          totalOwnedCases: ownedCasesCount,
+          totalTaskAssignments: taskAssignmentCasesCount,
+          casesByStatus: statusCounts,
+          casesByPriority: priorityCounts,
+        },
       };
     } catch (error) {
       this.logger.error(`Failed to get user cases: ${error.message}`, error.stack, CaseService.name);
@@ -595,7 +865,20 @@ export class CaseService {
 
   async getAllCases(query: GetAllCasesQueryDto, supervisorId: string) {
     try {
-      const { status, priority, caseType, ownerId, tenantId, unassignedOnly, createdAfter, createdBefore, page = 1, limit = 20, sortBy = 'created_at', sortOrder = 'desc' } = query;
+      const {
+        status,
+        priority,
+        caseType,
+        ownerId,
+        tenantId,
+        unassignedOnly,
+        createdAfter,
+        createdBefore,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = query;
       const whereClause: any = {};
 
       if (status) whereClause.status = status;
@@ -626,8 +909,9 @@ export class CaseService {
       });
 
       const processedCases = cases.map((caseItem) => {
-        const completedTasks = caseItem.tasks.filter((t) => t.status === TaskStatus.STATUS_30_COMPLETED).length;
-        const pendingTasks = caseItem.tasks.filter((t) => t.status !== TaskStatus.STATUS_30_COMPLETED).length;
+        const taskCounts = TaskValidationUtil.getTaskStatusCounts(caseItem.tasks);
+        const completedTasks = taskCounts.completed;
+        const pendingTasks = taskCounts.pending;
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
 
         return {
@@ -644,7 +928,10 @@ export class CaseService {
           completed_tasks: completedTasks,
           pending_tasks: pendingTasks,
           alert: caseItem.alert,
-          assigned_to: assignedUsers.length > 0 ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length } : undefined,
+          assigned_to:
+            assignedUsers.length > 0
+              ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length }
+              : undefined,
         };
       });
 
@@ -655,9 +942,27 @@ export class CaseService {
         this.prismaService.case.count({ where: { case_owner_user_id: null } }),
       ]);
 
-      const casesByStatus = statusStats.reduce((acc, item) => { acc[item.status] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByPriority = priorityStats.reduce((acc, item) => { acc[item.priority] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByType = typeStats.reduce((acc, item) => { if (item.case_type) acc[item.case_type] = item._count.case_id; return acc; }, {} as Record<string, number>);
+      const casesByStatus = statusStats.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByPriority = priorityStats.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByType = typeStats.reduce(
+        (acc, item) => {
+          if (item.case_type) acc[item.case_type] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
@@ -680,7 +985,15 @@ export class CaseService {
       return {
         cases: processedCases,
         pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) },
-        statistics: { totalCases: totalCount, casesByStatus, casesByPriority, casesByType, unassignedCases: unassignedCount, averageTasksPerCase, oldestUnassignedCase },
+        statistics: {
+          totalCases: totalCount,
+          casesByStatus,
+          casesByPriority,
+          casesByType,
+          unassignedCases: unassignedCount,
+          averageTasksPerCase,
+          oldestUnassignedCase,
+        },
       };
     } catch (error) {
       this.logger.error(`Failed to get all cases: ${error.message}`, error.stack, CaseService.name);
@@ -690,24 +1003,19 @@ export class CaseService {
 
   async getUserWorkloadStats(userId: string) {
     try {
-      const activeCaseStatuses = [
-        CaseStatus.STATUS_00_DRAFT,
-        CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        CaseStatus.STATUS_03_RETURNED,
-        CaseStatus.STATUS_10_ASSIGNED,
-        CaseStatus.STATUS_20_IN_PROGRESS,
-        CaseStatus.STATUS_21_SUSPENDED,
-        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        CaseStatus.STATUS_30_PENDING_REOPENING,
-        CaseStatus.STATUS_31_REOPENED,
-      ];
-
+      // Query for active cases (exclude final closed statuses)
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { in: activeCaseStatuses },
+            status: { 
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED
+              ] 
+            },
           },
         }),
         this.prismaService.task.count({
@@ -719,7 +1027,14 @@ export class CaseService {
         this.prismaService.case.findMany({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { in: activeCaseStatuses },
+            status: { 
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED
+              ] 
+            },
           },
           select: { case_id: true, status: true, priority: true, created_at: true },
           orderBy: { created_at: 'asc' },
@@ -734,7 +1049,9 @@ export class CaseService {
         const oldest = allUserCases[0];
         const daysOld = Math.floor((now.getTime() - oldest.created_at.getTime()) / (1000 * 60 * 60 * 24));
         oldestCase = { case_id: oldest.case_id, created_at: oldest.created_at, days_old: daysOld };
-        allUserCases.forEach((c) => { totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24); });
+        allUserCases.forEach((c) => {
+          totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24);
+        });
       }
 
       const casesByStatus: Record<string, number> = {};

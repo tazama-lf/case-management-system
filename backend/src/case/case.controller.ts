@@ -3,7 +3,7 @@ import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
-import { CloseCaseDto } from './dto/close-case.dto';
+import { CloseCaseDto, ApproveCaseClosureDto, RejectCaseClosureDto, ReturnCaseForReviewDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import {
   RequireAlertTriageRole,
@@ -18,7 +18,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, A
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import {AlertMessageDto} from "../nats/dto/AlertMessageDto.dto";
+import { AlertMessageDto } from '../nats/dto/AlertMessageDto.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -54,8 +54,6 @@ export class CaseController {
     const clientId = req.user.token.clientId;
     return this.caseService.createCaseSystemTransmission(dto, clientId);
   }
-
-
 
   @Post('manual')
   @RequireInvestigatorOrSupervisorRole()
@@ -173,13 +171,6 @@ export class CaseController {
   @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
   async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-
-    // TODO: Verify supervisor role
-    // const hasSupervisorRole = await this.authService.userHasRole(userId, 'SUPERVISOR');
-    // if (!hasSupervisorRole) {
-    //   throw new ForbiddenException('This endpoint requires supervisor permissions');
-    // }
-
     return this.caseService.getAllCases(query, userId);
   }
 
@@ -227,12 +218,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ) {
     const requestingUserId = req.user.token.clientId;
-
-    // TODO: Check if requesting user has supervisor permissions
-    // For now, allow users to only query their own cases
     if (requestingUserId !== targetUserId) {
-      // In production, check for supervisor role here
-      // throw new ForbiddenException('You can only view your own cases');
     }
 
     return this.caseService.getUserCases(targetUserId, query);
@@ -299,7 +285,6 @@ export class CaseController {
     return this.caseService.retrieveCase(caseId);
   }
 
-
   @Post(':caseId')
   @RequireAnyValidRole() // Allow any valid CMS role to update cases
   @ApiOperation({
@@ -317,19 +302,164 @@ export class CaseController {
     return this.caseService.updateCase(caseId, dto, userId);
   }
 
-
-  @Get('debug-token')
-  @RequireAlertTriageRole()
+  @Put(':caseId/approve')
+  @RequireSupervisorRole() // Only supervisors can approve case closures
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Debug JWT token',
-    description: 'Debug endpoint to inspect JWT token contents - remove in production',
+    summary: 'Approve case closure (Story 9A)',
+    description:
+      'Supervisor approves the case closure with final outcome. Updates case to final status (81/82/83) and completes approval task.',
   })
-  async debugToken(@Req() req: AuthenticatedRequest) {
-    return {
-      clientId: req.user.token.clientId,
-      tenantId: req.user.token.tenantId,
-      claims: req.user.token.claims || 'No claims found',
-      fullToken: req.user.token,
-    };
+  @ApiParam({
+    name: 'caseId',
+    type: 'string',
+    description: 'UUID of the case to approve closure for',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({ type: ApproveCaseClosureDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Case closure approved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Case closure approved' },
+        case: {
+          type: 'object',
+          properties: {
+            case_id: { type: 'string', format: 'uuid' },
+            status: { type: 'string', enum: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'] },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Case not in pending approval status or invalid final outcome',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - User lacks supervisor permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Case or approval task not found',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Case is not in STATUS_22_PENDING_FINAL_APPROVAL state',
+  })
+  async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
+    const supervisorId = req.user.token.clientId;
+    if (!supervisorId) {
+      throw new BadRequestException('Missing supervisor ID in auth token');
+    }
+    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
+  }
+
+  @Put(':caseId/reject')
+  @RequireSupervisorRole() // Only supervisors can reject case closures
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reject case closure',
+    description: 'Supervisor rejects the case closure and returns case to STATUS_03_RETURNED for further investigation.',
+  })
+  @ApiParam({
+    name: 'caseId',
+    type: 'string',
+    description: 'UUID of the case to reject closure for',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({ type: RejectCaseClosureDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Case closure rejected successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Case closure rejected' },
+        case: {
+          type: 'object',
+          properties: {
+            case_id: { type: 'string', format: 'uuid' },
+            status: { type: 'string', example: 'STATUS_03_RETURNED' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Case not in pending approval status',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - User lacks supervisor permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Case or approval task not found',
+  })
+  async rejectCaseClosure(@Param('caseId') caseId: string, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
+    const supervisorId = req.user.token.clientId;
+    if (!supervisorId) {
+      throw new BadRequestException('Missing supervisor ID in auth token');
+    }
+    return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
+  }
+
+  @Put(':caseId/return-for-review')
+  @RequireSupervisorRole() // Only supervisors can return cases for review
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Return case for additional review',
+    description: 'Supervisor returns case to STATUS_20_IN_PROGRESS for additional investigation work.',
+  })
+  @ApiParam({
+    name: 'caseId',
+    type: 'string',
+    description: 'UUID of the case to return for review',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({ type: ReturnCaseForReviewDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Case returned for review successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Case returned for review' },
+        case: {
+          type: 'object',
+          properties: {
+            case_id: { type: 'string', format: 'uuid' },
+            status: { type: 'string', example: 'STATUS_20_IN_PROGRESS' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Case not in pending approval status',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - User lacks supervisor permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Case or approval task not found',
+  })
+  async returnCaseForReview(@Param('caseId') caseId: string, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
+    const supervisorId = req.user.token.clientId;
+    if (!supervisorId) {
+      throw new BadRequestException('Missing supervisor ID in auth token');
+    }
+    return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
   }
 }
