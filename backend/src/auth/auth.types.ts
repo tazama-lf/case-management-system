@@ -7,15 +7,8 @@ export interface TazamaToken {
   // ...other fields as needed
 }
 
-export interface ClaimValidationResult {
-  isValid?: boolean;
-  errors?: string[];
-  [claim: string]: boolean | string[] | undefined;
-}
-
 export interface AuthenticatedUser {
   token: TazamaToken;
-  validated: ClaimValidationResult;
   validClaims: string[];
 }
 

@@ -671,6 +671,69 @@ export class FlowableService implements OnModuleInit {
   }
 
   /**
+   * Terminate a process instance
+   * This forcefully ends a process instance, useful for autoclosed cases
+   */
+  async terminateProcessInstance(processInstanceId: string, reason?: string) {
+    try {
+      const payload = {
+        action: 'delete',
+        deleteReason: reason || 'Process terminated by system',
+      };
+
+      const response = await this.flowableClient.delete(`/service/runtime/process-instances/${processInstanceId}`, {
+        data: payload,
+      });
+
+      this.logger.log(`Process instance terminated: ${processInstanceId}`, FlowableService.name);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to terminate process instance: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to terminate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Suspend a process instance
+   * This pauses a process instance, useful for suspended cases
+   */
+  async suspendProcessInstance(processInstanceId: string) {
+    try {
+      const payload = {
+        action: 'suspend',
+      };
+
+      const response = await this.flowableClient.put(`/service/runtime/process-instances/${processInstanceId}`, payload);
+
+      this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableService.name);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to suspend process instance: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to suspend process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Activate/Resume a process instance
+   * This resumes a suspended process instance
+   */
+  async activateProcessInstance(processInstanceId: string) {
+    try {
+      const payload = {
+        action: 'activate',
+      };
+
+      const response = await this.flowableClient.put(`/service/runtime/process-instances/${processInstanceId}`, payload);
+
+      this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableService.name);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to activate process instance: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to activate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Get work queue statistics
    */
   async getWorkQueueStatistics(candidateGroup?: string) {

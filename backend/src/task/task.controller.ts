@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { AssignTaskDto } from './dto/assign-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAlertTriageRole, RequireAnyValidRole, RequireSupervisorRole, RequireInvestigatorRole, RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
@@ -43,14 +44,30 @@ export class TaskController {
   }
 
   @Patch(':taskId/assign')
-    @RequireSupervisorRole()
+  @RequireSupervisorRole()
   async assignTaskToInvestigator(
     @Param('taskId') taskId: string,
-    @Body('assignedUserId') assignedUserId: string,
+    @Body() assignTaskDto: AssignTaskDto,
     @Req() req: AuthenticatedRequest,
   ) {
     const supervisorId = req.user.token.clientId;
-    return this.taskService.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, this.auditLogService);
+    const result = await this.taskService.assignTaskToInvestigator(
+      taskId, 
+      assignTaskDto.assignedUserId, 
+      supervisorId, 
+      this.auditLogService
+    );
+    
+    return {
+      success: true,
+      message: `Task ${taskId} successfully assigned to investigator ${assignTaskDto.assignedUserId}`,
+      data: {
+        taskId: result.task_id,
+        assignedUserId: result.assigned_user_id,
+        status: result.status,
+        assignedAt: new Date().toISOString()
+      }
+    };
   }
 
   @Patch(':taskId')

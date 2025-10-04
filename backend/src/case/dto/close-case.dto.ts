@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum CaseClosureOutcome {
@@ -87,4 +87,46 @@ export class ApproveCaseClosureTaskDto {
   @IsString()
   @IsOptional()
   recommendations?: string;
+}
+
+export class ApproveCaseClosureDto {
+  @ApiProperty({
+    description: 'Final outcome approved by supervisor',
+    enum: CaseClosureOutcome,
+    example: CaseClosureOutcome.CLOSED_CONFIRMED,
+  })
+  @IsEnum(CaseClosureOutcome)
+  @IsNotEmpty()
+  finalOutcome: CaseClosureOutcome;
+
+  @ApiProperty({
+    description: 'Optional supervisor comments on the approval',
+    example: 'Reviewed investigation thoroughly. Outcome is appropriate based on evidence.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  supervisorComments?: string;
+}
+
+export class RejectCaseClosureDto {
+  @ApiProperty({
+    description: 'Reason for rejecting the case closure',
+    example: 'Investigation incomplete. Please provide additional analysis on transaction patterns.',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  rejectionReason: string;
+}
+
+export class ReturnCaseForReviewDto {
+  @ApiProperty({
+    description: 'Comments explaining what needs to be reviewed',
+    example: 'Please re-examine the evidence for the third transaction. The analysis may need clarification.',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  reviewComments: string;
 }
