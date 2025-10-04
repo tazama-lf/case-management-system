@@ -20,6 +20,17 @@ import { Prediction } from './types/Prediction';
 
 @Injectable()
 export class TriageService {
+  constructor(
+    private readonly logger: LoggerService,
+    private prisma: PrismaService,
+    private audit: AuditLogService,
+    private caseService: CaseService,
+    private taskService: TaskService,
+    private commentService: CommentService,
+    private configService: ConfigService,
+    private flowableService: FlowableService,
+  ) {}
+
   public mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
     switch (alertType) {
       case AlertType.FRAUD:
@@ -34,17 +45,6 @@ export class TriageService {
         return undefined;
     }
   }
-
-  constructor(
-    private readonly logger: LoggerService,
-    private prisma: PrismaService,
-    private audit: AuditLogService,
-    private caseService: CaseService,
-    private taskService: TaskService,
-    private commentService: CommentService,
-    private configService: ConfigService,
-    private flowableService: FlowableService,
-  ) {}
 
   async processIncomingAlert(req: AlertMessageDto, userId: string, tenantId: string) {
     const submitAlertDto: SubmitAlertDto = {
@@ -186,13 +186,8 @@ export class TriageService {
           {
             caseId: createdCase.case_id,
             tenantId: tenantId,
-            creationType: 'AUTOMATIC',
-            creatorUserId: userId,
-            creatorRole: 'SYSTEM',
-            priority: Priority.NEW,
-            alertData: JSON.stringify(alert),
+
             autocloseEligible: false,
-            alertId: newAlert.alert_id,
           },
           createdCase.case_id,
         );
@@ -575,7 +570,6 @@ export class TriageService {
           status: TaskStatus.STATUS_10_ASSIGNED,
           name: 'Triage Alert',
           description: `Created for triaging alert for case:${caseId}`,
-          candidateGroup: 'Analysts',
         },
         userId,
         this.audit,
