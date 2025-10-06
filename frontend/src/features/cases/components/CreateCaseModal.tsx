@@ -3,7 +3,6 @@ import { XMarkIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ChevronDownIco
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
 
-// Backend enums matching Prisma schema
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
 export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
 
@@ -30,7 +29,6 @@ interface CreateCaseModalProps {
 }
 
 const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate, loading, error, initial }) => {
-  // Alert selection state
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
@@ -38,14 +36,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
   const [showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [alertSearchError, setAlertSearchError] = React.useState<string>('');
 
-  // Form state
   const [priority, setPriority] = React.useState<Priority>('NEW');
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
 
-  // Calculate priority based on score (same logic as ManualTriageModal)
   const calculatePriority = (score: number): Priority => {
     if (score >= 1.0) return 'BREACH';
     if (score >= 0.66) return 'CRITICAL';
@@ -53,13 +49,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     return 'NEW';
   };
 
-  // Update priority when score changes
   React.useEffect(() => {
     const newPriority = calculatePriority(priorityScore);
     setPriority(newPriority);
   }, [priorityScore]);
 
-  // Load NALT alerts when modal opens
   React.useEffect(() => {
     if (!open) return;
     
@@ -80,20 +74,17 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     loadNALTAlerts();
   }, [open]);
 
-  // Reset form when modal opens
   React.useEffect(() => {
     if (!open) return;
     
-    // Reset form state when modal opens
     setSelectedAlert(null);
     setPriorityScore(initial?.priorityScore || 0.33);
     setAlertType(initial?.alertType || 'FRAUD');
     setAssignee(initial?.assignee || '');
     setValidationErrors([]);
-    setAlertSearchTerm(''); // Only reset search when modal opens
+    setAlertSearchTerm('');
   }, [open, initial]);
 
-  // Separate effect for handling initial alert selection
   React.useEffect(() => {
     if (initial?.alertId && availableAlerts.length > 0 && !selectedAlert && open) {
       const alert = availableAlerts.find(a => a.alert_id === initial.alertId);
@@ -104,13 +95,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     }
   }, [availableAlerts, initial?.alertId, selectedAlert, open]);
 
-  // Search alerts as user types (debounced)
   React.useEffect(() => {
     if (!open) return;
     
     const timeoutId = setTimeout(async () => {
       if (alertSearchTerm.length === 0) {
-        // Load all NALT alerts when search is empty
         setIsLoadingAlerts(true);
         try {
           const alerts = await triageService.getNALTAlerts();
@@ -122,7 +111,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
           setIsLoadingAlerts(false);
         }
       } else if (alertSearchTerm.length >= 1) {
-        // Search with any length >= 1 character for alert ID
         setIsLoadingAlerts(true);
         setAlertSearchError('');
         try {
@@ -150,13 +138,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     setAlertSearchTerm(alert.alert_id);
     setShowAlertDropdown(false);
     
-    // Auto-populate alertType based on selected alert if available
     if (alert.alert_type) {
       setAlertType(alert.alert_type as AlertType);
     }
   };
 
-  // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -169,10 +155,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Enhanced filtering for better search experience with partial matches
   const filteredAlerts = React.useMemo(() => {
     if (!alertSearchTerm || alertSearchTerm.length < 2) {
-      return availableAlerts.slice(0, 10); // Show first 10 alerts when no search or less than 2 chars
+      return availableAlerts.slice(0, 10);
     }
 
     const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, ''); // Remove dashes and spaces for flexible matching
@@ -180,14 +165,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     return availableAlerts.filter(alert => {
       const alertIdClean = alert.alert_id.toLowerCase().replace(/[-\s]/g, '');
       
-      // Multiple matching strategies for better results
       const exactMatch = alert.alert_id.toLowerCase().includes(alertSearchTerm.toLowerCase());
       const partialMatch = alertIdClean.includes(searchTerm);
       const startsWithMatch = alertIdClean.startsWith(searchTerm);
       
       return exactMatch || partialMatch || startsWithMatch;
     }).sort((a, b) => {
-      // Prioritize results: exact matches first, then starts-with, then partial
       const aId = a.alert_id.toLowerCase();
       const bId = b.alert_id.toLowerCase();
       const search = alertSearchTerm.toLowerCase();

@@ -88,7 +88,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
               {tab === 'details' && <CaseDetailsTab row={row} />}
               {tab === 'evidence' && <EvidenceDocumentsTab />}
               {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'tasks' && <TaskLogTab />}
+              {tab === 'tasks' && <TaskLogTab caseId={row.id} />}
               {tab === 'notes' && <InvestigationNotesTab />}
             </>
           )}

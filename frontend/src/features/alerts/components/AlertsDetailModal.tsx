@@ -36,7 +36,6 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   prediction_outcome: alert.prediction_outcome,
 });
 
-// Risk score calculation and breakdown
 const getRiskScore = (alert: TriageAlert): number => {
   const priorityWeights = {
     NEW: 1,
@@ -51,7 +50,6 @@ const getRiskScore = (alert: TriageAlert): number => {
   return Math.round(baseScore * weight * 10); 
 };
 
-// Risk breakdown components
 const getRiskBreakdown = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
@@ -76,10 +74,8 @@ const getRiskBreakdown = (alert: TriageAlert) => {
       }
     }
   } catch {
-    // ignore parsing errors and fall back to synthetic breakdown
   }
 
-  // Fallback: synthesize breakdown based on computed risk score
   const totalScore = getRiskScore(alert);
   const components = [
     {
@@ -113,7 +109,6 @@ const getRiskBreakdown = (alert: TriageAlert) => {
   return components;
 };
 
-// Extract typology info (id/label/result) from alert.alert_data.tadpResult.typologyResult[0]
 const extractTypologyInfo = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
@@ -131,12 +126,10 @@ const extractTypologyInfo = (alert: TriageAlert) => {
       }
     }
   } catch {
-    // ignore
   }
   return { id: undefined, label: undefined, result: undefined };
 };
 
-// Utility: escape HTML for safe insertion
 const escapeHtml = (unsafe: string) => {
   return unsafe
     .replace(/&/g, '&amp;')
@@ -146,7 +139,6 @@ const escapeHtml = (unsafe: string) => {
     .replace(/'/g, '&#039;');
 };
 
-// Utility: simple JSON syntax highlighter that returns HTML
 const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
   const escaped = escapeHtml(String(json));
@@ -167,7 +159,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onClose,
   onManualTriage,
 }) => {
-  // System configuration for triage mode
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
   
   const [alert, setAlert] = useState<TriageAlert | null>(null);
@@ -196,7 +187,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
 
-        // Fetch action history
         setLoadingHistory(true);
         try {
           const history = await triageService.getAlertActionHistory(alertId);
@@ -222,7 +212,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     return null;
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -242,7 +231,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -277,12 +265,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     );
   }
 
-  // No alert loaded yet or alert not found
   if (!alert) {
     return null;
   }
 
-  // Get priority color (using priority instead of severity)
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'critical':
