@@ -132,6 +132,7 @@ export class CaseService {
         return { case: createdCase, alert: updatedAlert };
       });
 
+      // Start Flowable process - PASS REQUIRED VARIABLES
       await this.flowableService.startProcessInstance(
           'caseManagementProcess',
           {

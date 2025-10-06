@@ -185,7 +185,7 @@ export class TriageService {
             {
               caseId: createdCase.case_id,
               tenantId: tenantId,
-              creationType: 'AUTOMATIC_SYSTEM',
+              creationType: 'AUTOMATIC_SYSTEM',  // ✅ KEEP - needed for BPMN gateway
               autocloseEligible: false,
             },
             createdCase.case_id,
@@ -200,7 +200,6 @@ export class TriageService {
         );
       }
 
-      // ... audit logging ...
       return newAlert;
     } catch (error) {
       this.logger.error(`Error creating alert: ${error.message}`, TriageService.name);
@@ -808,6 +807,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
+      // Create PostgreSQL task
       const task = await this.taskService.createTask(
           {
             caseId: newCase.case_id,
@@ -821,6 +821,7 @@ export class TriageService {
           this.logger,
       );
 
+      // START NEW FLOWABLE PROCESS for the new child case
       try {
         await this.flowableService.startProcessInstance(
             'caseManagementProcess',
