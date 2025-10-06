@@ -1,21 +1,19 @@
 import React from 'react';
-import { EyeIcon, CheckIcon, ArrowPathIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { CaseWithTasksDto } from '../services/caseService';
 
 export type CaseRow = {
-  id: string; // Changed from number to string to match backend case_id
+  id: string;
   type: string;
-  typeColor: string; 
+  typeColor: string;
   status: string;
-  statusColor: string; 
+  statusColor: string;
   typologyId: string;
   score: number;
   createdOn: string;
   pickedOn: string;
   action: 'View' | 'Complete';
-  reassignEnabled: boolean;
   assignee?: string;
-  // Additional fields from backend
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both';
   totalTasks: number;
@@ -24,10 +22,8 @@ export type CaseRow = {
   confidencePercent?: number;
 };
 
-// Utility functions to transform backend data
 export const getStatusColor = (status: string): string => {
   const statusColors: Record<string, string> = {
-    // New format
     'STATUS_00_DRAFT': 'bg-gray-100 text-gray-700',
     'STATUS_02_READY_FOR_ASSIGNMENT': 'bg-indigo-50 text-indigo-700',
     'STATUS_10_ASSIGNED': 'bg-blue-50 text-blue-700',
@@ -37,7 +33,6 @@ export const getStatusColor = (status: string): string => {
     'STATUS_81_CLOSED_REFUTED': 'bg-red-50 text-red-700',
     'STATUS_82_CLOSED_CONFIRMED': 'bg-green-50 text-green-700',
     'STATUS_83_CLOSED_INCONCLUSIVE': 'bg-gray-50 text-gray-700',
-    
   };
   return statusColors[status] || 'bg-gray-100 text-gray-700';
 };
@@ -73,12 +68,11 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typeColor: getTypeColor(backendCase.case_type),
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
-    typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A', // Use first 8 chars of alert_id as typology
+    typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
     pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    reassignEnabled: ['STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS'].includes(backendCase.status),
     assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
     userRole: backendCase.user_role,
@@ -93,11 +87,21 @@ interface CasesTableProps {
   rows: CaseRow[];
   onView: (row: CaseRow) => void;
   onComplete: (row: CaseRow) => void;
-  onReassign: (row: CaseRow) => void;
   onCloseCase?: (row: CaseRow) => void;
+  onReopenCase?: (row: CaseRow) => void;
+  onAbandonCase?: (row: CaseRow) => void;
+  onSuspendCase?: (row: CaseRow) => void;
 }
 
-const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onReassign, onCloseCase }) => {
+const CasesTable: React.FC<CasesTableProps> = ({ 
+  rows, 
+  onView, 
+  onComplete, 
+  onCloseCase, 
+  onReopenCase, 
+  onAbandonCase, 
+  onSuspendCase 
+}) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -131,7 +135,15 @@ const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onRea
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
               <td className="whitespace-nowrap px-4 py-3">
                 <div className="flex justify-end gap-2">
-                  {c.action === 'Complete' ? (
+                  <button
+                    onClick={() => onView(c)}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <EyeIcon className="h-3 w-3" />
+                    View
+                  </button>
+                  
+                  {c.action === 'Complete' && (
                     <button
                       onClick={() => onComplete(c)}
                       className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -139,17 +151,8 @@ const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onRea
                       <CheckIcon className="h-3 w-3" />
                       Complete
                     </button>
-                  ) : (
-                    <button
-                      onClick={() => onView(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <EyeIcon className="h-3 w-3" />
-                      View
-                    </button>
                   )}
                   
-                  {/* Complete Case button - show for cases that can be closed */}
                   {onCloseCase && (
                     c.status === '20 - IN PROGRESS' || 
                     c.status === 'STATUS_20_IN_PROGRESS' ||
@@ -164,14 +167,50 @@ const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onRea
                     </button>
                   )}
                   
-                  <button
-                    onClick={() => onReassign(c)}
-                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
-                    disabled={!c.reassignEnabled}
-                  >
-                    <ArrowPathIcon className="h-3 w-3" />
-                    Reassign
-                  </button>
+                  
+                  {/* Reopen Case button - show for closed cases */}
+                  {onReopenCase && (
+                    c.status.includes('CLOSED') || 
+                    c.status.includes('STATUS_8')
+                  ) && (
+                    <button
+                      onClick={() => onReopenCase(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <PlayIcon className="h-3 w-3" />
+                      Reopen
+                    </button>
+                  )}
+                  
+                  {/* Abandon Case button - show for active cases */}
+                  {onAbandonCase && (
+                    c.status === 'STATUS_10_ASSIGNED' || 
+                    c.status === 'STATUS_20_IN_PROGRESS' ||
+                    c.status === 'STATUS_31_REOPENED'
+                  ) && (
+                    <button
+                      onClick={() => onAbandonCase(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                      Abandon
+                    </button>
+                  )}
+                  
+                  {/* Suspend Case button - show for active cases */}
+                  {onSuspendCase && (
+                    c.status === 'STATUS_10_ASSIGNED' || 
+                    c.status === 'STATUS_20_IN_PROGRESS' ||
+                    c.status === 'STATUS_31_REOPENED'
+                  ) && (
+                    <button
+                      onClick={() => onSuspendCase(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    >
+                      <PauseIcon className="h-3 w-3" />
+                      Suspend
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

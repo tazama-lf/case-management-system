@@ -1,8 +1,11 @@
 import React from 'react';
 import { MagnifyingGlassIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '../../../shared/components/ui';
-import { CasesTable, CreateCaseModal, ViewCaseModal, ReassignCaseModal } from '..';
+import { CasesTable, CreateCaseModal, ViewCaseModal } from '..';
 import CloseCaseModal from '../components/CloseCaseModal';
+import ReopenCaseModal from '../components/ReopenCaseModal';
+import AbandonCaseModal from '../components/AbandonCaseModal';
+import SuspendCaseModal from '../components/SuspendCaseModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
 import { caseService, type CloseCaseDto, type CreateCaseDto } from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
@@ -18,8 +21,10 @@ const CasesDashboard: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = React.useState<string>('');
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
-  const [isReassignOpen, setIsReassignOpen] = React.useState(false);
   const [isCloseCaseOpen, setIsCloseCaseOpen] = React.useState(false);
+  const [isReopenOpen, setIsReopenOpen] = React.useState(false);
+  const [isAbandonOpen, setIsAbandonOpen] = React.useState(false);
+  const [isSuspendOpen, setIsSuspendOpen] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState<CaseRow | null>(null);
   const [cases, setCases] = React.useState<CaseRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -147,15 +152,6 @@ const CasesDashboard: React.FC = () => {
     setIsCreateOpen(true);
   };
 
-  const handleOpenReassign = (row: CaseRow) => {
-    setSelectedRow(row);
-    setIsReassignOpen(true);
-  };
-
-  const handleReassign = (row: CaseRow, assignee: string, justification?: string) => {
-    console.log('Reassign case', row, 'to', assignee, 'justification:', justification);
-    setIsReassignOpen(false);
-  };
 
   const handleCloseCase = (row: CaseRow) => {
     setSelectedRow(row);
@@ -176,7 +172,6 @@ const CasesDashboard: React.FC = () => {
         recommendedOutcome: data.recommendedOutcome
       });
       
-      // Show success message matching acceptance criteria
       alert(`✅ Case Investigation Complete!\n\n` +
             `Case ${selectedRow.id} has been submitted for supervisor approval.\n\n` +
             `📋 Status Updates:\n` +
@@ -189,7 +184,6 @@ const CasesDashboard: React.FC = () => {
       setIsCloseCaseOpen(false);
       setSelectedRow(null);
       
-      // Refresh the cases list to show updated status
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -209,7 +203,6 @@ const CasesDashboard: React.FC = () => {
     } catch (error) {
       console.error('Failed to close case:', error);
       
-      // Provide specific error messages based on the error
       let errorMessage = 'Failed to close case. Please try again.';
       const errorString = error instanceof Error ? error.message : '';
       
@@ -231,8 +224,44 @@ const CasesDashboard: React.FC = () => {
       }
       
       alert(errorMessage);
-      throw error; // Re-throw so the modal can handle it
+      throw error;
     }
+  };
+
+  const handleReopenCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsReopenOpen(true);
+  };
+
+  const handleAbandonCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsAbandonOpen(true);
+  };
+
+  const handleSuspendCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsSuspendOpen(true);
+  };
+
+  const handleReopenSubmit = async (caseId: string, reason?: string) => {
+    console.log('Reopen case:', caseId, 'Reason:', reason);
+    alert(`🔄 Case ${caseId} Reopened\n\nThis case has been moved back to "In Progress" status and assigned to an investigator.${reason ? `\n\nReason: ${reason}` : ''}`);
+    setIsReopenOpen(false);
+    setSelectedRow(null);
+  };
+
+  const handleAbandonSubmit = async (caseId: string, reason: string) => {
+    console.log('Abandon case:', caseId, 'Reason:', reason);
+    alert(`🗑️ Case ${caseId} Abandoned\n\nReason: ${reason}\n\nThe case has been permanently abandoned and removed from active investigation.`);
+    setIsAbandonOpen(false);
+    setSelectedRow(null);
+  };
+
+  const handleSuspendSubmit = async (caseId: string, reason: string, duration?: string) => {
+    console.log('Suspend case:', caseId, 'Reason:', reason, 'Duration:', duration);
+    alert(`⏸️ Case ${caseId} Suspended\n\nReason: ${reason}${duration ? `\nDuration: ${duration.replace('_', ' ')}` : ''}\n\nThe case has been suspended and can be resumed later.`);
+    setIsSuspendOpen(false);
+    setSelectedRow(null);
   };
 
   return (
@@ -330,8 +359,10 @@ const CasesDashboard: React.FC = () => {
             rows={filtered}
             onView={handleView}
             onComplete={handleComplete}
-            onReassign={handleOpenReassign}
             onCloseCase={handleCloseCase}
+            onReopenCase={handleReopenCase}
+            onAbandonCase={handleAbandonCase}
+            onSuspendCase={handleSuspendCase}
           />
         )}
       </Card>
@@ -365,18 +396,30 @@ const CasesDashboard: React.FC = () => {
         onClose={() => setIsViewOpen(false)}
         row={selectedRow}
       />
-      <ReassignCaseModal
-        open={isReassignOpen}
-        onClose={() => setIsReassignOpen(false)}
-        onReassign={handleReassign}
-        row={selectedRow}
-      />
       <CloseCaseModal
         open={isCloseCaseOpen}
         onClose={() => setIsCloseCaseOpen(false)}
         caseId={selectedRow?.id || ''}
         caseName={selectedRow ? `${selectedRow.type} Case` : ''}
         onSubmit={handleCloseCaseSubmit}
+      />
+      <ReopenCaseModal
+        open={isReopenOpen}
+        onClose={() => setIsReopenOpen(false)}
+        onReopen={handleReopenSubmit}
+        caseData={selectedRow}
+      />
+      <AbandonCaseModal
+        open={isAbandonOpen}
+        onClose={() => setIsAbandonOpen(false)}
+        onAbandon={handleAbandonSubmit}
+        caseData={selectedRow}
+      />
+      <SuspendCaseModal
+        open={isSuspendOpen}
+        onClose={() => setIsSuspendOpen(false)}
+        onSuspend={handleSuspendSubmit}
+        caseData={selectedRow}
       />
     </PageContainer>
   );

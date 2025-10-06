@@ -3,9 +3,10 @@ import LayoutWithProvider from '../shared/components/layout/LayoutWithProvider';
 import ProtectedRoute from '../features/auth/components/ProtectedRoute';
 import RoleBasedRedirect from '../shared/components/navigation/RoleBasedRedirect';
 import Login from '../features/auth/pages/Login';
+import Dashboard from '../features/dashboard/pages/Dashboard';
+import Reports from '../features/reports/pages/Reports';
 import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
 import CasesDashboard from '../features/cases/pages/CasesDashboard';
-import SupervisorDashboard from '../features/supervisor/pages/SupervisorDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import WorkQueueDashboard from '../features/workqueue/pages/WorkQueueDashboard';
 
@@ -27,6 +28,22 @@ export const router = createBrowserRouter([
         element: <RoleBasedRedirect />,
       },
       {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'alerts',
         element: (
           <ProtectedRoute requireAdmin>
@@ -39,14 +56,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireInvestigator>
             <CasesDashboard />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'supervisor',
-        element: (
-          <ProtectedRoute requireSupervisor>
-            <SupervisorDashboard />
           </ProtectedRoute>
         ),
       },
@@ -70,6 +79,6 @@ export const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <Navigate to="/alerts" replace />,
+    element: <Navigate to="/dashboard" replace />,
   },
 ]);
