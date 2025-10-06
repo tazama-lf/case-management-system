@@ -64,9 +64,6 @@ export class BpmnDeploymentService implements OnModuleInit {
     }
   }
 
-  /**
-   * Redeploy the unified process (useful for development/updates)
-   */
   async redeployUnifiedProcess() {
     await this.deployBpmnProcesses();
     return {
@@ -74,9 +71,6 @@ export class BpmnDeploymentService implements OnModuleInit {
     };
   }
 
-  /**
-   * Get deployment status
-   */
   async getDeploymentStatus() {
     try {
       // You can enhance this to check actual Flowable deployment status
