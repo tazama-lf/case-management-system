@@ -44,7 +44,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
     <nav className={`flex ${className}`} aria-label="Breadcrumb">
       <ol role="list" className="flex items-center space-x-4">
         {breadcrumbItems.map((item, index) => (
-          <li key={item.name}>
+          <li key={`${item.name}-${index}`}>
             <div className="flex items-center">
               {/* {index === 0 && (
                 <HomeIcon className="h-5 w-5 flex-shrink-0 text-gray-400 mr-2" aria-hidden="true" />

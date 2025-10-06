@@ -21,10 +21,9 @@ const RoleBasedRedirect: React.FC = () => {
       hasInvestigatorRole: investigatorRole,
       hasSupervisorRole: supervisorRole
     },
-    redirectDecision: supervisorRole ? 'supervisor' : investigatorRole ? 'cases' : adminRole ? 'alerts' : 'login'
+    redirectDecision: supervisorRole ? 'supervisor' : investigatorRole ? 'cases' : adminRole ? 'alerts' : user ? 'dashboard' : 'login'
   });
 
-  // Show loading while auth state is being determined
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -33,8 +32,6 @@ const RoleBasedRedirect: React.FC = () => {
     );
   }
 
-  // Redirect users to their appropriate dashboard based on their role
-  // Priority: Supervisor > Investigator > Admin (most specific roles first)
   if (supervisorRole) {
     console.log('Redirecting to /supervisor (supervisor role)');
     return <Navigate to="/supervisor" replace />;
@@ -44,9 +41,11 @@ const RoleBasedRedirect: React.FC = () => {
   } else if (adminRole) {
     console.log('Redirecting to /alerts (admin role)');
     return <Navigate to="/alerts" replace />;
+  } else if (user) {
+    console.log('Redirecting to /dashboard (authenticated user)');
+    return <Navigate to="/dashboard" replace />;
   } else {
-    console.log('No recognized role, redirecting to /login');
-    // If user has no recognized role, redirect to login
+    console.log('No authenticated user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 };
