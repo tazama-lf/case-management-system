@@ -16,12 +16,6 @@
             <extensionElements>
                 <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
                 <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
-                <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
-                <flowable:formProperty id="creatorRole" name="Creator Role" type="string"/>
-                <flowable:formProperty id="creatorUserId" name="Creator User ID" type="string" required="true"/>
-                <flowable:formProperty id="priority" name="Priority" type="string"/>
-                <flowable:formProperty id="caseType" name="Case Type" type="string"/>
-                <flowable:formProperty id="alertData" name="Alert Data" type="string"/>
                 <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
             </extensionElements>
         </startEvent>
