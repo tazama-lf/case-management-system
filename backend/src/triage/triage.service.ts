@@ -786,25 +786,25 @@ export class TriageService {
   }
 
   async createCaseWithInvestigationTask(
-    caseType: CaseType,
-    userId: string,
-    tenantId: string,
-    parentCaseId: string,
-    priority: Priority,
+      caseType: CaseType,
+      userId: string,
+      tenantId: string,
+      parentCaseId: string,
+      priority: Priority,
   ): Promise<any> {
     try {
       const newCase = await this.caseService.createCase(
-        {
-          caseCreatorUserId: userId,
-          caseOwnerUserId: userId,
-          tenantId,
-          priority: priority,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          parentId: parentCaseId,
-          caseType,
-          caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-        },
-        userId,
+          {
+            caseCreatorUserId: userId,
+            caseOwnerUserId: userId,
+            tenantId,
+            priority: priority,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            parentId: parentCaseId,
+            caseType,
+            caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          },
+          userId,
       );
 
       await this.audit.logAction({
@@ -816,39 +816,35 @@ export class TriageService {
       });
 
       const task = await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate case',
-          description: `Investigation task for ${caseType} case ${newCase.case_id}`,
-          candidateGroup: 'investigations',
-        },
-        userId,
-        this.audit,
-        this.logger,
+          {
+            caseId: newCase.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Investigation task for ${caseType} case ${newCase.case_id}`,
+            candidateGroup: 'investigations',
+          },
+          userId,
+          this.audit,
+          this.logger,
       );
 
       try {
-        const flowableTask = await this.flowableService.createTask({
-          name: 'Investigate Case',
-          description: `Investigation task for ${caseType} case ${newCase.case_id}`,
-          candidateGroups: ['investigations'],
-          tenantId: tenantId,
-          variables: {
-            postgres_task_id: task.task_id,
-            postgres_case_id: newCase.case_id,
-            task_status: TaskStatus.STATUS_01_UNASSIGNED,
-            case_type: caseType,
-            priority: priority,
-          },
-        });
+        await this.flowableService.startProcessInstance(
+            'caseManagementProcess',
+            {
+              caseId: newCase.case_id,
+              tenantId: tenantId,
+              autocloseEligible: false,
+            },
+            newCase.case_id,
+        );
 
-        this.logger.log(`Created Flowable task ${flowableTask.id} for ${caseType} case ${newCase.case_id}`, TriageService.name);
+        this.logger.log(`Started Flowable process for new ${caseType} case ${newCase.case_id}`, TriageService.name);
       } catch (flowableError) {
         this.logger.error(
-          `Failed to create Flowable task for case ${newCase.case_id}: ${flowableError.message}`,
-          flowableError.stack,
-          TriageService.name,
+            `Failed to start Flowable process for case ${newCase.case_id}: ${flowableError.message}`,
+            flowableError.stack,
+            TriageService.name,
         );
       }
 

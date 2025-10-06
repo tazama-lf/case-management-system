@@ -4,10 +4,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
 import FormData = require ('form-data') ;
 
-/**
- * Enhanced Flowable Service with Work Queue Management
- * Manages candidate groups, tasks, and process instances
- */
 @Injectable()
 export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
@@ -36,9 +32,6 @@ export class FlowableService implements OnModuleInit {
     });
   }
 
-  /**
-   * Initialize candidate groups on module init
-   */
   async onModuleInit() {
     try {
       await this.initializeCandidateGroups();
@@ -49,9 +42,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Initialize candidate groups in Flowable
-   */
   private async initializeCandidateGroups() {
     for (const groupName of this.candidateGroups) {
       try {
@@ -75,9 +65,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Initialize system users in Flowable
-   */
   private async initializeUsers() {
     const systemUsers = [
       {
@@ -103,9 +90,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Create a group in Flowable
-   */
   async createGroup(groupData: { id: string; name: string; type: string }) {
     try {
       const response = await this.flowableClient.post('/service/identity/groups', groupData);
@@ -120,9 +104,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get a group by ID
-   */
   async getGroup(groupId: string) {
     try {
       const response = await this.flowableClient.get(`/service/identity/groups/${groupId}`);
@@ -135,9 +116,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Create a user in Flowable
-   */
   async createUser(userData: { id: string; firstName: string; lastName: string; email: string; password: string }) {
     try {
       const response = await this.flowableClient.post('/service/identity/users', userData);
@@ -152,9 +130,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get a user by ID
-   */
   async getUser(userId: string) {
     try {
       const response = await this.flowableClient.get(`/service/identity/users/${userId}`);
@@ -167,9 +142,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Add a user to a group
-   */
   async addUserToGroup(userId: string, groupId: string) {
     try {
       const response = await this.flowableClient.post(`/service/identity/groups/${groupId}/members`, {
@@ -182,9 +154,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Deploy a BPMN process definition to Flowable
-   */
   async deployProcess(bpmnXml: string, deploymentName: string, tenantId?: string) {
   try {
     const formData = new FormData();
@@ -211,10 +180,6 @@ export class FlowableService implements OnModuleInit {
   }
 }
 
-
-  /**
-   * Start a process instance with variables
-   */
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey?: string) {
     try {
       const payload = {
@@ -234,9 +199,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get process instance by ID
-   */
   async getProcessInstance(processInstanceId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/process-instances/${processInstanceId}`);
@@ -249,9 +211,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get process instance by business key
-   */
   async getProcessInstanceByBusinessKey(businessKey: string) {
     try {
       const response = await this.flowableClient.get('/service/runtime/process-instances', {
@@ -266,9 +225,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get tasks for a process instance
-   */
   async getProcessTasks(processInstanceId: string) {
     try {
       const response = await this.flowableClient.get('/service/runtime/tasks', {
@@ -283,9 +239,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Create a standalone task (not part of a process)
-   */
   async createTask(taskData: {
     name: string;
     description?: string;
@@ -325,9 +278,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Complete a task with variables
-   */
   async completeTask(taskId: string, variables?: Record<string, any>) {
     try {
       const payload = {
@@ -345,9 +295,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Claim a task for a user
-   */
   async claimTask(taskId: string, userId: string | null): Promise<any> {
     if (!userId) {
       throw new HttpException('User ID cannot be null for task claiming', HttpStatus.BAD_REQUEST);
@@ -369,9 +316,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Unclaim a task (release it back to candidate group)
-   */
   async unclaimTask(taskId: string) {
     try {
       const payload = {
@@ -389,9 +333,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Delegate a task to another user
-   */
   async delegateTask(taskId: string, userId: string | null): Promise<any> {
     if (!userId) {
       throw new HttpException('User ID cannot be null for task delegation', HttpStatus.BAD_REQUEST);
@@ -413,9 +354,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Assign task to a candidate group
-   */
   async assignTaskToCandidateGroup(taskId: string, group: string) {
     try {
       const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/identitylinks`, {
@@ -431,36 +369,30 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Remove task from candidate group
-   */
-  async removeTaskFromCandidateGroup(taskId: string, group: string) {
-    try {
-      // Get all identity links
-      const identityLinks = await this.getTaskIdentityLinks(taskId);
+  // async removeTaskFromCandidateGroup(taskId: string, group: string) {
+  //   try {
+  //     // Get all identity links
+  //     const identityLinks = await this.getTaskIdentityLinks(taskId);
+  //
+  //     // Find the link to remove
+  //     const linkToRemove = identityLinks.find((link: any) => link.type === 'candidate' && link.group === group.toLowerCase());
+  //
+  //     if (linkToRemove) {
+  //       // Remove the identity link
+  //       const response = await this.flowableClient.delete(
+  //         `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`,
+  //       );
+  //       this.logger.log(`Task ${taskId} removed from candidate group ${group}`, FlowableService.name);
+  //       return response.data;
+  //     }
+  //
+  //     return null;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to remove task from group: ${error.message}`, error.stack, FlowableService.name);
+  //     throw new HttpException('Failed to remove task from group', HttpStatus.INTERNAL_SERVER_ERROR);
+  //   }
+  // }
 
-      // Find the link to remove
-      const linkToRemove = identityLinks.find((link: any) => link.type === 'candidate' && link.group === group.toLowerCase());
-
-      if (linkToRemove) {
-        // Remove the identity link
-        const response = await this.flowableClient.delete(
-          `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`,
-        );
-        this.logger.log(`Task ${taskId} removed from candidate group ${group}`, FlowableService.name);
-        return response.data;
-      }
-
-      return null;
-    } catch (error) {
-      this.logger.error(`Failed to remove task from group: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException('Failed to remove task from group', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Get identity links for a task
-   */
   async getTaskIdentityLinks(taskId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}/identitylinks`);
@@ -471,9 +403,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get candidate tasks for a group
-   */
   async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
     try {
       const response = await this.flowableClient.get('/service/runtime/tasks', {
@@ -509,9 +438,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get user tasks (assigned to a specific user)
-   */
   async getUserTasks(assignee: string, includeVariables: boolean = true) {
     try {
       const response = await this.flowableClient.get('/service/runtime/tasks', {
@@ -547,9 +473,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get all tasks for a tenant
-   */
   async getTenantTasks(
     tenantId: string,
     filters?: {
@@ -584,9 +507,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get task by ID
-   */
   async getTask(taskId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}`);
@@ -599,9 +519,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Set task variables
-   */
   async setTaskVariables(taskId: string, variables: Record<string, any>) {
     try {
       const formattedVariables = this.formatVariables(variables);
@@ -616,9 +533,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get task variables
-   */
   async getTaskVariables(taskId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}/variables`);
@@ -638,9 +552,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Update task variable
-   */
   async updateTaskVariable(taskId: string, variableName: string, value: any) {
     try {
       const response = await this.flowableClient.put(`/service/runtime/tasks/${taskId}/variables/${variableName}`, {
@@ -657,9 +568,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Delete task variable
-   */
   async deleteTaskVariable(taskId: string, variableName: string) {
     try {
       await this.flowableClient.delete(`/service/runtime/tasks/${taskId}/variables/${variableName}`);
@@ -670,10 +578,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Terminate a process instance
-   * This forcefully ends a process instance, useful for autoclosed cases
-   */
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
     try {
       const payload = {
@@ -693,10 +597,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Suspend a process instance
-   * This pauses a process instance, useful for suspended cases
-   */
   async suspendProcessInstance(processInstanceId: string) {
     try {
       const payload = {
@@ -713,10 +613,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Activate/Resume a process instance
-   * This resumes a suspended process instance
-   */
   async activateProcessInstance(processInstanceId: string) {
     try {
       const payload = {
@@ -733,9 +629,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get work queue statistics
-   */
   async getWorkQueueStatistics(candidateGroup?: string) {
     try {
       const groups = candidateGroup ? [candidateGroup] : this.candidateGroups;
@@ -758,9 +651,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Format variables for Flowable API
-   */
   private formatVariables(variables: Record<string, any>) {
     return Object.entries(variables).map(([name, value]) => ({
       name,
@@ -768,10 +658,6 @@ export class FlowableService implements OnModuleInit {
       type: this.getVariableType(value),
     }));
   }
-
-  /**
-   * Determine variable type for Flowable
-   */
   private getVariableType(value: any): string {
     if (value === null || value === undefined) return 'null';
     if (typeof value === 'string') return 'string';
@@ -784,10 +670,6 @@ export class FlowableService implements OnModuleInit {
     return 'string';
   }
 
-  /**
-   * Sync task with database variables
-   * Maps database fields to Flowable task variables
-   */
   async syncTaskWithDatabase(
     flowableTaskId: string,
     dbTaskData: {
@@ -817,9 +699,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Create task with full context (combines Flowable task creation with database sync)
-   */
   async createTaskWithContext(taskData: {
     name: string;
     description: string;
@@ -851,9 +730,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get all available candidate groups
-   */
   async getAllCandidateGroups() {
     try {
       const response = await this.flowableClient.get('/service/identity/groups', {
@@ -868,9 +744,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Health check for Flowable connection
-   */
   async healthCheck(): Promise<{ status: string; message?: string }> {
     try {
       await this.flowableClient.get('/service/repository/deployments', {
