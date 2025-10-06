@@ -51,7 +51,6 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     try {
       await onSubmit(formData);
       onClose();
-      // Reset form
       setFormData({
         recommendedOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
         finalNotes: '',
