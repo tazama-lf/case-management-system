@@ -137,6 +137,8 @@ export class CaseService {
           {
             caseId: result.case.case_id,
             tenantId,
+            creationType: 'MANUAL',
+            creatorRole: role,
             autocloseEligible: false,
           },
           result.case.case_id,
@@ -627,48 +629,6 @@ export class CaseService {
       };
     } catch (error) {
       this.logger.error(`Failed to return case for review: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
-  }
-
-  async suspendCase(caseId: string, reason: string, userId: string) {
-    try {
-      const updatedCase = await this.prismaService.case.update({
-        where: { case_id: caseId },
-        data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
-      });
-
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-
-      if (processInstance) {
-        // For suspended cases, suspend the entire process instance
-        // This pauses all workflow activities until the case is resumed
-        await this.flowableService.suspendProcessInstance(processInstance.id);
-        this.logger.log(`Suspended Flowable process ${processInstance.id} for case ${caseId}`, CaseService.name);
-        
-        // Also complete any active investigation task to properly transition workflow
-        const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-        const investigationTask = tasks.find((t: any) => t.name === 'Investigate Case');
-
-        if (investigationTask) {
-          await this.flowableService.completeTask(investigationTask.id, {
-            investigationAction: 'suspend',
-            suspensionReason: reason,
-          });
-        }
-      }
-
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'suspendCase',
-        entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} suspended: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      return { message: 'Case suspended', case: updatedCase };
-    } catch (error) {
-      this.logger.error(`Failed to suspend case: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }

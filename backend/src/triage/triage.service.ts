@@ -77,16 +77,16 @@ export class TriageService {
       case 'MANUAL': {
         this.logger.log(`Manual Triage enabled for alert: ${alert.alert_id}`, TriageService.name);
         await this.taskService.createTask(
-          {
-            caseId: alert.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Triage Alert',
-            description: `Manual triage required for alert: ${alert.alert_id}`,
-            candidateGroup: 'Analysts',
-          },
-          userId,
-          this.audit,
-          this.logger,
+            {
+              caseId: alert.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Triage Alert',
+              description: `Manual triage required for alert: ${alert.alert_id}`,
+              candidateGroup: 'Analysts',
+            },
+            userId,
+            this.audit,
+            this.logger,
         );
         break;
       }
@@ -95,16 +95,16 @@ export class TriageService {
       default: {
         this.logger.log(`Triage disabled, creating investigation task for alert: ${alert.alert_id}`, TriageService.name);
         await this.taskService.createTask(
-          {
-            caseId: alert.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Case',
-            description: `Investigate case: ${alert.case_id}`,
-            candidateGroup: 'Investigations',
-          },
-          userId,
-          this.audit,
-          this.logger,
+            {
+              caseId: alert.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Investigate Case',
+              description: `Investigate case: ${alert.case_id}`,
+              candidateGroup: 'Investigations',
+            },
+            userId,
+            this.audit,
+            this.logger,
         );
         const updateCaseDto: Partial<UpdateCaseDto> = {
           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -181,33 +181,26 @@ export class TriageService {
 
       try {
         await this.flowableService.startProcessInstance(
-          'caseManagementProcess',
-          {
-            caseId: createdCase.case_id,
-            tenantId: tenantId,
-
-            autocloseEligible: false,
-          },
-          createdCase.case_id,
+            'caseManagementProcess',
+            {
+              caseId: createdCase.case_id,
+              tenantId: tenantId,
+              creationType: 'AUTOMATIC_SYSTEM',
+              autocloseEligible: false,
+            },
+            createdCase.case_id,
         );
 
         this.logger.log(`Flowable process started for case ${createdCase.case_id}, alert ${newAlert.alert_id}`, TriageService.name);
       } catch (flowableError) {
         this.logger.error(
-          `Failed to start Flowable process for case ${createdCase.case_id}: ${flowableError.message}`,
-          flowableError.stack,
-          TriageService.name,
+            `Failed to start Flowable process for case ${createdCase.case_id}: ${flowableError.message}`,
+            flowableError.stack,
+            TriageService.name,
         );
       }
 
-      await this.audit.logAction({
-        userId,
-        operation: 'ALERT_CREATED',
-        entityName: 'Alert',
-        actionPerformed: `Created new alert ${newAlert.alert_id}`,
-        outcome: Outcome.SUCCESS,
-      });
-
+      // ... audit logging ...
       return newAlert;
     } catch (error) {
       this.logger.error(`Error creating alert: ${error.message}`, TriageService.name);
@@ -834,6 +827,7 @@ export class TriageService {
             {
               caseId: newCase.case_id,
               tenantId: tenantId,
+              creationType: 'AUTOMATIC_SYSTEM',
               autocloseEligible: false,
             },
             newCase.case_id,
@@ -847,14 +841,6 @@ export class TriageService {
             TriageService.name,
         );
       }
-
-      await this.audit.logAction({
-        userId,
-        operation: 'INVESTIGATION_TASK_CREATED',
-        entityName: 'Task',
-        actionPerformed: `Created task ${task.task_id} for ${caseType} case ${newCase.case_id}`,
-        outcome: 'SUCCESS',
-      });
 
       return { caseId: newCase.case_id, taskId: task.task_id };
     } catch (error) {

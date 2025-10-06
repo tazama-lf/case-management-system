@@ -16,6 +16,8 @@
             <extensionElements>
                 <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
                 <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
+                <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
+                <flowable:formProperty id="creatorRole" name="Creator Role" type="string"/>
                 <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
             </extensionElements>
         </startEvent>
@@ -24,23 +26,11 @@
         <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
 
         <!-- AUTOMATIC CREATION PATH -->
-        <serviceTask id="processAutomaticCreation" name="Process Automatic Creation"
-                     flowable:delegateExpression="${automaticCaseProcessor}">
-            <documentation>Delegates to service layer for automatic case processing</documentation>
-        </serviceTask>
-
-        <!-- Autoclose Gateway -->
         <exclusiveGateway id="autocloseGateway" name="Autoclose Check"/>
 
         <endEvent id="endAutoclose" name="Case Autoclosed"/>
 
         <!-- MANUAL CREATION PATH -->
-        <serviceTask id="processManualCreation" name="Process Manual Creation"
-                     flowable:delegateExpression="${manualCaseProcessor}">
-            <documentation>Delegates to service layer for manual case processing</documentation>
-        </serviceTask>
-
-        <!-- Role Gateway for Manual Cases -->
         <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
 
         <!-- SUPERVISOR APPROVAL PATH (for manual creation by non-supervisors) -->
@@ -60,11 +50,6 @@
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
 
         <!-- INVESTIGATION PATH -->
-        <serviceTask id="createInvestigationTask" name="Create Investigation Task"
-                     flowable:delegateExpression="${investigationTaskCreator}">
-            <documentation>Delegates to service layer to create investigation task</documentation>
-        </serviceTask>
-
         <userTask id="investigateCase" name="Investigate Case"
                   flowable:candidateGroups="investigations">
             <documentation>Investigation task for the case</documentation>
@@ -117,10 +102,7 @@
         <exclusiveGateway id="approvalDecisionGateway" name="Approval Decision"/>
 
         <!-- SUSPEND CASE PATH -->
-        <serviceTask id="processSuspension" name="Process Case Suspension"
-                     flowable:delegateExpression="${caseSuspensionProcessor}">
-            <documentation>Delegates to service layer to suspend case</documentation>
-        </serviceTask>
+        <!-- Removed delegate - suspension handled in NestJS -->
 
         <!-- End Events -->
         <endEvent id="endSuccess" name="Case Workflow Complete"/>
@@ -138,14 +120,11 @@
 
         <!-- Automatic creation path -->
         <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway"
-                      targetRef="processAutomaticCreation">
+                      targetRef="autocloseGateway">
             <conditionExpression xsi:type="tFormalExpression">
-                ${creationType == 'AUTOMATIC'}
+                ${creationType == 'AUTOMATIC_SYSTEM'}
             </conditionExpression>
         </sequenceFlow>
-
-        <sequenceFlow id="flow2" sourceRef="processAutomaticCreation"
-                      targetRef="autocloseGateway"/>
 
         <sequenceFlow id="flowAutoclose" sourceRef="autocloseGateway"
                       targetRef="endAutoclose">
@@ -155,7 +134,7 @@
         </sequenceFlow>
 
         <sequenceFlow id="flowToInvestigation" sourceRef="autocloseGateway"
-                      targetRef="createInvestigationTask">
+                      targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autocloseEligible == false}
             </conditionExpression>
@@ -163,18 +142,15 @@
 
         <!-- Manual creation path -->
         <sequenceFlow id="flowManual" sourceRef="creationTypeGateway"
-                      targetRef="processManualCreation">
+                      targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'MANUAL'}
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flow3" sourceRef="processManualCreation"
-                      targetRef="roleGateway"/>
-
         <!-- Supervisor creates case - goes directly to investigation -->
         <sequenceFlow id="flowSupervisor" sourceRef="roleGateway"
-                      targetRef="createInvestigationTask">
+                      targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'SUPERVISOR'}
             </conditionExpression>
@@ -192,7 +168,7 @@
                       targetRef="creationApprovalGateway"/>
 
         <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway"
-                      targetRef="createInvestigationTask">
+                      targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationApproval == 'approve'}
             </conditionExpression>
@@ -206,9 +182,6 @@
         </sequenceFlow>
 
         <!-- Investigation path -->
-        <sequenceFlow id="flow5" sourceRef="createInvestigationTask"
-                      targetRef="investigateCase"/>
-
         <sequenceFlow id="flow6" sourceRef="investigateCase"
                       targetRef="investigationDecisionGateway"/>
 
@@ -221,7 +194,7 @@
         </sequenceFlow>
 
         <sequenceFlow id="flowSuspend" sourceRef="investigationDecisionGateway"
-                      targetRef="processSuspension">
+                      targetRef="endSuspended">
             <conditionExpression xsi:type="tFormalExpression">
                 ${investigationAction == 'suspend'}
             </conditionExpression>
@@ -233,9 +206,6 @@
                 ${investigationAction == 'complete'}
             </conditionExpression>
         </sequenceFlow>
-
-        <sequenceFlow id="flow7" sourceRef="processSuspension"
-                      targetRef="endSuspended"/>
 
         <!-- Closure approval workflow -->
         <sequenceFlow id="flow8" sourceRef="supervisorApproval"
@@ -262,15 +232,6 @@
                 ${approvalDecision == 'returnForReview'}
             </conditionExpression>
         </sequenceFlow>
-
-        <!-- Error Handling -->
-        <boundaryEvent id="validationError" name="Validation Error"
-                       attachedToRef="processAutomaticCreation">
-            <errorEventDefinition errorRef="validationError"/>
-        </boundaryEvent>
-
-        <sequenceFlow id="flowError1" sourceRef="validationError"
-                      targetRef="endError"/>
 
     </process>
 
