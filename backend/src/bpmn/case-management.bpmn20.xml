@@ -11,7 +11,7 @@
 
     <process id="caseManagementProcess" name="Unified Case Management Process" isExecutable="true">
 
-        <!-- Start Event -->
+        <!-- Start Event - Minimal variables only -->
         <startEvent id="startEvent" name="Case Initiated">
             <extensionElements>
                 <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
@@ -26,11 +26,13 @@
         <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
 
         <!-- AUTOMATIC CREATION PATH -->
+        <!-- Removed delegate - case processing handled in NestJS before starting process -->
         <exclusiveGateway id="autocloseGateway" name="Autoclose Check"/>
 
         <endEvent id="endAutoclose" name="Case Autoclosed"/>
 
         <!-- MANUAL CREATION PATH -->
+        <!-- Removed delegate - manual processing handled in NestJS before starting process -->
         <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
 
         <!-- SUPERVISOR APPROVAL PATH (for manual creation by non-supervisors) -->
@@ -50,6 +52,7 @@
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
 
         <!-- INVESTIGATION PATH -->
+        <!-- Removed delegate - task creation handled in NestJS -->
         <userTask id="investigateCase" name="Investigate Case"
                   flowable:candidateGroups="investigations">
             <documentation>Investigation task for the case</documentation>
