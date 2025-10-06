@@ -11,7 +11,7 @@ import { forwardRef } from '@nestjs/common';
   imports: [
     LoggerModule,
     ConfigModule,
-    forwardRef(() => TaskModule), // Use forwardRef to handle circular dependency
+    forwardRef(() => TaskModule),
   ],
   controllers: [WorkQueueController],
   providers: [FlowableService, BpmnDeploymentService],

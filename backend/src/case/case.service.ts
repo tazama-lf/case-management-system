@@ -133,19 +133,13 @@ export class CaseService {
       });
 
       await this.flowableService.startProcessInstance(
-        'caseManagementProcess',
-        {
-          caseId: result.case.case_id,
-          tenantId,
-          creationType: 'MANUAL',
-          creatorUserId: userId,
-          creatorRole: role,
-          priority,
-          caseType,
-          alertData: JSON.stringify(result.alert),
-          autocloseEligible: false,
-        },
-        result.case.case_id,
+          'caseManagementProcess',
+          {
+            caseId: result.case.case_id,
+            tenantId,
+            autocloseEligible: false,
+          },
+          result.case.case_id,
       );
 
       await this.auditLogService.logAction({

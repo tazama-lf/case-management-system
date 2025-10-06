@@ -24,10 +24,6 @@ interface GroupResult {
     error?: any;
 }
 
-/**
- * Work Queue Controller
- * Manages work queues, candidate groups, and task distribution
- */
 @ApiTags('Work Queues')
 @Controller('api/v1/work-queues')
 @UseGuards(TazamaAuthGuard)
@@ -58,9 +54,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Get work queue statistics
-     */
     @Get('statistics')
     @RequireInvestigatorOrSupervisorRole()
     @ApiOperation({ summary: 'Get work queue statistics' })
@@ -79,9 +72,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Get tasks for a specific candidate group
-     */
     @Get(':candidateGroup/tasks')
     @RequireAnyValidRole()
     @ApiOperation({ summary: 'Get tasks for a specific candidate group' })
@@ -132,9 +122,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Get user's personal work queue
-     */
     @Get('my-tasks')
     @RequireAnyValidRole()
     @ApiOperation({ summary: 'Get tasks assigned to the current user' })
@@ -167,9 +154,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Claim a task from a work queue
-     */
     @Post('tasks/:taskId/claim')
     @RequireInvestigatorRole()
     @ApiOperation({ summary: 'Claim a task from a work queue' })
@@ -204,9 +188,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Release a task back to the work queue
-     */
     @Post('tasks/:taskId/release')
     @RequireInvestigatorRole()
     @ApiOperation({ summary: 'Release a task back to the work queue' })
@@ -241,9 +222,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Delegate a task to another user
-     */
     @Post('tasks/:taskId/delegate')
     @RequireSupervisorRole()
     @ApiOperation({ summary: 'Delegate a task to another user' })
@@ -279,9 +257,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Get comprehensive work queue view
-     */
     @Get()
     @RequireInvestigatorOrSupervisorRole()
     @ApiOperation({ summary: 'Get comprehensive work queue view' })
@@ -325,9 +300,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Initialize or reset candidate groups (Admin only)
-     */
     @Post('initialize')
     @RequireSupervisorRole()
     @ApiOperation({ summary: 'Initialize candidate groups in Flowable' })
@@ -365,9 +337,6 @@ export class WorkQueueController {
         }
     }
 
-    /**
-     * Health check for Flowable connection
-     */
     @Get('health')
     @RequireAnyValidRole()
     @ApiOperation({ summary: 'Check Flowable service health' })
