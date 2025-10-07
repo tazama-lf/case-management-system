@@ -55,19 +55,8 @@ export class TriageService {
       confidence_per: req.confidence_per,
     };
 
-    // Defensive check for alert status - handles both flat and nested status fields
-    const alertStatus = submitAlertDto.report.status || 
-                       (submitAlertDto.report as any).ruleResults?.status;
-
-    // Debug logging to see what status we're actually getting
-    this.logger.log(`Processing alert with status: ${alertStatus} (direct: ${submitAlertDto.report.status}, nested: ${(submitAlertDto.report as any).ruleResults?.status})`, 'TriageService.processIncomingAlert');
-
-    // Log if we had to use fallback logic for debugging
-    if (!submitAlertDto.report.status && (submitAlertDto.report as any).ruleResults?.status) {
-      this.logger.warn(`Alert status found in nested ruleResults (${alertStatus}), consider updating payload structure`, 'TriageService.processIncomingAlert');
-    }
-
-    if (alertStatus === 'NALT') {
+    if (submitAlertDto.report.status === 'NALT') {
+      this.logger.log(`Processing alert with status: ${submitAlertDto.report.status}`, TriageService.name);
       await this.handleNotAlert(submitAlertDto, userId, tenantId, 'NATS');
       return;
     }
@@ -89,16 +78,16 @@ export class TriageService {
       case 'MANUAL': {
         this.logger.log(`Manual Triage enabled for alert: ${alert.alert_id}`, TriageService.name);
         await this.taskService.createTask(
-            {
-              caseId: alert.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Triage Alert',
-              description: `Manual triage required for alert: ${alert.alert_id}`,
-              candidateGroup: 'Analysts',
-            },
-            userId,
-            this.audit,
-            this.logger,
+          {
+            caseId: alert.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Triage Alert',
+            description: `Manual triage required for alert: ${alert.alert_id}`,
+            candidateGroup: 'Analysts',
+          },
+          userId,
+          this.audit,
+          this.logger,
         );
         break;
       }
@@ -107,16 +96,16 @@ export class TriageService {
       default: {
         this.logger.log(`Triage disabled, creating investigation task for alert: ${alert.alert_id}`, TriageService.name);
         await this.taskService.createTask(
-            {
-              caseId: alert.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Case',
-              description: `Investigate case: ${alert.case_id}`,
-              candidateGroup: 'Investigations',
-            },
-            userId,
-            this.audit,
-            this.logger,
+          {
+            caseId: alert.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate Case',
+            description: `Investigate case: ${alert.case_id}`,
+            candidateGroup: 'Investigations',
+          },
+          userId,
+          this.audit,
+          this.logger,
         );
         const updateCaseDto: Partial<UpdateCaseDto> = {
           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -142,7 +131,6 @@ export class TriageService {
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: 0,
-          status: 'NALT',
         },
       });
 
@@ -169,18 +157,13 @@ export class TriageService {
       const caseDetail: CreateCaseDto = {
         tenantId,
         caseCreatorUserId: userId,
-        caseOwnerUserId: undefined, // AC5: Case does not have an assigned owner
+        caseOwnerUserId: systemUuid,
         status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
 
       const createdCase = await this.caseService.createCase(caseDetail, userId);
-
-      // Get the actual processed alert status
-      const alertStatus = alert.report.status || 
-                         (alert.report as any).ruleResults?.status || 
-                         'ALRT'; // Default to ALRT for handleNewAlert path
 
       const newAlert = await this.prisma.alert.create({
         data: {
@@ -193,29 +176,28 @@ export class TriageService {
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: alert.confidence_per ?? 0,
-          status: alertStatus,
           case_id: createdCase.case_id,
         },
       });
 
       try {
         await this.flowableService.startProcessInstance(
-            'caseManagementProcess',
-            {
-              caseId: createdCase.case_id,
-              tenantId: tenantId,
-              creationType: 'AUTOMATIC_SYSTEM',  // ✅ KEEP - needed for BPMN gateway
-              autocloseEligible: false,
-            },
-            createdCase.case_id,
+          'caseManagementProcess',
+          {
+            caseId: createdCase.case_id,
+            tenantId: tenantId,
+            creationType: 'AUTOMATIC_SYSTEM',
+            autocloseEligible: false,
+          },
+          createdCase.case_id,
         );
 
         this.logger.log(`Flowable process started for case ${createdCase.case_id}, alert ${newAlert.alert_id}`, TriageService.name);
       } catch (flowableError) {
         this.logger.error(
-            `Failed to start Flowable process for case ${createdCase.case_id}: ${flowableError.message}`,
-            flowableError.stack,
-            TriageService.name,
+          `Failed to start Flowable process for case ${createdCase.case_id}: ${flowableError.message}`,
+          flowableError.stack,
+          TriageService.name,
         );
       }
 
@@ -725,15 +707,15 @@ export class TriageService {
         }
       }
     } catch (error) {
-  this.logger.error(`Triage failed for alert ${alertId}`, error.stack);
+      this.logger.error(`Triage failed for alert ${alertId}`, error.stack);
       await this.audit.logAction({
         userId,
         operation: 'AI_TRIAGE_FAILED',
         entityName: 'Alert',
-  actionPerformed: `Triage failed for alert ${alertId}: ${error.message}`,
+        actionPerformed: `Triage failed for alert ${alertId}: ${error.message}`,
         outcome: 'FAILURE',
       });
-  throw new InternalServerErrorException('Triage process failed');
+      throw new InternalServerErrorException('Triage process failed');
     }
   }
 
@@ -798,25 +780,25 @@ export class TriageService {
   }
 
   async createCaseWithInvestigationTask(
-      caseType: CaseType,
-      userId: string,
-      tenantId: string,
-      parentCaseId: string,
-      priority: Priority,
+    caseType: CaseType,
+    userId: string,
+    tenantId: string,
+    parentCaseId: string,
+    priority: Priority,
   ): Promise<any> {
     try {
       const newCase = await this.caseService.createCase(
-          {
-            caseCreatorUserId: userId,
-            caseOwnerUserId: userId,
-            tenantId,
-            priority: priority,
-            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            parentId: parentCaseId,
-            caseType,
-            caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-          },
-          userId,
+        {
+          caseCreatorUserId: userId,
+          caseOwnerUserId: userId,
+          tenantId,
+          priority: priority,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          parentId: parentCaseId,
+          caseType,
+          caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+        },
+        userId,
       );
 
       await this.audit.logAction({
@@ -829,37 +811,37 @@ export class TriageService {
 
       // Create PostgreSQL task
       const task = await this.taskService.createTask(
-          {
-            caseId: newCase.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for ${caseType} case ${newCase.case_id}`,
-            candidateGroup: 'investigations',
-          },
-          userId,
-          this.audit,
-          this.logger,
+        {
+          caseId: newCase.case_id,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Investigation task for ${caseType} case ${newCase.case_id}`,
+          candidateGroup: 'investigations',
+        },
+        userId,
+        this.audit,
+        this.logger,
       );
 
       // START NEW FLOWABLE PROCESS for the new child case
       try {
         await this.flowableService.startProcessInstance(
-            'caseManagementProcess',
-            {
-              caseId: newCase.case_id,
-              tenantId: tenantId,
-              creationType: 'AUTOMATIC_SYSTEM',
-              autocloseEligible: false,
-            },
-            newCase.case_id,
+          'caseManagementProcess',
+          {
+            caseId: newCase.case_id,
+            tenantId: tenantId,
+            creationType: 'AUTOMATIC_SYSTEM',
+            autocloseEligible: false,
+          },
+          newCase.case_id,
         );
 
         this.logger.log(`Started Flowable process for new ${caseType} case ${newCase.case_id}`, TriageService.name);
       } catch (flowableError) {
         this.logger.error(
-            `Failed to start Flowable process for case ${newCase.case_id}: ${flowableError.message}`,
-            flowableError.stack,
-            TriageService.name,
+          `Failed to start Flowable process for case ${newCase.case_id}: ${flowableError.message}`,
+          flowableError.stack,
+          TriageService.name,
         );
       }
 
@@ -988,7 +970,7 @@ export class TriageService {
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;
       updateDto.priorityScore = predictedPriorityScore;
-  updateDto.note = 'Updated alert data with outcome';
+      updateDto.note = 'Updated alert data with outcome';
 
       await this.updateAlertData(alertId, updateDto, userId, tenantId, taskId);
 
@@ -1005,7 +987,7 @@ export class TriageService {
         userId,
         operation: 'TRIAGE_ALERT_UPDATED',
         entityName: 'Alert & Task',
-  actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
+        actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
         outcome: 'SUCCESS',
       });
 

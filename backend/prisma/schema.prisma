@@ -33,7 +33,6 @@ model Alert {
   transaction        Json
   network_map        Json
   confidence_per     Int
-  status             String            @db.VarChar(10)
   created_at         DateTime           @default(now()) @db.Timestamp(6)
   case_id            String?             @unique @db.Uuid
   case               Case?               @relation(fields: [case_id], references: [case_id])
