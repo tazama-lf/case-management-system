@@ -55,7 +55,19 @@ export class TriageService {
       confidence_per: req.confidence_per,
     };
 
-    if (submitAlertDto.report.status === 'NALT') {
+    // Defensive check for alert status - handles both flat and nested status fields
+    const alertStatus = submitAlertDto.report.status || 
+                       (submitAlertDto.report as any).ruleResults?.status;
+
+    // Debug logging to see what status we're actually getting
+    this.logger.log(`Processing alert with status: ${alertStatus} (direct: ${submitAlertDto.report.status}, nested: ${(submitAlertDto.report as any).ruleResults?.status})`, 'TriageService.processIncomingAlert');
+
+    // Log if we had to use fallback logic for debugging
+    if (!submitAlertDto.report.status && (submitAlertDto.report as any).ruleResults?.status) {
+      this.logger.warn(`Alert status found in nested ruleResults (${alertStatus}), consider updating payload structure`, 'TriageService.processIncomingAlert');
+    }
+
+    if (alertStatus === 'NALT') {
       await this.handleNotAlert(submitAlertDto, userId, tenantId, 'NATS');
       return;
     }
@@ -130,6 +142,7 @@ export class TriageService {
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: 0,
+          status: 'NALT',
         },
       });
 
@@ -156,13 +169,18 @@ export class TriageService {
       const caseDetail: CreateCaseDto = {
         tenantId,
         caseCreatorUserId: userId,
-        caseOwnerUserId: systemUuid,
+        caseOwnerUserId: undefined, // AC5: Case does not have an assigned owner
         status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
 
       const createdCase = await this.caseService.createCase(caseDetail, userId);
+
+      // Get the actual processed alert status
+      const alertStatus = alert.report.status || 
+                         (alert.report as any).ruleResults?.status || 
+                         'ALRT'; // Default to ALRT for handleNewAlert path
 
       const newAlert = await this.prisma.alert.create({
         data: {
@@ -175,6 +193,7 @@ export class TriageService {
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: alert.confidence_per ?? 0,
+          status: alertStatus,
           case_id: createdCase.case_id,
         },
       });
@@ -561,6 +580,7 @@ export class TriageService {
           status: TaskStatus.STATUS_10_ASSIGNED,
           name: 'Triage Alert',
           description: `Created for triaging alert for case:${caseId}`,
+          candidateGroup: 'Analysts',
         },
         userId,
         this.audit,
@@ -629,7 +649,7 @@ export class TriageService {
           userId,
           triageTaskId,
           'Investigate Case as confidence is below threshold',
-          'Triage complete - AI predicted confidence percentage below threshold manual investigation needed',
+          'Triage complete - confidence percentage below threshold manual investigation needed',
           priority,
           this.mapAlertTypeToCaseType(predictedAlertType),
         );
@@ -644,7 +664,7 @@ export class TriageService {
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
           userId,
           triageTaskId,
-          'Triage complete - AI predicted false positive (case auto-closed refuted)',
+          'Triage complete - false positive (case auto-closed refuted)',
         );
       }
 
@@ -655,7 +675,7 @@ export class TriageService {
             triageTaskId,
             {
               status: TaskStatus.STATUS_30_COMPLETED,
-              description: 'Triage complete - AI predicted true positive and case contains both fraud and aml',
+              description: 'Triage complete - true positive and case contains both fraud and aml',
             },
             userId,
             this.audit,
@@ -672,7 +692,7 @@ export class TriageService {
             userId,
             triageTaskId,
             'Investigate Case for AML',
-            'Triage complete - AI predicted confidence percentage above threshold and true positive with case type aml',
+            'Triage complete - confidence percentage above threshold and true positive with case type aml',
             priority,
             this.mapAlertTypeToCaseType(predictedAlertType),
           );
@@ -688,7 +708,7 @@ export class TriageService {
               CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               userId,
               triageTaskId,
-              'Triage complete - AI predicted true positive (case auto-closed confirmed)',
+              'Triage complete - true positive (case auto-closed confirmed)',
             );
           }
 
@@ -698,22 +718,22 @@ export class TriageService {
             userId,
             triageTaskId,
             'Investigate Case for fraud',
-            'Triage complete - AI predicted confidence percentage above threshold and true positive with case type fraud and transaction occured',
+            'Triage complete - confidence percentage above threshold and true positive with case type fraud and transaction occured',
             priority,
             this.mapAlertTypeToCaseType(predictedAlertType),
           );
         }
       }
     } catch (error) {
-      this.logger.error(`AI triage failed for alert ${alertId}`, error.stack);
+  this.logger.error(`Triage failed for alert ${alertId}`, error.stack);
       await this.audit.logAction({
         userId,
         operation: 'AI_TRIAGE_FAILED',
         entityName: 'Alert',
-        actionPerformed: `AI triage failed for alert ${alertId}: ${error.message}`,
+  actionPerformed: `Triage failed for alert ${alertId}: ${error.message}`,
         outcome: 'FAILURE',
       });
-      throw new InternalServerErrorException('AI triage process failed');
+  throw new InternalServerErrorException('Triage process failed');
     }
   }
 
@@ -968,14 +988,14 @@ export class TriageService {
       updateDto.alertType = predictedAlertType;
       updateDto.confidence_per = predictedConfidence;
       updateDto.priorityScore = predictedPriorityScore;
-      updateDto.note = 'Updated alert data with AI outcome';
+  updateDto.note = 'Updated alert data with outcome';
 
       await this.updateAlertData(alertId, updateDto, userId, tenantId, taskId);
 
       await this.taskService.updateTask(
         taskId,
         {
-          description: `AI prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
+          description: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
         },
         userId,
         this.audit,
@@ -985,7 +1005,7 @@ export class TriageService {
         userId,
         operation: 'TRIAGE_ALERT_UPDATED',
         entityName: 'Alert & Task',
-        actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with AI prediction`,
+  actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
         outcome: 'SUCCESS',
       });
 
