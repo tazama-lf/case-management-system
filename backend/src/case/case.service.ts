@@ -60,27 +60,9 @@ export class CaseService {
 
 
   private async ensureSystemUserExists(systemUuid: string) {
-    try {
-      // Check if system user exists
-      const existingUser = await this.prismaService.user.findUnique({
-        where: { user_id: systemUuid },
-      });
-
-      if (!existingUser) {
-        // Create system user
-        await this.prismaService.user.create({
-          data: {
-            user_id: systemUuid,
-            username: 'system-user',
-            role: 'SYSTEM',
-          },
-        });
-        this.logger.log(`Created system user: ${systemUuid}`, CaseService.name);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to ensure system user exists: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
+    // System users are managed externally through auth service
+    // No need to create local database records for users
+    this.logger.log(`Using system user: ${systemUuid}`, CaseService.name);
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
