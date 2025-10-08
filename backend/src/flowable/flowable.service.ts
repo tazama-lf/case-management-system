@@ -2,7 +2,7 @@ import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
-import FormData = require ('form-data') ;
+import FormData = require('form-data');
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
@@ -36,9 +36,11 @@ export class FlowableService implements OnModuleInit {
     try {
       await this.initializeCandidateGroups();
       await this.initializeUsers();
+      await this.healthCheckOrFail();
+      this.logger.log('Flowable initialized successfully', FlowableService.name);
     } catch (error) {
       this.logger.error(`Failed to initialize Flowable: ${error.message}`, error.stack, FlowableService.name);
-      // Don't throw - allow application to start
+      throw new Error(`Flowable initialization failed: ${error.message}`);
     }
   }
 
@@ -155,37 +157,37 @@ export class FlowableService implements OnModuleInit {
   }
 
   async deployProcess(bpmnXml: string, deploymentName: string, tenantId?: string) {
-  try {
-    const formData = new FormData();
-    const buffer = Buffer.from(bpmnXml);
-    formData.append('deployment', buffer, {
-      filename: `${deploymentName}.bpmn20.xml`,
-      contentType: 'text/xml',
-    });
+    try {
+      const formData = new FormData();
+      const buffer = Buffer.from(bpmnXml);
+      formData.append('deployment', buffer, {
+        filename: `${deploymentName}.bpmn20.xml`,
+        contentType: 'text/xml',
+      });
 
-    const headers: Record<string, string> = { ...formData.getHeaders() };
-    if (tenantId) {
-      headers['tenantId'] = tenantId;
+      const headers: Record<string, string> = { ...formData.getHeaders() };
+      if (tenantId) {
+        headers['tenantId'] = tenantId;
+      }
+
+      const response = await this.flowableClient.post('/service/repository/deployments', formData, {
+        headers,
+      });
+
+      this.logger.log(`Process deployed successfully: ${response.data.id}`, FlowableService.name);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to deploy process: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to deploy process', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    const response = await this.flowableClient.post('/service/repository/deployments', formData, {
-      headers,
-    });
-
-    this.logger.log(`Process deployed successfully: ${response.data.id}`, FlowableService.name);
-    return response.data;
-  } catch (error) {
-    this.logger.error(`Failed to deploy process: ${error.message}`, error.stack, FlowableService.name);
-    throw new HttpException('Failed to deploy process', HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
 
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey?: string) {
     try {
       const payload = {
         processDefinitionKey,
         variables: this.formatVariables(variables),
-        businessKey
+        businessKey,
       };
 
       const response = await this.flowableClient.post('/service/runtime/process-instances', payload);
@@ -755,6 +757,17 @@ export class FlowableService implements OnModuleInit {
         status: 'unhealthy',
         message: `Flowable connection failed: ${error.message}`,
       };
+    }
+  }
+
+  private async healthCheckOrFail() {
+    try {
+      const health = await this.healthCheck();
+      if (health.status !== 'healthy') {
+        throw new Error(health.message || 'Flowable health check failed');
+      }
+    } catch (err) {
+      throw new Error(`Flowable unreachable or unhealthy: ${err.message}`);
     }
   }
 }
