@@ -5,7 +5,13 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireAlertTriageRole, RequireAnyValidRole, RequireSupervisorRole, RequireInvestigatorRole, RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
+import {
+  RequireAlertTriageRole,
+  RequireAnyValidRole,
+  RequireSupervisorRole,
+  RequireInvestigatorRole,
+  RequireInvestigatorOrSupervisorRole,
+} from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
 
@@ -43,21 +49,24 @@ export class TaskController {
     return this.taskService.reassignTask(taskId, userId, assignedUserId);
   }
 
+  @Patch(':taskId/unassign')
+  @RequireAlertTriageRole()
+  async unassignTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    return this.taskService.unassignTask(taskId, userId);
+  }
+
   @Patch(':taskId/assign')
   @RequireSupervisorRole()
-  async assignTaskToInvestigator(
-    @Param('taskId') taskId: string,
-    @Body() assignTaskDto: AssignTaskDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async assignTaskToInvestigator(@Param('taskId') taskId: string, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     const result = await this.taskService.assignTaskToInvestigator(
-      taskId, 
-      assignTaskDto.assignedUserId, 
-      supervisorId, 
-      this.auditLogService
+      taskId,
+      assignTaskDto.assignedUserId,
+      supervisorId,
+      this.auditLogService,
     );
-    
+
     return {
       success: true,
       message: `Task ${taskId} successfully assigned to investigator ${assignTaskDto.assignedUserId}`,
@@ -65,13 +74,13 @@ export class TaskController {
         taskId: result.task_id,
         assignedUserId: result.assigned_user_id,
         status: result.status,
-        assignedAt: new Date().toISOString()
-      }
+        assignedAt: new Date().toISOString(),
+      },
     };
   }
 
   @Patch(':taskId')
-    @RequireInvestigatorRole()
+  @RequireInvestigatorRole()
   async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.updateTask(taskId, dto, userId, this.auditLogService);
@@ -98,7 +107,7 @@ export class TaskController {
   }
 
   @Get(':taskId')
-    @RequireInvestigatorRole()
+  @RequireInvestigatorRole()
   async getTaskById(@Param('taskId') taskId: string) {
     return this.taskService.getTaskById(taskId);
   }

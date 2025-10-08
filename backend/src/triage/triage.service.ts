@@ -893,22 +893,6 @@ export class TriageService {
       try {
         const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
 
-        const flowableTask = await this.flowableService.createTask({
-          name: 'Investigate Case',
-          description: investigateTaskDesc,
-          candidateGroups: ['investigations'],
-          tenantId: updatedCase.tenant_id,
-          variables: {
-            postgres_task_id: createdTask.task_id,
-            postgres_case_id: caseId,
-            task_status: TaskStatus.STATUS_01_UNASSIGNED,
-            case_type: caseType,
-            priority: priority,
-          },
-        });
-
-        this.logger.log(`Created Flowable investigation task ${flowableTask.id} for case ${caseId}`, TriageService.name);
-
         if (processInstance) {
           const tasks = await this.flowableService.getProcessTasks(processInstance.id);
           const triageTask = tasks.find((t: any) => t.name === 'Triage Alert');
@@ -917,7 +901,6 @@ export class TriageService {
             await this.flowableService.completeTask(triageTask.id, {
               triageComplete: true,
               investigationTaskCreated: true,
-              flowableInvestigationTaskId: flowableTask.id,
             });
           }
         }
@@ -1025,7 +1008,7 @@ export class TriageService {
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
-      alertType: AlertType.FRAUD,
+      alertType: AlertType.AML,
       confidence_per: 97,
       isTruePositive: true,
     };

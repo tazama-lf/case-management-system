@@ -6,6 +6,7 @@ import { LoggerModule } from '../logger/logger.module';
 import { TaskController } from './task.controller';
 import { FlowableModule } from 'src/flowable/flowable.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { AuthModule } from '../auth/auth.module';
     AuditLogModule,
     LoggerModule,
     AuthModule,
-    forwardRef(() => FlowableModule), // Use forwardRef to break circular dependency
+    forwardRef(() => FlowableModule),
+    NotificationModule
   ],
   providers: [TaskService],
   exports: [TaskService],
