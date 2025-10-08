@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -6,10 +6,10 @@ import { AuditLogService } from 'src/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma } from '@prisma/client';
-import axios from 'axios';
 import { FlowableService } from 'src/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { AuthHelperService } from '../auth/auth-helper.service';
+import { NotificationService } from 'src/notification/notification.service';
 
 // Define types for better type safety
 interface TaskWithCase extends Task {
@@ -50,6 +50,7 @@ export class TaskService {
     private readonly flowableService: FlowableService,
     private readonly configService: ConfigService,
     private readonly authHelperService: AuthHelperService,
+    private readonly notificationService: NotificationService,
   ) {
     this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
   }
@@ -145,10 +146,61 @@ export class TaskService {
   /**
    * Reassign a task to a different user - FIXED
    */
+
   async reassignTask(taskId: string, userId: string, assignedUserId: string) {
     this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
+      const existingTask = await this.getTaskById(taskId);
+      if (!existingTask) {
+        throw new BadRequestException(`Task ${taskId} not found`);
+      }
+
+      if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
+        throw new BadRequestException(`Task ${taskId} is already completed`);
+      }
+
+      const userExists = await this.authHelperService.userExists(assignedUserId);
+      if (!userExists) {
+        const msg = `User ${assignedUserId} not found in Keycloak`;
+        await this.auditLogService.logAction({
+          userId,
+          actionPerformed: msg,
+          entityName: TaskService.name,
+          operation: 'reassignTask',
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+        this.logger.warn(msg, TaskService.name);
+        throw new BadRequestException(msg);
+      }
+
+      const GROUP_ROLE_MAP: Record<string, string> = {
+        supervisors: 'CMS_SUPERVISOR',
+        investigators: 'CMS_INVESTIGATOR',
+        analysts: 'CMS_ANALYST',
+      };
+
+      const group = existingTask.candidateGroup?.toLowerCase() || '';
+      const requiredRole = GROUP_ROLE_MAP[group];
+
+      if (requiredRole) {
+        const hasRole = await this.authHelperService.userHasRole(assignedUserId, requiredRole);
+        if (!hasRole) {
+          const msg = `User ${assignedUserId} lacks required role (${requiredRole}) for group ${group}`;
+          await this.auditLogService.logAction({
+            userId,
+            actionPerformed: msg,
+            entityName: TaskService.name,
+            operation: 'reassignTask',
+            outcome: Outcome.FAILURE,
+            performedAt: new Date(),
+          });
+          this.logger.warn(msg, TaskService.name);
+          throw new ForbiddenException(msg);
+        }
+      }
+
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
@@ -171,19 +223,19 @@ export class TaskService {
         this.logger.warn(`Failed to update Flowable task: ${flowableError.message}`, TaskService.name);
       }
 
-      this.logger.log(`Task reassigned: ${updatedTask.task_id}`, TaskService.name);
-      this.auditLogService.logAction({
+      await this.auditLogService.logAction({
         userId,
-        actionPerformed: `Reassigned task ${taskId} to user ${assignedUserId}`,
+        actionPerformed: `Reassigned task ${taskId} to ${assignedUserId}`,
         entityName: TaskService.name,
         operation: 'reassignTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
       });
 
+      this.logger.log(`Task ${taskId} successfully reassigned to ${assignedUserId}`, TaskService.name);
       return updatedTask;
     } catch (error) {
-      this.logger.error(`Error reassigning task ${taskId}`, error, TaskService.name);
+      this.logger.error(`Error reassigning task ${taskId}: ${error.message}`, error, TaskService.name);
       throw error;
     }
   }
@@ -435,7 +487,7 @@ export class TaskService {
     }
 
     const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
-    if (!investigatorRoles.includes('INVESTIGATOR')) {
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
       this.logger.error(`User ${assignedUserId} does not have INVESTIGATOR role`, null, TaskService.name);
       throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
     }
@@ -535,12 +587,6 @@ export class TaskService {
             },
           },
           comments: {
-            orderBy: { created_at: 'desc' },
-          },
-          evidence: {
-            orderBy: { uploaded_at: 'desc' },
-          },
-          reports: {
             orderBy: { created_at: 'desc' },
           },
         },
@@ -710,6 +756,82 @@ export class TaskService {
     }
   }
 
+  async unassignTask(taskId: string, userId: string, reason?: string) {
+    this.logger.log(`User ${userId} attempting to unassign task ${taskId}`, TaskService.name);
+
+    try {
+      const existingTask = await this.getTaskById(taskId);
+      if (!existingTask) {
+        throw new BadRequestException(`Task ${taskId} not found`);
+      }
+      if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) throw new BadRequestException(`Cannot unassign a completed task`);
+      if (!existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already unassigned`);
+
+      const GROUP_ROLE_MAP: Record<string, string> = {
+        supervisors: 'CMS_SUPERVISOR',
+        investigators: 'CMS_INVESTIGATOR',
+        analysts: 'CMS_ANALYST',
+      };
+
+      const group = existingTask.candidateGroup?.toLowerCase() || '';
+      const requiredRole = GROUP_ROLE_MAP[group];
+
+      if (requiredRole) {
+        const hasRole = await this.authHelperService.userHasRole(userId, requiredRole);
+        if (!hasRole) {
+          await this.auditLogService.logAction({
+            userId,
+            actionPerformed: `Failed to unassign task ${taskId}: user lacks ${requiredRole} role`,
+            entityName: TaskService.name,
+            operation: 'unassignTask',
+            outcome: Outcome.FAILURE,
+            performedAt: new Date(),
+          });
+
+          this.logger.warn(`Permission denied: ${userId} lacks ${requiredRole}`, TaskService.name);
+          throw new ForbiddenException(`You lack the required role (${requiredRole}) to unassign this task`);
+        }
+      }
+
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: {
+          assigned_user_id: null,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        },
+      });
+
+      try {
+        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
+        const flowableTask = flowableTasks.find((ft) => ft.variables?.postgres_task_id === taskId);
+
+        if (flowableTask) {
+          await this.flowableService.unclaimTask(flowableTask.id);
+
+          if (group) {
+            await this.flowableService.assignTaskToCandidateGroup(flowableTask.id, group);
+          }
+        }
+      } catch (flowableError) {
+        this.logger.warn(`Flowable sync failed: ${flowableError.message}`, TaskService.name);
+      }
+      await this.auditLogService.logAction({
+        userId,
+        actionPerformed: `Unassigned task ${taskId} (returned to group ${group})`,
+        entityName: TaskService.name,
+        operation: 'unassignTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      this.logger.log(`Task ${taskId} successfully unassigned and returned to ${group}`, TaskService.name);
+      return updatedTask;
+    } catch (error) {
+      this.logger.error(`Error unassigning task ${taskId}: ${error.message}`, error, TaskService.name);
+      throw error;
+    }
+  }
+
   /**
    * Release a task back to the work queue
    */
@@ -717,7 +839,6 @@ export class TaskService {
     this.logger.log(`User ${userId} releasing task ${taskId}`, TaskService.name);
 
     try {
-      // Update task in database
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
@@ -811,7 +932,7 @@ export class TaskService {
   }
 
   /**
-   * Get user's assigned tasks 
+   * Get user's assigned tasks
    */
   async getUserTasks(userId: string, includeCompleted: boolean = false) {
     try {
