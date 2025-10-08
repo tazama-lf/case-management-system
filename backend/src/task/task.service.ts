@@ -760,39 +760,81 @@ export class TaskService {
     this.logger.log(`User ${userId} attempting to unassign task ${taskId}`, TaskService.name);
 
     try {
+      // Retrieve the task first
       const existingTask = await this.getTaskById(taskId);
       if (!existingTask) {
-        throw new BadRequestException(`Task ${taskId} not found`);
+        const msg = `Task ${taskId} not found`;
+        await this.auditLogService.logAction({
+          userId,
+          actionPerformed: msg,
+          entityName: TaskService.name,
+          operation: 'unassignTask',
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+        throw new BadRequestException(msg);
       }
-      if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) throw new BadRequestException(`Cannot unassign a completed task`);
-      if (!existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already unassigned`);
 
+      // Check if task is already completed
+      if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
+        const msg = `Cannot unassign a completed task (${taskId})`;
+        await this.auditLogService.logAction({
+          userId,
+          actionPerformed: msg,
+          entityName: TaskService.name,
+          operation: 'unassignTask',
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+        throw new BadRequestException(msg);
+      }
+
+      // Check if task is already unassigned
+      if (!existingTask.assigned_user_id) {
+        const msg = `Task ${taskId} is already unassigned`;
+        await this.auditLogService.logAction({
+          userId,
+          actionPerformed: msg,
+          entityName: TaskService.name,
+          operation: 'unassignTask',
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+        throw new BadRequestException(msg);
+      }
+
+      // Permission validation - map candidate groups to required roles
       const GROUP_ROLE_MAP: Record<string, string> = {
         supervisors: 'CMS_SUPERVISOR',
         investigators: 'CMS_INVESTIGATOR',
+        investigations: 'CMS_INVESTIGATOR',
         analysts: 'CMS_ANALYST',
       };
 
-      const group = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[group];
+      const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
+      const requiredRole = GROUP_ROLE_MAP[candidateGroup];
 
       if (requiredRole) {
         const hasRole = await this.authHelperService.userHasRole(userId, requiredRole);
         if (!hasRole) {
+          const msg = `User ${userId} lacks required role (${requiredRole}) to unassign tasks in group ${candidateGroup}`;
           await this.auditLogService.logAction({
             userId,
-            actionPerformed: `Failed to unassign task ${taskId}: user lacks ${requiredRole} role`,
+            actionPerformed: msg,
             entityName: TaskService.name,
             operation: 'unassignTask',
             outcome: Outcome.FAILURE,
             performedAt: new Date(),
           });
-
-          this.logger.warn(`Permission denied: ${userId} lacks ${requiredRole}`, TaskService.name);
-          throw new ForbiddenException(`You lack the required role (${requiredRole}) to unassign this task`);
+          this.logger.warn(msg, TaskService.name);
+          throw new ForbiddenException(msg);
         }
       }
 
+      // Store the original assignee for notification
+      const originalAssignee = existingTask.assigned_user_id;
+
+      // Update the task in the database
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
@@ -801,34 +843,118 @@ export class TaskService {
         },
       });
 
+
       try {
         const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft) => ft.variables?.postgres_task_id === taskId);
 
         if (flowableTask) {
+          // Unclaim the task (removes assignee)
           await this.flowableService.unclaimTask(flowableTask.id);
 
-          if (group) {
-            await this.flowableService.assignTaskToCandidateGroup(flowableTask.id, group);
+          // Ensure the task is assigned to its candidate group
+          if (candidateGroup) {
+            // First, get current identity links to check if group assignment exists
+            const identityLinks = await this.flowableService.getTaskIdentityLinks(flowableTask.id);
+            const hasGroupLink = identityLinks.some(
+                (link: any) => link.type === 'candidate' && link.group === candidateGroup
+            );
+
+            if (!hasGroupLink) {
+              await this.flowableService.assignTaskToCandidateGroup(flowableTask.id, candidateGroup);
+            }
           }
+
+          this.logger.log(
+              `Task ${taskId} (Flowable: ${flowableTask.id}) returned to work queue: ${candidateGroup}`,
+              TaskService.name
+          );
+        } else {
+          this.logger.warn(
+              `Flowable task not found for database task ${taskId}. Database updated but Flowable sync skipped.`,
+              TaskService.name
+          );
         }
       } catch (flowableError) {
-        this.logger.warn(`Flowable sync failed: ${flowableError.message}`, TaskService.name);
+        this.logger.error(
+            `Failed to sync with Flowable when unassigning task ${taskId}: ${flowableError.message}`,
+            flowableError.stack,
+            TaskService.name
+        );
+
       }
+
+      // Send notifications
+      try {
+        // Notify the original assignee
+        if (originalAssignee) {
+          await this.notificationService.sendNotification({
+            userId: originalAssignee,
+            type: 'TASK_UNASSIGNED',
+            message: `Task "${existingTask.name || taskId}" has been unassigned${reason ? `: ${reason}` : ''}`,
+            metadata: {
+              taskId,
+              caseId: existingTask.case_id,
+              unassignedBy: userId,
+              reason,
+            },
+          });
+        }
+
+        // Notify candidate group members (if configured)
+        if (candidateGroup) {
+          await this.notificationService.sendGroupNotification({
+            candidateGroup,
+            type: 'TASK_AVAILABLE',
+            message: `Task "${existingTask.name || taskId}" is now available in the ${candidateGroup} work queue`,
+            metadata: {
+              taskId,
+              caseId: existingTask.case_id,
+            },
+          });
+        }
+      } catch (notificationError) {
+        this.logger.warn(
+            `Failed to send notifications for task unassignment: ${notificationError.message}`,
+            TaskService.name
+        );
+        // Don't throw - task unassignment succeeded
+      }
+
+      // Audit logging
       await this.auditLogService.logAction({
         userId,
-        actionPerformed: `Unassigned task ${taskId} (returned to group ${group})`,
+        actionPerformed: `Unassigned task ${taskId} from user ${originalAssignee}. Task returned to group: ${candidateGroup}${reason ? `. Reason: ${reason}` : ''}`,
         entityName: TaskService.name,
         operation: 'unassignTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
       });
 
-      this.logger.log(`Task ${taskId} successfully unassigned and returned to ${group}`, TaskService.name);
-      return updatedTask;
+      this.logger.log(
+          `Task ${taskId} successfully unassigned and returned to ${candidateGroup} work queue`,
+          TaskService.name
+      );
+
+      return {
+        ...updatedTask,
+        message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
+        candidateGroup,
+      };
     } catch (error) {
-      this.logger.error(`Error unassigning task ${taskId}: ${error.message}`, error, TaskService.name);
-      throw error;
+      this.logger.error(
+          `Error unassigning task ${taskId}: ${error.message}`,
+          error.stack,
+          TaskService.name
+      );
+
+      // If it's already a BadRequestException or ForbiddenException, rethrow as-is
+      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
+        throw error;
+      }
+
+      // Otherwise, wrap in a generic error
+      throw new BadRequestException(`Failed to unassign task: ${error.message}`);
     }
   }
 

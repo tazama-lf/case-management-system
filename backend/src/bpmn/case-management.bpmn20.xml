@@ -49,7 +49,7 @@
 
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
 
-        <!-- INVESTIGATION PATH -->
+        <!-- SINGLE INVESTIGATION TASK - Only created once -->
         <userTask id="investigateCase" name="Investigate Case"
                   flowable:candidateGroups="investigations">
             <documentation>Investigation task for the case</documentation>
@@ -101,8 +101,6 @@
         <!-- Approval Decision Gateway -->
         <exclusiveGateway id="approvalDecisionGateway" name="Approval Decision"/>
 
-        <!-- SUSPEND CASE PATH -->
-
         <!-- End Events -->
         <endEvent id="endSuccess" name="Case Workflow Complete"/>
         <endEvent id="endApproved" name="Case Closed"/>
@@ -132,7 +130,8 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowToInvestigation" sourceRef="autocloseGateway"
+        <!-- FROM AUTOCLOSE TO INVESTIGATION - NO DUPLICATION -->
+        <sequenceFlow id="flowAutoclosetToInvestigation" sourceRef="autocloseGateway"
                       targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autocloseEligible == false}
@@ -147,7 +146,7 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Supervisor creates case - goes directly to investigation -->
+        <!-- Supervisor creates case - goes to investigation -->
         <sequenceFlow id="flowSupervisor" sourceRef="roleGateway"
                       targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
@@ -166,6 +165,7 @@
         <sequenceFlow id="flow4" sourceRef="approveCaseCreation"
                       targetRef="creationApprovalGateway"/>
 
+        <!-- AFTER APPROVAL - GO TO INVESTIGATION -->
         <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway"
                       targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
@@ -180,11 +180,10 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Investigation path -->
+        <!-- Investigation decision routing -->
         <sequenceFlow id="flow6" sourceRef="investigateCase"
                       targetRef="investigationDecisionGateway"/>
 
-        <!-- Investigation actions -->
         <sequenceFlow id="flowRequestClosure" sourceRef="investigationDecisionGateway"
                       targetRef="supervisorApproval">
             <conditionExpression xsi:type="tFormalExpression">
@@ -210,7 +209,6 @@
         <sequenceFlow id="flow8" sourceRef="supervisorApproval"
                       targetRef="approvalDecisionGateway"/>
 
-        <!-- Approval decisions -->
         <sequenceFlow id="flowApprove" sourceRef="approvalDecisionGateway"
                       targetRef="endApproved">
             <conditionExpression xsi:type="tFormalExpression">
@@ -225,6 +223,7 @@
             </conditionExpression>
         </sequenceFlow>
 
+        <!-- RETURN FOR REVIEW - BACK TO INVESTIGATION -->
         <sequenceFlow id="flowReturn" sourceRef="approvalDecisionGateway"
                       targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">

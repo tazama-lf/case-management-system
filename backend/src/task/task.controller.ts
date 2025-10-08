@@ -5,6 +5,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { UnassignTaskDto } from './dto/unassign-task-dto';
 import {
   RequireAlertTriageRole,
   RequireAnyValidRole,
@@ -51,9 +52,13 @@ export class TaskController {
 
   @Patch(':taskId/unassign')
   @RequireAlertTriageRole()
-  async unassignTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest) {
+  async unassignTask(
+      @Param('taskId') taskId: string,
+      @Body() unassignDto: UnassignTaskDto,
+      @Req() req: AuthenticatedRequest
+  ) {
     const userId = req.user.token.clientId;
-    return this.taskService.unassignTask(taskId, userId);
+    return this.taskService.unassignTask(taskId, userId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
