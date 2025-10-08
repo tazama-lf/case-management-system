@@ -234,6 +234,7 @@ export class WorkQueueController {
     ) {
         try {
             const supervisorId = req.user.token.clientId;
+            const tenantId = req.user.token.tenantId;
             await this.flowableService.delegateTask(taskId, delegateToUserId);
 
             // Update database task if it exists
@@ -243,7 +244,7 @@ export class WorkQueueController {
                     task.variables.postgres_task_id,
                     delegateToUserId,
                     supervisorId,
-                    null,
+                    tenantId
                 );
             }
 

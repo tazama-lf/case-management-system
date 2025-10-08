@@ -147,7 +147,7 @@ export class TaskService {
    * Reassign a task to a different user - FIXED
    */
 
-  async reassignTask(taskId: string, userId: string, assignedUserId: string) {
+  async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
     this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
 
     try {
@@ -210,7 +210,7 @@ export class TaskService {
       });
 
       try {
-        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(tenantId)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
           return vars.postgres_task_id === taskId;
@@ -479,7 +479,7 @@ export class TaskService {
   /**
    * Assign task to investigator (Supervisor action)
    */
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, auditLogService: AuditLogService | null) {
+  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
     this.logger.log(`Assigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
 
     if (!assignedUserId) {
@@ -502,24 +502,28 @@ export class TaskService {
       });
 
       try {
-        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(tenantId)) as FlowableTask[];
+        console.log("flowable tasks: ", flowableTasks);
         const flowableTask = flowableTasks.find((ft: FlowableTask) => {
           const vars = ft.variables || {};
+          console.log("vars: ", vars);
           return vars.postgres_task_id === taskId;
         });
 
+        console.log("FlowableTask: ", flowableTask);
+        
         if (flowableTask && assignedUserId) {
-          await this.flowableService.claimTask(flowableTask.id, assignedUserId);
-          await this.flowableService.updateTaskVariable(flowableTask.id, 'assignee_user_id', assignedUserId);
+          console.log("assignedUserId: ", assignedUserId);
+          const response1 = await this.flowableService.claimTask(flowableTask.id, assignedUserId);
+          console.log("response1: ", response1);
+          const response2  = await this.flowableService.updateTaskVariable(flowableTask.id, 'assignee_user_id', assignedUserId);
+          console.log("response2: ", response2);
         }
       } catch (flowableError) {
         this.logger.warn(`Failed to update Flowable task: ${flowableError.message}`, TaskService.name);
       }
 
-      // Use provided auditLogService or fallback to class instance
-      const auditService = auditLogService || this.auditLogService;
-
-      await auditService.logAction({
+      await this.auditLogService.logAction({
         userId: supervisorId,
         actionPerformed: `Assigned task ${taskId} to investigator ${assignedUserId}`,
         entityName: TaskService.name,
@@ -528,7 +532,7 @@ export class TaskService {
         performedAt: new Date(),
       });
 
-      await auditService.logAction({
+      await this.auditLogService.logAction({
         userId: assignedUserId,
         actionPerformed: `Task ${taskId} retrieved by investigator ${assignedUserId}`,
         entityName: TaskService.name,
@@ -756,7 +760,7 @@ export class TaskService {
     }
   }
 
-  async unassignTask(taskId: string, userId: string, reason?: string) {
+  async unassignTask(taskId: string, userId: string, tenantId: string, reason?: string) {
     this.logger.log(`User ${userId} attempting to unassign task ${taskId}`, TaskService.name);
 
     try {
@@ -845,7 +849,7 @@ export class TaskService {
 
 
       try {
-        const flowableTasks = (await this.flowableService.getTenantTasks(updatedTask.case_id)) as FlowableTask[];
+        const flowableTasks = (await this.flowableService.getTenantTasks(tenantId)) as FlowableTask[];
         const flowableTask = flowableTasks.find((ft) => ft.variables?.postgres_task_id === taskId);
 
         if (flowableTask) {
