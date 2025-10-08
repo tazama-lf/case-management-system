@@ -496,7 +496,7 @@ export class FlowableService implements OnModuleInit {
         params.unassigned = true;
       }
 
-      const response = await this.flowableClient.get('/service/runtime/tasks', {
+      const response = await this.flowableClient.get('/service/runtime/tasks?includeTaskLocalVariables=true', {
         params,
       });
 
