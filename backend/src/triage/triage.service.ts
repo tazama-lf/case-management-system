@@ -177,6 +177,7 @@ export class TriageService {
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
           confidence_per: alert.confidence_per ?? 0,
           case_id: createdCase.case_id,
+          
         },
       });
 

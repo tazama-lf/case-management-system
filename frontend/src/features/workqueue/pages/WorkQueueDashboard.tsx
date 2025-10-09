@@ -67,7 +67,7 @@ const WorkQueueDashboard: React.FC = () => {
   const handleAssignTask = async (taskData: UnifiedWorkQueueTask) => {
     try {
       // TODO: Implement user selection dialog
-      const assigneeUserId = 'placeholder-user-id'; // This should come from a user picker
+  const assigneeUserId = '';
       await flowableWorkQueueService.assignTask(taskData.id, assigneeUserId);
       
       // Refresh the work queue
