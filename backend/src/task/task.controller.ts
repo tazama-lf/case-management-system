@@ -47,7 +47,8 @@ export class TaskController {
   @RequireAlertTriageRole()
   async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.reassignTask(taskId, userId, assignedUserId);
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.reassignTask(taskId, userId, tenantId, assignedUserId);
   }
 
   @Patch(':taskId/unassign')
@@ -58,18 +59,22 @@ export class TaskController {
       @Req() req: AuthenticatedRequest
   ) {
     const userId = req.user.token.clientId;
-    return this.taskService.unassignTask(taskId, userId, unassignDto.reason);
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
   @RequireSupervisorRole()
   async assignTaskToInvestigator(@Param('taskId') taskId: string, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new Error('Missing tenantId');
+    if (!supervisorId) throw new Error('Missing supervisorId');
     const result = await this.taskService.assignTaskToInvestigator(
       taskId,
       assignTaskDto.assignedUserId,
       supervisorId,
-      this.auditLogService,
+      tenantId
     );
 
     return {
