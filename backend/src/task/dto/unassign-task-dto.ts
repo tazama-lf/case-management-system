@@ -11,5 +11,5 @@ export class UnassignTaskDto {
     @IsOptional()
     @IsString()
     @MaxLength(500, { message: 'Reason must not exceed 500 characters' })
-    reason?: string;
+    reason: string;
 }
