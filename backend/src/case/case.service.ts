@@ -685,7 +685,6 @@ export class CaseService {
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException(`Complete New Case task ${completeNewCaseTask.task_id} is already completed`);
         }
-
         const updatedTask = await this.taskService.updateTask(completeNewCaseTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, userId, this.auditLogService);
         const investigateTask = await this.taskService.createTask(
             { caseId, status: TaskStatus.STATUS_01_UNASSIGNED, name: 'Investigate case', description: `Task to investigate: ${caseId}`, candidateGroup: 'investigations' },
@@ -693,7 +692,6 @@ export class CaseService {
             this.auditLogService,
             this.logger,
         );
-
         await this.auditLogService.logAction({
           userId,
           operation: 'completeCase',
@@ -701,9 +699,38 @@ export class CaseService {
           actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
           outcome: Outcome.SUCCESS,
         });
-
         return { case: updatedCase, completedTask: updatedTask, newTask: investigateTask };
       });
+
+      // --- Flowable Sync ---
+      try {
+        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+        if (processInstance) {
+          // Complete "Complete New Case" task in Flowable
+          const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
+          const flowableCompleteTask = flowableTasks.find((t: any) => t.name === 'Complete New Case');
+          if (flowableCompleteTask) {
+            await this.flowableService.completeTask(flowableCompleteTask.id, {
+              completionAction: 'complete',
+              completedBy: userId,
+              completedAt: new Date().toISOString(),
+            });
+          }
+          // Sync "Investigate case" task in Flowable with DB
+          const updatedFlowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
+          const investigateFlowableTask = updatedFlowableTasks.find((t: any) => t.name === 'Investigate Case');
+          if (investigateFlowableTask && result.newTask) {
+            await this.flowableService.syncTaskWithDatabase(investigateFlowableTask.id, {
+              postgres_task_id: result.newTask.task_id,
+              postgres_case_id: caseId,
+              task_status: result.newTask.status,
+              flowable_case_id: processInstance.id,
+            });
+          }
+        }
+      } catch (flowableError) {
+        this.logger.error(`Flowable workflow update failed during case completion: ${flowableError.message}`, flowableError.stack, CaseService.name);
+      }
 
       return { success: true, ...result };
     } catch (err) {

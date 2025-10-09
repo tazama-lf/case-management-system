@@ -7,6 +7,7 @@ import { LoggerModule } from '../logger/logger.module';
 import { FlowableModule } from 'src/flowable/flowable.module';
 import { TaskModule } from 'src/task/task.module';
 import { TriageModule } from 'src/triage/triage.module';
+import { CommentModule } from 'src/comment/comment.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { TriageModule } from 'src/triage/triage.module';
     LoggerModule,
     forwardRef(() => TriageModule),
     forwardRef(() => FlowableModule),
-    TaskModule
+    TaskModule,
+    CommentModule
   ],
   providers: [CaseService],
   exports: [CaseService],

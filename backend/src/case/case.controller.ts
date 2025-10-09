@@ -26,6 +26,27 @@ import { AlertMessageDto } from '../nats/dto/AlertMessageDto.dto';
 @ApiBearerAuth('jwt')
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
+  /**
+   * Complete a DRAFT case and create investigation task
+   * PUT /api/v1/cases/:caseId/complete
+   */
+  @Put(':caseId/complete')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete a DRAFT case', description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.' })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to complete' })
+  @ApiResponse({ status: 200, description: 'Case completed successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing information' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to complete cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  @ApiResponse({ status: 409, description: 'Conflict - Case is not in DRAFT state' })
+  async completeCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId } = req.user.token;
+    if (!clientId || !tenantId) {
+      throw new BadRequestException('Missing clientId or tenantId in auth token');
+    }
+    return this.caseService.completeCase(caseId, clientId, tenantId);
+  }
 
   @Post('system-transmission')
   @RequireAlertTriageRole()
