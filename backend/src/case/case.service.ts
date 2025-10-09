@@ -23,6 +23,8 @@ import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
+import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
+import { CommentService } from 'src/comment/comment.service';
 
 @Injectable()
 export class CaseService {
@@ -35,6 +37,7 @@ export class CaseService {
     @Inject(forwardRef(() => TriageService))
     private readonly triageService: TriageService,
     private readonly taskService: TaskService,
+    private readonly commentService: CommentService,
   ) {}
 
   async createCaseSystemTransmission(payload: any, clientId: string) {
@@ -427,6 +430,298 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
       throw error;
+    }
+  }
+
+  async abandonCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    if (!reason || reason.trim() === '') {
+      this.logger.error('Reason for abandonment is required', '', CaseService.name);
+      throw new BadRequestException('Reason for abandonment is required');
+    }
+
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) {
+      this.logger.error(`Case doesn't exist for caseId ${caseId}`, '', CaseService.name);
+      throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
+    }
+
+    const caseStatus = existingCase.status;
+    if (caseStatus !== CaseStatus.STATUS_00_DRAFT) {
+      this.logger.error('Cannot abandon case other than draft status', '', CaseService.name);
+      throw new BadRequestException('Cannot abandon case other than draft status');
+    }
+
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
+    if (!completeNewCaseTask) {
+      throw new BadRequestException('No complete new Case Task exists');
+    }
+    if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
+      throw new BadRequestException(`Cannot update Complete New Case task ${completeNewCaseTask.task_id} as it is already completed`);
+    }
+    try {
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(
+          caseId,
+          {
+            status: CaseStatus.STATUS_99_ABANDONED,
+          },
+          userId,
+        );
+
+        const updatedTask = await this.taskService.updateTask(
+          completeNewCaseTask.task_id,
+          {
+            status: TaskStatus.STATUS_30_COMPLETED,
+          },
+          userId,
+          this.auditLogService,
+        );
+
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.note = reason;
+
+        this.commentService.addComment(createCommentDto, userId);
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'abandonCase',
+          entityName: CaseService.name,
+          actionPerformed: `Abandon case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, task: updatedTask };
+      });
+
+      try {
+        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+
+        if (processInstance) {
+          await this.flowableService.terminateProcessInstance(processInstance.id, `Case abandoned with reason ${reason}`);
+          this.logger.log(
+            `Terminated Flowable process ${processInstance.id} for abandoning case ${caseId} with reason ${reason}`,
+            TriageService.name,
+          );
+        }
+      } catch (flowableError) {
+        this.logger.error(
+          `Failed to terminate Flowable process for abandoned case ${caseId}: ${flowableError.message}`,
+          flowableError.stack,
+          TriageService.name,
+        );
+      }
+
+      return { success: true, ...result };
+    } catch (err) {
+      this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
+    }
+  }
+
+  async completeCase(caseId: string, userId: string, tenantId: string) {
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) {
+      this.logger.error(`Case not found for caseId ${caseId}`, '', CaseService.name);
+      throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    }
+
+    if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) {
+      this.logger.error(`Cannot complete case in status ${existingCase.status}`, '', CaseService.name);
+      throw new BadRequestException(`Only cases in DRAFT status can be completed`);
+    }
+
+    const missingFields = this.validateCaseCompletionFields(existingCase);
+    if (missingFields.length > 0) {
+      const msg = `Missing or invalid fields: ${missingFields.join(', ')}`;
+      this.logger.warn(msg, '', CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'completeCase',
+        entityName: CaseService.name,
+        actionPerformed: `Failed case completion due to missing fields [${missingFields.join(', ')}]`,
+        outcome: Outcome.FAILURE,
+      });
+
+      throw new BadRequestException(msg);
+    }
+
+    try {
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
+
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+        const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
+        if (!completeNewCaseTask) throw new BadRequestException('No Complete New Case task found');
+
+        if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
+          throw new BadRequestException(`Complete New Case task ${completeNewCaseTask.task_id} is already completed`);
+        }
+
+        const updatedTask = await this.taskService.updateTask(
+          completeNewCaseTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED },
+          userId,
+          this.auditLogService,
+        );
+
+        const investigateTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Task to investigate: ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
+        );
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'completeCase',
+          entityName: CaseService.name,
+          actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, completedTask: updatedTask, newTask: investigateTask };
+      });
+
+      return { success: true, ...result };
+    } catch (err) {
+      this.logger.error('completeCase failed', { error: err, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to complete case: ${err.message}`);
+    }
+  }
+
+  private validateCaseCompletionFields(existingCase: any): string[] {
+    const missing: string[] = [];
+
+    if (!existingCase.priority) missing.push('priority');
+    if (!existingCase.case_type) missing.push('case_type');
+
+    return missing;
+  }
+
+  async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) {
+      throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    }
+
+    if (existingCase.status !== CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL) {
+      throw new BadRequestException(`Only cases in PENDING CASE CREATION APPROVAL can be approved`);
+    }
+
+    try {
+      const result = await this.prismaService.$transaction(async () => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, supervisorId);
+
+        const allTasks = (await this.taskService.getTasksByCaseId(caseId)) ?? [];
+        const approveTask = allTasks.find((t) => t.name === 'Approve Case Creation');
+        if (!approveTask) throw new BadRequestException('Approve Case Creation task not found');
+
+        const completedTask = await this.taskService.updateTask(
+          approveTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED },
+          supervisorId,
+          this.auditLogService,
+        );
+
+        const investigateTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Task to investigate: ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+        );
+
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseCreation',
+          entityName: CaseService.name,
+          actionPerformed: `Approved case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, approvedTask: completedTask, newTask: investigateTask };
+      });
+
+      return { success: true, ...result };
+    } catch (err) {
+      this.logger.error('approveCaseCreation failed', { error: err, caseId, supervisorId, tenantId });
+      throw new InternalServerErrorException(`Failed to approve case: ${err.message}`);
+    }
+  }
+
+  async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) {
+      throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    }
+
+    if (existingCase.status !== CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL) {
+      throw new BadRequestException(`Only cases in PENDING CASE CREATION APPROVAL can be rejected`);
+    }
+
+    if (!reason || reason.trim() === '') {
+      throw new BadRequestException('Rejection reason is required');
+    }
+
+    try {
+      const result = await this.prismaService.$transaction(async () => {
+
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_00_DRAFT }, supervisorId);
+
+        const allTasks = (await this.taskService.getTasksByCaseId(caseId)) ?? [];
+        const approveTask = allTasks.find((t) => t.name === 'Approve Case Creation');
+        if (!approveTask) throw new BadRequestException('Approve Case Creation task not found');
+
+        const completedTask = await this.taskService.updateTask(
+          approveTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED },
+          supervisorId,
+          this.auditLogService,
+        );
+
+        const completeNewCaseTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Complete New Case',
+            description: 'Revise and complete the case as per supervisor feedback',
+            candidateGroup: 'investigations',
+            assignedUserId:existingCase.case_creator_user_id,
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+        );
+
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'rejectCaseCreation',
+          entityName: CaseService.name,
+          actionPerformed: `Rejected case ${caseId} and created Complete New Case task ${completeNewCaseTask.task_id}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, completedTask, newTask: completeNewCaseTask };
+      });
+
+      return { success: true, ...result };
+    } catch (err) {
+      this.logger.error('rejectCaseCreation failed', { error: err, caseId, supervisorId, tenantId });
+      throw new InternalServerErrorException(`Failed to reject case: ${err.message}`);
     }
   }
 
