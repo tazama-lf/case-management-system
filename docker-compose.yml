@@ -21,11 +21,6 @@ services:
       - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - tazama-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tazama_user -d tazama_cms"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Redis for caching and sessions
   redis:
@@ -38,11 +33,6 @@ services:
       - redis_data:/data
     networks:
       - tazama-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Backend API
   backend:
@@ -52,32 +42,15 @@ services:
     container_name: tazama-cms-backend
     restart: unless-stopped
     depends_on:
-      database:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      NODE_ENV: development
-      PORT: 3000
-      DATABASE_URL: postgresql://tazama_user:tazama_password@database:5432/tazama_cms
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      JWT_EXPIRES_IN: 24h
-      CORS_ORIGIN: http://localhost:5173
-      LOG_LEVEL: debug
+      - database
+      - redis
     ports:
       - "3000:3000"
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - /app/dist
     networks:
       - tazama-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Frontend React App
   frontend:
@@ -86,25 +59,13 @@ services:
       dockerfile: Dockerfile
     container_name: tazama-cms-frontend
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      VITE_API_BASE_URL: http://localhost:3000
-      VITE_APP_TITLE: "Tazama Case Management System"
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/dist
     networks:
       - tazama-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # NATS Messaging (if needed for microservices)
   nats:
@@ -117,11 +78,6 @@ services:
     command: ["--jetstream", "--http_port", "8222"]
     networks:
       - tazama-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
   postgres_data:
