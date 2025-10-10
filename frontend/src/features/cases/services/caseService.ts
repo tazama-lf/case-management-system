@@ -79,16 +79,24 @@ export interface CloseCaseDto {
   recommendations?: string;
 }
 
-// Manual Case Creation DTOs matching backend
-export interface CreateCaseDto {
-  parentId?: string;
-  tenantId: string;
-  caseCreatorUserId: string;
-  caseOwnerUserId: string;
-  status: string;
-  priority: string;
+// Manual Case Creation DTOs matching backend ManualCreateCaseDto
+export interface ManualCreateCaseDto {
+  alertId?: string;
+  priorityScore?: number;
+  alertType: string;
+}
+
+// Update Case DTO for completing draft cases
+export interface UpdateCaseDto {
+  status?: string;
+  priority?: string;
   caseType?: string;
-  caseCreationType: string;
+  caseOwnerUserId?: string;
+}
+
+// Abandon Case DTO
+export interface AbandonCaseDto {
+  reason: string;
 }
 
 export interface CloseCaseResponseDto {
@@ -168,13 +176,33 @@ export class CaseService {
     }
   }
 
-  // POST /api/v1/cases - Manual case creation
-  async createCase(createCaseData: CreateCaseDto): Promise<Case> {
+  // POST /api/v1/cases/manual - Manual case creation
+  async createCase(manualCreateCaseData: ManualCreateCaseDto): Promise<Case> {
     try {
-      const response = await apiClient.post<Case>(this.baseUrl, createCaseData);
+      const response = await apiClient.post<Case>(`${this.baseUrl}/manual`, manualCreateCaseData);
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'create case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId 
+  async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'update case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/abandon - Abandon a case
+  async abandonCase(caseId: string, abandonCaseData: AbandonCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/abandon`, abandonCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'abandon case');
     }
   }
 
