@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, Http
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
-import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto, ApproveCaseClosureDto, RejectCaseClosureDto, ReturnCaseForReviewDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import {
@@ -34,7 +33,7 @@ export class CaseController {
     summary: 'Create case via system-to-system transmission',
     description: 'Creates a new case when fraud is reported via API portal or ATM',
   })
-  @ApiBody({ type: SystemCaseCreationDto })
+  @ApiBody({ type: AlertMessageDto })
   @ApiResponse({
     status: 201,
     description: 'Case created successfully',
@@ -51,8 +50,9 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createCaseSystemTransmission(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
-    const clientId = req.user.token.clientId;
-    return this.caseService.createCaseSystemTransmission(dto, clientId);
+    const { clientId, tenantId } = req.user.token;
+    if (!clientId || !tenantId ) throw new BadRequestException('Missing clientId or tenantId');
+    return this.caseService.createCaseSystemTransmission(dto, clientId, tenantId);
   }
 
   @Post('manual')

@@ -14,7 +14,4 @@ export class SubmitAlertDto {
 
   @IsObject()
   networkMap: NetworkMap;
-
-  // New fields for triage workflow
-  confidence_per?: number;
 }

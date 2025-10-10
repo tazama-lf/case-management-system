@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
   ConflictException,
   Inject,
   forwardRef,
@@ -24,6 +23,7 @@ import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
+import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 
 @Injectable()
 export class CaseService {
@@ -38,12 +38,11 @@ export class CaseService {
     private readonly taskService: TaskService,
   ) {}
 
-  async createCaseSystemTransmission(payload: any, clientId: string) {
+  async createCaseSystemTransmission(payload: AlertMessageDto, clientId: string, tenantId: string) {
     try {
       this.logger.log('System-to-system case creation initiated', CaseService.name);
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);
-      await this.ensureSystemUserExists(systemUuid);
-      await this.triageService.processIncomingAlert(payload, systemUuid, payload.tenantId || clientId);
+      await this.triageService.processIncomingAlert(payload, 'REST API', systemUuid, tenantId);
       await this.auditLogService.logAction({
         userId: systemUuid,
         operation: 'createCase',
@@ -56,13 +55,6 @@ export class CaseService {
       this.logger.error(`Error in system-to-system case creation: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
-  }
-
-
-  private async ensureSystemUserExists(systemUuid: string) {
-    // System users are managed externally through auth service
-    // No need to create local database records for users
-    this.logger.log(`Using system user: ${systemUuid}`, CaseService.name);
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
@@ -114,7 +106,6 @@ export class CaseService {
         return { case: createdCase, alert: updatedAlert };
       });
 
-      // Start Flowable process - PASS REQUIRED VARIABLES
       await this.flowableService.startProcessInstance(
           'caseManagementProcess',
           {
@@ -269,7 +260,6 @@ export class CaseService {
         this.logger.log(`Created Flowable approval task ${flowableApprovalTask.id} for case closure ${caseId}`, CaseService.name);
       } catch (flowableError) {
         this.logger.error(`Failed to create Flowable approval task: ${flowableError.message}`, flowableError.stack, CaseService.name);
-        // Continue without Flowable - the database task still exists
       }
 
       await this.auditLogService.logAction({

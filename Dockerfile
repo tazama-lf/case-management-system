@@ -2,30 +2,13 @@
 # Tazama Case Management System - Multi-stage Docker Build
 # =============================================================================
 
-<<<<<<< HEAD
-# Define a build argument for the npm token
-ARG NPM_TOKEN
-
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 # -----------------------------------------------------------------------------
 # Stage 1: Backend Build
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS backend-builder
-<<<<<<< HEAD
-ARG NPM_TOKEN
+FROM node:22-alpine AS backend-builder
 
 WORKDIR /app/backend
 
-# Configure npm to use the private registry
-RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
-RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-
-=======
-
-WORKDIR /app/backend
-
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 # Copy package files and install all dependencies (including dev) for the build
 COPY backend/package*.json ./
 RUN npm ci
@@ -39,42 +22,32 @@ RUN npx prisma generate
 # Build the backend
 RUN npm run build
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
 # Stage 2: Frontend Build
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS frontend-builder
-<<<<<<< HEAD
-ARG NPM_TOKEN
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Configure npm to use the private registry
-RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
-RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
+# Install Alpine build dependencies needed for TypeScript and some npm modules
+RUN apk add --no-cache python3 g++ make bash
 
-=======
-
-WORKDIR /app/frontend
-
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
-# Copy package files and install all dependencies (including dev) for the build
+# Copy package files and install all dependencies (including dev)
 COPY frontend/package*.json ./
+
+# Install dev dependencies including @types/node
 RUN npm ci
 
 # Copy the rest of the frontend source code
 COPY frontend/ .
 
-# Build the frontend
+# Build the frontend (Vite + TypeScript)
 RUN npm run build
 
 # -----------------------------------------------------------------------------
 # Stage 3: Production Backend Runtime
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS backend-production
-<<<<<<< HEAD
-ARG NPM_TOKEN
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
+FROM node:22-alpine AS backend-production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -85,13 +58,6 @@ RUN adduser -S nestjs -u 1001
 
 WORKDIR /app
 
-<<<<<<< HEAD
-# Configure npm to use the private registry
-RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
-RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 # Copy package.json and install production dependencies
 COPY backend/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
@@ -123,14 +89,6 @@ CMD ["node", "dist/src/main.js"]
 # Stage 4: Production Frontend Runtime (Nginx)
 # -----------------------------------------------------------------------------
 FROM nginx:alpine AS frontend-production
-<<<<<<< HEAD
-ARG NPM_TOKEN
-
-# Configure npm to use the private registry
-RUN npm config set @tazama-lf:registry https://registry.npmjs.org/
-RUN npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-=======
->>>>>>> b610ca14c62be40a6b4464adec8d2995e9c999d7
 
 # Copy built frontend assets
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
