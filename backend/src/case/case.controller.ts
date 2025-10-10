@@ -27,6 +27,26 @@ import { AlertMessageDto } from '../nats/dto/AlertMessageDto.dto';
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
   /**
+   * Abandon a DRAFT case
+   * PUT /api/v1/cases/:caseId/abandon
+   */
+  @Put(':caseId/abandon')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Abandon a DRAFT case', description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.' })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to abandon' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for abandoning the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case abandoned successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to abandon cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async abandonCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
+    return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
+  }
+  /**
    * Complete a DRAFT case and create investigation task
    * PUT /api/v1/cases/:caseId/complete
    */
