@@ -46,22 +46,21 @@ export class TriageService {
     }
   }
 
-  async processIncomingAlert(req: AlertMessageDto, userId: string, tenantId: string) {
+  async processIncomingAlert(req: AlertMessageDto, source: string, userId: string, tenantId: string) {
     const submitAlertDto: SubmitAlertDto = {
       message: req.message,
       report: req.report,
       transaction: req.transaction,
       networkMap: req.networkMap,
-      confidence_per: req.confidence_per,
     };
 
     if (submitAlertDto.report.status === 'NALT') {
       this.logger.log(`Processing alert with status: ${submitAlertDto.report.status}`, TriageService.name);
-      await this.handleNotAlert(submitAlertDto, userId, tenantId, 'NATS');
+      await this.handleNotAlert(submitAlertDto, userId, tenantId, source);
       return;
     }
 
-    const alert = await this.handleNewAlert(submitAlertDto, userId, tenantId, 'NATS');
+    const alert = await this.handleNewAlert(submitAlertDto, userId, tenantId, source);
     if (!alert.case_id) {
       throw new InternalServerErrorException('Alert case_id is missing.');
     }
@@ -175,7 +174,7 @@ export class TriageService {
           alert_data: JSON.parse(JSON.stringify(alert.report)),
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
-          confidence_per: alert.confidence_per ?? 0,
+          confidence_per:  0,
           case_id: createdCase.case_id,
         },
       });

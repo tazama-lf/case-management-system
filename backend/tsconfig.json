@@ -16,7 +16,8 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "types": ["vite/client", "node"],
   },
   "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
 }
