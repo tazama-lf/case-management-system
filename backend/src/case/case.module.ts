@@ -7,7 +7,7 @@ import { LoggerModule } from '../logger/logger.module';
 import { FlowableModule } from 'src/flowable/flowable.module';
 import { TaskModule } from 'src/task/task.module';
 import { TriageModule } from 'src/triage/triage.module';
-import { CommentModule } from 'src/comment/comment.module';
+import {CommentModule} from "../comment/comment.module";
 
 @Module({
   imports: [
