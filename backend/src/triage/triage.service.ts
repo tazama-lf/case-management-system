@@ -853,33 +853,33 @@ export class TriageService {
   }
 
   async createInvestigationTask(
-    caseId: string,
-    userId: string,
-    taskId: string,
-    investigateTaskDesc: string,
-    triageTaskDesc: string,
-    priority: Priority,
-    caseType?: CaseType,
+      caseId: string,
+      userId: string,
+      taskId: string,
+      investigateTaskDesc: string,
+      triageTaskDesc: string,
+      priority: Priority,
+      caseType?: CaseType,
   ): Promise<any> {
     try {
       await this.taskService.updateTask(
-        taskId,
-        { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
-        userId,
-        this.audit,
+          taskId,
+          { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
+          userId,
+          this.audit,
       );
 
       const createdTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate case',
-          description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
-          candidateGroup: 'investigations',
-        },
-        userId,
-        this.audit,
-        this.logger,
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          userId,
+          this.audit,
+          this.logger,
       );
 
       const updateCaseDto: Partial<UpdateCaseDto> = {
@@ -902,13 +902,32 @@ export class TriageService {
               triageComplete: true,
               investigationTaskCreated: true,
             });
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const updatedTasks = await this.flowableService.getProcessTasks(processInstance.id);
+            const investigateFlowableTask = updatedTasks.find((t: any) => t.name === 'Investigate Case');
+
+            if (investigateFlowableTask) {
+              await this.flowableService.syncTaskWithDatabase(investigateFlowableTask.id, {
+                postgres_task_id: createdTask.task_id,
+                postgres_case_id: caseId,
+                task_status: createdTask.status,
+                flowable_case_id: processInstance.id,
+              });
+
+              this.logger.log(
+                  `Synced Flowable investigation task ${investigateFlowableTask.id} with PostgreSQL task ${createdTask.task_id}`,
+                  TriageService.name
+              );
+            }
           }
         }
       } catch (flowableError) {
         this.logger.error(
-          `Failed to create Flowable investigation task for case ${caseId}: ${flowableError.message}`,
-          flowableError.stack,
-          TriageService.name,
+            `Failed to sync Flowable investigation task for case ${caseId}: ${flowableError.message}`,
+            flowableError.stack,
+            TriageService.name
         );
       }
 

@@ -45,10 +45,17 @@ export class TaskController {
 
   @Patch(':taskId/reassign')
   @RequireAlertTriageRole()
-  async reassignTask(@Param('taskId') taskId: string, @Body('assignedUserId') assignedUserId: string, @Req() req: AuthenticatedRequest) {
+  async reassignTask(
+      @Param('taskId') taskId: string,
+      @Body('assignedUserId') assignedUserId: string,
+      @Req() req: AuthenticatedRequest
+  ) {
     const userId = req.user.token.clientId;
-    return this.taskService.reassignTask(taskId, userId, assignedUserId);
+    const tenantId = req.user.token.tenantId;
+
+    return this.taskService.reassignTask(taskId, userId, tenantId, assignedUserId);
   }
+
 
   @Patch(':taskId/unassign')
   @RequireAlertTriageRole()
@@ -63,13 +70,19 @@ export class TaskController {
 
   @Patch(':taskId/assign')
   @RequireSupervisorRole()
-  async assignTaskToInvestigator(@Param('taskId') taskId: string, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
+  async assignTaskToInvestigator(
+      @Param('taskId') taskId: string,
+      @Body() assignTaskDto: AssignTaskDto,
+      @Req() req: AuthenticatedRequest
+  ) {
     const supervisorId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+
     const result = await this.taskService.assignTaskToInvestigator(
-      taskId,
-      assignTaskDto.assignedUserId,
-      supervisorId,
-      this.auditLogService,
+        taskId,
+        assignTaskDto.assignedUserId,
+        supervisorId,
+        tenantId,
     );
 
     return {
@@ -83,6 +96,7 @@ export class TaskController {
       },
     };
   }
+
 
   @Patch(':taskId')
   @RequireInvestigatorRole()

@@ -57,6 +57,41 @@ export class CaseController {
 
   @Post('manual')
   @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create case manually',
+    description: 'Investigator or Supervisor creates a case manually from an existing alert',
+  })
+  @ApiBody({ type: ManualCreateCaseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Case created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        case: {
+          type: 'object',
+          properties: {
+            case_id: { type: 'string', format: 'uuid' },
+            status: { type: 'string' },
+            priority: { type: 'string' },
+            case_type: { type: 'string' },
+          },
+        },
+        alert: {
+          type: 'object',
+          properties: {
+            alert_id: { type: 'string', format: 'uuid' },
+            case_id: { type: 'string', format: 'uuid' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - Missing required fields or alert already has a case' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Alert not found' })
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
