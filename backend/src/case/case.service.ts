@@ -273,36 +273,22 @@ export class CaseService {
           data: { status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: supervisorId, updated_at: new Date() },
         });
 
-        const investigateTask = await tx.task.create({
-          data: {
-            case_id: caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for case ${caseId}`,
-            candidateGroup: 'investigations',
-          },
-        });
-
-        return { case: updatedCase, approvedTask: completedApprovalTask, newTask: investigateTask };
+        return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      this.logger.log(`PostgreSQL investigate task created with ID: ${result.newTask.task_id}`, CaseService.name);
-
-      // Flowable sync
       try {
         const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-        this.logger.log(`Process instance found: ${processInstance?.id}`, CaseService.name);
 
         if (processInstance) {
           const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-          this.logger.log(`Flowable tasks before approval completion: ${JSON.stringify(flowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
+          this.logger.log(`Flowable tasks before approval: ${JSON.stringify(flowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
 
           const flowableApprovalTask = flowableTasks.find((t: any) => t.name === 'Approve Case Creation');
 
           if (flowableApprovalTask) {
-            this.logger.log(`Found Flowable approval task with ID: ${flowableApprovalTask.id}`, CaseService.name);
+            this.logger.log(`Completing Flowable approval task ${flowableApprovalTask.id}`, CaseService.name);
 
-            // Complete the approval task
+            // Complete the approval task - Flowable will create the next task automatically
             await this.flowableService.completeTask(flowableApprovalTask.id, {
               creationApproval: 'approve',
               creationComments: 'Case creation approved by supervisor',
@@ -310,57 +296,68 @@ export class CaseService {
               approvedAt: new Date().toISOString(),
             });
 
-            this.logger.log(`Approval task completed successfully`, CaseService.name);
+            this.logger.log(`Approval task completed, waiting for Flowable to create investigate task`, CaseService.name);
 
             // Wait for Flowable to create the next task
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Get updated tasks
             const updatedFlowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-            this.logger.log(`Flowable tasks after approval completion: ${JSON.stringify(updatedFlowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
+            this.logger.log(`Flowable tasks after approval: ${JSON.stringify(updatedFlowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
 
             const investigateFlowableTask = updatedFlowableTasks.find((t: any) => t.name === 'Investigate Case');
 
             if (investigateFlowableTask) {
-              this.logger.log(`Found Flowable Investigate Case task with ID: ${investigateFlowableTask.id}`, CaseService.name);
+              this.logger.log(`Found Flowable Investigate Case task ${investigateFlowableTask.id}, creating PostgreSQL task`, CaseService.name);
 
-              // Sync with database
-              const syncResult = await this.flowableService.syncTaskWithDatabase(investigateFlowableTask.id, {
-                postgres_task_id: result.newTask.task_id,
+              const investigateTask = await this.prismaService.task.create({
+                data: {
+                  case_id: caseId,
+                  status: TaskStatus.STATUS_01_UNASSIGNED,
+                  name: 'Investigate case',
+                  description: `Investigation task for case ${caseId}`,
+                  candidateGroup: 'investigations',
+                },
+              });
+
+              this.logger.log(`Created PostgreSQL task ${investigateTask.task_id}`, CaseService.name);
+
+              // Sync the Flowable task with the PostgreSQL task
+              await this.flowableService.syncTaskWithDatabase(investigateFlowableTask.id, {
+                postgres_task_id: investigateTask.task_id,
                 postgres_case_id: caseId,
-                task_status: result.newTask.status,
+                task_status: investigateTask.status,
                 flowable_case_id: processInstance.id,
               });
 
-              this.logger.log(`Task sync completed with result: ${syncResult}`, CaseService.name);
+              this.logger.log(`Synced Flowable task ${investigateFlowableTask.id} with PostgreSQL task ${investigateTask.task_id}`, CaseService.name);
 
-              // Verify the sync worked
-              const verifyTask = await this.flowableService.getTask(investigateFlowableTask.id);
-              this.logger.log(`Task verification after sync: ${JSON.stringify(verifyTask)}`, CaseService.name);
+              await this.auditLogService.logAction({
+                userId: supervisorId,
+                operation: 'approveCaseCreation',
+                entityName: CaseService.name,
+                actionPerformed: `Approved case creation for case ${caseId}, created investigate task ${investigateTask.task_id}`,
+                outcome: Outcome.SUCCESS,
+              });
 
+              return { success: true, case: result.case, approvedTask: result.approvedTask, newTask: investigateTask };
             } else {
-              this.logger.error(`Flowable Investigate Case task not found after approval completion`, CaseService.name);
-              this.logger.error(`Available tasks: ${JSON.stringify(updatedFlowableTasks)}`, CaseService.name);
+              this.logger.error(`Flowable did not create Investigate Case task after approval`, CaseService.name);
+              throw new Error('Flowable workflow did not create expected investigate task');
             }
           } else {
-            this.logger.error(`Flowable approval task not found in process instance`, CaseService.name);
+            this.logger.error(`Flowable approval task not found`, CaseService.name);
+            throw new Error('Flowable approval task not found');
           }
+        } else {
+          this.logger.error(`No process instance found for case ${caseId}`, CaseService.name);
+          throw new Error('No active workflow process found for case');
         }
       } catch (flowableError) {
-        this.logger.error(`Flowable workflow update failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
+        this.logger.error(`Flowable workflow error: ${flowableError.message}`, flowableError.stack, CaseService.name);
+        throw flowableError;
       }
-
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'approveCaseCreation',
-        entityName: CaseService.name,
-        actionPerformed: `Approved case creation for case ${caseId}, created investigate task ${result.newTask.task_id}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      return { success: true, ...result };
     } catch (error) {
-      this.logger.error(`Failed to approve case creation for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+      this.logger.error(`Failed to approve case creation: ${error.message}`, error.stack, CaseService.name);
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseCreation',
@@ -398,26 +395,29 @@ export class CaseService {
           data: { status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: supervisorId, updated_at: new Date() },
         });
 
-        const completeNewCaseTask = await tx.task.create({
-          data: {
-            case_id: caseId,
+        return { case: updatedCase, completedTask: completedApprovalTask };
+      });
+
+      const completeNewCaseTask = await this.taskService.createTask(
+          {
+            caseId,
             status: TaskStatus.STATUS_10_ASSIGNED,
-            assigned_user_id: existingCase.case_creator_user_id,
+            assignedUserId: existingCase.case_creator_user_id,
             name: 'Complete New Case',
             description: 'Revise and complete the case as per supervisor feedback',
             candidateGroup: 'investigations',
           },
-        });
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+      );
 
-        await tx.comment.create({
-          data: {
-            user_id: supervisorId,
-            task_id: completeNewCaseTask.task_id,
-            note: `Case creation rejected. Reason: ${reason}`,
-          },
-        });
-
-        return { case: updatedCase, completedTask: completedApprovalTask, newTask: completeNewCaseTask };
+      await this.prismaService.comment.create({
+        data: {
+          user_id: supervisorId,
+          task_id: completeNewCaseTask.task_id,
+          note: `Case creation rejected. Reason: ${reason}`,
+        },
       });
 
       try {
@@ -442,11 +442,11 @@ export class CaseService {
         userId: supervisorId,
         operation: 'rejectCaseCreation',
         entityName: CaseService.name,
-        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${result.newTask.task_id}. Reason: ${reason}`,
+        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
         outcome: Outcome.SUCCESS,
       });
 
-      return { success: true, ...result };
+      return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
       this.logger.error(`Failed to reject case creation for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
       await this.auditLogService.logAction({
@@ -500,31 +500,34 @@ export class CaseService {
           });
         }
 
-        const approvalTask = await tx.task.create({
-          data: {
-            case_id: caseId,
+        return { updatedCase };
+      });
+
+      const approvalTask = await this.taskService.createTask(
+          {
+            caseId,
             status: TaskStatus.STATUS_01_UNASSIGNED,
-            assigned_user_id: null,
             name: 'Approve case closure',
             description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
+            candidateGroup: 'supervisors',
           },
-        });
+          userId,
+          this.auditLogService,
+          this.logger,
+      );
 
-        await tx.comment.create({
-          data: {
-            user_id: userId,
-            task_id: approvalTask.task_id,
-            note: JSON.stringify({
-              recommendedOutcome: dto.recommendedOutcome,
-              finalNotes: dto.finalNotes,
-              recommendations: dto.recommendations,
-              submittedBy: userId,
-              submittedAt: new Date(),
-            }),
-          },
-        });
-
-        return { updatedCase, approvalTask };
+      await this.prismaService.comment.create({
+        data: {
+          user_id: userId,
+          task_id: approvalTask.task_id,
+          note: JSON.stringify({
+            recommendedOutcome: dto.recommendedOutcome,
+            finalNotes: dto.finalNotes,
+            recommendations: dto.recommendations,
+            submittedBy: userId,
+            submittedAt: new Date(),
+          }),
+        },
       });
 
       try {
@@ -539,7 +542,7 @@ export class CaseService {
               finalNotes: dto.finalNotes,
               recommendations: dto.recommendations,
               investigatorId: userId,
-              approvalTaskId: result.approvalTask.task_id,
+              approvalTaskId: approvalTask.task_id,
             });
           }
         }
@@ -558,7 +561,7 @@ export class CaseService {
       return {
         message: 'Case closed successfully and submitted for approval',
         closed_case: { case_id: result.updatedCase.case_id, status: result.updatedCase.status, updated_at: result.updatedCase.updated_at },
-        approval_task: { task_id: result.approvalTask.task_id, name: result.approvalTask.name, status: result.approvalTask.status, assigned_to: 'Supervisors' },
+        approval_task: { task_id: approvalTask.task_id, name: approvalTask.name, status: approvalTask.status, assigned_to: 'Supervisors' },
       };
     } catch (error) {
       this.logger.error(`Failed to close case ${caseId}: ${error.message}`, error.stack, CaseService.name);
@@ -782,25 +785,32 @@ export class CaseService {
         }
 
         const updatedTask = await this.taskService.updateTask(completeNewCaseTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, userId, this.auditLogService);
-        const investigateTask = await this.taskService.createTask(
-            { caseId, status: TaskStatus.STATUS_01_UNASSIGNED, name: 'Investigate case', description: `Task to investigate: ${caseId}`, candidateGroup: 'investigations' },
-            userId,
-            this.auditLogService,
-            this.logger,
-        );
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'completeCase',
-          entityName: CaseService.name,
-          actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        return { case: updatedCase, completedTask: updatedTask, newTask: investigateTask };
+        return { case: updatedCase, completedTask: updatedTask };
       });
 
-      return { success: true, ...result };
+      const investigateTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Task to investigate: ${caseId}`,
+            candidateGroup: 'investigations'
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
+      );
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'completeCase',
+        entityName: CaseService.name,
+        actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
       this.logger.error('completeCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to complete case: ${err.message}`);

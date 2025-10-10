@@ -55,9 +55,7 @@ export class TaskService {
     this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
   }
 
-  /**
-   * Create a task with Flowable integration
-   */
+
   async createTask(taskDTO: CreateTaskDto, userId: string, auditLogService: AuditLogService, loggerService: LoggerService) {
     loggerService.log('Creating task with Flowable integration', TaskService.name);
 
@@ -143,9 +141,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Reassign a task to a different user - FIXED
-   */
 
   async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
     this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
@@ -240,9 +235,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Update a task - FIXED
-   */
   async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string, auditLogService: AuditLogService | null) {
     this.logger.log(`Updating task ${taskId}`, TaskService.name);
 
@@ -324,9 +316,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get tasks by candidate group (work queue)
-   */
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
     this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
 
@@ -395,9 +384,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get investigation queue (all unassigned investigation tasks)
-   */
   async getInvestigationQueue() {
     try {
       const flowableTasks = (await this.flowableService.getCandidateGroupTasks('Investigations', true)) as FlowableTask[];
@@ -427,9 +413,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get tasks by case ID
-   */
   async getTasksByCaseId(caseId: string, userId?: string) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
@@ -476,9 +459,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Assign task to investigator (Supervisor action)
-   */
   async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
     this.logger.log(`Assigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
 
@@ -548,9 +528,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get all tasks with optional filtering
-   */
   async getTasks(status?: string) {
     try {
       const where = status ? { status: status as TaskStatus } : {};
@@ -574,9 +551,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get single task by ID
-   */
   async getTaskById(taskId: string) {
     try {
       return await this.prisma.task.findUnique({
@@ -601,9 +575,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get work queue with comprehensive filtering
-   */
   async getWorkQueue(filters: {
     role?: string;
     candidateGroup?: string;
@@ -686,9 +657,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get work queue statistics
-   */
   async getWorkQueueStatistics(userId: string) {
     try {
       const statistics = await this.flowableService.getWorkQueueStatistics();
@@ -712,9 +680,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Claim a task from the work queue
-   */
   async claimTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
@@ -888,9 +853,7 @@ export class TaskService {
 
       }
 
-      // Send notifications
       try {
-        // Notify the original assignee
         if (originalAssignee) {
           await this.notificationService.sendNotification({
             userId: originalAssignee,
@@ -962,9 +925,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Release a task back to the work queue
-   */
   async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
     this.logger.log(`User ${userId} releasing task ${taskId}`, TaskService.name);
 
@@ -1012,9 +972,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Complete a task
-   */
   async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
     this.logger.log(`User ${userId} completing task ${taskId}`, TaskService.name);
 
@@ -1061,9 +1018,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Get user's assigned tasks
-   */
   async getUserTasks(userId: string, includeCompleted: boolean = false) {
     try {
       const statusFilter = includeCompleted
