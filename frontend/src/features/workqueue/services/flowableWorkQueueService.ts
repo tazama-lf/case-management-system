@@ -21,17 +21,12 @@ export class FlowableWorkQueueService {
    */
   async getWorkQueueByGroup(candidateGroup: WorkQueueCandidateGroupType): Promise<UnifiedWorkQueueTask[]> {
     try {
-      console.log(`Fetching work queue for candidate group: ${candidateGroup}`);
-      
       const response = await apiClient.get<FlowableTask[]>(`${this.baseUrl}/work-queues/${candidateGroup}`);
       
-      // Transform Flowable tasks to unified format
       const unifiedTasks = response.map((task) => this.transformFlowableTask(task));
       
-      console.log(`Retrieved ${unifiedTasks.length} tasks from ${candidateGroup} queue`);
       return unifiedTasks;
     } catch (error: any) {
-      console.error(`Failed to get work queue for ${candidateGroup}:`, error);
       throw this.handleFlowableError(error, `get work queue for ${candidateGroup}`);
     }
   }
@@ -43,7 +38,6 @@ export class FlowableWorkQueueService {
     try {
       const queueCounts: Record<string, number> = {};
       
-      // Fetch task counts for each candidate group
       const candidateGroups = Object.values(WorkQueueCandidateGroup);
       
       await Promise.all(
@@ -52,7 +46,6 @@ export class FlowableWorkQueueService {
             const tasks = await this.getWorkQueueByGroup(group);
             queueCounts[group] = tasks.length;
           } catch (error) {
-            console.warn(`Failed to get count for ${group}:`, error);
             queueCounts[group] = 0;
           }
         })
@@ -81,6 +74,26 @@ export class FlowableWorkQueueService {
       return this.transformFlowableTask(response);
     } catch (error: any) {
       throw this.handleFlowableError(error, `assign task ${taskId}`);
+    }
+  }
+
+  /**
+   * Unassign a task 
+   */
+  async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
+    try {
+      const assignmentRequest: FlowableTaskAssignmentRequest = {
+        assignee: '' 
+      };
+      
+      const response = await apiClient.patch<FlowableTask>(
+        `${this.baseUrl}/${taskId}/assign`, 
+        assignmentRequest
+      );
+      
+      return this.transformFlowableTask(response);
+    } catch (error: any) {
+      throw this.handleFlowableError(error, `unassign task ${taskId}`);
     }
   }
 
@@ -114,29 +127,29 @@ export class FlowableWorkQueueService {
   /**
    * Transform Flowable task to unified format
    */
-  private transformFlowableTask(flowableTask: FlowableTask): UnifiedWorkQueueTask {
+  private transformFlowableTask(flowableTask: any): UnifiedWorkQueueTask {
     return {
-      id: flowableTask.id,
-      taskId: flowableTask.id, // For compatibility
+      id: flowableTask.flowableTaskId || flowableTask.id,
+      taskId: flowableTask.flowableTaskId || flowableTask.id, // For compatibility
       name: flowableTask.name,
       description: flowableTask.description,
       
       // Assignment
       assignee: flowableTask.assignee,
       assigneeName: flowableTask.assignee, // Could be enhanced with user lookup
-      candidateGroup: flowableTask.candidateGroups?.[0],
+      candidateGroup: flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
       
       // Status mapping
       status: this.mapFlowableStatus(flowableTask),
       priority: this.mapFlowablePriority(flowableTask.priority),
       
       // Timestamps
-      createdAt: flowableTask.createTime,
+      createdAt: flowableTask.createTime || new Date().toISOString(),
       dueDate: flowableTask.dueDate,
       
       // Process context
-      processInstanceId: flowableTask.processInstanceId,
-      caseId: flowableTask.processVariables?.caseId,
+      processInstanceId: flowableTask.processInstanceId || '',
+      caseId: flowableTask.variables?.postgres_case_id || flowableTask.processVariables?.caseId,
       
       // Keep original Flowable data for advanced operations
       flowableData: flowableTask
@@ -146,7 +159,20 @@ export class FlowableWorkQueueService {
   /**
    * Map Flowable task state to unified status
    */
-  private mapFlowableStatus(task: FlowableTask): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' {
+  private mapFlowableStatus(task: any): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' {
+    // Check for task_status in variables first
+    const taskStatus = task.variables?.task_status;
+    if (taskStatus) {
+      switch (taskStatus) {
+        case 'STATUS_01_UNASSIGNED': return 'UNASSIGNED';
+        case 'STATUS_10_ASSIGNED': return 'ASSIGNED';
+        case 'STATUS_20_IN_PROGRESS': return 'IN_PROGRESS';
+        case 'STATUS_30_COMPLETED': return 'COMPLETED';
+        case 'STATUS_21_BLOCKED': return 'SUSPENDED';
+      }
+    }
+    
+    // Fallback to standard Flowable status logic
     if (task.suspended) return 'SUSPENDED';
     if (!task.assignee) return 'UNASSIGNED';
     if (task.assignee) return 'ASSIGNED';
@@ -156,11 +182,11 @@ export class FlowableWorkQueueService {
   /**
    * Map Flowable priority number to string
    */
-  private mapFlowablePriority(priority: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    if (priority >= 80) return 'CRITICAL';
-    if (priority >= 60) return 'HIGH';
-    if (priority >= 40) return 'MEDIUM';
-    return 'LOW';
+  private mapFlowablePriority(priority: number): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
+    if (priority >= 90) return 'BREACH';
+    if (priority >= 70) return 'CRITICAL';
+    if (priority >= 50) return 'URGENT';
+    return 'NEW';
   }
 
   /**
@@ -175,6 +201,7 @@ export class FlowableWorkQueueService {
    */
   getCandidateGroups(): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
     return [
+      { value: WorkQueueCandidateGroup.INVESTIGATIONS, label: 'Investigations Queue' },
       { value: WorkQueueCandidateGroup.INVESTIGATORS, label: 'Investigators Queue' },
       { value: WorkQueueCandidateGroup.SUPERVISORS, label: 'Supervisors Queue' }
     ];

@@ -1,19 +1,23 @@
 import React from 'react';
-import { EyeIcon, UserPlusIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
 
 interface WorkQueueTableProps {
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;
-  onView: (task: UnifiedWorkQueueTask) => void;
+  onUnassign?: (task: UnifiedWorkQueueTask) => void;
+  onReassign?: (task: UnifiedWorkQueueTask) => void;
   onComplete: (task: UnifiedWorkQueueTask) => void;
+  onUpdateStatus?: (task: UnifiedWorkQueueTask) => void;
 }
 
 const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   tasks,
   onAssign,
-  onView,
+  onUnassign,
+  onReassign,
   onComplete,
+  onUpdateStatus,
 }) => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -36,10 +40,9 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     if (!priority) return null;
     
     const priorityConfig = {
-      CRITICAL: { color: 'bg-red-100 text-red-800', label: 'Critical' },
-      HIGH: { color: 'bg-orange-100 text-orange-800', label: 'High' },
-      MEDIUM: { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' },
-      LOW: { color: 'bg-gray-100 text-gray-800', label: 'Low' },
+      BREACH: { color: 'bg-red-100 text-red-800', label: 'Breach' },
+      CRITICAL: { color: 'bg-orange-100 text-orange-800', label: 'Critical' },
+      URGENT: { color: 'bg-yellow-100 text-yellow-800', label: 'Urgent' },
       NEW: { color: 'bg-blue-100 text-blue-800', label: 'New' },
     };
 
@@ -64,46 +67,74 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
 
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions = [];
-    
-    // View action is always available
+
+    // Always show Assign action
     actions.push(
       <button
-        key="view"
-        onClick={() => onView(task)}
-        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        title="View details"
+        key="assign"
+        onClick={() => onAssign(task)}
+        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        title="Assign task"
       >
-        <EyeIcon className="h-3 w-3 mr-1" />
-        View
+        <UserPlusIcon className="h-3 w-3 mr-1" />
+        Assign
       </button>
     );
 
-    // Assign action for unassigned tasks
-    if (task.status === 'UNASSIGNED') {
+    // Always show Reassign action if handler is provided
+    if (onReassign) {
       actions.push(
         <button
-          key="assign"
-          onClick={() => onAssign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          title="Assign task"
+          key="reassign"
+          onClick={() => onReassign(task)}
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          title="Reassign task"
         >
-          <UserPlusIcon className="h-3 w-3 mr-1" />
-          Assign
+          <ArrowPathIcon className="h-3 w-3 mr-1" />
+          Reassign
         </button>
       );
     }
 
-    // Complete action for assigned or in-progress tasks
-    if (task.status === 'ASSIGNED' || task.status === 'IN_PROGRESS') {
+    // Always show Unassign action if handler is provided
+    if (onUnassign) {
       actions.push(
         <button
-          key="complete"
-          onClick={() => onComplete(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          title="Mark complete"
+          key="unassign"
+          onClick={() => onUnassign(task)}
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+          title="Unassign task"
         >
-          <CheckIcon className="h-3 w-3 mr-1" />
-          Complete
+          <UserMinusIcon className="h-3 w-3 mr-1" />
+          Unassign
+        </button>
+      );
+    }
+
+    // Always show Complete action
+    actions.push(
+      <button
+        key="complete"
+        onClick={() => onComplete(task)}
+        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        title="Mark complete"
+      >
+        <CheckIcon className="h-3 w-3 mr-1" />
+        Complete
+      </button>
+    );
+
+    // Always show Update Status action if handler is provided
+    if (onUpdateStatus) {
+      actions.push(
+        <button
+          key="update-status"
+          onClick={() => onUpdateStatus(task)}
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          title="Update status"
+        >
+          <Cog6ToothIcon className="h-3 w-3 mr-1" />
+          Status
         </button>
       );
     }
@@ -144,12 +175,12 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tasks.map((task) => (
-              <tr key={task.id} className="hover:bg-gray-50">
+            {tasks.map((task, index) => (
+              <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={task.id}>
-                      {task.id.slice(0, 8)}...
+                    <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={task.id || 'No ID'}>
+                      {task.id ? `${task.id.slice(0, 8)}...` : 'No ID'}
                     </div>
                     {task.name && (
                       <div className="text-xs text-gray-500 truncate max-w-[150px]" title={task.name}>

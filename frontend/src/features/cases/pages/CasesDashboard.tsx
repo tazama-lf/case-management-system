@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '../../../shared/components/ui';
 import { CasesTable, CreateCaseModal, ViewCaseModal } from '..';
@@ -7,7 +7,13 @@ import ReopenCaseModal from '../components/ReopenCaseModal';
 import AbandonCaseModal from '../components/AbandonCaseModal';
 import SuspendCaseModal from '../components/SuspendCaseModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
-import { caseService, type CloseCaseDto, type CreateCaseDto } from '../services/caseService';
+import { 
+  caseService, 
+  type CloseCaseDto, 
+  type UpdateCaseDto, 
+  type AbandonCaseDto,
+  type ManualCreateCaseDto
+} from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
@@ -15,25 +21,26 @@ import { useAuth } from '../../auth/components/AuthContext';
 
 const CasesDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [search, setSearch] = React.useState('');
-  const [sortBy, setSortBy] = React.useState<'recent' | 'oldest'>('recent');
-  const [statusFilter, setStatusFilter] = React.useState<string>('');
-  const [priorityFilter, setPriorityFilter] = React.useState<string>('');
-  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
-  const [isViewOpen, setIsViewOpen] = React.useState(false);
-  const [isCloseCaseOpen, setIsCloseCaseOpen] = React.useState(false);
-  const [isReopenOpen, setIsReopenOpen] = React.useState(false);
-  const [isAbandonOpen, setIsAbandonOpen] = React.useState(false);
-  const [isSuspendOpen, setIsSuspendOpen] = React.useState(false);
-  const [selectedRow, setSelectedRow] = React.useState<CaseRow | null>(null);
-  const [cases, setCases] = React.useState<CaseRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [createCaseLoading, setCreateCaseLoading] = React.useState(false);
-  const [createCaseError, setCreateCaseError] = React.useState<string>('');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isCloseCaseOpen, setIsCloseCaseOpen] = useState(false);
+  const [isReopenOpen, setIsReopenOpen] = useState(false);
+  const [isAbandonOpen, setIsAbandonOpen] = useState(false);
+  const [isSuspendOpen, setIsSuspendOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
+  const [cases, setCases] = useState<CaseRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [createCaseLoading, setCreateCaseLoading] = useState(false);
+  const [createCaseError, setCreateCaseError] = useState<string>('');
+  const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
+  const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
 
-  // Fetch all cases in the system
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchAllCases = async () => {
       setLoading(true);
       setError(null);
@@ -46,7 +53,6 @@ const CasesDashboard: React.FC = () => {
           sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
         });
         
-        // Transform backend cases to UI format
         const transformedCases = response.cases.map(transformBackendCaseToUI);
         setCases(transformedCases);
       } catch (err) {
@@ -61,9 +67,7 @@ const CasesDashboard: React.FC = () => {
     fetchAllCases();
   }, [statusFilter, priorityFilter, sortBy]);
 
-  // No mock data - only use real backend data
 
-  // Client-side filtering for search
   const filtered = cases.filter((c) =>
     search === '' || [
       c.id,
@@ -80,7 +84,6 @@ const CasesDashboard: React.FC = () => {
       .includes(search.toLowerCase())
   );
 
-  // Handlers
   const handleCreate = async (payload: {
     alertId?: string;
     priority: Priority;
@@ -93,31 +96,24 @@ const CasesDashboard: React.FC = () => {
     setCreateCaseError('');
     
     try {
-      // Map frontend payload to backend CreateCaseDto
-      const createCaseData: CreateCaseDto = {
-        tenantId: user?.tenantId || 'default-tenant', // Use auth context tenant
-        caseCreatorUserId: user?.user_id || 'system-user-id', // Use auth context user ID
-        caseOwnerUserId: payload.assignee || user?.user_id || 'system-user-id', // Use assignee if provided, otherwise current user
-        status: payload.draft ? 'STATUS_00_DRAFT' : 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
-        priority: payload.priority,
-        caseType: payload.alertType, // Use alertType as caseType
-        caseCreationType: 'MANUAL', // Manual case creation
+      const manualCreateCaseData = {
+        alertId: payload.alertId,
+        priorityScore: payload.priorityScore,
+        alertType: payload.alertType,
       };
 
-      console.log('Creating case with data:', createCaseData);
+      console.log('Creating case with data:', manualCreateCaseData);
       console.log('Associated with Alert ID:', payload.alertId);
       console.log('Alert Type:', payload.alertType);
       
-      const newCase = await caseService.createCase(createCaseData);
+      const newCase = await caseService.createCase(manualCreateCaseData);
       console.log('Case created successfully:', newCase);
       
-      // Show success message with alert information
       const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
-      alert(`✅ Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}${alertInfo}`);
+      alert(`Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}${alertInfo}`);
       
       setIsCreateOpen(false);
       
-      // Refresh the cases list
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -141,17 +137,78 @@ const CasesDashboard: React.FC = () => {
     }
   };
 
+  const handleUpdate = async (caseId: string, payload: {
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+  }) => {
+    setCreateCaseLoading(true);
+    setCreateCaseError('');
+    
+    try {
+      const updateCaseData: UpdateCaseDto = {
+        status: 'STATUS_02_READY_FOR_ASSIGNMENT',
+        priority: payload.priority,
+        caseType: payload.alertType,
+        caseOwnerUserId: payload.assignee || user?.user_id || 'system-user-id',
+      };
+
+      console.log('Updating case with data:', updateCaseData);
+      
+      const updatedCase = await caseService.updateCase(caseId, updateCaseData);
+      console.log('Case updated successfully:', updatedCase);
+      
+      
+      alert(`Draft Case Completed Successfully!
+
+Case ID: ${updatedCase.case_id}
+Status: ${updatedCase.status}
+Priority: ${payload.priority}
+Type: ${payload.alertType}`);
+      
+      setIsCreateOpen(false);
+      setCreateModalMode('create');
+      setEditingCaseId(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error updating case:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update case';
+      
+      
+      setCreateCaseError(errorMessage);
+    } finally {
+      setCreateCaseLoading(false);
+    }
+  };
+
   const handleView = (row: CaseRow) => {
     setSelectedRow(row);
     setIsViewOpen(true);
   };
 
   const handleComplete = (row: CaseRow) => {
-    console.log('Complete case - opening manual case creation', row);
+    console.log('Complete case - opening draft case completion', row);
     setSelectedRow(row);
+    setCreateModalMode('edit');
+    setEditingCaseId(row.id);
     setIsCreateOpen(true);
   };
-
 
   const handleCloseCase = (row: CaseRow) => {
     setSelectedRow(row);
@@ -172,14 +229,14 @@ const CasesDashboard: React.FC = () => {
         recommendedOutcome: data.recommendedOutcome
       });
       
-      alert(`✅ Case Investigation Complete!\n\n` +
+      alert(`Case Investigation Complete!\n\n` +
             `Case ${selectedRow.id} has been submitted for supervisor approval.\n\n` +
-            `📋 Status Updates:\n` +
+            `Status Updates:\n` +
             `• Case Status: ${response.closed_case.status}\n` +
             `• Approval Task: ${response.approval_task.name}\n` +
             `• Assigned to: ${response.approval_task.assigned_to}\n` +
             `• Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}\n\n` +
-            `🔔 Supervisor has been notified of the new approval task.`);
+            `Supervisor has been notified of the new approval task.`);
       
       setIsCloseCaseOpen(false);
       setSelectedRow(null);
@@ -207,7 +264,7 @@ const CasesDashboard: React.FC = () => {
       const errorString = error instanceof Error ? error.message : '';
       
       if (errorString.includes('not in a closeable state')) {
-        errorMessage = `❌ Case cannot be closed.\n\n` +
+        errorMessage = `Case cannot be closed.\n\n` +
                       `This case may not meet the closure requirements:\n` +
                       `• Case must be "IN PROGRESS" status\n` +
                       `• Must have an active "Investigate case" task\n` +
@@ -215,11 +272,11 @@ const CasesDashboard: React.FC = () => {
                       `• All other tasks must be complete\n\n` +
                       `Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `❌ Access Denied.\n\n` +
+        errorMessage = `Access Denied.\n\n` +
                       `You don't have permission to close this case.\n` +
                       `Please ensure you are the assigned investigator.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `❌ Case Not Found.\n\n` +
+        errorMessage = `Case Not Found.\n\n` +
                       `The case may have been deleted or moved.`;
       }
       
@@ -245,21 +302,87 @@ const CasesDashboard: React.FC = () => {
 
   const handleReopenSubmit = async (caseId: string, reason?: string) => {
     console.log('Reopen case:', caseId, 'Reason:', reason);
-    alert(`🔄 Case ${caseId} Reopened\n\nThis case has been moved back to "In Progress" status and assigned to an investigator.${reason ? `\n\nReason: ${reason}` : ''}`);
+    alert(`Case ${caseId} Reopened
+
+This case has been moved back to "In Progress" status and assigned to an investigator.${reason ? `
+
+Reason: ${reason}` : ''}`);
     setIsReopenOpen(false);
     setSelectedRow(null);
   };
 
   const handleAbandonSubmit = async (caseId: string, reason: string) => {
-    console.log('Abandon case:', caseId, 'Reason:', reason);
-    alert(`🗑️ Case ${caseId} Abandoned\n\nReason: ${reason}\n\nThe case has been permanently abandoned and removed from active investigation.`);
-    setIsAbandonOpen(false);
-    setSelectedRow(null);
+    try {
+      const abandonCaseData: AbandonCaseDto = {
+        reason: reason.trim()
+      };
+
+      console.log('Abandoning case:', caseId, 'Reason:', reason);
+      
+      const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
+      console.log('Case abandoned successfully:', abandonedCase);
+      
+      
+      alert(`Case ${caseId} Abandoned Successfully!
+
+Reason: ${reason}
+Status: ${abandonedCase.status}
+
+The case has been permanently abandoned and removed from active investigation.
+All associated tasks have been closed.`);
+      
+      setIsAbandonOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error abandoning case:', error);
+      
+      let errorMessage = 'Failed to abandon case. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in an abandonable state')) {
+        errorMessage = `Case cannot be abandoned.\n\n` +
+                      `This case may not meet the abandonment requirements:\n` +
+                      `• Case must be in "DRAFT", "ASSIGNED", "IN PROGRESS", or "REOPENED" status\n` +
+                      `• Case must not be already closed or completed\n\n` +
+                      `Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.\n\n` +
+                      `You don't have permission to abandon this case.\n` +
+                      `Please ensure you have the appropriate role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.\n\n` +
+                      `The case may have been deleted or moved.`;
+      }
+      
+      
+      alert(errorMessage);
+    }
   };
 
   const handleSuspendSubmit = async (caseId: string, reason: string, duration?: string) => {
     console.log('Suspend case:', caseId, 'Reason:', reason, 'Duration:', duration);
-    alert(`⏸️ Case ${caseId} Suspended\n\nReason: ${reason}${duration ? `\nDuration: ${duration.replace('_', ' ')}` : ''}\n\nThe case has been suspended and can be resumed later.`);
+    alert(`Case ${caseId} Suspended
+
+Reason: ${reason}${duration ? `
+Duration: ${duration.replace('_', ' ')}` : ''}
+
+The case has been suspended and can be resumed later.`);
     setIsSuspendOpen(false);
     setSelectedRow(null);
   };
@@ -269,7 +392,12 @@ const CasesDashboard: React.FC = () => {
       title="Cases Dashboard"
       subtitle="Manage and track investigation cases"
       actions={
-        <button onClick={() => setIsCreateOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button onClick={() => {
+          setCreateModalMode('create');
+          setEditingCaseId(null);
+          setSelectedRow(null);
+          setIsCreateOpen(true);
+        }} className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <PlusIcon className="h-4 w-4" />
           Create Manually
         </button>
@@ -373,10 +501,15 @@ const CasesDashboard: React.FC = () => {
         onClose={() => {
           setIsCreateOpen(false);
           setCreateCaseError('');
+          setCreateModalMode('create');
+          setEditingCaseId(null);
         }}
         onCreate={handleCreate}
+        onUpdate={handleUpdate}
         loading={createCaseLoading}
         error={createCaseError}
+        mode={createModalMode}
+        existingCaseId={editingCaseId || undefined}
         initial={selectedRow ? {
           alertId: selectedRow.alertId,
           alertType: ((): AlertType => {
