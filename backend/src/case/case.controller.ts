@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { CaseService } from './case.service';
-import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { CloseCaseDto, ApproveCaseClosureDto, RejectCaseClosureDto, ReturnCaseForReviewDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -226,7 +225,7 @@ export class CaseController {
   }
 
   @Get('all')
-  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access all cases
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get all cases (Supervisor only)',
     description: 'Retrieves all cases in the system with filtering options. Requires supervisor permissions.',
@@ -245,7 +244,7 @@ export class CaseController {
   }
 
   @Get('user/assigned')
-  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access their assigned cases
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get cases assigned to current user',
     description: 'Retrieves all cases where the user is either the owner or has assigned tasks',
@@ -263,7 +262,7 @@ export class CaseController {
   }
 
   @Get('user/:userId/assigned')
-  @RequireSupervisorRole() // Only supervisors can access cases for any user
+  @RequireSupervisorRole()
   @ApiOperation({
     summary: 'Get cases assigned to a specific user',
     description: 'Retrieves all cases for a specific user (requires supervisor permissions)',
@@ -295,7 +294,7 @@ export class CaseController {
   }
 
   @Get('user/workload')
-  @RequireInvestigatorOrSupervisorRole() // Investigators and supervisors can access workload stats
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
     description: "Get summary statistics of user's case workload",

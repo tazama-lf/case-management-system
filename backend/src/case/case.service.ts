@@ -64,6 +64,7 @@ export class CaseService {
       throw error;
     }
   }
+
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     if (!dto.alertId || !dto.alertType) {
       this.logger.error('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
