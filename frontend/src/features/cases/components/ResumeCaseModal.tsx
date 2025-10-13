@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
-import { TrashIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './CasesTable';
 
-interface AbandonCaseModalProps {
+interface ResumeCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onAbandon: (caseId: string, reason: string) => void;
+  onResume: (caseId: string, reason: string) => void;
   caseData: CaseRow | null;
 }
 
-const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
+const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
   open,
   onClose,
-  onAbandon,
+  onResume,
   caseData
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isReasonValid = reason.trim().length >= 10;
+  const isReasonValid = reason.trim().length >= 5;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +26,11 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onAbandon(caseData.id, reason.trim());
+      await onResume(caseData.id, reason.trim());
       setReason('');
       onClose();
     } catch (error) {
-      console.error('Failed to abandon case:', error);
+      console.error('Failed to resume case:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -50,12 +50,12 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
       <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-              <TrashIcon className="h-5 w-5 text-red-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+              <PlayIcon className="h-5 w-5 text-green-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                Abandon Case
+                Resume Case
               </h3>
               <p className="text-sm text-gray-600">
                 Case ID: {caseData?.id}
@@ -72,25 +72,21 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
         </div>
 
         <div className="px-6 pb-4">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="text-sm font-medium text-red-800 mb-1">
-                  Warning: This action cannot be undone
-                </h4>
-                <p className="text-sm text-red-700">
-                  Abandoning this case will permanently remove it from active investigation. 
-                  All associated tasks will be cancelled and the case will be marked as abandoned.
-                </p>
-              </div>
-            </div>
+          <p className="text-sm text-gray-700 mb-4">
+            Resuming this case will move it back to "In Progress" status. 
+            The investigation task will be unblocked and assigned to the investigator.
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> All team members will be notified of the case resumption.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+            <div className="mb-4">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for abandoning <span className="text-red-500">*</span>
+                Reason for resumption <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="reason"
@@ -98,11 +94,11 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                placeholder="Provide a detailed reason for abandoning this case (minimum 10 characters)..."
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                placeholder="Explain why this case needs to be resumed (minimum 5 characters)..."
               />
               <p className="text-xs text-gray-500 mt-1">
-                {reason.length}/10 characters minimum
+                {reason.length}/5 characters minimum
               </p>
             </div>
 
@@ -118,9 +114,9 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !isReasonValid}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Abandoning...' : 'Abandon Case'}
+                {isSubmitting ? 'Resuming...' : 'Resume Case'}
               </button>
             </div>
           </form>
@@ -130,4 +126,4 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
   );
 };
 
-export default AbandonCaseModal;
+export default ResumeCaseModal;

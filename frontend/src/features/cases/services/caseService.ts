@@ -99,6 +99,26 @@ export interface AbandonCaseDto {
   reason: string;
 }
 
+// Resume Case DTO
+export interface ResumeCaseDto {
+  reason: string;
+}
+
+// Reject Case DTO
+export interface RejectCaseDto {
+  rejectionReason: string;
+}
+
+// Reopen Case DTO
+export interface ReopenCaseDto {
+  reason: string;
+}
+
+// Suspend Case DTO
+export interface SuspendCaseDto {
+  reason: string;
+}
+
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
@@ -203,6 +223,46 @@ export class CaseService {
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'abandon case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/resume - Resume a suspended case
+  async resumeCase(caseId: string, resumeCaseData: ResumeCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/resume`, resumeCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'resume case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reject - Reject a case closure
+  async rejectCase(caseId: string, rejectCaseData: RejectCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject`, rejectCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'reject case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reopen - Reopen a closed case
+  async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'reopen case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/suspend - Suspend a case
+  async suspendCase(caseId: string, suspendCaseData: SuspendCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/suspend`, suspendCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'suspend case');
     }
   }
 

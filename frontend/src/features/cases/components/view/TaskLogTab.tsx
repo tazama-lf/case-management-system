@@ -124,6 +124,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
     try {
+      if (task && assignee) {
+        await taskService.assignTaskToInvestigator(task.id, assignee);
+      }
       setAssignModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
@@ -135,12 +138,22 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
     try {
+      // Call the reassign task API endpoint
+      await taskService.reassignTask(task.id, assignee);
+      
+      // Close the modal and clear selected task
       setReassignModalOpen(false);
       setSelectedTask(null);
+      
+      // Refresh the task list
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+      
+      // Show success message (in a real implementation, you might want to use a toast notification)
+      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
     } catch (error) {
       console.error('Failed to reassign task:', error);
+      // In a real implementation, you might want to show an error message to the user
     }
   };
 

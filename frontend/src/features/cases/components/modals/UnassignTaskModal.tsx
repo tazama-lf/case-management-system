@@ -78,7 +78,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
                 <div className="font-medium text-gray-900 mb-1">Task Details:</div>
                 <div className="text-gray-700">
                   <div><strong>Name:</strong> {task.name}</div>
-                  <div><strong>Current Assignee:</strong> {task.assignee || 'Unassigned'}</div>
+                  <div><strong>Current Assignee:</strong> {task.assigneeName || task.assignee || 'Unassigned'}</div>
                   <div><strong>Status:</strong> {task.status}</div>
                 </div>
               </div>
@@ -89,9 +89,15 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
             This task will be unassigned and returned to the work queue. The current assignee will be notified of the unassignment.
           </p>
           
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-            <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> The task status will be updated to "Unassigned" and placed back in the appropriate work queue for reassignment.
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Workflow:</strong> Upon unassignment:
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Task status will change to "UNASSIGNED"</li>
+                <li>Ownership will be removed from the task</li>
+                <li>Task will remain available in the candidate group/work queue</li>
+                <li>Action will be logged in the audit trail</li>
+              </ul>
             </p>
           </div>
 

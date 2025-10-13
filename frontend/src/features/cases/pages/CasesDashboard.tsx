@@ -6,14 +6,17 @@ import CloseCaseModal from '../components/CloseCaseModal';
 import ReopenCaseModal from '../components/ReopenCaseModal';
 import AbandonCaseModal from '../components/AbandonCaseModal';
 import SuspendCaseModal from '../components/SuspendCaseModal';
+import ResumeCaseModal from '../components/ResumeCaseModal';
+import RejectCaseModal from '../components/RejectCaseModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
 import { 
   caseService, 
   type CloseCaseDto, 
   type UpdateCaseDto, 
   type AbandonCaseDto,
-  type ManualCreateCaseDto
-} from '../services/caseService';
+  type RejectCaseDto,
+  type ReopenCaseDto,
+  type SuspendCaseDto} from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
@@ -31,6 +34,8 @@ const CasesDashboard: React.FC = () => {
   const [isReopenOpen, setIsReopenOpen] = useState(false);
   const [isAbandonOpen, setIsAbandonOpen] = useState(false);
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
+  const [isResumeOpen, setIsResumeOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,15 +305,70 @@ Type: ${payload.alertType}`);
     setIsSuspendOpen(true);
   };
 
-  const handleReopenSubmit = async (caseId: string, reason?: string) => {
-    console.log('Reopen case:', caseId, 'Reason:', reason);
-    alert(`Case ${caseId} Reopened
+  const handleReopenSubmit = async (caseId: string, reason: string) => {
+    try {
+      const reopenCaseData: ReopenCaseDto = {
+        reason: reason.trim()
+      };
 
-This case has been moved back to "In Progress" status and assigned to an investigator.${reason ? `
+      console.log('Reopening case:', caseId, 'Reason:', reason);
+      
+      const reopenedCase = await caseService.reopenCase(caseId, reopenCaseData);
+      console.log('Case reopened successfully:', reopenedCase);
+      
+      alert(`Case ${caseId} Reopening Request Submitted Successfully!
 
-Reason: ${reason}` : ''}`);
-    setIsReopenOpen(false);
-    setSelectedRow(null);
+Reason: ${reason}
+Status: ${reopenedCase.status}
+
+The case reopening request has been submitted for supervisor approval.
+A new "Approve Case Reopening" task has been created and assigned to the supervisor.`);
+      
+      setIsReopenOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error reopening case:', error);
+      
+      let errorMessage = 'Failed to request case reopening. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in a reopenable state')) {
+        errorMessage = `Case cannot be reopened.
+
+This case may not meet the reopening requirements:
+• Case must be in "CLOSED" status
+• Case must not be already reopened
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to reopen this case.
+Please ensure you have the appropriate role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
   };
 
   const handleAbandonSubmit = async (caseId: string, reason: string) => {
@@ -375,16 +435,233 @@ All associated tasks have been closed.`);
     }
   };
 
-  const handleSuspendSubmit = async (caseId: string, reason: string, duration?: string) => {
-    console.log('Suspend case:', caseId, 'Reason:', reason, 'Duration:', duration);
-    alert(`Case ${caseId} Suspended
+  const handleSuspendSubmit = async (caseId: string, reason: string) => {
+    try {
+      const suspendCaseData: SuspendCaseDto = {
+        reason: reason.trim()
+      };
 
-Reason: ${reason}${duration ? `
-Duration: ${duration.replace('_', ' ')}` : ''}
+      console.log('Suspending case:', caseId, 'Reason:', reason);
+      
+      const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
+      console.log('Case suspended successfully:', suspendedCase);
+      
+      alert(`Case ${caseId} Suspended Successfully!
 
-The case has been suspended and can be resumed later.`);
-    setIsSuspendOpen(false);
-    setSelectedRow(null);
+Reason: ${reason}
+Status: ${suspendedCase.status}
+
+The case has been suspended and all associated tasks have been blocked.
+Supervisor has been notified of the suspension.`);
+      
+      setIsSuspendOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error suspending case:', error);
+      
+      let errorMessage = 'Failed to suspend case. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in a suspendable state')) {
+        errorMessage = `Case cannot be suspended.
+
+This case may not meet the suspension requirements:
+• Case must be in "IN PROGRESS" status
+• Case must not be already suspended or closed
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to suspend this case.
+Please ensure you have the appropriate role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const handleResumeCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsResumeOpen(true);
+  };
+
+  const handleResumeSubmit = async (caseId: string, reason: string) => {
+    try {
+      const resumeCaseData = {
+        reason: reason.trim()
+      };
+
+      console.log('Resuming case:', caseId, 'Reason:', reason);
+      
+      const resumedCase = await caseService.resumeCase(caseId, resumeCaseData);
+      console.log('Case resumed successfully:', resumedCase);
+      
+      
+      alert(`Case ${caseId} Resumed Successfully!
+
+Reason: ${reason}
+Status: ${resumedCase.status}
+
+The case has been moved back to "In Progress" status.
+All associated tasks have been unblocked.`);
+      
+      setIsResumeOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error resuming case:', error);
+      
+      let errorMessage = 'Failed to resume case. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in a resumable state')) {
+        errorMessage = `Case cannot be resumed.
+
+` +
+                      `This case may not meet the resumption requirements:
+` +
+                      `• Case must be in "SUSPENDED" status
+` +
+                      `• Case must not be already closed or completed
+
+` +
+                      `Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+` +
+                      `You don't have permission to resume this case.
+` +
+                      `Please ensure you have the appropriate role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+` +
+                      `The case may have been deleted or moved.`;
+      }
+      
+      
+      alert(errorMessage);
+    }
+  };
+
+  const handleRejectCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsRejectOpen(true);
+  };
+
+  const handleRejectSubmit = async (rejectionReason: string) => {
+    if (!selectedRow) return;
+    
+    try {
+      const rejectCaseData: RejectCaseDto = {
+        rejectionReason: rejectionReason.trim()
+      };
+
+      console.log('Rejecting case:', selectedRow.id, 'Reason:', rejectionReason);
+      
+      const rejectedCase = await caseService.rejectCase(selectedRow.id, rejectCaseData);
+      console.log('Case rejected successfully:', rejectedCase);
+      
+      
+      alert(`Case ${selectedRow.id} Closure Rejected Successfully!
+
+Reason: ${rejectionReason}
+Status: ${rejectedCase.status}
+
+The case has been returned to the investigator for additional work.`);
+      
+      setIsRejectOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error rejecting case:', error);
+      
+      let errorMessage = 'Failed to reject case closure. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in a rejectable state')) {
+        errorMessage = `Case cannot be rejected.
+
+` +
+                      `This case may not meet the rejection requirements:
+` +
+                      `• Case must be in "PENDING FINAL APPROVAL" status
+` +
+                      `• Case must have an "Approve case closure" task
+` +
+                      `• Task must be assigned to supervisor
+
+` +
+                      `Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+` +
+                      `You don't have permission to reject this case closure.
+` +
+                      `Please ensure you have supervisor role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+` +
+                      `The case may have been deleted or moved.`;
+      }
+      
+      
+      alert(errorMessage);
+    }
   };
 
   return (
@@ -491,6 +768,8 @@ The case has been suspended and can be resumed later.`);
             onReopenCase={handleReopenCase}
             onAbandonCase={handleAbandonCase}
             onSuspendCase={handleSuspendCase}
+            onResumeCase={handleResumeCase}
+            onRejectCase={handleRejectCase}
           />
         )}
       </Card>
@@ -553,6 +832,19 @@ The case has been suspended and can be resumed later.`);
         onClose={() => setIsSuspendOpen(false)}
         onSuspend={handleSuspendSubmit}
         caseData={selectedRow}
+      />
+      <ResumeCaseModal
+        open={isResumeOpen}
+        onClose={() => setIsResumeOpen(false)}
+        onResume={handleResumeSubmit}
+        caseData={selectedRow}
+      />
+      <RejectCaseModal
+        open={isRejectOpen}
+        onClose={() => setIsRejectOpen(false)}
+        caseId={selectedRow?.id || ''}
+        caseName={selectedRow ? `${selectedRow.type} Case` : ''}
+        onSubmit={handleRejectSubmit}
       />
     </PageContainer>
   );

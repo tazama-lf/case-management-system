@@ -78,7 +78,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Complete Case Investigation</h3>
             <p className="text-sm text-gray-500">
@@ -99,6 +99,18 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
+          {/* Workflow Information */}
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+            <h4 className="text-sm font-medium text-blue-800 mb-2">Case Closure Workflow</h4>
+            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+              <li>"Investigate Case" task will be marked as "COMPLETED"</li>
+              <li>Outcome will be recorded: Confirmed, Refuted, or Inconclusive</li>
+              <li>A closure task will be created and routed to the supervisor</li>
+              <li>Case will transition to "PENDING FINAL APPROVAL"</li>
+              <li>All actions will be logged in audit, system, and structured logs</li>
+            </ul>
+          </div>
+
           {/* Recommended Outcome */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -117,6 +129,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               <option value="STATUS_81_CLOSED_REFUTED">81 - Closed Refuted</option>
               <option value="STATUS_82_CLOSED_CONFIRMED">82 - Closed Confirmed</option>
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              This outcome will be reviewed by the supervisor during approval
+            </p>
           </div>
 
           {/* Final Notes */}
