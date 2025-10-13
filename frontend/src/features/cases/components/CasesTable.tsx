@@ -91,6 +91,8 @@ interface CasesTableProps {
   onReopenCase?: (row: CaseRow) => void;
   onAbandonCase?: (row: CaseRow) => void;
   onSuspendCase?: (row: CaseRow) => void;
+  onResumeCase?: (row: CaseRow) => void;
+  onRejectCase?: (row: CaseRow) => void;
 }
 
 const CasesTable: React.FC<CasesTableProps> = ({ 
@@ -100,7 +102,9 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onCloseCase, 
   onReopenCase, 
   onAbandonCase, 
-  onSuspendCase 
+  onSuspendCase,
+  onResumeCase,
+  onRejectCase
 }) => {
   return (
     <div className="overflow-x-auto">
@@ -153,10 +157,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
+                  {/* Close Case button - show for in-progress cases */}
                   {onCloseCase && (
-                    c.status === '20 - IN PROGRESS' || 
                     c.status === 'STATUS_20_IN_PROGRESS' ||
-                    c.status === 'In Progress'
+                    c.status.includes('IN PROGRESS')
                   ) && (
                     <button
                       onClick={() => onCloseCase(c)}
@@ -170,8 +174,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   
                   {/* Reopen Case button - show for closed cases */}
                   {onReopenCase && (
-                    c.status.includes('CLOSED') || 
-                    c.status.includes('STATUS_8')
+                    c.status === 'STATUS_81_CLOSED_REFUTED' ||
+                    c.status === 'STATUS_82_CLOSED_CONFIRMED' ||
+                    c.status === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
+                    c.status.includes('CLOSED')
                   ) && (
                     <button
                       onClick={() => onReopenCase(c)}
@@ -182,11 +188,9 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Abandon Case button - show for active cases */}
+                  {/* Abandon Case button - show for draft cases only */}
                   {onAbandonCase && (
-                    c.status === 'STATUS_10_ASSIGNED' || 
-                    c.status === 'STATUS_20_IN_PROGRESS' ||
-                    c.status === 'STATUS_31_REOPENED'
+                    c.status === 'STATUS_00_DRAFT'
                   ) && (
                     <button
                       onClick={() => onAbandonCase(c)}
@@ -197,11 +201,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Suspend Case button - show for active cases */}
+                  {/* Suspend Case button - show for in-progress cases */}
                   {onSuspendCase && (
-                    c.status === 'STATUS_10_ASSIGNED' || 
                     c.status === 'STATUS_20_IN_PROGRESS' ||
-                    c.status === 'STATUS_31_REOPENED'
+                    c.status.includes('IN PROGRESS')
                   ) && (
                     <button
                       onClick={() => onSuspendCase(c)}
@@ -209,6 +212,34 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <PauseIcon className="h-3 w-3" />
                       Suspend
+                    </button>
+                  )}
+                  
+                  {/* Resume Case button - show for suspended cases */}
+                  {onResumeCase && (
+                    c.status === 'STATUS_21_SUSPENDED' ||
+                    c.status.includes('SUSPENDED')
+                  ) && (
+                    <button
+                      onClick={() => onResumeCase(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <PlayIcon className="h-3 w-3" />
+                      Resume
+                    </button>
+                  )}
+                  
+                  {/* Reject Case button - show for cases pending final approval */}
+                  {onRejectCase && (
+                    c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
+                    c.status.includes('PENDING FINAL APPROVAL')
+                  ) && (
+                    <button
+                      onClick={() => onRejectCase(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <XCircleIcon className="h-3 w-3" />
+                      Reject
                     </button>
                   )}
                 </div>

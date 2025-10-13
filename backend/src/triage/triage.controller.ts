@@ -322,55 +322,5 @@ export class TriageController {
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
-
-  @Post('create-nalt-alert')
-  @RequireInvestigatorOrSupervisorRole()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create a NALT alert for manual case creation',
-    description: 'Creates an alert with NALT status that can be used to manually create a case',
-  })
-  @ApiBody({ type: CreateNaltAlertDto })
-  @ApiResponse({
-    status: 201,
-    description: 'NALT alert created successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        alert_id: { type: 'string', format: 'uuid' },
-        message: { type: 'string' },
-        priority: { type: 'string' },
-        confidence_per: { type: 'number' },
-        created_at: { type: 'string', format: 'date-time' },
-        alert_data: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', example: 'NALT' }
-          }
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 400, description: 'Bad Request - Invalid payload' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createNaltAlert(@Body() dto: CreateNaltAlertDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    if (!userId) throw new BadRequestException('Missing userId');
-
-    const submitAlertDto: SubmitAlertDto = {
-      message: dto.message,
-      report: {
-        ...dto.report,
-        status: 'NALT', // Force NALT status
-      },
-      transaction: dto.transaction,
-      networkMap: dto.networkMap,
-      confidence_per: 0, // NALT alerts have 0 confidence
-    };
-
-    const alert = await this.triageService.handleNotAlert(submitAlertDto, userId, tenantId, 'REST API');
-    return alert;
-  }
+  
 }

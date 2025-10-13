@@ -36,16 +36,4 @@ export class SubmitAlertDto {
   })
   @IsObject()
   networkMap: NetworkMap;
-
-  @ApiProperty({
-    description: 'Confidence percentage (0-100)',
-    example: 75.5,
-    required: false,
-    type: 'number',
-    minimum: 0,
-    maximum: 100,
-  })
-  @IsOptional()
-  @IsNumber()
-  confidence_per?: number;
 }

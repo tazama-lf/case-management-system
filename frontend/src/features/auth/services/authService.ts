@@ -3,6 +3,7 @@ import type {
   LoginResponse,
   User,
   DecodedToken,
+  Investigator,
 } from '../types/auth.types';
 
 const API_BASE_URL =
@@ -399,6 +400,35 @@ class AuthService {
       return `${first} ${last}`;
     }
     return first || last || '';
+  }
+
+  /**
+   * Fetch all investigators from the backend
+   */
+  async fetchAllInvestigators(): Promise<Investigator[]> {
+    try {
+      console.log('Fetching investigators from:', `${API_BASE_URL}/auth/investigators`);
+      const response = await fetch(`${API_BASE_URL}/auth/investigators`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeader(),
+        },
+      });
+
+      console.log('Investigators API response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch investigators: ${response.status} ${response.statusText}`);
+      }
+
+      const data: Investigator[] = await response.json();
+      console.log('Investigators API response data:', data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching investigators:', error);
+      throw error;
+    }
   }
 }
 

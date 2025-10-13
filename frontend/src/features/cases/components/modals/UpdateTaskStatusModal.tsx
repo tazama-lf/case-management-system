@@ -1,11 +1,12 @@
+import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import React from 'react';
-import type { TaskRow } from '../view/TasksTable';
+
 
 interface UpdateTaskStatusModalProps {
   open: boolean;
   onClose: () => void;
-  onUpdateStatus: (task: TaskRow, newStatus: string, notes?: string) => void;
-  task?: TaskRow | null;
+  onUpdateStatus: (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => void;
+  task?: UnifiedWorkQueueTask | null;
 }
 
 const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onClose, onUpdateStatus, task }) => {
@@ -60,7 +61,7 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Current Status</label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
-              <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-gray-200 ${task.statusColor}`}>
+              <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-gray-200">
                 {task.status}
               </span>
             </div>
@@ -91,16 +92,6 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
             )}
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status Change Notes (Optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Add any notes about this status change..."
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
 
           {newStatus === 'Blocked' && (
             <div className="rounded-md bg-red-50 p-3">

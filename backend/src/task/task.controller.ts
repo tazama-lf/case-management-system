@@ -15,17 +15,7 @@ import {
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    token: {
-      clientId: string;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
-  [key: string]: any;
-}
+import { AuthenticatedRequest } from 'src/auth/auth.types';
 
 @Controller('api/v1/task')
 @UseGuards(TazamaAuthGuard)

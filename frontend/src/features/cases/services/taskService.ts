@@ -55,6 +55,10 @@ export interface AssignTaskData {
   assignmentNotes?: string;
 }
 
+export interface UnassignTaskData {
+  reason: string;
+}
+
 export interface TaskFilters {
   status?: string;
   assignedUserId?: string;
@@ -193,6 +197,19 @@ export class TaskService {
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'assign task');
+    }
+  }
+
+  // PATCH /api/v1/task/:taskId/unassign
+  async unassignTask(taskId: string, data: UnassignTaskData): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await apiClient.patch<{ success: boolean; message: string }>(
+        `${this.baseUrl}/${taskId}/unassign`, 
+        data
+      );
+      return response;
+    } catch (error: any) {
+      throw this.handleError(error, 'unassign task');
     }
   }
 
