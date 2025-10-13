@@ -17,7 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, A
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import { AlertMessageDto } from '../nats/dto/AlertMessageDto.dto';
+import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -33,7 +33,7 @@ export class CaseController {
     summary: 'Create case via system-to-system transmission',
     description: 'Creates a new case when fraud is reported via API portal or ATM',
   })
-  @ApiBody({ type: AlertMessageDto })
+  @ApiBody({ type: SystemCaseCreationDto })
   @ApiResponse({
     status: 201,
     description: 'Case created successfully',
@@ -49,7 +49,7 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async createCaseSystemTransmission(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
+  async createCaseSystemTransmission(@Body() dto: SystemCaseCreationDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId } = req.user.token;
     if (!clientId || !tenantId ) throw new BadRequestException('Missing clientId or tenantId');
     return this.caseService.createCaseSystemTransmission(dto, clientId, tenantId);

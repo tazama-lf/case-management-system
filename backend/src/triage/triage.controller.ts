@@ -89,17 +89,5 @@ export class TriageController {
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
-
-
-
-  @Post('ingest')
-  @RequireInvestigatorOrSupervisorRole()
-  async processIncomingAlert(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    if (!userId) throw new BadRequestException('Missing userId');
-    return await this.triageService.processIncomingAlert(dto, userId, tenantId);
-  }
   
 }
