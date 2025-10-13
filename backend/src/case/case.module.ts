@@ -4,7 +4,6 @@ import { CaseController } from './case.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 import { LoggerModule } from '../logger/logger.module';
-import { FlowableModule } from 'src/flowable/flowable.module';
 import { TaskModule } from 'src/task/task.module';
 import { TriageModule } from 'src/triage/triage.module';
 import {CommentModule} from "../comment/comment.module";
@@ -15,7 +14,6 @@ import {CommentModule} from "../comment/comment.module";
     AuditLogModule,
     LoggerModule,
     forwardRef(() => TriageModule),
-    forwardRef(() => FlowableModule),
     TaskModule,
     CommentModule
   ],
