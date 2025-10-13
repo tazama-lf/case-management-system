@@ -6,7 +6,6 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { UnassignTaskDto } from './dto/unassign-task-dto';
-
 import {
   RequireAlertTriageRole,
   RequireAnyValidRole,
@@ -16,15 +15,25 @@ import {
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { AuthenticatedRequest } from 'src/auth/auth.types';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    token: {
+      clientId: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
 
 @Controller('api/v1/task')
 @UseGuards(TazamaAuthGuard)
 export class TaskController {
   constructor(
-    private readonly taskService: TaskService,
-    private readonly auditLogService: AuditLogService,
-    private readonly loggerService: LoggerService,
+      private readonly taskService: TaskService,
+      private readonly auditLogService: AuditLogService,
+      private readonly loggerService: LoggerService,
   ) {}
 
   @Post()
@@ -56,8 +65,7 @@ export class TaskController {
       @Req() req: AuthenticatedRequest
   ) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    return this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
+    return this.taskService.unassignTask(taskId, userId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
