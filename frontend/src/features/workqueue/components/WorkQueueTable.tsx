@@ -68,21 +68,23 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions = [];
 
-    // Always show Assign action
-    actions.push(
-      <button
-        key="assign"
-        onClick={() => onAssign(task)}
-        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        title="Assign task"
-      >
-        <UserPlusIcon className="h-3 w-3 mr-1" />
-        Assign
-      </button>
-    );
+    // Show Assign action only for unassigned tasks
+    if (!task.assignee) {
+      actions.push(
+        <button
+          key="assign"
+          onClick={() => onAssign(task)}
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          title="Assign task"
+        >
+          <UserPlusIcon className="h-3 w-3 mr-1" />
+          Assign
+        </button>
+      );
+    }
 
-    // Always show Reassign action if handler is provided
-    if (onReassign) {
+    // Show Reassign action only for assigned tasks
+    if (task.assignee && onReassign) {
       actions.push(
         <button
           key="reassign"
@@ -96,8 +98,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Always show Unassign action if handler is provided
-    if (onUnassign) {
+    // Show Unassign action only for assigned tasks
+    if (task.assignee && onUnassign) {
       actions.push(
         <button
           key="unassign"
@@ -111,20 +113,22 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Always show Complete action
-    actions.push(
-      <button
-        key="complete"
-        onClick={() => onComplete(task)}
-        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-        title="Mark complete"
-      >
-        <CheckIcon className="h-3 w-3 mr-1" />
-        Complete
-      </button>
-    );
+    // Show Complete action for assigned tasks
+    if (task.assignee) {
+      actions.push(
+        <button
+          key="complete"
+          onClick={() => onComplete(task)}
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          title="Mark complete"
+        >
+          <CheckIcon className="h-3 w-3 mr-1" />
+          Complete
+        </button>
+      );
+    }
 
-    // Always show Update Status action if handler is provided
+    // Show Update Status action for all tasks if handler is provided
     if (onUpdateStatus) {
       actions.push(
         <button

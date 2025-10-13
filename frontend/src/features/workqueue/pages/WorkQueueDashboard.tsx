@@ -92,7 +92,7 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Modal action handlers
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string,) => {
     try {
       await flowableWorkQueueService.assignTask(task.id, assignee);
       
@@ -108,13 +108,19 @@ const WorkQueueDashboard: React.FC = () => {
 
   const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
     try {
+      // For work queue dashboard, we need to use the flowable service for reassignment
       await flowableWorkQueueService.assignTask(task.id, assignee);
       
+      // Refresh the task list
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
       
+      // Close the modal and clear selected task
       setReassignModalOpen(false);
       setSelectedTask(null);
+      
+      // Show success message (in a real implementation, you might want to use a toast notification)
+      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
     } catch (error) {
       handleError(error);
     }
