@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, Http
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
-import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { CloseCaseDto, ApproveCaseClosureDto, RejectCaseClosureDto, ReturnCaseForReviewDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import {
@@ -18,7 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, A
 import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import { AlertMessageDto } from '../nats/dto/AlertMessageDto.dto';
+import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -91,9 +90,10 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async createCaseSystemTransmission(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
-    const clientId = req.user.token.clientId;
-    return this.caseService.createCaseSystemTransmission(dto, clientId);
+  async createCaseSystemTransmission(@Body() dto: SystemCaseCreationDto, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId } = req.user.token;
+    if (!clientId || !tenantId ) throw new BadRequestException('Missing clientId or tenantId');
+    return this.caseService.createCaseSystemTransmission(dto, clientId, tenantId);
   }
 
   @Post('manual')

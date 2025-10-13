@@ -371,30 +371,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  // async removeTaskFromCandidateGroup(taskId: string, group: string) {
-  //   try {
-  //     // Get all identity links
-  //     const identityLinks = await this.getTaskIdentityLinks(taskId);
-  //
-  //     // Find the link to remove
-  //     const linkToRemove = identityLinks.find((link: any) => link.type === 'candidate' && link.group === group.toLowerCase());
-  //
-  //     if (linkToRemove) {
-  //       // Remove the identity link
-  //       const response = await this.flowableClient.delete(
-  //         `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`,
-  //       );
-  //       this.logger.log(`Task ${taskId} removed from candidate group ${group}`, FlowableService.name);
-  //       return response.data;
-  //     }
-  //
-  //     return null;
-  //   } catch (error) {
-  //     this.logger.error(`Failed to remove task from group: ${error.message}`, error.stack, FlowableService.name);
-  //     throw new HttpException('Failed to remove task from group', HttpStatus.INTERNAL_SERVER_ERROR);
-  //   }
-  // }
-
   async getTaskIdentityLinks(taskId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}/identitylinks`);
