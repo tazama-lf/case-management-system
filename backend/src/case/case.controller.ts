@@ -25,10 +25,7 @@ import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 @ApiBearerAuth('jwt')
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
-  /**
-   * Abandon a DRAFT case
-   * PUT /api/v1/cases/:caseId/abandon
-   */
+
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
@@ -45,10 +42,7 @@ export class CaseController {
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
     return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
   }
-  /**
-   * Complete a DRAFT case and create investigation task
-   * PUT /api/v1/cases/:caseId/complete
-   */
+
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)

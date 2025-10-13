@@ -261,7 +261,7 @@ export class TaskService {
                   taskId,
                   updatedTask.case_id,
                   updateData.assignedUserId,
-                  existingTask.assigned_user_id || undefined, // Also fix here
+                  existingTask.assigned_user_id || undefined,
               ),
           );
         } else {
@@ -270,7 +270,7 @@ export class TaskService {
               new TaskUnassignedEvent(
                   taskId,
                   updatedTask.case_id,
-                  existingTask.assigned_user_id || undefined, // Also fix here
+                  existingTask.assigned_user_id || undefined,
               ),
           );
         }
