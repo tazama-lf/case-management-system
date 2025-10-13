@@ -23,7 +23,7 @@ import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
-import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
+import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 
 @Injectable()
 export class CaseService {
@@ -38,7 +38,7 @@ export class CaseService {
     private readonly taskService: TaskService,
   ) {}
 
-  async createCaseSystemTransmission(payload: AlertMessageDto, clientId: string, tenantId: string) {
+  async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
     try {
       this.logger.log('System-to-system case creation initiated', CaseService.name);
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);

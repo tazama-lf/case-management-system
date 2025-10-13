@@ -46,7 +46,7 @@ export class TriageService {
     }
   }
 
-  async processIncomingAlert(req: AlertMessageDto, source: string, userId: string, tenantId: string) {
+  async processIncomingAlert(req: any, source: string, userId: string, tenantId: string) {
     const submitAlertDto: SubmitAlertDto = {
       message: req.message,
       report: req.report,
@@ -174,7 +174,7 @@ export class TriageService {
           alert_data: JSON.parse(JSON.stringify(alert.report)),
           transaction: JSON.parse(JSON.stringify(alert.transaction)),
           network_map: JSON.parse(JSON.stringify(alert.networkMap)),
-          confidence_per:  0,
+          confidence_per: 0,
           case_id: createdCase.case_id,
         },
       });
