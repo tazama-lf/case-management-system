@@ -7,6 +7,7 @@ import {
   forwardRef,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from './dto/create-case.dto';
@@ -15,7 +16,6 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { FlowableService } from '../flowable/flowable.service';
 import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';
@@ -23,7 +23,13 @@ import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
-import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
+import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
+import { CommentService } from 'src/comment/comment.service';
+import {
+  CaseCreatedEvent,
+  CaseAbandonedEvent,
+  CaseStatusChangedEvent,
+} from '../events/domain-events';
 
 @Injectable()
 export class CaseService {
@@ -31,7 +37,7 @@ export class CaseService {
       private readonly logger: LoggerService,
       private readonly auditLogService: AuditLogService,
       private readonly prismaService: PrismaService,
-      private readonly flowableService: FlowableService,
+      private readonly eventEmitter: EventEmitter2,
       private readonly configService: ConfigService,
       @Inject(forwardRef(() => TriageService))
       private readonly triageService: TriageService,
@@ -112,7 +118,6 @@ export class CaseService {
         });
 
         // CREATE APPROVAL TASK FOR INVESTIGATORS (non-supervisors)
-        // Fix: Explicitly type the return value
         let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
 
         if (needsApproval) {
@@ -137,47 +142,16 @@ export class CaseService {
         return { case: createdCase, alert: updatedAlert, approvalTask };
       });
 
-      // Start Flowable process
-      const processInstance = await this.flowableService.startProcessInstance(
-          'caseManagementProcess',
-          {
-            caseId: result.case.case_id,
-            tenantId,
-            creationType: 'MANUAL',
-            creatorRole: role,
-            autocloseEligible: false,
-          },
-          result.case.case_id,
+      this.eventEmitter.emit(
+          'case.created',
+          new CaseCreatedEvent(
+              result.case.case_id,
+              tenantId,
+              'MANUAL',
+              role,
+              false,
+          ),
       );
-
-      // Sync approval task with Flowable if it was created
-      // Fix: Add null check before accessing properties
-      if (result.approvalTask !== null && processInstance) {
-        try {
-          const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-          const flowableApprovalTask = flowableTasks.find((t: any) => t.name === 'Approve Case Creation');
-
-          if (flowableApprovalTask) {
-            await this.flowableService.syncTaskWithDatabase(flowableApprovalTask.id, {
-              postgres_task_id: result.approvalTask.task_id,
-              postgres_case_id: result.case.case_id,
-              task_status: result.approvalTask.status,
-              flowable_case_id: processInstance.id,
-            });
-            this.logger.log(
-                `Synced PostgreSQL approval task ${result.approvalTask.task_id} with Flowable task ${flowableApprovalTask.id}`,
-                CaseService.name
-            );
-          }
-        } catch (flowableError) {
-          this.logger.error(
-              `Failed to sync approval task with Flowable: ${flowableError.message}`,
-              flowableError.stack,
-              CaseService.name
-          );
-          // Don't fail the whole transaction if Flowable sync fails
-        }
-      }
 
       await this.auditLogService.logAction({
         userId,
@@ -275,85 +249,38 @@ export class CaseService {
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      try {
-        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
+      const investigateTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Investigation task for case ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+      );
 
-        if (processInstance) {
-          const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-          this.logger.log(`Flowable tasks before approval: ${JSON.stringify(flowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              'Case creation approved by supervisor',
+          ),
+      );
 
-          const flowableApprovalTask = flowableTasks.find((t: any) => t.name === 'Approve Case Creation');
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseCreation',
+        entityName: CaseService.name,
+        actionPerformed: `Approved case creation for case ${caseId}, created investigate task ${investigateTask.task_id}`,
+        outcome: Outcome.SUCCESS,
+      });
 
-          if (flowableApprovalTask) {
-            this.logger.log(`Completing Flowable approval task ${flowableApprovalTask.id}`, CaseService.name);
-
-         
-            await this.flowableService.completeTask(flowableApprovalTask.id, {
-              creationApproval: 'approve',
-              creationComments: 'Case creation approved by supervisor',
-              supervisorId,
-              approvedAt: new Date().toISOString(),
-            });
-
-            this.logger.log(`Approval task completed, waiting for Flowable to create investigate task`, CaseService.name);
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const updatedFlowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-            this.logger.log(`Flowable tasks after approval: ${JSON.stringify(updatedFlowableTasks.map((t: any) => ({ id: t.id, name: t.name })))}`, CaseService.name);
-
-            const investigateFlowableTask = updatedFlowableTasks.find((t: any) => t.name === 'Investigate Case');
-
-            if (investigateFlowableTask) {
-              this.logger.log(`Found Flowable Investigate Case task ${investigateFlowableTask.id}, creating PostgreSQL task`, CaseService.name);
-
-              const investigateTask = await this.prismaService.task.create({
-                data: {
-                  case_id: caseId,
-                  status: TaskStatus.STATUS_01_UNASSIGNED,
-                  name: 'Investigate case',
-                  description: `Investigation task for case ${caseId}`,
-                  candidateGroup: 'investigations',
-                },
-              });
-
-              this.logger.log(`Created PostgreSQL task ${investigateTask.task_id}`, CaseService.name);
-
-            
-              await this.flowableService.syncTaskWithDatabase(investigateFlowableTask.id, {
-                postgres_task_id: investigateTask.task_id,
-                postgres_case_id: caseId,
-                task_status: investigateTask.status,
-                flowable_case_id: processInstance.id,
-              });
-
-              this.logger.log(`Synced Flowable task ${investigateFlowableTask.id} with PostgreSQL task ${investigateTask.task_id}`, CaseService.name);
-
-              await this.auditLogService.logAction({
-                userId: supervisorId,
-                operation: 'approveCaseCreation',
-                entityName: CaseService.name,
-                actionPerformed: `Approved case creation for case ${caseId}, created investigate task ${investigateTask.task_id}`,
-                outcome: Outcome.SUCCESS,
-              });
-
-              return { success: true, case: result.case, approvedTask: result.approvedTask, newTask: investigateTask };
-            } else {
-              this.logger.error(`Flowable did not create Investigate Case task after approval`, CaseService.name);
-              throw new Error('Flowable workflow did not create expected investigate task');
-            }
-          } else {
-            this.logger.error(`Flowable approval task not found`, CaseService.name);
-            throw new Error('Flowable approval task not found');
-          }
-        } else {
-          this.logger.error(`No process instance found for case ${caseId}`, CaseService.name);
-          throw new Error('No active workflow process found for case');
-        }
-      } catch (flowableError) {
-        this.logger.error(`Flowable workflow error: ${flowableError.message}`, flowableError.stack, CaseService.name);
-        throw flowableError;
-      }
+      return { success: true, case: result.case, approvedTask: result.approvedTask, newTask: investigateTask };
     } catch (error) {
       this.logger.error(`Failed to approve case creation: ${error.message}`, error.stack, CaseService.name);
       await this.auditLogService.logAction({
@@ -418,23 +345,15 @@ export class CaseService {
         },
       });
 
-      try {
-        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-        if (processInstance) {
-          const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
-          const flowableApprovalTask = flowableTasks.find((t: any) => t.name === 'Approve Case Creation');
-          if (flowableApprovalTask) {
-            await this.flowableService.completeTask(flowableApprovalTask.id, {
-              creationApproval: 'reject',
-              creationComments: reason,
-              supervisorId,
-              rejectedAt: new Date().toISOString(),
-            });
-          }
-        }
-      } catch (flowableError) {
-        this.logger.error(`Flowable workflow update failed during rejection: ${flowableError.message}`, flowableError.stack, CaseService.name);
-      }
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+              CaseStatus.STATUS_00_DRAFT,
+              `Case creation rejected: ${reason}`,
+          ),
+      );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -528,25 +447,15 @@ export class CaseService {
         },
       });
 
-      try {
-        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-        if (processInstance) {
-          const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-          const flowableInvestigationTask = tasks.find((t: any) => t.name === 'Investigate Case');
-          if (flowableInvestigationTask) {
-            await this.flowableService.completeTask(flowableInvestigationTask.id, {
-              investigationAction: 'requestClosure',
-              recommendedOutcome: dto.recommendedOutcome,
-              finalNotes: dto.finalNotes,
-              recommendations: dto.recommendations,
-              investigatorId: userId,
-              approvalTaskId: approvalTask.task_id,
-            });
-          }
-        }
-      } catch (flowableError) {
-        this.logger.error(`Flowable workflow update failed: ${flowableError.message}`, flowableError.stack, CaseService.name);
-      }
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_20_IN_PROGRESS,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+          ),
+      );
 
       await this.auditLogService.logAction({
         userId,
@@ -596,6 +505,16 @@ export class CaseService {
         return { updatedCase, completedTask };
       });
 
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              finalOutcome as CaseStatus,
+              `Case closure approved with outcome: ${finalOutcome}`,
+          ),
+      );
+
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseClosure',
@@ -642,6 +561,16 @@ export class CaseService {
         return { updatedCase, completedTask };
       });
 
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              CaseStatus.STATUS_03_RETURNED,
+              `Case closure rejected: ${comments}`,
+          ),
+      );
+
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'rejectCaseClosure',
@@ -686,6 +615,16 @@ export class CaseService {
 
         return { updatedCase, completedTask };
       });
+
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              CaseStatus.STATUS_20_IN_PROGRESS,
+              `Returned for review: ${comments}`,
+          ),
+      );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -738,14 +677,10 @@ export class CaseService {
         return { case: updatedCase, task: updatedTask };
       });
 
-      try {
-        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-        if (processInstance) {
-          await this.flowableService.terminateProcessInstance(processInstance.id, `Case abandoned with reason ${reason}`);
-        }
-      } catch (flowableError) {
-        this.logger.error(`Failed to terminate Flowable process for abandoned case ${caseId}: ${flowableError.message}`, flowableError.stack, CaseService.name);
-      }
+      this.eventEmitter.emit(
+          'case.abandoned',
+          new CaseAbandonedEvent(caseId, reason),
+      );
 
       return { success: true, ...result };
     } catch (err) {
@@ -797,6 +732,16 @@ export class CaseService {
           userId,
           this.auditLogService,
           this.logger,
+      );
+
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_00_DRAFT,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              'Case completed and ready for assignment',
+          ),
       );
 
       await this.auditLogService.logAction({
@@ -1109,7 +1054,26 @@ export class CaseService {
           case_creation_type: createCaseDTO.caseCreationType,
         },
       });
-      this.auditLogService.logAction({ userId, operation: 'createCase', entityName: CaseService.name, actionPerformed: 'Case created', outcome: Outcome.SUCCESS });
+
+      this.eventEmitter.emit(
+          'case.created',
+          new CaseCreatedEvent(
+              createdCase.case_id,
+              createdCase.tenant_id,
+              createCaseDTO.caseCreationType,
+              undefined,
+              false,
+          ),
+      );
+
+      this.auditLogService.logAction({
+        userId,
+        operation: 'createCase',
+        entityName: CaseService.name,
+        actionPerformed: 'Case created',
+        outcome: Outcome.SUCCESS
+      });
+
       return createdCase;
     } catch (error) {
       this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseService.name);
@@ -1127,8 +1091,14 @@ export class CaseService {
     try {
       const updatedCase = await this.prismaService.case.update({
         where: { case_id: caseId },
-        data: { case_type: updateData.caseType, priority: updateData.priority, status: updateData.status, case_owner_user_id: updateData.caseOwnerUserId },
+        data: {
+          case_type: updateData.caseType,
+          priority: updateData.priority,
+          status: updateData.status,
+          case_owner_user_id: updateData.caseOwnerUserId
+        },
       });
+
       this.auditLogService.logAction({
         userId,
         operation: 'updateCase',
@@ -1136,6 +1106,7 @@ export class CaseService {
         actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
         outcome: Outcome.SUCCESS,
       });
+
       return updatedCase;
     } catch (error) {
       this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseService.name);
@@ -1143,20 +1114,4 @@ export class CaseService {
     }
   }
 
-  async getCaseWorkflowStatus(caseId: string) {
-    try {
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(caseId);
-      if (!processInstance) return { active: false, message: 'No active workflow found' };
-      const tasks = await this.flowableService.getProcessTasks(processInstance.id);
-      return {
-        active: true,
-        processInstanceId: processInstance.id,
-        currentTasks: tasks.map((t: any) => ({ id: t.id, name: t.name, assignee: t.assignee, created: t.createTime })),
-        variables: processInstance.variables || {},
-      };
-    } catch (error) {
-      this.logger.error(`Failed to get workflow status for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
-  }
 }

@@ -14,6 +14,8 @@ import { TaskModule } from './task/task.module';
 import { NatsModule } from './nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { validate } from './config/env.validation';
+import {FlowableModule} from "./flowable/flowable.module";
+import {EventEmitterModule} from "@nestjs/event-emitter";
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { validate } from './config/env.validation';
       isGlobal: true,
       validate,
     }),
+    EventEmitterModule.forRoot(),
+    FlowableModule,
     PrismaModule,
     NatsModule,
     AuditLogModule,
