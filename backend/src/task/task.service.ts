@@ -698,7 +698,6 @@ export class TaskService {
     this.logger.log(`User ${userId} attempting to unassign task ${taskId}`, TaskService.name);
 
     try {
-      // Retrieve the task first
       const existingTask = await this.getTaskById(taskId);
       if (!existingTask) {
         const msg = `Task ${taskId} not found`;
@@ -710,7 +709,7 @@ export class TaskService {
           outcome: Outcome.FAILURE,
           performedAt: new Date(),
         });
-        throw new BadRequestException(msg);
+        throw new NotFoundException(msg);
       }
 
       if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -768,6 +767,19 @@ export class TaskService {
 
       const originalAssignee = existingTask.assigned_user_id;
 
+      if (!reason || reason.trim().length === 0) {
+        const msg = 'Reason for unassigning task is required';
+        await this.auditLogService.logAction({
+          userId,
+          actionPerformed: msg,
+          entityName: TaskService.name,
+          operation: 'unassignTask',
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+        throw new BadRequestException(msg);
+      }
+
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
@@ -787,17 +799,20 @@ export class TaskService {
           ),
       );
 
+
       try {
+        // Notify the original assignee
         if (originalAssignee) {
           await this.notificationService.sendNotification({
             userId: originalAssignee,
             type: 'TASK_UNASSIGNED',
-            message: `Task "${existingTask.name || taskId}" has been unassigned${reason ? `: ${reason}` : ''}`,
+            message: `Task "${existingTask.name || taskId}" has been unassigned. Reason: ${reason}`,
             metadata: {
               taskId,
               caseId: existingTask.case_id,
               unassignedBy: userId,
               reason,
+              candidateGroup,
             },
           });
         }
@@ -810,6 +825,7 @@ export class TaskService {
             metadata: {
               taskId,
               caseId: existingTask.case_id,
+              unassignmentReason: reason,
             },
           });
         }
@@ -818,11 +834,12 @@ export class TaskService {
             `Failed to send notifications for task unassignment: ${notificationError.message}`,
             TaskService.name
         );
+
       }
 
       await this.auditLogService.logAction({
         userId,
-        actionPerformed: `Unassigned task ${taskId} from user ${originalAssignee}. Task returned to group: ${candidateGroup}${reason ? `. Reason: ${reason}` : ''}`,
+        actionPerformed: `Unassigned task ${taskId} from user ${originalAssignee}. Task returned to group: ${candidateGroup}. Reason: ${reason}`,
         entityName: TaskService.name,
         operation: 'unassignTask',
         outcome: Outcome.SUCCESS,
@@ -838,6 +855,7 @@ export class TaskService {
         ...updatedTask,
         message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
         candidateGroup,
+        unassignmentReason: reason,
       };
     } catch (error) {
       this.logger.error(
@@ -846,9 +864,20 @@ export class TaskService {
           TaskService.name
       );
 
-      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
+      if (error instanceof BadRequestException ||
+          error instanceof ForbiddenException ||
+          error instanceof NotFoundException) {
         throw error;
       }
+
+      await this.auditLogService.logAction({
+        userId,
+        actionPerformed: `Failed to unassign task ${taskId}: ${error.message}`,
+        entityName: TaskService.name,
+        operation: 'unassignTask',
+        outcome: Outcome.FAILURE,
+        performedAt: new Date(),
+      });
 
       throw new BadRequestException(`Failed to unassign task: ${error.message}`);
     }

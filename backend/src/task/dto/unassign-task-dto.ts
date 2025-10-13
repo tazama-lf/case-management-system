@@ -1,15 +1,15 @@
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UnassignTaskDto {
     @ApiProperty({
-        description: 'Optional reason for unassigning the task',
-        example: 'Task reassigned to more suitable investigator',
-        required: false,
-        maxLength: 500
+        description: 'Reason for unassigning the task (minimum 10 characters)',
+        example: 'Reassigning due to workload constraints and priority conflicts',
+        minLength: 10,
+        required: true,
     })
-    @IsOptional()
     @IsString()
-    @MaxLength(500, { message: 'Reason must not exceed 500 characters' })
+    @IsNotEmpty({ message: 'Reason for unassigning task is required' })
+    @MinLength(10, { message: 'Reason must be at least 10 characters long' })
     reason: string;
 }
