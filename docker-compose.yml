@@ -2,8 +2,6 @@
 # Docker Compose for Development Environment
 # =============================================================================
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   database:
