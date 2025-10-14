@@ -14,22 +14,22 @@ export const BACKEND_CLAIMS = {
 
 export type BackendClaim = typeof BACKEND_CLAIMS[keyof typeof BACKEND_CLAIMS];
 
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
 export interface User {
   user_id: string;
   username: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
   tenantId: string;
   roles: string[];
   permissions: string[];
-  backendClaims: string[]; // Claims expected by backend (e.g., CMS-TEST-ROLE)
-}
-
-export interface LoginCredentials {
-  username: string;
-  password: string;
+  backendClaims: string[];
 }
 
 export interface LoginResponse {
@@ -37,6 +37,34 @@ export interface LoginResponse {
   token: string;
   expiresIn?: number;
   user?: User;
+}
+
+export interface DecodedToken {
+  sub?: string;
+  clientId?: string;
+  preferred_username?: string;
+  username?: string;
+  email?: string;
+  given_name?: string;
+  first_name?: string;
+  family_name?: string;
+  last_name?: string;
+  name?: string;
+  tenant_id?: string;
+  claims?: string[];
+  realm_access?: {
+    roles: string[];
+  };
+  resource_access?: Record<string, { roles: string[] }>;
+  exp?: number;
+}
+
+export interface Investigator {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface AuthState {
@@ -60,28 +88,4 @@ export interface AuthContextType extends AuthState {
   hasAnyRole: (roles: string[]) => boolean; // Check if user has any of the specified roles
   hasAllRoles: (roles: string[]) => boolean; // Check if user has all of the specified roles
   validateBackendAccess: () => boolean;
-}
-
-export interface DecodedToken {
-  exp: number;
-  sub: string;
-  clientId?: string;
-  preferred_username?: string;
-  username?: string;
-  email?: string;
-  given_name?: string;        // First name
-  family_name?: string;       // Last name
-  name?: string;              // Full name
-  first_name?: string;        // Alternative first name field
-  last_name?: string;         // Alternative last name field
-  tenant_id?: string;
-  claims?: string[];
-  realm_access?: {
-    roles: string[];
-  };
-  resource_access?: {
-    [key: string]: {
-      roles: string[];
-    };
-  };
 }

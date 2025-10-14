@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { taskService, TaskStatus } from '../../services/taskService';
-import type { TaskForSupervisor } from '../../services/taskService';
-import TasksTable, { transformBackendTaskToUI, type TaskRow } from './TasksTable';
+import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
+import UnassignTaskModal from '../modals/UnassignTaskModal';
 import AssignTaskModal from '../modals/AssignTaskModal';
 import ReassignTaskModal from '../modals/ReassignTaskModal';
 import CloseTaskModal from '../modals/CloseTaskModal';
 import UpdateTaskStatusModal from '../modals/UpdateTaskStatusModal';
+import { taskService, TaskStatus } from '../../services/taskService';
+import type { TaskForSupervisor } from '../../services/taskService';
+import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+
 
 interface TaskLogTabProps {
   caseId: string;
 }
-
 const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,11 +20,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
+  // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
-  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [unassignModalOpen, setUnassignModalOpen] = useState(false);
+  const [closeTaskModalOpen, setCloseTaskModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null);
+  const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -44,52 +48,85 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     fetchTasks();
   }, [caseId]);
 
+  
+  const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
+    return {
+      id: backendTask.task_id,
+      taskId: backendTask.task_id,
+      name: backendTask.name || 'Unnamed Task',
+      description: backendTask.description,
+      assignee: backendTask.assigned_user_id,
+      assigneeName: backendTask.assignedUser?.username || backendTask.assigned_user_id,
+      candidateGroup: backendTask.candidateGroup || 'investigations',
+      status: mapTaskStatus(backendTask.status),
+      priority: 'NEW', // Default priority 
+      createdAt: backendTask.created_at,
+      dueDate: undefined,
+      processInstanceId: '',
+      caseId: backendTask.case_id || '',
+      flowableData: undefined
+    };
+  };
+
+  const mapTaskStatus = (status: string): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' => {
+    switch (status) {
+      case 'STATUS_01_UNASSIGNED': return 'UNASSIGNED';
+      case 'STATUS_10_ASSIGNED': return 'ASSIGNED';
+      case 'STATUS_20_IN_PROGRESS': return 'IN_PROGRESS';
+      case 'STATUS_30_COMPLETED': return 'COMPLETED';
+      case 'STATUS_21_BLOCKED': return 'SUSPENDED';
+      default: return 'UNASSIGNED';
+    }
+  };
+
   const filteredTasks = tasks.filter(task => {
-    const taskId = (task as any).task_id || (task as any).id || '';
-    const taskName = (task as any).name || '';
-    const taskDescription = (task as any).description || '';
+    const taskId = task.task_id || '';
+    const taskName = task.name || '';
+    const taskDescription = task.description || '';
     
     const matchesSearch = !searchTerm || 
       taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskId.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || (task as any).status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const transformedTasks = filteredTasks.map(transformBackendTaskToUI);
-  const handleAssign = (task: TaskRow) => {
+  const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
+  
+
+  const handleAssign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setAssignModalOpen(true);
   };
 
-  const handleComplete = (task: TaskRow) => {
-    console.log('Complete task:', task.id);
+  const handleComplete = (task: UnifiedWorkQueueTask) => {
+    setSelectedTask(task);
+    setCloseTaskModalOpen(true);
   };
 
-  const handleReassign = (task: TaskRow) => {
+  const handleUnassign = (task: UnifiedWorkQueueTask) => {
+    setSelectedTask(task);
+    setUnassignModalOpen(true);
+  };
+
+  const handleReassign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setReassignModalOpen(true);
   };
 
-  const handleClose = (task: TaskRow) => {
-    setSelectedTask(task);
-    setCloseModalOpen(true);
-  };
-
-  const handleUpdateStatus = (task: TaskRow) => {
+  const handleUpdateStatus = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setUpdateStatusModalOpen(true);
   };
 
-  const handleBlock = (task: TaskRow) => {
-    console.log('Block task:', task.id);
-  };
-  const handleAssignTask = async (task: TaskRow, assignee: string, notes?: string) => {
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
     try {
-      console.log('Assigning task:', task.id, 'to:', assignee, 'notes:', notes);
+      if (task && assignee) {
+        await taskService.assignTaskToInvestigator(task.id, assignee);
+      }
       setAssignModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
@@ -99,22 +136,30 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     }
   };
 
-  const handleReassignTask = async (task: TaskRow, assignee: string, justification: string) => {
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
     try {
-      console.log('Reassigning task:', task.id, 'to:', assignee, 'justification:', justification);
+      // Call the reassign task API endpoint
+      await taskService.reassignTask(task.id, assignee);
+      
+      // Close the modal and clear selected task
       setReassignModalOpen(false);
       setSelectedTask(null);
+      
+      // Refresh the task list
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+      
+      // Show success message (in a real implementation, you might want to use a toast notification)
+      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
     } catch (error) {
       console.error('Failed to reassign task:', error);
+      // In a real implementation, you might want to show an error message to the user
     }
   };
 
-  const handleCloseTask = async (task: TaskRow, outcome: string, notes: string) => {
+  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, outcome: string, notes: string) => {
     try {
-      console.log('Closing task:', task.id, 'outcome:', outcome, 'notes:', notes);
-      setCloseModalOpen(false);
+      setCloseTaskModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
@@ -123,15 +168,26 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     }
   };
 
-  const handleUpdateTaskStatus = async (task: TaskRow, newStatus: string, notes?: string) => {
+  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
     try {
-      console.log('Updating task status:', task.id, 'to:', newStatus, 'notes:', notes);
       setUpdateStatusModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
     } catch (error) {
       console.error('Failed to update task status:', error);
+    }
+  };
+
+  const handleUnassignTask = async (taskId: string, reason: string) => {
+    try {
+      await taskService.unassignTask(taskId, { reason });
+      setUnassignModalOpen(false);
+      setSelectedTask(null);
+      const fetchedTasks = await taskService.getTasksByCaseId(caseId);
+      setTasks(fetchedTasks);
+    } catch (error) {
+      console.error('Failed to unassign task:', error);
     }
   };
 
@@ -187,23 +243,24 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           </div>
         </div>
       ) : (
-        <TasksTable
-          rows={transformedTasks}
-          onComplete={handleComplete}
+        <WorkQueueTable
+          tasks={transformedTasks}
           onAssign={handleAssign}
           onReassign={handleReassign}
-          onClose={handleClose}
+          onUnassign={handleUnassign}
+          onComplete={handleComplete}
           onUpdateStatus={handleUpdateStatus}
-          onBlock={handleBlock}
         />
       )}
+      
+      {/* Task Management Modals */}
       <AssignTaskModal
         open={assignModalOpen}
         onClose={() => {
           setAssignModalOpen(false);
           setSelectedTask(null);
         }}
-        onAssign={handleAssignTask}
+        onAssign={handleModalAssign}
         task={selectedTask}
       />
 
@@ -213,17 +270,27 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           setReassignModalOpen(false);
           setSelectedTask(null);
         }}
-        onReassign={handleReassignTask}
+        onReassign={handleModalReassign}
+        task={selectedTask}
+      />
+
+      <UnassignTaskModal
+        open={unassignModalOpen}
+        onClose={() => {
+          setUnassignModalOpen(false);
+          setSelectedTask(null);
+        }}
+        onUnassign={handleUnassignTask}
         task={selectedTask}
       />
 
       <CloseTaskModal
-        open={closeModalOpen}
+        open={closeTaskModalOpen}
         onClose={() => {
-          setCloseModalOpen(false);
+          setCloseTaskModalOpen(false);
           setSelectedTask(null);
         }}
-        onCloseTask={handleCloseTask}
+        onCloseTask={handleModalCloseTask}
         task={selectedTask}
       />
 
@@ -233,7 +300,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           setUpdateStatusModalOpen(false);
           setSelectedTask(null);
         }}
-        onUpdateStatus={handleUpdateTaskStatus}
+        onUpdateStatus={handleModalUpdateStatus}
         task={selectedTask}
       />
     </div>

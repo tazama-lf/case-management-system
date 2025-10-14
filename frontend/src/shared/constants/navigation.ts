@@ -12,25 +12,31 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: HomeIcon,
-    roles: [],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
     name: 'Alerts',
     href: '/alerts',
     icon: ExclamationTriangleIcon,
-    roles: ['alert-triage'],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
     name: 'Cases',
     href: '/cases',
     icon: FolderIcon,
-    roles: ['CMS_INVESTIGATOR'],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
+  },
+  {
+    name: 'Work Queues',
+    href: '/work-queue',
+    icon: QueueListIcon,
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
     name: 'Reports',
     href: '/reports',
     icon: ChartBarIcon,
-    roles: [],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
     name: 'Admin',
@@ -38,12 +44,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     icon: Cog6ToothIcon,
     roles: ['alert-triage'],
   },
-  {
-    name: 'Work Queue',
-    href: '/work-queue',
-    icon: QueueListIcon,
-    roles: ['CMS_SUPERVISOR'],
-  },
+
 ];
 
 export { ROLE_HIERARCHY } from '../config/roles.config';

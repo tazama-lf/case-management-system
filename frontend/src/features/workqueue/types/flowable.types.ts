@@ -60,7 +60,6 @@ export interface FlowableTaskListResponse {
 export interface FlowableErrorResponse {
   message: string;
   exception?: string;
-  status: number;
   error: string;
   timestamp: string;
   path: string;
@@ -70,6 +69,7 @@ export interface FlowableErrorResponse {
  * Work Queue specific candidate groups (matching actual Flowable groups)
  */
 export const WorkQueueCandidateGroup = {
+  INVESTIGATIONS: 'investigations',
   INVESTIGATORS: 'investigators',
   SUPERVISORS: 'supervisors'
 } as const;
@@ -77,7 +77,6 @@ export const WorkQueueCandidateGroup = {
 export type WorkQueueCandidateGroupType = typeof WorkQueueCandidateGroup[keyof typeof WorkQueueCandidateGroup];
 
 /**
- * Enhanced work queue filters for Flowable integration
  */
 export interface FlowableWorkQueueFilters {
   candidateGroup?: WorkQueueCandidateGroupType | string;
@@ -116,7 +115,7 @@ export interface UnifiedWorkQueueTask {
   
   // Status and priority
   status: 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
   
   // Timestamps
   createdAt: string;
@@ -172,7 +171,7 @@ export interface FlowableTaskCompletionRequest {
 export interface CaseProcessVariables {
   caseId: string;
   caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
   assignedInvestigator?: string;
   supervisorId?: string;
   createdBy: string;
