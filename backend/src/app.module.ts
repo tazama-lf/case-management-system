@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AuditLogModule } from './audit/auditLog.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-
+import { AuditLogModule } from './audit/auditLog.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
+import { SharedModule } from './shared/shared.module'; // Add this
+import { CaseWorkflowModule } from './case-workflow/case-workflow.module';
 import { TriageModule } from './triage/triage.module';
 import { CaseModule } from './case/case.module';
 import { CommentModule } from './comment/comment.module';
 import { TaskModule } from './task/task.module';
 import { NatsModule } from './nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
+import { FlowableModule } from './flowable/flowable.module';
 import { validate } from './config/env.validation';
-import {FlowableModule} from "./flowable/flowable.module";
-import {EventEmitterModule} from "@nestjs/event-emitter";
 
 @Module({
   imports: [
@@ -25,8 +26,10 @@ import {EventEmitterModule} from "@nestjs/event-emitter";
       validate,
     }),
     EventEmitterModule.forRoot(),
-    FlowableModule,
+    SharedModule, // Add this before other modules
     PrismaModule,
+    CaseWorkflowModule,
+    FlowableModule,
     NatsModule,
     AuditLogModule,
     TriageModule,
