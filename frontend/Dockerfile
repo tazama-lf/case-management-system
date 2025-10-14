@@ -2,7 +2,7 @@
 # Frontend Development Dockerfile
 # =============================================================================
 
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -19,17 +19,13 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S react -u 1001 -G nodejs
-RUN chown -R react:nodejs /app
-USER react
+# Set environment variables directly in Dockerfile
+ENV VITE_API_BASE_URL=http://10.10.80.30:3000
+ENV VITE_APP_NAME="Tazama Case Management System"
+ENV VITE_APP_VERSION=0.0.1
 
 # Expose port
 EXPOSE 5173
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5173/ || exit 1
 
 # Start the development server
 ENTRYPOINT ["dumb-init", "--"]
