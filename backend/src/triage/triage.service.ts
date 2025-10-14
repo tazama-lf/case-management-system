@@ -1,20 +1,19 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
+import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
+import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus, CaseType } from '@prisma/client';
 import { Outcome } from 'src/audit/types/outcome';
-import { UpdateCaseDto } from 'src/case/dto/update-case.dto';
-import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ManualTriageDto } from './dto/manual-triage.dto';
 import { Prediction } from './types/Prediction';
 import {
@@ -29,26 +28,35 @@ export class TriageService {
       private readonly logger: LoggerService,
       private prisma: PrismaService,
       private audit: AuditLogService,
-      private caseService: CaseService,
+      private readonly caseWorkflowService: CaseWorkflowService,
       private taskService: TaskService,
       private commentService: CommentService,
       private configService: ConfigService,
       private readonly eventEmitter: EventEmitter2,
+      private readonly casePriorityUtil: CasePriorityUtil,
   ) {}
 
+  @OnEvent('alert.incoming')
+  async handleIncomingAlertEvent(event: {
+    payload: any;
+    source: string;
+    userId: string;
+    tenantId: string;
+  }) {
+    await this.processIncomingAlert(
+        event.payload,
+        event.source,
+        event.userId,
+        event.tenantId,
+    );
+  }
+
   public mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
-    switch (alertType) {
-      case AlertType.FRAUD:
-        return CaseType.FRAUD;
-      case AlertType.AML:
-        return CaseType.AML;
-      case AlertType.FRAUD_AND_AML:
-        return CaseType.FRAUD_AND_AML;
-      case AlertType.NONE:
-        return CaseType.NONE;
-      default:
-        return undefined;
-    }
+    return this.casePriorityUtil.mapAlertTypeToCaseType(alertType);
+  }
+
+  public determinePriority(priorityScore: number): Priority {
+    return this.casePriorityUtil.determinePriority(priorityScore);
   }
 
   async processIncomingAlert(req: any, source: string, userId: string, tenantId: string) {
@@ -111,10 +119,12 @@ export class TriageService {
             this.audit,
             this.logger,
         );
-        const updateCaseDto: Partial<UpdateCaseDto> = {
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        };
-        await this.caseService.updateCase(alert.case_id, updateCaseDto, userId);
+
+        this.eventEmitter.emit('case.update.requested', {
+          caseId: alert.case_id,
+          updateData: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+          userId,
+        });
         break;
       }
     }
@@ -167,7 +177,7 @@ export class TriageService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
 
-      const createdCase = await this.caseService.createCase(caseDetail, userId);
+      const createdCase = await this.caseWorkflowService.createCase(caseDetail, userId);
 
       const newAlert = await this.prisma.alert.create({
         data: {
@@ -221,17 +231,24 @@ export class TriageService {
       if (!alert.case_id) {
         throw new InternalServerErrorException('Alert case_id is missing.');
       }
-      const existingCase = await this.caseService.retrieveCase(alert.case_id);
 
-      const triageTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-      const allTriageTasks = triageTasks.filter((t) => t.name === 'Triage Alert');
+      const existingCase = await this.prisma.case.findUnique({
+        where: { case_id: alert.case_id },
+        include: { tasks: true },
+      });
 
-      const completedTriageTask = allTriageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${alert.case_id} not found`);
+      }
+
+      const triageTasks = existingCase.tasks.filter((t) => t.name === 'Triage Alert');
+      const completedTriageTask = triageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+
       if (completedTriageTask) {
         throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
       }
 
-      const triageTask = allTriageTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
+      const triageTask = triageTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
       if (triageTask) {
         this.logger.log(
@@ -275,9 +292,12 @@ export class TriageService {
       }
 
       if (manualTriageDto?.status && closableStatuses.includes(manualTriageDto.status)) {
-        await this.caseService.updateCase(alert.case_id, { status: manualTriageDto.status }, userId);
+        this.eventEmitter.emit('case.update.requested', {
+          caseId: alert.case_id,
+          updateData: { status: manualTriageDto.status },
+          userId,
+        });
 
-        // Emit case status changed event
         this.eventEmitter.emit(
             'case.status.changed',
             new CaseStatusChangedEvent(
@@ -293,15 +313,15 @@ export class TriageService {
             TriageService.name,
         );
       } else {
-        await this.caseService.updateCase(
-            alert.case_id,
-            {
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              caseType: this.mapAlertTypeToCaseType(manualTriageDto.alertType),
-              priority: priority,
-            },
-            userId,
-        );
+        this.eventEmitter.emit('case.update.requested', {
+          caseId: alert.case_id,
+          updateData: {
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            caseType: this.mapAlertTypeToCaseType(manualTriageDto.alertType),
+            priority: priority,
+          },
+          userId,
+        });
 
         this.eventEmitter.emit(
             'case.status.changed',
@@ -392,7 +412,6 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to update alert');
     }
   }
-
   async getAlertsForUser(params: {
     tenantId: string;
     priority?: string;
@@ -626,10 +645,12 @@ export class TriageService {
         isTruePositive: predictedTruePositive,
         priorityScore: predictedPriorityScore,
       } = prediction;
+
       this.logger.log(
           `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
           TriageService.name,
       );
+
       const priority = this.determinePriority(predictedPriorityScore);
       await this.updateAlertAndUpdateTriageTask(
           alertId,
@@ -753,9 +774,15 @@ export class TriageService {
             this.audit,
         );
 
-        const updateCaseDto = new UpdateCaseDto();
-        updateCaseDto.status = status;
-        const updatedCase = await this.caseService.updateCase(caseId, updateCaseDto, userId);
+        this.eventEmitter.emit('case.update.requested', {
+          caseId,
+          updateData: { status },
+          userId,
+        });
+
+        const updatedCase = await this.prisma.case.findUnique({
+          where: { case_id: caseId },
+        });
 
         return [updatedCase, updatedTask];
       });
@@ -791,7 +818,6 @@ export class TriageService {
       throw new InternalServerErrorException('Failed to auto close case');
     }
   }
-
   async createCaseWithInvestigationTask(
       caseType: CaseType,
       userId: string,
@@ -800,7 +826,7 @@ export class TriageService {
       priority: Priority,
   ): Promise<any> {
     try {
-      const newCase = await this.caseService.createCase(
+      const newCase = await this.caseWorkflowService.createCase(
           {
             caseCreatorUserId: userId,
             caseOwnerUserId: userId,
@@ -888,15 +914,18 @@ export class TriageService {
           this.logger,
       );
 
-      const updateCaseDto: Partial<UpdateCaseDto> = {
+      const updateCaseDto: any = {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         priority: priority,
       };
       if (caseType) updateCaseDto.caseType = caseType;
 
-      const updatedCase = await this.caseService.updateCase(caseId, updateCaseDto, userId);
+      this.eventEmitter.emit('case.update.requested', {
+        caseId,
+        updateData: updateCaseDto,
+        userId,
+      });
 
-      // Emit case status changed event
       this.eventEmitter.emit(
           'case.status.changed',
           new CaseStatusChangedEvent(
@@ -913,6 +942,10 @@ export class TriageService {
         entityName: 'Task',
         actionPerformed: `Created task ${createdTask.task_id} for case ${caseId}`,
         outcome: 'SUCCESS',
+      });
+
+      const updatedCase = await this.prisma.case.findUnique({
+        where: { case_id: caseId },
       });
 
       return updatedCase;
@@ -973,24 +1006,6 @@ export class TriageService {
     } catch (error) {
       this.logger.error(`Failed to update alert ${alertId} and triage task ${taskId}. Error: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to update alert and triage task');
-    }
-  }
-
-  public determinePriority(priorityScore: number): Priority {
-    const urgencyThresholds = [
-      parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
-      parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
-      parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
-    ];
-
-    if (priorityScore >= urgencyThresholds[2]) {
-      return Priority.BREACH;
-    } else if (priorityScore >= urgencyThresholds[1]) {
-      return Priority.CRITICAL;
-    } else if (priorityScore >= urgencyThresholds[0]) {
-      return Priority.URGENT;
-    } else {
-      return Priority.NEW;
     }
   }
 
