@@ -55,10 +55,10 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   const useMockData = () => {
     // Using the specific UUID provided by the user for testing
     const mockInvestigators: Investigator[] = [
-      { id: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f', username: 'john.smith', email: 'john.smith@example.com', firstName: 'John', lastName: 'Smith' },
-      { id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', username: 'jane.doe', email: 'jane.doe@example.com', firstName: 'Jane', lastName: 'Doe' },
-      { id: '2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', username: 'bob.wilson', email: 'bob.wilson@example.com', firstName: 'Bob', lastName: 'Wilson' },
-      { id: '3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', username: 'alice.johnson', email: 'alice.johnson@example.com', firstName: 'Alice', lastName: 'Johnson' },
+      { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'john.smith', email: 'john.smith@example.com', firstName: 'John', lastName: 'Smith' },
+      { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'jane.doe', email: 'jane.doe@example.com', firstName: 'Jane', lastName: 'Doe' },
+      { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'bob.wilson', email: 'bob.wilson@example.com', firstName: 'Bob', lastName: 'Wilson' },
+      { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'alice.johnson', email: 'alice.johnson@example.com', firstName: 'Alice', lastName: 'Johnson' },
     ];
     console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
