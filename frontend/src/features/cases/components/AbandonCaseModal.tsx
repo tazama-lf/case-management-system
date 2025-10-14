@@ -17,6 +17,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isReasonValid = reason.trim().length >= 10;
 
@@ -25,12 +26,15 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
     if (!caseData || !isReasonValid) return;
 
     setIsSubmitting(true);
+    setErrors({});
+    
     try {
       await onAbandon(caseData.id, reason.trim());
       setReason('');
       onClose();
     } catch (error) {
       console.error('Failed to abandon case:', error);
+      setErrors({ submit: 'Failed to abandon case. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -39,6 +43,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       setReason('');
+      setErrors({});
       onClose();
     }
   };
@@ -87,6 +92,13 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
             </div>
           </div>
 
+          {/* Important note about draft status requirement */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> Only cases in DRAFT status can be abandoned. The case must have a "Complete New Case" task associated with it.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
@@ -95,16 +107,36 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
               <textarea
                 id="reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  if (e.target.value.trim().length >= 10) {
+                    setErrors({});
+                  }
+                }}
                 rows={3}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                 placeholder="Provide a detailed reason for abandoning this case (minimum 10 characters)..."
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {reason.length}/10 characters minimum
-              </p>
+              <div className="mt-1 flex justify-between">
+                <p className="text-xs text-gray-500">
+                  {reason.length}/10 characters minimum
+                </p>
+              </div>
+              {errors.reason && (
+                <p className="mt-1 text-sm text-red-600">{errors.reason}</p>
+              )}
+              {!isReasonValid && reason.length > 0 && (
+                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+              )}
             </div>
+
+            {/* Submit Error */}
+            {errors.submit && (
+              <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
+                <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
 
             <div className="flex gap-3 justify-end">
               <button

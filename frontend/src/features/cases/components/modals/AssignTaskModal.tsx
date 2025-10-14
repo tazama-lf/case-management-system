@@ -23,6 +23,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
 
   useEffect(() => {
     if (open) {
+      console.log('AssignTaskModal opened, fetching investigators');
       fetchInvestigators();
     }
   }, [open]);
@@ -35,6 +36,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
       
       // Use API data if it's not empty, otherwise use mock data
       if (data && data.length > 0) {
+        console.log('Using API data for investigators');
         setInvestigators(data);
       } else {
         console.log('API returned empty data, using mock data');
@@ -42,6 +44,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
       }
     } catch (error) {
       console.error('Failed to fetch investigators:', error);
+      console.log('Using mock data due to API error');
       useMockData();
     } finally {
       setLoading(false);
@@ -49,14 +52,35 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
   };
 
   const useMockData = () => {
+    // Using the specific UUID provided by the user for testing
     const mockInvestigators: Investigator[] = [
-      { id: '1', username: 'john.smith', email: 'john.smith@example.com', firstName: 'John', lastName: 'Smith' },
-      { id: '2', username: 'sarah.johnson', email: 'sarah.johnson@example.com', firstName: 'Sarah', lastName: 'Johnson' },
-      { id: '3', username: 'michael.brown', email: 'michael.brown@example.com', firstName: 'Michael', lastName: 'Brown' },
-      { id: '4', username: 'emily.davis', email: 'emily.davis@example.com', firstName: 'Emily', lastName: 'Davis' },
-      { id: '5', username: 'david.wilson', email: 'david.wilson@example.com', firstName: 'David', lastName: 'Wilson' },
+      { id: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f', username: 'john.smith', email: 'john.smith@example.com', firstName: 'John', lastName: 'Smith' },
+      { id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', username: 'jane.doe', email: 'jane.doe@example.com', firstName: 'Jane', lastName: 'Doe' },
+      { id: '2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', username: 'bob.wilson', email: 'bob.wilson@example.com', firstName: 'Bob', lastName: 'Wilson' },
+      { id: '3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', username: 'alice.johnson', email: 'alice.johnson@example.com', firstName: 'Alice', lastName: 'Johnson' },
     ];
+    console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
+  };
+
+  const handleAssign = () => {
+    if (!canConfirm) {
+      console.warn('Cannot assign task: assignee not selected');
+      return;
+    }
+    
+    if (!task) {
+      console.warn('Cannot assign task: no task selected');
+      return;
+    }
+    
+    if (!assignee) {
+      console.warn('Cannot assign task: assignee is empty');
+      return;
+    }
+    
+    console.log('Assigning task:', { taskId: task.id, assignee, notes });
+    onAssign(task, assignee, notes);
   };
 
   if (!open || !task) return null;
@@ -98,11 +122,14 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Select Investigator</option>
-                {investigators.map((investigator) => (
-                  <option key={investigator.id} value={investigator.id}>
-                    {investigator.firstName} {investigator.lastName} ({investigator.username})
-                  </option>
-                ))}
+                {investigators.map((investigator) => {
+                  // Display only the assignedUserId (UUID)
+                  return (
+                    <option key={investigator.id} value={investigator.id}>
+                      {investigator.id}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>
@@ -121,14 +148,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
           <div className="flex items-center justify-end gap-2 pt-2">
             <button onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>
             <button
-              onClick={() => {
-                // Find the selected investigator to get their name
-                const selectedInvestigator = investigators.find(inv => inv.id === assignee);
-                const assigneeName = selectedInvestigator 
-                  ? `${selectedInvestigator.firstName} ${selectedInvestigator.lastName}` 
-                  : assignee;
-                onAssign(task, assigneeName, notes);
-              }}
+              onClick={handleAssign}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
               disabled={!canConfirm}
             >

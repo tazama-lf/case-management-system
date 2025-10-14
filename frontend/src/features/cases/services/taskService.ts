@@ -59,6 +59,11 @@ export interface UnassignTaskData {
   reason: string;
 }
 
+export interface CloseTaskData {
+  outcome: string;
+  notes: string;
+}
+
 export interface TaskFilters {
   status?: string;
   assignedUserId?: string;
@@ -79,7 +84,7 @@ export interface TasksResponse {
 }
 
 export interface SupervisorTasksResponse {
-  tasks?: TaskForSupervisor[]; // Backend might not wrap in tasks array
+  tasks?: TaskForSupervisor[]; 
   total?: number;
   page?: number;
   limit?: number;
@@ -156,19 +161,6 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/reassign
-  async reassignTask(taskId: string, assignedUserId: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const response = await apiClient.patch<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/reassign`, 
-        { assignedUserId }
-      );
-      return response;
-    } catch (error: any) {
-      throw this.handleError(error, 'reassign task');
-    }
-  }
-
   // PATCH /api/v1/task/:taskId/assign - Assign task to investigator (supervisor action)
   async assignTaskToInvestigator(taskId: string, assignedUserId: string): Promise<TaskForSupervisor> {
     try {
@@ -184,6 +176,24 @@ export class TaskService {
     } catch (error: any) {
       console.error('TaskService: Task assignment failed:', error);
       throw this.handleError(error, 'assign task to investigator');
+    }
+  }
+
+  // PATCH /api/v1/task/:taskId/reassign
+  async reassignTask(taskId: string, assignedUserId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('TaskService: Reassigning task', taskId, 'to user', assignedUserId);
+      
+      const response = await apiClient.patch<{ success: boolean; message: string }>(
+        `${this.baseUrl}/${taskId}/reassign`, 
+        { assignedUserId }
+      );
+      
+      console.log('TaskService: Task reassignment successful:', response);
+      return response;
+    } catch (error: any) {
+      console.error('TaskService: Task reassignment failed:', error);
+      throw this.handleError(error, 'reassign task');
     }
   }
 
@@ -224,7 +234,7 @@ export class TaskService {
   }
 
   // PATCH /api/v1/task/:taskId - Update task for supervisor operations
-  async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string }): Promise<TaskForSupervisor> {
+  async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string }): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
       return response;
@@ -262,13 +272,10 @@ export class TaskService {
     }
   }
 
-  // GET /api/v1/task?caseId=:caseId - Get all tasks for a specific case
+  // GET /api/v1/task/case/:caseId - Get all tasks for a specific case
   async getTasksByCaseId(caseId: string): Promise<TaskForSupervisor[]> {
     try {
-      const params = new URLSearchParams();
-      params.append('caseId', caseId);
-      
-      const url = `${this.baseUrl}?${params.toString()}`;
+      const url = `${this.baseUrl}/case/${caseId}`;
       console.log('TaskService: Fetching tasks for case:', caseId, 'from:', url);
       
       const response = await apiClient.get<TaskForSupervisor[]>(url);
@@ -295,6 +302,25 @@ export class TaskService {
       };
     } catch (error: any) {
       throw this.handleError(error, 'complete task');
+    }
+  }
+
+  // PATCH /api/v1/task/:taskId/close - Close task with outcome and notes
+  async closeTask(taskId: string, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
+    try {
+      // For now, we'll update the task status and could extend this later to send additional data
+      const updateData: Partial<Task> = {
+        status: TaskStatus.STATUS_30_COMPLETED
+      };
+      
+      await this.updateTask(taskId, updateData);
+      
+      return {
+        success: true,
+        message: 'Task closed successfully'
+      };
+    } catch (error: any) {
+      throw this.handleError(error, 'close task');
     }
   }
 

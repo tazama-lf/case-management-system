@@ -5,7 +5,7 @@ import AssignTaskModal from '../modals/AssignTaskModal';
 import ReassignTaskModal from '../modals/ReassignTaskModal';
 import CloseTaskModal from '../modals/CloseTaskModal';
 import UpdateTaskStatusModal from '../modals/UpdateTaskStatusModal';
-import { taskService, TaskStatus } from '../../services/taskService';
+import { taskService, TaskStatus, type TaskStatusType, type CloseTaskData } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 
@@ -50,6 +50,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
+    // Handle data inconsistency: if task is marked as "Assigned" but has no assigned user, 
+    // correct the status to "Unassigned"
+    let effectiveStatus = backendTask.status;
+    if (backendTask.status === 'STATUS_10_ASSIGNED' && !backendTask.assigned_user_id) {
+      effectiveStatus = 'STATUS_01_UNASSIGNED';
+    }
+    
     return {
       id: backendTask.task_id,
       taskId: backendTask.task_id,
@@ -58,7 +65,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       assignee: backendTask.assigned_user_id,
       assigneeName: backendTask.assignedUser?.username || backendTask.assigned_user_id,
       candidateGroup: backendTask.candidateGroup || 'investigations',
-      status: mapTaskStatus(backendTask.status),
+      status: mapTaskStatus(effectiveStatus),
       priority: 'NEW', // Default priority 
       createdAt: backendTask.created_at,
       dueDate: undefined,
@@ -124,20 +131,33 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
     try {
-      if (task && assignee) {
-        await taskService.assignTaskToInvestigator(task.id, assignee);
+      if (!task || !assignee) {
+        console.warn('Cannot assign task: missing task or assignee', { task, assignee });
+        return;
       }
+      
+      console.log('Assigning task to investigator:', { taskId: task.id, assignee, notes });
+      // Use the assignTaskToInvestigator method which is the correct endpoint for supervisor assignment
+      await taskService.assignTaskToInvestigator(task.id, assignee);
+      
       setAssignModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
     } catch (error) {
       console.error('Failed to assign task:', error);
+      // In a real implementation, you might want to show an error message to the user
     }
   };
 
   const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
     try {
+      if (!task || !assignee) {
+        console.warn('Cannot reassign task: missing task or assignee', { task, assignee });
+        return;
+      }
+      
+      console.log('Reassigning task:', { taskId: task.id, assignee, justification });
       // Call the reassign task API endpoint
       await taskService.reassignTask(task.id, assignee);
       
@@ -159,6 +179,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const handleModalCloseTask = async (task: UnifiedWorkQueueTask, outcome: string, notes: string) => {
     try {
+      // Close the task with outcome and notes
+      await taskService.closeTask(task.id, { outcome, notes });
+      
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
@@ -170,6 +193,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
     try {
+      // Map UI status labels to backend status codes
+      const statusMap: Record<string, TaskStatusType> = {
+        'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
+        'Assigned': TaskStatus.STATUS_10_ASSIGNED,
+        'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
+        'Blocked': TaskStatus.STATUS_21_BLOCKED,
+        'Complete': TaskStatus.STATUS_30_COMPLETED
+      };
+      
+      const backendStatus = statusMap[newStatus];
+      if (backendStatus) {
+        await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
+      }
+      
       setUpdateStatusModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);

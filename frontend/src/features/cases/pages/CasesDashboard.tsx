@@ -8,6 +8,10 @@ import AbandonCaseModal from '../components/AbandonCaseModal';
 import SuspendCaseModal from '../components/SuspendCaseModal';
 import ResumeCaseModal from '../components/ResumeCaseModal';
 import RejectCaseModal from '../components/RejectCaseModal';
+import ApproveCaseModal from '../components/ApproveCaseModal';
+import ApproveCaseCreationModal from '../components/ApproveCaseCreationModal';
+import RejectCaseCreationModal from '../components/RejectCaseCreationModal';
+import ReturnCaseForReviewModal from '../components/ReturnCaseForReviewModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
 import { 
   caseService, 
@@ -16,7 +20,10 @@ import {
   type AbandonCaseDto,
   type RejectCaseDto,
   type ReopenCaseDto,
-  type SuspendCaseDto} from '../services/caseService';
+  type SuspendCaseDto,
+  type ApproveCaseClosureDto,
+  type ReturnCaseForReviewDto,
+  type RejectCaseCreationDto} from '../services/caseService';
 import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
@@ -36,6 +43,10 @@ const CasesDashboard: React.FC = () => {
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [isApproveOpen, setIsApproveOpen] = useState(false);
+  const [isApproveCreationOpen, setIsApproveCreationOpen] = useState(false);
+  const [isRejectCreationOpen, setIsRejectCreationOpen] = useState(false);
+  const [isReturnForReviewOpen, setIsReturnForReviewOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -382,7 +393,6 @@ The case may have been deleted or moved.`;
       const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
       console.log('Case abandoned successfully:', abandonedCase);
       
-      
       alert(`Case ${caseId} Abandoned Successfully!
 
 Reason: ${reason}
@@ -415,21 +425,32 @@ All associated tasks have been closed.`);
       let errorMessage = 'Failed to abandon case. Please try again.';
       const errorString = error instanceof Error ? error.message : '';
       
-      if (errorString.includes('not in an abandonable state')) {
-        errorMessage = `Case cannot be abandoned.\n\n` +
-                      `This case may not meet the abandonment requirements:\n` +
-                      `• Case must be in "DRAFT", "ASSIGNED", "IN PROGRESS", or "REOPENED" status\n` +
-                      `• Case must not be already closed or completed\n\n` +
-                      `Please check the case status and try again.`;
+      if (errorString.includes('Cannot abandon case other than draft status')) {
+        errorMessage = `Case cannot be abandoned.
+
+This case may not meet the abandonment requirements:
+• Case must be in "DRAFT" status
+• Case must have a "Complete New Case" task
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('No complete new Case Task exists')) {
+        errorMessage = `Case cannot be abandoned.
+
+This case may not meet the abandonment requirements:
+• Case must be in "DRAFT" status
+• Case must have a "Complete New Case" task
+
+Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to abandon this case.\n` +
-                      `Please ensure you have the appropriate role.`;
+        errorMessage = `Access Denied.
+
+You don't have permission to abandon this case.
+Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.\n\n` +
-                      `The case may have been deleted or moved.`;
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
       }
-      
       
       alert(errorMessage);
     }
@@ -664,6 +685,269 @@ The case has been returned to the investigator for additional work.`);
     }
   };
 
+  const handleApproveCase = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsApproveOpen(true);
+  };
+
+  const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
+    if (!selectedRow) return;
+    
+    try {
+      const approvedCase = await caseService.approveCaseClosure(selectedRow.id, data);
+      console.log('Case approved successfully:', approvedCase);
+      
+      alert(`Case ${selectedRow.id} Closure Approved Successfully!
+
+Final Outcome: ${data.finalOutcome.replace('STATUS_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+Status: ${approvedCase.status}
+
+The case has been finalized with the selected outcome.`);
+      
+      setIsApproveOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error approving case:', error);
+      
+      let errorMessage = 'Failed to approve case closure. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in pending approval status')) {
+        errorMessage = `Case cannot be approved.
+
+This case may not meet the approval requirements:
+• Case must be in "PENDING FINAL APPROVAL" status
+• Case must have an "Approve case closure" task
+• Task must be assigned to supervisor
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to approve this case closure.
+Please ensure you have supervisor role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const handleApproveCaseCreation = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsApproveCreationOpen(true);
+  };
+
+  const handleApproveCreationSubmit = async (caseId: string) => {
+    try {
+      const approvedCase = await caseService.approveCaseCreation(caseId);
+      console.log('Case creation approved successfully:', approvedCase);
+      
+      alert(`Case ${caseId} Creation Approved Successfully!
+
+Status: ${approvedCase.status}
+
+The case has been moved to "READY FOR ASSIGNMENT" status.
+An "Investigate Case" task has been created in the Flowable investigations queue.`);
+      
+      setIsApproveCreationOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error approving case creation:', error);
+      
+      let errorMessage = 'Failed to approve case creation. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
+        errorMessage = `Case cannot be approved.
+
+This case may not meet the approval requirements:
+• Case must be in "PENDING CASE CREATION APPROVAL" status
+• Case must have an "Approve Case Creation" task
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to approve this case creation.
+Please ensure you have supervisor role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const handleRejectCaseCreation = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsRejectCreationOpen(true);
+  };
+
+  const handleRejectCreationSubmit = async (caseId: string, data: RejectCaseCreationDto) => {
+    try {
+      const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
+      console.log('Case creation rejected successfully:', rejectedCase);
+      
+      alert(`Case ${caseId} Creation Rejected Successfully!
+
+Reason: ${data.reason}
+Status: ${rejectedCase.status}
+
+The case has been returned to "DRAFT" status.
+A "Complete New Case" task has been assigned to the original creator.`);
+      
+      setIsRejectCreationOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error rejecting case creation:', error);
+      
+      let errorMessage = 'Failed to reject case creation. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
+        errorMessage = `Case cannot be rejected.
+
+This case may not meet the rejection requirements:
+• Case must be in "PENDING CASE CREATION APPROVAL" status
+• Case must have an "Approve Case Creation" task
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to reject this case creation.
+Please ensure you have supervisor role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const handleReturnForReview = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsReturnForReviewOpen(true);
+  };
+
+  const handleReturnForReviewSubmit = async (caseId: string, data: ReturnCaseForReviewDto) => {
+    if (!selectedRow) return;
+    
+    try {
+      const returnedCase = await caseService.returnCaseForReview(caseId, data);
+      console.log('Case returned for review successfully:', returnedCase);
+      
+      alert(`Case ${caseId} Returned for Review Successfully!
+
+Comments: ${data.reviewComments}
+Status: ${returnedCase.status}
+
+The case has been returned to the investigator for additional work.`);
+      
+      setIsReturnForReviewOpen(false);
+      setSelectedRow(null);
+      
+      const fetchAllCases = async () => {
+        try {
+          const response = await caseService.getAllCases({
+            status: statusFilter || undefined,
+            priority: priorityFilter || undefined,
+            sortBy: 'updated_at',
+            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          });
+          setCases(response.cases.map(transformBackendCaseToUI));
+        } catch (refreshError) {
+          console.error('Failed to refresh cases:', refreshError);
+        }
+      };
+      
+      await fetchAllCases();
+    } catch (error) {
+      console.error('Error returning case for review:', error);
+      
+      let errorMessage = 'Failed to return case for review. Please try again.';
+      const errorString = error instanceof Error ? error.message : '';
+      
+      if (errorString.includes('not in pending approval status')) {
+        errorMessage = `Case cannot be returned for review.
+
+This case may not meet the return requirements:
+• Case must be in "PENDING FINAL APPROVAL" status
+• Case must have an "Approve case closure" task
+• Task must be assigned to supervisor
+
+Please check the case status and try again.`;
+      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+        errorMessage = `Access Denied.
+
+You don't have permission to return this case for review.
+Please ensure you have supervisor role.`;
+      } else if (errorString.includes('404')) {
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
   return (
     <PageContainer
       title="Cases Dashboard"
@@ -770,6 +1054,10 @@ The case has been returned to the investigator for additional work.`);
             onSuspendCase={handleSuspendCase}
             onResumeCase={handleResumeCase}
             onRejectCase={handleRejectCase}
+            onApproveCase={handleApproveCase}
+            onApproveCaseCreation={handleApproveCaseCreation}
+            onRejectCaseCreation={handleRejectCaseCreation}
+            onReturnForReview={handleReturnForReview}
           />
         )}
       </Card>
@@ -845,6 +1133,32 @@ The case has been returned to the investigator for additional work.`);
         caseId={selectedRow?.id || ''}
         caseName={selectedRow ? `${selectedRow.type} Case` : ''}
         onSubmit={handleRejectSubmit}
+      />
+      <ApproveCaseModal
+        open={isApproveOpen}
+        onClose={() => setIsApproveOpen(false)}
+        caseId={selectedRow?.id || ''}
+        caseName={selectedRow ? `${selectedRow.type} Case` : ''}
+        recommendedOutcome={selectedRow?.status || ''}
+        onSubmit={handleApproveSubmit}
+      />
+      <ApproveCaseCreationModal
+        open={isApproveCreationOpen}
+        onClose={() => setIsApproveCreationOpen(false)}
+        caseData={selectedRow}
+        onSubmit={(caseId) => handleApproveCreationSubmit(caseId)}
+      />
+      <RejectCaseCreationModal
+        open={isRejectCreationOpen}
+        onClose={() => setIsRejectCreationOpen(false)}
+        caseData={selectedRow}
+        onSubmit={(caseId, data) => handleRejectCreationSubmit(caseId, data)}
+      />
+      <ReturnCaseForReviewModal
+        open={isReturnForReviewOpen}
+        onClose={() => setIsReturnForReviewOpen(false)}
+        caseData={selectedRow}
+        onSubmit={(caseId, data) => handleReturnForReviewSubmit(caseId, data)}
       />
     </PageContainer>
   );
