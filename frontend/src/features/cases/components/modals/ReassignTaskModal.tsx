@@ -53,12 +53,13 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   };
 
   const useMockData = () => {
-    // Using the specific UUID provided by the user for testing
+    // Using the exact same mock data from the backend auth-helper.service.ts
     const mockInvestigators: Investigator[] = [
-      { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'john.smith', email: 'john.smith@example.com', firstName: 'John', lastName: 'Smith' },
-      { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'jane.doe', email: 'jane.doe@example.com', firstName: 'Jane', lastName: 'Doe' },
-      { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'bob.wilson', email: 'bob.wilson@example.com', firstName: 'Bob', lastName: 'Wilson' },
-      { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'alice.johnson', email: 'alice.johnson@example.com', firstName: 'Alice', lastName: 'Johnson' },
+      { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
+      { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
+      { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', email: 'investigator3@example.com', firstName: 'Bob', lastName: 'Wilson' },
+      { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
+      { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
     ];
     console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
@@ -151,10 +152,10 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                       .filter(investigator => investigator.id !== task.assignee) // Don't show current assignee in the list
                       .map((investigator) => {
                         console.log('Rendering investigator option:', investigator);
-                        // Display only the assignedUserId (UUID)
+                        // Display the investigator's name and username instead of just the ID
                         return (
                           <option key={investigator.id} value={investigator.id}>
-                            {investigator.id}
+                            {investigator.firstName} {investigator.lastName} ({investigator.username})
                           </option>
                         );
                       })}

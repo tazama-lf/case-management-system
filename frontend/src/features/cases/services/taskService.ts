@@ -60,7 +60,6 @@ export interface UnassignTaskData {
 }
 
 export interface CloseTaskData {
-  outcome: string;
   notes: string;
 }
 
@@ -305,7 +304,7 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/close - Close task with outcome and notes
+  // PATCH /api/v1/task/:taskId/close - Close task with notes only
   async closeTask(taskId: string, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
     try {
       // For now, we'll update the task status and could extend this later to send additional data

@@ -36,26 +36,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     );
   };
 
-  const getPriorityBadge = (priority?: string) => {
-    if (!priority) return null;
-    
-    const priorityConfig = {
-      BREACH: { color: 'bg-red-100 text-red-800', label: 'Breach' },
-      CRITICAL: { color: 'bg-orange-100 text-orange-800', label: 'Critical' },
-      URGENT: { color: 'bg-yellow-100 text-yellow-800', label: 'Urgent' },
-      NEW: { color: 'bg-blue-100 text-blue-800', label: 'New' },
-    };
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig];
-    if (!config) return null;
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.label}
-      </span>
-    );
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -165,9 +145,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Priority
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -205,9 +182,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(task.status)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getPriorityBadge(task.priority)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center text-sm text-gray-500">
