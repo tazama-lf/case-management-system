@@ -3,8 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-  Inject,
-  forwardRef,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -16,21 +14,22 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType } from '@prisma/client';
+import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType, CaseType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
+import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';
 import { GetAllCasesQueryDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import { TriageService } from 'src/triage/triage.service';
 import { TaskService } from 'src/task/task.service';
 import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
 import { CommentService } from 'src/comment/comment.service';
+import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
 import {
   CaseCreatedEvent,
   CaseAbandonedEvent,
   CaseStatusChangedEvent,
 } from '../events/domain-events';
-import {SystemCaseCreationDto} from "./dto/system-case-creation.dto";
+import { SystemCaseCreationDto } from "./dto/system-case-creation.dto";
 
 @Injectable()
 export class CaseService {
@@ -40,17 +39,24 @@ export class CaseService {
       private readonly prismaService: PrismaService,
       private readonly eventEmitter: EventEmitter2,
       private readonly configService: ConfigService,
-      @Inject(forwardRef(() => TriageService))
-      private readonly triageService: TriageService,
       private readonly taskService: TaskService,
       private readonly commentService: CommentService,
+      private readonly caseWorkflowService: CaseWorkflowService,
+      private readonly casePriorityUtil: CasePriorityUtil,
   ) {}
 
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
     try {
       this.logger.log('System-to-system case creation initiated', CaseService.name);
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);
-      await this.triageService.processIncomingAlert(payload, 'REST API', systemUuid, tenantId);
+
+      this.eventEmitter.emit('alert.incoming', {
+        payload,
+        source: 'REST API',
+        userId: systemUuid,
+        tenantId,
+      });
+
       await this.auditLogService.logAction({
         userId: systemUuid,
         operation: 'createCase',
@@ -71,7 +77,14 @@ export class CaseService {
       throw new BadRequestException('alertId and alertType are required');
     }
 
-    const existingAlert = await this.triageService.getAlertDetails(dto.alertId, tenantId, userId);
+    const existingAlert = await this.prismaService.alert.findUnique({
+      where: { alert_id: dto.alertId },
+    });
+
+    if (!existingAlert) {
+      throw new NotFoundException(`Alert ${dto.alertId} not found`);
+    }
+
     if (existingAlert.case_id) {
       this.logger.error(`Case already exists for alertId ${dto.alertId}`, '', CaseService.name);
       throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
@@ -84,10 +97,9 @@ export class CaseService {
     }
 
     const priorityScore = dto.priorityScore ?? 0.33;
-    const priority = this.triageService.determinePriority(priorityScore);
-    const caseType = this.triageService.mapAlertTypeToCaseType(dto.alertType);
+    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    const caseType = this.casePriorityUtil.mapAlertTypeToCaseType(dto.alertType);
 
-    // Determine if approval is needed (non-supervisors need approval)
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval
         ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
@@ -106,7 +118,7 @@ export class CaseService {
           caseCreationType: CaseCreationType.MANUAL,
         };
 
-        const createdCase = await this.createCase(caseDetail, userId);
+        const createdCase = await this.caseWorkflowService.createCase(caseDetail, userId);
 
         const updatedAlert = await prisma.alert.update({
           where: { alert_id: dto.alertId },
@@ -118,7 +130,6 @@ export class CaseService {
           },
         });
 
-        // CREATE APPROVAL TASK FOR INVESTIGATORS (non-supervisors)
         let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
 
         if (needsApproval) {
@@ -377,7 +388,6 @@ export class CaseService {
       throw error;
     }
   }
-
   async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string) {
     try {
       this.logger.log(`Closing case ${caseId} by user ${userId}`, CaseService.name);
@@ -977,8 +987,7 @@ export class CaseService {
   async getUserWorkloadStats(userId: string) {
     try {
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
-        this.prismaService.case.count({
-          where: {
+        this.prismaService.case.count({ where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
             status: { notIn: [CaseStatus.STATUS_81_CLOSED_REFUTED, CaseStatus.STATUS_82_CLOSED_CONFIRMED, CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, CaseStatus.STATUS_99_ABANDONED] },
           },
@@ -1040,48 +1049,6 @@ export class CaseService {
     }
   }
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
-    try {
-      this.logger.log('Creating case', CaseService.name);
-      const createdCase = await this.prismaService.case.create({
-        data: {
-          tenant_id: createCaseDTO.tenantId,
-          case_creator_user_id: createCaseDTO.caseCreatorUserId,
-          case_owner_user_id: createCaseDTO.caseOwnerUserId,
-          status: createCaseDTO.status,
-          priority: createCaseDTO.priority,
-          parent_id: createCaseDTO.parentId ?? null,
-          case_type: createCaseDTO.caseType,
-          case_creation_type: createCaseDTO.caseCreationType,
-        },
-      });
-
-      this.eventEmitter.emit(
-          'case.created',
-          new CaseCreatedEvent(
-              createdCase.case_id,
-              createdCase.tenant_id,
-              createCaseDTO.caseCreationType,
-              undefined,
-              false,
-          ),
-      );
-
-      this.auditLogService.logAction({
-        userId,
-        operation: 'createCase',
-        entityName: CaseService.name,
-        actionPerformed: 'Case created',
-        outcome: Outcome.SUCCESS
-      });
-
-      return createdCase;
-    } catch (error) {
-      this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseService.name);
-      throw error;
-    }
-  }
-
   async retrieveCase(caseId: string) {
     const retrievedCase = await this.prismaService.case.findUnique({ where: { case_id: caseId }, include: { alert: true, tasks: true } });
     if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
@@ -1114,5 +1081,4 @@ export class CaseService {
       throw error;
     }
   }
-
 }
