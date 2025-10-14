@@ -119,6 +119,22 @@ export interface SuspendCaseDto {
   reason: string;
 }
 
+// Approve Case Closure DTO
+export interface ApproveCaseClosureDto {
+  finalOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
+  supervisorComments?: string;
+}
+
+// Return Case For Review DTO
+export interface ReturnCaseForReviewDto {
+  reviewComments: string;
+}
+
+// Reject Case Creation DTO
+export interface RejectCaseCreationDto {
+  reason: string;
+}
+
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
@@ -206,10 +222,10 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId 
+  // POST /api/v1/cases/:caseId 
   async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
-      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
+      const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'update case');
@@ -263,6 +279,46 @@ export class CaseService {
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'suspend case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/approve - Approve case closure
+  async approveCaseClosure(caseId: string, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve`, approveCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'approve case closure');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/return-for-review - Return case for review
+  async returnCaseForReview(caseId: string, returnCaseData: ReturnCaseForReviewDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/return-for-review`, returnCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'return case for review');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/approve-creation - Approve case creation
+  async approveCaseCreation(caseId: string): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve-creation`, {});
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'approve case creation');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reject-creation - Reject case creation
+  async rejectCaseCreation(caseId: string, rejectCaseData: RejectCaseCreationDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject-creation`, rejectCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'reject case creation');
     }
   }
 

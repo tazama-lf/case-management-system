@@ -92,7 +92,6 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
             )}
           </div>
 
-
           {newStatus === 'Blocked' && (
             <div className="rounded-md bg-red-50 p-3">
               <div className="text-sm text-red-800">
@@ -112,7 +111,7 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
           <div className="flex items-center justify-end gap-2 pt-2">
             <button onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>
             <button
-              onClick={() => onUpdateStatus(task, newStatus, notes)}
+              onClick={() => onUpdateStatus(task, newStatus, notes || undefined)}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
               disabled={!canConfirm}
             >
