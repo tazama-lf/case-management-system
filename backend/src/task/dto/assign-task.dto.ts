@@ -4,9 +4,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class AssignTaskDto {
   @ApiProperty({
     description: 'UUID of the investigator to assign the task to',
-    example: 'user-123e4567-e89b-12d3-a456-426614174000',
+    example: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',
   })
-  @IsUUID(4, { message: 'assignedUserId must be a valid UUID' })
+  @IsString({ message: 'assignedUserId must be a string' })
   @IsNotEmpty({ message: 'assignedUserId is required' })
   assignedUserId: string;
 

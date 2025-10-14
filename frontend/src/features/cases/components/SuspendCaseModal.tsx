@@ -5,7 +5,7 @@ import type { CaseRow } from './CasesTable';
 interface SuspendCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onSuspend: (caseId: string, reason: string, duration?: string) => void;
+  onSuspend: (caseId: string, reason: string) => void;
   caseData: CaseRow | null;
 }
 
@@ -16,10 +16,9 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   caseData
 }) => {
   const [reason, setReason] = useState('');
-  const [duration, setDuration] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isReasonValid = reason.trim().length >= 5;
+  const isReasonValid = reason.trim().length >= 10;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +26,8 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSuspend(caseData.id, reason.trim(), duration || undefined);
+      await onSuspend(caseData.id, reason.trim());
       setReason('');
-      setDuration('');
       onClose();
     } catch (error) {
       console.error('Failed to suspend case:', error);
@@ -41,7 +39,6 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       setReason('');
-      setDuration('');
       onClose();
     }
   };
@@ -51,7 +48,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
               <PauseIcon className="h-5 w-5 text-yellow-600" />
@@ -76,18 +73,21 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Suspending this case will temporarily halt all investigation activities. 
-            The case can be resumed later when conditions allow.
+            Temporarily pause a case due to blocked progress or pending information.
           </p>
           
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> All active tasks will be paused and team members will be notified.
-            </p>
+            <h4 className="text-sm font-medium text-blue-800 mb-2">Suspension Workflow</h4>
+            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+              <li>Task status becomes "BLOCKED", case status becomes "SUSPENDED"</li>
+              <li>User must provide a reason for suspension (minimum 10 characters)</li>
+              <li>Notifications will be sent to the supervisor</li>
+              <li>Suspension will be recorded in event, system, and audit logs</li>
+            </ul>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="mb-4">
+            <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
                 Reason for suspension <span className="text-red-500">*</span>
               </label>
@@ -95,34 +95,19 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                rows={3}
+                rows={4}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                placeholder="Explain why this case needs to be suspended (minimum 5 characters)..."
+                placeholder="Explain why this case needs to be suspended (minimum 10 characters)..."
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {reason.length}/5 characters minimum
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
-                Expected duration (optional)
-              </label>
-              <select
-                id="duration"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-              >
-                <option value="">Select duration...</option>
-                <option value="1_day">1 Day</option>
-                <option value="3_days">3 Days</option>
-                <option value="1_week">1 Week</option>
-                <option value="2_weeks">2 Weeks</option>
-                <option value="1_month">1 Month</option>
-                <option value="indefinite">Indefinite</option>
-              </select>
+              <div className="mt-1 flex justify-between">
+                <p className="text-xs text-gray-500">
+                  {reason.length}/10 characters minimum
+                </p>
+              </div>
+              {!isReasonValid && reason.length > 0 && (
+                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+              )}
             </div>
 
             <div className="flex gap-3 justify-end">

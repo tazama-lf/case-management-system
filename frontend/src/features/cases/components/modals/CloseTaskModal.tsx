@@ -1,11 +1,12 @@
+import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import React from 'react';
-import type { TaskRow } from '../view/TasksTable';
+
 
 interface CloseTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onCloseTask: (task: TaskRow, outcome: string, notes: string) => void;
-  task?: TaskRow | null;
+  onCloseTask: (task: UnifiedWorkQueueTask, outcome: string, notes: string) => void;
+  task?: UnifiedWorkQueueTask | null;
 }
 
 const CloseTaskModal: React.FC<CloseTaskModalProps> = ({ open, onClose, onCloseTask, task }) => {
@@ -50,13 +51,9 @@ const CloseTaskModal: React.FC<CloseTaskModalProps> = ({ open, onClose, onCloseT
               onChange={(e) => setOutcome(e.target.value)}
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="">Select Outcome</option>
-              <option value="completed_successfully">Completed Successfully</option>
-              <option value="completed_with_issues">Completed with Issues</option>
-              <option value="cancelled_duplicate">Cancelled - Duplicate</option>
-              <option value="cancelled_invalid">Cancelled - Invalid</option>
-              <option value="escalated">Escalated to Supervisor</option>
-              <option value="requires_additional_info">Requires Additional Information</option>
+              <option value="STATUS_83_CLOSED_INCONCLUSIVE">83 - Closed Inconclusive</option>
+              <option value="STATUS_81_CLOSED_REFUTED">81 - Closed Refuted</option>
+              <option value="STATUS_82_CLOSED_CONFIRMED">82 - Closed Confirmed</option>
             </select>
           </div>
 
@@ -69,12 +66,6 @@ const CloseTaskModal: React.FC<CloseTaskModalProps> = ({ open, onClose, onCloseT
               placeholder="Provide details about the task completion, findings, or next steps..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
-          </div>
-
-          <div className="rounded-md bg-yellow-50 p-3">
-            <div className="text-sm text-yellow-800">
-              <strong>Note:</strong> Closing this task will mark it as completed and it cannot be reopened. Make sure all work is finished.
-            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">

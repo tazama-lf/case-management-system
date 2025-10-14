@@ -4,7 +4,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 import { LoggerModule } from '../logger/logger.module';
 import { TaskController } from './task.controller';
-import { FlowableModule } from 'src/flowable/flowable.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/notification/notification.module';
 
@@ -14,7 +13,6 @@ import { NotificationModule } from 'src/notification/notification.module';
     AuditLogModule,
     LoggerModule,
     AuthModule,
-    forwardRef(() => FlowableModule),
     NotificationModule
   ],
   providers: [TaskService],

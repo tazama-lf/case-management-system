@@ -35,7 +35,7 @@ export class NatsStartupService implements OnModuleInit {
     this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
 
     try {
-      await this.triageService.processIncomingAlert(req, systemId, tenantId);
+      await this.triageService.processIncomingAlert(req, 'NATS', systemId, tenantId);
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`, NatsStartupService.name);
     } catch (err) {
       this.logger.error(

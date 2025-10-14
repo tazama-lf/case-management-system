@@ -371,30 +371,6 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  // async removeTaskFromCandidateGroup(taskId: string, group: string) {
-  //   try {
-  //     // Get all identity links
-  //     const identityLinks = await this.getTaskIdentityLinks(taskId);
-  //
-  //     // Find the link to remove
-  //     const linkToRemove = identityLinks.find((link: any) => link.type === 'candidate' && link.group === group.toLowerCase());
-  //
-  //     if (linkToRemove) {
-  //       // Remove the identity link
-  //       const response = await this.flowableClient.delete(
-  //         `/service/runtime/tasks/${taskId}/identitylinks/groups/${group.toLowerCase()}/candidate`,
-  //       );
-  //       this.logger.log(`Task ${taskId} removed from candidate group ${group}`, FlowableService.name);
-  //       return response.data;
-  //     }
-  //
-  //     return null;
-  //   } catch (error) {
-  //     this.logger.error(`Failed to remove task from group: ${error.message}`, error.stack, FlowableService.name);
-  //     throw new HttpException('Failed to remove task from group', HttpStatus.INTERNAL_SERVER_ERROR);
-  //   }
-  // }
-
   async getTaskIdentityLinks(taskId: string) {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}/identitylinks`);
@@ -525,12 +501,21 @@ export class FlowableService implements OnModuleInit {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
+      const response = await this.flowableClient.post(
+          `/service/runtime/tasks/${taskId}/variables`,
+          formattedVariables  // Send the array directly
+      );
 
-      this.logger.log(`Variables set for task ${taskId}`, FlowableService.name);
+      this.logger.log(`Variables set successfully for task ${taskId}`, FlowableService.name);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to set task variables: ${error.message}`, error.stack, FlowableService.name);
+
+      if (error.response) {
+        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
+        this.logger.error(`Status code: ${error.response.status}`, FlowableService.name);
+      }
+
       throw new HttpException('Failed to set task variables', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -660,8 +645,9 @@ export class FlowableService implements OnModuleInit {
       type: this.getVariableType(value),
     }));
   }
+
   private getVariableType(value: any): string {
-    if (value === null || value === undefined) return 'null';
+    if (value === null || value === undefined) return 'string';
     if (typeof value === 'string') return 'string';
     if (typeof value === 'number') {
       return Number.isInteger(value) ? 'integer' : 'double';
@@ -673,30 +659,42 @@ export class FlowableService implements OnModuleInit {
   }
 
   async syncTaskWithDatabase(
-    flowableTaskId: string,
-    dbTaskData: {
-      postgres_task_id: string;
-      postgres_case_id: string;
-      task_status: string;
-      assignee_user_id?: string;
-      flowable_case_id?: string;
-    },
+      flowableTaskId: string,
+      dbTaskData: {
+        postgres_task_id: string;
+        postgres_case_id: string;
+        task_status: string;
+        assignee_user_id?: string;
+        flowable_case_id?: string;
+      },
   ) {
     try {
-      const variables = {
+      this.logger.log(`Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`, FlowableService.name);
+
+      // Only include non-null values
+      const variables: Record<string, any> = {
         postgres_task_id: dbTaskData.postgres_task_id,
         postgres_case_id: dbTaskData.postgres_case_id,
         task_status: dbTaskData.task_status,
-        assignee_user_id: dbTaskData.assignee_user_id || null,
-        flowable_case_id: dbTaskData.flowable_case_id || null,
       };
+
+      if (dbTaskData.assignee_user_id) {
+        variables.assignee_user_id = dbTaskData.assignee_user_id;
+      }
+
+      if (dbTaskData.flowable_case_id) {
+        variables.flowable_case_id = dbTaskData.flowable_case_id;
+      }
+
+      this.logger.log(`Setting task variables: ${JSON.stringify(variables)}`, FlowableService.name);
 
       await this.setTaskVariables(flowableTaskId, variables);
 
-      this.logger.log(`Synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`, FlowableService.name);
+      this.logger.log(`Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`, FlowableService.name);
       return true;
     } catch (error) {
       this.logger.error(`Failed to sync task with database: ${error.message}`, error.stack, FlowableService.name);
+      this.logger.error(`Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`, FlowableService.name);
       return false;
     }
   }

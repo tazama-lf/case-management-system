@@ -2,6 +2,7 @@ import React from 'react';
 import { XMarkIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
+import LinkExistingAlertsTab from './LinkExistingAlerts';
 
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
 export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
@@ -17,8 +18,16 @@ interface CreateCaseModalProps {
     assignee?: string;
     draft?: boolean;
   }) => void;
+  onUpdate?: (caseId: string, payload: {
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+  }) => void;
   loading?: boolean;
   error?: string;
+  mode?: 'create' | 'edit';
+  existingCaseId?: string;
   initial?: {
     alertId?: string;
     priority?: Priority;
@@ -28,7 +37,21 @@ interface CreateCaseModalProps {
   };
 }
 
-const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCreate, loading, error, initial }) => {
+const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ 
+  open, 
+  onClose, 
+  onCreate, 
+  onUpdate, 
+  loading, 
+  error, 
+  mode = 'create',
+  existingCaseId,
+  initial 
+}) => {
+  // Tab state
+  const [activeTab, setActiveTab] = React.useState<'case-details' | 'link-alerts'>('case-details');
+  
+  // Single alert selection 
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
@@ -36,11 +59,13 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
   const [showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [alertSearchError, setAlertSearchError] = React.useState<string>('');
 
+  const [selectedAlerts, setSelectedAlerts] = React.useState<Alert[]>([]);
+
   const [priority, setPriority] = React.useState<Priority>('NEW');
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
-  const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
 
   const calculatePriority = (score: number): Priority => {
     if (score >= 1.0) return 'BREACH';
@@ -74,6 +99,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     loadNALTAlerts();
   }, [open]);
 
+
   React.useEffect(() => {
     if (!open) return;
     
@@ -81,7 +107,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     setPriorityScore(initial?.priorityScore || 0.33);
     setAlertType(initial?.alertType || 'FRAUD');
     setAssignee(initial?.assignee || '');
-    setValidationErrors([]);
+    setValidationErrors({});
     setAlertSearchTerm('');
   }, [open, initial]);
 
@@ -160,7 +186,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
       return availableAlerts.slice(0, 10);
     }
 
-    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, ''); // Remove dashes and spaces for flexible matching
+    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, ''); 
     
     return availableAlerts.filter(alert => {
       const alertIdClean = alert.alert_id.toLowerCase().replace(/[-\s]/g, '');
@@ -185,42 +211,75 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
     }).slice(0, 20); // Limit to 20 results for performance
   }, [availableAlerts, alertSearchTerm]);
 
+
   if (!open) return null;
 
-  const validateForm = (): string[] => {
-    const errors: string[] = [];
-    if (!selectedAlert) errors.push('Alert selection is required');
-    if (!alertType) errors.push('Alert Type is required');
-    if (!priority) errors.push('Priority is required');
-    if (priorityScore < 0 || priorityScore > 1) errors.push('Priority Score must be between 0 and 1');
+  const validateForm = (): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    
+    // For edit mode, alert selection is not required as it's already associated
+    // For create mode, either a single alert or at least one linked alert must be selected
+    if (mode === 'create' && !selectedAlert && selectedAlerts.length === 0) {
+      errors.alertId = 'Please select an alert in either the Case Details tab or link existing alerts in the Link Existing Alerts tab';
+    }
+    if (!alertType) {
+      errors.alertType = 'Alert Type is required';
+    }
+    if (!priority) {
+      errors.priority = 'Priority is required';
+    }
+    if (priorityScore < 0 || priorityScore > 1) {
+      errors.priorityScore = 'Priority Score must be between 0 and 1';
+    }
     return errors;
   };
 
-  const canCreate = Boolean(priority && alertType && selectedAlert);
+  const canSubmit = Boolean(
+    priority && 
+    alertType && 
+    (mode === 'edit' || selectedAlert || selectedAlerts.length > 0)
+  );
 
   const submit = (draft = false) => {
     const errors = validateForm();
-    if (errors.length > 0 && !draft) {
+    
+    if (Object.keys(errors).length > 0 && !draft) {
       setValidationErrors(errors);
       return;
     }
-    setValidationErrors([]);
+    setValidationErrors({});
 
-    onCreate({
-      alertId: selectedAlert?.alert_id,
-      priority,
-      priorityScore,
-      alertType,
-      assignee: assignee || undefined,
-      draft,
-    });
+    if (mode === 'edit' && onUpdate && existingCaseId) {
+      // Update existing draft case
+      onUpdate(existingCaseId, {
+        priority,
+        priorityScore,
+        alertType,
+        assignee: assignee || undefined,
+      });
+    } else {
+      // Create new case
+      // Determine which alert to use (single selected alert takes precedence)
+      const alertIdToUse = selectedAlert?.alert_id || (selectedAlerts.length > 0 ? selectedAlerts[0].alert_id : undefined);
+      
+      onCreate({
+        alertId: alertIdToUse,
+        priority,
+        priorityScore,
+        alertType,
+        assignee: assignee || undefined,
+        draft,
+      });
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-900">Create Manual Case</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {mode === 'edit' ? 'Complete Draft Case' : 'Create Manual Case'}
+          </h2>
           <button
             onClick={onClose}
             disabled={loading}
@@ -230,9 +289,47 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
           </button>
         </div>
 
+        {/* Tabs - Only show in create mode */}
+        {mode === 'create' && (
+          <div className="border-b border-gray-200 px-6">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('case-details')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'case-details'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Case Details
+                {selectedAlert && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    1 selected
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('link-alerts')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'link-alerts'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Link Existing Alerts
+                {(selectedAlerts.length > 0) && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {selectedAlerts.length} selected
+                  </span>
+                )}
+              </button>
+            </nav>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {/* Error Display */}
-          {(error || validationErrors.length > 0) && (
+          {(error || Object.keys(validationErrors).length > 0) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
@@ -242,8 +339,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
                     {error && <p>{error}</p>}
-                    {validationErrors.map((err, idx) => (
-                      <p key={idx}>• {err}</p>
+                    {Object.entries(validationErrors).map(([field, message]) => (
+                      <p key={field}>• {message}</p>
                     ))}
                   </div>
                 </div>
@@ -251,182 +348,142 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
             </div>
           )}
 
-          {/* Alert Selection */}
-          <div className="space-y-2" data-alert-dropdown>
-            <label htmlFor="alert-search" className="block text-sm font-medium text-gray-700">
-              Select Alert (NALT Status Only)
-            </label>
-            <div className="relative">
-              <div className="relative">
-                <input
-                  id="alert-search"
-                  type="text"
-                  value={alertSearchTerm}
-                  onChange={(e) => handleAlertSearch(e.target.value)}
-                  onFocus={() => setShowAlertDropdown(true)}
-                  placeholder="Search by Alert ID (min 2 chars, e.g., '837c88')..."
-                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  autoComplete="off"
-                />
-                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                <ChevronDownIcon 
-                  className={`absolute right-3 top-2.5 h-5 w-5 text-gray-400 transition-transform ${showAlertDropdown ? 'rotate-180' : ''}`} 
-                />
+          {/* Tab Content */}
+          {mode === 'edit' || activeTab === 'case-details' ? (
+            <>
+              {/* Alert Selection - Only show in create mode */}
+
+              {/* Alert Type */}
+              <div className="space-y-2">
+                <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
+                  Alert Type *
+                </label>
+                <select
+                  id="alert-type"
+                  value={alertType}
+                  onChange={(e) => setAlertType(e.target.value as AlertType)}
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    validationErrors.alertType 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300'
+                  }`}
+                >
+                  <option value="FRAUD">Fraud</option>
+                  <option value="AML">AML</option>
+                  <option value="FRAUD_AND_AML">Fraud & AML</option>
+                  <option value="NONE">None</option>
+                </select>
+                {validationErrors.alertType && (
+                  <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
+                )}
               </div>
-              
-              {/* Alert Dropdown */}
-              {showAlertDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {isLoadingAlerts ? (
-                    <div className="px-4 py-2 text-sm text-gray-500">Loading alerts...</div>
-                  ) : alertSearchError ? (
-                    <div className="px-4 py-2 text-sm text-red-500">{alertSearchError}</div>
-                  ) : filteredAlerts.length === 0 ? (
-                    <div className="px-4 py-2 text-sm text-gray-500">No NALT alerts found</div>
-                  ) : (
-                    filteredAlerts.map((alert) => (
-                      <button
-                        key={alert.alert_id}
-                        onClick={() => handleAlertSelect(alert)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{alert.alert_id}</div>
-                            <div className="text-xs text-gray-500">
-                              {alert.txtp && `Type: ${alert.txtp}`}
-                              {alert.source && ` | Source: ${alert.source}`}
-                              {alert.alert_type && ` | Alert Type: ${alert.alert_type}`}
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            Priority: {alert.priority}
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {selectedAlert && (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <div className="text-sm">
-                  <div className="font-medium text-blue-900">Selected Alert: {selectedAlert.alert_id}</div>
-                  <div className="text-blue-700 mt-1">
-                    {selectedAlert.txtp && `Type: ${selectedAlert.txtp} | `}
-                    {selectedAlert.source && `Source: ${selectedAlert.source} | `}
-                    Priority: {selectedAlert.priority}
+
+              {/* Priority Score with Visual Feedback */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Priority Score *
+                  <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
+                </label>
+                <div className="space-y-2">
+                  <input 
+                    type="range" 
+                    value={priorityScore} 
+                    onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    min={0} 
+                    max={1} 
+                    step={0.01}
+                  />
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>0.0 (NEW)</span>
+                    <span>0.33 (URGENT)</span>
+                    <span>0.66 (CRITICAL)</span>
+                    <span>1.0 (BREACH)</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <input 
+                      type="number" 
+                      value={priorityScore} 
+                      onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        validationErrors.priorityScore 
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300'
+                      }`}
+                      min={0} 
+                      max={1} 
+                      step={0.01}
+                    />
+                    <span className={`text-sm font-medium px-2 py-1 rounded ${
+                      priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                      priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
+                      priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                      'text-blue-600 bg-blue-50'
+                    }`}>
+                      → {priority}
+                    </span>
                   </div>
                 </div>
+                {validationErrors.priorityScore && (
+                  <p className="text-sm text-red-600 mt-1">{validationErrors.priorityScore}</p>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Alert Type */}
-          <div className="space-y-2">
-            <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
-              Alert Type *
-            </label>
-            <select
-              id="alert-type"
-              value={alertType}
-              onChange={(e) => setAlertType(e.target.value as AlertType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="FRAUD">Fraud</option>
-              <option value="AML">AML</option>
-              <option value="FRAUD_AND_AML">Fraud & AML</option>
-              <option value="NONE">None</option>
-            </select>
-          </div>
-
-          {/* Priority Score with Visual Feedback */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Priority Score *
-              <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
-            </label>
-            <div className="space-y-2">
-              <input 
-                type="range" 
-                value={priorityScore} 
-                onChange={(e) => setPriorityScore(Number(e.target.value))} 
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                min={0} 
-                max={1} 
-                step={0.01}
-              />
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>0.0 (NEW)</span>
-                <span>0.33 (URGENT)</span>
-                <span>0.66 (CRITICAL)</span>
-                <span>1.0 (BREACH)</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <input 
-                  type="number" 
-                  value={priorityScore} 
-                  onChange={(e) => setPriorityScore(Number(e.target.value))} 
-                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
-                  min={0} 
-                  max={1} 
-                  step={0.01}
-                />
-                <span className={`text-sm font-medium px-2 py-1 rounded ${
-                  priority === 'BREACH' ? 'text-red-600 bg-red-50' :
-                  priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
-                  priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
-                  'text-blue-600 bg-blue-50'
+              {/* Priority - Read-only, calculated from score */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Priority 
+                  <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+                </label>
+                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                  priority === 'BREACH' ? 'text-red-600 border-red-200' :
+                  priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
+                  priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
+                  'text-blue-600 border-blue-200'
                 }`}>
-                  → {priority}
-                </span>
+                  {priority}
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Priority - Read-only, calculated from score */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Priority 
-              <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
-            </label>
-            <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-              priority === 'BREACH' ? 'text-red-600 border-red-200' :
-              priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
-              priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
-              'text-blue-600 border-blue-200'
-            }`}>
-              {priority}
-            </div>
-          </div>
-
-          {/* Assignee */}
-          <div className="space-y-2">
-            <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
-              Assignee
-            </label>
-            <input
-              id="assignee"
-              type="text"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Leave empty for automatic assignment"
+              {/* Assignee */}
+              <div className="space-y-2">
+                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+                  Assignee
+                </label>
+                <input
+                  id="assignee"
+                  type="text"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Leave empty for automatic assignment"
+                />
+              </div>
+            </>
+          ) : (
+            <LinkExistingAlertsTab
+              selectedAlerts={selectedAlerts}
+              onAlertsChange={setSelectedAlerts}
+              isVisible={activeTab === 'link-alerts'}
+              onAlertsSelected={(hasAlerts) => {
+                
+              }}
             />
-          </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4">
-          <button
-            onClick={() => submit(true)}
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            {loading ? 'Saving...' : 'Save as Draft'}
-          </button>
+          {mode === 'create' && (
+            <button
+              onClick={() => submit(true)}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              {loading ? 'Saving...' : 'Save as Draft'}
+            </button>
+          )}
+          {mode === 'edit' && <div></div>}
           <div className="flex space-x-3">
             <button
               onClick={onClose}
@@ -437,10 +494,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ open, onClose, onCrea
             </button>
             <button
               onClick={() => submit(false)}
-              disabled={loading || !canCreate}
+              disabled={loading || !canSubmit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Case'}
+              {loading ? (mode === 'edit' ? 'Updating...' : 'Creating...') : (mode === 'edit' ? 'Complete Case' : 'Create Case')}
             </button>
           </div>
         </div>
