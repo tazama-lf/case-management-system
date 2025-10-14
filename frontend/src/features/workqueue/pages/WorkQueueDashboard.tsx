@@ -92,7 +92,20 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Modal action handlers
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string,) => {
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+    // Add validation to check if task ID is valid
+    if (!task || !task.id) {
+      console.error('Cannot assign task: task or task ID is missing', { task });
+      handleError(new Error('Task ID is required for assignment'));
+      return;
+    }
+    
+    if (!assignee) {
+      console.error('Cannot assign task: assignee is missing', { task, assignee });
+      handleError(new Error('Assignee is required for assignment'));
+      return;
+    }
+
     try {
       await flowableWorkQueueService.assignTask(task.id, assignee);
       
@@ -151,9 +164,9 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Modal action handlers for new modals
-  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, outcome: string, notes: string) => {
+  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, notes: string) => {
     try {
-      await flowableWorkQueueService.completeTask(task.id, { outcome, notes });
+      await flowableWorkQueueService.completeTask(task.id, { notes });
       
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
@@ -178,7 +191,7 @@ const WorkQueueDashboard: React.FC = () => {
       const mappedStatus = statusMapping[newStatus as keyof typeof statusMapping];
       
       if (mappedStatus === 'COMPLETED') {
-        await flowableWorkQueueService.completeTask(task.id, { status: newStatus, notes });
+        await flowableWorkQueueService.completeTask(task.id, { notes });
       }
       
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);

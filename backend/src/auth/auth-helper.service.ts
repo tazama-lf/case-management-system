@@ -24,6 +24,9 @@ export class AuthHelperService {
     { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', roles: ['CMS_INVESTIGATOR'] },
     { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', roles: ['CMS_INVESTIGATOR'] },
     { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', roles: ['CMS_INVESTIGATOR'] },
+    
+    // Additional user for unassignment
+    { id: '085b7a75-c39d-44f8-868f-6c419f578627', username: 'cms_user_for_unassign', roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR'] },
   ];
 
   /**

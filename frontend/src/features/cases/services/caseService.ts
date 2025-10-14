@@ -236,6 +236,11 @@ export class CaseService {
   async abandonCase(caseId: string, abandonCaseData: AbandonCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/abandon`, abandonCaseData);
+      // For abandon case, the response structure is different { success: true, case: Case, task: Task }
+      // We need to extract the case object from the response
+      if (response && typeof response === 'object' && 'case' in response) {
+        return this.validateCaseResponse(response.case);
+      }
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'abandon case');
@@ -327,12 +332,18 @@ export class CaseService {
       throw new Error('Invalid case data received');
     }
 
-    const d = data as { case_id?: unknown };
-    if (!d.case_id) {
-      throw new Error('Case ID is missing from response');
+    // Handle different response structures
+    // Direct case object
+    if ('case_id' in data) {
+      return data as Case;
+    }
+    
+    // Nested case object (e.g., from abandon case response)
+    if ('case' in data && typeof data.case === 'object' && data.case !== null && 'case_id' in data.case) {
+      return data.case as Case;
     }
 
-    return data as Case;
+    throw new Error('Case ID is missing from response');
   }
 
   // GET /api/v1/cases/user/assigned - Get cases assigned to current user
