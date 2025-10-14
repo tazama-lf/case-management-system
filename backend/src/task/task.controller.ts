@@ -27,7 +27,7 @@ import {
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import {ApiBody, ApiOperation, ApiParam, ApiResponse} from "@nestjs/swagger";
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from "@nestjs/swagger";
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -42,6 +42,8 @@ interface AuthenticatedRequest extends Request {
 
 @Controller('api/v1/task')
 @UseGuards(TazamaAuthGuard)
+@ApiTags('Tasks')
+@ApiBearerAuth('jwt')
 export class TaskController {
   constructor(
       private readonly taskService: TaskService,
@@ -57,7 +59,7 @@ export class TaskController {
   }
 
   @Patch(':taskId/reassign')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   async reassignTask(
       @Param('taskId') taskId: string,
       @Body('assignedUserId') assignedUserId: string,
