@@ -690,6 +690,8 @@ export class CaseService {
 
         return { case: updatedCase, task: updatedTask };
       });
+
+      await new Promise(res => setTimeout(res, 1000)); 
       this.eventEmitter.emit('case.suspended', new CaseSuspendedEvent(caseId, reason));
 
       try {
@@ -742,6 +744,8 @@ export class CaseService {
       throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
 
     try {
+      await this.eventEmitter.emitAsync('case.resumed', new CaseResumedEvent(caseId, reason));
+
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
         const updatedTask = await this.taskService.updateTask(
@@ -766,8 +770,6 @@ export class CaseService {
 
         return { case: updatedCase, task: updatedTask };
       });
-
-      this.eventEmitter.emit('case.resumed', new CaseResumedEvent(caseId, reason));
 
       try {
         const caseAssignee = investigateTask.assigned_user_id;
