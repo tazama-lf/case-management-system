@@ -9,7 +9,7 @@ import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '../types
 import AssignTaskModal from '../../cases/components/modals/AssignTaskModal';
 import ReassignTaskModal from '../../cases/components/modals/ReassignTaskModal';
 import UnassignTaskModal from '../../cases/components/modals/UnassignTaskModal';
-import CloseTaskModal from '../../cases/components/modals/CloseTaskModal';
+
 import UpdateTaskStatusModal from '../../cases/components/modals/UpdateTaskStatusModal';
 
 
@@ -30,7 +30,6 @@ const WorkQueueDashboard: React.FC = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
-  const [closeTaskModalOpen, setCloseTaskModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
@@ -140,9 +139,20 @@ const WorkQueueDashboard: React.FC = () => {
     }
   };
 
-  const handleCompleteTask = (taskData: UnifiedWorkQueueTask) => {
+  const handleCompleteTask = async (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
-    setCloseTaskModalOpen(true);
+    try {
+      // Directly complete the task without opening a modal
+      await flowableWorkQueueService.completeTask(taskData.id);
+      
+      // Refresh the task list
+      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+      setTasks(updatedTasks);
+      
+      setSelectedTask(null);
+    } catch (error) {
+      handleError(error);
+    }
   };
 
   const handleUpdateTaskStatus = (taskData: UnifiedWorkQueueTask) => {
@@ -151,20 +161,6 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Modal action handlers for new modals
-  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, outcome: string, notes: string) => {
-    try {
-      await flowableWorkQueueService.completeTask(task.id, { outcome, notes });
-      
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-      setTasks(updatedTasks);
-      
-      setCloseTaskModalOpen(false);
-      setSelectedTask(null);
-    } catch (error) {
-      handleError(error);
-    }
-  };
-
   const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
     try {
       const statusMapping = {
@@ -358,15 +354,7 @@ const WorkQueueDashboard: React.FC = () => {
         task={selectedTask}
       />
 
-      <CloseTaskModal
-        open={closeTaskModalOpen}
-        onClose={() => {
-          setCloseTaskModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onCloseTask={handleModalCloseTask}
-        task={selectedTask}
-      />
+     
 
       <UpdateTaskStatusModal
         open={updateStatusModalOpen}

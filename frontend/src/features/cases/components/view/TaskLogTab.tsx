@@ -3,7 +3,6 @@ import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import UnassignTaskModal from '../modals/UnassignTaskModal';
 import AssignTaskModal from '../modals/AssignTaskModal';
 import ReassignTaskModal from '../modals/ReassignTaskModal';
-import CloseTaskModal from '../modals/CloseTaskModal';
 import UpdateTaskStatusModal from '../modals/UpdateTaskStatusModal';
 import { taskService, TaskStatus, type TaskStatusType, type CloseTaskData } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
@@ -50,8 +49,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
-    // Handle data inconsistency: if task is marked as "Assigned" but has no assigned user, 
-    // correct the status to "Unassigned"
+   
     let effectiveStatus = backendTask.status;
     if (backendTask.status === 'STATUS_10_ASSIGNED' && !backendTask.assigned_user_id) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
@@ -318,16 +316,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           setSelectedTask(null);
         }}
         onUnassign={handleUnassignTask}
-        task={selectedTask}
-      />
-
-      <CloseTaskModal
-        open={closeTaskModalOpen}
-        onClose={() => {
-          setCloseTaskModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onCloseTask={handleModalCloseTask}
         task={selectedTask}
       />
 

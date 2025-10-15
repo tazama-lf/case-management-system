@@ -28,9 +28,11 @@ import type { CaseRow } from '../components/CasesTable';
 import { transformBackendCaseToUI } from '../components/CasesTable';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
 import { useAuth } from '../../auth/components/AuthContext';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 const CasesDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { success, error, warning, info } = useToast();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -50,7 +52,7 @@ const CasesDashboard: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<string | null>(null);
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
   const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
@@ -59,7 +61,7 @@ const CasesDashboard: React.FC = () => {
   useEffect(() => {
     const fetchAllCases = async () => {
       setLoading(true);
-      setError(null);
+      setErrorState(null);
       
       try {
         const response = await caseService.getAllCases({
@@ -73,7 +75,7 @@ const CasesDashboard: React.FC = () => {
         setCases(transformedCases);
       } catch (err) {
         console.error('Failed to fetch all cases:', err);
-        setError('Failed to load cases. Please try again.');
+        setErrorState('Failed to load cases. Please try again.');
         setCases([]);
       } finally {
         setLoading(false);
@@ -126,7 +128,7 @@ const CasesDashboard: React.FC = () => {
       console.log('Case created successfully:', newCase);
       
       const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
-      alert(`Case Created Successfully!\n\nCase ID: ${newCase.case_id}\nStatus: ${newCase.status}${alertInfo}`);
+      success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
       
       setIsCreateOpen(false);
       
@@ -145,9 +147,10 @@ const CasesDashboard: React.FC = () => {
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error creating case:', error);
-      setCreateCaseError(error instanceof Error ? error.message : 'Failed to create case');
+    } catch (err) {
+      console.error('Error creating case:', err);
+      setCreateCaseError(err instanceof Error ? err.message : 'Failed to create case');
+      error('Create Case Failed', err instanceof Error ? err.message : 'Failed to create case');
     } finally {
       setCreateCaseLoading(false);
     }
@@ -175,13 +178,8 @@ const CasesDashboard: React.FC = () => {
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
       console.log('Case updated successfully:', updatedCase);
       
-      
-      alert(`Draft Case Completed Successfully!
-
-Case ID: ${updatedCase.case_id}
-Status: ${updatedCase.status}
-Priority: ${payload.priority}
-Type: ${payload.alertType}`);
+      // Replace alert with toast notification
+      success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
       
       setIsCreateOpen(false);
       setCreateModalMode('create');
@@ -202,12 +200,12 @@ Type: ${payload.alertType}`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error updating case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update case';
-      
-      
+    } catch (err) {
+      console.error('Error updating case:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
       setCreateCaseError(errorMessage);
+      // Show error toast
+      error('Update Case Failed', errorMessage);
     } finally {
       setCreateCaseLoading(false);
     }
@@ -245,14 +243,16 @@ Type: ${payload.alertType}`);
         recommendedOutcome: data.recommendedOutcome
       });
       
-      alert(`Case Investigation Complete!\n\n` +
-            `Case ${selectedRow.id} has been submitted for supervisor approval.\n\n` +
-            `Status Updates:\n` +
-            `• Case Status: ${response.closed_case.status}\n` +
-            `• Approval Task: ${response.approval_task.name}\n` +
-            `• Assigned to: ${response.approval_task.assigned_to}\n` +
-            `• Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}\n\n` +
-            `Supervisor has been notified of the new approval task.`);
+      // Replace alert with toast notification
+      success('Case Investigation Complete', `Case ${selectedRow.id} has been submitted for supervisor approval.
+
+Status Updates:
+• Case Status: ${response.closed_case.status}
+• Approval Task: ${response.approval_task.name}
+• Assigned to: ${response.approval_task.assigned_to}
+• Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}
+
+Supervisor has been notified of the new approval task.`);
       
       setIsCloseCaseOpen(false);
       setSelectedRow(null);
@@ -273,31 +273,35 @@ Type: ${payload.alertType}`);
       };
       fetchAllCases();
       
-    } catch (error) {
-      console.error('Failed to close case:', error);
+    } catch (err) {
+      console.error('Failed to close case:', err);
       
       let errorMessage = 'Failed to close case. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in a closeable state')) {
-        errorMessage = `Case cannot be closed.\n\n` +
-                      `This case may not meet the closure requirements:\n` +
-                      `• Case must be "IN PROGRESS" status\n` +
-                      `• Must have an active "Investigate case" task\n` +
-                      `• Task must be assigned to you\n` +
-                      `• All other tasks must be complete\n\n` +
-                      `Please check the case status and try again.`;
+        errorMessage = `Case cannot be closed.
+
+This case may not meet the closure requirements:
+• Case must be "IN PROGRESS" status
+• Must have an active "Investigate case" task
+• Task must be assigned to you
+• All other tasks must be complete
+
+Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to close this case.\n` +
-                      `Please ensure you are the assigned investigator.`;
+        errorMessage = `Access Denied.
+
+You don't have permission to close this case.
+Please ensure you are the assigned investigator.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.\n\n` +
-                      `The case may have been deleted or moved.`;
+        errorMessage = `Case Not Found.
+
+The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
-      throw error;
+      // Show error toast
+      error('Close Case Failed', errorMessage);
     }
   };
 
@@ -317,6 +321,18 @@ Type: ${payload.alertType}`);
   };
 
   const handleReopenSubmit = async (caseId: string, reason: string) => {
+    // TODO: Reopen functionality is not implemented in backend
+    // This is a placeholder implementation
+    console.log('Reopening case:', caseId, 'Reason:', reason);
+    
+    // Show a toast notification that this feature is not implemented
+    error('Reopen Case', 'The reopen case functionality is not yet implemented in the system.');
+    
+    setIsReopenOpen(false);
+    setSelectedRow(null);
+    
+    // Commenting out the actual implementation since there's no backend endpoint
+    /*
     try {
       const reopenCaseData: ReopenCaseDto = {
         reason: reason.trim()
@@ -327,13 +343,7 @@ Type: ${payload.alertType}`);
       const reopenedCase = await caseService.reopenCase(caseId, reopenCaseData);
       console.log('Case reopened successfully:', reopenedCase);
       
-      alert(`Case ${caseId} Reopening Request Submitted Successfully!
-
-Reason: ${reason}
-Status: ${reopenedCase.status}
-
-The case reopening request has been submitted for supervisor approval.
-A new "Approve Case Reopening" task has been created and assigned to the supervisor.`);
+      success('Case Reopened', `Case ${caseId} has been successfully reopened.`);
       
       setIsReopenOpen(false);
       setSelectedRow(null);
@@ -378,8 +388,9 @@ Please ensure you have the appropriate role.`;
 The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
+      error('Reopen Case Failed', errorMessage);
     }
+    */
   };
 
   const handleAbandonSubmit = async (caseId: string, reason: string) => {
@@ -393,13 +404,8 @@ The case may have been deleted or moved.`;
       const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
       console.log('Case abandoned successfully:', abandonedCase);
       
-      alert(`Case ${caseId} Abandoned Successfully!
-
-Reason: ${reason}
-Status: ${abandonedCase.status}
-
-The case has been permanently abandoned and removed from active investigation.
-All associated tasks have been closed.`);
+      // Replace alert with toast notification
+      success('Case Abandoned', `Case ${caseId} has been successfully abandoned.\nReason: ${reason}\nStatus: ${abandonedCase.status}`);
       
       setIsAbandonOpen(false);
       setSelectedRow(null);
@@ -419,11 +425,11 @@ All associated tasks have been closed.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error abandoning case:', error);
+    } catch (err) {
+      console.error('Error abandoning case:', err);
       
       let errorMessage = 'Failed to abandon case. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('Cannot abandon case other than draft status')) {
         errorMessage = `Case cannot be abandoned.
@@ -452,7 +458,8 @@ Please ensure you have the appropriate role.`;
 The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Abandon Case Failed', errorMessage);
     }
   };
 
@@ -467,13 +474,12 @@ The case may have been deleted or moved.`;
       const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
       console.log('Case suspended successfully:', suspendedCase);
       
-      alert(`Case ${caseId} Suspended Successfully!
-
+      // Replace alert with toast notification
+      success('Case Suspended', `Case ${caseId} has been successfully suspended.
 Reason: ${reason}
 Status: ${suspendedCase.status}
 
-The case has been suspended and all associated tasks have been blocked.
-Supervisor has been notified of the suspension.`);
+The case has been suspended and all associated tasks have been blocked. Supervisor has been notified of the suspension.`);
       
       setIsSuspendOpen(false);
       setSelectedRow(null);
@@ -493,11 +499,11 @@ Supervisor has been notified of the suspension.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error suspending case:', error);
+    } catch (err) {
+      console.error('Error suspending case:', err);
       
       let errorMessage = 'Failed to suspend case. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in a suspendable state')) {
         errorMessage = `Case cannot be suspended.
@@ -518,7 +524,8 @@ Please ensure you have the appropriate role.`;
 The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Suspend Case Failed', errorMessage);
     }
   };
 
@@ -539,13 +546,11 @@ The case may have been deleted or moved.`;
       console.log('Case resumed successfully:', resumedCase);
       
       
-      alert(`Case ${caseId} Resumed Successfully!
-
+      success('Case Resumed', `Case ${caseId} has been successfully resumed.
 Reason: ${reason}
 Status: ${resumedCase.status}
 
-The case has been moved back to "In Progress" status.
-All associated tasks have been unblocked.`);
+The case has been moved back to "In Progress" status. All associated tasks have been unblocked.`);
       
       setIsResumeOpen(false);
       setSelectedRow(null);
@@ -565,11 +570,11 @@ All associated tasks have been unblocked.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error resuming case:', error);
+    } catch (err) {
+      console.error('Error resuming case:', err);
       
       let errorMessage = 'Failed to resume case. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in a resumable state')) {
         errorMessage = `Case cannot be resumed.
@@ -597,8 +602,8 @@ All associated tasks have been unblocked.`);
                       `The case may have been deleted or moved.`;
       }
       
-      
-      alert(errorMessage);
+      // Show error toast
+      error('Resume Case Failed', errorMessage);
     }
   };
 
@@ -620,9 +625,8 @@ All associated tasks have been unblocked.`);
       const rejectedCase = await caseService.rejectCase(selectedRow.id, rejectCaseData);
       console.log('Case rejected successfully:', rejectedCase);
       
-      
-      alert(`Case ${selectedRow.id} Closure Rejected Successfully!
-
+      // Replace alert with toast notification
+      success('Case Closure Rejected', `Case ${selectedRow.id} closure has been successfully rejected.
 Reason: ${rejectionReason}
 Status: ${rejectedCase.status}
 
@@ -646,11 +650,11 @@ The case has been returned to the investigator for additional work.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error rejecting case:', error);
+    } catch (err) {
+      console.error('Error rejecting case:', err);
       
       let errorMessage = 'Failed to reject case closure. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in a rejectable state')) {
         errorMessage = `Case cannot be rejected.
@@ -658,11 +662,7 @@ The case has been returned to the investigator for additional work.`);
 ` +
                       `This case may not meet the rejection requirements:
 ` +
-                      `• Case must be in "PENDING FINAL APPROVAL" status
-` +
-                      `• Case must have an "Approve case closure" task
-` +
-                      `• Task must be assigned to supervisor
+                      `• Case must be pending final approval
 
 ` +
                       `Please check the case status and try again.`;
@@ -670,18 +670,34 @@ The case has been returned to the investigator for additional work.`);
         errorMessage = `Access Denied.
 
 ` +
-                      `You don't have permission to reject this case closure.
+                      `You don't have permission to reject this case.
 ` +
-                      `Please ensure you have supervisor role.`;
+                      `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
 
 ` +
                       `The case may have been deleted or moved.`;
+      } else if (errorString.includes('Approval task validation failed')) {
+        errorMessage = `Approval Task Validation Failed.
+
+` +
+                      `The case may not have the required "Approve case closure" task, 
+` +
+                      `or the task may not be in the correct state.
+
+` +
+                      `Please verify that:
+` +
+                      `• The case is in "PENDING FINAL APPROVAL" status
+` +
+                      `• An "Approve case closure" task exists for this case
+` +
+                      `• The task is in "UNASSIGNED" state and assigned to you`;
       }
       
-      
-      alert(errorMessage);
+      // Show error toast
+      error('Reject Case Failed', errorMessage);
     }
   };
 
@@ -697,7 +713,8 @@ The case has been returned to the investigator for additional work.`);
       const approvedCase = await caseService.approveCaseClosure(selectedRow.id, data);
       console.log('Case approved successfully:', approvedCase);
       
-      alert(`Case ${selectedRow.id} Closure Approved Successfully!
+      // Replace alert with toast notification
+      success('Case Closure Approved', `Case ${selectedRow.id} closure has been successfully approved.
 
 Final Outcome: ${data.finalOutcome.replace('STATUS_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
 Status: ${approvedCase.status}
@@ -722,11 +739,11 @@ The case has been finalized with the selected outcome.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error approving case:', error);
+    } catch (err) {
+      console.error('Error approving case:', err);
       
       let errorMessage = 'Failed to approve case closure. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in pending approval status')) {
         errorMessage = `Case cannot be approved.
@@ -746,9 +763,26 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
+      } else if (errorString.includes('Approval task validation failed')) {
+        errorMessage = `Approval Task Validation Failed.
+
+` +
+                      `The case may not have the required "Approve case closure" task, 
+` +
+                      `or the task may not be in the correct state.
+
+` +
+                      `Please verify that:
+` +
+                      `• The case is in "PENDING FINAL APPROVAL" status
+` +
+                      `• An "Approve case closure" task exists for this case
+` +
+                      `• The task is in "UNASSIGNED" state and assigned to you`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Approve Case Failed', errorMessage);
     }
   };
 
@@ -762,12 +796,12 @@ The case may have been deleted or moved.`;
       const approvedCase = await caseService.approveCaseCreation(caseId);
       console.log('Case creation approved successfully:', approvedCase);
       
-      alert(`Case ${caseId} Creation Approved Successfully!
+      // Replace alert with toast notification
+      success('Case Creation Approved', `Case ${caseId} creation has been successfully approved.
 
 Status: ${approvedCase.status}
 
-The case has been moved to "READY FOR ASSIGNMENT" status.
-An "Investigate Case" task has been created in the Flowable investigations queue.`);
+The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" task has been created in the Flowable investigations queue.`);
       
       setIsApproveCreationOpen(false);
       setSelectedRow(null);
@@ -787,11 +821,11 @@ An "Investigate Case" task has been created in the Flowable investigations queue
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error approving case creation:', error);
+    } catch (err) {
+      console.error('Error approving case creation:', err);
       
       let errorMessage = 'Failed to approve case creation. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
         errorMessage = `Case cannot be approved.
@@ -812,7 +846,8 @@ Please ensure you have supervisor role.`;
 The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Approve Case Creation Failed', errorMessage);
     }
   };
 
@@ -826,13 +861,13 @@ The case may have been deleted or moved.`;
       const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
       console.log('Case creation rejected successfully:', rejectedCase);
       
-      alert(`Case ${caseId} Creation Rejected Successfully!
+      // Replace alert with toast notification
+      success('Case Creation Rejected', `Case ${caseId} creation has been successfully rejected.
 
 Reason: ${data.reason}
 Status: ${rejectedCase.status}
 
-The case has been returned to "DRAFT" status.
-A "Complete New Case" task has been assigned to the original creator.`);
+The case has been returned to "DRAFT" status. A "Complete New Case" task has been assigned to the original creator.`);
       
       setIsRejectCreationOpen(false);
       setSelectedRow(null);
@@ -852,11 +887,11 @@ A "Complete New Case" task has been assigned to the original creator.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error rejecting case creation:', error);
+    } catch (err) {
+      console.error('Error rejecting case creation:', err);
       
       let errorMessage = 'Failed to reject case creation. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
         errorMessage = `Case cannot be rejected.
@@ -877,7 +912,8 @@ Please ensure you have supervisor role.`;
 The case may have been deleted or moved.`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Reject Case Creation Failed', errorMessage);
     }
   };
 
@@ -893,9 +929,10 @@ The case may have been deleted or moved.`;
       const returnedCase = await caseService.returnCaseForReview(caseId, data);
       console.log('Case returned for review successfully:', returnedCase);
       
-      alert(`Case ${caseId} Returned for Review Successfully!
+      // Replace alert with toast notification
+      success('Case Returned for Review', `Case ${caseId} has been successfully returned for additional review.
 
-Comments: ${data.reviewComments}
+Review Comments: ${data.reviewComments}
 Status: ${returnedCase.status}
 
 The case has been returned to the investigator for additional work.`);
@@ -918,19 +955,18 @@ The case has been returned to the investigator for additional work.`);
       };
       
       await fetchAllCases();
-    } catch (error) {
-      console.error('Error returning case for review:', error);
+    } catch (err) {
+      console.error('Error returning case for review:', err);
       
       let errorMessage = 'Failed to return case for review. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
+      const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('not in pending approval status')) {
-        errorMessage = `Case cannot be returned for review.
+        errorMessage = `Case cannot be returned.
 
 This case may not meet the return requirements:
 • Case must be in "PENDING FINAL APPROVAL" status
 • Case must have an "Approve case closure" task
-• Task must be assigned to supervisor
 
 Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
@@ -942,9 +978,26 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
+      } else if (errorString.includes('Approval task validation failed')) {
+        errorMessage = `Approval Task Validation Failed.
+
+` +
+                      `The case may not have the required "Approve case closure" task, 
+` +
+                      `or the task may not be in the correct state.
+
+` +
+                      `Please verify that:
+` +
+                      `• The case is in "PENDING FINAL APPROVAL" status
+` +
+                      `• An "Approve case closure" task exists for this case
+` +
+                      `• The task is in "UNASSIGNED" state and assigned to you`;
       }
       
-      alert(errorMessage);
+      // Show error toast
+      error('Return Case for Review Failed', errorMessage);
     }
   };
 
@@ -1035,9 +1088,9 @@ The case may have been deleted or moved.`;
       </Card>
 
       <Card className="mt-4">
-        {error && (
+        {errorState && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-red-600 text-sm">{errorState}</p>
           </div>
         )}
         
