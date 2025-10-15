@@ -8,7 +8,8 @@ import { LoggerModule } from '../logger/logger.module';
 import { TaskModule } from 'src/task/task.module';
 import { CommentModule } from '../comment/comment.module';
 import { CaseWorkflowModule } from '../case-workflow/case-workflow.module';
-import {NotificationModule} from "../notification/notification.module";
+import { NotificationModule } from 'src/notification/notification.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -17,8 +18,9 @@ import {NotificationModule} from "../notification/notification.module";
     LoggerModule,
     CaseWorkflowModule,
     TaskModule,
+    AuthModule,
     CommentModule,
-    NotificationModule,
+    NotificationModule
   ],
   providers: [CaseService, CaseUpdateListener],
   exports: [CaseService],

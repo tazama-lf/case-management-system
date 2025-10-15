@@ -23,6 +23,19 @@ export class CaseAbandonedEvent {
         public readonly reason: string,
     ) {}
 }
+export class CaseSuspendedEvent {
+    constructor(
+        public readonly caseId: string,
+        public readonly reason: string,
+    ) {}
+}
+export class CaseResumedEvent {
+    constructor(
+        public readonly caseId: string,
+        public readonly reason: string,
+    ) {}
+}
+
 export class TaskCreatedEvent {
     constructor(
         public readonly taskId: string,
