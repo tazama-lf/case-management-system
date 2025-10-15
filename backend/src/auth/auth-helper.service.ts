@@ -74,7 +74,7 @@ export class AuthHelperService {
       roles: ['CMS_INVESTIGATOR'],
     },
     {
-      id: '0fd2adf8-cf8c-4b7a-9807-03fd1a4e4236',
+      id: '085b7a75-c39d-44f8-868f-6c419f578627',
       username: 'mary.njoki',
       firstName: 'Mary',
       lastName: 'Njoki',
