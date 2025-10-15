@@ -948,7 +948,7 @@ export class CaseController {
   @RequireSupervisorRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Reject case reopening (Story 11-B)',
+    summary: 'Reject case reopening',
     description: `Supervisor rejects case reopening request. Case is restored to its original closed status (7*/8*).
   Notifies the original requester of the rejection with detailed reason.`,
   })
