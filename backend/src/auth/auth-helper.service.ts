@@ -58,7 +58,7 @@ export class AuthHelperService {
 
     // Investigators
     {
-      id: 'ba019b2f-0135-41c3-8f23-4785b4b530c0',
+      id: 'c98db341-beb6-457c-98e0-406cc1c71662',
       username: 'karen.mworia',
       firstName: 'Karen',
       lastName: 'Mworia',
