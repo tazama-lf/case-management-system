@@ -627,7 +627,6 @@ export class CaseService {
         return { updatedCase, completedTask };
       });
 
-
       this.eventEmitter.emit(
           'case.status.changed',
           new CaseStatusChangedEvent(
