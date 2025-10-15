@@ -5,25 +5,108 @@ export class AuthHelperService {
   // Simulated Keycloak users with roles
   private mockUsers = [
     // Supervisors
-    { id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', username: 'cms_supervisor_1', roles: ['CMS_SUPERVISOR'] },
-    { id: '1bd442a2-3ff1-403a-b3d7-01d6cc79aac0', username: 'cms_supervisor_2', roles: ['CMS_SUPERVISOR'] },
-    { id: '1617473c-93e6-46c6-97d2-cfecc92b0425', username: 'cms_supervisor_3', roles: ['CMS_SUPERVISOR'] },
-    { id: '238efe62-f6b5-4b45-b53f-0dcd9f07b937', username: 'cms_supervisor_4', roles: ['CMS_SUPERVISOR'] },
-    { id: '68908891-2b9f-482f-a350-5da839c23482', username: 'cms_supervisor_5', roles: ['CMS_SUPERVISOR'] },
+    {
+      id: 'b29bda5d-f8b4-4a5d-8f12-5b6d6027cf90',
+      username: 'alice.mwangi',
+      firstName: 'Alice',
+      lastName: 'Mwangi',
+      email: 'alice.mwangi@cms.org',
+      roles: ['CMS_SUPERVISOR'],
+    },
+    {
+      id: 'f8a2c016-2b8d-41da-bbb9-41ad3c26dfc2',
+      username: 'brian.otieno',
+      firstName: 'Brian',
+      lastName: 'Otieno',
+      email: 'brian.otieno@cms.org',
+      roles: ['CMS_SUPERVISOR'],
+    },
+    {
+      id: 'a60b4fa7-b4e2-4651-8a6b-d3d024ba89f1',
+      username: 'clara.kamau',
+      firstName: 'Clara',
+      lastName: 'Kamau',
+      email: 'clara.kamau@cms.org',
+      roles: ['CMS_SUPERVISOR'],
+    },
 
     // Analysts
-    { id: 'c97109de-fda6-48e0-bd6b-0fa8919056ae', username: 'cms_analyst_1', roles: ['CMS_ANALYST'] },
-    { id: '46292c24-b3ca-4c08-9ff0-9e036fd5eb75', username: 'cms_analyst_2', roles: ['CMS_ANALYST'] },
-    { id: '0d9967da-ba97-4471-993f-6a3404579f44', username: 'cms_analyst_3', roles: ['CMS_ANALYST'] },
-    { id: '63a21931-9bdb-4151-a9f4-1297c3c4e202', username: 'cms_analyst_4', roles: ['CMS_ANALYST'] },
-    { id: 'fd38a9d8-115c-4ae4-81e3-25d96b524299', username: 'cms_analyst_5', roles: ['CMS_ANALYST'] },
+    {
+      id: 'c3c23b1d-ff1c-4922-9f16-89e6d5f334bb',
+      username: 'felix.mutiso',
+      firstName: 'Felix',
+      lastName: 'Mutiso',
+      email: 'felix.mutiso@cms.org',
+      roles: ['CMS_ANALYST'],
+    },
+    {
+      id: 'e0ff568c-b2a8-4b46-88f9-96a89952c3ef',
+      username: 'grace.otieno',
+      firstName: 'Grace',
+      lastName: 'Otieno',
+      email: 'grace.otieno@cms.org',
+      roles: ['CMS_ANALYST'],
+    },
+    {
+      id: 'fa9e32a9-441f-4a7c-91a7-173a81d55472',
+      username: 'henry.wambua',
+      firstName: 'Henry',
+      lastName: 'Wambua',
+      email: 'henry.wambua@cms.org',
+      roles: ['CMS_ANALYST'],
+    },
 
     // Investigators
-    { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', roles: ['CMS_INVESTIGATOR'] },
-    { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', roles: ['CMS_INVESTIGATOR'] },
-    { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', roles: ['CMS_INVESTIGATOR'] },
-    { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', roles: ['CMS_INVESTIGATOR'] },
-    { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', roles: ['CMS_INVESTIGATOR'] },
+    {
+      id: 'ba019b2f-0135-41c3-8f23-4785b4b530c0',
+      username: 'karen.mworia',
+      firstName: 'Karen',
+      lastName: 'Mworia',
+      email: 'karen.mworia@cms.org',
+      roles: ['CMS_INVESTIGATOR'],
+    },
+    {
+      id: '42c2e610-0a59-4ab7-88cb-6804ed20e3d0',
+      username: 'leonard.ochieng',
+      firstName: 'Leonard',
+      lastName: 'Ochieng',
+      email: 'leonard.ochieng@cms.org',
+      roles: ['CMS_INVESTIGATOR'],
+    },
+    {
+      id: '0fd2adf8-cf8c-4b7a-9807-03fd1a4e4236',
+      username: 'mary.njoki',
+      firstName: 'Mary',
+      lastName: 'Njoki',
+      email: 'mary.njoki@cms.org',
+      roles: ['CMS_INVESTIGATOR'],
+    },
+
+    // Admins
+    {
+      id: '67f83c76-b39a-4b9e-bf61-10a9f231d3a5',
+      username: 'emily.njeri',
+      firstName: 'Emily',
+      lastName: 'Njeri',
+      email: 'emily.njeri@cms.org',
+      roles: ['CMS_ADMIN'],
+    },
+    {
+      id: 'bc176cd4-0f6e-402c-8ac0-6cbafc67a7e8',
+      username: 'nicholas.mwenda',
+      firstName: 'Nicholas',
+      lastName: 'Mwenda',
+      email: 'nicholas.mwenda@cms.org',
+      roles: ['CMS_ADMIN'],
+    },
+    {
+      id: 'aab4c061-2041-4a4f-89c2-51fd7799c9df',
+      username: 'olivia.mutua',
+      firstName: 'Olivia',
+      lastName: 'Mutua',
+      email: 'olivia.mutua@cms.org',
+      roles: ['CMS_ADMIN'],
+    },
   ];
 
   /**
@@ -40,6 +123,12 @@ export class AuthHelperService {
     const user = this.mockUsers.find((u) => u.id === userId);
     if (!user) throw new BadRequestException(`User ${userId} not found`);
     return user.roles;
+  }
+
+  async getUserDetailsFromAuthService(userId: string): Promise<any> {
+    const user = this.mockUsers.find((u) => u.id === userId);
+    if (!user) throw new BadRequestException(`User ${userId} not found`);
+    return user;
   }
 
   /**
