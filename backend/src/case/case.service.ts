@@ -642,14 +642,20 @@ export class CaseService {
   }
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    }
 
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can suspend a case`);
 
     if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
+    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
     const investigateTask = allTasks.find((t) => t.name === 'Investigate case');
 
@@ -684,14 +690,15 @@ export class CaseService {
 
         return { case: updatedCase, task: updatedTask };
       });
-
       this.eventEmitter.emit('case.suspended', new CaseSuspendedEvent(caseId, reason));
 
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
           const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          await this.notificationService.sendCaseSuspensionEmail(`${assigneeUserDetail.email}`, caseId, userId, reason);
+          const emailTo = assigneeUserDetail.email;
+          const suspendedBy = assigneeUserDetail.username;
+          await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
@@ -713,10 +720,16 @@ export class CaseService {
   }
 
   async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    }
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can resume a case`);
 
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
@@ -760,7 +773,9 @@ export class CaseService {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
           const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          await this.notificationService.sendCaseResumptionEmail(`${assigneeUserDetail.email}`, caseId, userId, reason);
+          const emailTo = assigneeUserDetail.email;
+          const resumedBy = assigneeUserDetail.username;
+          await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
@@ -768,7 +783,6 @@ export class CaseService {
 
       return { success: true, ...result };
     } catch (err) {
-      // --- Log Failed Attempt ---
       await this.auditLogService.logAction({
         userId,
         operation: 'resumeCase',

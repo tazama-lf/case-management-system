@@ -1,271 +1,185 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { ConfigService } from '@nestjs/config';
 
-interface NotificationPayload {
+export type NotificationType =
+  | 'TASK_ASSIGNED'
+  | 'TASK_AVAILABLE'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_REASSIGNED'
+  | 'WORK_QUEUE'
+  | 'CASE_SUSPENDED'
+  | 'CASE_RESUMED'
+  | 'GENERIC';
+
+export interface NotificationPayload {
   userId: string;
-  type: string;
+  type: NotificationType;
   message: string;
-  metadata?: {
-    taskId?: string;
-    caseId?: string;
-    unassignedBy?: string;
-    reason?: string;
-    [key: string]: any;
-  };
+  metadata?: Record<string, any>;
 }
 
-interface GroupNotificationPayload {
+export interface GroupNotificationPayload {
   candidateGroup: string;
-  type: string;
+  type: NotificationType;
   message: string;
-  metadata?: {
-    taskId?: string;
-    caseId?: string;
-    [key: string]: any;
-  };
+  metadata?: Record<string, any>;
 }
 
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
-  private transporter: nodemailer.Transporter;
+  private readonly fromEmail: string;
+  private readonly transporter: nodemailer.Transporter;
 
-  constructor() {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
+    this.fromEmail = this.config.get<string>('MAIL_FROM') || '"CMS Notifications" <no-reply@cms.local>';
+
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
+      host: this.config.get<string>('SMTP_HOST'),
+      port: parseInt(this.config.get<string>('SMTP_PORT', '587')),
       secure: false,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: this.config.get<string>('SMTP_USER'),
+        pass: this.config.get<string>('SMTP_PASS'),
       },
     });
   }
 
   async sendNotification(payload: NotificationPayload): Promise<void> {
-    try {
-      this.logger.log(`Sending ${payload.type} notification to user ${payload.userId}`, NotificationService.name);
-
-      this.logger.log(`Notification: ${payload.message} for user ${payload.userId}`, NotificationService.name);
-    } catch (error) {
-      this.logger.error(`Failed to send notification to user ${payload.userId}: ${error.message}`, error.stack, NotificationService.name);
-    }
+    this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
+    const template = this.getTemplate(payload.type, payload.metadata);
+    await this.safeSendEmail(`user-${payload.userId}@example.com`, template);
   }
 
   async sendGroupNotification(payload: GroupNotificationPayload): Promise<void> {
-    try {
-      this.logger.log(`Sending ${payload.type} notification to group ${payload.candidateGroup}`, NotificationService.name);
+    this.logger.log(`Dispatching ${payload.type} group notification for ${payload.candidateGroup}`);
+    const template = this.getTemplate(payload.type, payload.metadata);
+    const groupEmails: string[] = payload.metadata?.groupEmails || [];
 
-      this.logger.log(`Group Notification: ${payload.message} for group ${payload.candidateGroup}`, NotificationService.name);
-    } catch (error) {
-      this.logger.error(
-        `Failed to send group notification to ${payload.candidateGroup}: ${error.message}`,
-        error.stack,
-        NotificationService.name,
-      );
-    }
-  }
-
-  /**
-   * Send task assignment email
-   */
-  async sendTaskAssignmentEmail(to: string, taskTitle: string, taskId: string): Promise<void> {
-    const subject = `New Task Assigned: ${taskTitle}`;
-    const html = `
-      <p>Hello,</p>
-      <p>You have been assigned a new task:</p>
-      <ul>
-        <li><strong>Task:</strong> ${taskTitle}</li>
-        <li><strong>Task ID:</strong> ${taskId}</li>
-      </ul>
-      <p>Please check the Case Management System to take action.</p>
-      <p>Regards,<br/>CMS Team</p>
-    `;
-
-    try {
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Task assignment email sent to ${to} for task ${taskId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send task email to ${to}: ${error.message}`);
-    }
-  }
-
-  /**
-   * Send task unassignment email
-   */
-  async sendTaskUnassignmentEmail(to: string, taskTitle: string, taskId: string, reason?: string): Promise<void> {
-    const subject = `Task Unassigned: ${taskTitle}`;
-    const html = `
-      <p>Hello,</p>
-      <p>A task has been unassigned from you:</p>
-      <ul>
-        <li><strong>Task:</strong> ${taskTitle}</li>
-        <li><strong>Task ID:</strong> ${taskId}</li>
-        ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
-      </ul>
-      <p>The task has been returned to the work queue.</p>
-      <p>Regards,<br/>CMS Team</p>
-    `;
-
-    try {
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Task unassignment email sent to ${to} for task ${taskId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send unassignment email to ${to}: ${error.message}`);
-    }
-  }
-
-  /**
-   * Send task reassignment email
-   */
-  async sendTaskReassignmentEmail(to: string, taskTitle: string, taskId: string, reassignedBy: string): Promise<void> {
-    const subject = `Task Reassigned: ${taskTitle}`;
-    const html = `
-      <p>Hello,</p>
-      <p>You have been assigned a task:</p>
-      <ul>
-        <li><strong>Task:</strong> ${taskTitle}</li>
-        <li><strong>Task ID:</strong> ${taskId}</li>
-        <li><strong>Reassigned by:</strong> ${reassignedBy}</li>
-      </ul>
-      <p>Please check the Case Management System to take action.</p>
-      <p>Regards,<br/>CMS Team</p>
-    `;
-
-    try {
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Task reassignment email sent to ${to} for task ${taskId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send reassignment email to ${to}: ${error.message}`);
-    }
-  }
-
-  /**
-   * Send work queue notification email to group members
-   */
-  async sendWorkQueueNotificationEmail(groupEmails: string[], taskTitle: string, taskId: string, candidateGroup: string): Promise<void> {
-    const subject = `New Task Available in ${candidateGroup} Queue`;
-    const html = `
-      <p>Hello,</p>
-      <p>A new task is available in the <strong>${candidateGroup}</strong> work queue:</p>
-      <ul>
-        <li><strong>Task:</strong> ${taskTitle}</li>
-        <li><strong>Task ID:</strong> ${taskId}</li>
-      </ul>
-      <p>Please check the Case Management System to claim this task.</p>
-      <p>Regards,<br/>CMS Team</p>
-    `;
-
-    try {
-      for (const email of groupEmails) {
-        await this.transporter.sendMail({
-          from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-          to: email,
-          subject,
-          html,
-        });
-      }
-      this.logger.log(`Work queue notification sent to ${groupEmails.length} members of ${candidateGroup}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send work queue notification: ${error.message}`);
-    }
-  }
-
-  private async sendEmailNotification(payload: NotificationPayload): Promise<void> {
-    const userEmail = `user-${payload.userId}@example.com`;
-
-    switch (payload.type) {
-      case 'TASK_ASSIGNED':
-        await this.sendTaskAssignmentEmail(userEmail, payload.metadata?.taskId || 'Unknown Task', payload.metadata?.taskId || '');
-        break;
-
-      case 'TASK_UNASSIGNED':
-        await this.sendTaskUnassignmentEmail(
-          userEmail,
-          payload.metadata?.taskId || 'Unknown Task',
-          payload.metadata?.taskId || '',
-          payload.metadata?.reason,
-        );
-        break;
-
-      case 'TASK_REASSIGNED':
-        await this.sendTaskReassignmentEmail(
-          userEmail,
-          payload.metadata?.taskId || 'Unknown Task',
-          payload.metadata?.taskId || '',
-          payload.metadata?.unassignedBy || 'Unknown User',
-        );
-        break;
-
-      default:
-        this.logger.log(`No email handler for notification type: ${payload.type}`);
+    for (const email of groupEmails) {
+      await this.safeSendEmail(email, template);
     }
   }
 
   async sendCaseSuspensionEmail(to: string, caseId: string, suspendedBy: string, reason: string): Promise<void> {
-    const subject = `Case Suspended: ${caseId}`;
-    const html = `
-    <p>Hello,</p>
-    <p>Your case <strong>${caseId}</strong> has been suspended.</p>
-    <ul>
-      <li><strong>Suspended By:</strong> ${suspendedBy}</li>
-      <li><strong>Reason:</strong> ${reason}</li>
-    </ul>
-    <p>The case will remain suspended until the issue is resolved.</p>
-    <p>Regards,<br/>CMS Team</p>
-  `;
-
-    try {
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Case suspension email sent to ${to} for case ${caseId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send case suspension email to ${to}: ${error.message}`);
-    }
+    const template = this.getTemplate('CASE_SUSPENDED', {
+      caseId,
+      actionBy: suspendedBy,
+      reason,
+    });
+    await this.safeSendEmail(to, template);
   }
 
   async sendCaseResumptionEmail(to: string, caseId: string, resumedBy: string, reason: string): Promise<void> {
-    const subject = `Case Resumed: ${caseId}`;
-    const html = `
-    <p>Hello,</p>
-    <p>Your case <strong>${caseId}</strong> has been resumed.</p>
-    <ul>
-      <li><strong>Resumed By:</strong> ${resumedBy}</li>
-      <li><strong>Reason:</strong> ${reason}</li>
-    </ul>
-    <p>The case is now active again for investigation.</p>
-    <p>Regards,<br/>CMS Team</p>
-  `;
+    const template = this.getTemplate('CASE_RESUMED', {
+      caseId,
+      actionBy: resumedBy,
+      reason,
+    });
+    await this.safeSendEmail(to, template);
+  }
 
-    try {
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || '"CMS Notifications" <no-reply@cms.local>',
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Case resumption email sent to ${to} for case ${caseId}`);
-    } catch (error) {
-      this.logger.warn(`Failed to send case resumption email to ${to}: ${error.message}`);
+  private async safeSendEmail(to: string, template: { subject: string; html: string }, maxRetries = 5, delayMs = 1000): Promise<void> {
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      try {
+        await this.transporter.sendMail({
+          from: this.fromEmail,
+          to,
+          subject: template.subject,
+          html: template.html,
+        });
+        this.logger.log(`Email sent to ${to}: ${template.subject}`);
+        return; 
+      } catch (error) {
+        attempt++;
+        this.logger.warn(`Attempt ${attempt} failed to send email to ${to}: ${error.message}`);
+        if (attempt >= maxRetries) {
+          this.logger.error(`All ${maxRetries} attempts failed for sending email to ${to}`);
+          return;
+        }
+        await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, attempt - 1)));
+      }
     }
+  }
+
+  private getTemplate(type: NotificationType, data: Record<string, any> = {}): { subject: string; html: string } {
+    const templates: Record<NotificationType, (data: Record<string, any>) => { subject: string; html: string }> = {
+      TASK_ASSIGNED: (d) => ({
+        subject: `New Task Assigned: ${d.taskTitle}`,
+        html: this.taskTemplate('assigned', d),
+      }),
+      TASK_UNASSIGNED: (d) => ({
+        subject: `Task Unassigned: ${d.taskTitle}`,
+        html: this.taskTemplate('unassigned', d),
+      }),
+      TASK_REASSIGNED: (d) => ({
+        subject: `Task Reassigned: ${d.taskTitle}`,
+        html: this.taskTemplate('reassigned', d),
+      }),
+      WORK_QUEUE: (d) => ({
+        subject: `New Task in ${d.candidateGroup} Queue`,
+        html: this.workQueueTemplate(d),
+      }),
+      CASE_SUSPENDED: (d) => ({
+        subject: `Case Suspended: ${d.caseId}`,
+        html: this.caseTemplate('suspended', d),
+      }),
+      CASE_RESUMED: (d) => ({
+        subject: `Case Resumed: ${d.caseId}`,
+        html: this.caseTemplate('resumed', d),
+      }),
+      GENERIC: (d) => ({
+        subject: 'CMS Notification',
+        html: `<p>${d.message}</p>`,
+      }),
+      TASK_AVAILABLE: function (data: Record<string, any>): { subject: string; html: string } {
+        throw new Error('Function not implemented.');
+      },
+    };
+
+    const builder = templates[type] ?? templates.GENERIC;
+    return builder(data);
+  }
+
+  private taskTemplate(action: 'assigned' | 'unassigned' | 'reassigned', data: Record<string, any>): string {
+    const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
+    const extra = data.reassignedBy && `<li><strong>Reassigned By:</strong> ${data.reassignedBy}</li>`;
+
+    return `
+      <p>Hello,</p>
+      <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been ${action}.</p>
+      <ul>${reason}${extra || ''}</ul>
+      <p>Please check the Case Management System to take action.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private workQueueTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>A new task is available in the <strong>${data.candidateGroup}</strong> work queue:</p>
+      <ul>
+        <li><strong>Task:</strong> ${data.taskTitle}</li>
+        <li><strong>Task ID:</strong> ${data.taskId}</li>
+      </ul>
+      <p>Please check the Case Management System to claim this task.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseTemplate(status: 'suspended' | 'resumed', data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Your case <strong>${data.caseId}</strong> has been ${status}.</p>
+      <ul>
+        <li><strong>${status === 'suspended' ? 'Suspended By' : 'Resumed By'}:</strong> ${data.actionBy}</li>
+        <li><strong>Reason:</strong> ${data.reason}</li>
+      </ul>
+      <p>The case is now ${status === 'suspended' ? 'on hold' : 'active again'}.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
   }
 }
