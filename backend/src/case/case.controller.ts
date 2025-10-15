@@ -28,7 +28,10 @@ export class CaseController {
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Abandon a DRAFT case', description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.' })
+  @ApiOperation({
+    summary: 'Abandon a DRAFT case',
+    description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.',
+  })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to abandon' })
   @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for abandoning the case' } } } })
   @ApiResponse({ status: 200, description: 'Case abandoned successfully' })
@@ -38,14 +41,53 @@ export class CaseController {
   async abandonCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
     return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
+  }
+  @Put(':caseId/suspend')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Suspend an in-progress case',
+    description: 'Suspends a an in-progress case, requires reason, blocks associated task, and logs the event.',
+  })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to suspend' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for suspending the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case suspended successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async suspendCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.caseService.suspendCase(caseId, body.reason, clientId, tenantId);
+  }
+
+  @Put(':caseId/resume')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resume an suspended case',
+    description: 'Resumes a suspended case, requires reason, resumes associated task, and logs the event.',
+  })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for resume the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case resumed successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async resumeCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.caseService.resumeCase(caseId, body.reason, clientId, tenantId);
   }
 
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete a DRAFT case', description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.' })
+  @ApiOperation({
+    summary: 'Complete a DRAFT case',
+    description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.',
+  })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to complete' })
   @ApiResponse({ status: 200, description: 'Case completed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing information' })
@@ -85,7 +127,7 @@ export class CaseController {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createCaseSystemTransmission(@Body() dto: SystemCaseCreationDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId } = req.user.token;
-    if (!clientId || !tenantId ) throw new BadRequestException('Missing clientId or tenantId');
+    if (!clientId || !tenantId) throw new BadRequestException('Missing clientId or tenantId');
     return this.caseService.createCaseSystemTransmission(dto, clientId, tenantId);
   }
 
@@ -282,9 +324,9 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   async getUserCasesByUserId(
-      @Param('userId') targetUserId: string,
-      @Query() query: GetUserCasesQueryDto,
-      @Req() req: AuthenticatedRequest,
+    @Param('userId') targetUserId: string,
+    @Query() query: GetUserCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     const requestingUserId = req.user.token.clientId;
     if (requestingUserId !== targetUserId) {
@@ -377,7 +419,7 @@ export class CaseController {
   @ApiOperation({
     summary: 'Approve case closure (Story 9A)',
     description:
-        'Supervisor approves the case closure with final outcome. Updates case to final status (81/82/83) and completes approval task.',
+      'Supervisor approves the case closure with final outcome. Updates case to final status (81/82/83) and completes approval task.',
   })
   @ApiParam({
     name: 'caseId',
@@ -486,8 +528,8 @@ export class CaseController {
   @ApiOperation({
     summary: 'Approve case creation',
     description:
-        'Supervisor approves manual case creation. Updates case to READY_FOR_ASSIGNMENT, ' +
-        'completes approval task, and creates Investigate Case task in Flowable investigations queue.',
+      'Supervisor approves manual case creation. Updates case to READY_FOR_ASSIGNMENT, ' +
+      'completes approval task, and creates Investigate Case task in Flowable investigations queue.',
   })
   @ApiParam({
     name: 'caseId',
@@ -570,10 +612,7 @@ export class CaseController {
       },
     },
   })
-  async approveCaseCreation(
-      @Param('caseId') caseId: string,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async approveCaseCreation(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -589,8 +628,8 @@ export class CaseController {
   @ApiOperation({
     summary: 'Reject case creation',
     description:
-        'Supervisor rejects manual case creation. Returns case to DRAFT status, ' +
-        'completes approval task, and creates Complete New Case task assigned to the original creator.',
+      'Supervisor rejects manual case creation. Returns case to DRAFT status, ' +
+      'completes approval task, and creates Complete New Case task assigned to the original creator.',
   })
   @ApiParam({
     name: 'caseId',
@@ -677,11 +716,7 @@ export class CaseController {
       },
     },
   })
-  async rejectCaseCreation(
-      @Param('caseId') caseId: string,
-      @Body() body: { reason: string },
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -689,9 +724,7 @@ export class CaseController {
     }
 
     if (!body.reason || body.reason.trim().length < 10) {
-      throw new BadRequestException(
-          'Rejection reason is required and must be at least 10 characters',
-      );
+      throw new BadRequestException('Rejection reason is required and must be at least 10 characters');
     }
 
     return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
