@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
+import e = require('express');
 import FormData = require('form-data');
 
 @Injectable()
@@ -229,7 +230,7 @@ export class FlowableService implements OnModuleInit {
 
   async getProcessTasks(processInstanceId: string) {
     try {
-      const response = await this.flowableClient.get('/service/runtime/tasks', {
+      const response = await this.flowableClient.get('/service/runtime/tasks?includeTaskLocalVariables=true', {
         params: {
           processInstanceId,
         },
@@ -554,6 +555,8 @@ export class FlowableService implements OnModuleInit {
       throw new HttpException('Failed to update task variable', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  
 
   async deleteTaskVariable(taskId: string, variableName: string) {
     try {
