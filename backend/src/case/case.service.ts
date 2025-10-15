@@ -30,6 +30,7 @@ import {
   CaseStatusChangedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from "./dto/system-case-creation.dto";
+import {NotificationService} from "../notification/notification.service";
 
 @Injectable()
 export class CaseService {
@@ -43,6 +44,7 @@ export class CaseService {
       private readonly commentService: CommentService,
       private readonly caseWorkflowService: CaseWorkflowService,
       private readonly casePriorityUtil: CasePriorityUtil,
+      private readonly notificationService: NotificationService,
   ) {}
 
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
@@ -388,9 +390,12 @@ export class CaseService {
       throw error;
     }
   }
+
+  //close case needs testing
   async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string) {
     try {
-      this.logger.log(`Closing case ${caseId} by user ${userId}`, CaseService.name);
+      this.logger.log(`User ${userId} attempting to close case ${caseId}`, CaseService.name);
+
       const caseData = await this.prismaService.case.findFirst({
         where: {
           case_id: caseId,
@@ -399,23 +404,129 @@ export class CaseService {
             { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case'] } } } },
           ],
         },
-        include: { tasks: true, alert: true },
+        include: {
+          tasks: true,
+          alert: true,
+          comments: true
+        },
       });
 
-      if (!caseData) throw new NotFoundException(`Case ${caseId} not found or you don't have permission to close it`);
-      await this.validateCaseClosurePreconditions(caseData, userId);
-      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
-      if (!investigationTask) throw new BadRequestException('Investigation task not found for this case');
+      if (!caseData) {
+        const errorMsg = `Case ${caseId} not found or you don't have permission to close it`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new NotFoundException(errorMsg);
+      }
+
+      if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+        const errorMsg = `Case closure failed: Case is not in progress. Current status: ${caseData.status}, Required status: STATUS_20_IN_PROGRESS`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+
+        throw new ConflictException({
+          message: 'Case is not in a closeable state',
+          currentStatus: caseData.status,
+          requiredStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+          caseId,
+        });
+      }
+
+      const investigationTask = caseData.tasks.find(
+          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case'
+      );
+
+      if (!investigationTask) {
+        const errorMsg = `Case closure failed: Investigation task not found for case ${caseId}`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException({
+          message: 'Investigation task not found for this case',
+          caseId,
+          missingTask: 'Investigate Case',
+        });
+      }
+
+      if (investigationTask.assigned_user_id !== userId) {
+        const errorMsg = `Case closure failed: Investigation task ${investigationTask.task_id} is not assigned to user ${userId}`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException({
+          message: 'Investigation task is not assigned to you',
+          caseId,
+          taskId: investigationTask.task_id,
+          assignedTo: investigationTask.assigned_user_id,
+        });
+      }
+
+      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS) {
+        const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new ConflictException({
+          message: 'Investigation task is not in progress',
+          currentStatus: investigationTask.status,
+          requiredStatus: TaskStatus.STATUS_20_IN_PROGRESS,
+          taskId: investigationTask.task_id,
+        });
+      }
+
+      const validationErrors = this.validateClosureData(dto);
+      if (validationErrors.length > 0) {
+        const errorMsg = `Case closure failed: Missing or invalid information: ${validationErrors.join(', ')}`;
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException({
+          message: 'Missing or invalid case closure information',
+          errors: validationErrors,
+          caseId,
+        });
+      }
 
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
-          data: { status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL, updated_at: new Date() },
+          data: {
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            updated_at: new Date()
+          },
         });
 
         await tx.task.update({
           where: { task_id: investigationTask.task_id },
-          data: { status: TaskStatus.STATUS_30_COMPLETED, updated_at: new Date() },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            updated_at: new Date()
+          },
         });
 
         if (dto.finalNotes || dto.recommendations) {
@@ -468,6 +579,25 @@ export class CaseService {
           ),
       );
 
+      try {
+        await this.notificationService.sendGroupNotification({
+          candidateGroup: 'supervisors',
+          type: 'CASE_CLOSURE_PENDING',
+          message: `Case ${caseId} submitted for closure approval`,
+          metadata: {
+            caseId,
+            recommendedOutcome: dto.recommendedOutcome,
+            submittedBy: userId,
+            approvalTaskId: approvalTask.task_id,
+          },
+        });
+      } catch (notificationError) {
+        this.logger.warn(
+            `Failed to send supervisor notification: ${notificationError.message}`,
+            CaseService.name
+        );
+      }
+
       await this.auditLogService.logAction({
         userId,
         operation: 'closeCase',
@@ -478,38 +608,663 @@ export class CaseService {
 
       return {
         message: 'Case closed successfully and submitted for approval',
-        closed_case: { case_id: result.updatedCase.case_id, status: result.updatedCase.status, updated_at: result.updatedCase.updated_at },
-        approval_task: { task_id: approvalTask.task_id, name: approvalTask.name, status: approvalTask.status, assigned_to: 'Supervisors' },
+        closed_case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at
+        },
+        approval_task: {
+          task_id: approvalTask.task_id,
+          name: approvalTask.name,
+          status: approvalTask.status,
+          assigned_to: 'Supervisors'
+        },
       };
+
     } catch (error) {
-      this.logger.error(`Failed to close case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+      const errorMessage = error.message || 'Unknown error occurred';
+
+      this.logger.error(
+          `Case closure failed for case ${caseId}: ${errorMessage}`,
+          error.stack,
+          CaseService.name
+      );
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'closeCase',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to close case ${caseId}: ${errorMessage}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      if (error instanceof NotFoundException ||
+          error instanceof BadRequestException ||
+          error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({
+        message: 'System error occurred during case closure',
+        caseId,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  private validateClosureData(dto: CloseCaseDto): string[] {
+    const errors: string[] = [];
+
+    if (!dto.recommendedOutcome) {
+      errors.push('Recommended outcome is required');
+    }
+
+    const validOutcomes = [
+      'STATUS_81_CLOSED_REFUTED',
+      'STATUS_82_CLOSED_CONFIRMED',
+      'STATUS_83_CLOSED_INCONCLUSIVE',
+    ];
+
+    if (dto.recommendedOutcome && !validOutcomes.includes(dto.recommendedOutcome)) {
+      errors.push(`Invalid recommended outcome. Must be one of: ${validOutcomes.join(', ')}`);
+    }
+
+    if (!dto.finalNotes || dto.finalNotes.trim().length < 20) {
+      errors.push('Final notes are required and must be at least 20 characters');
+    }
+
+    if (dto.recommendations && dto.recommendations.trim().length < 10) {
+      errors.push('Recommendations must be at least 10 characters if provided');
+    }
+
+    return errors;
+  }
+
+  // approve case reopening needs testing
+  async approveCaseReopening(
+      caseId: string,
+      supervisorId: string,
+      tenantId: string
+  ) {
+    try {
+      this.logger.log(
+          `Supervisor ${supervisorId} approving case reopening for ${caseId}`,
+          CaseService.name
+      );
+
+      const caseData = await this.validateReopeningPreconditions(caseId);
+
+      // Step 2: Find the reopening approval task
+      const reopeningTask = await this.prismaService.task.findFirst({
+        where: {
+          case_id: caseId,
+          name: 'Approve Case Reopening',
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        },
+        include: {
+          comments: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (!reopeningTask) {
+        throw new NotFoundException(
+            `"Approve Case Reopening" task not found for case ${caseId}`
+        );
+      }
+
+      let reopeningMetadata: any = {};
+      let requesterId: string | null = null;
+      let requesterRole: string | null = null;
+
+      if (reopeningTask.comments.length > 0) {
+        try {
+          const comment = reopeningTask.comments[0];
+          const metadata = JSON.parse(comment.note);
+          reopeningMetadata = metadata;
+          requesterId = metadata.requestedBy;
+          requesterRole = metadata.requesterRole;
+        } catch (parseError) {
+          this.logger.warn(
+              `Failed to parse reopening metadata: ${parseError.message}`,
+              CaseService.name
+          );
+        }
+      }
+
+      let newCaseStatus: CaseStatus;
+      let newTaskStatus: TaskStatus;
+      let assignedUserId: string | undefined;
+      let candidateGroup: string;
+
+      const isAnalystOrInvestigator = requesterRole &&
+          (requesterRole.toUpperCase() === 'ANALYST' ||
+              requesterRole.toUpperCase() === 'INVESTIGATOR' ||
+              requesterRole.toUpperCase() === 'CMS_ANALYST' ||
+              requesterRole.toUpperCase() === 'CMS_INVESTIGATOR');
+
+      if (isAnalystOrInvestigator && requesterId) {
+        newCaseStatus = CaseStatus.STATUS_10_ASSIGNED;
+        newTaskStatus = TaskStatus.STATUS_10_ASSIGNED;
+        assignedUserId = requesterId;
+        candidateGroup = 'investigations';
+
+        this.logger.log(
+            `Reopening approved - assigning to original requester ${requesterId}`,
+            CaseService.name
+        );
+      } else {
+        newCaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+        newTaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
+        assignedUserId = undefined;
+        candidateGroup = 'investigations';
+
+        this.logger.log(
+            `Reopening approved - assigning to investigations queue (requester role: ${requesterRole || 'unknown'})`,
+            CaseService.name
+        );
+      }
+
+      const result = await this.prismaService.$transaction(async (tx) => {
+        // Update case status
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: {
+            status: newCaseStatus,
+            case_owner_user_id: assignedUserId || null,
+            updated_at: new Date()
+          },
+        });
+
+        const completedTask = await tx.task.update({
+          where: { task_id: reopeningTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+
+        await tx.comment.create({
+          data: {
+            user_id: supervisorId,
+            task_id: reopeningTask.task_id,
+            note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
+          },
+        });
+
+        return { updatedCase, completedTask };
+      });
+
+      const investigationTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: newTaskStatus,
+            assignedUserId,
+            name: 'Investigate Case',
+            description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
+            candidateGroup,
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+      );
+
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_31_REOPENED,
+              newCaseStatus,
+              `Case reopening approved`,
+          ),
+      );
+
+      if (assignedUserId) {
+        try {
+          await this.notificationService.sendNotification({
+            userId: assignedUserId,
+            type: 'CASE_REOPENED_ASSIGNED',
+            message: `Case ${caseId} has been reopened and assigned to you`,
+            metadata: {
+              caseId,
+              taskId: investigationTask.task_id,
+              approvedBy: supervisorId,
+              reason: reopeningMetadata.reason,
+            },
+          });
+        } catch (notificationError) {
+          this.logger.warn(
+              `Failed to send analyst notification: ${notificationError.message}`,
+              CaseService.name
+          );
+        }
+      } else {
+        try {
+          await this.notificationService.sendGroupNotification({
+            candidateGroup,
+            type: 'CASE_REOPENED_AVAILABLE',
+            message: `Case ${caseId} has been reopened and is available in the work queue`,
+            metadata: {
+              caseId,
+              taskId: investigationTask.task_id,
+              approvedBy: supervisorId,
+            },
+          });
+        } catch (notificationError) {
+          this.logger.warn(
+              `Failed to send group notification: ${notificationError.message}`,
+              CaseService.name
+          );
+        }
+      }
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseReopening',
+        entityName: CaseService.name,
+        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(
+          `Case ${caseId} reopening approved. Status: ${newCaseStatus}`,
+          CaseService.name
+      );
+
+      return {
+        success: true,
+        message: 'Case reopening approved',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          case_owner_user_id: result.updatedCase.case_owner_user_id,
+          updated_at: result.updatedCase.updated_at,
+        },
+        completed_approval_task: {
+          task_id: result.completedTask.task_id,
+          status: result.completedTask.status,
+        },
+        investigation_task: {
+          task_id: investigationTask.task_id,
+          name: investigationTask.name,
+          status: investigationTask.status,
+          assigned_to: assignedUserId || candidateGroup,
+          candidateGroup,
+        },
+      };
+
+    } catch (error) {
+      this.logger.error(
+          `Failed to approve case reopening: ${error.message}`,
+          error.stack,
+          CaseService.name
+      );
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseReopening',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to approve case reopening for ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
+
       throw error;
     }
   }
 
-  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
+  // reject case needs testing
+  async rejectCaseReopening(
+      caseId: string,
+      rejectionReason: string,
+      supervisorId: string,
+      tenantId: string
+  ) {
     try {
-      await this.validateApprovalPreconditions(caseId);
+      this.logger.log(
+          `Supervisor ${supervisorId} rejecting case reopening for ${caseId}`,
+          CaseService.name
+      );
+
+      if (!rejectionReason || rejectionReason.trim().length < 20) {
+        const errorMsg = 'Rejection reason must be at least 20 characters';
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'rejectCaseReopening',
+          entityName: CaseService.name,
+          actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMsg}`,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException(errorMsg);
+      }
+
+      const caseData = await this.validateReopeningPreconditions(caseId);
+
+      const reopeningTask = await this.prismaService.task.findFirst({
+        where: {
+          case_id: caseId,
+          name: 'Approve Case Reopening',
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        },
+        include: {
+          comments: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (!reopeningTask) {
+        throw new NotFoundException(
+            `"Approve Case Reopening" task not found for case ${caseId}`
+        );
+      }
+
+      let requesterId: string | null = null;
+      if (reopeningTask.comments.length > 0) {
+        try {
+          const metadata = JSON.parse(reopeningTask.comments[0].note);
+          requesterId = metadata.requestedBy;
+        } catch (parseError) {
+          this.logger.warn(
+              `Failed to parse reopening metadata: ${parseError.message}`,
+              CaseService.name
+          );
+        }
+      }
+
+      const originalClosedStatus = this.determineOriginalClosedStatus(caseData);
+
       const result = await this.prismaService.$transaction(async (tx) => {
+        // Restore case to original closed status
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
-          data: { status: finalOutcome as CaseStatus, updated_at: new Date() },
+          data: {
+            status: originalClosedStatus,
+            updated_at: new Date(),
+          },
+        });
+
+        const completedTask = await tx.task.update({
+          where: { task_id: reopeningTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date(),
+          },
+        });
+
+        await tx.comment.create({
+          data: {
+            user_id: supervisorId,
+            task_id: reopeningTask.task_id,
+            note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
+          },
+        });
+
+        return { updatedCase, completedTask };
+      });
+
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_31_REOPENED,
+              originalClosedStatus,
+              `Case reopening rejected: ${rejectionReason}`,
+          ),
+      );
+
+      if (requesterId) {
+        try {
+          await this.notificationService.sendNotification({
+            userId: requesterId,
+            type: 'CASE_REOPENING_REJECTED',
+            message: `Your case reopening request for case ${caseId} was rejected`,
+            metadata: {
+              caseId,
+              rejectionReason,
+              rejectedBy: supervisorId,
+              restoredStatus: originalClosedStatus,
+            },
+          });
+        } catch (notificationError) {
+          this.logger.warn(
+              `Failed to send rejection notification: ${notificationError.message}`,
+              CaseService.name
+          );
+        }
+      }
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'rejectCaseReopening',
+        entityName: CaseService.name,
+        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(
+          `Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`,
+          CaseService.name
+      );
+
+      return {
+        success: true,
+        message: 'Case reopening rejected',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at,
+        },
+        completed_task: {
+          task_id: result.completedTask.task_id,
+          status: result.completedTask.status,
+        },
+        rejection_reason: rejectionReason,
+      };
+
+    } catch (error) {
+      this.logger.error(
+          `Failed to reject case reopening: ${error.message}`,
+          error.stack,
+          CaseService.name
+      );
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'rejectCaseReopening',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to reject case reopening for ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      throw error;
+    }
+  }
+
+  private async validateReopeningPreconditions(caseId: string): Promise<any> {
+    const caseData = await this.prismaService.case.findUnique({
+      where: { case_id: caseId },
+      include: {
+        tasks: {
+          where: {
+            name: 'Approve Case Reopening',
+          },
+        },
+      },
+    });
+
+    if (!caseData) {
+      throw new NotFoundException(`Case ${caseId} not found`);
+    }
+
+    if (caseData.status !== CaseStatus.STATUS_31_REOPENED) {
+      throw new ConflictException({
+        message: 'Case is not pending reopening approval',
+        currentStatus: caseData.status,
+        requiredStatus: CaseStatus.STATUS_31_REOPENED,
+        caseId,
+      });
+    }
+
+    const reopeningTask = caseData.tasks.find(
+        t => t.name === 'Approve Case Reopening' && t.status === TaskStatus.STATUS_01_UNASSIGNED
+    );
+
+    if (!reopeningTask) {
+      throw new NotFoundException(
+          `"Approve Case Reopening" task not found or not in correct state for case ${caseId}`
+      );
+    }
+
+    return caseData;
+  }
+
+  private determineOriginalClosedStatus(caseData: any): CaseStatus {
+    const closedStatuses = [
+      CaseStatus.STATUS_81_CLOSED_REFUTED,
+      CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+      CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+      CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+      CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+    ];
+
+    return CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
+  }
+
+  //need testing for new validations
+  async approveCaseClosure(
+      caseId: string,
+      finalOutcome: string,
+      comments: string | undefined,
+      supervisorId: string
+  ) {
+    try {
+      this.logger.log(
+          `Supervisor ${supervisorId} attempting to approve case closure for ${caseId}`,
+          CaseService.name
+      );
+
+      const validOutcomes = [
+        'STATUS_81_CLOSED_REFUTED',
+        'STATUS_82_CLOSED_CONFIRMED',
+        'STATUS_83_CLOSED_INCONCLUSIVE',
+      ];
+
+      if (!finalOutcome || !validOutcomes.includes(finalOutcome)) {
+        const errorMsg = `Invalid final outcome: ${finalOutcome}. Must be one of: ${validOutcomes.join(', ')}`;
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseClosure',
+          entityName: CaseService.name,
+          actionPerformed: `Failed to approve case ${caseId}: ${errorMsg}`,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException({
+          message: 'Invalid final outcome',
+          providedOutcome: finalOutcome,
+          validOutcomes,
+        });
+      }
+
+      try {
+        await this.validateApprovalPreconditions(caseId);
+      } catch (validationError) {
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseClosure',
+          entityName: CaseService.name,
+          actionPerformed: `Validation failed for case ${caseId}: ${validationError.message}`,
+          outcome: Outcome.FAILURE,
+        });
+        throw validationError;
+      }
+
+      const caseDetails = await this.prismaService.case.findUnique({
+        where: { case_id: caseId },
+        include: {
+          tasks: true,
+          alert: true,
+          comments: {
+            orderBy: { created_at: 'desc' },
+            take: 5,
+          },
+        },
+      });
+
+      if (!caseDetails) {
+        throw new NotFoundException(`Case ${caseId} not found`);
+      }
+
+      const missingInfo = this.validateCaseCompleteness(caseDetails);
+      if (missingInfo.length > 0) {
+        const errorMsg = `Case ${caseId} is missing required information: ${missingInfo.join(', ')}`;
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseClosure',
+          entityName: CaseService.name,
+          actionPerformed: errorMsg,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException({
+          message: 'Case has incomplete information',
+          missingInformation: missingInfo,
+          caseId,
+        });
+      }
+
+      const result = await this.prismaService.$transaction(async (tx) => {
+        // Update case to final status
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: {
+            status: finalOutcome as CaseStatus,
+            updated_at: new Date()
+          },
         });
 
         const approvalTask = await tx.task.findFirst({
-          where: { case_id: caseId, name: 'Approve case closure', status: TaskStatus.STATUS_01_UNASSIGNED },
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED
+          },
         });
 
-        if (!approvalTask) throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        if (!approvalTask) {
+          throw new NotFoundException(
+              `"Approve case closure" task not found for case ${caseId}`
+          );
+        }
 
         const completedTask = await tx.task.update({
           where: { task_id: approvalTask.task_id },
-          data: { status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: supervisorId, updated_at: new Date() },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date()
+          },
         });
 
         if (comments) {
           await tx.comment.create({
-            data: { user_id: supervisorId, task_id: approvalTask.task_id, note: `Supervisor Approval: ${comments}` },
+            data: {
+              user_id: supervisorId,
+              task_id: approvalTask.task_id,
+              note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`
+            },
+          });
+        } else {
+          await tx.comment.create({
+            data: {
+              user_id: supervisorId,
+              task_id: approvalTask.task_id,
+              note: `Case closure approved with outcome: ${finalOutcome}`,
+            },
           });
         }
 
@@ -526,6 +1281,32 @@ export class CaseService {
           ),
       );
 
+      const investigationTask = caseDetails.tasks.find(
+          t => (t.name === 'Investigate Case' || t.name === 'Investigate case')
+              && t.assigned_user_id
+      );
+
+      if (investigationTask?.assigned_user_id) {
+        try {
+          await this.notificationService.sendNotification({
+            userId: investigationTask.assigned_user_id,
+            type: 'CASE_CLOSURE_APPROVED',
+            message: `Your case closure for case ${caseId} was approved`,
+            metadata: {
+              caseId,
+              finalOutcome,
+              approvedBy: supervisorId,
+              supervisorComments: comments,
+            },
+          });
+        } catch (notificationError) {
+          this.logger.warn(
+              `Failed to send investigator notification: ${notificationError.message}`,
+              CaseService.name
+          );
+        }
+      }
+
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseClosure',
@@ -534,42 +1315,204 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
+      this.logger.log(
+          `Case ${caseId} closure approved successfully with outcome ${finalOutcome}`,
+          CaseService.name
+      );
+
       return {
         message: 'Case closure approved',
-        case: { case_id: result.updatedCase.case_id, status: result.updatedCase.status, updated_at: result.updatedCase.updated_at },
-        completed_task: { task_id: result.completedTask.task_id, status: result.completedTask.status },
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at
+        },
+        completed_task: {
+          task_id: result.completedTask.task_id,
+          status: result.completedTask.status
+        },
       };
+
     } catch (error) {
-      this.logger.error(`Failed to approve case closure: ${error.message}`, error.stack, CaseService.name);
-      throw error;
+      const errorMessage = error.message || 'Unknown error occurred';
+
+      this.logger.error(
+          `Case closure approval failed for case ${caseId}: ${errorMessage}`,
+          error.stack,
+          CaseService.name
+      );
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseClosure',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      if (error instanceof NotFoundException ||
+          error instanceof BadRequestException ||
+          error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({
+        message: 'System error occurred during case closure approval',
+        caseId,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        action: 'approveCaseClosure',
+      });
     }
   }
 
+  private validateCaseCompleteness(caseDetails: any): string[] {
+    const missing: string[] = [];
+
+    if (!caseDetails.priority) {
+      missing.push('Case priority');
+    }
+
+    if (!caseDetails.case_type) {
+      missing.push('Case type');
+    }
+
+    if (!caseDetails.case_creator_user_id) {
+      missing.push('Case creator');
+    }
+
+    const hasInvestigationTask = caseDetails.tasks.some(
+        t => (t.name === 'Investigate Case' || t.name === 'Investigate case')
+            && t.status === TaskStatus.STATUS_30_COMPLETED
+    );
+
+    if (!hasInvestigationTask) {
+      missing.push('Completed investigation task');
+    }
+
+    const closureComments = caseDetails.comments.filter(
+        c => c.note.includes('Recommended Outcome') || c.note.includes('Final Investigation Summary')
+    );
+
+    if (closureComments.length === 0) {
+      missing.push('Investigation closure recommendation');
+    }
+
+    return missing;
+  }
+
+  //reject case closure needs testing
   async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
+      this.logger.log(
+          `Supervisor ${supervisorId} rejecting case closure for ${caseId}`,
+          CaseService.name
+      );
+
       await this.validateApprovalPreconditions(caseId);
+
+      if (!comments || comments.trim().length < 20) {
+        const errorMsg = 'Rejection comments must be at least 20 characters';
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'rejectCaseClosure',
+          entityName: CaseService.name,
+          actionPerformed: `Failed to reject case ${caseId}: ${errorMsg}`,
+          outcome: Outcome.FAILURE,
+        });
+        throw new BadRequestException(errorMsg);
+      }
+
+      const caseDetails = await this.prismaService.case.findUnique({
+        where: { case_id: caseId },
+        include: {
+          tasks: {
+            where: {
+              name: { in: ['Investigate Case', 'Investigate case'] },
+              status: TaskStatus.STATUS_30_COMPLETED,
+            },
+            orderBy: { updated_at: 'desc' },
+          },
+        },
+      });
+
+      if (!caseDetails) {
+        throw new NotFoundException(`Case ${caseId} not found`);
+      }
+
+      const originalInvestigationTask = caseDetails.tasks[0];
+      const originalInvestigatorId = originalInvestigationTask?.assigned_user_id;
+
+      if (!originalInvestigatorId) {
+        throw new BadRequestException(
+            'Cannot determine original investigator for case reassignment'
+        );
+      }
+
       const result = await this.prismaService.$transaction(async (tx) => {
+        // Update case status back to IN_PROGRESS
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
-          data: { status: CaseStatus.STATUS_03_RETURNED, updated_at: new Date() },
+          data: {
+            status: CaseStatus.STATUS_20_IN_PROGRESS,
+            updated_at: new Date()
+          },
         });
 
         const approvalTask = await tx.task.findFirst({
-          where: { case_id: caseId, name: 'Approve case closure', status: TaskStatus.STATUS_01_UNASSIGNED },
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED
+          },
         });
 
-        if (!approvalTask) throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        if (!approvalTask) {
+          throw new NotFoundException(
+              `"Approve case closure" task not found for case ${caseId}`
+          );
+        }
 
         const completedTask = await tx.task.update({
           where: { task_id: approvalTask.task_id },
-          data: { status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: supervisorId, updated_at: new Date() },
+          data: {
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: supervisorId,
+            updated_at: new Date()
+          },
         });
 
         await tx.comment.create({
-          data: { user_id: supervisorId, task_id: approvalTask.task_id, note: `Case closure rejected: ${comments}` },
+          data: {
+            user_id: supervisorId,
+            task_id: approvalTask.task_id,
+            note: `Case closure rejected by supervisor: ${comments}`
+          },
         });
 
         return { updatedCase, completedTask };
+      });
+
+      const newInvestigationTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assignedUserId: originalInvestigatorId,
+            name: 'Investigate Case',
+            description: `Continue investigation based on supervisor feedback. Previous closure was rejected.`,
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
+      );
+
+      await this.prismaService.comment.create({
+        data: {
+          user_id: supervisorId,
+          task_id: newInvestigationTask.task_id,
+          note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
+        },
       });
 
       this.eventEmitter.emit(
@@ -577,25 +1520,77 @@ export class CaseService {
           new CaseStatusChangedEvent(
               caseId,
               CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_03_RETURNED,
+              CaseStatus.STATUS_20_IN_PROGRESS,
               `Case closure rejected: ${comments}`,
           ),
+      );
+
+      try {
+        await this.notificationService.sendNotification({
+          userId: originalInvestigatorId,
+          type: 'CASE_CLOSURE_REJECTED',
+          message: `Your case closure for case ${caseId} was rejected by supervisor`,
+          metadata: {
+            caseId,
+            taskId: newInvestigationTask.task_id,
+            supervisorComments: comments,
+            rejectedBy: supervisorId,
+          },
+        });
+      } catch (notificationError) {
+        this.logger.warn(
+            `Failed to send investigator notification: ${notificationError.message}`,
+            CaseService.name
+        );
+      }
+
+      await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'rejectCaseClosure',
+        entityName: CaseService.name,
+        actionPerformed: `Case ${caseId} closure rejected and reassigned to investigator ${originalInvestigatorId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(
+          `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
+          CaseService.name
+      );
+
+      return {
+        message: 'Case closure rejected and returned for investigation',
+        case: {
+          case_id: result.updatedCase.case_id,
+          status: result.updatedCase.status,
+          updated_at: result.updatedCase.updated_at
+        },
+        completed_approval_task: {
+          task_id: result.completedTask.task_id,
+          status: result.completedTask.status,
+        },
+        new_investigation_task: {
+          task_id: newInvestigationTask.task_id,
+          name: newInvestigationTask.name,
+          assigned_to: originalInvestigatorId,
+          status: newInvestigationTask.status,
+        },
+      };
+
+    } catch (error) {
+      this.logger.error(
+          `Failed to reject case closure: ${error.message}`,
+          error.stack,
+          CaseService.name
       );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'rejectCaseClosure',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} closure rejected and returned for investigation`,
-        outcome: Outcome.SUCCESS,
+        actionPerformed: `Failed to reject case ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
       });
 
-      return {
-        message: 'Case closure rejected',
-        case: { case_id: result.updatedCase.case_id, status: result.updatedCase.status, updated_at: result.updatedCase.updated_at },
-      };
-    } catch (error) {
-      this.logger.error(`Failed to reject case closure: ${error.message}`, error.stack, CaseService.name);
       throw error;
     }
   }
@@ -778,20 +1773,32 @@ export class CaseService {
   }
 
   private async validateApprovalPreconditions(caseId: string) {
-    const caseData = await this.prismaService.case.findUnique({ where: { case_id: caseId }, include: { tasks: true } });
-    if (!caseData) throw new NotFoundException(`Case ${caseId} not found`);
+    const caseData = await this.prismaService.case.findUnique({
+      where: { case_id: caseId },
+      include: { tasks: true }
+    });
+
+    if (!caseData) {
+      throw new NotFoundException(`Case ${caseId} not found`);
+    }
+
     if (caseData.status !== CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
       throw new ConflictException({
         message: 'Case is not pending final approval',
         currentStatus: caseData.status,
         requiredStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+        caseId,
       });
     }
 
     const approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks);
     TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
+
     const approvalTask = TaskValidationUtil.findApprovalTask(caseData.tasks);
-    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
+    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(
+        caseData.tasks,
+        [approvalTask.task_id]
+    );
 
     if (!otherTasksValidation.isValid) {
       throw new BadRequestException({
@@ -799,22 +1806,14 @@ export class CaseService {
         incompleteTasks: TaskValidationUtil.filterTasks(caseData.tasks, {
           excludeTaskIds: [approvalTask.task_id],
           excludeStatuses: [TaskStatus.STATUS_30_COMPLETED],
-        }).map((task) => ({ taskId: task.task_id, name: task.name, status: task.status })),
+        }).map((task) => ({
+          taskId: task.task_id,
+          name: task.name,
+          status: task.status
+        })),
+        caseId,
       });
     }
-  }
-
-  private async validateCaseClosurePreconditions(caseData: any, userId: string): Promise<{ valid: boolean; message: string }> {
-    if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
-      throw new ConflictException({
-        message: 'Case is not in a closeable state',
-        currentStatus: caseData.status,
-        requiredStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-      });
-    }
-    const validationResult = TaskValidationUtil.validateCaseClosurePreconditions(caseData.tasks);
-    TaskValidationUtil.throwIfValidationFails(validationResult, 'Case closure preconditions not met');
-    return { valid: true, message: 'All case closure preconditions met successfully' };
   }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto) {
