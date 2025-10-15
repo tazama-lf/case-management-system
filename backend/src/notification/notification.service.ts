@@ -3,14 +3,20 @@ import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 
 export type NotificationType =
-  | 'TASK_ASSIGNED'
-  | 'TASK_AVAILABLE'
-  | 'TASK_UNASSIGNED'
-  | 'TASK_REASSIGNED'
-  | 'WORK_QUEUE'
-  | 'CASE_SUSPENDED'
-  | 'CASE_RESUMED'
-  | 'GENERIC';
+    | 'TASK_ASSIGNED'
+    | 'TASK_AVAILABLE'
+    | 'TASK_UNASSIGNED'
+    | 'TASK_REASSIGNED'
+    | 'WORK_QUEUE'
+    | 'CASE_SUSPENDED'
+    | 'CASE_RESUMED'
+    | 'CASE_CLOSURE_PENDING'
+    | 'CASE_CLOSURE_APPROVED'
+    | 'CASE_CLOSURE_REJECTED'
+    | 'CASE_REOPENED_ASSIGNED'
+    | 'CASE_REOPENED_AVAILABLE'
+    | 'CASE_REOPENING_REJECTED'
+    | 'GENERIC';
 
 export interface NotificationPayload {
   userId: string;
@@ -92,7 +98,7 @@ export class NotificationService {
           html: template.html,
         });
         this.logger.log(`Email sent to ${to}: ${template.subject}`);
-        return; 
+        return;
       } catch (error) {
         attempt++;
         this.logger.warn(`Attempt ${attempt} failed to send email to ${to}: ${error.message}`);
@@ -123,6 +129,10 @@ export class NotificationService {
         subject: `New Task in ${d.candidateGroup} Queue`,
         html: this.workQueueTemplate(d),
       }),
+      TASK_AVAILABLE: (d) => ({
+        subject: `Task Available in Queue`,
+        html: this.workQueueTemplate(d),
+      }),
       CASE_SUSPENDED: (d) => ({
         subject: `Case Suspended: ${d.caseId}`,
         html: this.caseTemplate('suspended', d),
@@ -131,13 +141,34 @@ export class NotificationService {
         subject: `Case Resumed: ${d.caseId}`,
         html: this.caseTemplate('resumed', d),
       }),
+      CASE_CLOSURE_PENDING: (d) => ({
+        subject: `Case Closure Pending Approval: ${d.caseId}`,
+        html: this.caseClosurePendingTemplate(d),
+      }),
+      CASE_CLOSURE_APPROVED: (d) => ({
+        subject: `Case Closure Approved: ${d.caseId}`,
+        html: this.caseClosureApprovedTemplate(d),
+      }),
+      CASE_CLOSURE_REJECTED: (d) => ({
+        subject: `Case Closure Rejected: ${d.caseId}`,
+        html: this.caseClosureRejectedTemplate(d),
+      }),
+      CASE_REOPENED_ASSIGNED: (d) => ({
+        subject: `Case Reopened and Assigned: ${d.caseId}`,
+        html: this.caseReopenedTemplate(d),
+      }),
+      CASE_REOPENED_AVAILABLE: (d) => ({
+        subject: `Case Reopened - Available in Queue: ${d.caseId}`,
+        html: this.caseReopenedAvailableTemplate(d),
+      }),
+      CASE_REOPENING_REJECTED: (d) => ({
+        subject: `Case Reopening Request Rejected: ${d.caseId}`,
+        html: this.caseReopeningRejectedTemplate(d),
+      }),
       GENERIC: (d) => ({
         subject: 'CMS Notification',
         html: `<p>${d.message}</p>`,
       }),
-      TASK_AVAILABLE: function (data: Record<string, any>): { subject: string; html: string } {
-        throw new Error('Function not implemented.');
-      },
     };
 
     const builder = templates[type] ?? templates.GENERIC;
@@ -179,6 +210,95 @@ export class NotificationService {
         <li><strong>Reason:</strong> ${data.reason}</li>
       </ul>
       <p>The case is now ${status === 'suspended' ? 'on hold' : 'active again'}.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseClosurePendingTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello Supervisor,</p>
+      <p>Case <strong>${data.caseId}</strong> has been submitted for closure approval.</p>
+      <ul>
+        <li><strong>Recommended Outcome:</strong> ${data.recommendedOutcome}</li>
+        <li><strong>Submitted By:</strong> ${data.submittedBy}</li>
+        <li><strong>Approval Task ID:</strong> ${data.approvalTaskId}</li>
+      </ul>
+      <p>Please review and approve or reject the case closure.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseClosureApprovedTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Your case closure for case <strong>${data.caseId}</strong> has been approved.</p>
+      <ul>
+        <li><strong>Final Outcome:</strong> ${data.finalOutcome}</li>
+        <li><strong>Approved By:</strong> ${data.approvedBy}</li>
+        ${data.supervisorComments ? `<li><strong>Comments:</strong> ${data.supervisorComments}</li>` : ''}
+      </ul>
+      <p>The case has been successfully closed.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseClosureRejectedTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Your case closure request for case <strong>${data.caseId}</strong> has been rejected.</p>
+      <h3>Supervisor Feedback:</h3>
+      <blockquote style="border-left: 3px solid #dc3545; padding-left: 15px; color: #555;">
+        ${data.supervisorComments}
+      </blockquote>
+      <h3>Next Steps:</h3>
+      <ul>
+        <li>A new "Investigate Case" task has been assigned to you (Task ID: ${data.taskId})</li>
+        <li>Review the supervisor's feedback carefully</li>
+        <li>Address the concerns raised</li>
+        <li>Resubmit for closure approval when ready</li>
+      </ul>
+      <p>Rejected By: ${data.rejectedBy}</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseReopenedTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Case <strong>${data.caseId}</strong> has been reopened and assigned to you.</p>
+      <ul>
+        <li><strong>Task ID:</strong> ${data.taskId}</li>
+        <li><strong>Approved By:</strong> ${data.approvedBy}</li>
+        ${data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : ''}
+      </ul>
+      <p>Please review the case and conduct additional investigation as needed.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseReopenedAvailableTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Case <strong>${data.caseId}</strong> has been reopened and is now available in the investigations work queue.</p>
+      <ul>
+        <li><strong>Task ID:</strong> ${data.taskId}</li>
+        <li><strong>Approved By:</strong> ${data.approvedBy}</li>
+      </ul>
+      <p>Please check the Case Management System to claim this case.</p>
+      <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private caseReopeningRejectedTemplate(data: Record<string, any>): string {
+    return `
+      <p>Hello,</p>
+      <p>Your case reopening request for case <strong>${data.caseId}</strong> has been rejected.</p>
+      <h3>Rejection Reason:</h3>
+      <blockquote style="border-left: 3px solid #dc3545; padding-left: 15px; color: #555;">
+        ${data.rejectionReason}
+      </blockquote>
+      <p>The case has been restored to its original status: <strong>${data.restoredStatus}</strong></p>
+      <p>Rejected By: ${data.rejectedBy}</p>
       <p>Regards,<br/>CMS Team</p>
     `;
   }
