@@ -426,7 +426,10 @@ export class CaseService {
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      const details = Array.isArray((apiError as any).errors) && (apiError as any).errors.length
+        ? `: ${((apiError as any).errors as string[]).join(', ')}`
+        : '';
+      return new Error((apiError.message || `Failed to ${operation}`) + details);
     }
     return new Error(`Failed to ${operation}: ${error.message}`);
   }
