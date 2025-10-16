@@ -3,6 +3,8 @@ import { MagnifyingGlassIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react
 import { PageContainer, Card } from '../../../shared/components/ui';
 import { CasesTable, CreateCaseModal, ViewCaseModal } from '..';
 import CloseCaseModal from '../components/CloseCaseModal';
+import ApproveCaseReopenModal from '../components/ApproveCaseReopenModal';
+import RejectCaseReopenModal from '../components/RejectCaseReopenModal';
 import ReopenCaseModal from '../components/ReopenCaseModal';
 import AbandonCaseModal from '../components/AbandonCaseModal';
 import SuspendCaseModal from '../components/SuspendCaseModal';
@@ -49,6 +51,8 @@ const CasesDashboard: React.FC = () => {
   const [isApproveCreationOpen, setIsApproveCreationOpen] = useState(false);
   const [isRejectCreationOpen, setIsRejectCreationOpen] = useState(false);
   const [isReturnForReviewOpen, setIsReturnForReviewOpen] = useState(false);
+  const [isApproveReopenOpen, setIsApproveReopenOpen] = useState(false);
+  const [isRejectReopenOpen, setIsRejectReopenOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -308,6 +312,16 @@ The case may have been deleted or moved.`;
   const handleReopenCase = (row: CaseRow) => {
     setSelectedRow(row);
     setIsReopenOpen(true);
+  };
+
+  const handleApproveCaseReopen = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsApproveReopenOpen(true);
+  };
+
+  const handleRejectCaseReopen = (row: CaseRow) => {
+    setSelectedRow(row);
+    setIsRejectReopenOpen(true);
   };
 
   const handleAbandonCase = (row: CaseRow) => {
@@ -1102,9 +1116,11 @@ The case may have been deleted or moved.`;
             onResumeCase={handleResumeCase}
             onRejectCase={handleRejectCase}
             onApproveCase={handleApproveCase}
+            onApproveCaseReopen={handleApproveCaseReopen}
             onApproveCaseCreation={handleApproveCaseCreation}
             onRejectCaseCreation={handleRejectCaseCreation}
             onReturnForReview={handleReturnForReview}
+            
           />
         )}
       </Card>
@@ -1206,6 +1222,53 @@ The case may have been deleted or moved.`;
         onClose={() => setIsReturnForReviewOpen(false)}
         caseData={selectedRow}
         onSubmit={(caseId, data) => handleReturnForReviewSubmit(caseId, data)}
+      />
+
+      <ApproveCaseReopenModal
+        open={isApproveReopenOpen}
+        onClose={() => setIsApproveReopenOpen(false)}
+        caseId={selectedRow?.id || ''}
+        requesterRole={undefined}
+        onApprove={async () => {
+          // Placeholder: backend endpoint not yet available
+          success('Case Reopening Approved', `Case ${selectedRow?.id} reopening has been approved.`);
+          setIsApproveReopenOpen(false);
+          setSelectedRow(null);
+          try {
+            const response = await caseService.getAllCases({
+              status: statusFilter || undefined,
+              priority: priorityFilter || undefined,
+              sortBy: 'updated_at',
+              sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+            });
+            setCases(response.cases.map(transformBackendCaseToUI));
+          } catch (refreshError) {
+            console.error('Failed to refresh cases:', refreshError);
+          }
+        }}
+      />
+
+      <RejectCaseReopenModal
+        open={isRejectReopenOpen}
+        onClose={() => setIsRejectReopenOpen(false)}
+        caseId={selectedRow?.id || ''}
+        onReject={async (_caseId, _reason) => {
+          // Placeholder: backend endpoint not yet available
+          success('Case Reopening Rejected', `Case ${selectedRow?.id} reopening has been rejected.`);
+          setIsRejectReopenOpen(false);
+          setSelectedRow(null);
+          try {
+            const response = await caseService.getAllCases({
+              status: statusFilter || undefined,
+              priority: priorityFilter || undefined,
+              sortBy: 'updated_at',
+              sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+            });
+            setCases(response.cases.map(transformBackendCaseToUI));
+          } catch (refreshError) {
+            console.error('Failed to refresh cases:', refreshError);
+          }
+        }}
       />
     </PageContainer>
   );
