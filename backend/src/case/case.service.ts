@@ -655,7 +655,10 @@ export class CaseService {
     if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
+    if (!reason || reason.trim().length < 10) {
+      throw new BadRequestException('Reason for suspending case is required and must be at least 10 characters');
+    }
+
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
     const investigateTask = allTasks.find((t) => t.name === 'Investigate case');
 
@@ -691,7 +694,7 @@ export class CaseService {
         return { case: updatedCase, task: updatedTask };
       });
 
-      await new Promise(res => setTimeout(res, 1000)); 
+      await new Promise((res) => setTimeout(res, 1000));
       this.eventEmitter.emit('case.suspended', new CaseSuspendedEvent(caseId, reason));
 
       try {
@@ -727,8 +730,9 @@ export class CaseService {
       this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
       throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
     }
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
-
+    if (!reason || reason.trim().length < 10) {
+      throw new BadRequestException('Reason for resuming case is required and must be at least 10 characters');
+    }
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can resume a case`);
@@ -795,6 +799,84 @@ export class CaseService {
 
       this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
+    }
+  }
+
+  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    try {
+      this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseService.name);
+
+      const existingCase = await this.retrieveCase(caseId);
+
+      const allowedStates: CaseStatus[] = [
+        CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+        CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+        CaseStatus.STATUS_81_CLOSED_REFUTED,
+        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+      ];
+
+      if (!allowedStates.includes(existingCase.status)) {
+        throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
+      }
+
+      if (!reason || reason.trim().length < 10) {
+        throw new BadRequestException('Reason for reopening case is required and must be at least 10 characters');
+      }
+
+      const result = await this.prismaService.$transaction(async (tx) => {
+        const updatedCase = await tx.case.update({
+          where: { case_id: caseId },
+          data: {
+            status: CaseStatus.STATUS_30_PENDING_REOPENING,
+            updated_at: new Date(),
+          },
+        });
+
+        const approvalTask = await this.taskService.createTask(
+          {
+            caseId,
+            name: 'Approve Case Reopening',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            description: `Case reopening approval required. Reason: ${reason}`,
+            candidateGroup: 'supervisors',
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
+        );
+
+        return { case: updatedCase, approvalTask };
+      });
+
+      this.eventEmitter.emit('case.created', new CaseCreatedEvent(caseId, tenantId, CaseCreationType.MANUAL, undefined, false));
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'reopenCase',
+        entityName: CaseService.name,
+        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      return {
+        success: true,
+        message: 'Case reopened and pending supervisor approval',
+        case: result.case,
+        approvalTask: result.approvalTask,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to reopen case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'reopenCase',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to reopen case ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      throw error;
     }
   }
 
