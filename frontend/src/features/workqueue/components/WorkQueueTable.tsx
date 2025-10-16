@@ -7,7 +7,7 @@ interface WorkQueueTableProps {
   onAssign: (task: UnifiedWorkQueueTask) => void;
   onUnassign?: (task: UnifiedWorkQueueTask) => void;
   onReassign?: (task: UnifiedWorkQueueTask) => void;
-  onComplete?: (task: UnifiedWorkQueueTask) => void;
+  onComplete: (task: UnifiedWorkQueueTask) => void;
   onUpdateStatus?: (task: UnifiedWorkQueueTask) => void;
 }
 
@@ -25,7 +25,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
       IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
       COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
-      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
+      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Suspended' },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
@@ -93,8 +93,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Complete action for assigned tasks only if handler provided
-    if (task.assignee && onComplete) {
+    // Show Complete action for assigned tasks
+    if (task.assignee) {
       actions.push(
         <button
           key="complete"
