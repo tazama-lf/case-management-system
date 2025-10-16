@@ -24,7 +24,6 @@ const Reports: React.FC = () => {
     console.log('Exporting to PDF...');
   };
 
-
   if (isLoading) {
     return (
       <PageContainer
@@ -139,9 +138,6 @@ const Reports: React.FC = () => {
       <ReportsTable 
         data={statusDetails} 
         title="Case Status Details" 
-        onExportExcel={handleExportExcel}
-        onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
       />
     </PageContainer>
   );

@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { FunnelIcon, DocumentArrowDownIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
-import FiltersPanel from './FiltersPanel';
+import React from 'react';
+import { FunnelIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 interface ReportFiltersProps {
   onExportExcel: () => void;
@@ -13,135 +12,58 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   onExportCSV, 
   onExportPDF 
 }) => {
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
-  const [reportType, setReportType] = useState<'CASE_STATUS' | 'CASE_OUTCOME' | 'CASE_TYPES'>('CASE_STATUS');
-  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear'>('last30');
-  const [openMenu, setOpenMenu] = useState<null | 'report' | 'date'>(null);
-
-  const handleChange = (key: 'caseType' | 'priority' | 'investigator', value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleApply = () => {
-    // TODO: wire to data fetching when backend is ready
-    setShowFilters(false);
-  };
-
-  const handleReset = () => {
-    setFilters({ caseType: '', priority: '', investigator: '' });
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Report type dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenMenu(openMenu === 'report' ? null : 'report')}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              <span>{reportType === 'CASE_STATUS' ? 'Case Status Report' : reportType === 'CASE_OUTCOME' ? 'Case Outcome Report' : 'Case Types Report'}</span>
-              <FunnelIcon className="h-4 w-4 text-gray-500" />
-            </button>
-            {openMenu === 'report' && (
-              <div className="absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
-                <ul className="py-1 text-sm text-gray-700">
-                  <li>
-                    <button
-                      onClick={() => { setReportType('CASE_STATUS'); setOpenMenu(null); }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50"
-                    >
-                      Case Status Report
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => { setReportType('CASE_OUTCOME'); setOpenMenu(null); }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50"
-                    >
-                      Case Outcome Report
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => { setReportType('CASE_TYPES'); setOpenMenu(null); }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50"
-                    >
-                      Case Types Report
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center">
+            <FunnelIcon className="h-5 w-5 text-gray-400 mr-2" />
+            <span className="text-sm font-medium text-gray-700">Filters</span>
           </div>
-
-          {/* Date range dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenMenu(openMenu === 'date' ? null : 'date')}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              <span>{
-                dateRange === 'today' ? 'Today' :
-                dateRange === 'yesterday' ? 'Yesterday' :
-                dateRange === 'last7' ? 'Last 7 Days' :
-                dateRange === 'last30' ? 'Last 30 Days' :
-                dateRange === 'last90' ? 'Last 90 Days' :
-                dateRange === 'thisMonth' ? 'This Month' : 'Last Year'
-              }</span>
-              <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
-            </button>
-            {openMenu === 'date' && (
-              <div className="absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
-                <ul className="py-1 text-sm text-gray-700">
-                  <li><button onClick={() => { setDateRange('today'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Today</button></li>
-                  <li><button onClick={() => { setDateRange('yesterday'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Yesterday</button></li>
-                  <li><button onClick={() => { setDateRange('last7'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 7 Days</button></li>
-                  <li><button onClick={() => { setDateRange('last30'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 30 Days</button></li>
-                  <li><button onClick={() => { setDateRange('last90'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 90 Days</button></li>
-                  <li><button onClick={() => { setDateRange('thisMonth'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">This Month</button></li>
-                  <li><button onClick={() => { setDateRange('lastYear'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last Year</button></li>
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Filters toggle pill */}
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            <FunnelIcon className="h-4 w-4 text-gray-500" />
-            <span>Filters</span>
-          </button>
+          
+          <select className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">Last 30 Days</option>
+            <option value="7">Last 7 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+          </select>
+          
+          <select className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">All Case Types</option>
+            <option value="fraud">Fraud</option>
+            <option value="aml">AML</option>
+            <option value="kyc">Fraud and AML</option>
+          </select>
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Export Options:</span>
+          
+          <button
+            onClick={onExportExcel}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+            Export as Excel
+          </button>
+          
+          <button
+            onClick={onExportCSV}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+            Export as CSV
+          </button>
+          
           <button
             onClick={onExportPDF}
-            className="inline-flex items-center px-4 py-2 shadow-sm text-sm rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-            Export Report
+            <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+            Export as PDF
           </button>
         </div>
       </div>
-
-      {showFilters && (
-        <FiltersPanel
-          caseType={filters.caseType}
-          priority={filters.priority}
-          investigator={filters.investigator}
-          onChange={handleChange}
-          onApply={handleApply}
-          onReset={handleReset}
-        />
-      )}
     </div>
   );
 };
