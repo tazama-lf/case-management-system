@@ -7,7 +7,7 @@ interface WorkQueueTableProps {
   onAssign: (task: UnifiedWorkQueueTask) => void;
   onUnassign?: (task: UnifiedWorkQueueTask) => void;
   onReassign?: (task: UnifiedWorkQueueTask) => void;
-  onComplete: (task: UnifiedWorkQueueTask) => void;
+  onComplete?: (task: UnifiedWorkQueueTask) => void;
   onUpdateStatus?: (task: UnifiedWorkQueueTask) => void;
 }
 
@@ -93,8 +93,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Complete action for assigned tasks
-    if (task.assignee) {
+    // Show Complete action for assigned tasks only if handler provided
+    if (task.assignee && onComplete) {
       actions.push(
         <button
           key="complete"
