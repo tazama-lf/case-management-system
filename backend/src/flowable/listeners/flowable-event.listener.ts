@@ -10,7 +10,7 @@ import {
   TaskAssignedEvent,
   CaseAbandonedEvent,
   CaseSuspendedEvent,
-  CaseResumedEvent,
+  CaseResumedEvent, TaskUnassignedEvent,
 } from '../../events/domain-events';
 import { TaskStatus } from '@prisma/client';
 
@@ -213,6 +213,7 @@ export class FlowableEventListener {
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
+        this.logger.warn(`No Flowable process found for case ${event.caseId}, checking for standalone tasks`, FlowableEventListener.name);
         return;
       }
 
@@ -224,13 +225,91 @@ export class FlowableEventListener {
       });
 
       if (flowableTask) {
-        await this.flowableService.claimTask(flowableTask.id, event.assignedUserId);
-        await this.flowableService.updateTaskVariable(flowableTask.id, 'assignee_user_id', event.assignedUserId);
+        if (event.previousAssignedUserId) {
+          await this.flowableService.unclaimTask(flowableTask.id);
+          this.logger.log(
+              `Unclaimed Flowable task ${flowableTask.id} from previous user ${event.previousAssignedUserId}`,
+              FlowableEventListener.name
+          );
+        }
 
-        this.logger.log(`Updated Flowable task ${flowableTask.id} assignment to user ${event.assignedUserId}`, FlowableEventListener.name);
+        await this.flowableService.claimTask(flowableTask.id, event.assignedUserId);
+
+        // Update all relevant variables to ensure sync
+        const variablesToUpdate = {
+          assignee_user_id: event.assignedUserId,
+          task_status: 'STATUS_10_ASSIGNED',  // Ensure status is synced
+          reassigned_from: event.previousAssignedUserId || null,
+          reassigned_at: new Date().toISOString(),
+        };
+
+        await this.flowableService.setTaskVariables(flowableTask.id, variablesToUpdate);
+
+        this.logger.log(
+            `Updated Flowable task ${flowableTask.id}: reassigned from ${event.previousAssignedUserId || 'unassigned'} to ${event.assignedUserId}`,
+            FlowableEventListener.name
+        );
+      } else {
+        this.logger.warn(
+            `Flowable task not found for PostgreSQL task ${event.taskId}. May be a standalone task.`,
+            FlowableEventListener.name
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to update Flowable task assignment: ${error.message}`, error.stack, FlowableEventListener.name);
+      this.logger.error(
+          `Failed to update Flowable task assignment: ${error.message}`,
+          error.stack,
+          FlowableEventListener.name
+      );
+    }
+  }
+
+  @OnEvent('task.unassigned')
+  async handleTaskUnassigned(event: TaskUnassignedEvent) {
+    try {
+      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+
+      if (!processInstance) {
+        return;
+      }
+
+      const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
+      const flowableTask = flowableTasks.find((ft: any) => {
+        const vars = ft.variables || [];
+        const postgresIdVar = vars.find((v: any) => v.name === 'postgres_task_id');
+        return postgresIdVar?.value === event.taskId;
+      });
+
+      if (flowableTask) {
+        await this.flowableService.unclaimTask(flowableTask.id);
+        const variablesToUpdate = {
+          assignee_user_id: null,
+          task_status: 'STATUS_01_UNASSIGNED',
+          unassigned_from: event.previousAssignedUserId,
+          unassigned_at: new Date().toISOString(),
+          unassignment_reason: event.reason || 'Task unassigned',
+        };
+
+        await this.flowableService.setTaskVariables(flowableTask.id, variablesToUpdate);
+
+        if (event.candidateGroup) {
+          await this.flowableService.assignTaskToCandidateGroup(
+              flowableTask.id,
+              event.candidateGroup
+          );
+        }
+
+        this.logger.log(
+            `Unassigned Flowable task ${flowableTask.id} from user ${event.previousAssignedUserId}`,
+            FlowableEventListener.name
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+          `Failed to handle task unassignment in Flowable: ${error.message}`,
+          error.stack,
+          FlowableEventListener.name
+      );
     }
   }
 

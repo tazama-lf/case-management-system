@@ -1450,11 +1450,10 @@ export class CaseService {
       }
 
       const result = await this.prismaService.$transaction(async (tx) => {
-        // Update case status back to IN_PROGRESS
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus.STATUS_20_IN_PROGRESS,
+            status: CaseStatus.STATUS_31_REOPENED,
             updated_at: new Date()
           },
         });
@@ -1520,7 +1519,7 @@ export class CaseService {
           new CaseStatusChangedEvent(
               caseId,
               CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
+              CaseStatus.STATUS_31_REOPENED,
               `Case closure rejected: ${comments}`,
           ),
       );
