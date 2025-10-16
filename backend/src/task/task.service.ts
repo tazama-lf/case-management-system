@@ -147,6 +147,7 @@ export class TaskService {
       const GROUP_ROLE_MAP: Record<string, string> = {
         supervisors: 'CMS_SUPERVISOR',
         investigators: 'CMS_INVESTIGATOR',
+        investigations: 'CMS_INVESTIGATOR',
         analysts: 'CMS_ANALYST',
       };
 
@@ -171,12 +172,13 @@ export class TaskService {
       }
 
       const previousAssignedUserId = existingTask.assigned_user_id;
-
+      const wasUnassigned = !previousAssignedUserId;
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
         data: {
           assigned_user_id: assignedUserId,
           status: TaskStatus.STATUS_10_ASSIGNED,
+          updated_at: new Date(),
         },
       });
 
@@ -190,17 +192,82 @@ export class TaskService {
           ),
       );
 
+      if (existingTask.status !== TaskStatus.STATUS_10_ASSIGNED) {
+        this.eventEmitter.emit(
+            'task.status.changed',
+            new TaskStatusChangedEvent(
+                taskId,
+                updatedTask.case_id,
+                existingTask.name || '',
+                existingTask.status,
+                TaskStatus.STATUS_10_ASSIGNED,
+                assignedUserId,
+            ),
+        );
+      }
+
+      try {
+        // Notify the new assignee
+        await this.notificationService.sendNotification({
+          userId: assignedUserId,
+          type: 'TASK_ASSIGNED',
+          message: `Task "${existingTask.name || taskId}" has been assigned to you`,
+          metadata: {
+            taskId,
+            caseId: updatedTask.case_id,
+            taskName: existingTask.name,
+            assignedBy: userId,
+            candidateGroup: existingTask.candidateGroup,
+          },
+        });
+
+        if (previousAssignedUserId) {
+          await this.notificationService.sendNotification({
+            userId: previousAssignedUserId,
+            type: 'TASK_REASSIGNED',
+            message: `Task "${existingTask.name || taskId}" has been reassigned to another user`,
+            metadata: {
+              taskId,
+              caseId: updatedTask.case_id,
+              taskName: existingTask.name,
+              reassignedTo: assignedUserId,
+              reassignedBy: userId,
+            },
+          });
+        }
+      } catch (notificationError) {
+        this.logger.warn(
+            `Failed to send reassignment notifications: ${notificationError.message}`,
+            TaskService.name
+        );
+      }
+
       await this.auditLogService.logAction({
         userId,
-        actionPerformed: `Reassigned task ${taskId} to ${assignedUserId}`,
+        actionPerformed: wasUnassigned
+            ? `Assigned unassigned task ${taskId} to ${assignedUserId}`
+            : `Reassigned task ${taskId} from ${previousAssignedUserId} to ${assignedUserId}`,
         entityName: TaskService.name,
         operation: 'reassignTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
       });
 
-      this.logger.log(`Task ${taskId} successfully reassigned to ${assignedUserId}`, TaskService.name);
-      return updatedTask;
+      this.logger.log(
+          wasUnassigned
+              ? `Task ${taskId} successfully assigned to ${assignedUserId}`
+              : `Task ${taskId} successfully reassigned from ${previousAssignedUserId} to ${assignedUserId}`,
+          TaskService.name
+      );
+
+      return {
+        ...updatedTask,
+        message: wasUnassigned
+            ? `Task successfully assigned to user ${assignedUserId}`
+            : `Task successfully reassigned from user ${previousAssignedUserId} to ${assignedUserId}`,
+        previousAssignee: previousAssignedUserId,
+        newAssignee: assignedUserId,
+      };
     } catch (error) {
       this.logger.error(`Error reassigning task ${taskId}: ${error.message}`, error, TaskService.name);
       throw error;
