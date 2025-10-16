@@ -2,6 +2,7 @@ export { default as Reports } from './pages/Reports';
 
 export { default as ReportStatsCards } from './components/ReportStatsCards';
 export { default as ReportFilters } from './components/ReportFilters';
+export { default as FiltersPanel } from './components/FiltersPanel';
 export { default as PieChart } from './components/PieChart';
 export { default as BarChart } from './components/BarChart';
 export { default as LineChart } from './components/LineChart';

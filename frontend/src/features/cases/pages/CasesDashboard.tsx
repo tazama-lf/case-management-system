@@ -504,6 +504,10 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       
       let errorMessage = 'Failed to suspend case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
+      // Normalize backend message casing for UI consistency
+      const normalizedErrorString = (errorString || '')
+        .replace(/"Investigate case"/g, '"Investigate Case"')
+        .replace(/\bcase\b/g, 'Case');
       
       if (errorString.includes('not in a suspendable state')) {
         errorMessage = `Case cannot be suspended.
@@ -522,6 +526,9 @@ Please ensure you have the appropriate role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
+      } else if (normalizedErrorString) {
+        // Fall back to normalized backend error if provided
+        errorMessage = normalizedErrorString;
       }
       
       // Show error toast
@@ -679,21 +686,8 @@ The case has been returned to the investigator for additional work.`);
 ` +
                       `The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {
-        errorMessage = `Approval Task Validation Failed.
-
-` +
-                      `The case may not have the required "Approve case closure" task, 
-` +
-                      `or the task may not be in the correct state.
-
-` +
-                      `Please verify that:
-` +
-                      `• The case is in "PENDING FINAL APPROVAL" status
-` +
-                      `• An "Approve case closure" task exists for this case
-` +
-                      `• The task is in "UNASSIGNED" state and assigned to you`;
+        // Show backend message as-is to "follow the backend"
+        errorMessage = errorString;
       }
       
       // Show error toast

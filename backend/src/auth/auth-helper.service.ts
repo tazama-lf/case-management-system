@@ -14,7 +14,7 @@ export class AuthHelperService {
       roles: ['CMS_SUPERVISOR'],
     },
     {
-      id: 'f8a2c016-2b8d-41da-bbb9-41ad3c26dfc2',
+      id: '189ad326-5f63-44fa-be15-25b334d474f2',
       username: 'brian.otieno',
       firstName: 'Brian',
       lastName: 'Otieno',
@@ -58,7 +58,7 @@ export class AuthHelperService {
 
     // Investigators
     {
-      id: 'c98db341-beb6-457c-98e0-406cc1c71662',
+      id: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',
       username: 'karen.mworia',
       firstName: 'Karen',
       lastName: 'Mworia',
@@ -66,7 +66,7 @@ export class AuthHelperService {
       roles: ['CMS_INVESTIGATOR'],
     },
     {
-      id: '42c2e610-0a59-4ab7-88cb-6804ed20e3d0',
+      id: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',
       username: 'leonard.ochieng',
       firstName: 'Leonard',
       lastName: 'Ochieng',
