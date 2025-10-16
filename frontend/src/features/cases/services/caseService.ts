@@ -277,6 +277,20 @@ export class CaseService {
     }
   }
 
+  // PUT /api/v1/cases/:caseId/reopen - Reopen a closed case
+  async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<any>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
+      // Backend may return { success: true, case: Case, task?: Task }
+      if (response && typeof response === 'object' && 'case' in response) {
+        return this.validateCaseResponse(response.case);
+      }
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'reopen case');
+    }
+  }
+
   // POST /api/v1/cases/:caseId - Complete a draft case
   async completeCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
