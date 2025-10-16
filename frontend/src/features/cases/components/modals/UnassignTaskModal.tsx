@@ -92,13 +92,13 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <div className="text-sm text-blue-800">
               <strong>Workflow:</strong> Upon unassignment:
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Task status will change to "UNASSIGNED"</li>
+                <li>Ownership will be removed from the task</li>
+                <li>Task will remain available in the candidate group/work queue</li>
+                <li>Action will be logged in the audit trail</li>
+              </ul>
             </div>
-            <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-blue-800">
-              <li>Task status will change to "UNASSIGNED"</li>
-              <li>Ownership will be removed from the task</li>
-              <li>Task will remain available in the candidate group/work queue</li>
-              <li>Action will be logged in the audit trail</li>
-            </ul>
           </div>
 
           <form onSubmit={handleSubmit}>

@@ -1364,55 +1364,39 @@ export class CaseService {
         action: 'approveCaseClosure',
       });
     }
-  }
 
-  private validateCaseCompleteness(caseDetails: any): string[] {
-    const missing: string[] = [];
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can suspend a case`);
 
-    if (!caseDetails.priority) {
-      missing.push('Case priority');
-    }
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
+      throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
-    if (!caseDetails.case_type) {
-      missing.push('Case type');
-    }
+    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
 
-    if (!caseDetails.case_creator_user_id) {
-      missing.push('Case creator');
-    }
+    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
-    const hasInvestigationTask = caseDetails.tasks.some(
-        t => (t.name === 'Investigate Case' || t.name === 'Investigate case')
-            && t.status === TaskStatus.STATUS_30_COMPLETED
-    );
+    if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
+      throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
 
-    if (!hasInvestigationTask) {
-      missing.push('Completed investigation task');
-    }
-
-    const closureComments = caseDetails.comments.filter(
-        c => c.note.includes('Recommended Outcome') || c.note.includes('Final Investigation Summary')
-    );
-
-    if (closureComments.length === 0) {
-      missing.push('Investigation closure recommendation');
-    }
-
-    return missing;
-  }
-
-  //reject case closure needs testing
-  async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
-      this.logger.log(
-          `Supervisor ${supervisorId} rejecting case closure for ${caseId}`,
-          CaseService.name
-      );
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
-      await this.validateApprovalPreconditions(caseId);
+        const updatedTask = await this.taskService.updateTask(
+          investigateTask.task_id,
+          { status: TaskStatus.STATUS_21_BLOCKED },
+          userId,
+          this.auditLogService,
+        );
 
-      if (!comments || comments.trim().length < 20) {
-        const errorMsg = 'Rejection comments must be at least 20 characters';
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.note = `Case suspended: ${reason}`;
+        await this.commentService.addComment(createCommentDto, userId);
+
         await this.auditLogService.logAction({
           userId: supervisorId,
           operation: 'rejectCaseClosure',
@@ -1449,100 +1433,59 @@ export class CaseService {
         );
       }
 
-      const result = await this.prismaService.$transaction(async (tx) => {
-        // Update case status back to IN_PROGRESS
-        const updatedCase = await tx.case.update({
-          where: { case_id: caseId },
-          data: {
-            status: CaseStatus.STATUS_20_IN_PROGRESS,
-            updated_at: new Date()
-          },
-        });
-
-        const approvalTask = await tx.task.findFirst({
-          where: {
-            case_id: caseId,
-            name: 'Approve case closure',
-            status: TaskStatus.STATUS_01_UNASSIGNED
-          },
-        });
-
-        if (!approvalTask) {
-          throw new NotFoundException(
-              `"Approve case closure" task not found for case ${caseId}`
-          );
-        }
-
-        const completedTask = await tx.task.update({
-          where: { task_id: approvalTask.task_id },
-          data: {
-            status: TaskStatus.STATUS_30_COMPLETED,
-            assigned_user_id: supervisorId,
-            updated_at: new Date()
-          },
-        });
-
-        await tx.comment.create({
-          data: {
-            user_id: supervisorId,
-            task_id: approvalTask.task_id,
-            note: `Case closure rejected by supervisor: ${comments}`
-          },
-        });
-
-        return { updatedCase, completedTask };
+      return { success: true, ...result };
+    } catch (err) {
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'suspendCase',
+        entityName: CaseService.name,
+        actionPerformed: `Attempted to suspend case ${caseId}`,
+        outcome: Outcome.FAILURE,
       });
 
-      const newInvestigationTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: originalInvestigatorId,
-            name: 'Investigate Case',
-            description: `Continue investigation based on supervisor feedback. Previous closure was rejected.`,
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
+      this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
+    }
+  }
+
+  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    }
+    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
+
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can resume a case`);
+
+    if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
+
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
+
+    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+
+    if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
+      throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
+
+    try {
+      await this.eventEmitter.emitAsync('case.resumed', new CaseResumedEvent(caseId, reason));
+
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
+        const updatedTask = await this.taskService.updateTask(
+          investigateTask.task_id,
+          { status: TaskStatus.STATUS_20_IN_PROGRESS },
+          userId,
           this.auditLogService,
-          this.logger,
-      );
-
-      await this.prismaService.comment.create({
-        data: {
-          user_id: supervisorId,
-          task_id: newInvestigationTask.task_id,
-          note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
-        },
-      });
-
-      this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              `Case closure rejected: ${comments}`,
-          ),
-      );
-
-      try {
-        await this.notificationService.sendNotification({
-          userId: originalInvestigatorId,
-          type: 'CASE_CLOSURE_REJECTED',
-          message: `Your case closure for case ${caseId} was rejected by supervisor`,
-          metadata: {
-            caseId,
-            taskId: newInvestigationTask.task_id,
-            supervisorComments: comments,
-            rejectedBy: supervisorId,
-          },
-        });
-      } catch (notificationError) {
-        this.logger.warn(
-            `Failed to send investigator notification: ${notificationError.message}`,
-            CaseService.name
         );
-      }
+
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.note = `Case resumed: ${reason}`;
+        await this.commentService.addComment(createCommentDto, userId);
 
       await this.auditLogService.logAction({
         userId: supervisorId,

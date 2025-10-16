@@ -23,8 +23,23 @@ const ApproveCaseModal: React.FC<ApproveCaseModalProps> = ({
   recommendations,
   onSubmit
 }) => {
+  const isValidOutcome = (outcome: string): outcome is ApproveCaseClosureDto['finalOutcome'] => {
+    return [
+      'STATUS_81_CLOSED_REFUTED',
+      'STATUS_82_CLOSED_CONFIRMED',
+      'STATUS_83_CLOSED_INCONCLUSIVE'
+    ].includes(outcome as ApproveCaseClosureDto['finalOutcome']);
+  };
+  
+  const getInitialOutcome = (): ApproveCaseClosureDto['finalOutcome'] => {
+    if (recommendedOutcome && isValidOutcome(recommendedOutcome)) {
+      return recommendedOutcome;
+    }
+    return 'STATUS_83_CLOSED_INCONCLUSIVE';
+  };
+  
   const [formData, setFormData] = useState<ApproveCaseClosureDto>({
-    finalOutcome: recommendedOutcome as ApproveCaseClosureDto['finalOutcome'] || 'STATUS_83_CLOSED_INCONCLUSIVE',
+    finalOutcome: getInitialOutcome(),
     supervisorComments: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +63,7 @@ const ApproveCaseModal: React.FC<ApproveCaseModalProps> = ({
       await onSubmit(formData);
       onClose();
       setFormData({
-        finalOutcome: recommendedOutcome as ApproveCaseClosureDto['finalOutcome'] || 'STATUS_83_CLOSED_INCONCLUSIVE',
+        finalOutcome: getInitialOutcome(),
         supervisorComments: ''
       });
     } catch (error) {
