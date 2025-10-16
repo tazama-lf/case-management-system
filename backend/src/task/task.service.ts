@@ -207,7 +207,6 @@ export class TaskService {
       }
 
       try {
-        // Notify the new assignee
         await this.notificationService.sendNotification({
           userId: assignedUserId,
           type: 'TASK_ASSIGNED',
