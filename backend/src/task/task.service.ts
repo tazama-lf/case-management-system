@@ -488,22 +488,46 @@ export class TaskService {
     this.logger.log(`Assigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
 
     if (!assignedUserId) {
+      this.logger.error('Assigned user ID is null or undefined', null, TaskService.name);
       throw new BadRequestException('Assigned user ID cannot be null or undefined');
     }
 
-    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
-    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
-      this.logger.error(`User ${assignedUserId} does not have INVESTIGATOR role`, null, TaskService.name);
-      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    this.logger.log(`Looking up user ${assignedUserId} in auth service`, TaskService.name);
+
+    try {
+      const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
+      this.logger.log(`Found roles for user ${assignedUserId}: ${investigatorRoles.join(', ')}`, TaskService.name);
+
+      if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+        this.logger.error(`User ${assignedUserId} does not have INVESTIGATOR role. Current roles: ${investigatorRoles.join(', ')}`, null, TaskService.name);
+        throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+      }
+
+      this.logger.log(`User ${assignedUserId} has CMS_INVESTIGATOR role`, TaskService.name);
+    } catch (error) {
+      this.logger.error(`Failed to get roles for user ${assignedUserId}: ${error.message}`, error.stack, TaskService.name);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`User ${assignedUserId} not found`);
     }
 
     try {
+      this.logger.log(`Fetching task ${taskId} details`, TaskService.name);
+
       const existingTask = await this.getTaskById(taskId);
       if (!existingTask) {
+        this.logger.error(`Task ${taskId} not found`, null, TaskService.name);
         throw new NotFoundException(`Task ${taskId} not found`);
       }
 
+      this.logger.log(`Task ${taskId} found. Current status: ${existingTask.status}, Current assignee: ${existingTask.assigned_user_id || 'None'}`, TaskService.name);
+
       const previousAssignedUserId = existingTask.assigned_user_id;
+
+      this.logger.log(`Updating task ${taskId} in database`, TaskService.name);
 
       const updatedTask = await this.prisma.task.update({
         where: { task_id: taskId },
@@ -512,6 +536,10 @@ export class TaskService {
           status: TaskStatus.STATUS_10_ASSIGNED,
         },
       });
+
+      this.logger.log(`Task ${taskId} successfully updated. New status: ${updatedTask.status}, New assignee: ${updatedTask.assigned_user_id}`, TaskService.name);
+
+      this.logger.log(`Emitting task.assigned event for task ${taskId}`, TaskService.name);
 
       this.eventEmitter.emit(
           'task.assigned',
@@ -522,6 +550,8 @@ export class TaskService {
               previousAssignedUserId || undefined,
           ),
       );
+
+      this.logger.log(`Logging audit actions for task ${taskId} assignment`, TaskService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -541,10 +571,17 @@ export class TaskService {
         performedAt: new Date(),
       });
 
+      this.logger.log(`Task ${taskId} successfully assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`, TaskService.name);
+
       return updatedTask;
     } catch (error) {
-      this.logger.error(`Error assigning task ${taskId}`, error, TaskService.name);
-      throw error;
+      this.logger.error(`Error assigning task ${taskId}: ${error.message}`, error.stack, TaskService.name);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`Failed to assign task: ${error.message}`);
     }
   }
 
