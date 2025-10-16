@@ -19,7 +19,6 @@ import {
   type UpdateCaseDto, 
   type AbandonCaseDto,
   type RejectCaseDto,
-  type ReopenCaseDto,
   type SuspendCaseDto,
   type ApproveCaseClosureDto,
   type ReturnCaseForReviewDto,
@@ -32,7 +31,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 
 const CasesDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { success, error, warning, info } = useToast();
+  const { success, error, } = useToast();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -321,54 +320,37 @@ The case may have been deleted or moved.`;
   };
 
   const handleReopenSubmit = async (caseId: string, reason: string) => {
-    // TODO: Reopen functionality is not implemented in backend
-    // This is a placeholder implementation
-    console.log('Reopening case:', caseId, 'Reason:', reason);
-    
-    // Show a toast notification that this feature is not implemented
-    error('Reopen Case', 'The reopen case functionality is not yet implemented in the system.');
-    
-    setIsReopenOpen(false);
-    setSelectedRow(null);
-    
-    // Commenting out the actual implementation since there's no backend endpoint
-    /*
     try {
-      const reopenCaseData: ReopenCaseDto = {
+      const reopenCaseData = {
         reason: reason.trim()
       };
 
       console.log('Reopening case:', caseId, 'Reason:', reason);
-      
       const reopenedCase = await caseService.reopenCase(caseId, reopenCaseData);
       console.log('Case reopened successfully:', reopenedCase);
-      
+
       success('Case Reopened', `Case ${caseId} has been successfully reopened.`);
-      
+
       setIsReopenOpen(false);
       setSelectedRow(null);
-      
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-      
-      await fetchAllCases();
-    } catch (error) {
-      console.error('Error reopening case:', error);
-      
+
+      try {
+        const response = await caseService.getAllCases({
+          status: statusFilter || undefined,
+          priority: priorityFilter || undefined,
+          sortBy: 'updated_at',
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+        });
+        setCases(response.cases.map(transformBackendCaseToUI));
+      } catch (refreshError) {
+        console.error('Failed to refresh cases:', refreshError);
+      }
+    } catch (err) {
+      console.error('Error reopening case:', err);
+
       let errorMessage = 'Failed to request case reopening. Please try again.';
-      const errorString = error instanceof Error ? error.message : '';
-      
+      const errorString = err instanceof Error ? err.message : '';
+
       if (errorString.includes('not in a reopenable state')) {
         errorMessage = `Case cannot be reopened.
 
@@ -387,10 +369,9 @@ Please ensure you have the appropriate role.`;
 
 The case may have been deleted or moved.`;
       }
-      
+
       error('Reopen Case Failed', errorMessage);
     }
-    */
   };
 
   const handleAbandonSubmit = async (caseId: string, reason: string) => {

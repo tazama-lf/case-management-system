@@ -791,7 +791,7 @@ export class TriageService {
           'case.status.changed',
           new CaseStatusChangedEvent(
               caseId,
-              CaseStatus.STATUS_00_DRAFT,
+              status,
               status,
               customDescription || `Case automatically closed with status ${status}`,
           ),
@@ -1018,9 +1018,9 @@ export class TriageService {
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
-      alertType: AlertType.AML,
+      alertType: AlertType.FRAUD,
       confidence_per: 97,
-      isTruePositive: true,
+      isTruePositive: false,
     };
   }
 }
