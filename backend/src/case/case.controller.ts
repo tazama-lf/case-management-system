@@ -43,6 +43,25 @@ export class CaseController {
     return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
   }
 
+  @Put(':caseId/reopen')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reopen an closed case',
+    description: 'Reopen a closed case, requires reason, resumes associated task, and logs the event.',
+  })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for resume the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case reopened successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async reopenCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.caseService.reopenCase(caseId, body.reason, clientId, tenantId);
+  }
+
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
