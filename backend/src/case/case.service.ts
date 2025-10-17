@@ -660,7 +660,7 @@ export class CaseService {
     }
 
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === 'Investigate case');
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
 
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
@@ -740,7 +740,7 @@ export class CaseService {
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === 'Investigate case');
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
 
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
