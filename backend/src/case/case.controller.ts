@@ -62,6 +62,44 @@ export class CaseController {
     return this.caseService.reopenCase(caseId, body.reason, clientId, tenantId);
   }
 
+  @Put(':caseId/suspend')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Suspend an in-progress case',
+    description: 'Suspends a an in-progress case, requires reason, blocks associated task, and logs the event.',
+  })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to suspend' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for suspending the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case suspended successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async suspendCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.caseService.suspendCase(caseId, body.reason, clientId, tenantId);
+  }
+
+  @Put(':caseId/resume')
+  @RequireInvestigatorOrSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resume an suspended case',
+    description: 'Resumes a suspended case, requires reason, resumes associated task, and logs the event.',
+  })
+  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
+  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for resume the case' } } } })
+  @ApiResponse({ status: 200, description: 'Case resumed successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
+  @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
+  async resumeCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.caseService.resumeCase(caseId, body.reason, clientId, tenantId);
+  }
+
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)

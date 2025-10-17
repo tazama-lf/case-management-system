@@ -377,6 +377,7 @@ export class TriageController {
 
 @Post('ingest')
 @RequireAlertTriageRole()
+  // using for testing purpose will remove in final
   async processIncomingAlert(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;

@@ -28,9 +28,12 @@ import {
   CaseCreatedEvent,
   CaseAbandonedEvent,
   CaseStatusChangedEvent,
+  CaseSuspendedEvent,
+  CaseResumedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from "./dto/system-case-creation.dto";
 import {NotificationService} from "../notification/notification.service";
+import { AuthHelperService } from 'src/auth/auth-helper.service';
 
 @Injectable()
 export class CaseService {
@@ -45,6 +48,7 @@ export class CaseService {
       private readonly caseWorkflowService: CaseWorkflowService,
       private readonly casePriorityUtil: CasePriorityUtil,
       private readonly notificationService: NotificationService,
+      private readonly authHelperService: AuthHelperService,
   ) {}
 
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
@@ -679,6 +683,163 @@ export class CaseService {
     }
 
     return errors;
+  }
+
+  async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    }
+
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can suspend a case`);
+
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
+      throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
+
+    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
+
+    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+
+    if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
+      throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
+
+    try {
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
+
+        const updatedTask = await this.taskService.updateTask(
+          investigateTask.task_id,
+          { status: TaskStatus.STATUS_21_BLOCKED },
+          userId,
+          this.auditLogService,
+        );
+
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.note = `Case suspended: ${reason}`;
+        await this.commentService.addComment(createCommentDto, userId);
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'suspendCase',
+          entityName: CaseService.name,
+          actionPerformed: `Suspend case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, task: updatedTask };
+      });
+
+      await new Promise(res => setTimeout(res, 1000)); 
+      this.eventEmitter.emit('case.suspended', new CaseSuspendedEvent(caseId, reason));
+
+      try {
+        const caseAssignee = investigateTask.assigned_user_id;
+        if (caseAssignee) {
+          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
+          const emailTo = assigneeUserDetail.email;
+          const suspendedBy = assigneeUserDetail.username;
+          await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
+        }
+      } catch (notificationError) {
+        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
+      }
+
+      return { success: true, ...result };
+    } catch (err) {
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'suspendCase',
+        entityName: CaseService.name,
+        actionPerformed: `Attempted to suspend case ${caseId}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
+    }
+  }
+
+  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
+    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
+      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    }
+    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
+
+    const existingCase = await this.retrieveCase(caseId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException(`Only Case owner can resume a case`);
+
+    if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
+
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const investigateTask = allTasks.find((t) => t.name === 'Investigate Case');
+
+    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+
+    if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
+      throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
+
+    try {
+      await this.eventEmitter.emitAsync('case.resumed', new CaseResumedEvent(caseId, reason));
+
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
+        const updatedTask = await this.taskService.updateTask(
+          investigateTask.task_id,
+          { status: TaskStatus.STATUS_20_IN_PROGRESS },
+          userId,
+          this.auditLogService,
+        );
+
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.note = `Case resumed: ${reason}`;
+        await this.commentService.addComment(createCommentDto, userId);
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'resumeCase',
+          entityName: CaseService.name,
+          actionPerformed: `Resume case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return { case: updatedCase, task: updatedTask };
+      });
+
+      try {
+        const caseAssignee = investigateTask.assigned_user_id;
+        if (caseAssignee) {
+          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
+          const emailTo = assigneeUserDetail.email;
+          const resumedBy = assigneeUserDetail.username;
+          await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
+        }
+      } catch (notificationError) {
+        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
+      }
+
+      return { success: true, ...result };
+    } catch (err) {
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'resumeCase',
+        entityName: CaseService.name,
+        actionPerformed: `Attempted to resume case ${caseId}`,
+        outcome: Outcome.FAILURE,
+      });
+
+      this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
+    }
   }
 
   // approve case reopening needs testing
