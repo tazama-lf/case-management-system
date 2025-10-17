@@ -135,6 +135,23 @@ export interface RejectCaseCreationDto {
   reason: string;
 }
 
+// Approve/Reopen response wrappers from backend
+export interface ApproveReopenResponseDto {
+  success: boolean;
+  message: string;
+  case: Case;
+  completed_approval_task?: { task_id: string; status: string };
+  investigation_task?: { task_id: string; name: string; status: string; assigned_to?: string; candidateGroup?: string };
+}
+
+export interface RejectReopenResponseDto {
+  success: boolean;
+  message: string;
+  case: Case;
+  completed_task?: { task_id: string; status: string };
+  rejection_reason: string;
+}
+
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
@@ -232,42 +249,12 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/suspend - Suspend a case
-  async suspendCase(caseId: string, suspendCaseData: SuspendCaseDto): Promise<Case> {
-    try {
-      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/suspend`, suspendCaseData);
-      // Backend returns { success: true, case: Case, task: Task }
-      // Extract the case object from the response
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
-      return this.validateCaseResponse(response);
-    } catch (error: any) {
-      throw this.handleError(error, 'suspend case');
-    }
-  }
-
-  // PUT /api/v1/cases/:caseId/resume - Resume a suspended case
-  async resumeCase(caseId: string, resumeCaseData: ResumeCaseDto): Promise<Case> {
-    try {
-      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/resume`, resumeCaseData);
-      // Backend returns { success: true, case: Case, task: Task }
-      // Extract the case object from the response
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
-      return this.validateCaseResponse(response);
-    } catch (error: any) {
-      throw this.handleError(error, 'resume case');
-    }
-  }
-
   // PUT /api/v1/cases/:caseId/abandon - Abandon a case
   async abandonCase(caseId: string, abandonCaseData: AbandonCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/abandon`, abandonCaseData);
-      // Backend returns { success: true, case: Case, task: Task }
-      // Extract the case object from the response
+      // For abandon case, the response structure is different { success: true, case: Case, task: Task }
+      // We need to extract the case object from the response
       if (response && typeof response === 'object' && 'case' in response) {
         return this.validateCaseResponse(response.case);
       }
@@ -277,47 +264,13 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/reopen - Reopen a closed case
-  async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
+  // PUT /api/v1/cases/:caseId/resume - Resume a suspended case
+  async resumeCase(caseId: string, resumeCaseData: ResumeCaseDto): Promise<Case> {
     try {
-      const response = await apiClient.put<any>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
-      // Backend may return { success: true, case: Case, task?: Task }
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/resume`, resumeCaseData);
       return this.validateCaseResponse(response);
     } catch (error: any) {
-      throw this.handleError(error, 'reopen case');
-    }
-  }
-
-  // POST /api/v1/cases/:caseId - Complete a draft case
-  async completeCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
-    try {
-      const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
-      // Backend returns { success: true, case: Case, completedTask: Task, newTask: Task }
-      // Extract the case object from the response
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
-      return this.validateCaseResponse(response);
-    } catch (error: any) {
-      throw this.handleError(error, 'complete case');
-    }
-  }
-
-  // PUT /api/v1/cases/:caseId/approve - Approve case closure
-  async approveCaseClosure(caseId: string, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
-    try {
-      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve`, approveCaseData);
-      // Backend returns { message: string, case: { case_id, status, updated_at }, completed_task: { task_id, status } }
-      // Extract the case object from the response
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
-      return this.validateCaseResponse(response);
-    } catch (error: any) {
-      throw this.handleError(error, 'approve case closure');
+      throw this.handleError(error, 'resume case');
     }
   }
 
@@ -325,14 +278,67 @@ export class CaseService {
   async rejectCase(caseId: string, rejectCaseData: RejectCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject`, rejectCaseData);
-      // Backend returns { message: string, case: { case_id, status, updated_at } }
-      // Extract the case object from the response
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'reject case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reopen - Reopen a closed case
+  async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'reopen case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/approve-reopening - Supervisor approves case reopening
+  async approveCaseReopening(caseId: string): Promise<ApproveReopenResponseDto> {
+    try {
+      const response = await apiClient.put<ApproveReopenResponseDto>(`${this.baseUrl}/${caseId}/approve-reopening`, {});
+      // Ensure nested case object is normalized
+      if (response && (response as any).case) {
+        return response as ApproveReopenResponseDto;
+      }
+      // Fallback: wrap direct case
+      return { success: true, message: 'Case reopening approved', case: this.validateCaseResponse(response as unknown as Case) } as ApproveReopenResponseDto;
+    } catch (error: any) {
+      throw this.handleError(error, 'approve case reopening');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reject-reopening - Supervisor rejects case reopening
+  async rejectCaseReopening(caseId: string, rejectionReason: string): Promise<RejectReopenResponseDto> {
+    try {
+      const response = await apiClient.put<RejectReopenResponseDto>(`${this.baseUrl}/${caseId}/reject-reopening`, { rejectionReason });
+      if (response && (response as any).case) {
+        return response as RejectReopenResponseDto;
+      }
+      return { success: true, message: 'Case reopening rejected', case: this.validateCaseResponse(response as unknown as Case), rejection_reason: rejectionReason } as RejectReopenResponseDto;
+    } catch (error: any) {
+      throw this.handleError(error, 'reject case reopening');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/suspend - Suspend a case
+  async suspendCase(caseId: string, suspendCaseData: SuspendCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/suspend`, suspendCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'suspend case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/approve - Approve case closure
+  async approveCaseClosure(caseId: string, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
+    try {
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve`, approveCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'approve case closure');
     }
   }
 
@@ -340,10 +346,6 @@ export class CaseService {
   async returnCaseForReview(caseId: string, returnCaseData: ReturnCaseForReviewDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/return-for-review`, returnCaseData);
-      
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'return case for review');
@@ -354,10 +356,6 @@ export class CaseService {
   async approveCaseCreation(caseId: string): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve-creation`, {});
-      
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'approve case creation');
@@ -368,10 +366,6 @@ export class CaseService {
   async rejectCaseCreation(caseId: string, rejectCaseData: RejectCaseCreationDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject-creation`, rejectCaseData);
-    
-      if (response && typeof response === 'object' && 'case' in response) {
-        return this.validateCaseResponse(response.case);
-      }
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'reject case creation');
@@ -383,12 +377,18 @@ export class CaseService {
       throw new Error('Invalid case data received');
     }
 
-    const d = data as { case_id?: unknown };
-    if (!d.case_id) {
-      throw new Error('Case ID is missing from response');
+    // Handle different response structures
+    // Direct case object
+    if ('case_id' in data) {
+      return data as Case;
+    }
+    
+    // Nested case object (e.g., from abandon case response)
+    if ('case' in data && typeof data.case === 'object' && data.case !== null && 'case_id' in data.case) {
+      return data.case as Case;
     }
 
-    return data as Case;
+    throw new Error('Case ID is missing from response');
   }
 
   // GET /api/v1/cases/user/assigned - Get cases assigned to current user
@@ -440,10 +440,7 @@ export class CaseService {
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;
-      const details = Array.isArray((apiError as any).errors) && (apiError as any).errors.length
-        ? `: ${((apiError as any).errors as string[]).join(', ')}`
-        : '';
-      return new Error((apiError.message || `Failed to ${operation}`) + details);
+      return new Error(apiError.message || `Failed to ${operation}`);
     }
     return new Error(`Failed to ${operation}: ${error.message}`);
   }

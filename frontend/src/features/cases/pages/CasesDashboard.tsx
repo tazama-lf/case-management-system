@@ -427,30 +427,24 @@ The case may have been deleted or moved.`;
       const errorString = err instanceof Error ? err.message : '';
       
       if (errorString.includes('Cannot abandon case other than draft status')) {
-        errorMessage = `Case cannot be abandoned.
-
-This case may not meet the abandonment requirements:
-• Case must be in "DRAFT" status
-• Case must have a "Complete New Case" task
-
-Please check the case status and try again.`;
+        errorMessage = `Case cannot be abandoned.\n\n` +
+                      `This case may not meet the abandonment requirements:\n` +
+                      `• Case must be in "DRAFT" status\n` +
+                      `• Case must have a "Complete New Case" task\n\n` +
+                      `Please check the case status and try again.`;
       } else if (errorString.includes('No complete new Case Task exists')) {
-        errorMessage = `Case cannot be abandoned.
-
-This case may not meet the abandonment requirements:
-• Case must be in "DRAFT" status
-• Case must have a "Complete New Case" task
-
-Please check the case status and try again.`;
+        errorMessage = `Case cannot be abandoned.\n\n` +
+                      `This case may not meet the abandonment requirements:\n` +
+                      `• Case must be in "DRAFT" status\n` +
+                      `• Case must have a "Complete New Case" task\n\n` +
+                      `Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to abandon this case.
-Please ensure you have the appropriate role.`;
+        errorMessage = `Access Denied.\n\n` +
+                      `You don't have permission to abandon this case.\n` +
+                      `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
+        errorMessage = `Case Not Found.\n\n` +
+                      `The case may have been deleted or moved.`;
       }
       
       // Show error toast
@@ -505,18 +499,15 @@ The case has been suspended and all associated tasks have been blocked. Supervis
         .replace(/\bcase\b/g, 'Case');
       
       if (errorString.includes('not in a suspendable state')) {
-        errorMessage = `Case cannot be suspended.
-
-This case may not meet the suspension requirements:
-• Case must be in "IN PROGRESS" status
-• Case must not be already suspended or closed
-
-Please check the case status and try again.`;
+        errorMessage = `Case cannot be suspended.\n\n` +
+                      `This case may not meet the suspension requirements:\n` +
+                      `• Case must be in "IN PROGRESS" status\n` +
+                      `• Case must not be already suspended or closed\n\n` +
+                      `Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to suspend this case.
-Please ensure you have the appropriate role.`;
+        errorMessage = `Access Denied.\n\n` +
+                      `You don't have permission to suspend this case.\n` +
+                      `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
 
@@ -1098,6 +1089,7 @@ The case may have been deleted or moved.`;
             onRejectCase={handleRejectCase}
             onApproveCase={handleApproveCase}
             onApproveCaseReopen={handleApproveCaseReopen}
+            onRejectCaseReopen={handleRejectCaseReopen}
             onApproveCaseCreation={handleApproveCaseCreation}
             onRejectCaseCreation={handleRejectCaseCreation}
             onReturnForReview={handleReturnForReview}
@@ -1210,12 +1202,26 @@ The case may have been deleted or moved.`;
         onClose={() => setIsApproveReopenOpen(false)}
         caseId={selectedRow?.id || ''}
         requesterRole={undefined}
-        onApprove={async () => {
-          // Placeholder: backend endpoint not yet available
-          success('Case Reopening Approved', `Case ${selectedRow?.id} reopening has been approved.`);
-          setIsApproveReopenOpen(false);
-          setSelectedRow(null);
+        onApprove={async (caseId) => {
           try {
+            const resp = await caseService.approveCaseReopening(caseId);
+
+            const updatedStatus = resp.case?.status;
+            let outcomeDetails = '';
+            if (updatedStatus === 'STATUS_10_ASSIGNED') {
+              const assignedTo = resp.investigation_task?.assigned_to ? ` and assigned to ${resp.investigation_task.assigned_to}` : '';
+              outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn \"Investigate Case\" task (${resp.investigation_task?.task_id || 'N/A'}) has been created${assignedTo}.`;
+            } else if (updatedStatus === 'STATUS_02_READY_FOR_ASSIGNMENT') {
+              const candidateGroup = resp.investigation_task?.candidateGroup || 'Investigations';
+              outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn \"Investigate Case\" task (${resp.investigation_task?.task_id || 'N/A'}) has been created in the ${candidateGroup} queue.`;
+            } else if (updatedStatus === 'STATUS_31_REOPENED') {
+              outcomeDetails = `\n\nStatus: STATUS_31_REOPENED\nAn \"Investigate Case\" task has been created.`;
+            }
+
+            success('Case Reopening Approved', `Case ${caseId} reopening has been approved.${outcomeDetails}`);
+            setIsApproveReopenOpen(false);
+            setSelectedRow(null);
+
             const response = await caseService.getAllCases({
               status: statusFilter || undefined,
               priority: priorityFilter || undefined,
@@ -1223,8 +1229,10 @@ The case may have been deleted or moved.`;
               sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
             });
             setCases(response.cases.map(transformBackendCaseToUI));
-          } catch (refreshError) {
-            console.error('Failed to refresh cases:', refreshError);
+          } catch (err) {
+            console.error('Error approving case reopening:', err);
+            const message = err instanceof Error ? err.message : 'Failed to approve case reopening';
+            error('Approve Case Reopening Failed', message);
           }
         }}
       />
@@ -1234,11 +1242,19 @@ The case may have been deleted or moved.`;
         onClose={() => setIsRejectReopenOpen(false)}
         caseId={selectedRow?.id || ''}
         onReject={async (_caseId, _reason) => {
-          // Placeholder: backend endpoint not yet available
-          success('Case Reopening Rejected', `Case ${selectedRow?.id} reopening has been rejected.`);
-          setIsRejectReopenOpen(false);
-          setSelectedRow(null);
           try {
+            const resp = await caseService.rejectCaseReopening(_caseId, _reason);
+
+            let outcomeDetails = `\n\nReason: ${resp.rejection_reason || _reason}`;
+            const status = resp.case?.status;
+            if (status?.startsWith('STATUS_8') || status?.startsWith('STATUS_7')) {
+              outcomeDetails += `\nStatus: ${status}\nThe case remains closed.`;
+            }
+
+            success('Case Reopening Rejected', `Case ${_caseId} reopening has been rejected.${outcomeDetails}`);
+            setIsRejectReopenOpen(false);
+            setSelectedRow(null);
+
             const response = await caseService.getAllCases({
               status: statusFilter || undefined,
               priority: priorityFilter || undefined,
@@ -1246,8 +1262,10 @@ The case may have been deleted or moved.`;
               sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
             });
             setCases(response.cases.map(transformBackendCaseToUI));
-          } catch (refreshError) {
-            console.error('Failed to refresh cases:', refreshError);
+          } catch (err) {
+            console.error('Error rejecting case reopening:', err);
+            const message = err instanceof Error ? err.message : 'Failed to reject case reopening';
+            error('Reject Case Reopening Failed', message);
           }
         }}
       />

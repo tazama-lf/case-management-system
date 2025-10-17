@@ -61,6 +61,15 @@ export class FlowableWorkQueueService {
    * Assign a task to a user
    */
   async assignTask(taskId: string, assigneeUserId: string): Promise<UnifiedWorkQueueTask> {
+    // Add validation to check if taskId and assigneeUserId are valid
+    if (!taskId) {
+      throw new Error('Task ID is required for assignment');
+    }
+    
+    if (!assigneeUserId) {
+      throw new Error('Assignee user ID is required for assignment');
+    }
+
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
         assignee: assigneeUserId
@@ -100,10 +109,12 @@ export class FlowableWorkQueueService {
   /**
    * Complete a task
    */
-  async completeTask(taskId: string, variables?: Record<string, any>): Promise<void> {
+  async completeTask(taskId: string, data: { notes?: string }): Promise<void> {
     try {
       const completionRequest: FlowableTaskCompletionRequest = {
-        variables: variables || {}
+        variables: {
+          notes: data.notes || ''
+        }
       };
       
       await apiClient.post(`${this.baseUrl}/${taskId}/complete`, completionRequest);
