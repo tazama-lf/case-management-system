@@ -10,7 +10,7 @@ export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
   private readonly flowableAuth: { username: string; password: string };
-  private readonly candidateGroups = ['Supervisors', 'Investigations', 'Analysts'];
+  private readonly candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
 
   constructor(
     private readonly configService: ConfigService,
@@ -672,13 +672,17 @@ export class FlowableService implements OnModuleInit {
       },
   ) {
     try {
-      this.logger.log(`Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`, FlowableService.name);
+      this.logger.log(
+          `Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`,
+          FlowableService.name
+      );
 
-      // Only include non-null values
       const variables: Record<string, any> = {
         postgres_task_id: dbTaskData.postgres_task_id,
         postgres_case_id: dbTaskData.postgres_case_id,
         task_status: dbTaskData.task_status,
+        task_name: 'Approve Case Creation',
+        candidate_group: 'supervisors',
       };
 
       if (dbTaskData.assignee_user_id) {
@@ -689,15 +693,29 @@ export class FlowableService implements OnModuleInit {
         variables.flowable_case_id = dbTaskData.flowable_case_id;
       }
 
-      this.logger.log(`Setting task variables: ${JSON.stringify(variables)}`, FlowableService.name);
+      this.logger.log(
+          `Setting task variables: ${JSON.stringify(variables)}`,
+          FlowableService.name
+      );
 
       await this.setTaskVariables(flowableTaskId, variables);
 
-      this.logger.log(`Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`, FlowableService.name);
+      this.logger.log(
+          `Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`,
+          FlowableService.name
+      );
+
       return true;
     } catch (error) {
-      this.logger.error(`Failed to sync task with database: ${error.message}`, error.stack, FlowableService.name);
-      this.logger.error(`Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`, FlowableService.name);
+      this.logger.error(
+          `Failed to sync task with database: ${error.message}`,
+          error.stack,
+          FlowableService.name
+      );
+      this.logger.error(
+          `Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`,
+          FlowableService.name
+      );
       return false;
     }
   }
