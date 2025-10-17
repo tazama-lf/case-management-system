@@ -79,6 +79,27 @@ export class TaskUnassignedEvent {
     ) {}
 }
 
+// In your domain-events.ts file
+
+export class TaskCompletedEvent {
+    constructor(
+        public readonly taskId: string,
+        public readonly caseId: string,
+        public readonly completedBy: string,
+        public readonly variables?: Record<string, any>,
+    ) {}
+}
+
+export class BpmnTaskCreatedEvent {
+    constructor(
+        public readonly flowableTaskId: string,
+        public readonly caseId: string,
+        public readonly taskName: string,
+        public readonly description: string,
+        public readonly candidateGroup: string,
+    ) {}
+}
+
 
 
 
