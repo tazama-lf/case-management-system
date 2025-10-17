@@ -25,18 +25,13 @@ export class AuthController {
     if (!user?.token?.claims?.includes('CMS_SUPERVISOR')) {
       return [];
     }
-    const {
-      AUTH_URL,
-      KEYCLOAK_REALM,
-      CLIENT_ID,
-      CLIENT_SECRET,
-    } = process.env;
+    const { AUTH_URL, KEYCLOAK_REALM, CLIENT_ID, CLIENT_SECRET } = process.env;
     if (!AUTH_URL || !KEYCLOAK_REALM || !CLIENT_ID || !CLIENT_SECRET) {
       return [];
     }
     // Use a helper method to fetch all users from Keycloak
     const users = await this.authHelperService.getAllUsersWithRole('CMS_INVESTIGATOR');
-    return users.map(userObj => ({
+    return users.map((userObj) => ({
       id: userObj.id,
       username: userObj.username,
       email: userObj.email,

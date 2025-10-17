@@ -5,8 +5,8 @@ import { TaskValidationUtil } from './utils/task-validation.util';
 
 @Global()
 @Module({
-    imports: [ConfigModule],
-    providers: [CasePriorityUtil],
-    exports: [CasePriorityUtil],
+  imports: [ConfigModule],
+  providers: [CasePriorityUtil],
+  exports: [CasePriorityUtil],
 })
 export class SharedModule {}

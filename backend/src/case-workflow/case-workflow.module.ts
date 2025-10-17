@@ -5,8 +5,8 @@ import { AuditLogModule } from '../audit/auditLog.module';
 import { LoggerModule } from '../logger/logger.module';
 
 @Module({
-    imports: [PrismaModule, AuditLogModule, LoggerModule],
-    providers: [CaseWorkflowService],
-    exports: [CaseWorkflowService],
+  imports: [PrismaModule, AuditLogModule, LoggerModule],
+  providers: [CaseWorkflowService],
+  exports: [CaseWorkflowService],
 })
 export class CaseWorkflowModule {}

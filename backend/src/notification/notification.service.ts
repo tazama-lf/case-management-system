@@ -3,20 +3,20 @@ import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 
 export type NotificationType =
-    | 'TASK_ASSIGNED'
-    | 'TASK_AVAILABLE'
-    | 'TASK_UNASSIGNED'
-    | 'TASK_REASSIGNED'
-    | 'WORK_QUEUE'
-    | 'CASE_SUSPENDED'
-    | 'CASE_RESUMED'
-    | 'CASE_CLOSURE_PENDING'
-    | 'CASE_CLOSURE_APPROVED'
-    | 'CASE_CLOSURE_REJECTED'
-    | 'CASE_REOPENED_ASSIGNED'
-    | 'CASE_REOPENED_AVAILABLE'
-    | 'CASE_REOPENING_REJECTED'
-    | 'GENERIC';
+  | 'TASK_ASSIGNED'
+  | 'TASK_AVAILABLE'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_REASSIGNED'
+  | 'WORK_QUEUE'
+  | 'CASE_SUSPENDED'
+  | 'CASE_RESUMED'
+  | 'CASE_CLOSURE_PENDING'
+  | 'CASE_CLOSURE_APPROVED'
+  | 'CASE_CLOSURE_REJECTED'
+  | 'CASE_REOPENED_ASSIGNED'
+  | 'CASE_REOPENED_AVAILABLE'
+  | 'CASE_REOPENING_REJECTED'
+  | 'GENERIC';
 
 export interface NotificationPayload {
   userId: string;
@@ -130,7 +130,7 @@ export class NotificationService {
         html: this.workQueueTemplate(d),
       }),
       TASK_AVAILABLE: (d) => ({
-        subject: `Task Available in Queue`,
+        subject: 'Task Available in Queue',
         html: this.workQueueTemplate(d),
       }),
       CASE_SUSPENDED: (d) => ({

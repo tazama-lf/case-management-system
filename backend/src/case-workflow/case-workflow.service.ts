@@ -9,52 +9,46 @@ import { CaseCreatedEvent } from '../events/domain-events';
 
 @Injectable()
 export class CaseWorkflowService {
-    constructor(
-        private readonly logger: LoggerService,
-        private readonly auditLogService: AuditLogService,
-        private readonly prismaService: PrismaService,
-        private readonly eventEmitter: EventEmitter2,
-    ) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
-    async createCase(createCaseDTO: CreateCaseDto, userId: string) {
-        try {
-            this.logger.log('Creating case', CaseWorkflowService.name);
-            const createdCase = await this.prismaService.case.create({
-                data: {
-                    tenant_id: createCaseDTO.tenantId,
-                    case_creator_user_id: createCaseDTO.caseCreatorUserId,
-                    case_owner_user_id: createCaseDTO.caseOwnerUserId,
-                    status: createCaseDTO.status,
-                    priority: createCaseDTO.priority,
-                    parent_id: createCaseDTO.parentId ?? null,
-                    case_type: createCaseDTO.caseType,
-                    case_creation_type: createCaseDTO.caseCreationType,
-                },
-            });
+  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
+    try {
+      this.logger.log('Creating case', CaseWorkflowService.name);
+      const createdCase = await this.prismaService.case.create({
+        data: {
+          tenant_id: createCaseDTO.tenantId,
+          case_creator_user_id: createCaseDTO.caseCreatorUserId,
+          case_owner_user_id: createCaseDTO.caseOwnerUserId,
+          status: createCaseDTO.status,
+          priority: createCaseDTO.priority,
+          parent_id: createCaseDTO.parentId ?? null,
+          case_type: createCaseDTO.caseType,
+          case_creation_type: createCaseDTO.caseCreationType,
+        },
+      });
 
-            this.eventEmitter.emit(
-                'case.created',
-                new CaseCreatedEvent(
-                    createdCase.case_id,
-                    createdCase.tenant_id,
-                    createCaseDTO.caseCreationType,
-                    undefined,
-                    false,
-                ),
-            );
+      this.eventEmitter.emit(
+        'case.created',
+        new CaseCreatedEvent(createdCase.case_id, createdCase.tenant_id, createCaseDTO.caseCreationType, undefined, false),
+      );
 
-            this.auditLogService.logAction({
-                userId,
-                operation: 'createCase',
-                entityName: 'Case',
-                actionPerformed: 'Case created',
-                outcome: Outcome.SUCCESS
-            });
+      this.auditLogService.logAction({
+        userId,
+        operation: 'createCase',
+        entityName: 'Case',
+        actionPerformed: 'Case created',
+        outcome: Outcome.SUCCESS,
+      });
 
-            return createdCase;
-        } catch (error) {
-            this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
-            throw error;
-        }
+      return createdCase;
+    } catch (error) {
+      this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
+      throw error;
     }
+  }
 }

@@ -9,17 +9,9 @@ import { ConfigModule } from '@nestjs/config';
 import { TaskModule } from '../task/task.module';
 
 @Module({
-  imports: [
-    LoggerModule,
-    ConfigModule,
-    TaskModule,
-  ],
+  imports: [LoggerModule, ConfigModule, TaskModule],
   controllers: [WorkQueueController],
-  providers: [
-    FlowableService,
-    BpmnDeploymentService,
-    FlowableEventListener,
-  ],
+  providers: [FlowableService, BpmnDeploymentService, FlowableEventListener],
   exports: [FlowableService, BpmnDeploymentService],
 })
 export class FlowableModule {}

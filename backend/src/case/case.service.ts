@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
@@ -24,27 +18,23 @@ import { TaskService } from 'src/task/task.service';
 import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
 import { CommentService } from 'src/comment/comment.service';
 import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
-import {
-  CaseCreatedEvent,
-  CaseAbandonedEvent,
-  CaseStatusChangedEvent,
-} from '../events/domain-events';
-import { SystemCaseCreationDto } from "./dto/system-case-creation.dto";
-import {NotificationService} from "../notification/notification.service";
+import { CaseCreatedEvent, CaseAbandonedEvent, CaseStatusChangedEvent } from '../events/domain-events';
+import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class CaseService {
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly eventEmitter: EventEmitter2,
-      private readonly configService: ConfigService,
-      private readonly taskService: TaskService,
-      private readonly commentService: CommentService,
-      private readonly caseWorkflowService: CaseWorkflowService,
-      private readonly casePriorityUtil: CasePriorityUtil,
-      private readonly notificationService: NotificationService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly configService: ConfigService,
+    private readonly taskService: TaskService,
+    private readonly commentService: CommentService,
+    private readonly caseWorkflowService: CaseWorkflowService,
+    private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
@@ -63,7 +53,7 @@ export class CaseService {
         userId: systemUuid,
         operation: 'createCase',
         entityName: CaseService.name,
-        actionPerformed: `Case creation triggered via system transmission`,
+        actionPerformed: 'Case creation triggered via system transmission',
         outcome: Outcome.SUCCESS,
       });
       return { message: 'Case creation triggered via system transmission' };
@@ -103,9 +93,7 @@ export class CaseService {
     const caseType = this.casePriorityUtil.mapAlertTypeToCaseType(dto.alertType);
 
     const needsApproval = role !== 'SUPERVISOR';
-    const caseStatus = needsApproval
-        ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
-        : CaseStatus.STATUS_10_ASSIGNED;
+    const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_10_ASSIGNED;
     const caseOwnerId = needsApproval ? undefined : userId;
 
     try {
@@ -136,36 +124,24 @@ export class CaseService {
 
         if (needsApproval) {
           approvalTask = await this.taskService.createTask(
-              {
-                caseId: createdCase.case_id,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Approve Case Creation',
-                description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
-                candidateGroup: 'supervisors',
-              },
-              userId,
-              this.auditLogService,
-              this.logger,
+            {
+              caseId: createdCase.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Approve Case Creation',
+              description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
+              candidateGroup: 'supervisors',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
           );
-          this.logger.log(
-              `Created Approve Case Creation task ${approvalTask.task_id} for case ${createdCase.case_id}`,
-              CaseService.name
-          );
+          this.logger.log(`Created Approve Case Creation task ${approvalTask.task_id} for case ${createdCase.case_id}`, CaseService.name);
         }
 
         return { case: createdCase, alert: updatedAlert, approvalTask };
       });
 
-      this.eventEmitter.emit(
-          'case.created',
-          new CaseCreatedEvent(
-              result.case.case_id,
-              tenantId,
-              'MANUAL',
-              role,
-              false,
-          ),
-      );
+      this.eventEmitter.emit('case.created', new CaseCreatedEvent(result.case.case_id, tenantId, 'MANUAL', role, false));
 
       await this.auditLogService.logAction({
         userId,
@@ -264,26 +240,26 @@ export class CaseService {
       });
 
       const investigateTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for case ${caseId}`,
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Investigation task for case ${caseId}`,
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case creation approved by supervisor',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case creation approved by supervisor',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -338,17 +314,17 @@ export class CaseService {
       });
 
       const completeNewCaseTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: existingCase.case_creator_user_id,
-            name: 'Complete New Case',
-            description: 'Revise and complete the case as per supervisor feedback',
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_10_ASSIGNED,
+          assignedUserId: existingCase.case_creator_user_id,
+          name: 'Complete New Case',
+          description: 'Revise and complete the case as per supervisor feedback',
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -360,13 +336,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_00_DRAFT,
-              `Case creation rejected: ${reason}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_00_DRAFT,
+          `Case creation rejected: ${reason}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -407,7 +383,7 @@ export class CaseService {
         include: {
           tasks: true,
           alert: true,
-          comments: true
+          comments: true,
         },
       });
 
@@ -441,9 +417,7 @@ export class CaseService {
         });
       }
 
-      const investigationTask = caseData.tasks.find(
-          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case'
-      );
+      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
 
       if (!investigationTask) {
         const errorMsg = `Case closure failed: Investigation task not found for case ${caseId}`;
@@ -517,7 +491,7 @@ export class CaseService {
           where: { case_id: caseId },
           data: {
             status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -525,7 +499,7 @@ export class CaseService {
           where: { task_id: investigationTask.task_id },
           data: {
             status: TaskStatus.STATUS_30_COMPLETED,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -543,16 +517,16 @@ export class CaseService {
       });
 
       const approvalTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Approve case closure',
-            description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
-            candidateGroup: 'supervisors',
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Approve case closure',
+          description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
+          candidateGroup: 'supervisors',
+        },
+        userId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -570,13 +544,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              `Case closure requested with outcome: ${dto.recommendedOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+        ),
       );
 
       try {
@@ -592,10 +566,7 @@ export class CaseService {
           },
         });
       } catch (notificationError) {
-        this.logger.warn(
-            `Failed to send supervisor notification: ${notificationError.message}`,
-            CaseService.name
-        );
+        this.logger.warn(`Failed to send supervisor notification: ${notificationError.message}`, CaseService.name);
       }
 
       await this.auditLogService.logAction({
@@ -611,24 +582,19 @@ export class CaseService {
         closed_case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
-          updated_at: result.updatedCase.updated_at
+          updated_at: result.updatedCase.updated_at,
         },
         approval_task: {
           task_id: approvalTask.task_id,
           name: approvalTask.name,
           status: approvalTask.status,
-          assigned_to: 'Supervisors'
+          assigned_to: 'Supervisors',
         },
       };
-
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
 
-      this.logger.error(
-          `Case closure failed for case ${caseId}: ${errorMessage}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`Case closure failed for case ${caseId}: ${errorMessage}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId,
@@ -638,9 +604,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
 
-      if (error instanceof NotFoundException ||
-          error instanceof BadRequestException ||
-          error instanceof ConflictException) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
         throw error;
       }
 
@@ -660,11 +624,7 @@ export class CaseService {
       errors.push('Recommended outcome is required');
     }
 
-    const validOutcomes = [
-      'STATUS_81_CLOSED_REFUTED',
-      'STATUS_82_CLOSED_CONFIRMED',
-      'STATUS_83_CLOSED_INCONCLUSIVE',
-    ];
+    const validOutcomes = ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'];
 
     if (dto.recommendedOutcome && !validOutcomes.includes(dto.recommendedOutcome)) {
       errors.push(`Invalid recommended outcome. Must be one of: ${validOutcomes.join(', ')}`);
@@ -682,16 +642,9 @@ export class CaseService {
   }
 
   // approve case reopening needs testing
-  async approveCaseReopening(
-      caseId: string,
-      supervisorId: string,
-      tenantId: string
-  ) {
+  async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
     try {
-      this.logger.log(
-          `Supervisor ${supervisorId} approving case reopening for ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseService.name);
 
       const caseData = await this.validateReopeningPreconditions(caseId);
 
@@ -711,9 +664,7 @@ export class CaseService {
       });
 
       if (!reopeningTask) {
-        throw new NotFoundException(
-            `"Approve Case Reopening" task not found for case ${caseId}`
-        );
+        throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
       }
 
       let reopeningMetadata: any = {};
@@ -728,10 +679,7 @@ export class CaseService {
           requesterId = metadata.requestedBy;
           requesterRole = metadata.requesterRole;
         } catch (parseError) {
-          this.logger.warn(
-              `Failed to parse reopening metadata: ${parseError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseService.name);
         }
       }
 
@@ -740,11 +688,12 @@ export class CaseService {
       let assignedUserId: string | undefined;
       let candidateGroup: string;
 
-      const isAnalystOrInvestigator = requesterRole &&
-          (requesterRole.toUpperCase() === 'ANALYST' ||
-              requesterRole.toUpperCase() === 'INVESTIGATOR' ||
-              requesterRole.toUpperCase() === 'CMS_ANALYST' ||
-              requesterRole.toUpperCase() === 'CMS_INVESTIGATOR');
+      const isAnalystOrInvestigator =
+        requesterRole &&
+        (requesterRole.toUpperCase() === 'ANALYST' ||
+          requesterRole.toUpperCase() === 'INVESTIGATOR' ||
+          requesterRole.toUpperCase() === 'CMS_ANALYST' ||
+          requesterRole.toUpperCase() === 'CMS_INVESTIGATOR');
 
       if (isAnalystOrInvestigator && requesterId) {
         newCaseStatus = CaseStatus.STATUS_10_ASSIGNED;
@@ -752,10 +701,7 @@ export class CaseService {
         assignedUserId = requesterId;
         candidateGroup = 'investigations';
 
-        this.logger.log(
-            `Reopening approved - assigning to original requester ${requesterId}`,
-            CaseService.name
-        );
+        this.logger.log(`Reopening approved - assigning to original requester ${requesterId}`, CaseService.name);
       } else {
         newCaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
         newTaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
@@ -763,8 +709,8 @@ export class CaseService {
         candidateGroup = 'investigations';
 
         this.logger.log(
-            `Reopening approved - assigning to investigations queue (requester role: ${requesterRole || 'unknown'})`,
-            CaseService.name
+          `Reopening approved - assigning to investigations queue (requester role: ${requesterRole || 'unknown'})`,
+          CaseService.name,
         );
       }
 
@@ -775,7 +721,7 @@ export class CaseService {
           data: {
             status: newCaseStatus,
             case_owner_user_id: assignedUserId || null,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -800,27 +746,22 @@ export class CaseService {
       });
 
       const investigationTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: newTaskStatus,
-            assignedUserId,
-            name: 'Investigate Case',
-            description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
-            candidateGroup,
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: newTaskStatus,
+          assignedUserId,
+          name: 'Investigate Case',
+          description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
+          candidateGroup,
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_31_REOPENED,
-              newCaseStatus,
-              `Case reopening approved`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(caseId, CaseStatus.STATUS_31_REOPENED, newCaseStatus, 'Case reopening approved'),
       );
 
       if (assignedUserId) {
@@ -837,10 +778,7 @@ export class CaseService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(
-              `Failed to send analyst notification: ${notificationError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to send analyst notification: ${notificationError.message}`, CaseService.name);
         }
       } else {
         try {
@@ -855,10 +793,7 @@ export class CaseService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(
-              `Failed to send group notification: ${notificationError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to send group notification: ${notificationError.message}`, CaseService.name);
         }
       }
 
@@ -870,10 +805,7 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(
-          `Case ${caseId} reopening approved. Status: ${newCaseStatus}`,
-          CaseService.name
-      );
+      this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseService.name);
 
       return {
         success: true,
@@ -896,13 +828,8 @@ export class CaseService {
           candidateGroup,
         },
       };
-
     } catch (error) {
-      this.logger.error(
-          `Failed to approve case reopening: ${error.message}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`Failed to approve case reopening: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -917,17 +844,9 @@ export class CaseService {
   }
 
   // reject case needs testing
-  async rejectCaseReopening(
-      caseId: string,
-      rejectionReason: string,
-      supervisorId: string,
-      tenantId: string
-  ) {
+  async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
     try {
-      this.logger.log(
-          `Supervisor ${supervisorId} rejecting case reopening for ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseService.name);
 
       if (!rejectionReason || rejectionReason.trim().length < 20) {
         const errorMsg = 'Rejection reason must be at least 20 characters';
@@ -958,9 +877,7 @@ export class CaseService {
       });
 
       if (!reopeningTask) {
-        throw new NotFoundException(
-            `"Approve Case Reopening" task not found for case ${caseId}`
-        );
+        throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
       }
 
       let requesterId: string | null = null;
@@ -969,10 +886,7 @@ export class CaseService {
           const metadata = JSON.parse(reopeningTask.comments[0].note);
           requesterId = metadata.requestedBy;
         } catch (parseError) {
-          this.logger.warn(
-              `Failed to parse reopening metadata: ${parseError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseService.name);
         }
       }
 
@@ -1009,13 +923,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_31_REOPENED,
-              originalClosedStatus,
-              `Case reopening rejected: ${rejectionReason}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_31_REOPENED,
+          originalClosedStatus,
+          `Case reopening rejected: ${rejectionReason}`,
+        ),
       );
 
       if (requesterId) {
@@ -1032,10 +946,7 @@ export class CaseService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(
-              `Failed to send rejection notification: ${notificationError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseService.name);
         }
       }
 
@@ -1047,10 +958,7 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(
-          `Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`,
-          CaseService.name
-      );
+      this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseService.name);
 
       return {
         success: true,
@@ -1066,13 +974,8 @@ export class CaseService {
         },
         rejection_reason: rejectionReason,
       };
-
     } catch (error) {
-      this.logger.error(
-          `Failed to reject case reopening: ${error.message}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`Failed to reject case reopening: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -1111,14 +1014,10 @@ export class CaseService {
       });
     }
 
-    const reopeningTask = caseData.tasks.find(
-        t => t.name === 'Approve Case Reopening' && t.status === TaskStatus.STATUS_01_UNASSIGNED
-    );
+    const reopeningTask = caseData.tasks.find((t) => t.name === 'Approve Case Reopening' && t.status === TaskStatus.STATUS_01_UNASSIGNED);
 
     if (!reopeningTask) {
-      throw new NotFoundException(
-          `"Approve Case Reopening" task not found or not in correct state for case ${caseId}`
-      );
+      throw new NotFoundException(`"Approve Case Reopening" task not found or not in correct state for case ${caseId}`);
     }
 
     return caseData;
@@ -1137,23 +1036,11 @@ export class CaseService {
   }
 
   //need testing for new validations
-  async approveCaseClosure(
-      caseId: string,
-      finalOutcome: string,
-      comments: string | undefined,
-      supervisorId: string
-  ) {
+  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
     try {
-      this.logger.log(
-          `Supervisor ${supervisorId} attempting to approve case closure for ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`Supervisor ${supervisorId} attempting to approve case closure for ${caseId}`, CaseService.name);
 
-      const validOutcomes = [
-        'STATUS_81_CLOSED_REFUTED',
-        'STATUS_82_CLOSED_CONFIRMED',
-        'STATUS_83_CLOSED_INCONCLUSIVE',
-      ];
+      const validOutcomes = ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'];
 
       if (!finalOutcome || !validOutcomes.includes(finalOutcome)) {
         const errorMsg = `Invalid final outcome: ${finalOutcome}. Must be one of: ${validOutcomes.join(', ')}`;
@@ -1223,7 +1110,7 @@ export class CaseService {
           where: { case_id: caseId },
           data: {
             status: finalOutcome as CaseStatus,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -1231,14 +1118,12 @@ export class CaseService {
           where: {
             case_id: caseId,
             name: 'Approve case closure',
-            status: TaskStatus.STATUS_01_UNASSIGNED
+            status: TaskStatus.STATUS_01_UNASSIGNED,
           },
         });
 
         if (!approvalTask) {
-          throw new NotFoundException(
-              `"Approve case closure" task not found for case ${caseId}`
-          );
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
         }
 
         const completedTask = await tx.task.update({
@@ -1246,7 +1131,7 @@ export class CaseService {
           data: {
             status: TaskStatus.STATUS_30_COMPLETED,
             assigned_user_id: supervisorId,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -1255,7 +1140,7 @@ export class CaseService {
             data: {
               user_id: supervisorId,
               task_id: approvalTask.task_id,
-              note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`
+              note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`,
             },
           });
         } else {
@@ -1272,18 +1157,17 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              finalOutcome as CaseStatus,
-              `Case closure approved with outcome: ${finalOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          finalOutcome as CaseStatus,
+          `Case closure approved with outcome: ${finalOutcome}`,
+        ),
       );
 
       const investigationTask = caseDetails.tasks.find(
-          t => (t.name === 'Investigate Case' || t.name === 'Investigate case')
-              && t.assigned_user_id
+        (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.assigned_user_id,
       );
 
       if (investigationTask?.assigned_user_id) {
@@ -1300,10 +1184,7 @@ export class CaseService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(
-              `Failed to send investigator notification: ${notificationError.message}`,
-              CaseService.name
-          );
+          this.logger.warn(`Failed to send investigator notification: ${notificationError.message}`, CaseService.name);
         }
       }
 
@@ -1315,32 +1196,24 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(
-          `Case ${caseId} closure approved successfully with outcome ${finalOutcome}`,
-          CaseService.name
-      );
+      this.logger.log(`Case ${caseId} closure approved successfully with outcome ${finalOutcome}`, CaseService.name);
 
       return {
         message: 'Case closure approved',
         case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
-          updated_at: result.updatedCase.updated_at
+          updated_at: result.updatedCase.updated_at,
         },
         completed_task: {
           task_id: result.completedTask.task_id,
-          status: result.completedTask.status
+          status: result.completedTask.status,
         },
       };
-
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
 
-      this.logger.error(
-          `Case closure approval failed for case ${caseId}: ${errorMessage}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`Case closure approval failed for case ${caseId}: ${errorMessage}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -1350,9 +1223,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
 
-      if (error instanceof NotFoundException ||
-          error instanceof BadRequestException ||
-          error instanceof ConflictException) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
         throw error;
       }
 
@@ -1382,8 +1253,7 @@ export class CaseService {
     }
 
     const hasInvestigationTask = caseDetails.tasks.some(
-        t => (t.name === 'Investigate Case' || t.name === 'Investigate case')
-            && t.status === TaskStatus.STATUS_30_COMPLETED
+      (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.status === TaskStatus.STATUS_30_COMPLETED,
     );
 
     if (!hasInvestigationTask) {
@@ -1391,7 +1261,7 @@ export class CaseService {
     }
 
     const closureComments = caseDetails.comments.filter(
-        c => c.note.includes('Recommended Outcome') || c.note.includes('Final Investigation Summary')
+      (c) => c.note.includes('Recommended Outcome') || c.note.includes('Final Investigation Summary'),
     );
 
     if (closureComments.length === 0) {
@@ -1404,10 +1274,7 @@ export class CaseService {
   //reject case closure needs testing
   async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
-      this.logger.log(
-          `Supervisor ${supervisorId} rejecting case closure for ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseService.name);
 
       await this.validateApprovalPreconditions(caseId);
 
@@ -1444,9 +1311,7 @@ export class CaseService {
       const originalInvestigatorId = originalInvestigationTask?.assigned_user_id;
 
       if (!originalInvestigatorId) {
-        throw new BadRequestException(
-            'Cannot determine original investigator for case reassignment'
-        );
+        throw new BadRequestException('Cannot determine original investigator for case reassignment');
       }
 
       const result = await this.prismaService.$transaction(async (tx) => {
@@ -1455,7 +1320,7 @@ export class CaseService {
           where: { case_id: caseId },
           data: {
             status: CaseStatus.STATUS_20_IN_PROGRESS,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -1463,14 +1328,12 @@ export class CaseService {
           where: {
             case_id: caseId,
             name: 'Approve case closure',
-            status: TaskStatus.STATUS_01_UNASSIGNED
+            status: TaskStatus.STATUS_01_UNASSIGNED,
           },
         });
 
         if (!approvalTask) {
-          throw new NotFoundException(
-              `"Approve case closure" task not found for case ${caseId}`
-          );
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
         }
 
         const completedTask = await tx.task.update({
@@ -1478,7 +1341,7 @@ export class CaseService {
           data: {
             status: TaskStatus.STATUS_30_COMPLETED,
             assigned_user_id: supervisorId,
-            updated_at: new Date()
+            updated_at: new Date(),
           },
         });
 
@@ -1486,7 +1349,7 @@ export class CaseService {
           data: {
             user_id: supervisorId,
             task_id: approvalTask.task_id,
-            note: `Case closure rejected by supervisor: ${comments}`
+            note: `Case closure rejected by supervisor: ${comments}`,
           },
         });
 
@@ -1494,17 +1357,17 @@ export class CaseService {
       });
 
       const newInvestigationTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: originalInvestigatorId,
-            name: 'Investigate Case',
-            description: `Continue investigation based on supervisor feedback. Previous closure was rejected.`,
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_10_ASSIGNED,
+          assignedUserId: originalInvestigatorId,
+          name: 'Investigate Case',
+          description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -1516,13 +1379,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              `Case closure rejected: ${comments}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          `Case closure rejected: ${comments}`,
+        ),
       );
 
       try {
@@ -1538,10 +1401,7 @@ export class CaseService {
           },
         });
       } catch (notificationError) {
-        this.logger.warn(
-            `Failed to send investigator notification: ${notificationError.message}`,
-            CaseService.name
-        );
+        this.logger.warn(`Failed to send investigator notification: ${notificationError.message}`, CaseService.name);
       }
 
       await this.auditLogService.logAction({
@@ -1553,8 +1413,8 @@ export class CaseService {
       });
 
       this.logger.log(
-          `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
-          CaseService.name
+        `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
+        CaseService.name,
       );
 
       return {
@@ -1562,7 +1422,7 @@ export class CaseService {
         case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
-          updated_at: result.updatedCase.updated_at
+          updated_at: result.updatedCase.updated_at,
         },
         completed_approval_task: {
           task_id: result.completedTask.task_id,
@@ -1575,13 +1435,8 @@ export class CaseService {
           status: newInvestigationTask.status,
         },
       };
-
     } catch (error) {
-      this.logger.error(
-          `Failed to reject case closure: ${error.message}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`Failed to reject case closure: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -1623,13 +1478,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              `Returned for review: ${comments}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          `Returned for review: ${comments}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -1666,7 +1521,12 @@ export class CaseService {
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED }, userId);
-        const updatedTask = await this.taskService.updateTask(completeNewCaseTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, userId, this.auditLogService);
+        const updatedTask = await this.taskService.updateTask(
+          completeNewCaseTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED },
+          userId,
+          this.auditLogService,
+        );
         const createCommentDto = new CreateCommentDto();
         createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.note = reason;
@@ -1683,10 +1543,7 @@ export class CaseService {
         return { case: updatedCase, task: updatedTask };
       });
 
-      this.eventEmitter.emit(
-          'case.abandoned',
-          new CaseAbandonedEvent(caseId, reason),
-      );
+      this.eventEmitter.emit('case.abandoned', new CaseAbandonedEvent(caseId, reason));
 
       return { success: true, ...result };
     } catch (err) {
@@ -1698,7 +1555,7 @@ export class CaseService {
   async completeCase(caseId: string, userId: string, tenantId: string) {
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
-    if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException(`Only cases in DRAFT status can be completed`);
+    if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Only cases in DRAFT status can be completed');
 
     const missingFields = this.validateCaseCompletionFields(existingCase);
     if (missingFields.length > 0) {
@@ -1722,32 +1579,37 @@ export class CaseService {
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException(`Complete New Case task ${completeNewCaseTask.task_id} is already completed`);
         }
-        const updatedTask = await this.taskService.updateTask(completeNewCaseTask.task_id, { status: TaskStatus.STATUS_30_COMPLETED }, userId, this.auditLogService);
+        const updatedTask = await this.taskService.updateTask(
+          completeNewCaseTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED },
+          userId,
+          this.auditLogService,
+        );
 
         return { case: updatedCase, completedTask: updatedTask };
       });
 
       const investigateTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Task to investigate: ${caseId}`,
-            candidateGroup: 'investigations'
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Task to investigate: ${caseId}`,
+          candidateGroup: 'investigations',
+        },
+        userId,
+        this.auditLogService,
+        this.logger,
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_00_DRAFT,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case completed and ready for assignment',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_00_DRAFT,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case completed and ready for assignment',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -1775,7 +1637,7 @@ export class CaseService {
   private async validateApprovalPreconditions(caseId: string) {
     const caseData = await this.prismaService.case.findUnique({
       where: { case_id: caseId },
-      include: { tasks: true }
+      include: { tasks: true },
     });
 
     if (!caseData) {
@@ -1795,10 +1657,7 @@ export class CaseService {
     TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
 
     const approvalTask = TaskValidationUtil.findApprovalTask(caseData.tasks);
-    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(
-        caseData.tasks,
-        [approvalTask.task_id]
-    );
+    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
 
     if (!otherTasksValidation.isValid) {
       throw new BadRequestException({
@@ -1809,7 +1668,7 @@ export class CaseService {
         }).map((task) => ({
           taskId: task.task_id,
           name: task.name,
-          status: task.status
+          status: task.status,
         })),
         caseId,
       });
@@ -1818,7 +1677,16 @@ export class CaseService {
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto) {
     try {
-      const { status, priority, includeTaskAssignments, includeOwnedCases, page = 1, limit = 20, sortBy = 'created_at', sortOrder = 'desc' } = query;
+      const {
+        status,
+        priority,
+        includeTaskAssignments,
+        includeOwnedCases,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = query;
       const skip = (page - 1) * limit;
       const whereConditions: any[] = [];
 
@@ -1837,7 +1705,11 @@ export class CaseService {
       }
 
       if (whereConditions.length === 0) {
-        return { cases: [], pagination: { total: 0, page, limit, totalPages: 0 }, summary: { totalOwnedCases: 0, totalTaskAssignments: 0, casesByStatus: {}, casesByPriority: {} } };
+        return {
+          cases: [],
+          pagination: { total: 0, page, limit, totalPages: 0 },
+          summary: { totalOwnedCases: 0, totalTaskAssignments: 0, casesByStatus: {}, casesByPriority: {} },
+        };
       }
 
       const totalCount = await this.prismaService.case.count({ where: { OR: whereConditions } });
@@ -1857,7 +1729,7 @@ export class CaseService {
         const isOwner = caseItem.case_owner_user_id === userId;
         const userTasks = TaskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
         const hasTaskAssignment = userTasks.length > 0;
-        let userRole: 'owner' | 'task_assignee' | 'both' = isOwner && hasTaskAssignment ? 'both' : isOwner ? 'owner' : 'task_assignee';
+        const userRole: 'owner' | 'task_assignee' | 'both' = isOwner && hasTaskAssignment ? 'both' : isOwner ? 'owner' : 'task_assignee';
 
         return {
           case_id: caseItem.case_id,
@@ -1867,9 +1739,16 @@ export class CaseService {
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           user_role: userRole,
-          user_tasks: userTasks.map((task) => ({ task_id: task.task_id, name: task.name, status: task.status, created_at: task.created_at })),
+          user_tasks: userTasks.map((task) => ({
+            task_id: task.task_id,
+            name: task.name,
+            status: task.status,
+            created_at: task.created_at,
+          })),
           total_tasks: caseItem.tasks.length,
-          alert: caseItem.alert ? { alert_id: caseItem.alert.alert_id, message: caseItem.alert.message, confidence_per: caseItem.alert.confidence_per } : undefined,
+          alert: caseItem.alert
+            ? { alert_id: caseItem.alert.alert_id, message: caseItem.alert.message, confidence_per: caseItem.alert.confidence_per }
+            : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
       });
@@ -1881,13 +1760,30 @@ export class CaseService {
         this.prismaService.case.groupBy({ by: ['priority'], where: { OR: whereConditions }, _count: { case_id: true } }),
       ]);
 
-      const statusCounts = casesByStatus.reduce((acc, item) => { acc[item.status] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const priorityCounts = casesByPriority.reduce((acc, item) => { acc[item.priority] = item._count.case_id; return acc; }, {} as Record<string, number>);
+      const statusCounts = casesByStatus.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const priorityCounts = casesByPriority.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       return {
         cases: processedCases,
         pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) },
-        summary: { totalOwnedCases: ownedCasesCount, totalTaskAssignments: taskAssignmentCasesCount, casesByStatus: statusCounts, casesByPriority: priorityCounts },
+        summary: {
+          totalOwnedCases: ownedCasesCount,
+          totalTaskAssignments: taskAssignmentCasesCount,
+          casesByStatus: statusCounts,
+          casesByPriority: priorityCounts,
+        },
       };
     } catch (error) {
       this.logger.error(`Failed to get user cases: ${error.message}`, error.stack, CaseService.name);
@@ -1897,7 +1793,20 @@ export class CaseService {
 
   async getAllCases(query: GetAllCasesQueryDto, supervisorId: string) {
     try {
-      const { status, priority, caseType, ownerId, tenantId, unassignedOnly, createdAfter, createdBefore, page = 1, limit = 20, sortBy = 'created_at', sortOrder = 'desc' } = query;
+      const {
+        status,
+        priority,
+        caseType,
+        ownerId,
+        tenantId,
+        unassignedOnly,
+        createdAfter,
+        createdBefore,
+        page = 1,
+        limit = 20,
+        sortBy = 'created_at',
+        sortOrder = 'desc',
+      } = query;
       const whereClause: any = {};
       if (status) whereClause.status = status;
       if (priority) whereClause.priority = priority;
@@ -1942,7 +1851,10 @@ export class CaseService {
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert,
-          assigned_to: assignedUsers.length > 0 ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length } : undefined,
+          assigned_to:
+            assignedUsers.length > 0
+              ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length }
+              : undefined,
         };
       });
 
@@ -1953,9 +1865,27 @@ export class CaseService {
         this.prismaService.case.count({ where: { case_owner_user_id: null } }),
       ]);
 
-      const casesByStatus = statusStats.reduce((acc, item) => { acc[item.status] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByPriority = priorityStats.reduce((acc, item) => { acc[item.priority] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByType = typeStats.reduce((acc, item) => { if (item.case_type) acc[item.case_type] = item._count.case_id; return acc; }, {} as Record<string, number>);
+      const casesByStatus = statusStats.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByPriority = priorityStats.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByType = typeStats.reduce(
+        (acc, item) => {
+          if (item.case_type) acc[item.case_type] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
 
@@ -1975,7 +1905,15 @@ export class CaseService {
       return {
         cases: processedCases,
         pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) },
-        statistics: { totalCases: totalCount, casesByStatus, casesByPriority, casesByType, unassignedCases: unassignedCount, averageTasksPerCase, oldestUnassignedCase },
+        statistics: {
+          totalCases: totalCount,
+          casesByStatus,
+          casesByPriority,
+          casesByType,
+          unassignedCases: unassignedCount,
+          averageTasksPerCase,
+          oldestUnassignedCase,
+        },
       };
     } catch (error) {
       this.logger.error(`Failed to get all cases: ${error.message}`, error.stack, CaseService.name);
@@ -1986,16 +1924,33 @@ export class CaseService {
   async getUserWorkloadStats(userId: string) {
     try {
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
-        this.prismaService.case.count({ where: {
+        this.prismaService.case.count({
+          where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { notIn: [CaseStatus.STATUS_81_CLOSED_REFUTED, CaseStatus.STATUS_82_CLOSED_CONFIRMED, CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, CaseStatus.STATUS_99_ABANDONED] },
+            status: {
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED,
+              ],
+            },
           },
         }),
-        this.prismaService.task.count({ where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } } }),
+        this.prismaService.task.count({
+          where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } },
+        }),
         this.prismaService.case.findMany({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { notIn: [CaseStatus.STATUS_81_CLOSED_REFUTED, CaseStatus.STATUS_82_CLOSED_CONFIRMED, CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, CaseStatus.STATUS_99_ABANDONED] },
+            status: {
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED,
+              ],
+            },
           },
           select: { case_id: true, status: true, priority: true, created_at: true },
           orderBy: { created_at: 'asc' },
@@ -2010,7 +1965,9 @@ export class CaseService {
         const oldest = allUserCases[0];
         const daysOld = Math.floor((now.getTime() - oldest.created_at.getTime()) / (1000 * 60 * 60 * 24));
         oldestCase = { case_id: oldest.case_id, created_at: oldest.created_at, days_old: daysOld };
-        allUserCases.forEach((c) => { totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24); });
+        allUserCases.forEach((c) => {
+          totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24);
+        });
       }
 
       const casesByStatus: Record<string, number> = {};
@@ -2062,7 +2019,7 @@ export class CaseService {
           case_type: updateData.caseType,
           priority: updateData.priority,
           status: updateData.status,
-          case_owner_user_id: updateData.caseOwnerUserId
+          case_owner_user_id: updateData.caseOwnerUserId,
         },
       });
 

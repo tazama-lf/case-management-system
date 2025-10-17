@@ -9,8 +9,8 @@ export class BpmnDeploymentService implements OnModuleInit {
   private tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
 
   constructor(
-      private readonly flowableService: FlowableService,
-      private readonly logger: LoggerService,
+    private readonly flowableService: FlowableService,
+    private readonly logger: LoggerService,
   ) {}
 
   async onModuleInit() {
@@ -24,16 +24,9 @@ export class BpmnDeploymentService implements OnModuleInit {
       // Deploy unified case management process
       await this.deployUnifiedCaseManagementProcess(bpmnFilesPath);
 
-      this.logger.log(
-          'Unified case management BPMN process deployed successfully',
-          BpmnDeploymentService.name,
-      );
+      this.logger.log('Unified case management BPMN process deployed successfully', BpmnDeploymentService.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to deploy BPMN processes: ${error.message}`,
-          error.stack,
-          BpmnDeploymentService.name,
-      );
+      this.logger.error(`Failed to deploy BPMN processes: ${error.message}`, error.stack, BpmnDeploymentService.name);
       // Don't throw - let the app start even if deployment fails
     }
   }
@@ -43,21 +36,11 @@ export class BpmnDeploymentService implements OnModuleInit {
 
     try {
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
-      await this.flowableService.deployProcess(
-          bpmnXml,
-          'UnifiedCaseManagementProcess',
-          this.tenantId,
-      );
-      this.logger.log(
-          'Unified case management process deployed',
-          BpmnDeploymentService.name,
-      );
+      await this.flowableService.deployProcess(bpmnXml, 'UnifiedCaseManagementProcess', this.tenantId);
+      this.logger.log('Unified case management process deployed', BpmnDeploymentService.name);
     } catch (error) {
       if (error.code === 'ENOENT') {
-        this.logger.warn(
-            `BPMN file not found at ${bpmnFilePath}. Skipping deployment.`,
-            BpmnDeploymentService.name,
-        );
+        this.logger.warn(`BPMN file not found at ${bpmnFilePath}. Skipping deployment.`, BpmnDeploymentService.name);
       } else {
         throw error;
       }
@@ -81,11 +64,7 @@ export class BpmnDeploymentService implements OnModuleInit {
         timestamp: new Date(),
       };
     } catch (error) {
-      this.logger.error(
-          `Error checking deployment status: ${error.message}`,
-          error.stack,
-          BpmnDeploymentService.name,
-      );
+      this.logger.error(`Error checking deployment status: ${error.message}`, error.stack, BpmnDeploymentService.name);
       return {
         deployed: false,
         error: error.message,
