@@ -930,8 +930,8 @@ export class TriageService {
           'case.status.changed',
           new CaseStatusChangedEvent(
               caseId,
-              CaseStatus.STATUS_00_DRAFT,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              status,
+              status,
               'Triage completed, ready for investigation',
           ),
       );

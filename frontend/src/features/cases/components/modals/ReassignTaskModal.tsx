@@ -6,7 +6,7 @@ import type { Investigator } from '../../../auth/types/auth.types';
 interface ReassignTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onReassign: (task: UnifiedWorkQueueTask, assignee: string, justification: string) => void;
+  onReassign: (task: UnifiedWorkQueueTask, assignee: string, justification: string) => void | Promise<void>;
   task?: UnifiedWorkQueueTask | null;
 }
 
@@ -95,7 +95,8 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
     try {
       console.log('Reassigning task:', { taskId: task.id, assignee, justification });
       console.log('Calling onReassign callback with:', { task, assignee, justification });
-      onReassign(task, assignee, justification);
+      await Promise.resolve(onReassign(task, assignee, justification));
+      onClose();
     } catch (error) {
       console.error('Failed to reassign task:', error);
     } finally {
@@ -105,7 +106,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
+      <div className="w-full max-w-lg rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col relative">
         <div className="px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900">Reassign Task</h3>
         </div>
@@ -211,10 +212,23 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
               disabled={!canConfirm || isSubmitting}
             >
-              {isSubmitting ? 'Reassigning...' : 'Confirm Reassignment'}
+              {isSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                  Reassigning...
+                </span>
+              ) : 'Confirm Reassignment'}
             </button>
           </div>
         </div>
+        {isSubmitting && (
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-lg">
+            <div className="flex items-center gap-3 text-indigo-700">
+              <span className="h-5 w-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-medium">Reassigning task...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
