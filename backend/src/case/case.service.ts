@@ -27,7 +27,10 @@ import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
 import {
   CaseCreatedEvent,
   CaseAbandonedEvent,
-  CaseStatusChangedEvent, TaskCompletedEvent,
+  CaseStatusChangedEvent,
+  TaskCompletedEvent,
+  CaseSuspendedEvent,
+  CaseResumedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from "./dto/system-case-creation.dto";
 import {NotificationService} from "../notification/notification.service";
@@ -36,17 +39,17 @@ import { AuthHelperService } from 'src/auth/auth-helper.service';
 @Injectable()
 export class CaseService {
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly eventEmitter: EventEmitter2,
-      private readonly configService: ConfigService,
-      private readonly taskService: TaskService,
-      private readonly commentService: CommentService,
-      private readonly caseWorkflowService: CaseWorkflowService,
-      private readonly casePriorityUtil: CasePriorityUtil,
-      private readonly notificationService: NotificationService,
-      private readonly authHelperService: AuthHelperService,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly configService: ConfigService,
+    private readonly taskService: TaskService,
+    private readonly commentService: CommentService,
+    private readonly caseWorkflowService: CaseWorkflowService,
+    private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly notificationService: NotificationService,
+    private readonly authHelperService: AuthHelperService,
   ) {}
 
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
@@ -155,16 +158,16 @@ export class CaseService {
 
         if (needsApproval) {
           approvalTask = await this.taskService.createTask(
-              {
-                caseId: createdCase.case_id,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Approve Case Creation',
-                description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
-                candidateGroup: 'supervisors',
-              },
-              userId,
-              this.auditLogService,
-              this.logger,
+            {
+              caseId: createdCase.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Approve Case Creation',
+              description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
+              candidateGroup: 'supervisors',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
           );
 
           this.logger.log(
@@ -307,8 +310,8 @@ export class CaseService {
           'task.completed',
           new TaskCompletedEvent(
               result.approvedTask.task_id,
-              caseId,
-              supervisorId,
+          caseId,
+        supervisorId,
               {
                 creationApproval: 'approve',
                 creationComments: 'Case creation approved by supervisor'
@@ -317,13 +320,13 @@ export class CaseService {
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case creation approved by supervisor',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case creation approved by supervisor',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -393,17 +396,17 @@ export class CaseService {
       });
 
       const completeNewCaseTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: existingCase.case_creator_user_id,
-            name: 'Complete New Case',
-            description: 'Revise and complete the case as per supervisor feedback',
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_10_ASSIGNED,
+          assignedUserId: existingCase.case_creator_user_id,
+          name: 'Complete New Case',
+          description: 'Revise and complete the case as per supervisor feedback',
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -415,13 +418,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_00_DRAFT,
-              `Case creation rejected: ${reason}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_00_DRAFT,
+          `Case creation rejected: ${reason}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -598,16 +601,16 @@ export class CaseService {
       });
 
       const approvalTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Approve case closure',
-            description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
-            candidateGroup: 'supervisors',
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Approve case closure',
+          description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
+          candidateGroup: 'supervisors',
+        },
+        userId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -625,13 +628,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              `Case closure requested with outcome: ${dto.recommendedOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+        ),
       );
 
       try {
@@ -696,7 +699,7 @@ export class CaseService {
       if (error instanceof NotFoundException ||
           error instanceof BadRequestException ||
           error instanceof ConflictException) {
-        throw error;
+      throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1029,7 +1032,7 @@ export class CaseService {
           'case.status.changed',
           new CaseStatusChangedEvent(
               caseId,
-              CaseStatus.STATUS_31_REOPENED,
+              CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
               newCaseStatus,
               `Case reopening approved`,
           ),
@@ -1224,7 +1227,7 @@ export class CaseService {
           'case.status.changed',
           new CaseStatusChangedEvent(
               caseId,
-              CaseStatus.STATUS_31_REOPENED,
+              CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
               originalClosedStatus,
               `Case reopening rejected: ${rejectionReason}`,
           ),
@@ -1314,11 +1317,11 @@ export class CaseService {
       throw new NotFoundException(`Case ${caseId} not found`);
     }
 
-    if (caseData.status !== CaseStatus.STATUS_31_REOPENED) {
+    if (caseData.status !== CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL) {
       throw new ConflictException({
         message: 'Case is not pending reopening approval',
         currentStatus: caseData.status,
-        requiredStatus: CaseStatus.STATUS_31_REOPENED,
+        requiredStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
         caseId,
       });
     }
@@ -1383,8 +1386,8 @@ export class CaseService {
         });
       }
 
-      try {
-        await this.validateApprovalPreconditions(caseId);
+    try {
+      await this.validateApprovalPreconditions(caseId);
       } catch (validationError) {
         await this.auditLogService.logAction({
           userId: supervisorId,
@@ -1484,13 +1487,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              finalOutcome as CaseStatus,
-              `Case closure approved with outcome: ${finalOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          finalOutcome as CaseStatus,
+          `Case closure approved with outcome: ${finalOutcome}`,
+        ),
       );
 
       const investigationTask = caseDetails.tasks.find(
@@ -1565,7 +1568,7 @@ export class CaseService {
       if (error instanceof NotFoundException ||
           error instanceof BadRequestException ||
           error instanceof ConflictException) {
-        throw error;
+      throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1665,7 +1668,7 @@ export class CaseService {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus.STATUS_31_REOPENED,
+            status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
             updated_at: new Date()
           },
         });
@@ -1727,13 +1730,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_31_REOPENED,
-              `Case closure rejected: ${comments}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+          `Case closure rejected: ${comments}`,
+        ),
       );
 
       try {
@@ -1834,13 +1837,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              `Returned for review: ${comments}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          `Returned for review: ${comments}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -1865,7 +1868,7 @@ export class CaseService {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseService.name);
 
-      const existingCase = await this.retrieveCase(caseId);
+    const existingCase = await this.retrieveCase(caseId);
 
       const allowedStates: CaseStatus[] = [
         CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -1887,7 +1890,7 @@ export class CaseService {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus.STATUS_30_PENDING_REOPENING,
+            status: CaseStatus. STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
             updated_at: new Date(),
           },
         });
@@ -1915,8 +1918,8 @@ export class CaseService {
         operation: 'reopenCase',
         entityName: CaseService.name,
         actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
+          outcome: Outcome.SUCCESS,
+        });
 
       return {
         success: true,
@@ -2017,26 +2020,26 @@ export class CaseService {
       });
 
       const investigateTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Task to investigate: ${caseId}`,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Task to investigate: ${caseId}`,
             candidateGroup: 'investigations'
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+        },
+        userId,
+        this.auditLogService,
+        this.logger,
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_00_DRAFT,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case completed and ready for assignment',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_00_DRAFT,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case completed and ready for assignment',
+        ),
       );
 
       await this.auditLogService.logAction({
