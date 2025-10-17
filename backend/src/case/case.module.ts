@@ -12,16 +12,7 @@ import { NotificationModule } from 'src/notification/notification.module';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuditLogModule,
-    LoggerModule,
-    CaseWorkflowModule,
-    TaskModule,
-    AuthModule,
-    CommentModule,
-    NotificationModule
-  ],
+  imports: [PrismaModule, AuditLogModule, LoggerModule, CaseWorkflowModule, TaskModule, AuthModule, CommentModule, NotificationModule],
   providers: [CaseService, CaseUpdateListener],
   exports: [CaseService],
   controllers: [CaseController],

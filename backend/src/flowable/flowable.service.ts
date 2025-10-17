@@ -503,8 +503,8 @@ export class FlowableService implements OnModuleInit {
       const formattedVariables = this.formatVariables(variables);
 
       const response = await this.flowableClient.post(
-          `/service/runtime/tasks/${taskId}/variables`,
-          formattedVariables  // Send the array directly
+        `/service/runtime/tasks/${taskId}/variables`,
+        formattedVariables, // Send the array directly
       );
 
       this.logger.log(`Variables set successfully for task ${taskId}`, FlowableService.name);
@@ -555,8 +555,6 @@ export class FlowableService implements OnModuleInit {
       throw new HttpException('Failed to update task variable', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  
 
   async deleteTaskVariable(taskId: string, variableName: string) {
     try {
@@ -662,14 +660,14 @@ export class FlowableService implements OnModuleInit {
   }
 
   async syncTaskWithDatabase(
-      flowableTaskId: string,
-      dbTaskData: {
-        postgres_task_id: string;
-        postgres_case_id: string;
-        task_status: string;
-        assignee_user_id?: string;
-        flowable_case_id?: string;
-      },
+    flowableTaskId: string,
+    dbTaskData: {
+      postgres_task_id: string;
+      postgres_case_id: string;
+      task_status: string;
+      assignee_user_id?: string;
+      flowable_case_id?: string;
+    },
   ) {
     try {
       this.logger.log(`Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`, FlowableService.name);
@@ -693,7 +691,10 @@ export class FlowableService implements OnModuleInit {
 
       await this.setTaskVariables(flowableTaskId, variables);
 
-      this.logger.log(`Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`, FlowableService.name);
+      this.logger.log(
+        `Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`,
+        FlowableService.name,
+      );
       return true;
     } catch (error) {
       this.logger.error(`Failed to sync task with database: ${error.message}`, error.stack, FlowableService.name);

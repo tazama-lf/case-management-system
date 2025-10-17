@@ -16,6 +16,7 @@ import { TaskModule } from './task/task.module';
 import { NatsModule } from './nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './flowable/flowable.module';
+import { WorkQueueModule } from './work-queue/work-queue.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -38,6 +39,7 @@ import { validate } from './config/env.validation';
     TaskModule,
     AuthModule,
     SystemConfigModule,
+    WorkQueueModule,
   ],
   providers: [
     PrismaService,

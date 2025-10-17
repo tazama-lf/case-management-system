@@ -1,0 +1,194 @@
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { WorkQueueService } from './work-queue.service';
+import {
+  CreateWorkQueueDto,
+  UpdateWorkQueueDto,
+  GetWorkQueuesQueryDto,
+  WorkQueueResponseDto,
+  WorkQueueDetailResponseDto,
+  WorkQueueListResponseDto,
+} from './dto';
+import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { User } from '../auth/user.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from '../auth/auth.decorator';
+
+/**
+ * Work Queue Management Controller
+ *
+ * Manages work queues for task distribution and assignment.
+ * All endpoints require CMS_INVESTIGATOR or CMS_SUPERVISOR role.
+ * Create/Update/Delete operations require CMS_SUPERVISOR role.
+ */
+@ApiTags('Work Queue Management')
+@ApiBearerAuth('jwt')
+@Controller('api/v1/work-queues')
+@UseGuards(TazamaAuthGuard)
+@RequireInvestigatorOrSupervisorRole()
+export class WorkQueueController {
+  constructor(private readonly workQueueService: WorkQueueService) {}
+
+  @Post()
+  @RequireSupervisorRole() // Only supervisors can create work queues
+  @ApiOperation({
+    summary: 'Create a new work queue',
+    description:
+      'Creates a new work queue with specified roles, task types, and assignment rules. ' +
+      'Only supervisors can create work queues. The work queue will be scoped to the user\'s tenant.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Work queue created successfully',
+    type: WorkQueueDetailResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 409, description: 'Work queue with this name already exists for this tenant' })
+  async createWorkQueue(@Body() createDto: CreateWorkQueueDto, @User() user: any): Promise<WorkQueueDetailResponseDto> {
+    return this.workQueueService.createWorkQueue(createDto, user.tenantId, user.userId);
+  }
+
+  @Get()
+  @ApiOperation({
+    summary: 'Get all work queues',
+    description:
+      'Retrieves a paginated list of work queues with optional filters. ' +
+      'Administrators can see all queues across tenants, while other users only see queues for their tenant. ' +
+      'Supports filtering by role, active status, and pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Work queues retrieved successfully',
+    type: WorkQueueListResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  async getAllWorkQueues(@Query() query: GetWorkQueuesQueryDto, @User() user: any): Promise<WorkQueueListResponseDto> {
+    // Admin sees all queues, others see only their tenant's queues
+    const tenantId = user.role === 'ADMIN' ? query.tenantId : user.tenantId;
+    return this.workQueueService.getAllWorkQueues(query, tenantId);
+  }
+
+  @Get(':workQueueId')
+  @ApiOperation({
+    summary: 'Get work queue by ID',
+    description: 'Retrieves detailed information about a specific work queue, including all roles, ' + 'task types, and assignment rules.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Work queue retrieved successfully',
+    type: WorkQueueDetailResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'Work queue not found' })
+  async getWorkQueueById(@Param('workQueueId') workQueueId: string, @User() user: any): Promise<WorkQueueDetailResponseDto> {
+    return this.workQueueService.getWorkQueueById(workQueueId, user.tenantId);
+  }
+
+  @Get('role/:roleName')
+  @ApiOperation({
+    summary: 'Get work queues for a specific role',
+    description:
+      'Retrieves all active work queues that are assigned to a specific user role ' +
+      '(e.g., INVESTIGATOR, SUPERVISOR, ANALYST). Useful for dashboard views.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Work queues retrieved successfully',
+    type: [WorkQueueResponseDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  async getWorkQueuesByRole(@Param('roleName') roleName: string, @User() user: any): Promise<WorkQueueResponseDto[]> {
+    return this.workQueueService.getWorkQueuesByRole(roleName, user.tenantId);
+  }
+
+  @Put(':workQueueId')
+  @RequireSupervisorRole() // Only supervisors can update work queues
+  @ApiOperation({
+    summary: 'Update work queue',
+    description:
+      'Updates an existing work queue. All fields are optional - only provided fields will be updated. ' +
+      'Only supervisors can update work queues.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Work queue updated successfully',
+    type: WorkQueueDetailResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'Work queue not found' })
+  @ApiResponse({ status: 409, description: 'Work queue with this name already exists for this tenant' })
+  async updateWorkQueue(
+    @Param('workQueueId') workQueueId: string,
+    @Body() updateDto: UpdateWorkQueueDto,
+    @User() user: any,
+  ): Promise<WorkQueueDetailResponseDto> {
+    return this.workQueueService.updateWorkQueue(workQueueId, updateDto, user.tenantId, user.userId);
+  }
+
+  @Put(':workQueueId/deactivate')
+  @RequireSupervisorRole() // Only supervisors can deactivate work queues
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Deactivate work queue',
+    description:
+      'Soft-deletes a work queue by setting isActive to false. The queue and its data are preserved ' +
+      'for audit purposes. Only supervisors can deactivate queues.',
+  })
+  @ApiResponse({ status: 204, description: 'Work queue deactivated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'Work queue not found' })
+  async deactivateWorkQueue(@Param('workQueueId') workQueueId: string, @User() user: any): Promise<void> {
+    await this.workQueueService.deactivateWorkQueue(workQueueId, user.tenantId, user.userId);
+  }
+
+  @Delete(':workQueueId')
+  @RequireSupervisorRole() // Only supervisors can delete work queues
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete work queue',
+    description:
+      'Permanently deletes a work queue. If the queue has active tasks, you must provide a ' +
+      'reassignQueueId query parameter to reassign those tasks to another queue. ' +
+      'Only supervisors can delete queues.',
+  })
+  @ApiResponse({ status: 204, description: 'Work queue deleted successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot delete queue with active tasks without reassignment' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'Work queue not found' })
+  async deleteWorkQueue(
+    @Param('workQueueId') workQueueId: string,
+    @Query('reassignQueueId') reassignQueueId: string | undefined,
+    @User() user: any,
+  ): Promise<void> {
+    await this.workQueueService.deleteWorkQueue(workQueueId, user.tenantId, user.userId, reassignQueueId);
+  }
+
+  @Get(':workQueueId/statistics')
+  @ApiOperation({
+    summary: 'Get work queue statistics',
+    description:
+      'Retrieves statistics for a work queue including total tasks, pending tasks, ' +
+      'in-progress tasks, completed tasks, and blocked tasks.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        workQueueId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        totalTasks: { type: 'number', example: 50 },
+        pendingTasks: { type: 'number', example: 15 },
+        inProgressTasks: { type: 'number', example: 20 },
+        completedTasks: { type: 'number', example: 12 },
+        blockedTasks: { type: 'number', example: 3 },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'Work queue not found' })
+  async getWorkQueueStatistics(@Param('workQueueId') workQueueId: string, @User() user: any) {
+    return this.workQueueService.getWorkQueueStatistics(workQueueId, user.tenantId);
+  }
+}

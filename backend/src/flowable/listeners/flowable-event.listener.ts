@@ -52,7 +52,6 @@ export class FlowableEventListener {
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
-        // Only create standalone task if no process exists
         this.logger.warn(`No Flowable process found for case ${event.caseId}, creating standalone task`, FlowableEventListener.name);
 
         const flowableTask = await this.flowableService.createTask({
@@ -297,6 +296,37 @@ export class FlowableEventListener {
       }
     } catch (error) {
       this.logger.error(`Failed to resume Flowable process: ${error.message}`, error.stack, FlowableEventListener.name);
+    }
+  }
+
+  @OnEvent('task.reassigned')
+  async handleTaskReassigned(event: any) {
+    try {
+      this.logger.log(
+        `Handling task reassignment: Task ${event.taskId} from '${event.oldWorkQueueName || 'unassigned'}' to '${event.newWorkQueueName}'`,
+        FlowableEventListener.name,
+      );
+
+      if (event.oldWorkQueueId) {
+        this.logger.log(`TODO: Notify old queue '${event.oldWorkQueueName}' members about task removal`, FlowableEventListener.name);
+      }
+
+      this.logger.log(`TODO: Notify new queue '${event.newWorkQueueName}' members about new task`, FlowableEventListener.name);
+
+      if (event.previousAssignedUserId) {
+        this.logger.log(
+          `TODO: Notify previous assignee ${event.previousAssignedUserId} about task reassignment`,
+          FlowableEventListener.name,
+        );
+      }
+
+      if (event.assignedUserId) {
+        this.logger.log(`TODO: Notify new assignee ${event.assignedUserId} about task assignment`, FlowableEventListener.name);
+      }
+
+      this.logger.log(`Task ${event.taskId} reassignment notifications processed`, FlowableEventListener.name);
+    } catch (error) {
+      this.logger.error(`Failed to handle task reassignment: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 }

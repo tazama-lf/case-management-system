@@ -37,8 +37,8 @@ describe('BpmnDeploymentService', () => {
         }).compile();
 
         service = module.get<BpmnDeploymentService>(BpmnDeploymentService);
-        flowableService = module.get(FlowableService) as jest.Mocked<FlowableService>;
-        loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
+        flowableService = module.get(FlowableService);
+        loggerService = module.get(LoggerService);
     });
 
     afterEach(() => {

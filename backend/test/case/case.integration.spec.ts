@@ -63,10 +63,10 @@ describe('Case Management Integration', () => {
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
-      if (response.body && response.body.stack) {
+      if (response.body?.stack) {
         console.error('Error stack:', response.body.stack);
       }
-      if (response.body && response.body.message) {
+      if (response.body?.message) {
         console.error('Error message:', response.body.message);
       }
     }
@@ -82,10 +82,10 @@ describe('Case Management Integration', () => {
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
-      if (response.body && response.body.stack) {
+      if (response.body?.stack) {
         console.error('Error stack:', response.body.stack);
       }
-      if (response.body && response.body.message) {
+      if (response.body?.message) {
         console.error('Error message:', response.body.message);
       }
     }
@@ -101,10 +101,10 @@ describe('Case Management Integration', () => {
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
-      if (response.body && response.body.stack) {
+      if (response.body?.stack) {
         console.error('Error stack:', response.body.stack);
       }
-      if (response.body && response.body.message) {
+      if (response.body?.message) {
         console.error('Error message:', response.body.message);
       }
     }
@@ -120,10 +120,10 @@ describe('Case Management Integration', () => {
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
-      if (response.body && response.body.stack) {
+      if (response.body?.stack) {
         console.error('Error stack:', response.body.stack);
       }
-      if (response.body && response.body.message) {
+      if (response.body?.message) {
         console.error('Error message:', response.body.message);
       }
     }

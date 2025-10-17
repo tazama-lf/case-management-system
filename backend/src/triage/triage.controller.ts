@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards, Query, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+  Query,
+  BadRequestException,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { SubmitAlertDto } from './dto/submit-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -7,7 +20,7 @@ import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { ManualTriageDto } from './dto/manual-triage.dto';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
-import {CreateNaltAlertDto} from "./dto/create-nalt-alert.dto";
+import { CreateNaltAlertDto } from './dto/create-nalt-alert.dto';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')
@@ -213,17 +226,17 @@ export class TriageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
-      @Req() req: AuthenticatedRequest,
-      @Query('priority') priority?: string,
-      @Query('type') type?: string,
-      @Query('alertType') alertType?: string,
-      @Query('search') search?: string,
-      @Query('source') source?: string,
-      @Query('reportStatus') reportStatus?: string,
-      @Query('page') page = 1,
-      @Query('limit') limit = 10,
-      @Query('sortBy') sortBy = 'created_at',
-      @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+    @Req() req: AuthenticatedRequest,
+    @Query('priority') priority?: string,
+    @Query('type') type?: string,
+    @Query('alertType') alertType?: string,
+    @Query('search') search?: string,
+    @Query('source') source?: string,
+    @Query('reportStatus') reportStatus?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -345,8 +358,8 @@ export class TriageController {
         alert_data: {
           type: 'object',
           properties: {
-            status: { type: 'string', example: 'NALT' }
-          }
+            status: { type: 'string', example: 'NALT' },
+          },
         },
       },
     },
