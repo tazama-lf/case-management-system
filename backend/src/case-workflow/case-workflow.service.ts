@@ -18,7 +18,8 @@ export class CaseWorkflowService {
 
     async createCase(createCaseDTO: CreateCaseDto, userId: string) {
         try {
-            this.logger.log('Creating case', CaseWorkflowService.name);
+            this.logger.log(`[CaseWorkflow] Creating case for user ${userId}`, CaseWorkflowService.name);
+
             const createdCase = await this.prismaService.case.create({
                 data: {
                     tenant_id: createCaseDTO.tenantId,
@@ -31,6 +32,11 @@ export class CaseWorkflowService {
                     case_creation_type: createCaseDTO.caseCreationType,
                 },
             });
+
+            this.logger.log(
+                `[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event`,
+                CaseWorkflowService.name
+            );
 
             this.eventEmitter.emit(
                 'case.created',
@@ -47,13 +53,13 @@ export class CaseWorkflowService {
                 userId,
                 operation: 'createCase',
                 entityName: 'Case',
-                actionPerformed: 'Case created',
+                actionPerformed: `Case ${createdCase.case_id} created`,
                 outcome: Outcome.SUCCESS
             });
 
             return createdCase;
         } catch (error) {
-            this.logger.error(`Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
+            this.logger.error(`[CaseWorkflow] Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
             throw error;
         }
     }
