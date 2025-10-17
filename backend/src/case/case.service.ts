@@ -74,8 +74,10 @@ export class CaseService {
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+    this.logger.log(`[ManualCase] Starting manual case creation by user ${userId} with role ${role}`, CaseService.name);
+
     if (!dto.alertId || !dto.alertType) {
-      this.logger.error('Missing required fields in ManualCreateCaseDto', '', CaseService.name);
+      this.logger.error('[ManualCase] Missing required fields in ManualCreateCaseDto', '', CaseService.name);
       throw new BadRequestException('alertId and alertType are required');
     }
 
@@ -88,13 +90,13 @@ export class CaseService {
     }
 
     if (existingAlert.case_id) {
-      this.logger.error(`Case already exists for alertId ${dto.alertId}`, '', CaseService.name);
+      this.logger.error(`[ManualCase] Case already exists for alertId ${dto.alertId}`, '', CaseService.name);
       throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
     }
 
     const alertStatus = (existingAlert.alert_data as any)?.status;
     if (alertStatus !== 'NALT') {
-      this.logger.error('Cannot create Case: alert_data.status is not NALT', '', CaseService.name);
+      this.logger.error('[ManualCase] Cannot create Case: alert_data.status is not NALT', '', CaseService.name);
       throw new BadRequestException('Cannot create Case: alert_data.status is not NALT');
     }
 
@@ -105,8 +107,13 @@ export class CaseService {
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval
         ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
-        : CaseStatus.STATUS_10_ASSIGNED;
+        : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
+
+    this.logger.log(
+        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
+        CaseService.name
+    );
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -122,6 +129,11 @@ export class CaseService {
 
         const createdCase = await this.caseWorkflowService.createCase(caseDetail, userId);
 
+        this.logger.log(
+            `[ManualCase] Case ${createdCase.case_id} created via workflow service`,
+            CaseService.name
+        );
+
         const updatedAlert = await prisma.alert.update({
           where: { alert_id: dto.alertId },
           data: {
@@ -131,6 +143,11 @@ export class CaseService {
             case_id: createdCase.case_id,
           },
         });
+
+        this.logger.log(
+            `[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`,
+            CaseService.name
+        );
 
         let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
 
@@ -147,8 +164,9 @@ export class CaseService {
               this.auditLogService,
               this.logger,
           );
+
           this.logger.log(
-              `Created Approve Case Creation task ${approvalTask.task_id} for case ${createdCase.case_id}`,
+              `[ManualCase] PostgreSQL approval task ${approvalTask.task_id} created for case ${createdCase.case_id}`,
               CaseService.name
           );
         }
@@ -156,15 +174,9 @@ export class CaseService {
         return { case: createdCase, alert: updatedAlert, approvalTask };
       });
 
-      this.eventEmitter.emit(
-          'case.created',
-          new CaseCreatedEvent(
-              result.case.case_id,
-              tenantId,
-              'MANUAL',
-              role,
-              false,
-          ),
+      this.logger.log(
+          `[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`,
+          CaseService.name
       );
 
       await this.auditLogService.logAction({
@@ -177,7 +189,7 @@ export class CaseService {
 
       return { success: true, ...result };
     } catch (err) {
-      this.logger.error('manualCaseCreate failed', { error: err, dto, userId, tenantId });
+      this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
       throw new InternalServerErrorException(`Failed to create case & link alert: ${err.message}`);
     }
   }
