@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import UnassignTaskModal from '../modals/UnassignTaskModal';
 import AssignTaskModal from '../modals/AssignTaskModal';
@@ -7,12 +8,13 @@ import UpdateTaskStatusModal from '../modals/UpdateTaskStatusModal';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
-
+import { useToast } from '../../../../shared/providers/ToastProvider';
 
 interface TaskLogTabProps {
   caseId: string;
 }
 const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
+  const { success, error: toastError } = useToast();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +129,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     try {
       if (!task || !assignee) {
         console.warn('Cannot assign task: missing task or assignee', { task, assignee });
+        toastError('Assign Task Failed', 'Missing task or assignee');
         return;
       }
       
@@ -138,9 +141,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+      
+      // Show success message with toast notification
+      success('Task Assigned Successfully', `Task ${task.id} has been assigned successfully.`);
     } catch (error) {
       console.error('Failed to assign task:', error);
-      // In a real implementation, you might want to show an error message to the user
+      toastError('Assign Task Failed', error instanceof Error ? error.message : 'Failed to assign task');
     }
   };
 
@@ -148,6 +154,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     try {
       if (!task || !assignee) {
         console.warn('Cannot reassign task: missing task or assignee', { task, assignee });
+        toastError('Reassign Task Failed', 'Missing task or assignee');
         return;
       }
       
@@ -163,11 +170,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
       
-      // Show success message (in a real implementation, you might want to use a toast notification)
-      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
+      // Show success message with toast notification
+      success('Task Reassigned Successfully', `Task ${task.id} has been reassigned successfully.`);
     } catch (error) {
       console.error('Failed to reassign task:', error);
-      // In a real implementation, you might want to show an error message to the user
+      toastError('Reassign Task Failed', error instanceof Error ? error.message : 'Failed to reassign task');
     }
   };
 
@@ -193,8 +200,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+      
+      // Show success message with toast notification
+      success('Task Status Updated Successfully', `Task ${task.id} status has been updated successfully.`);
     } catch (error) {
       console.error('Failed to update task status:', error);
+      toastError('Update Task Status Failed', error instanceof Error ? error.message : 'Failed to update task status');
     }
   };
 
@@ -205,8 +216,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+      
+      // Show success message with toast notification
+      success('Task Unassigned Successfully', `Task ${taskId} has been unassigned successfully.`);
     } catch (error) {
       console.error('Failed to unassign task:', error);
+      toastError('Unassign Task Failed', error instanceof Error ? error.message : 'Failed to unassign task');
     }
   };
 
