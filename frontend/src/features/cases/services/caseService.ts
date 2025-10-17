@@ -135,6 +135,23 @@ export interface RejectCaseCreationDto {
   reason: string;
 }
 
+// Approve/Reopen response wrappers from backend
+export interface ApproveReopenResponseDto {
+  success: boolean;
+  message: string;
+  case: Case;
+  completed_approval_task?: { task_id: string; status: string };
+  investigation_task?: { task_id: string; name: string; status: string; assigned_to?: string; candidateGroup?: string };
+}
+
+export interface RejectReopenResponseDto {
+  success: boolean;
+  message: string;
+  case: Case;
+  completed_task?: { task_id: string; status: string };
+  rejection_reason: string;
+}
+
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
@@ -274,6 +291,34 @@ export class CaseService {
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'reopen case');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/approve-reopening - Supervisor approves case reopening
+  async approveCaseReopening(caseId: string): Promise<ApproveReopenResponseDto> {
+    try {
+      const response = await apiClient.put<ApproveReopenResponseDto>(`${this.baseUrl}/${caseId}/approve-reopening`, {});
+      // Ensure nested case object is normalized
+      if (response && (response as any).case) {
+        return response as ApproveReopenResponseDto;
+      }
+      // Fallback: wrap direct case
+      return { success: true, message: 'Case reopening approved', case: this.validateCaseResponse(response as unknown as Case) } as ApproveReopenResponseDto;
+    } catch (error: any) {
+      throw this.handleError(error, 'approve case reopening');
+    }
+  }
+
+  // PUT /api/v1/cases/:caseId/reject-reopening - Supervisor rejects case reopening
+  async rejectCaseReopening(caseId: string, rejectionReason: string): Promise<RejectReopenResponseDto> {
+    try {
+      const response = await apiClient.put<RejectReopenResponseDto>(`${this.baseUrl}/${caseId}/reject-reopening`, { rejectionReason });
+      if (response && (response as any).case) {
+        return response as RejectReopenResponseDto;
+      }
+      return { success: true, message: 'Case reopening rejected', case: this.validateCaseResponse(response as unknown as Case), rejection_reason: rejectionReason } as RejectReopenResponseDto;
+    } catch (error: any) {
+      throw this.handleError(error, 'reject case reopening');
     }
   }
 

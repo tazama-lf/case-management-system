@@ -94,6 +94,8 @@ interface CasesTableProps {
   onResumeCase?: (row: CaseRow) => void;
   onRejectCase?: (row: CaseRow) => void;
   onApproveCase?: (row: CaseRow) => void;
+  onApproveCaseReopen?: (row: CaseRow) => void;
+  onRejectCaseReopen?: (row: CaseRow) => void;
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
   onReturnForReview?: (row: CaseRow) => void;
@@ -110,6 +112,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onResumeCase,
   onRejectCase,
   onApproveCase,
+  onApproveCaseReopen,
+  onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
   onReturnForReview
@@ -218,6 +222,34 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <CheckIcon className="h-3 w-3" />
                       Approve
+                    </button>
+                  )}
+                  
+                  {/* Approve Case Reopening button - show for cases pending reopening approval */}
+                  {onApproveCaseReopen && (
+                    c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
+                    c.status.includes('PENDING CASE REOPENING APPROVAL')
+                  ) && (
+                    <button
+                      onClick={() => onApproveCaseReopen(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <CheckIcon className="h-3 w-3" />
+                      Approve Reopen
+                    </button>
+                  )}
+
+                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
+                  {onRejectCaseReopen && (
+                    c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
+                    c.status.includes('PENDING CASE REOPENING APPROVAL')
+                  ) && (
+                    <button
+                      onClick={() => onRejectCaseReopen(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <XCircleIcon className="h-3 w-3" />
+                      Reject Reopen
                     </button>
                   )}
                   
