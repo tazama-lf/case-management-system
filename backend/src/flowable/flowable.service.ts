@@ -452,6 +452,29 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
+  async setProcessVariables(processInstanceId: string, variables: Record<string, any>) {
+    try {
+      const formattedVariables = this.formatVariables(variables);
+
+      const response = await this.flowableClient.post(
+          `/service/runtime/process-instances/${processInstanceId}/variables`,
+          formattedVariables
+      );
+
+      this.logger.log(`Variables set successfully for process ${processInstanceId}`, FlowableService.name);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to set process variables: ${error.message}`, error.stack, FlowableService.name);
+
+      if (error.response) {
+        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
+        this.logger.error(`Status code: ${error.response.status}`, FlowableService.name);
+      }
+
+      throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async getTenantTasks(
     tenantId: string,
     filters?: {
@@ -667,13 +690,15 @@ export class FlowableService implements OnModuleInit {
         postgres_task_id: string;
         postgres_case_id: string;
         task_status: string;
+        task_name?: string;
+        candidate_group?: string;
         assignee_user_id?: string;
         flowable_case_id?: string;
       },
   ) {
     try {
       this.logger.log(
-          `Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`,
+          `[Flowable-Sync] Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`,
           FlowableService.name
       );
 
@@ -681,9 +706,16 @@ export class FlowableService implements OnModuleInit {
         postgres_task_id: dbTaskData.postgres_task_id,
         postgres_case_id: dbTaskData.postgres_case_id,
         task_status: dbTaskData.task_status,
-        task_name: 'Approve Case Creation',
-        candidate_group: 'supervisors',
       };
+
+      // Only add variables if they have values
+      if (dbTaskData.task_name) {
+        variables.task_name = dbTaskData.task_name;
+      }
+
+      if (dbTaskData.candidate_group) {
+        variables.candidate_group = dbTaskData.candidate_group;
+      }
 
       if (dbTaskData.assignee_user_id) {
         variables.assignee_user_id = dbTaskData.assignee_user_id;
@@ -694,26 +726,31 @@ export class FlowableService implements OnModuleInit {
       }
 
       this.logger.log(
-          `Setting task variables: ${JSON.stringify(variables)}`,
+          `[Flowable-Sync] Setting ${Object.keys(variables).length} variables: ${Object.keys(variables).join(', ')}`,
+          FlowableService.name
+      );
+
+      this.logger.log(
+          `[Flowable-Sync] Variable values: ${JSON.stringify(variables)}`,
           FlowableService.name
       );
 
       await this.setTaskVariables(flowableTaskId, variables);
 
       this.logger.log(
-          `Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`,
+          `[Flowable-Sync] Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`,
           FlowableService.name
       );
 
       return true;
     } catch (error) {
       this.logger.error(
-          `Failed to sync task with database: ${error.message}`,
+          `[Flowable-Sync] Failed to sync task with database: ${error.message}`,
           error.stack,
           FlowableService.name
       );
       this.logger.error(
-          `Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`,
+          `[Flowable-Sync] Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`,
           FlowableService.name
       );
       return false;
