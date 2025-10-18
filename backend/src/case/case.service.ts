@@ -1890,7 +1890,7 @@ export class CaseService {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus. STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+            status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
             updated_at: new Date(),
           },
         });

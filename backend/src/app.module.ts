@@ -17,6 +17,7 @@ import { NatsModule } from './nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './flowable/flowable.module';
 import { validate } from './config/env.validation';
+import {ConfigManagementModule} from "./config-management/config-management.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { validate } from './config/env.validation';
     FlowableModule,
     NatsModule,
     AuditLogModule,
+    ConfigManagementModule,
     TriageModule,
     CommentModule,
     CaseModule,

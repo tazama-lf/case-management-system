@@ -7,6 +7,76 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SystemConfiguration {
+  id           String   @id @default(uuid())
+  config_key   String   @unique
+  config_value Json
+  config_type  String
+  description  String?
+  is_active    Boolean  @default(true)
+  created_by   String
+  updated_by   String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  version      Int      @default(1)
+
+  @@map("system_configurations")
+}
+
+model ConfigurationChangeLog {
+  id            String    @id @default(uuid())
+  config_id     String
+  config_key    String
+  old_value     Json?
+  new_value     Json
+  change_type   String
+  changed_by    String
+  change_reason String?
+  ip_address    String?
+  user_agent    String?
+  requires_2fa  Boolean   @default(false)
+  approved_by   String?
+  approval_date DateTime?
+  change_status String
+  created_at    DateTime  @default(now())
+
+  @@map("configuration_change_logs")
+}
+
+model RolePermission {
+  id             String   @id @default(uuid())
+  role_name      String   @unique
+  permissions    Json
+  description    String?
+  is_system_role Boolean  @default(false)
+  is_active      Boolean  @default(true)
+  created_by     String
+  updated_by     String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("role_permissions")
+}
+
+model IntegrationConfig {
+  id             String    @id @default(uuid())
+  system_name    String    @unique
+  endpoint_url   String?
+  api_key        String?
+  api_secret     String?
+  config_data    Json?
+  auth_type      String?
+  is_enabled     Boolean   @default(true)
+  last_tested_at DateTime?
+  test_status    String?
+  created_by     String
+  updated_by     String
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@map("integration_configs")
+}
+
 model AuditLog {
   audit_log_id     String   @id @default(uuid()) @db.Uuid
   user_id          String   @db.Uuid
@@ -34,8 +104,8 @@ model Alert {
   network_map        Json
   confidence_per     Int
   created_at         DateTime           @default(now()) @db.Timestamp(6)
-  case_id            String?             @unique @db.Uuid
-  case               Case?               @relation(fields: [case_id], references: [case_id])
+  case_id            String?            @unique @db.Uuid
+  case               Case?              @relation(fields: [case_id], references: [case_id])
 
   @@map("alerts")
 }
