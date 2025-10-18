@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
-import { WorkQueueController } from '../work-queue/work-queue.controller';
 import { WorkQueueService } from './work-queue.service';
-import { AssignmentRuleService } from './assignment-rule.service';
-import { RuleEngineService } from './rule-engine.service';
+import { WorkQueueController } from './work-queue.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { AuditLogModule } from '../audit/auditLog.module';
+import { RuleEngineService } from './rule-engine.service';
+import { WorkQueueGateway } from './work-queue.gateway';
+import { SlaMonitoringService } from './sla-monitoring.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, AuditLogModule],
+  providers: [WorkQueueService, RuleEngineService, WorkQueueGateway, SlaMonitoringService],
+  exports: [WorkQueueService, RuleEngineService, SlaMonitoringService],
   controllers: [WorkQueueController],
-  providers: [WorkQueueService, AssignmentRuleService, RuleEngineService],
-  exports: [WorkQueueService, AssignmentRuleService, RuleEngineService],
 })
 export class WorkQueueModule {}

@@ -196,7 +196,6 @@ export class AssignmentRuleService {
   private async evaluateLoadBalancedRule(config: RuleConfig, queue: any): Promise<boolean> {
     const currentTaskCount = queue._count.tasks;
 
-    // Check if queue is under maximum load
     if (config.maxTasksPerUser) {
       return currentTaskCount < config.maxTasksPerUser;
     }
@@ -218,7 +217,6 @@ export class AssignmentRuleService {
   async rebalanceTasks(workQueueId: string, tenantId: string): Promise<number> {
     this.logger.log(`Rebalancing tasks for work queue ${workQueueId}`);
 
-    // Get all unassigned or pending tasks for this queue
     const tasks = await this.prisma.task.findMany({
       where: {
         work_queue_id: workQueueId,

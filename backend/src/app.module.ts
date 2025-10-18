@@ -7,7 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
-import { SharedModule } from './shared/shared.module'; // Add this
+import { SharedModule } from './shared/shared.module';
 import { CaseWorkflowModule } from './case-workflow/case-workflow.module';
 import { TriageModule } from './triage/triage.module';
 import { CaseModule } from './case/case.module';
@@ -17,6 +17,8 @@ import { NatsModule } from './nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './flowable/flowable.module';
 import { WorkQueueModule } from './work-queue/work-queue.module';
+import { NotificationModule } from './notification/notification.module';
+import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { validate } from './config/env.validation';
 
 @Module({
@@ -40,6 +42,8 @@ import { validate } from './config/env.validation';
     AuthModule,
     SystemConfigModule,
     WorkQueueModule,
+    NotificationModule,
+    NotificationPreferencesModule,
   ],
   providers: [
     PrismaService,

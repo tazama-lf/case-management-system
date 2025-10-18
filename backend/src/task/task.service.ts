@@ -68,7 +68,7 @@ export class TaskService {
 
         const caseData = await tx.case.findUnique({
           where: { case_id: taskDTO.caseId },
-          select: { 
+          select: {
             tenant_id: true,
             priority: true,
             status: true,
@@ -82,18 +82,14 @@ export class TaskService {
         return { task, tenantId: caseData.tenant_id, caseData };
       });
 
-      // Apply auto-assignment rules
       let updatedTask = result.task;
       try {
-        // Get all active assignment rules for the tenant
         const rules = await this.workQueueService.getAllActiveAssignmentRules(result.tenantId);
-        
+
         if (rules.length > 0) {
-          // Filter rules by trigger type (TASK_CREATED)
           const applicableRules = rules.filter((rule) => rule.trigger_type === RuleTrigger.TASK_CREATED);
-          
+
           if (applicableRules.length > 0) {
-            // Build context for rule evaluation - need to include case data
             const taskWithCase = {
               ...updatedTask,
               case: {
@@ -105,20 +101,17 @@ export class TaskService {
               },
             };
 
-            // Find matching rules (sorted by priority)
             const matchingRules = this.ruleEngineService.findMatchingRules(applicableRules, taskWithCase as any, {});
-            
+
             if (matchingRules.length > 0) {
               const firstMatchingRule = matchingRules[0];
               loggerService.log(
                 `Applying assignment rule ${firstMatchingRule.assignment_rule_id} to task ${updatedTask.task_id}`,
                 TaskService.name,
               );
-              
-              // Apply the rule
+
               const ruleApplication = this.ruleEngineService.applyRule(firstMatchingRule, taskWithCase as any);
-              
-              // Update the task with rule action results
+
               const updateData: any = {};
               if (ruleApplication.workQueueId) {
                 updateData.work_queue_id = ruleApplication.workQueueId;
@@ -128,20 +121,17 @@ export class TaskService {
               }
               if (ruleApplication.slaDurationHours) {
                 updateData.sla_duration_hours = ruleApplication.slaDurationHours;
-                // Calculate SLA deadline
                 const slaDeadline = new Date();
                 slaDeadline.setHours(slaDeadline.getHours() + ruleApplication.slaDurationHours);
                 updateData.sla_deadline = slaDeadline;
               }
-              
-              // If any updates, apply them
+
               if (Object.keys(updateData).length > 0) {
                 updatedTask = await this.prisma.task.update({
                   where: { task_id: updatedTask.task_id },
                   data: updateData,
                 });
-                
-                // Update rule application statistics
+
                 await this.prisma.workQueueAssignmentRule.update({
                   where: { assignment_rule_id: firstMatchingRule.assignment_rule_id },
                   data: {
@@ -149,8 +139,7 @@ export class TaskService {
                     last_applied_at: new Date(),
                   },
                 });
-                
-                // Emit auto-assignment event
+
                 this.eventEmitter.emit('task.auto-assigned', {
                   taskId: updatedTask.task_id,
                   ruleId: firstMatchingRule.assignment_rule_id,
@@ -158,24 +147,22 @@ export class TaskService {
                   workQueueId: ruleApplication.workQueueId,
                   assignedUserId: ruleApplication.assignedUserId,
                 });
-                
-                // Log audit event
+
                 await auditLogService.logAction({
-                  userId: this.systemUserId, // Use system user for automated actions
+                  userId: this.systemUserId,
                   actionPerformed: `Auto-assigned task ${updatedTask.task_id} using rule ${firstMatchingRule.rule_name} (${firstMatchingRule.assignment_rule_id})`,
                   entityName: 'TaskAutoAssignment',
                   operation: 'RULE_APPLIED',
                   outcome: Outcome.SUCCESS,
                   performedAt: new Date(),
                 });
-                
+
                 loggerService.log(`Successfully applied assignment rule to task ${updatedTask.task_id}`, TaskService.name);
               }
             }
           }
         }
       } catch (ruleError: any) {
-        // Log rule application error but don't fail task creation
         loggerService.error(
           `Error applying assignment rules to task ${updatedTask.task_id}: ${ruleError.message}`,
           ruleError,
@@ -200,7 +187,7 @@ export class TaskService {
           taskDTO.description || '',
           taskDTO.candidateGroup || 'Investigations',
           updatedTask.status,
-          updatedTask.assigned_user_id,
+          updatedTask.assigned_user_id ?? undefined,
         ),
       );
 
