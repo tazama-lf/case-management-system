@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuditLogService } from '../audit/auditLog.service';
 import {
   CreateWorkQueueDto,
   UpdateWorkQueueDto,
@@ -29,6 +30,7 @@ export class WorkQueueService {
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly ruleEngine: RuleEngineService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /**
@@ -841,7 +843,9 @@ export class WorkQueueService {
   /**
    * Get work queue metrics including task counts and SLA metrics
    */
-  async getWorkQueueMetrics(workQueueId: string, tenantId: string): Promise<WorkQueueMetricsDto> {
+  async getWorkQueueMetrics(workQueueId: string, tenantId: string, userId?: string): Promise<WorkQueueMetricsDto> {
+    const startTime = Date.now();
+    
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -850,6 +854,16 @@ export class WorkQueueService {
     });
 
     if (!workQueue) {
+      // Log failed attempt
+      if (userId) {
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'VIEW_METRICS',
+          entityName: 'WorkQueue',
+          actionPerformed: `Attempted to view metrics for work queue: ${workQueueId}`,
+          outcome: 'FAILED - Work queue not found',
+        });
+      }
       throw new NotFoundException('Work queue not found');
     }
 
@@ -929,7 +943,7 @@ export class WorkQueueService {
       },
     });
 
-    return {
+    const metrics = {
       workQueueId: workQueue.work_queue_id,
       workQueueName: workQueue.name,
       totalTasks: tenantTasks.length,
@@ -946,6 +960,32 @@ export class WorkQueueService {
       assignedUserCount,
       calculatedAt: new Date(),
     };
+
+    // Log successful metrics retrieval
+    if (userId) {
+      const duration = Date.now() - startTime;
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'VIEW_METRICS',
+        entityName: 'WorkQueue',
+        actionPerformed: JSON.stringify({
+          action: 'View work queue metrics',
+          workQueueId,
+          workQueueName: workQueue.name,
+          filters: { tenantId },
+          metrics: {
+            totalTasks: metrics.totalTasks,
+            activeTasks: metrics.activeTasks,
+            overdueCount: metrics.slaMetrics.overdueCount,
+            breachCount: metrics.slaMetrics.breachCount,
+          },
+          duration: `${duration}ms`,
+        }),
+        outcome: 'SUCCESS',
+      });
+    }
+
+    return metrics;
   }
 
   /**
@@ -1096,6 +1136,8 @@ export class WorkQueueService {
    * Get supervisor dashboard with aggregated metrics across all assigned work queues
    */
   async getSupervisorDashboard(userId: string, tenantId: string): Promise<SupervisorDashboardDto> {
+    const startTime = Date.now();
+    
     const workQueueAssignments = await this.prisma.workQueueMember.findMany({
       where: {
         user_id: userId,
@@ -1188,7 +1230,7 @@ export class WorkQueueService {
 
     const uniqueUserIds = new Set(allMembers.map((m) => m.user_id));
 
-    return {
+    const dashboard = {
       supervisorId: userId,
       totalWorkQueues: workQueueIds.length,
       totalTasks,
@@ -1207,6 +1249,39 @@ export class WorkQueueService {
       generatedAt: new Date(),
       refreshInterval: 60,
     };
+
+    // Log dashboard access with comprehensive metadata
+    const duration = Date.now() - startTime;
+    await this.auditLogService.logAction({
+      userId,
+      operation: 'VIEW_DASHBOARD',
+      entityName: 'SupervisorDashboard',
+      actionPerformed: JSON.stringify({
+        action: 'View supervisor dashboard',
+        filters: {
+          tenantId,
+          workQueueIds: workQueueIds.length > 0 ? workQueueIds : [],
+        },
+        summary: {
+          totalWorkQueues: dashboard.totalWorkQueues,
+          totalTasks: dashboard.totalTasks,
+          totalActiveTasks: dashboard.totalActiveTasks,
+          overdueCount: dashboard.aggregatedSLAMetrics.overdueCount,
+          breachCount: dashboard.aggregatedSLAMetrics.breachCount,
+          atRiskCount: dashboard.aggregatedSLAMetrics.atRiskCount,
+          complianceRate: dashboard.aggregatedSLAMetrics.complianceRate,
+          totalAssignedUsers: dashboard.totalAssignedUsers,
+        },
+        performance: {
+          duration: `${duration}ms`,
+          workQueuesQueried: workQueueIds.length,
+          tasksProcessed: dashboard.totalTasks,
+        },
+      }),
+      outcome: 'SUCCESS',
+    });
+
+    return dashboard;
   }
 
   /**

@@ -316,3 +316,76 @@ enum AssignmentType {
   AUTOMATIC
   OVERRIDE
 }
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  SMS
+  DASHBOARD
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_REASSIGNED
+  TASK_UNASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  SLA_WARNING
+  SLA_BREACH
+  WORK_QUEUE_ADDED
+  WORK_QUEUE_REMOVED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+  PERMANENT_FAILURE
+}
+
+model UserNotificationPreference {
+  preference_id         String               @id @default(uuid()) @db.Uuid
+  user_id               String               @unique @db.Uuid
+  tenant_id             String               @db.Uuid
+  email_enabled         Boolean              @default(true)
+  in_app_enabled        Boolean              @default(true)
+  sms_enabled           Boolean              @default(false)
+  dashboard_enabled     Boolean              @default(true)
+  phone_number          String?              @db.VarChar(20)
+  suppression_settings  Json?                // NotificationType[] to suppress
+  default_channel       NotificationChannel  @default(EMAIL)
+  created_at            DateTime             @default(now()) @db.Timestamp(6)
+  updated_at            DateTime             @updatedAt @db.Timestamp(6)
+
+  @@index([user_id])
+  @@index([tenant_id])
+  @@map("user_notification_preferences")
+}
+
+model NotificationLog {
+  notification_log_id String             @id @default(uuid()) @db.Uuid
+  user_id             String             @db.Uuid
+  tenant_id           String             @db.Uuid
+  task_id             String?            @db.Uuid
+  case_id             String?            @db.Uuid
+  notification_type   NotificationType
+  channel             NotificationChannel
+  delivery_status     DeliveryStatus     @default(PENDING)
+  retry_count         Int                @default(0)
+  max_retries         Int                @default(5)
+  payload             Json               // Complete notification payload
+  error_message       String?            @db.Text
+  sent_at             DateTime?          @db.Timestamp(6)
+  read_at             DateTime?          @db.Timestamp(6)
+  created_at          DateTime           @default(now()) @db.Timestamp(6)
+  updated_at          DateTime           @updatedAt @db.Timestamp(6)
+
+  @@index([user_id, notification_type])
+  @@index([task_id])
+  @@index([case_id])
+  @@index([delivery_status])
+  @@index([created_at])
+  @@index([user_id, read_at])
+  @@map("notification_logs")
+}
