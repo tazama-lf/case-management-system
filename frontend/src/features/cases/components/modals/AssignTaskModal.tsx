@@ -54,7 +54,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
   const useMockData = () => {
     // Using the exact same mock data from the backend auth-helper.service.ts
     const mockInvestigators: Investigator[] = [
-      { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
+      { id: '085b7a75-c39d-44f8-868f-6c419f578627', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
       { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
       { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', email: 'investigator3@example.com', firstName: 'Bob', lastName: 'Wilson' },
       { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
