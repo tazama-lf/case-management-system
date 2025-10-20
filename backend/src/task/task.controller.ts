@@ -29,15 +29,7 @@ import {
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -57,9 +49,9 @@ interface AuthenticatedRequest extends Request {
 @ApiBearerAuth('jwt')
 export class TaskController {
   constructor(
-      private readonly taskService: TaskService,
-      private readonly auditLogService: AuditLogService,
-      private readonly loggerService: LoggerService,
+    private readonly taskService: TaskService,
+    private readonly auditLogService: AuditLogService,
+    private readonly loggerService: LoggerService,
   ) {}
 
   @Post()
@@ -67,8 +59,7 @@ export class TaskController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new task',
-    description:
-        'Creates a new task for a case. Only users with ALERT_TRIAGE role can create tasks.',
+    description: 'Creates a new task for a case. Only users with ALERT_TRIAGE role can create tasks.',
   })
   @ApiBody({
     type: CreateTaskDto,
@@ -126,17 +117,9 @@ export class TaskController {
     status: 403,
     description: 'Forbidden - User lacks ALERT_TRIAGE role',
   })
-  async createTask(
-      @Body() createTaskDto: CreateTaskDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.createTask(
-        createTaskDto,
-        userId,
-        this.auditLogService,
-        this.loggerService,
-    );
+    return this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.loggerService);
   }
 
   @Patch(':taskId/reassign')
@@ -145,7 +128,7 @@ export class TaskController {
   @ApiOperation({
     summary: 'Reassign a task to another user',
     description:
-        'Reassigns a task from one investigator to another. The target user must have the appropriate role for the task candidate group. Requires INVESTIGATOR or SUPERVISOR role.',
+      'Reassigns a task from one investigator to another. The target user must have the appropriate role for the task candidate group. Requires INVESTIGATOR or SUPERVISOR role.',
   })
   @ApiParam({
     name: 'taskId',
@@ -182,8 +165,7 @@ export class TaskController {
   })
   @ApiResponse({
     status: 400,
-    description:
-        'Bad Request - Task not found, completed, user invalid, or lacks required role',
+    description: 'Bad Request - Task not found, completed, user invalid, or lacks required role',
     schema: {
       type: 'object',
       properties: {
@@ -209,20 +191,11 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async reassignTask(
-      @Param('taskId') taskId: string,
-      @Body() reassignTaskDto: ReassignTaskDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async reassignTask(@Param('taskId') taskId: string, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    return this.taskService.reassignTask(
-        taskId,
-        userId,
-        tenantId,
-        reassignTaskDto.assignedUserId,
-    );
+    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId);
   }
 
   @Patch(':taskId/unassign')
@@ -230,8 +203,7 @@ export class TaskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Unassign a task',
-    description:
-        'Unassigns a task from its current assignee and returns it to the work queue. Requires a reason for unassignment.',
+    description: 'Unassigns a task from its current assignee and returns it to the work queue. Requires a reason for unassignment.',
   })
   @ApiParam({
     name: 'taskId',
@@ -246,15 +218,13 @@ export class TaskController {
       example1: {
         summary: 'Unassign due to workload',
         value: {
-          reason:
-              'Reassigning due to current workload constraints and priority conflicts',
+          reason: 'Reassigning due to current workload constraints and priority conflicts',
         },
       },
       example2: {
         summary: 'Unassign due to expertise',
         value: {
-          reason:
-              'Task requires specialized expertise not available with current assignee',
+          reason: 'Task requires specialized expertise not available with current assignee',
         },
       },
     },
@@ -278,8 +248,7 @@ export class TaskController {
   })
   @ApiResponse({
     status: 400,
-    description:
-        'Bad Request - Task already unassigned, task completed, or missing reason',
+    description: 'Bad Request - Task already unassigned, task completed, or missing reason',
     schema: {
       type: 'object',
       properties: {
@@ -295,8 +264,7 @@ export class TaskController {
   })
   @ApiResponse({
     status: 403,
-    description:
-        'Forbidden - User lacks required role to unassign tasks in this candidate group',
+    description: 'Forbidden - User lacks required role to unassign tasks in this candidate group',
     schema: {
       type: 'object',
       properties: {
@@ -310,32 +278,19 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async unassignTask(
-      @Param('taskId') taskId: string,
-      @Body() unassignDto: UnassignTaskDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async unassignTask(@Param('taskId') taskId: string, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
     if (!userId || !tenantId) {
-      throw new BadRequestException(
-          'Missing user ID or tenant ID in auth token',
-      );
+      throw new BadRequestException('Missing user ID or tenant ID in auth token');
     }
 
     if (!unassignDto.reason || unassignDto.reason.trim().length === 0) {
-      throw new BadRequestException(
-          'Reason for unassigning task is required',
-      );
+      throw new BadRequestException('Reason for unassigning task is required');
     }
 
-    return this.taskService.unassignTask(
-        taskId,
-        userId,
-        tenantId,
-        unassignDto.reason,
-    );
+    return this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
@@ -343,8 +298,7 @@ export class TaskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Assign a task to an investigator',
-    description:
-        'Assigns an unassigned or previously assigned task to an investigator. Only supervisors can use this endpoint.',
+    description: 'Assigns an unassigned or previously assigned task to an investigator. Only supervisors can use this endpoint.',
   })
   @ApiParam({
     name: 'taskId',
@@ -405,20 +359,11 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task or investigator does not exist',
   })
-  async assignTaskToInvestigator(
-      @Param('taskId') taskId: string,
-      @Body() assignTaskDto: AssignTaskDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async assignTaskToInvestigator(@Param('taskId') taskId: string, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    const result = await this.taskService.assignTaskToInvestigator(
-        taskId,
-        assignTaskDto.assignedUserId,
-        supervisorId,
-        tenantId,
-    );
+    const result = await this.taskService.assignTaskToInvestigator(taskId, assignTaskDto.assignedUserId, supervisorId, tenantId);
 
     return {
       success: true,
@@ -437,8 +382,7 @@ export class TaskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update task details',
-    description:
-        'Updates task information including status, name, description, and assignment. Requires INVESTIGATOR role.',
+    description: 'Updates task information including status, name, description, and assignment. Requires INVESTIGATOR role.',
   })
   @ApiParam({
     name: 'taskId',
@@ -499,37 +443,22 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async updateTask(
-      @Param('taskId') taskId: string,
-      @Body() dto: UpdateTaskDto,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.updateTask(
-        taskId,
-        dto,
-        userId,
-        this.auditLogService,
-    );
+    return this.taskService.updateTask(taskId, dto, userId, this.auditLogService);
   }
 
   @Get()
   @RequireAnyValidRole()
   @ApiOperation({
     summary: 'Get all tasks with optional filtering',
-    description:
-        'Retrieves all tasks, optionally filtered by status. Any authenticated user can access this endpoint.',
+    description: 'Retrieves all tasks, optionally filtered by status. Any authenticated user can access this endpoint.',
   })
   @ApiQuery({
     name: 'status',
     type: 'string',
     description: 'Filter by task status',
-    enum: [
-      'STATUS_01_UNASSIGNED',
-      'STATUS_10_ASSIGNED',
-      'STATUS_20_IN_PROGRESS',
-      'STATUS_30_COMPLETED',
-    ],
+    enum: ['STATUS_01_UNASSIGNED', 'STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS', 'STATUS_30_COMPLETED'],
     required: false,
     example: 'STATUS_01_UNASSIGNED',
   })
@@ -574,8 +503,7 @@ export class TaskController {
   @RequireAnyValidRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
-    description:
-        'Retrieves all tasks associated with a given case ID. Any authenticated user can access this endpoint.',
+    description: 'Retrieves all tasks associated with a given case ID. Any authenticated user can access this endpoint.',
   })
   @ApiParam({
     name: 'caseId',
@@ -618,10 +546,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Case does not exist',
   })
-  async getTasksByCaseId(
-      @Param('caseId') caseId: string,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async getTasksByCaseId(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.getTasksByCaseId(caseId, userId);
   }
@@ -631,7 +556,7 @@ export class TaskController {
   @ApiOperation({
     summary: 'Get work queue for a candidate group',
     description:
-        'Retrieves active tasks for a specific work queue group (unassigned, assigned, or in progress). Requires INVESTIGATOR or SUPERVISOR role.',
+      'Retrieves active tasks for a specific work queue group (unassigned, assigned, or in progress). Requires INVESTIGATOR or SUPERVISOR role.',
   })
   @ApiParam({
     name: 'candidateGroup',
@@ -677,10 +602,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Invalid candidate group',
   })
-  async getTasksByCandidateGroup(
-      @Param('candidateGroup') candidateGroup: string,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async getTasksByCandidateGroup(@Param('candidateGroup') candidateGroup: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
   }
@@ -689,8 +611,7 @@ export class TaskController {
   @RequireInvestigatorRole()
   @ApiOperation({
     summary: 'Get task details by ID',
-    description:
-        'Retrieves detailed information about a specific task including associated case and comments. Requires INVESTIGATOR role.',
+    description: 'Retrieves detailed information about a specific task including associated case and comments. Requires INVESTIGATOR role.',
   })
   @ApiParam({
     name: 'taskId',
@@ -739,5 +660,55 @@ export class TaskController {
   })
   async getTaskById(@Param('taskId') taskId: string) {
     return this.taskService.getTaskById(taskId);
+  }
+
+  @Post(':taskId/reassign-queue')
+  @RequireSupervisorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reassign task to a different work queue',
+    description:
+      'Reassigns a task from its current work queue to a target work queue. Only supervisors can perform cross-queue reassignment. The task cannot be reassigned if it is currently in progress (claimed by an investigator). The reassignment is logged in the audit trail and notifications are sent to both queues.',
+  })
+  @ApiParam({
+    name: 'taskId',
+    type: 'string',
+    description: 'UUID of the task to reassign',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    type: ReassignTaskDto,
+    description: 'Work queue reassignment details including target queue, optional reason, and optional immediate assignment',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task successfully reassigned to target work queue.',
+    type: TaskReassignmentResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Task is in progress, already in target queue, or invalid data.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires CMS_SUPERVISOR role or task belongs to different tenant.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Task or target work queue not found.',
+  })
+  async reassignTaskToWorkQueue(@Param('taskId') taskId: string, @Body() dto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant ID is required');
+    }
+
+    return this.taskService.reassignTaskToWorkQueue(taskId, dto.targetWorkQueueId, userId, tenantId, dto.reason, dto.assignedUserId);
   }
 }

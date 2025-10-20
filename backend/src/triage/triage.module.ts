@@ -9,13 +9,7 @@ import { CommentModule } from '../comment/comment.module';
 import { CaseWorkflowModule } from '../case-workflow/case-workflow.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    LoggerModule,
-    CaseWorkflowModule,
-    TaskModule,
-    CommentModule,
-  ],
+  imports: [PrismaModule, LoggerModule, CaseWorkflowModule, TaskModule, CommentModule],
   controllers: [TriageController],
   providers: [TriageService, AuditLogService],
   exports: [TriageService],

@@ -6,15 +6,10 @@ import { LoggerModule } from '../logger/logger.module';
 import { TaskController } from './task.controller';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/notification/notification.module';
+import { WorkQueueModule } from '../work-queue/work-queue.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuditLogModule,
-    LoggerModule,
-    AuthModule,
-    NotificationModule
-  ],
+  imports: [PrismaModule, AuditLogModule, LoggerModule, AuthModule, NotificationModule, forwardRef(() => WorkQueueModule)],
   providers: [TaskService],
   exports: [TaskService],
   controllers: [TaskController],

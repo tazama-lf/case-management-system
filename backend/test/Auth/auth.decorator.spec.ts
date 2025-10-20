@@ -139,7 +139,7 @@ describe('Auth Decorators', () => {
     it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
      RequireAlertTriageRole();
       
-  expect(mockedSetMetadata).toHaveBeenCalledWith("anyClaims", expect.arrayContaining(["alert-triage", "CMS-TEST-ROLE"]));
+  expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', expect.arrayContaining(['alert-triage', 'CMS-TEST-ROLE']));
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -254,6 +254,6 @@ describe('Auth Decorators', () => {
     RequireClaims('claim1', 'claim2');
     RequireAlertTriageRole();
     
-    expect(mockedSetMetadata).toHaveBeenCalledWith("anyClaims", expect.arrayContaining(["alert-triage", "CMS-TEST-ROLE"]));
+    expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', expect.arrayContaining(['alert-triage', 'CMS-TEST-ROLE']));
   });
 });

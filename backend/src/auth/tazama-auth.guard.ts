@@ -54,10 +54,10 @@ export class TazamaAuthGuard implements CanActivate {
         throw new UnauthorizedException('Token validation failed');
       }
 
-      // Since auth-lib already validated the token and claims, 
+      // Since auth-lib already validated the token and claims,
       // we just need to determine which claims were requested
       let validClaims: string[] = [];
-      
+
       if (requiredClaims && requiredClaims.length > 0) {
         // All required claims are valid since auth-lib returned true
         validClaims = [...requiredClaims];

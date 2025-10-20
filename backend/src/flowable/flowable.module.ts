@@ -9,18 +9,9 @@ import { TaskModule } from '../task/task.module';
 import { AuditLogModule } from 'src/audit/auditLog.module';
 
 @Module({
-  imports: [
-    LoggerModule,
-    ConfigModule,
-    TaskModule,
-    AuditLogModule,
-  ],
+  imports: [LoggerModule, ConfigModule, TaskModule, AuditLogModule],
   controllers: [WorkQueueController],
-  providers: [
-    FlowableService,
-    BpmnDeploymentService,
-    FlowableEventListener,
-  ],
+  providers: [FlowableService, BpmnDeploymentService, FlowableEventListener],
   exports: [FlowableService, BpmnDeploymentService],
 })
 export class FlowableModule {}
