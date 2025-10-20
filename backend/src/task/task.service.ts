@@ -10,6 +10,9 @@ import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';
+import { WorkQueueService } from '../work-queue/work-queue.service';
+import { RuleEngineService } from '../work-queue/rule-engine.service';
+import { RuleTrigger } from '../work-queue/dto/assignment-rule.dto';
 import {
   TaskCreatedEvent,
   TaskStatusChangedEvent,

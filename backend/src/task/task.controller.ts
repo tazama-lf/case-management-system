@@ -683,7 +683,6 @@ export class TaskController {
   @ApiResponse({
     status: 200,
     description: 'Task successfully reassigned to target work queue.',
-    type: TaskReassignmentResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -707,6 +706,10 @@ export class TaskController {
 
     if (!tenantId) {
       throw new BadRequestException('Tenant ID is required');
+    }
+
+    if (!dto.targetWorkQueueId) {
+      throw new BadRequestException('targetWorkQueueId is required');
     }
 
     return this.taskService.reassignTaskToWorkQueue(taskId, dto.targetWorkQueueId, userId, tenantId, dto.reason, dto.assignedUserId);
