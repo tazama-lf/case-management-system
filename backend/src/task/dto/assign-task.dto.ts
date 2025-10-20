@@ -1,10 +1,11 @@
-import { IsNotEmpty, IsUUID, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AssignTaskDto {
   @ApiProperty({
     description: 'UUID of the investigator to assign the task to',
     example: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',
+    format: 'uuid',
   })
   @IsString({ message: 'assignedUserId must be a string' })
   @IsNotEmpty({ message: 'assignedUserId is required' })

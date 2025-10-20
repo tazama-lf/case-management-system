@@ -386,4 +386,15 @@ export class TriageController {
     const alert = await this.triageService.handleNotAlert(submitAlertDto, userId, tenantId, 'REST API');
     return alert;
   }
+
+  @Post('ingest')
+  @RequireAlertTriageRole()
+  // using for testing purpose will remove in final
+  async processIncomingAlert(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return await this.triageService.processIncomingAlert(dto, 'REST API', userId, tenantId);
+  }
 }

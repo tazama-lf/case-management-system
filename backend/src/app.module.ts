@@ -20,6 +20,7 @@ import { WorkQueueModule } from './work-queue/work-queue.module';
 import { NotificationModule } from './notification/notification.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { validate } from './config/env.validation';
+import {ConfigManagementModule} from "./config-management/config-management.module";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { validate } from './config/env.validation';
     FlowableModule,
     NatsModule,
     AuditLogModule,
+    ConfigManagementModule,
     TriageModule,
     CommentModule,
     CaseModule,

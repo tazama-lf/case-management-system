@@ -764,12 +764,7 @@ export class TriageService {
 
       this.eventEmitter.emit(
         'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_00_DRAFT,
-          status,
-          customDescription || `Case automatically closed with status ${status}`,
-        ),
+        new CaseStatusChangedEvent(caseId, status, status, customDescription || `Case automatically closed with status ${status}`),
       );
 
       await this.audit.logAction({
@@ -897,12 +892,7 @@ export class TriageService {
 
       this.eventEmitter.emit(
         'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_00_DRAFT,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'Triage completed, ready for investigation',
-        ),
+        new CaseStatusChangedEvent(caseId, status, status, 'Triage completed, ready for investigation'),
       );
 
       await this.audit.logAction({
@@ -987,9 +977,9 @@ export class TriageService {
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
-      alertType: AlertType.AML,
+      alertType: AlertType.FRAUD,
       confidence_per: 97,
-      isTruePositive: true,
+      isTruePositive: false,
     };
   }
 }
