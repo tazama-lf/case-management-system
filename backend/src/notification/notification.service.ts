@@ -1,22 +1,27 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
+import { UserService } from '../shared/user.service';
 
 export type NotificationType =
-    | 'TASK_ASSIGNED'
-    | 'TASK_AVAILABLE'
-    | 'TASK_UNASSIGNED'
-    | 'TASK_REASSIGNED'
-    | 'WORK_QUEUE'
-    | 'CASE_SUSPENDED'
-    | 'CASE_RESUMED'
-    | 'CASE_CLOSURE_PENDING'
-    | 'CASE_CLOSURE_APPROVED'
-    | 'CASE_CLOSURE_REJECTED'
-    | 'CASE_REOPENED_ASSIGNED'
-    | 'CASE_REOPENED_AVAILABLE'
-    | 'CASE_REOPENING_REJECTED'
-    | 'GENERIC';
+  | 'TASK_ASSIGNED'
+  | 'TASK_AVAILABLE'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_REASSIGNED'
+  | 'WORK_QUEUE'
+  | 'CASE_SUSPENDED'
+  | 'CASE_RESUMED'
+  | 'CASE_CLOSURE_PENDING'
+  | 'CASE_CLOSURE_APPROVED'
+  | 'CASE_CLOSURE_REJECTED'
+  | 'CASE_REOPENED_ASSIGNED'
+  | 'CASE_REOPENED_AVAILABLE'
+  | 'CASE_REOPENING_REJECTED'
+  | 'TASK_SLA_WARNING'
+  | 'TASK_SLA_BREACH'
+  | 'TASK_OVERDUE'
+  | 'GENERIC';
 
 export interface NotificationPayload {
   userId: string;
@@ -38,7 +43,10 @@ export class NotificationService {
   private readonly fromEmail: string;
   private readonly transporter: nodemailer.Transporter;
 
-  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
+  constructor(
+    @Inject(ConfigService) private readonly config: ConfigService,
+    @Optional() private readonly userService?: UserService,
+  ) {
     this.fromEmail = this.config.get<string>('MAIL_FROM') || '"CMS Notifications" <no-reply@cms.local>';
 
     this.transporter = nodemailer.createTransport({
@@ -55,7 +63,12 @@ export class NotificationService {
   async sendNotification(payload: NotificationPayload): Promise<void> {
     this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
     const template = this.getTemplate(payload.type, payload.metadata);
-    await this.safeSendEmail(`user-${payload.userId}@example.com`, template);
+
+    // Get user email from UserService
+    const userEmail = this.userService ? await this.userService.getUserEmail(payload.userId) : null;
+    const email = userEmail || `user-${payload.userId}@example.com`;
+
+    await this.safeSendEmail(email, template);
   }
 
   async sendGroupNotification(payload: GroupNotificationPayload): Promise<void> {
@@ -84,6 +97,198 @@ export class NotificationService {
       reason,
     });
     await this.safeSendEmail(to, template);
+  }
+
+  /**
+   * Handle SLA warning events
+   * Sends notifications to supervisors when tasks are approaching their deadlines
+   */
+  @OnEvent('task.sla-warning')
+  async handleSlaWarning(payload: {
+    taskId: string;
+    taskName: string;
+    caseId: string;
+    casePriority: string;
+    workQueueId: string;
+    workQueueName: string;
+    assignedUserId?: string;
+    deadline: string;
+    timeUntilDeadline: number;
+    tenantId: string;
+  }): Promise<void> {
+    this.logger.warn(`SLA Warning: Task ${payload.taskId} approaching deadline`);
+
+    const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
+    if (supervisorEmail) {
+      const template = this.getTemplate('TASK_SLA_WARNING', payload);
+      await this.safeSendEmail(supervisorEmail, template);
+    }
+
+    if (payload.assignedUserId) {
+      const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
+      const email = userEmail || `user-${payload.assignedUserId}@example.com`;
+      const template = this.getTemplate('TASK_SLA_WARNING', payload);
+      await this.safeSendEmail(email, template);
+    }
+  }
+
+  /**
+   * Handle SLA breach events
+   * Sends urgent notifications when tasks exceed their SLA deadlines
+   */
+  @OnEvent('task.sla-breach')
+  async handleSlaBreach(payload: {
+    taskId: string;
+    taskName: string;
+    caseId: string;
+    casePriority: string;
+    workQueueId: string;
+    workQueueName: string;
+    assignedUserId?: string;
+    deadline: string;
+    breachDuration: number;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+    tenantId: string;
+  }): Promise<void> {
+    this.logger.error(`SLA BREACH: Task ${payload.taskId} has breached SLA - Severity: ${payload.severity}`);
+
+    const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
+    if (supervisorEmail) {
+      const template = this.getTemplate('TASK_SLA_BREACH', payload);
+      await this.safeSendEmail(supervisorEmail, template);
+    }
+
+    if (payload.severity === 'CRITICAL') {
+      const managementEmail = this.config.get<string>('MANAGEMENT_EMAIL');
+      if (managementEmail) {
+        const template = this.getTemplate('TASK_SLA_BREACH', payload);
+        await this.safeSendEmail(managementEmail, template);
+      }
+    }
+
+    if (payload.assignedUserId) {
+      const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
+      const email = userEmail || `user-${payload.assignedUserId}@example.com`;
+      const template = this.getTemplate('TASK_SLA_BREACH', payload);
+      await this.safeSendEmail(email, template);
+    }
+  }
+
+  /**
+   * Handle overdue task events
+   * Sends notifications when tasks have been open for an extended period
+   */
+  @OnEvent('task.overdue')
+  async handleOverdueTask(payload: {
+    taskId: string;
+    taskName: string;
+    caseId: string;
+    casePriority: string;
+    workQueueId: string;
+    workQueueName: string;
+    assignedUserId?: string;
+    createdAt: string;
+    hoursSinceCreation: number;
+    tenantId: string;
+  }): Promise<void> {
+    this.logger.warn(`Overdue Task: Task ${payload.taskId} has been open for ${payload.hoursSinceCreation} hours`);
+
+    const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
+    if (supervisorEmail) {
+      const template = this.getTemplate('TASK_OVERDUE', payload);
+      await this.safeSendEmail(supervisorEmail, template);
+    }
+
+    if (payload.assignedUserId) {
+      const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
+      const email = userEmail || `user-${payload.assignedUserId}@example.com`;
+      const template = this.getTemplate('TASK_OVERDUE', payload);
+      await this.safeSendEmail(email, template);
+    }
+  }
+
+  /**
+   * Handle task assigned events
+   * Sends notifications when a task is assigned to a user
+   */
+  @OnEvent('task.assigned')
+  async handleTaskAssigned(payload: {
+    taskId: string;
+    taskName: string;
+    taskType: string;
+    caseId: string;
+    caseNumber: string;
+    casePriority: string;
+    assignedUserId: string;
+    assignedBy?: string;
+    slaDeadline?: string;
+    workQueueName: string;
+    tenantId: string;
+  }): Promise<void> {
+    this.logger.log(`Task Assigned: Task ${payload.taskId} assigned to user ${payload.assignedUserId}`);
+
+    const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
+    const email = userEmail || `user-${payload.assignedUserId}@example.com`;
+    const template = this.getTemplate('TASK_ASSIGNED', {
+      taskTitle: payload.taskName,
+      taskType: payload.taskType,
+      caseNumber: payload.caseNumber,
+      priority: payload.casePriority,
+      deadline: payload.slaDeadline || 'Not set',
+      workQueue: payload.workQueueName,
+      assignedBy: payload.assignedBy || 'System',
+    });
+
+    await this.safeSendEmail(email, template);
+  }
+
+  /**
+   * Handle task reassigned events
+   * Sends notifications when a task is reassigned to a different user
+   */
+  @OnEvent('task.reassigned')
+  async handleTaskReassigned(payload: {
+    taskId: string;
+    taskName: string;
+    taskType: string;
+    caseId: string;
+    caseNumber: string;
+    casePriority: string;
+    previousAssignedUserId: string;
+    newAssignedUserId: string;
+    reassignedBy?: string;
+    reason?: string;
+    slaDeadline?: string;
+    workQueueName: string;
+    tenantId: string;
+  }): Promise<void> {
+    this.logger.log(
+      `Task Reassigned: Task ${payload.taskId} reassigned from ${payload.previousAssignedUserId} to ${payload.newAssignedUserId}`,
+    );
+
+    // Notify new assignee
+    const newUserEmail = this.userService ? await this.userService.getUserEmail(payload.newAssignedUserId) : null;
+    const newEmail = newUserEmail || `user-${payload.newAssignedUserId}@example.com`;
+    const newUserTemplate = this.getTemplate('TASK_REASSIGNED', {
+      taskTitle: payload.taskName,
+      taskType: payload.taskType,
+      caseNumber: payload.caseNumber,
+      priority: payload.casePriority,
+      deadline: payload.slaDeadline || 'Not set',
+      workQueue: payload.workQueueName,
+      reassignedBy: payload.reassignedBy || 'System',
+      reason: payload.reason || 'No reason provided',
+    });
+    await this.safeSendEmail(newEmail, newUserTemplate);
+
+    // Optionally notify previous assignee about unassignment
+    const prevUserEmail = this.userService ? await this.userService.getUserEmail(payload.previousAssignedUserId) : null;
+    const prevEmail = prevUserEmail || `user-${payload.previousAssignedUserId}@example.com`;
+    const prevUserTemplate = this.getTemplate('TASK_UNASSIGNED', {
+      taskTitle: payload.taskName,
+      reason: payload.reason || 'Task was reassigned to another user',
+    });
+    await this.safeSendEmail(prevEmail, prevUserTemplate);
   }
 
   private async safeSendEmail(to: string, template: { subject: string; html: string }, maxRetries = 5, delayMs = 1000): Promise<void> {
@@ -130,7 +335,7 @@ export class NotificationService {
         html: this.workQueueTemplate(d),
       }),
       TASK_AVAILABLE: (d) => ({
-        subject: `Task Available in Queue`,
+        subject: 'Task Available in Queue',
         html: this.workQueueTemplate(d),
       }),
       CASE_SUSPENDED: (d) => ({
@@ -164,6 +369,18 @@ export class NotificationService {
       CASE_REOPENING_REJECTED: (d) => ({
         subject: `Case Reopening Request Rejected: ${d.caseId}`,
         html: this.caseReopeningRejectedTemplate(d),
+      }),
+      TASK_SLA_WARNING: (d) => ({
+        subject: `SLA Warning: Task ${d.taskName} Approaching Deadline`,
+        html: this.slaWarningTemplate(d),
+      }),
+      TASK_SLA_BREACH: (d) => ({
+        subject: `SLA BREACH: Task ${d.taskName} Overdue - ${d.severity} Priority`,
+        html: this.slaBreachTemplate(d),
+      }),
+      TASK_OVERDUE: (d) => ({
+        subject: `Overdue Task: ${d.taskName} Requires Attention`,
+        html: this.taskOverdueTemplate(d),
       }),
       GENERIC: (d) => ({
         subject: 'CMS Notification',
@@ -300,6 +517,186 @@ export class NotificationService {
       <p>The case has been restored to its original status: <strong>${data.restoredStatus}</strong></p>
       <p>Rejected By: ${data.rejectedBy}</p>
       <p>Regards,<br/>CMS Team</p>
+    `;
+  }
+
+  private slaWarningTemplate(data: Record<string, any>): string {
+    const timeRemaining = data.timeUntilDeadline ? `${Math.abs(data.timeUntilDeadline)} minutes` : 'Unknown';
+
+    return `
+      <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 10px 0;">
+        <h2 style="color: #856404; margin-top: 0;">SLA Warning</h2>
+        <p>A task in your work queue is approaching its SLA deadline and requires attention.</p>
+        
+        <h3 style="color: #333;">Task Details:</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task Name:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskId}</td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.caseId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${data.casePriority === 'HIGH' ? '#dc3545' : data.casePriority === 'MEDIUM' ? '#ffc107' : '#28a745'};">${data.casePriority || 'NORMAL'}</span></td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.workQueueName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+          </tr>
+          <tr style="background-color: #fff3cd;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Time Remaining:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong style="color: #856404;">${timeRemaining}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>SLA Deadline:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline || 'N/A'}</td>
+          </tr>
+        </table>
+        
+        <p style="margin-top: 20px;">Please prioritize this task to avoid an SLA breach.</p>
+        <p>Regards,<br/>CMS Team</p>
+      </div>
+    `;
+  }
+
+  private slaBreachTemplate(data: Record<string, any>): string {
+    const breachDuration = data.breachDuration ? `${Math.abs(data.breachDuration)} minutes` : 'Unknown';
+
+    const severityColor =
+      {
+        CRITICAL: '#dc3545',
+        HIGH: '#fd7e14',
+        MEDIUM: '#ffc107',
+        LOW: '#6c757d',
+        INFO: '#17a2b8',
+      }[data.severity] || '#dc3545';
+
+    return `
+      <div style="background-color: #f8d7da; border-left: 4px solid ${severityColor}; padding: 20px; margin: 10px 0;">
+        <h2 style="color: #721c24; margin-top: 0;">SLA BREACH ALERT</h2>
+        <p style="color: #721c24; font-size: 16px;"><strong>A task has breached its SLA deadline and requires immediate action!</strong></p>
+        
+        <div style="background-color: ${severityColor}; color: white; padding: 10px; margin: 10px 0; text-align: center; border-radius: 5px;">
+          <h3 style="margin: 0;">Severity: ${data.severity}</h3>
+        </div>
+        
+        <h3 style="color: #333;">Task Details:</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task Name:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskId}</td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.caseId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${data.casePriority === 'HIGH' ? '#dc3545' : data.casePriority === 'MEDIUM' ? '#ffc107' : '#28a745'};">${data.casePriority || 'NORMAL'}</span></td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.workQueueName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+          </tr>
+          <tr style="background-color: #f8d7da;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Breach Duration:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong style="color: #721c24;">${breachDuration} OVERDUE</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>SLA Deadline Was:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline || 'N/A'}</td>
+          </tr>
+        </table>
+        
+        <h3 style="color: #721c24; margin-top: 20px;">Required Actions:</h3>
+        <ul style="color: #721c24;">
+          <li>Escalate to supervisor immediately if not already assigned</li>
+          <li>Prioritize completion of this task</li>
+          <li>Document any reasons for the delay</li>
+          <li>Update task status regularly</li>
+        </ul>
+        
+        <p style="margin-top: 20px; color: #721c24;"><strong>This breach has been logged for reporting purposes.</strong></p>
+        <p>Regards,<br/>CMS Team</p>
+      </div>
+    `;
+  }
+
+  private taskOverdueTemplate(data: Record<string, any>): string {
+    const hoursSinceCreation = data.hoursSinceCreation || 'Unknown';
+
+    return `
+      <div style="background-color: #e2e3e5; border-left: 4px solid #6c757d; padding: 20px; margin: 10px 0;">
+        <h2 style="color: #383d41; margin-top: 0;">Overdue Task Alert</h2>
+        <p>A task has been open for an extended period and may require attention or escalation.</p>
+        
+        <h3 style="color: #333;">Task Details:</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task Name:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Task ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.taskId}</td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case ID:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.caseId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${data.casePriority === 'HIGH' ? '#dc3545' : data.casePriority === 'MEDIUM' ? '#ffc107' : '#28a745'};">${data.casePriority || 'NORMAL'}</span></td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.workQueueName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+          </tr>
+          <tr style="background-color: #e2e3e5;">
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Time Open:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong style="color: #383d41;">${hoursSinceCreation} hours</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Created At:</strong></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.createdAt || 'N/A'}</td>
+          </tr>
+        </table>
+        
+        <h3 style="color: #383d41; margin-top: 20px;">Recommended Actions:</h3>
+        <ul>
+          <li>Review task status and progress</li>
+          <li>Check for any blockers or impediments</li>
+          <li>Consider reassignment if necessary</li>
+          <li>Update task priority if warranted</li>
+          <li>Add comments documenting current status</li>
+        </ul>
+        
+        <p style="margin-top: 20px;">Please review this task to ensure it receives appropriate attention.</p>
+        <p>Regards,<br/>CMS Team</p>
+      </div>
     `;
   }
 }

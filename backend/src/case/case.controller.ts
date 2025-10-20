@@ -17,7 +17,7 @@ import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-ca
 import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
 import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
-import {RejectCaseReopeningDto} from "./dto/reopen-case.dto";
+import { RejectCaseReopeningDto } from './dto/reopen-case.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -29,7 +29,10 @@ export class CaseController {
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Abandon a DRAFT case', description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.' })
+  @ApiOperation({
+    summary: 'Abandon a DRAFT case',
+    description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.',
+  })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to abandon' })
   @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for abandoning the case' } } } })
   @ApiResponse({ status: 200, description: 'Case abandoned successfully' })
@@ -103,7 +106,10 @@ export class CaseController {
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete a DRAFT case', description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.' })
+  @ApiOperation({
+    summary: 'Complete a DRAFT case',
+    description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.',
+  })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to complete' })
   @ApiResponse({ status: 200, description: 'Case completed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing information' })
@@ -143,7 +149,7 @@ export class CaseController {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createCaseSystemTransmission(@Body() dto: SystemCaseCreationDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId } = req.user.token;
-    if (!clientId || !tenantId ) throw new BadRequestException('Missing clientId or tenantId');
+    if (!clientId || !tenantId) throw new BadRequestException('Missing clientId or tenantId');
     return this.caseService.createCaseSystemTransmission(dto, clientId, tenantId);
   }
 
@@ -231,7 +237,7 @@ export class CaseController {
         errors: {
           type: 'array',
           items: { type: 'string' },
-          example: ['Final notes are required and must be at least 20 characters']
+          example: ['Final notes are required and must be at least 20 characters'],
         },
         caseId: { type: 'string' },
       },
@@ -244,7 +250,7 @@ export class CaseController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Case not found or you don\'t have permission to close it' },
+        message: { type: 'string', example: "Case not found or you don't have permission to close it" },
       },
     },
   })
@@ -274,11 +280,7 @@ export class CaseController {
       },
     },
   })
-  async closeCase(
-      @Param('caseId') caseId: string,
-      @Body() dto: CloseCaseDto,
-      @Req() req: AuthenticatedRequest
-  ) {
+  async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId } = req.user.token;
     if (!clientId || !tenantId) {
       throw new BadRequestException('Missing clientId or tenantId in auth token');
@@ -344,9 +346,9 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   async getUserCasesByUserId(
-      @Param('userId') targetUserId: string,
-      @Query() query: GetUserCasesQueryDto,
-      @Req() req: AuthenticatedRequest,
+    @Param('userId') targetUserId: string,
+    @Query() query: GetUserCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     const requestingUserId = req.user.token.clientId;
     if (requestingUserId !== targetUserId) {
@@ -359,7 +361,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: 'Get summary statistics of user\'s case workload',
   })
   @ApiResponse({
     status: 200,
@@ -473,22 +475,22 @@ export class CaseController {
         summary: 'Approve as confirmed',
         value: {
           finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-          supervisorComments: 'Investigation findings are thorough and well-documented. Approving closure as confirmed fraud case.'
-        }
+          supervisorComments: 'Investigation findings are thorough and well-documented. Approving closure as confirmed fraud case.',
+        },
       },
       refuted: {
         summary: 'Approve as refuted',
         value: {
           finalOutcome: 'STATUS_81_CLOSED_REFUTED',
-          supervisorComments: 'Evidence clearly shows no fraud occurred. Alert was false positive.'
-        }
+          supervisorComments: 'Evidence clearly shows no fraud occurred. Alert was false positive.',
+        },
       },
       inconclusive: {
         summary: 'Approve as inconclusive',
         value: {
           finalOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
-          supervisorComments: 'Investigation conducted properly but insufficient evidence to make definitive determination.'
-        }
+          supervisorComments: 'Investigation conducted properly but insufficient evidence to make definitive determination.',
+        },
       },
     },
   })
@@ -507,12 +509,12 @@ export class CaseController {
         validOutcomes: {
           type: 'array',
           items: { type: 'string' },
-          example: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE']
+          example: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'],
         },
         missingInformation: {
           type: 'array',
           items: { type: 'string' },
-          example: ['Completed investigation task', 'Investigation closure recommendation']
+          example: ['Completed investigation task', 'Investigation closure recommendation'],
         },
       },
     },
@@ -558,21 +560,12 @@ export class CaseController {
       },
     },
   })
-  async approveCaseClosure(
-      @Param('caseId') caseId: string,
-      @Body() dto: ApproveCaseClosureDto,
-      @Req() req: AuthenticatedRequest
-  ) {
+  async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     if (!supervisorId) {
       throw new BadRequestException('Missing supervisor ID in auth token');
     }
-    return this.caseService.approveCaseClosure(
-        caseId,
-        dto.finalOutcome,
-        dto.supervisorComments,
-        supervisorId
-    );
+    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
   }
 
   @Put(':caseId/reject')
@@ -605,14 +598,16 @@ export class CaseController {
       example1: {
         summary: 'Incomplete investigation',
         value: {
-          rejectionReason: 'The investigation is incomplete. Please conduct additional interviews with the witnesses listed in the evidence log and provide a comprehensive timeline of events.'
-        }
+          rejectionReason:
+            'The investigation is incomplete. Please conduct additional interviews with the witnesses listed in the evidence log and provide a comprehensive timeline of events.',
+        },
       },
       example2: {
         summary: 'Missing evidence',
         value: {
-          rejectionReason: 'Critical evidence is missing. The transaction logs referenced in your summary have not been uploaded. Please attach all relevant documentation before resubmitting.'
-        }
+          rejectionReason:
+            'Critical evidence is missing. The transaction logs referenced in your summary have not been uploaded. Please attach all relevant documentation before resubmitting.',
+        },
       },
     },
   })
@@ -624,7 +619,7 @@ export class CaseController {
       properties: {
         message: {
           type: 'string',
-          example: 'Case closure rejected and returned for investigation'
+          example: 'Case closure rejected and returned for investigation',
         },
         case: {
           type: 'object',
@@ -665,11 +660,7 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL state',
   })
-  async rejectCaseClosure(
-      @Param('caseId') caseId: string,
-      @Body() dto: RejectCaseClosureDto,
-      @Req() req: AuthenticatedRequest
-  ) {
+  async rejectCaseClosure(@Param('caseId') caseId: string, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     if (!supervisorId) {
       throw new BadRequestException('Missing supervisor ID in auth token');
@@ -683,8 +674,8 @@ export class CaseController {
   @ApiOperation({
     summary: 'Approve case creation',
     description:
-        'Supervisor approves manual case creation. Updates case to READY_FOR_ASSIGNMENT, ' +
-        'completes approval task, and creates Investigate Case task in Flowable investigations queue.',
+      'Supervisor approves manual case creation. Updates case to READY_FOR_ASSIGNMENT, ' +
+      'completes approval task, and creates Investigate Case task in Flowable investigations queue.',
   })
   @ApiParam({
     name: 'caseId',
@@ -767,10 +758,7 @@ export class CaseController {
       },
     },
   })
-  async approveCaseCreation(
-      @Param('caseId') caseId: string,
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async approveCaseCreation(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -786,8 +774,8 @@ export class CaseController {
   @ApiOperation({
     summary: 'Reject case creation',
     description:
-        'Supervisor rejects manual case creation. Returns case to DRAFT status, ' +
-        'completes approval task, and creates Complete New Case task assigned to the original creator.',
+      'Supervisor rejects manual case creation. Returns case to DRAFT status, ' +
+      'completes approval task, and creates Complete New Case task assigned to the original creator.',
   })
   @ApiParam({
     name: 'caseId',
@@ -874,11 +862,7 @@ export class CaseController {
       },
     },
   })
-  async rejectCaseCreation(
-      @Param('caseId') caseId: string,
-      @Body() body: { reason: string },
-      @Req() req: AuthenticatedRequest,
-  ) {
+  async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -886,9 +870,7 @@ export class CaseController {
     }
 
     if (!body.reason || body.reason.trim().length < 10) {
-      throw new BadRequestException(
-          'Rejection reason is required and must be at least 10 characters',
-      );
+      throw new BadRequestException('Rejection reason is required and must be at least 10 characters');
     }
 
     return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
@@ -927,7 +909,7 @@ export class CaseController {
             status: {
               type: 'string',
               enum: ['STATUS_10_ASSIGNED', 'STATUS_02_READY_FOR_ASSIGNMENT'],
-              example: 'STATUS_10_ASSIGNED'
+              example: 'STATUS_10_ASSIGNED',
             },
             case_owner_user_id: { type: 'string', format: 'uuid', nullable: true },
             updated_at: { type: 'string', format: 'date-time' },
@@ -947,11 +929,11 @@ export class CaseController {
             name: { type: 'string', example: 'Investigate Case' },
             status: {
               type: 'string',
-              enum: ['STATUS_10_ASSIGNED', 'STATUS_01_UNASSIGNED']
+              enum: ['STATUS_10_ASSIGNED', 'STATUS_01_UNASSIGNED'],
             },
             assigned_to: {
               type: 'string',
-              description: 'User ID or candidate group name'
+              description: 'User ID or candidate group name',
             },
             candidateGroup: { type: 'string', example: 'investigations' },
           },
@@ -988,10 +970,7 @@ export class CaseController {
       },
     },
   })
-  async approveCaseReopening(
-      @Param('caseId') caseId: string,
-      @Req() req: AuthenticatedRequest
-  ) {
+  async approveCaseReopening(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -1022,14 +1001,16 @@ export class CaseController {
       example1: {
         summary: 'Insufficient evidence',
         value: {
-          rejectionReason: 'Insufficient new evidence to warrant reopening. The original investigation was comprehensive and all available leads were exhausted.'
-        }
+          rejectionReason:
+            'Insufficient new evidence to warrant reopening. The original investigation was comprehensive and all available leads were exhausted.',
+        },
       },
       example2: {
         summary: 'Duplicate request',
         value: {
-          rejectionReason: 'This case reopening request is a duplicate. The same concerns were already addressed in the original investigation findings.'
-        }
+          rejectionReason:
+            'This case reopening request is a duplicate. The same concerns were already addressed in the original investigation findings.',
+        },
       },
     },
   })
@@ -1052,9 +1033,9 @@ export class CaseController {
                 'STATUS_82_CLOSED_CONFIRMED',
                 'STATUS_83_CLOSED_INCONCLUSIVE',
                 'STATUS_71_AUTOCLOSED_CONFIRMED',
-                'STATUS_72_AUTOCLOSED_REFUTED'
+                'STATUS_72_AUTOCLOSED_REFUTED',
               ],
-              example: 'STATUS_82_CLOSED_CONFIRMED'
+              example: 'STATUS_82_CLOSED_CONFIRMED',
             },
             updated_at: { type: 'string', format: 'date-time' },
           },
@@ -1098,11 +1079,7 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
   })
-  async rejectCaseReopening(
-      @Param('caseId') caseId: string,
-      @Body() dto: RejectCaseReopeningDto,
-      @Req() req: AuthenticatedRequest
-  ) {
+  async rejectCaseReopening(@Param('caseId') caseId: string, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
@@ -1110,17 +1087,10 @@ export class CaseController {
     }
 
     if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
-      throw new BadRequestException(
-          'Rejection reason is required and must be at least 20 characters'
-      );
+      throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
     }
 
-    return this.caseService.rejectCaseReopening(
-        caseId,
-        dto.rejectionReason,
-        supervisorId,
-        tenantId
-    );
+    return this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);
   }
 
   @Put(':caseId/return-for-review')

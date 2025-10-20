@@ -2,11 +2,13 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CasePriorityUtil } from './utils/case-priority.util';
 import { TaskValidationUtil } from './utils/task-validation.util';
+import { UserService } from './user.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Global()
 @Module({
-    imports: [ConfigModule],
-    providers: [CasePriorityUtil],
-    exports: [CasePriorityUtil],
+  imports: [ConfigModule, AuthModule],
+  providers: [CasePriorityUtil, UserService],
+  exports: [CasePriorityUtil, UserService],
 })
 export class SharedModule {}

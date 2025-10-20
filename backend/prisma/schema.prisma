@@ -136,14 +136,24 @@ model Task {
   assigned_user_id String?    @db.Uuid
   name             String?
   description      String?
+  task_type        TaskType?
   candidateGroup   String?    @db.VarChar(50)
+  work_queue_id    String?    @db.Uuid
+  sla_deadline     DateTime?  @db.Timestamp(6)
+  sla_duration_hours Int?
+  completed_at     DateTime?  @db.Timestamp(6)
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
   comments         Comment[]
   evidence         Evidence[]
   reports          Report[]
   case             Case       @relation(fields: [case_id], references: [case_id])
+  workQueue        WorkQueue? @relation(fields: [work_queue_id], references: [work_queue_id])
 
+  @@index([work_queue_id])
+  @@index([status])
+  @@index([sla_deadline])
+  @@index([assigned_user_id])
   @@map("tasks")
 }
 
@@ -255,4 +265,196 @@ enum ReportType {
   SUMMARY
   DETAILED
   FINAL
+}
+
+enum TaskType {
+  INVESTIGATION
+  APPROVAL
+  REVIEW
+  EVIDENCE_COLLECTION
+  REPORT_GENERATION
+  CASE_CLOSURE
+  ESCALATION
+}
+
+enum UserRole {
+  ADMIN
+  INVESTIGATOR
+  SUPERVISOR
+  ANALYST
+}
+
+enum AssignmentRuleType {
+  PRIORITY_BASED
+  CASE_TYPE_BASED
+  ROUND_ROBIN
+  LOAD_BALANCED
+  MANUAL
+}
+
+model WorkQueue {
+  work_queue_id        String                    @id @default(uuid()) @db.Uuid
+  name                 String                    @db.VarChar(100)
+  description          String?                   @db.Text
+  tenant_id            String                    @db.Uuid
+  is_active            Boolean                   @default(true)
+  created_by_user_id   String                    @db.Uuid
+  created_at           DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at           DateTime                  @updatedAt @db.Timestamp(6)
+  roles                WorkQueueRole[]
+  taskTypes            WorkQueueTaskType[]
+  assignmentRules      WorkQueueAssignmentRule[]
+  members              WorkQueueMember[]
+  tasks                Task[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@index([is_active])
+  @@map("work_queues")
+}
+
+model WorkQueueRole {
+  work_queue_role_id String    @id @default(uuid()) @db.Uuid
+  work_queue_id      String    @db.Uuid
+  role               UserRole
+  created_at         DateTime  @default(now()) @db.Timestamp(6)
+  workQueue          WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
+
+  @@unique([work_queue_id, role])
+  @@index([work_queue_id])
+  @@map("work_queue_roles")
+}
+
+model WorkQueueTaskType {
+  work_queue_task_type_id String    @id @default(uuid()) @db.Uuid
+  work_queue_id           String    @db.Uuid
+  task_type               TaskType
+  created_at              DateTime  @default(now()) @db.Timestamp(6)
+  workQueue               WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
+
+  @@unique([work_queue_id, task_type])
+  @@index([work_queue_id])
+  @@map("work_queue_task_types")
+}
+
+model WorkQueueAssignmentRule {
+  assignment_rule_id String             @id @default(uuid()) @db.Uuid
+  work_queue_id      String             @db.Uuid
+  rule_name          String             @default("Legacy Rule") @db.VarChar(255)
+  rule_type          AssignmentRuleType
+  rule_config        Json              
+  trigger_type       String?            @db.VarChar(50)
+  conditions         Json?            
+  actions            Json?              
+  stop_on_match      Boolean            @default(false)
+  priority_order     Int                @default(0)
+  is_active          Boolean            @default(true)
+  application_count  Int                @default(0)
+  last_applied_at    DateTime?          @db.Timestamp(6)
+  created_by         String             @default("00000000-0000-0000-0000-000000000000") @db.Uuid
+  updated_by         String?            @db.Uuid
+  created_at         DateTime           @default(now()) @db.Timestamp(6)
+  updated_at         DateTime           @updatedAt @db.Timestamp(6)
+  workQueue          WorkQueue          @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
+
+  @@index([work_queue_id])
+  @@index([is_active])
+  @@index([priority_order])
+  @@index([trigger_type])
+  @@map("work_queue_assignment_rules")
+}
+
+model WorkQueueMember {
+  work_queue_member_id String              @id @default(uuid()) @db.Uuid
+  work_queue_id        String              @db.Uuid
+  user_id              String              @db.Uuid
+  assignment_type      AssignmentType      @default(MANUAL)
+  assigned_by_user_id  String?             @db.Uuid
+  assigned_at          DateTime            @default(now()) @db.Timestamp(6)
+  updated_at           DateTime            @updatedAt @db.Timestamp(6)
+  workQueue            WorkQueue           @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
+
+  @@unique([work_queue_id, user_id])
+  @@index([work_queue_id])
+  @@index([user_id])
+  @@map("work_queue_members")
+}
+
+enum AssignmentType {
+  MANUAL
+  AUTOMATIC
+  OVERRIDE
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  SMS
+  DASHBOARD
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_REASSIGNED
+  TASK_UNASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  SLA_WARNING
+  SLA_BREACH
+  WORK_QUEUE_ADDED
+  WORK_QUEUE_REMOVED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+  PERMANENT_FAILURE
+}
+
+model UserNotificationPreference {
+  preference_id         String               @id @default(uuid()) @db.Uuid
+  user_id               String               @unique @db.Uuid
+  tenant_id             String               @db.Uuid
+  email_enabled         Boolean              @default(true)
+  in_app_enabled        Boolean              @default(true)
+  sms_enabled           Boolean              @default(false)
+  dashboard_enabled     Boolean              @default(true)
+  phone_number          String?              @db.VarChar(20)
+  suppression_settings  Json?                // NotificationType[] to suppress
+  default_channel       NotificationChannel  @default(EMAIL)
+  created_at            DateTime             @default(now()) @db.Timestamp(6)
+  updated_at            DateTime             @updatedAt @db.Timestamp(6)
+
+  @@index([user_id])
+  @@index([tenant_id])
+  @@map("user_notification_preferences")
+}
+
+model NotificationLog {
+  notification_log_id String             @id @default(uuid()) @db.Uuid
+  user_id             String             @db.Uuid
+  tenant_id           String             @db.Uuid
+  task_id             String?            @db.Uuid
+  case_id             String?            @db.Uuid
+  notification_type   NotificationType
+  channel             NotificationChannel
+  delivery_status     DeliveryStatus     @default(PENDING)
+  retry_count         Int                @default(0)
+  max_retries         Int                @default(5)
+  payload             Json               // Complete notification payload
+  error_message       String?            @db.Text
+  sent_at             DateTime?          @db.Timestamp(6)
+  read_at             DateTime?          @db.Timestamp(6)
+  created_at          DateTime           @default(now()) @db.Timestamp(6)
+  updated_at          DateTime           @updatedAt @db.Timestamp(6)
+
+  @@index([user_id, notification_type])
+  @@index([task_id])
+  @@index([case_id])
+  @@index([delivery_status])
+  @@index([created_at])
+  @@index([user_id, read_at])
+  @@map("notification_logs")
 }
