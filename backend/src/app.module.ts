@@ -21,6 +21,7 @@ import { NotificationModule } from './notification/notification.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { validate } from './config/env.validation';
 import {ConfigManagementModule} from "./config-management/config-management.module";
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import {ConfigManagementModule} from "./config-management/config-management.modu
     SystemConfigModule,
     WorkQueueModule,
     NotificationModule,
-    NotificationPreferencesModule,
+  NotificationPreferencesModule,
+  ReportModule,
   ],
   providers: [
     PrismaService,
