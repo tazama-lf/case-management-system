@@ -6,17 +6,23 @@ interface ReportFiltersProps {
   onExportExcel: () => void;
   onExportCSV: () => void;
   onExportPDF: () => void;
+  reportType: 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
+  dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
+  onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
+  onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
 }
 
 const ReportFilters: React.FC<ReportFiltersProps> = ({ 
   onExportExcel, 
   onExportCSV, 
-  onExportPDF 
+  onExportPDF,
+  reportType,
+  dateRange,
+  onChangeReportType,
+  onChangeDateRange
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
-  const [reportType, setReportType] = useState<'CASE_STATUS' | 'CASE_OUTCOME' | 'CASE_TYPES'>('CASE_STATUS');
-  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear'>('last30');
   const [openMenu, setOpenMenu] = useState<null | 'report' | 'date'>(null);
 
   const handleChange = (key: 'caseType' | 'priority' | 'investigator', value: string) => {
@@ -43,7 +49,13 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
               onClick={() => setOpenMenu(openMenu === 'report' ? null : 'report')}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
             >
-              <span>{reportType === 'CASE_STATUS' ? 'Case Status Report' : reportType === 'CASE_OUTCOME' ? 'Case Outcome Report' : 'Case Types Report'}</span>
+              <span>{
+                reportType === 'CASE_STATUS' ? 'Case Status Report' :
+                reportType === 'TASK_COMPLETION' ? 'Task Completion Report' :
+                reportType === 'AUDIT_LOGS' ? 'Audit Logs' :
+                reportType === 'CASE_AGEING' ? 'Case Ageing Report' :
+                'Investigator Workload'
+              }</span>
               <FunnelIcon className="h-4 w-4 text-gray-500" />
             </button>
             {openMenu === 'report' && (
@@ -51,7 +63,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                 <ul className="py-1 text-sm text-gray-700">
                   <li>
                     <button
-                      onClick={() => { setReportType('CASE_STATUS'); setOpenMenu(null); }}
+                      onClick={() => { onChangeReportType('CASE_STATUS'); setOpenMenu(null); }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50"
                     >
                       Case Status Report
@@ -59,18 +71,34 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => { setReportType('CASE_OUTCOME'); setOpenMenu(null); }}
+                      onClick={() => { onChangeReportType('TASK_COMPLETION'); setOpenMenu(null); }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50"
                     >
-                      Case Outcome Report
+                      Task Completion Report
                     </button>
                   </li>
                   <li>
                     <button
-                      onClick={() => { setReportType('CASE_TYPES'); setOpenMenu(null); }}
+                      onClick={() => { onChangeReportType('AUDIT_LOGS'); setOpenMenu(null); }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50"
                     >
-                      Case Types Report
+                      Audit Logs
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => { onChangeReportType('CASE_AGEING'); setOpenMenu(null); }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50"
+                    >
+                      Case Ageing Report
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => { onChangeReportType('INVESTIGATOR_WORKLOAD'); setOpenMenu(null); }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50"
+                    >
+                      Investigator Workload
                     </button>
                   </li>
                 </ul>
@@ -98,13 +126,13 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             {openMenu === 'date' && (
               <div className="absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
                 <ul className="py-1 text-sm text-gray-700">
-                  <li><button onClick={() => { setDateRange('today'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Today</button></li>
-                  <li><button onClick={() => { setDateRange('yesterday'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Yesterday</button></li>
-                  <li><button onClick={() => { setDateRange('last7'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 7 Days</button></li>
-                  <li><button onClick={() => { setDateRange('last30'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 30 Days</button></li>
-                  <li><button onClick={() => { setDateRange('last90'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 90 Days</button></li>
-                  <li><button onClick={() => { setDateRange('thisMonth'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">This Month</button></li>
-                  <li><button onClick={() => { setDateRange('lastYear'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last Year</button></li>
+                  <li><button onClick={() => { onChangeDateRange('today'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Today</button></li>
+                  <li><button onClick={() => { onChangeDateRange('yesterday'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Yesterday</button></li>
+                  <li><button onClick={() => { onChangeDateRange('last7'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 7 Days</button></li>
+                  <li><button onClick={() => { onChangeDateRange('last30'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 30 Days</button></li>
+                  <li><button onClick={() => { onChangeDateRange('last90'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last 90 Days</button></li>
+                  <li><button onClick={() => { onChangeDateRange('thisMonth'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">This Month</button></li>
+                  <li><button onClick={() => { onChangeDateRange('lastYear'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Last Year</button></li>
                 </ul>
               </div>
             )}

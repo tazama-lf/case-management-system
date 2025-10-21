@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { PageContainer } from '../../../shared/components/ui';
 import ReportStatsCards from '../components/ReportStatsCards';
@@ -8,9 +8,17 @@ import BarChart from '../components/BarChart';
 import LineChart from '../components/LineChart';
 import ReportsTable from '../components/ReportsTable';
 import { useReports } from '../hooks/useReports';
+import InvestigatorWorkloadReport from './InvestigatorWorkloadReport';
+import TaskCompletionReport from './TaskCompletionReport';
+import AuditLogsReport from './AuditLogsReport';
+import CaseAgeingReport from './CaseAgeingReport';
+
+type ReportType = 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
 
 const Reports: React.FC = () => {
-  const { data: reportsData, isLoading, error } = useReports();
+  const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
+  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear'>('last30');
+  const { data: reportsData, isLoading, error } = useReports(dateRange);
 
   const handleExportExcel = () => {
     console.log('Exporting to Excel...');
@@ -93,56 +101,118 @@ const Reports: React.FC = () => {
     percentage: (item.value / (outcomes.resolved + outcomes.confirmed + outcomes.inconclusive + outcomes.pending)) * 100
   }));
 
+  const getPageTitle = () => {
+    switch (reportType) {
+      case 'CASE_STATUS': return 'Case Status Report';
+      case 'TASK_COMPLETION': return 'Task Completion Report';
+      case 'AUDIT_LOGS': return 'Audit Logs';
+      case 'CASE_AGEING': return 'Case Ageing Report';
+      case 'INVESTIGATOR_WORKLOAD': return 'Investigator Workload Report';
+      default: return 'Reports Dashboard';
+    }
+  };
+
+  const getPageSubtitle = () => {
+    switch (reportType) {
+      case 'CASE_STATUS': return 'Overview of cases by status, type, and outcome';
+      case 'TASK_COMPLETION': return 'Analysis of task completion rates and time to completion';
+      case 'AUDIT_LOGS': return 'Detailed log of all system activities for compliance and audit purposes';
+      case 'CASE_AGEING': return 'Analysis of case duration from creation to closure';
+      case 'INVESTIGATOR_WORKLOAD': return 'Overview of investigator workloads and performance metrics';
+      default: return 'Overview of cases by status, type, and outcome';
+    }
+  };
+
   return (
     <PageContainer
-      title="Reports Dashboard"
-      subtitle="Overview of cases by status, type, and outcome"
+      title={getPageTitle()}
+      subtitle={getPageSubtitle()}
     >
       <ReportFilters
         onExportExcel={handleExportExcel}
         onExportCSV={handleExportCSV}
         onExportPDF={handleExportPDF}
+        reportType={reportType}
+        dateRange={dateRange}
+        onChangeReportType={setReportType}
+        onChangeDateRange={setDateRange}
       />
+      {reportType === 'CASE_STATUS' && (
+        <>
+          <ReportStatsCards stats={stats} />
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <PieChart 
+              data={statusDistributionData} 
+              title="Case Status Distribution" 
+            />
+            <BarChart 
+              data={caseTypes.map(type => ({ 
+                label: type.name, 
+                value: type.count, 
+                color: type.color 
+              }))} 
+              title="Case Types" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <PieChart 
+              data={outcomeData} 
+              title="Case Outcomes" 
+            />
+            <LineChart 
+              data={monthlyTrend.map(trend => ({
+                label: trend.month,
+                casesCreated: trend.casesCreated,
+                casesClosed: trend.casesClosed
+              }))} 
+              title="Monthly Case Trend" 
+            />
+          </div>
+          <ReportsTable 
+            data={statusDetails} 
+            title="Case Status Details" 
+            onExportExcel={handleExportExcel}
+            onExportCSV={handleExportCSV}
+            onExportPDF={handleExportPDF}
+          />
+        </>
+      )}
 
-      <ReportStatsCards stats={stats} />
+      {reportType === 'TASK_COMPLETION' && (
+        <TaskCompletionReport 
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+          dateRange={dateRange}
+        />
+      )}
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <PieChart 
-          data={statusDistributionData} 
-          title="Case Status Distribution" 
+      {reportType === 'AUDIT_LOGS' && (
+        <AuditLogsReport 
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+          dateRange={dateRange}
         />
-        <BarChart 
-          data={caseTypes.map(type => ({ 
-            label: type.name, 
-            value: type.count, 
-            color: type.color 
-          }))} 
-          title="Case Types" 
-        />
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <PieChart 
-          data={outcomeData} 
-          title="Case Outcomes" 
+      {reportType === 'CASE_AGEING' && (
+        <CaseAgeingReport 
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+          dateRange={dateRange}
         />
-        <LineChart 
-          data={monthlyTrend.map(trend => ({
-            label: trend.month,
-            casesCreated: trend.casesCreated,
-            casesClosed: trend.casesClosed
-          }))} 
-          title="Monthly Case Trend" 
-        />
-      </div>
+      )}
 
-      <ReportsTable 
-        data={statusDetails} 
-        title="Case Status Details" 
-        onExportExcel={handleExportExcel}
-        onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
-      />
+      {reportType === 'INVESTIGATOR_WORKLOAD' && (
+        <InvestigatorWorkloadReport 
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+          dateRange={dateRange}
+        />
+      )}
     </PageContainer>
   );
 };
