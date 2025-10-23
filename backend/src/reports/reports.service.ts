@@ -251,6 +251,42 @@ export class ReportsService {
       };
     });
 
+    // Generate resolution time trend data (last 6 months)
+    const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      
+      const monthClosedCases = await this.prisma.case.findMany({
+        where: {
+          updated_at: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+          status: {
+            in: closedStatuses,
+          },
+        },
+        select: {
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      const avgResolutionTimeMonth = monthClosedCases.length > 0
+        ? monthClosedCases.reduce((sum, case_) => {
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / monthClosedCases.length
+        : 0;
+
+      resolutionTrend.push({
+        month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
+        avgResolutionTime: Math.round(avgResolutionTimeMonth * 10) / 10,
+        casesResolved: monthClosedCases.length,
+      });
+    }
+
     return {
       stats: {
         totalCases,
@@ -262,6 +298,7 @@ export class ReportsService {
       caseTypes,
       outcomes,
       monthlyTrend,
+      resolutionTrend,
       statusDetails,
     };
   }
@@ -317,7 +354,8 @@ export class ReportsService {
         ]);
 
         return {
-          name: `User ${case_owner_user_id.slice(0, 8)}`,
+          investigatorId: case_owner_user_id,
+          name: `User ${case_owner_user_id}`,
           activeCases,
           pendingTasks,
         };
@@ -362,7 +400,7 @@ export class ReportsService {
           : 0;
 
         return {
-          name: `User ${case_owner_user_id.slice(0, 8)}`,
+          name: `User ${case_owner_user_id}`,
           avgDays: Math.round(avgResolutionDays * 10) / 10,
         };
       })
@@ -402,7 +440,7 @@ export class ReportsService {
         ]);
 
         return {
-          name: `User ${case_owner_user_id.slice(0, 8)}`,
+          name: `User ${case_owner_user_id}`,
           confirmed,
           refuted,
           inconclusive,
@@ -465,7 +503,8 @@ export class ReportsService {
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
 
         return {
-          investigator: `User ${case_owner_user_id.slice(0, 8)}`,
+          investigatorId: case_owner_user_id,
+          investigator: `User ${case_owner_user_id}`,
           role: 'Investigator', // Default role
           totalCases,
           activeCases,
@@ -478,6 +517,38 @@ export class ReportsService {
         };
       })
     );
+
+    // Generate volume trend data (monthly case volume by investigator)
+    const volumeTrend: Array<{ month: string; investigators: { [key: string]: number } }> = [];
+    const now = new Date();
+    
+    // Generate data for the last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthLabel = monthStart.toLocaleString('default', { month: 'short', year: 'numeric' });
+      
+      const monthData = { month: monthLabel, investigators: {} };
+      
+      // Get case counts for each investigator for this month
+      for (const { case_owner_user_id } of investigators) {
+        if (!case_owner_user_id) continue;
+        
+        const caseCount = await this.prisma.case.count({
+          where: {
+            case_owner_user_id,
+            created_at: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        });
+        
+        monthData.investigators[`User ${case_owner_user_id}`] = caseCount;
+      }
+      
+      volumeTrend.push(monthData);
+    }
 
     const totalInvestigators = validWorkloadData.length;
     const avgCasesPerInvestigator = totalInvestigators > 0 
@@ -492,7 +563,7 @@ export class ReportsService {
         caseClosureRate: 0,
       },
       workloadData: validWorkloadData,
-      volumeTrend: [],
+      volumeTrend: volumeTrend,
       efficiencyData: efficiencyData.filter(Boolean),
       outcomeData: outcomeData.filter(Boolean),
       performanceData: performanceData.filter(Boolean),
@@ -604,6 +675,75 @@ export class ReportsService {
         }
       }));
 
+      // Generate completion trend data (last 6 months)
+      const completionTrend: Array<{ month: string; completionRate: number; totalTasks: number; completedTasks: number }> = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+        
+        const [totalTasks, completedTasks] = await Promise.all([
+          this.prisma.task.count({
+            where: {
+              created_at: {
+                gte: monthStart,
+                lte: monthEnd,
+              },
+            },
+          }),
+          this.prisma.task.count({
+            where: {
+              created_at: {
+                gte: monthStart,
+                lte: monthEnd,
+              },
+              status: TaskStatus.STATUS_30_COMPLETED,
+            },
+          }),
+        ]);
+
+        const monthRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+        
+        completionTrend.push({
+          month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
+          completionRate: Math.round(monthRate * 10) / 10,
+          totalTasks,
+          completedTasks,
+        });
+      }
+
+      // Calculate average completion times by type
+      const avgCompletionTimeByType = await Promise.all(taskTypeCounts.map(async ({ task_type }) => {
+        const completedTasksWithTimes = await this.prisma.task.findMany({
+          where: {
+            created_at: {
+              gte: startDate,
+              lte: endDate,
+            },
+            status: TaskStatus.STATUS_30_COMPLETED,
+            task_type: task_type,
+            completed_at: { not: null },
+          },
+          select: {
+            created_at: true,
+            completed_at: true,
+          },
+        });
+
+        const avgDays = completedTasksWithTimes.length > 0
+          ? completedTasksWithTimes.reduce((sum, task) => {
+              if (!task.completed_at) return sum;
+              const completionTime = (task.completed_at.getTime() - task.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              return sum + completionTime;
+            }, 0) / completedTasksWithTimes.length
+          : 0;
+
+        return {
+          type: task_type || 'UNKNOWN',
+          avgDays: Math.round(avgDays * 10) / 10,
+        };
+      }));
+
       const statusDistribution = taskCounts.map(({ status, _count }) => ({
         status: this.formatTaskStatusName(status),
         count: _count.task_id,
@@ -619,20 +759,20 @@ export class ReportsService {
           overdueTasks: 0,
         },
         completionByType,
-        avgCompletionTime: completionByType.map(ct => ({
-          type: ct.type,
-          avgDays: 0, 
-        })),
-        completionTrend: [], 
+        avgCompletionTime: avgCompletionTimeByType,
+        completionTrend: completionTrend,
         statusDistribution,
-        taskDetails: completionByType.map(ct => ({
-          taskType: ct.type,
-          total: ct.total,
-          completed: ct.completed,
-          completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100 * 10) / 10 : 0,
-          avgTime: 0, 
-          trend: 0, 
-        })),
+        taskDetails: completionByType.map(ct => {
+          const avgTimeData = avgCompletionTimeByType.find(avg => avg.type === ct.type);
+          return {
+            taskType: ct.type,
+            total: ct.total,
+            completed: ct.completed,
+            completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100 * 10) / 10 : 0,
+            avgTime: avgTimeData ? avgTimeData.avgDays : 0,
+            trend: 0, // Could be calculated based on month-over-month changes
+          };
+        }),
       };
 
       return result;
@@ -774,6 +914,49 @@ export class ReportsService {
       investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id}` : 'Unassigned',
     }));
 
+    // Generate resolution trend data for case ageing (last 6 months)
+    const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
+    const nowAgeing = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(nowAgeing.getFullYear(), nowAgeing.getMonth() - i, 1);
+      const monthEnd = new Date(nowAgeing.getFullYear(), nowAgeing.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      
+      const monthCases = await this.prisma.case.findMany({
+        where: {
+          updated_at: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+          status: {
+            in: [
+              CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+              CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+              CaseStatus.STATUS_81_CLOSED_REFUTED,
+              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+            ],
+          },
+        },
+        select: {
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      const avgResolutionTimeMonth = monthCases.length > 0
+        ? monthCases.reduce((sum, case_) => {
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / monthCases.length
+        : 0;
+
+      resolutionTrend.push({
+        month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
+        avgResolutionTime: Math.round(avgResolutionTimeMonth * 10) / 10,
+        casesResolved: monthCases.length,
+      });
+    }
+
     return {
       stats: {
         avgCaseAge: Math.round(avgCaseAge * 10) / 10,
@@ -782,7 +965,7 @@ export class ReportsService {
         casesOver30Days,
       },
       ageingByStatus,
-      resolutionTrend: [],
+      resolutionTrend,
       ageingDistribution,
       caseTypeResolution,
       caseDetails,

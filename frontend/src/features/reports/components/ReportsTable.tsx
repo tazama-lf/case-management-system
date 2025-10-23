@@ -78,11 +78,11 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-40" />  {/* Status */}
-            <col className="w-24" />  {/* Count */}
-            <col className="w-32" />  {/* Percentage */}
-            <col className="w-40" />  {/* Avg Time in Status */}
-            <col className="w-48" />  {/* Current Trend Period */}
+            <col className="w-40" />
+            <col className="w-24" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-48" />
           </colgroup>
           <thead className="bg-gray-50">
             <tr>

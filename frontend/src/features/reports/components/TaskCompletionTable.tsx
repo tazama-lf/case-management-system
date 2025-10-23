@@ -78,12 +78,12 @@ const TaskCompletionTable: React.FC<TaskCompletionTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-48" />  {/* Task Type */}
-            <col className="w-24" />  {/* Total */}
-            <col className="w-28" />  {/* Completed */}
-            <col className="w-36" />  {/* Completion Rate */}
-            <col className="w-36" />  {/* Avg. Time (Days) */}
-            <col className="w-24" />  {/* Trend */}
+            <col className="w-48" />
+            <col className="w-24" />
+            <col className="w-28" />
+            <col className="w-36" />
+            <col className="w-36" />
+            <col className="w-24" />
           </colgroup>
           <thead className="bg-gray-50">
             <tr>

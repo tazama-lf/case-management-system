@@ -90,6 +90,7 @@ export interface OutcomeDistribution {
 
 export interface InvestigatorPerformance {
   investigator: string;
+  investigatorId: string;
   role: string;
   activeCases: number;
   completedCases: number;

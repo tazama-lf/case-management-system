@@ -221,14 +221,14 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-72" /> 
-            <col className="w-72" /> 
-            <col className="w-32" />  
-            <col className="w-32" /> 
-            <col className="w-48" />  
-            <col className="w-32" />  
-            <col className="w-40" />  
-            <col className="w-20" /> 
+            <col className="w-72" />
+            <col className="w-72" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-48" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-20" />
           </colgroup>
           <thead className="bg-gray-50">
             <tr>

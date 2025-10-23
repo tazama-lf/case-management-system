@@ -90,14 +90,14 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-72" />  {/* Investigator ID - wider for full UUID */}
-            <col className="w-48" />  {/* Investigator */}
-            <col className="w-32" />  {/* Role */}
-            <col className="w-28" />  {/* Active Cases */}
-            <col className="w-32" />  {/* Completed Cases */}
-            <col className="w-40" />  {/* Avg. Resolution Time */}
-            <col className="w-36" />  {/* Case Closure Rate */}
-            <col className="w-36" />  {/* Performance Trend */}
+            <col className="w-72" />
+            <col className="w-48" />
+            <col className="w-32" />
+            <col className="w-28" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-36" />
+            <col className="w-36" />
           </colgroup>
           <thead className="bg-gray-50">
             <tr>
