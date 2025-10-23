@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ReportController } from './report.controller';
-import { ReportService } from './report.service';
+import { ReportsController} from './report.controller';
+import { ReportsService } from './report.service';
 import { TaskService } from '../task/task.service';
 import { CaseService } from '../case/case.service';
 import { UserService } from '../shared/user.service';
@@ -14,6 +14,8 @@ import { NotificationModule } from '../notification/notification.module';
 import { WorkQueueModule } from '../work-queue/work-queue.module';
 import { CommentModule } from '../comment/comment.module';
 import { CaseWorkflowModule } from '../case-workflow/case-workflow.module';
+import { TaskModule } from 'src/task/task.module';
+import { CaseModule } from 'src/case/case.module';
 
 @Module({
   imports: [
@@ -27,9 +29,12 @@ import { CaseWorkflowModule } from '../case-workflow/case-workflow.module';
   WorkQueueModule,
   CommentModule,
   CaseWorkflowModule,
+  CaseModule,
+  TaskModule,
   ],
-  controllers: [ReportController],
-  providers: [ReportService, TaskService, CaseService, UserService],
-  exports: [ReportService],
+  controllers: [ReportsController],
+  providers: [ReportsService, TaskService, CaseService, UserService],
+  exports: [ReportsService],
 })
 export class ReportModule {}
+

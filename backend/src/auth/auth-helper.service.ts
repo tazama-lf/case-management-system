@@ -22,7 +22,7 @@ export class AuthHelperService {
       roles: ['CMS_SUPERVISOR'],
     },
     {
-      id: 'a60b4fa7-b4e2-4651-8a6b-d3d024ba89f1',
+      id: 'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1',
       username: 'clara.kamau',
       firstName: 'Clara',
       lastName: 'Kamau',
