@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 
 interface StatsCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
-  color: 'blue' | 'red' | 'yellow' | 'green';
+  color: 'blue' | 'red' | 'yellow' | 'green' | 'purple';
   subtitle?: string;
 }
 
@@ -12,11 +12,15 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   const [animatedValue, setAnimatedValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
+  // Determine if value is numeric for animation
+  const isNumeric = typeof value === 'number';
+
   const colorClasses = {
     blue: 'bg-blue-500 text-white shadow-blue-100',
     red: 'bg-red-500 text-white shadow-red-100',
     yellow: 'bg-yellow-500 text-white shadow-yellow-100',
     green: 'bg-green-500 text-white shadow-green-100',
+    purple: 'bg-purple-500 text-white shadow-purple-100',
   };
 
   const bgColorClasses = {
@@ -24,28 +28,47 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
     red: 'hover:bg-red-50',
     yellow: 'hover:bg-yellow-50',
     green: 'hover:bg-green-50',
+    purple: 'hover:bg-purple-50',
   };
 
   useEffect(() => {
     setIsVisible(true);
 
-    const duration = 1000;
-    const steps = 60;
-    const increment = value / steps;
-    let current = 0;
+    // Only animate numeric values
+    if (isNumeric && typeof value === 'number') {
+      const duration = 1000;
+      const steps = 60;
+      const increment = value / steps;
+      let current = 0;
 
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= value) {
-        setAnimatedValue(value);
-        clearInterval(timer);
-      } else {
-        setAnimatedValue(Math.floor(current));
-      }
-    }, duration / steps);
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= value) {
+          setAnimatedValue(value);
+          clearInterval(timer);
+        } else {
+          setAnimatedValue(Math.floor(current));
+        }
+      }, duration / steps);
 
-    return () => clearInterval(timer);
-  }, [value]);
+      return () => clearInterval(timer);
+    } else {
+      // For string values, just set to 0 (no animation)
+      setAnimatedValue(0);
+    }
+  }, [value, isNumeric]);
+
+  // Helper function to safely display the value
+  const getDisplayValue = () => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    // Handle NaN, null, undefined for numeric values
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+      return '0';
+    }
+    return animatedValue.toLocaleString();
+  };
 
   return (
     <div
@@ -61,7 +84,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
           <p className="text-3xl font-bold text-gray-900 transition-all duration-300">
-            {animatedValue.toLocaleString()}
+            {getDisplayValue()}
           </p>
           {subtitle && (
             <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
