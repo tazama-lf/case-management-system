@@ -87,6 +87,11 @@ export const exportToPDF = async (
       throw new Error('No data to export');
     }
 
+    // Calculate optimal column widths for A4 paper (595 units wide, minus margins = ~515 units)
+    const availableWidth = 515;
+    const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
+    const widthScale = availableWidth / totalRequestedWidth;
+
     const tableBody = [
       columns.map(col => ({
         text: col.label,
@@ -97,31 +102,62 @@ export const exportToPDF = async (
       ...data.map(row =>
         columns.map(col => {
           const value = row[col.key];
+          let displayValue = '';
+          
+          if (value !== undefined && value !== null) {
+            displayValue = String(value);
+            // For ID fields, ensure full display without truncation
+            if (col.key.toLowerCase().includes('id') || col.key.toLowerCase().includes('case')) {
+              displayValue = String(value); // Keep full ID
+            }
+          }
+          
           return {
-            text: value !== undefined && value !== null ? String(value) : '',
-            style: 'tableCell'
+            text: displayValue,
+            style: 'tableCell',
+            // For ID columns, use smaller font to fit more content
+            fontSize: col.key.toLowerCase().includes('id') ? 7 : 8
           };
         })
       )
     ];
 
+    // Calculate responsive column widths for A4
+    const columnWidths = columns.map(col => {
+      const requestedWidth = col.width || 100;
+      const scaledWidth = Math.floor(requestedWidth * widthScale);
+      
+      // Ensure minimum width for ID columns
+      if (col.key.toLowerCase().includes('id')) {
+        return Math.max(scaledWidth, 60);
+      }
+      
+      return scaledWidth;
+    });
+
     const docDefinition = {
+      pageSize: 'A4',
+      pageOrientation: 'landscape', // Use landscape for better table fitting
+      pageMargins: [40, 60, 40, 60],
       content: [
         {
           text: title,
           style: 'header',
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 15]
         },
         {
           text: `Generated on: ${new Date().toLocaleString()}`,
           style: 'subheader',
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 15]
         },
         {
           table: {
             headerRows: 1,
-            widths: columns.map(() => '*'),
-            body: tableBody
+            widths: columnWidths,
+            body: tableBody,
+            // Enable word wrapping for long content
+            dontBreakRows: true,
+            keepWithHeaderRows: 1
           },
           layout: {
             fillColor: function (rowIndex: number) {
@@ -144,27 +180,32 @@ export const exportToPDF = async (
       ],
       styles: {
         header: {
-          fontSize: 18,
+          fontSize: 16,
           bold: true,
+          alignment: 'center',
           margin: [0, 0, 0, 10]
         },
         subheader: {
-          fontSize: 12,
-          margin: [0, 10, 0, 5]
+          fontSize: 10,
+          alignment: 'center',
+          margin: [0, 5, 0, 5]
         },
         tableHeader: {
           bold: true,
-          fontSize: 10,
+          fontSize: 8,
           color: 'white',
-          fillColor: '#3b82f6'
+          fillColor: '#3b82f6',
+          alignment: 'center'
         },
         tableCell: {
-          fontSize: 9,
-          margin: [0, 5, 0, 5]
+          fontSize: 8,
+          margin: [2, 3, 2, 3],
+          alignment: 'left'
         }
       },
       defaultStyle: {
-        fontSize: 10
+        fontSize: 8,
+        font: 'Roboto'
       }
     };
 
@@ -181,59 +222,74 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
   switch (reportType) {
     case 'CASE_STATUS':
       return data.map(item => ({
-        'Status': item.status,
-        'Count': item.count,
-        'Percentage': item.percentage,
-        'Avg Time in Status': item.avgTimeInStatus,
-        'Current Trend Period': item.currentTrendPeriod,
+        'Status': item.status || '',
+        'Count': item.count || 0,
+        'Percentage': item.percentage || '0%',
+        'Avg Time in Status': item.avgTimeInStatus || '0 days',
+        'Current Trend Period': item.currentTrendPeriod || 'No trend',
       }));
 
     case 'TASK_COMPLETION':
       return data.map(item => ({
-        'Task Type': item.taskType,
-        'Total': item.total,
-        'Completed': item.completed,
-        'Completion Rate': `${item.completionRate}%`,
-        'Avg Time (Days)': item.avgTime,
-        'Trend': `${item.trend > 0 ? '+' : ''}${item.trend}%`,
+        'Task Type': item.taskType || '',
+        'Total': item.total || 0,
+        'Completed': item.completed || 0,
+        'Completion Rate': `${item.completionRate || 0}%`,
+        'Avg Time (Days)': item.avgTime || 0,
+        'Trend': `${item.trend > 0 ? '+' : ''}${item.trend || 0}%`,
       }));
 
     case 'AUDIT_LOGS':
       return data.map(item => ({
-        'Log ID': item.audit_log_id || '',
-        'User ID': item.user_id || '',
+        'Log ID': String(item.audit_log_id || item.logId || item.id || ''),
+        'User ID': String(item.user_id || item.userId || item.user || ''),
         'Operation': item.operation || '',
-        'Entity Name': item.entity_name || '',
-        'Action Performed': item.action_performed || '',
+        'Entity Name': item.entity_name || item.entityName || '',
+        'Action Performed': item.action_performed || item.actionPerformed || item.action || '',
         'Outcome': item.outcome || '',
-        'Performed At': item.performed_at || '',
+        'Performed At': item.performed_at || item.performedAt || item.timestamp || '',
         'Type': item.type || 'Info',
       }));
 
     case 'CASE_AGEING':
       return data.map(item => ({
-        'Case ID': item.caseId,
-        'Type': item.type,
-        'Status': item.status,
-        'Created Date': item.createdDate,
-        'Age (Days)': item.ageDays,
-        'Priority': item.priority,
-        'Investigator': item.investigator,
+        'Case ID': String(item.caseId || item.case_id || item.id || ''),
+        'Type': item.type || item.caseType || '',
+        'Status': item.status || '',
+        'Created Date': item.createdDate || item.created_date || item.createdAt || '',
+        'Age (Days)': item.ageDays || item.age_days || item.age || 0,
+        'Priority': item.priority || 'Normal',
+        'User ID': String(item.userId || item.user_id || item.assigneeId || item.assignee_id || ''),
+        'Investigator': item.investigator || item.assignee || item.assigned_to || 'Unassigned',
       }));
 
     case 'INVESTIGATOR_WORKLOAD':
       return data.map(item => ({
-        'Investigator': item.investigator || item.name || 'Unknown',
-        'Role': item.role || 'N/A',
-        'Active Cases': item.activeCases || 0,
-        'Completed Cases': item.completedCases || 0,
-        'Avg Resolution Time': item.avgResolutionTime || 0,
-        'Case Closure Rate': item.caseClosureRate || 0,
-        'Performance Trend': item.performanceTrend || 'N/A',
+        'Investigator ID': String(item.investigatorId || item.investigator_id || item.userId || item.user_id || ''),
+        'Investigator': item.investigator || item.name || item.fullName || 'Unknown',
+        'Role': item.role || 'Investigator',
+        'Active Cases': item.activeCases || item.active_cases || 0,
+        'Completed Cases': item.completedCases || item.completed_cases || 0,
+        'Avg Resolution Time (Days)': item.avgResolutionTime || item.avg_resolution_time || 0,
+        'Case Closure Rate (%)': item.caseClosureRate || item.case_closure_rate || 0,
+        'Performance Trend': item.performanceTrend || item.performance_trend || 'Stable',
       }));
 
     default:
-      return data;
+      // For unknown report types, preserve all fields including IDs
+      return data.map(item => {
+        const formatted: ExportData = {};
+        Object.keys(item).forEach(key => {
+          const value = item[key];
+          // Preserve full values for all ID fields
+          if (key.toLowerCase().includes('id') || key.toLowerCase().includes('case')) {
+            formatted[key] = String(value || '');
+          } else {
+            formatted[key] = value;
+          }
+        });
+        return formatted;
+      });
   }
 };
 
@@ -241,55 +297,57 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
   switch (reportType) {
     case 'CASE_STATUS':
       return [
-        { key: 'Status', label: 'Status', width: 120 },
-        { key: 'Count', label: 'Count', width: 80 },
-        { key: 'Percentage', label: 'Percentage', width: 100 },
-        { key: 'Avg Time in Status', label: 'Avg Time in Status', width: 140 },
-        { key: 'Current Trend Period', label: 'Current Trend Period', width: 150 },
+        { key: 'Status', label: 'Status', width: 100 },
+        { key: 'Count', label: 'Count', width: 60 },
+        { key: 'Percentage', label: 'Percentage', width: 80 },
+        { key: 'Avg Time in Status', label: 'Avg Time in Status', width: 120 },
+        { key: 'Current Trend Period', label: 'Current Trend Period', width: 140 },
       ];
 
     case 'TASK_COMPLETION':
       return [
         { key: 'Task Type', label: 'Task Type', width: 120 },
-        { key: 'Total', label: 'Total', width: 80 },
-        { key: 'Completed', label: 'Completed', width: 100 },
-        { key: 'Completion Rate', label: 'Completion Rate', width: 120 },
-        { key: 'Avg Time (Days)', label: 'Avg Time (Days)', width: 120 },
-        { key: 'Trend', label: 'Trend', width: 80 },
+        { key: 'Total', label: 'Total', width: 60 },
+        { key: 'Completed', label: 'Completed', width: 80 },
+        { key: 'Completion Rate', label: 'Completion Rate', width: 100 },
+        { key: 'Avg Time (Days)', label: 'Avg Time (Days)', width: 100 },
+        { key: 'Trend', label: 'Trend', width: 60 },
       ];
 
     case 'AUDIT_LOGS':
       return [
-        { key: 'Log ID', label: 'Log ID', width: 150 },
-        { key: 'User ID', label: 'User ID', width: 150 },
-        { key: 'Operation', label: 'Operation', width: 120 },
-        { key: 'Entity Name', label: 'Entity Name', width: 100 },
-        { key: 'Action Performed', label: 'Action Performed', width: 200 },
-        { key: 'Outcome', label: 'Outcome', width: 150 },
-        { key: 'Performed At', label: 'Performed At', width: 150 },
-        { key: 'Type', label: 'Type', width: 80 },
+        { key: 'Log ID', label: 'Log ID', width: 120 },
+        { key: 'User ID', label: 'User ID', width: 120 },
+        { key: 'Operation', label: 'Operation', width: 100 },
+        { key: 'Entity Name', label: 'Entity Name', width: 90 },
+        { key: 'Action Performed', label: 'Action Performed', width: 140 },
+        { key: 'Outcome', label: 'Outcome', width: 80 },
+        { key: 'Performed At', label: 'Performed At', width: 120 },
+        { key: 'Type', label: 'Type', width: 60 },
       ];
 
     case 'CASE_AGEING':
       return [
-        { key: 'Case ID', label: 'Case ID', width: 100 },
-        { key: 'Type', label: 'Type', width: 100 },
-        { key: 'Status', label: 'Status', width: 120 },
+        { key: 'Case ID', label: 'Case ID', width: 120 },
+        { key: 'Type', label: 'Type', width: 90 },
+        { key: 'Status', label: 'Status', width: 80 },
         { key: 'Created Date', label: 'Created Date', width: 100 },
-        { key: 'Age (Days)', label: 'Age (Days)', width: 100 },
-        { key: 'Priority', label: 'Priority', width: 80 },
-        { key: 'Investigator', label: 'Investigator', width: 120 },
+        { key: 'Age (Days)', label: 'Age (Days)', width: 80 },
+        { key: 'Priority', label: 'Priority', width: 70 },
+        { key: 'User ID', label: 'User ID', width: 120 },
+        { key: 'Investigator', label: 'Investigator', width: 100 },
       ];
 
     case 'INVESTIGATOR_WORKLOAD':
       return [
-        { key: 'Investigator', label: 'Investigator', width: 150 },
-        { key: 'Role', label: 'Role', width: 100 },
-        { key: 'Active Cases', label: 'Active Cases', width: 120 },
-        { key: 'Completed Cases', label: 'Completed Cases', width: 120 },
-        { key: 'Avg Resolution Time', label: 'Avg Resolution Time', width: 140 },
-        { key: 'Case Closure Rate', label: 'Case Closure Rate', width: 140 },
-        { key: 'Performance Trend', label: 'Performance Trend', width: 120 },
+        { key: 'Investigator ID', label: 'Investigator ID', width: 120 },
+        { key: 'Investigator', label: 'Investigator', width: 120 },
+        { key: 'Role', label: 'Role', width: 80 },
+        { key: 'Active Cases', label: 'Active Cases', width: 90 },
+        { key: 'Completed Cases', label: 'Completed Cases', width: 100 },
+        { key: 'Avg Resolution Time (Days)', label: 'Avg Resolution Time (Days)', width: 130 },
+        { key: 'Case Closure Rate (%)', label: 'Case Closure Rate (%)', width: 120 },
+        { key: 'Performance Trend', label: 'Performance Trend', width: 110 },
       ];
 
     default:

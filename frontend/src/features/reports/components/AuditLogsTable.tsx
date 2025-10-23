@@ -219,31 +219,41 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <colgroup>
+            <col className="w-72" /> 
+            <col className="w-72" /> 
+            <col className="w-32" />  
+            <col className="w-32" /> 
+            <col className="w-48" />  
+            <col className="w-32" />  
+            <col className="w-40" />  
+            <col className="w-20" /> 
+          </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Log ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 User ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Operation
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Entity
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Action
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Outcome
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Performed At
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
               </th>
             </tr>
@@ -264,34 +274,42 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
             ) : (
               paginatedData.map((log, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    <div className="max-w-xs truncate" title={log.audit_log_id || ''}>
-                      {(log.audit_log_id && log.audit_log_id.substring) ? log.audit_log_id.substring(0, 8) : ''}...
+                  <td className="px-4 py-3 text-xs text-gray-900 font-mono">
+                    <div className="break-all" title={log.audit_log_id || ''}>
+                      {log.audit_log_id || ''}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    <div className="max-w-xs truncate" title={log.user_id || ''}>
-                      {(log.user_id && log.user_id.substring) ? log.user_id.substring(0, 8) : ''}...
+                  <td className="px-4 py-3 text-xs text-gray-900 font-mono">
+                    <div className="break-all" title={log.user_id || ''}>
+                      {log.user_id || ''}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.operation || ''}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {log.operation || ''}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.entity_name || ''}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {log.entity_name || ''}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    <div className="truncate" title={log.action_performed || ''}>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
                       {log.action_performed || ''}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.outcome || ''}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {log.outcome || ''}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(log.performed_at)}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {formatDate(log.performed_at)}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(log.type)}`}>
                       {log.type || 'Info'}
                     </span>

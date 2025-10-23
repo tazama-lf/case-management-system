@@ -18,7 +18,7 @@ class ReportsService {
 
       const response = await apiClient.get<ReportsData>(`/api/v1/reports/case-status?${params.toString()}`);
       
-      // Process the response to handle potential NaN values
+     
       const processedResponse: ReportsData = {
         ...response,
         stats: {
@@ -50,7 +50,7 @@ class ReportsService {
     } catch (error) {
       console.error('Failed to fetch reports data:', error);
       
-      // Return default values instead of throwing error
+  
       return {
         stats: {
           totalCases: 0,
@@ -85,7 +85,7 @@ class ReportsService {
     try {
       const response = await apiClient.get<InvestigatorWorkloadData>(`/api/v1/reports/investigator-workload?dateRange=${dateRange || 'last30'}`);
       
-      // Process the response to handle potential NaN values
+    
       const processedResponse: InvestigatorWorkloadData = {
         ...response,
         stats: {
@@ -104,8 +104,7 @@ class ReportsService {
       return processedResponse;
     } catch (error) {
       console.error('Failed to fetch investigator workload data:', error);
-      
-      // Return default values instead of throwing error to prevent NaN display
+   
       return {
         stats: {
           totalInvestigators: 0,
@@ -127,7 +126,7 @@ class ReportsService {
     try {
       const response = await apiClient.get<TaskCompletionData>(`/api/v1/reports/task-completion?dateRange=${dateRange || 'last30'}`);
       
-      // Process the response to handle potential NaN values
+
       const processedResponse: TaskCompletionData = {
         ...response,
         stats: {
@@ -147,7 +146,7 @@ class ReportsService {
     } catch (error) {
       console.error('Failed to fetch task completion data:', error);
       
-      // Return default values instead of throwing error
+    
       return {
         stats: {
           totalTasks: 0,
@@ -168,7 +167,7 @@ class ReportsService {
     try {
       const response = await apiClient.get<AuditLogsData>(`/api/v1/reports/audit-logs?dateRange=${dateRange || 'last30'}`);
       
-      // Process the response to handle potential NaN values
+   
       const processedResponse: AuditLogsData = {
         ...response,
         stats: {
@@ -183,9 +182,7 @@ class ReportsService {
       return processedResponse;
     } catch (error) {
       console.error('Failed to fetch audit logs data:', error);
-      
-      // Return default values instead of throwing error
-      return {
+          return {
         stats: {
           totalLogs: 0,
           caseActions: 0,
@@ -244,7 +241,7 @@ class ReportsService {
     return value;
   }
 
-  // Helper method to format numbers for display to prevent NaN showing in UI
+
   public formatDisplayValue(value: number | null | undefined, unit?: string): string {
     const safeValue = this.safeFallback(value, 0);
     if (unit) {

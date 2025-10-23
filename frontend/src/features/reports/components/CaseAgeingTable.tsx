@@ -89,25 +89,28 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Case ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Age (Days)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Priority
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User ID
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Investigator
               </th>
             </tr>
@@ -115,7 +118,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
+                <td colSpan={8} className="px-6 py-12 text-center">
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
                     <p className="mt-1">There are no case ageing records to display.</p>
@@ -125,26 +128,41 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
             ) : (
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {row.caseId}
+                  <td className="px-4 py-3">
+                    <div className="break-all font-mono text-sm" title={row.caseId || ''}>
+                      {row.caseId}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.type}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {row.type}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.status}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {row.status}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.createdDate}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {row.createdDate}
+                    </div>
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getAgeColor(row.ageDays)}`}>
+                  <td className={`px-4 py-3 text-sm font-medium ${getAgeColor(row.ageDays)}`}>
                     {row.ageDays}
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getPriorityColor(row.priority)}`}>
+                  <td className={`px-4 py-3 text-sm font-medium ${getPriorityColor(row.priority)}`}>
                     {row.priority}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.investigator}
+                  <td className="px-4 py-3">
+                    <div className="break-all font-mono text-sm" title={(row as any).userId || (row as any).user_id || (row as any).assigneeId || (row as any).assignee_id || ''}>
+                      {(row as any).userId || (row as any).user_id || (row as any).assigneeId || (row as any).assignee_id || 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {row.investigator || 'Unassigned'}
+                    </div>
                   </td>
                 </tr>
               ))

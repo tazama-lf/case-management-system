@@ -764,13 +764,14 @@ export class ReportsService {
     }));
 
     const caseDetails = casesWithAge.slice(0, 5).map(case_ => ({
-      caseId: case_.case_id.slice(0, 8),
+      caseId: case_.case_id,
       type: case_.case_type || 'NONE',
       status: this.formatStatusName(case_.status),
       createdDate: case_.created_at.toLocaleDateString('en-US'),
       ageDays: case_.ageDays,
       priority: case_.priority,
-      investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id.slice(0, 8)}` : 'Unassigned',
+      userId: case_.case_owner_user_id || null,
+      investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id}` : 'Unassigned',
     }));
 
     return {

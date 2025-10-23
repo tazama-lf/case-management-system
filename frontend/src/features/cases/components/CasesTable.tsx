@@ -68,7 +68,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typeColor: getTypeColor(backendCase.case_type),
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
-    typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A',
+    typologyId: backendCase.alert?.alert_id || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
     pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
@@ -120,7 +120,17 @@ const CasesTable: React.FC<CasesTableProps> = ({
 }) => {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
+      <table className="min-w-full divide-y divide-gray-200 table-fixed">
+        <colgroup>
+          <col className="w-72" />  {/* Case ID - wider for full UUID */}
+          <col className="w-32" />  {/* Case Type */}
+          <col className="w-32" />  {/* Status */}
+          <col className="w-72" />  {/* Typology ID - wider for full UUID */}
+          <col className="w-32" />  {/* Typology Score */}
+          <col className="w-40" />  {/* Created on */}
+          <col className="w-40" />  {/* Picked on */}
+          <col className="w-32" />  {/* Actions */}
+        </colgroup>
         <thead className="bg-gray-50">
           <tr>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case ID</th>
@@ -136,20 +146,30 @@ const CasesTable: React.FC<CasesTableProps> = ({
         <tbody className="divide-y divide-gray-100 bg-white">
           {rows.map((c) => (
             <tr key={c.id} className="hover:bg-gray-50/50">
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.id}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                {c.type}
+              <td className="px-4 py-3 text-xs text-gray-900 font-mono">
+                <div className="break-all" title={c.id}>
+                  {c.id}
+                </div>
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
+              <td className="px-4 py-3 text-sm text-gray-900">
+                <div className="break-words">
+                  {c.type}
+                </div>
+              </td>
+              <td className="px-4 py-3">
                 <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${c.statusColor}`}>
                   {c.status}
                 </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.typologyId}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.score}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
-              <td className="whitespace-nowrap px-4 py-3">
+              <td className="px-4 py-3 text-xs text-gray-900 font-mono">
+                <div className="break-all" title={c.typologyId}>
+                  {c.typologyId}
+                </div>
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-900">{c.score}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
+              <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => onView(c)}

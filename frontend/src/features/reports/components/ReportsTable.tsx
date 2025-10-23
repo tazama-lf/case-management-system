@@ -76,22 +76,29 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <colgroup>
+            <col className="w-40" />  {/* Status */}
+            <col className="w-24" />  {/* Count */}
+            <col className="w-32" />  {/* Percentage */}
+            <col className="w-40" />  {/* Avg Time in Status */}
+            <col className="w-48" />  {/* Current Trend Period */}
+          </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Count
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Percentage
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Avg Time in Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Current Trend Period
               </th>
             </tr>
@@ -109,20 +116,26 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
             ) : (
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {row.status}
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <div className="break-words">
+                      {row.status}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.count}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.percentage}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.avgTimeInStatus}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <div className="break-words">
+                      {row.avgTimeInStatus}
+                    </div>
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getTrendColor(row.currentTrendPeriod)}`}>
-                    {row.currentTrendPeriod}
+                  <td className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.currentTrendPeriod)}`}>
+                    <div className="break-words">
+                      {row.currentTrendPeriod}
+                    </div>
                   </td>
                 </tr>
               ))

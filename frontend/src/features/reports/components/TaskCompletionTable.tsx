@@ -76,25 +76,33 @@ const TaskCompletionTable: React.FC<TaskCompletionTableProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <colgroup>
+            <col className="w-48" />  {/* Task Type */}
+            <col className="w-24" />  {/* Total */}
+            <col className="w-28" />  {/* Completed */}
+            <col className="w-36" />  {/* Completion Rate */}
+            <col className="w-36" />  {/* Avg. Time (Days) */}
+            <col className="w-24" />  {/* Trend */}
+          </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Task Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Completed
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Completion Rate
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Avg. Time (Days)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Trend
               </th>
             </tr>
@@ -112,22 +120,24 @@ const TaskCompletionTable: React.FC<TaskCompletionTableProps> = ({
             ) : (
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {row.taskType}
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <div className="break-words">
+                      {row.taskType}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.total}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.completed}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.completionRate}%
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {row.avgTime}
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getTrendColor(row.trend)}`}>
+                  <td className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.trend)}`}>
                     {row.trend > 0 ? '+' : ''}{row.trend}%
                   </td>
                 </tr>
