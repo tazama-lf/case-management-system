@@ -24,7 +24,6 @@ interface UsePaginationReturn<T> {
 
 export const usePagination = <T>({
   data,
-  itemsPerPageOptions = [10, 25, 50, 100],
   defaultItemsPerPage = 10
 }: UsePaginationProps<T>): UsePaginationReturn<T> => {
   const [currentPage, setCurrentPage] = useState(1);

@@ -19,7 +19,7 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
     );
   }
 
-  const maxValue = Math.max(...data.map(item => item.avgDays), 20);
+  const maxValue = Math.max(...data.map(item => item.avgDays || 0), 20);
   const chartHeight = height - 100;
   const chartWidth = 100;
   const paddingLeft = 8;
@@ -36,14 +36,14 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
   const createPath = () => {
     if (data.length === 1) {
       const x = 50;
-      const y = chartHeight - (data[0].avgDays / maxValue) * chartHeight;
+      const y = chartHeight - ((data[0].avgDays || 0) / maxValue) * chartHeight;
       return `M ${x},${y} L ${x},${y}`;
     }
 
     return data
       .map((item, index) => {
         const x = paddingLeft + ((index / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight));
-        const y = chartHeight - (item.avgDays / maxValue) * chartHeight;
+        const y = chartHeight - ((item.avgDays || 0) / maxValue) * chartHeight;
         return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
       })
       .join(' ');
@@ -104,7 +104,7 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
           {}
           {data.map((item, index) => {
             const x = paddingLeft + ((index / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight));
-            const y = chartHeight - (item.avgDays / maxValue) * chartHeight;
+            const y = chartHeight - ((item.avgDays || 0) / maxValue) * chartHeight;
             return (
               <g key={index} className="group">
                 <circle
@@ -151,7 +151,7 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
                     className="text-xs fill-white"
                     fontSize="10"
                   >
-                    {item.avgDays.toFixed(1)} days
+                    {item.avgDays ? item.avgDays.toFixed(1) : '0.0'} days
                   </text>
                   {}
                   <polygon
