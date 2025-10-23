@@ -1,11 +1,8 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      // Brand Colors for Tazama Case Management System
       colors: {
-        // Primary brand colors
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -13,13 +10,12 @@ export default {
           300: '#93c5fd',
           400: '#60a5fa',
           500: '#3b82f6',
-          600: '#2563eb', // Main primary
+          600: '#2563eb',
           700: '#1d4ed8',
           800: '#1e40af',
           900: '#1e3a8a',
           950: '#172554',
         },
-        // Secondary accent colors
         secondary: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -27,13 +23,12 @@ export default {
           300: '#cbd5e1',
           400: '#94a3b8',
           500: '#64748b',
-          600: '#475569', // Main secondary
+          600: '#475569',
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
           950: '#020617',
         },
-        // Success colors (for approved actions, completed cases)
         success: {
           50: '#f0fdf4',
           100: '#dcfce7',
@@ -41,13 +36,12 @@ export default {
           300: '#86efac',
           400: '#4ade80',
           500: '#22c55e',
-          600: '#16a34a', // Main success
+          600: '#16a34a',
           700: '#15803d',
           800: '#166534',
           900: '#14532d',
           950: '#052e16',
         },
-        // Warning colors (for pending alerts, review needed)
         warning: {
           50: '#fffbeb',
           100: '#fef3c7',
@@ -55,13 +49,12 @@ export default {
           300: '#fcd34d',
           400: '#fbbf24',
           500: '#f59e0b',
-          600: '#d97706', // Main warning
+          600: '#d97706',
           700: '#b45309',
           800: '#92400e',
           900: '#78350f',
           950: '#451a03',
         },
-        // Danger/Error colors (for critical alerts, failed actions)
         danger: {
           50: '#fef2f2',
           100: '#fee2e2',
@@ -69,20 +62,18 @@ export default {
           300: '#fca5a5',
           400: '#f87171',
           500: '#ef4444',
-          600: '#dc2626', // Main danger
+          600: '#dc2626',
           700: '#b91c1c',
           800: '#991b1b',
           900: '#7f1d1d',
           950: '#450a0a',
         },
-        // Alert priority colors
         priority: {
-          low: '#22c55e', // Green
-          medium: '#f59e0b', // Amber
-          high: '#f97316', // Orange
-          critical: '#dc2626', // Red
+          low: '#22c55e',
+          medium: '#f59e0b',
+          high: '#f97316',
+          critical: '#dc2626',
         },
-        // Case status colors
         status: {
           draft: '#6b7280',
           pending: '#f59e0b',
@@ -92,7 +83,6 @@ export default {
           closed: '#22c55e',
           reopened: '#f97316',
         },
-        // Neutral grays for backgrounds and text
         gray: {
           50: '#f9fafb',
           100: '#f3f4f6',
@@ -107,7 +97,6 @@ export default {
           950: '#030712',
         },
       },
-      // Typography
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
@@ -124,13 +113,11 @@ export default {
         '5xl': ['3rem', { lineHeight: '1' }],
         '6xl': ['3.75rem', { lineHeight: '1' }],
       },
-      // Spacing
       spacing: {
         18: '4.5rem',
         88: '22rem',
         128: '32rem',
       },
-      // Border radius
       borderRadius: {
         sm: '0.25rem',
         md: '0.375rem',
@@ -139,7 +126,6 @@ export default {
         '2xl': '1rem',
         '3xl': '1.5rem',
       },
-      // Box shadows
       boxShadow: {
         sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
         md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
@@ -149,7 +135,6 @@ export default {
         popup: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
         inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
       },
-      // Animation
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
@@ -170,7 +155,6 @@ export default {
           '50%': { transform: 'translateY(0)' },
         },
       },
-      // Backdrop blur
       backdropBlur: {
         xs: '2px',
         sm: '4px',
@@ -178,13 +162,11 @@ export default {
         lg: '12px',
         xl: '16px',
       },
-      // Grid template columns
       gridTemplateColumns: {
         sidebar: '250px 1fr',
         'sidebar-collapsed': '64px 1fr',
         dashboard: 'repeat(auto-fit, minmax(300px, 1fr))',
       },
-      // Z-index
       zIndex: {
         dropdown: '1000',
         sticky: '1020',
@@ -198,10 +180,8 @@ export default {
     },
   },
   plugins: [
-    // Custom component classes
     function ({ addComponents, theme }) {
       addComponents({
-        // Button variants
         '.btn': {
           padding: `${theme('spacing.2')} ${theme('spacing.4')}`,
           borderRadius: theme('borderRadius.md'),
@@ -262,7 +242,6 @@ export default {
           },
         },
 
-        // Card components
         '.card': {
           backgroundColor: theme('colors.white'),
           borderRadius: theme('borderRadius.lg'),
@@ -271,7 +250,6 @@ export default {
           border: `1px solid ${theme('colors.gray.200')}`,
         },
 
-        // Form elements
         '.input': {
           width: '100%',
           padding: `${theme('spacing.2')} ${theme('spacing.3')}`,
@@ -289,7 +267,6 @@ export default {
           },
         },
 
-        // Priority badges
         '.badge-priority-low': {
           backgroundColor: theme('colors.success.100'),
           color: theme('colors.success.800'),
@@ -323,7 +300,6 @@ export default {
           fontWeight: theme('fontWeight.medium'),
         },
 
-        // Status badges
         '.badge-status': {
           padding: `${theme('spacing.1')} ${theme('spacing.2')}`,
           borderRadius: theme('borderRadius.md'),
@@ -331,7 +307,6 @@ export default {
           fontWeight: theme('fontWeight.medium'),
         },
 
-        // Layout helpers
         '.page-container': {
           maxWidth: theme('maxWidth.7xl'),
           margin: '0 auto',

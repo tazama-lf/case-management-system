@@ -13,14 +13,12 @@ class AuthService {
   private tokenKey = 'authToken';
   private userKey = 'user';
 
-  /**
-   * Login user with credentials
-   */
+
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       console.log('Starting login process...');
-      
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -36,11 +34,9 @@ class AuthService {
       const data: LoginResponse = await response.json();
       console.log('Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
-      // Store token and user data
       if (data.token) {
         this.setToken(data.token);
 
-        // Decode JWT and extract user info
         const user = this.decodeToken(data.token);
         if (user) {
           console.log('User decoded from token successfully');
@@ -58,54 +54,40 @@ class AuthService {
     }
   }
 
-  /**
-   * Logout user
-   */
+
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
   }
 
-  /**
-   * Get stored token
-   */
+
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
 
-  /**
-   * Set token in localStorage
-   */
+
   setToken(token: string): void {
     localStorage.setItem(this.tokenKey, token);
   }
 
-  /**
-   * Get stored user
-   */
+
   getUser(): User | null {
     const userData = localStorage.getItem(this.userKey);
     return userData ? JSON.parse(userData) : null;
   }
 
-  /**
-   * Set user in localStorage
-   */
+
   setUser(user: User): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
-  /**
-   * Check if user is authenticated
-   */
+
   isAuthenticated(): boolean {
     const token = this.getToken();
     return token ? !this.isTokenExpired(token) : false;
   }
 
-  /**
-   * Decode JWT token and extract user information
-   */
+
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded) {
@@ -114,7 +96,6 @@ class AuthService {
     }
 
     try {
-      // Extract user information from the decoded token
       const user: User = {
         user_id: decoded.sub || decoded.clientId || '',
         username: decoded.preferred_username || decoded.username || '',
@@ -146,18 +127,14 @@ class AuthService {
     }
   }
 
-  /**
-   * Extract roles from token payload
-   */
+
   private extractRoles(payload: DecodedToken): string[] {
     const roles: string[] = [];
 
-    // Look specifically for CMS roles first
     if (payload.resource_access?.CMS?.roles) {
       roles.push(...payload.resource_access.CMS.roles);
     }
 
-    // Fallback: look in all resources if no CMS roles found
     if (roles.length === 0 && payload.resource_access) {
       Object.values(payload.resource_access).forEach(
         (resource: { roles: string[] }) => {
@@ -167,32 +144,25 @@ class AuthService {
         },
       );
     }
-    
+
     return roles;
   }
 
-  /**
-   * Extract backend claims from token payload
-   * Looks for claims in multiple possible locations in the JWT token
-   */
+
   private extractBackendClaims(payload: DecodedToken): string[] {
     const claims: string[] = [];
 
-    // Check claims array (standard location)
     if (payload.claims && Array.isArray(payload.claims)) {
       claims.push(...payload.claims);
     }
 
-    // Check realm_access roles (Keycloak format)
     if (payload.realm_access?.roles) {
       claims.push(...payload.realm_access.roles);
     }
 
-    // Check resource_access for CMS-specific claims
     if (payload.resource_access) {
       Object.entries(payload.resource_access).forEach(([, access]) => {
         if (access.roles) {
-          // Add resource-specific roles as claims
           access.roles.forEach(role => {
             claims.push(role);
           });
@@ -209,12 +179,10 @@ class AuthService {
       }
     });
 
-    // Remove duplicates and return claims as-is
-    // The claims should come directly from the JWT token without modification
     const finalClaims = [...new Set(claims)];
-    
+
     console.log('extractBackendClaims() Final claims:', finalClaims);
-    
+
     return finalClaims;
   }
 
@@ -228,24 +196,7 @@ class AuthService {
     }
   }
 
-  /**
 
-    private getDecodedToken(token: string): any | null {
-        try {
-            const payload = token.split('.')[1];
-            if (!payload) return null;
-
-            // Decode base64 URL
-            return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-        } catch (error) {
-            console.error('Error decoding token:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Check if token is expired
-     */
   isTokenExpired(token: string): boolean {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -256,9 +207,7 @@ class AuthService {
     return decoded.exp < currentTime;
   }
 
-  /**
-   * Get token expiration time
-   */
+
   getTokenExpiration(token: string): Date | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -267,9 +216,7 @@ class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
-  /**
-   * Refresh token (if refresh endpoint exists)
-   */
+
   async refreshToken(): Promise<boolean> {
     try {
       const token = this.getToken();
@@ -298,76 +245,57 @@ class AuthService {
     }
   }
 
-  /**
-   * Check if current user has a specific backend claim
-   */
+
   hasBackendClaim(claim: string): boolean {
     const user = this.getUser();
     return user?.backendClaims?.includes(claim) || false;
   }
 
-  /**
-   * Check if current user has CMS-TEST-ROLE claim (required by backend)
-   */
+
   hasCMSTestRole(): boolean {
     return this.hasBackendClaim('CMS-TEST-ROLE');
   }
 
-  /**
-   * Check if current user has alert-triage claim (required by backend controllers)
-   */
+
   hasAlertTriageRole(): boolean {
     return this.hasBackendClaim('alert-triage');
   }
 
-  /**
-   * Check if current user has CMS_INVESTIGATOR claim
-   */
+
   hasInvestigatorRole(): boolean {
     return this.hasBackendClaim('CMS_INVESTIGATOR');
   }
 
-  /**
-   * Check if current user has CMS_SUPERVISOR claim
-   */
+
   hasSupervisorRole(): boolean {
     return this.hasBackendClaim('CMS_SUPERVISOR');
   }
 
-  /**
-   * Check if current user has admin role (alert-triage gives admin access)
-   */
+
   hasAdminRole(): boolean {
     return this.hasAlertTriageRole() || this.hasCMSTestRole();
   }
 
-  /**
-   * Check if user has any of the specified roles/claims
-   */
+
   hasAnyRole(roles: string[]): boolean {
     return roles.some(role => this.hasBackendClaim(role));
   }
 
-  /**
-   * Check if user has all of the specified roles/claims
-   */
+
   hasAllRoles(roles: string[]): boolean {
     return roles.every(role => this.hasBackendClaim(role));
   }
 
-  /**
-   * Validate that user has minimum required claims for backend access
-   */
+
   validateBackendAccess(): boolean {
     const hasAlertTriage = this.hasAlertTriageRole();
     const hasCMSTest = this.hasCMSTestRole();
     const hasInvestigator = this.hasInvestigatorRole();
     const hasSupervisor = this.hasSupervisorRole();
     const user = this.getUser();
-    
-    // Allow access if user has any of the valid role claims
+
     const result = hasAlertTriage || hasCMSTest || hasInvestigator || hasSupervisor;
-    
+
     console.log('validateBackendAccess() Debug:', {
       hasAlertTriage,
       hasCMSTest,
@@ -377,34 +305,28 @@ class AuthService {
       allUserData: user,
       result
     });
-    
+
     return result;
   }
 
-  /**
-   * Get authorization header
-   */
+
   getAuthHeader(): Record<string, string> {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-  /**
-   * Build full name from first and last name
-   */
+
   private buildFullName(firstName?: string, lastName?: string): string {
     const first = firstName?.trim() || '';
     const last = lastName?.trim() || '';
-    
+
     if (first && last) {
       return `${first} ${last}`;
     }
     return first || last || '';
   }
 
-  /**
-   * Fetch all investigators from the backend
-   */
+
   async fetchAllInvestigators(): Promise<Investigator[]> {
     try {
       console.log('Fetching investigators from:', `${API_BASE_URL}/auth/investigators`);
@@ -417,7 +339,7 @@ class AuthService {
       });
 
       console.log('Investigators API response status:', response.status);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch investigators: ${response.status} ${response.statusText}`);
       }
@@ -432,6 +354,5 @@ class AuthService {
   }
 }
 
-// Create singleton instance
 const authService = new AuthService();
 export default authService;

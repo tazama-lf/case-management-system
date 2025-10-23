@@ -1,4 +1,3 @@
-// Simple test to verify the fetchAllInvestigators function works
 import authService from '../features/auth/services/authService';
 
 async function testFetchInvestigators() {
@@ -13,7 +12,6 @@ async function testFetchInvestigators() {
   }
 }
 
-// Run the test if we're in a browser environment
 if (typeof window !== 'undefined') {
   testFetchInvestigators().then(() => {
     console.log('Test completed successfully');

@@ -76,7 +76,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
       return column.render(row[column.key as keyof T], row);
     }
     const value = row[column.key as keyof T];
-    // Convert value to string if it's not already a React node
     if (value === null || value === undefined) return '';
     if (typeof value === 'string' || typeof value === 'number') return value;
     return String(value);
@@ -95,7 +94,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Loading State */}
+      {}
       {loading && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
           <div className="flex items-center space-x-2">
@@ -107,10 +106,10 @@ const AlertsTable = <T extends Record<string, unknown>>({
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          {/* Table Header */}
+          {}
           <thead className="bg-gray-50">
             <tr>
-              {/* Selection Header */}
+              {}
               {selectable && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <input
@@ -125,7 +124,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
                 </th>
               )}
 
-              {/* Column Headers */}
+              {}
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
@@ -148,7 +147,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
             </tr>
           </thead>
 
-          {/* Table Body */}
+          {}
           <tbody className="bg-white divide-y divide-gray-200">
             {data.length === 0 ? (
               <tr>
@@ -172,7 +171,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
                     className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${onRowClick ? 'cursor-pointer' : ''}`}
                     onClick={() => onRowClick && onRowClick(row)}
                   >
-                    {/* Selection Cell */}
+                    {}
                     {selectable && (
                       <td
                         className="px-6 py-4 whitespace-nowrap"
@@ -189,7 +188,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
                       </td>
                     )}
 
-                    {/* Data Cells */}
+                    {}
                     {columns.map((column) => (
                       <td
                         key={String(column.key)}
@@ -212,7 +211,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
         </table>
       </div>
 
-      {/* Pagination */}
+      {}
       {pagination && (
         <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -250,22 +249,19 @@ const AlertsTable = <T extends Record<string, unknown>>({
                 >
                   Previous
                 </button>
-                {/* Page Numbers with sliding window and ellipses */}
+                {}
                 {(() => {
                   const { currentPage, totalPages } = pagination;
                   const pages: (number | 'ellipsis')[] = [];
-                  const windowSize = 5; // total number buttons to display (excluding first/last if separated by ellipses)
+                  const windowSize = 5;
                   const half = Math.floor(windowSize / 2);
 
-                  // Always include first and last page when there is enough room
                   const addPage = (p: number) => pages.push(p);
                   const addEllipsis = () => pages.push('ellipsis');
 
                   if (totalPages <= windowSize + 2) {
-                    // Small number of pages, show all
                     for (let p = 1; p <= totalPages; p++) addPage(p);
                   } else {
-                    // Large number of pages, show window around currentPage
                     const start = Math.max(2, currentPage - half);
                     const end = Math.min(totalPages - 1, currentPage + half);
 

@@ -124,7 +124,6 @@ export const Notification: React.FC<NotificationProps> = ({
   );
 };
 
-// Toast Notifications Container
 export interface ToastNotification extends NotificationProps {
   id: string;
 }

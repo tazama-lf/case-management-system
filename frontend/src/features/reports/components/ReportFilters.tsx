@@ -10,16 +10,18 @@ interface ReportFiltersProps {
   dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
+  onApplyFilters: (filters: { caseType: string; priority: string; investigator: string }) => void;
 }
 
-const ReportFilters: React.FC<ReportFiltersProps> = ({ 
-  onExportExcel, 
-  onExportCSV, 
+const ReportFilters: React.FC<ReportFiltersProps> = ({
+  onExportExcel,
+  onExportCSV,
   onExportPDF,
   reportType,
   dateRange,
   onChangeReportType,
-  onChangeDateRange
+  onChangeDateRange,
+  onApplyFilters
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
@@ -30,7 +32,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   };
 
   const handleApply = () => {
-    // TODO: wire to data fetching when backend is ready
+    onApplyFilters(filters);
     setShowFilters(false);
   };
 
@@ -42,7 +44,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Report type dropdown */}
+          {}
           <div className="relative">
             <button
               type="button"
@@ -106,7 +108,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             )}
           </div>
 
-          {/* Date range dropdown */}
+          {}
           <div className="relative">
             <button
               type="button"
@@ -138,7 +140,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             )}
           </div>
 
-          {/* Filters toggle pill */}
+          {}
           <button
             onClick={() => setShowFilters((v) => !v)}
             type="button"
@@ -148,7 +150,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             <span>Filters</span>
           </button>
         </div>
-        
+
         <div className="flex items-center">
           <button
             onClick={onExportPDF}

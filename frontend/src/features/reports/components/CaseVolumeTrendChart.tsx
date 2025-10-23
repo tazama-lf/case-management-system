@@ -11,11 +11,11 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
   const investigators = Object.keys(data[0]?.investigators || {});
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
   const maxValue = Math.max(...data.flatMap(d => Object.values(d.investigators)));
-  
+
   const chartHeight = height - 60;
   const chartWidth = 300;
   const stepX = chartWidth / (data.length - 1);
-  
+
   const createPath = (investigator: string) => {
     return data
       .map((d, index) => {
@@ -25,7 +25,7 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
       })
       .join(' ');
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -50,7 +50,7 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
               ))}
             </g>
           ))}
-          
+
           {data.map((_, index) => (
             <g key={index}>
               <line
@@ -72,12 +72,12 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
             </g>
           ))}
         </svg>
-        
+
         <div className="flex items-center justify-center mt-4 space-x-4 flex-wrap">
           {investigators.map((investigator, index) => (
             <div key={investigator} className="flex items-center">
-              <div 
-                className="w-3 h-3 rounded-full mr-2" 
+              <div
+                className="w-3 h-3 rounded-full mr-2"
                 style={{ backgroundColor: colors[index % colors.length] }}
               />
               <span className="text-sm text-gray-600">{investigator}</span>

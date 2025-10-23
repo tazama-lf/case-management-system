@@ -15,7 +15,6 @@ export const useSystemConfig = () => {
       setConfig(systemConfig);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load system configuration');
-      // Set fallback configuration
       setConfig({
         triageType: 'MANUAL',
         confidenceThreshold: 95,

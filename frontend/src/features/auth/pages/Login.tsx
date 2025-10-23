@@ -23,7 +23,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       console.log('User is authenticated, redirecting to role-based dashboard');
@@ -37,7 +36,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (error) clearError();
   };
 
@@ -48,16 +46,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       console.log('Starting login process...');
       await login(credentials);
 
-      // Call onLoginSuccess callback if provided
       if (onLoginSuccess) {
         console.log('Calling onLoginSuccess callback');
         onLoginSuccess();
       }
-      // Don't manually navigate here - let the useEffect handle it
-      // The login function will update isAuthenticated, which will trigger the useEffect
       console.log('Login function completed, waiting for auth state update...');
     } catch (error) {
-      // Error is handled by the context
       console.error('Login failed:', error);
     }
   };
@@ -69,7 +63,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full mx-4">
-        {/* Logo and Title */}
+        {}
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
             <LockClosedIcon className="h-8 w-8 text-blue-600" />
@@ -80,7 +74,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <p className="text-sm text-gray-600">Investigation Platform</p>
         </div>
 
-        {/* Login Form */}
+        {}
         <div className="card">
           <div className="card-body">
             <p className="text-base font-normal text-gray-900 mb-6 text-center">
@@ -94,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Username Field */}
+              {}
               <div>
                 <label htmlFor="username" className="form-label">
                   Login ID
@@ -115,7 +109,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Password Field */}
+              {}
               <div>
                 <label htmlFor="password" className="form-label">
                   Password
@@ -148,7 +142,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Remember me and Forgot password */}
+              {}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -176,7 +170,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </a>
               </div>
 
-              {/* Submit Button */}
+              {}
               <button
                 type="submit"
                 disabled={
@@ -195,7 +189,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </button>
             </form>
 
-            {/* Development Info */}
+            {}
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <p className="text-yellow-800 text-xs font-medium mb-2">
@@ -250,7 +244,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Footer */}
+        {}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
             © 2025 Tazama. All rights reserved.

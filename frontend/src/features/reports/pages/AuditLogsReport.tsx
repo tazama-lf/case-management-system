@@ -3,6 +3,7 @@ import { ExclamationCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/
 import AuditLogsStatsCards from '../components/AuditLogsStatsCards';
 import AuditLogsTable from '../components/AuditLogsTable';
 import { useAuditLogs } from '../hooks/useReports';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface AuditLogsReportProps {
   onExportExcel: () => void;
@@ -12,9 +13,6 @@ interface AuditLogsReportProps {
 }
 
 const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
-  onExportExcel,
-  onExportCSV,
-  onExportPDF,
   dateRange
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,16 +48,55 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
     auditLogs: []
   };
 
-  // Filter audit logs based on search term and action filter
   const filteredLogs = auditLogs.filter(log => {
-    const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.details.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesAction = actionFilter === 'All Actions' || log.action === actionFilter;
-    
+    const action = (log && log.action_performed) ? log.action_performed.toString() : '';
+    const user = (log && log.user_id) ? log.user_id.toString() : '';
+    const details = (log && log.outcome) ? log.outcome.toString() : '';
+
+    const matchesSearch = searchTerm
+      ? action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        details.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+
+    const matchesAction = actionFilter === 'All Actions' || action === actionFilter;
+
     return matchesSearch && matchesAction;
   });
+
+  const handleExportExcel = () => {
+    try {
+      const formattedData = formatDataForExport(filteredLogs, 'AUDIT_LOGS');
+      const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(formattedData, filename, 'Audit Logs Report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const formattedData = formatDataForExport(filteredLogs, 'AUDIT_LOGS');
+      const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
+      exportToCSV(formattedData, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const formattedData = formatDataForExport(filteredLogs, 'AUDIT_LOGS');
+      const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
+      const columns = getColumnsForReport('AUDIT_LOGS');
+      await exportToPDF(formattedData, filename, 'Audit Logs Report', columns);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
 
   return (
     <>
@@ -69,7 +106,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Audit Logs</h3>
         </div>
-        
+
         <div className="flex items-center gap-4 mb-4">
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -81,7 +118,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          
+
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
@@ -100,11 +137,12 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
           </select>
         </div>
 
-        <AuditLogsTable 
-          data={filteredLogs} 
-          onExportExcel={onExportExcel}
-          onExportCSV={onExportCSV}
-          onExportPDF={onExportPDF}
+        <AuditLogsTable
+          data={filteredLogs}
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+          isLoading={isLoading}
         />
       </div>
     </>

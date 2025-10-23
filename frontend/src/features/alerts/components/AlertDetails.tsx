@@ -273,7 +273,7 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
             Update Alert
           </button>
         )}
-  {/* Convert to Case removed */}
+  {}
         {canClose && (
           <button
             onClick={() => onCloseAlert(alert)}
@@ -375,7 +375,6 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   );
 };
 
-// Compound component export
 export const AlertDetails = {
   Root: AlertDetailsRoot,
   Header: AlertDetailsHeader,

@@ -10,17 +10,60 @@ interface LineChartProps {
   data: LineChartData[];
   title: string;
   height?: number;
+  isLoading?: boolean;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200, isLoading = false }) => {
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <div className="animate-pulse" style={{ height }}>
+          <div className="bg-gray-200 rounded w-full h-full"></div>
+        </div>
+        <div className="flex items-center justify-center mt-4 space-x-6">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-gray-200 rounded-full mr-2" />
+            <span className="text-sm text-gray-600">Cases Created</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-gray-200 rounded-full mr-2" />
+            <span className="text-sm text-gray-600">Cases Closed</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <div className="flex items-center justify-center" style={{ height }}>
+          <p className="text-gray-500">No data available</p>
+        </div>
+        <div className="flex items-center justify-center mt-4 space-x-6">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2" />
+            <span className="text-sm text-gray-600">Cases Created</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-green-500 rounded-full mr-2" />
+            <span className="text-sm text-gray-600">Cases Closed</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const maxValue = Math.max(
     ...data.flatMap(item => [item.casesCreated, item.casesClosed])
   );
-  
+
   const chartHeight = height - 60;
   const chartWidth = 300;
   const stepX = chartWidth / (data.length - 1);
-  
+
   const createPath = (values: number[]) => {
     return values
       .map((value, index) => {
@@ -30,10 +73,10 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
       })
       .join(' ');
   };
-  
+
   const createdPath = createPath(data.map(d => d.casesCreated));
   const closedPath = createPath(data.map(d => d.casesClosed));
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -49,7 +92,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
               <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
             </linearGradient>
           </defs>
-          
+
           <path
             d={`${createdPath} L ${(data.length - 1) * stepX},${chartHeight} L 0,${chartHeight} Z`}
             fill="url(#createdGradient)"
@@ -58,7 +101,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
             d={`${closedPath} L ${(data.length - 1) * stepX},${chartHeight} L 0,${chartHeight} Z`}
             fill="url(#closedGradient)"
           />
-          
+
           <path
             d={createdPath}
             fill="none"
@@ -71,7 +114,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
             stroke="#10b981"
             strokeWidth="2"
           />
-          
+
           {data.map((_, index) => (
             <g key={index}>
               <line
@@ -93,7 +136,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 200 }) => {
             </g>
           ))}
         </svg>
-        
+
         <div className="flex items-center justify-center mt-4 space-x-6">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-blue-500 rounded-full mr-2" />

@@ -9,12 +9,12 @@ interface CaseAgeingTableProps {
   onExportPDF?: () => void;
 }
 
-const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({ 
-  data, 
-  title, 
-  onExportExcel, 
-  onExportCSV, 
-  onExportPDF 
+const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
+  data,
+  title,
+  onExportExcel,
+  onExportCSV,
+  onExportPDF
 }) => {
   const getAgeColor = (age: number) => {
     if (age <= 7) return 'text-green-600';

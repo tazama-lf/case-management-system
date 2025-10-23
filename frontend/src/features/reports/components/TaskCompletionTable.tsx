@@ -9,12 +9,12 @@ interface TaskCompletionTableProps {
   onExportPDF?: () => void;
 }
 
-const TaskCompletionTable: React.FC<TaskCompletionTableProps> = ({ 
-  data, 
-  title, 
-  onExportExcel, 
-  onExportCSV, 
-  onExportPDF 
+const TaskCompletionTable: React.FC<TaskCompletionTableProps> = ({
+  data,
+  title,
+  onExportExcel,
+  onExportCSV,
+  onExportPDF
 }) => {
   const getTrendColor = (trend: number) => {
     if (trend > 0) return 'text-green-600';

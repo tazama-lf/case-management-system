@@ -12,13 +12,13 @@ export { default as BarChart } from './components/BarChart';
 export { default as LineChart } from './components/LineChart';
 export { default as ReportsTable } from './components/ReportsTable';
 
-export { 
-  useReports, 
-  useCaseStatusStats, 
-  useInvestigatorWorkload, 
-  useTaskCompletion, 
-  useAuditLogs, 
-  useCaseAgeing 
+export {
+  useReports,
+  useCaseStatusStats,
+  useInvestigatorWorkload,
+  useTaskCompletion,
+  useAuditLogs,
+  useCaseAgeing
 } from './hooks/useReports';
 
 export { reportsService } from './services/reportsService';
@@ -32,7 +32,6 @@ export type {
   CaseStatusDetail,
   ReportsData,
   ReportFilters as ReportFiltersType,
-  // Investigator Workload Types
   InvestigatorStats,
   InvestigatorWorkload,
   VolumeTrend,
@@ -40,7 +39,6 @@ export type {
   OutcomeDistribution,
   InvestigatorPerformance,
   InvestigatorWorkloadData,
-  // Task Completion Types
   TaskStats,
   TaskCompletionByType,
   CompletionTime,
@@ -48,11 +46,9 @@ export type {
   TaskStatusDistribution,
   TaskDetail,
   TaskCompletionData,
-  // Audit Logs Types
   AuditLogsStats,
   AuditLog,
   AuditLogsData,
-  // Case Ageing Types
   CaseAgeingStats,
   AgeingByStatus,
   ResolutionTrend,

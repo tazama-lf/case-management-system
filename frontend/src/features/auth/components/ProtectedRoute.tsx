@@ -7,9 +7,9 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
   requireBackendAccess?: boolean;
-  requireInvestigator?: boolean; // Require CMS_INVESTIGATOR claim
-  requireSupervisor?: boolean; // Require CMS_SUPERVISOR claim
-  requireAdmin?: boolean; // Require alert-triage or CMS-TEST-ROLE claim
+  requireInvestigator?: boolean;
+  requireSupervisor?: boolean;
+  requireAdmin?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -20,13 +20,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireSupervisor = false,
   requireAdmin = false,
 }) => {
-  const { 
-    isAuthenticated, 
-    user, 
-    loading, 
-    hasInvestigatorRole, 
-    hasSupervisorRole, 
-    hasAdminRole 
+  const {
+    isAuthenticated,
+    user,
+    loading,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasAdminRole
   } = useAuth();
   const location = useLocation();
 
@@ -39,7 +39,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     path: location.pathname
   });
 
-  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -48,20 +47,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
     console.log('ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check backend access if required
   if (requireBackendAccess && !authService.validateBackendAccess()) {
     console.log('ProtectedRoute: Backend access validation failed');
     const hasAlertTriage = authService.hasAlertTriageRole();
     const hasCMSTestRole = authService.hasCMSTestRole();
     const hasInvestigator = authService.hasInvestigatorRole();
     const hasSupervisor = authService.hasSupervisorRole();
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md">
@@ -104,7 +101,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check specific role requirements
   if (requireInvestigator && !hasInvestigatorRole()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -168,10 +164,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check role permissions if required roles are specified
   if (requiredRoles.length > 0 && user) {
     const hasRequiredRole = requiredRoles.some(
-      (role) => user.roles.includes(role) || user.roles.includes('admin'), // Admin has access to everything
+      (role) => user.roles.includes(role) || user.roles.includes('admin'),
     );
 
     if (!hasRequiredRole) {

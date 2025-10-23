@@ -57,7 +57,7 @@ export const getPriorityColor = (priority: string): string => {
 };
 
 export const formatStatus = (status: string): string => {
-  
+
   return status;
 };
 
@@ -101,13 +101,13 @@ interface CasesTableProps {
   onReturnForReview?: (row: CaseRow) => void;
 }
 
-const CasesTable: React.FC<CasesTableProps> = ({ 
-  rows, 
-  onView, 
-  onComplete, 
-  onCloseCase, 
-  onReopenCase, 
-  onAbandonCase, 
+const CasesTable: React.FC<CasesTableProps> = ({
+  rows,
+  onView,
+  onComplete,
+  onCloseCase,
+  onReopenCase,
+  onAbandonCase,
   onSuspendCase,
   onResumeCase,
   onRejectCase,
@@ -158,7 +158,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     <EyeIcon className="h-3 w-3" />
                     View
                   </button>
-                  
+
                   {c.action === 'Complete' && (
                     <button
                       onClick={() => onComplete(c)}
@@ -168,8 +168,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Complete
                     </button>
                   )}
-                  
-                  {/* Close Case button - show for in-progress cases */}
+
+                  {}
                   {onCloseCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
@@ -182,8 +182,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Complete Case
                     </button>
                   )}
-                  
-                  {/* Approve Case Closure button - show for cases pending final approval */}
+
+                  {}
                   {onApproveCase && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
@@ -196,8 +196,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Approve
                     </button>
                   )}
-                  
-                  {/* Return for Review button - show for cases pending final approval */}
+
+                  {}
                   {onReturnForReview && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
@@ -210,8 +210,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Return
                     </button>
                   )}
-                  
-                  {/* Approve Case Creation button - show for cases pending creation approval */}
+
+                  {}
                   {onApproveCaseCreation && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
@@ -224,8 +224,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Approve
                     </button>
                   )}
-                  
-                  {/* Approve Case Reopening button - show for cases pending reopening approval */}
+
+                  {}
                   {onApproveCaseReopen && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
@@ -239,7 +239,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
 
-                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
+                  {}
                   {onRejectCaseReopen && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
@@ -252,8 +252,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Reject Reopen
                     </button>
                   )}
-                  
-                  {/* Reject Case Creation button - show for cases pending creation approval */}
+
+                  {}
                   {onRejectCaseCreation && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
@@ -266,8 +266,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Reject
                     </button>
                   )}
-                  
-                  {/* Reopen Case button - show for closed cases */}
+
+                  {}
                   {onReopenCase && (
                     c.status === 'STATUS_81_CLOSED_REFUTED' ||
                     c.status === 'STATUS_82_CLOSED_CONFIRMED' ||
@@ -282,8 +282,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Reopen
                     </button>
                   )}
-                  
-                  {/* Abandon Case button - show for draft cases only */}
+
+                  {}
                   {onAbandonCase && (
                     c.status === 'STATUS_00_DRAFT'
                   ) && (
@@ -295,8 +295,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Abandon
                     </button>
                   )}
-                  
-                  {/* Suspend Case button - show for in-progress cases */}
+
+                  {}
                   {onSuspendCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
@@ -309,8 +309,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Suspend
                     </button>
                   )}
-                  
-                  {/* Resume Case button - show for suspended cases */}
+
+                  {}
                   {onResumeCase && (
                     c.status === 'STATUS_21_SUSPENDED' ||
                     c.status.includes('SUSPENDED')
@@ -323,8 +323,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       Resume
                     </button>
                   )}
-                  
-                  {/* Reject Case button - show for cases pending final approval */}
+
+                  {}
                   {onRejectCase && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')

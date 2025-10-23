@@ -9,7 +9,7 @@ interface TaskCompletionBarChartProps {
 
 const TaskCompletionBarChart: React.FC<TaskCompletionBarChartProps> = ({ data, title, height = 200 }) => {
   const maxValue = Math.max(...data.map(item => item.total));
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -17,18 +17,18 @@ const TaskCompletionBarChart: React.FC<TaskCompletionBarChartProps> = ({ data, t
         {data.map((item, index) => {
           const totalHeight = (item.total / maxValue) * (height - 40);
           const completedHeight = (item.completed / maxValue) * (height - 40);
-          
+
           return (
             <div key={index} className="flex flex-col items-center flex-1">
               <div className="text-xs font-medium text-gray-900 mb-1">
                 {item.total}
               </div>
               <div className="w-full relative">
-                <div 
+                <div
                   className="w-full rounded-t bg-gray-200"
                   style={{ height: `${totalHeight}px` }}
                 />
-                <div 
+                <div
                   className="w-full rounded-t bg-green-500 absolute bottom-0"
                   style={{ height: `${completedHeight}px` }}
                 />

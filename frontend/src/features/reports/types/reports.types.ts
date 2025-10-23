@@ -57,7 +57,7 @@ export interface ReportFilters {
   assignee: string;
 }
 
-// Investigator Workload Report Types
+
 export interface InvestigatorStats {
   totalInvestigators: number;
   avgCasesPerInvestigator: number;
@@ -107,7 +107,7 @@ export interface InvestigatorWorkloadData {
   performanceData: InvestigatorPerformance[];
 }
 
-// Task Completion Report Types
+
 export interface TaskStats {
   totalTasks: number;
   completionRate: number;
@@ -157,7 +157,7 @@ export interface TaskCompletionData {
   taskDetails: TaskDetail[];
 }
 
-// Audit Logs Report Types
+
 export interface AuditLogsStats {
   totalLogs: number;
   caseActions: number;
@@ -166,11 +166,13 @@ export interface AuditLogsStats {
 }
 
 export interface AuditLog {
-  timestamp: string;
-  action: string;
-  user: string;
-  caseId: string;
-  details: string;
+  audit_log_id: string;
+  user_id: string;
+  operation: string;
+  entity_name: string;
+  action_performed: string;
+  outcome: string;
+  performed_at: string;
   type: 'Info' | 'Success' | 'Warning' | 'Error';
 }
 
@@ -179,7 +181,7 @@ export interface AuditLogsData {
   auditLogs: AuditLog[];
 }
 
-// Case Ageing Report Types
+
 export interface CaseAgeingStats {
   avgCaseAge: number;
   avgResolutionTime: number;

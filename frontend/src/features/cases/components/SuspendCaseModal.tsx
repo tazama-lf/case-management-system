@@ -75,7 +75,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
           <p className="text-sm text-gray-700 mb-4">
             Temporarily pause a case due to blocked progress or pending information.
           </p>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Suspension Workflow</h4>
             <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">

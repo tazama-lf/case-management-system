@@ -1,8 +1,5 @@
-/**
- * Role and permission configuration for the frontend application
- */
 
-// Role definitions
+
 export const ROLES = {
   ADMIN: 'admin',
   SUPERVISOR: 'supervisor',
@@ -12,7 +9,6 @@ export const ROLES = {
 
 export type Role = typeof ROLES[keyof typeof ROLES];
 
-// Permission definitions
 export const PERMISSIONS = {
   READ_ALERTS: 'read:alerts',
   WRITE_ALERTS: 'write:alerts',
@@ -26,7 +22,6 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
-// Role hierarchy - defines which roles inherit permissions from other roles
 export const ROLE_HIERARCHY: Record<Role, Role[]> = {
   [ROLES.ADMIN]: [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.ANALYST, ROLES.INVESTIGATOR],
   [ROLES.SUPERVISOR]: [ROLES.SUPERVISOR, ROLES.ANALYST, ROLES.INVESTIGATOR],
@@ -34,7 +29,6 @@ export const ROLE_HIERARCHY: Record<Role, Role[]> = {
   [ROLES.INVESTIGATOR]: [ROLES.INVESTIGATOR],
 };
 
-// Role-permission mapping
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [ROLES.ADMIN]: [
     PERMISSIONS.READ_ALERTS,
@@ -66,9 +60,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 };
 
-/**
- * Get all permissions for a given role, including inherited permissions
- */
+
 export function getRolePermissions(role: Role): Permission[] {
   const inheritedRoles = ROLE_HIERARCHY[role] || [role];
   const permissions = new Set<Permission>();
@@ -82,9 +74,7 @@ export function getRolePermissions(role: Role): Permission[] {
   return Array.from(permissions);
 }
 
-/**
- * Check if a user has a specific permission
- */
+
 export function hasPermission(userRoles: string[], requiredPermission: Permission): boolean {
   return userRoles.some(role => {
     const rolePermissions = getRolePermissions(role as Role);
@@ -92,9 +82,7 @@ export function hasPermission(userRoles: string[], requiredPermission: Permissio
   });
 }
 
-/**
- * Check if a user has any of the required roles
- */
+
 export function hasAnyRole(userRoles: string[], requiredRoles: string[]): boolean {
   return requiredRoles.some(requiredRole => {
     return userRoles.some(userRole => {
@@ -104,9 +92,7 @@ export function hasAnyRole(userRoles: string[], requiredRoles: string[]): boolea
   });
 }
 
-/**
- * Get effective roles for a user (including inherited roles)
- */
+
 export function getEffectiveRoles(userRoles: string[]): string[] {
   const effectiveRoles = new Set<string>();
 

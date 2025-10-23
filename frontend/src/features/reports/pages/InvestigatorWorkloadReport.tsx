@@ -7,6 +7,7 @@ import ResolutionEfficiencyChart from '../components/ResolutionEfficiencyChart';
 import OutcomeDistributionChart from '../components/OutcomeDistributionChart';
 import InvestigatorPerformanceTable from '../components/InvestigatorPerformanceTable';
 import { useInvestigatorWorkload } from '../hooks/useReports';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface InvestigatorWorkloadReportProps {
   onExportExcel: () => void;
@@ -16,9 +17,6 @@ interface InvestigatorWorkloadReportProps {
 }
 
 const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
-  onExportExcel,
-  onExportCSV,
-  onExportPDF,
   dateRange
 }) => {
   const { data: workloadData, isLoading, error } = useInvestigatorWorkload(dateRange);
@@ -59,38 +57,72 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
     performanceData: []
   };
 
+  const handleExportExcel = () => {
+    try {
+      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(formattedData, filename, 'Investigator Workload Report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
+      exportToCSV(formattedData, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
+      const columns = getColumnsForReport('INVESTIGATOR_WORKLOAD');
+      await exportToPDF(formattedData, filename, 'Investigator Workload Report', columns);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
   return (
     <>
       <InvestigatorStatsCards stats={stats} />
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <WorkloadBarChart 
-          data={workload} 
-          title="Current Workload by Investigator" 
+        <WorkloadBarChart
+          data={workload}
+          title="Current Workload by Investigator"
         />
-        <CaseVolumeTrendChart 
-          data={volumeTrend} 
-          title="Case Volume Trend by Investigator" 
+        <CaseVolumeTrendChart
+          data={volumeTrend}
+          title="Case Volume Trend by Investigator"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <ResolutionEfficiencyChart 
-          data={efficiencyData} 
-          title="Case Resolution Efficiency (Avg. Day)" 
+        <ResolutionEfficiencyChart
+          data={efficiencyData}
+          title="Case Resolution Efficiency (Avg. Day)"
         />
-        <OutcomeDistributionChart 
-          data={outcomeData} 
-          title="Case Outcome Distribution by Investigator" 
+        <OutcomeDistributionChart
+          data={outcomeData}
+          title="Case Outcome Distribution by Investigator"
         />
       </div>
 
-      <InvestigatorPerformanceTable 
-        data={performanceData} 
-        title="Investigator Performance Details" 
-        onExportExcel={onExportExcel}
-        onExportCSV={onExportCSV}
-        onExportPDF={onExportPDF}
+      <InvestigatorPerformanceTable
+        data={performanceData}
+        title="Investigator Performance Details"
+        onExportExcel={handleExportExcel}
+        onExportCSV={handleExportCSV}
+        onExportPDF={handleExportPDF}
       />
     </>
   );

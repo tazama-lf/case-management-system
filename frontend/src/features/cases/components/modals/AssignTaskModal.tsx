@@ -33,8 +33,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
     try {
       const data = await authService.fetchAllInvestigators();
       console.log('Fetched investigators from API:', data);
-      
-      // Use API data if it's not empty, otherwise use mock data
+
       if (data && data.length > 0) {
         console.log('Using API data for investigators');
         setInvestigators(data);
@@ -52,7 +51,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
   };
 
   const useMockData = () => {
-    // Using the exact same mock data from the backend auth-helper.service.ts
     const mockInvestigators: Investigator[] = [
       { id: '085b7a75-c39d-44f8-868f-6c419f578627', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
       { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
@@ -69,23 +67,22 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
       console.warn('Cannot assign task: assignee not selected');
       return;
     }
-    
+
     if (!task) {
       console.warn('Cannot assign task: no task selected');
       return;
     }
-    
-    // Add validation to check if task ID is valid
+
     if (!task.id) {
       console.warn('Cannot assign task: task ID is missing', { task });
       return;
     }
-    
+
     if (!assignee) {
       console.warn('Cannot assign task: assignee is empty');
       return;
     }
-    
+
     console.log('Assigning task:', { taskId: task.id, assignee, notes });
     onAssign(task, assignee, notes);
   };
@@ -130,7 +127,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
               >
                 <option value="">Select Investigator</option>
                 {investigators.map((investigator) => {
-                 
+
                   return (
                     <option key={investigator.id} value={investigator.id}>
                       {investigator.firstName} {investigator.lastName} ({investigator.username})

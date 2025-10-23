@@ -9,18 +9,30 @@ interface InvestigatorPerformanceTableProps {
   onExportPDF?: () => void;
 }
 
-const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> = ({ 
-  data, 
-  title, 
-  onExportExcel, 
-  onExportCSV, 
-  onExportPDF 
+const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> = ({
+  data,
+  title,
+  onExportExcel,
+  onExportCSV,
+  onExportPDF
 }) => {
-  const getTrendColor = (trend: string) => {
+  const getTrendColor = (trend: string | undefined) => {
+    if (!trend) return 'text-gray-600';
     if (trend.toLowerCase().includes('declining')) return 'text-red-600';
     if (trend.toLowerCase().includes('improving')) return 'text-green-600';
     return 'text-gray-600';
   };
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48">
+          <p className="text-gray-500 text-center">No performance data available</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -84,25 +96,25 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
             {data.map((row, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {row.investigator}
+                  {row.investigator || 'Unknown'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.role}
+                  {row.role || 'Investigator'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.activeCases}
+                  {row.activeCases || 0}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.completedCases}
+                  {row.completedCases || 0}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.avgResolutionTime} days
+                  {row.avgResolutionTime || 0} days
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.caseClosureRate}%
+                  {row.caseClosureRate || 0}%
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getTrendColor(row.performanceTrend)}`}>
-                  {row.performanceTrend}
+                  {row.performanceTrend || 'Stable'}
                 </td>
               </tr>
             ))}

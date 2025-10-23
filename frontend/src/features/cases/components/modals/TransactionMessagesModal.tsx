@@ -37,7 +37,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-        {/* Header */}
+        {}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Transaction Messages</h2>
@@ -53,7 +53,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
           </button>
         </div>
 
-        {/* Messages List */}
+        {}
         <div className="space-y-3">
           {messages.map((message) => (
             <button
@@ -88,7 +88,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
           </div>
         )}
 
-        {/* Message Payload Modal */}
+        {}
         <MessagePayloadModal
           isOpen={payloadModalOpen}
           onClose={() => setPayloadModalOpen(false)}

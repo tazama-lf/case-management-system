@@ -20,8 +20,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  
-  // Modal state
+
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
@@ -31,7 +30,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   useEffect(() => {
     const fetchTasks = async () => {
       if (!caseId) return;
-      
+
       try {
         setLoading(true);
         setError(null);
@@ -48,14 +47,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     fetchTasks();
   }, [caseId]);
 
-  
+
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
-   
+
     let effectiveStatus = backendTask.status;
     if (backendTask.status === 'STATUS_10_ASSIGNED' && !backendTask.assigned_user_id) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
-    
+
     return {
       id: backendTask.task_id,
       taskId: backendTask.task_id,
@@ -65,7 +64,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       assigneeName: backendTask.assignedUser?.username || backendTask.assigned_user_id,
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
-      priority: 'NEW', // Default priority 
+      priority: 'NEW',
       createdAt: backendTask.created_at,
       dueDate: undefined,
       processInstanceId: '',
@@ -89,26 +88,26 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     const taskId = task.task_id || '';
     const taskName = task.name || '';
     const taskDescription = task.description || '';
-    
-    const matchesSearch = !searchTerm || 
+
+    const matchesSearch = !searchTerm ||
       taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskId.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
-  
+
 
   const handleAssign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setAssignModalOpen(true);
   };
 
-  
+
 
   const handleUnassign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
@@ -132,17 +131,15 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         toastError('Assign Task Failed', 'Missing task or assignee');
         return;
       }
-      
+
       console.log('Assigning task to investigator:', { taskId: task.id, assignee, notes });
-      // Use the assignTaskToInvestigator method which is the correct endpoint for supervisor assignment
       await taskService.assignTaskToInvestigator(task.id, assignee);
-      
+
       setAssignModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
-      
-      // Show success message with toast notification
+
       success('Task Assigned Successfully', `Task ${task.id} has been assigned successfully.`);
     } catch (error) {
       console.error('Failed to assign task:', error);
@@ -157,20 +154,16 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         toastError('Reassign Task Failed', 'Missing task or assignee');
         return;
       }
-      
+
       console.log('Reassigning task:', { taskId: task.id, assignee, justification });
-      // Call the reassign task API endpoint
       await taskService.reassignTask(task.id, assignee);
-      
-      // Close the modal and clear selected task
+
       setReassignModalOpen(false);
       setSelectedTask(null);
-      
-      // Refresh the task list
+
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
-      
-      // Show success message with toast notification
+
       success('Task Reassigned Successfully', `Task ${task.id} has been reassigned successfully.`);
     } catch (error) {
       console.error('Failed to reassign task:', error);
@@ -178,11 +171,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     }
   };
 
-  
+
 
   const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
     try {
-      // Map UI status labels to backend status codes
       const statusMap: Record<string, TaskStatusType> = {
         'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
         'Assigned': TaskStatus.STATUS_10_ASSIGNED,
@@ -190,18 +182,17 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         'Blocked': TaskStatus.STATUS_21_BLOCKED,
         'Complete': TaskStatus.STATUS_30_COMPLETED
       };
-      
+
       const backendStatus = statusMap[newStatus];
       if (backendStatus) {
         await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
       }
-      
+
       setUpdateStatusModalOpen(false);
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
-      
-      // Show success message with toast notification
+
       success('Task Status Updated Successfully', `Task ${task.id} status has been updated successfully.`);
     } catch (error) {
       console.error('Failed to update task status:', error);
@@ -216,8 +207,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       setSelectedTask(null);
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
-      
-      // Show success message with toast notification
+
       success('Task Unassigned Successfully', `Task ${taskId} has been unassigned successfully.`);
     } catch (error) {
       console.error('Failed to unassign task:', error);
@@ -285,8 +275,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           onUpdateStatus={handleUpdateStatus}
         />
       )}
-      
-      {/* Task Management Modals */}
+
+      {}
       <AssignTaskModal
         open={assignModalOpen}
         onClose={() => {

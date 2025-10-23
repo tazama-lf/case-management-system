@@ -53,7 +53,7 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
 
   return (
     <div className="flex gap-6">
-      {/* Left column */}
+      {}
       <div className="w-full max-w-sm space-y-4">
         <Card title="Alert Stage" right={<Pill color="green">Complete</Pill>}>
           <div className="mb-2 text-xs text-gray-500">Started · Not started</div>
@@ -155,7 +155,7 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
         </Card>
       </div>
 
-      {/* Right column */}
+      {}
       <div className="flex-1 space-y-4">
         <Card>
           <div className="flex items-center justify-between gap-3">
@@ -173,7 +173,7 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
         </Card>
       </div>
 
-      {/* Modal */}
+      {}
       <NewDiscussionThreadModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}

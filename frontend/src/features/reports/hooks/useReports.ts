@@ -1,17 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { reportsService } from '../services/reportsService';
-import type { 
-  ReportsData, 
-  InvestigatorWorkloadData, 
-  TaskCompletionData, 
-  AuditLogsData, 
-  CaseAgeingData 
+import type {
+  ReportsData,
+  InvestigatorWorkloadData,
+  TaskCompletionData,
+  AuditLogsData,
+  CaseAgeingData
 } from '../types/reports.types';
 
-export const useReports = (dateRange?: string) => {
+export const useReports = (dateRange?: string, filters?: { caseType: string; priority: string; investigator: string }) => {
   return useQuery<ReportsData>({
-    queryKey: ['reports', dateRange],
-    queryFn: () => reportsService.getReportsData(dateRange),
+    queryKey: ['reports', dateRange, filters],
+    queryFn: () => reportsService.getReportsData(dateRange, filters),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -21,7 +21,7 @@ export const useReports = (dateRange?: string) => {
 export const useCaseStatusStats = () => {
   return useQuery({
     queryKey: ['reports', 'stats'],
-    queryFn: () => reportsService.getCaseStatusStats(),
+    queryFn: () => reportsService.getReportsData(),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
   });
@@ -51,9 +51,10 @@ export const useAuditLogs = (dateRange?: string) => {
   return useQuery<AuditLogsData>({
     queryKey: ['reports', 'audit-logs', dateRange],
     queryFn: () => reportsService.getAuditLogsData(dateRange),
-    staleTime: 1000 * 60 * 5, 
+    staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
+    retry: 1,
   });
 };
 

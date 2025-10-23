@@ -4,11 +4,10 @@ import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
 
-// Helper function to check if date is within time range
 const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
   const date = new Date(dateString);
   const now = new Date();
-  
+
   switch (timeRange) {
     case 'today': {
       return date.toDateString() === now.toDateString();
@@ -47,7 +46,7 @@ const isDateInRange = (dateString: string, timeRange: string, customDateRange?: 
       if (customDateRange?.startDate && customDateRange?.endDate) {
         const startDate = new Date(customDateRange.startDate);
         const endDate = new Date(customDateRange.endDate);
-        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+        endDate.setHours(23, 59, 59, 999);
         return date >= startDate && date <= endDate;
       }
       return true;
@@ -61,7 +60,6 @@ interface AlertsSearchFilters extends UIAlertsSearchFilters {
     customDateRange?: { startDate: string; endDate: string };
 }
 
-// State structure for the hook
 interface AlertsState {
   allAlerts: Alert[];
   filteredAlerts: Alert[];
@@ -81,7 +79,6 @@ interface AlertsState {
   lastUpdated: Date | null;
 }
 
-// Action types for the reducer
 type Action =
   | { type: 'FETCH_START' }
   | { type: 'FETCH_SUCCESS'; payload: { alerts: Alert[]; totalItems: number; totalPages: number; } }
@@ -92,7 +89,6 @@ type Action =
   | { type: 'SET_PAGE_SIZE'; payload: number }
   | { type: 'APPLY_FILTERS_AND_SORT' };
 
-// Initial state
 const initialState: AlertsState = {
   allAlerts: [],
   filteredAlerts: [],
@@ -118,7 +114,6 @@ const initialState: AlertsState = {
   lastUpdated: null,
 };
 
-// Reducer function
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   switch (action.type) {
     case 'FETCH_START':
@@ -148,7 +143,6 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
     case 'APPLY_FILTERS_AND_SORT': {
       let filtered = [...state.allAlerts];
 
-      // Text query filter
       if (state.filters.query && state.filters.query.trim() !== '') {
         const q = state.filters.query.trim().toLowerCase();
         filtered = filtered.filter((a: Alert) => {
@@ -172,32 +166,26 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         });
       }
 
-      // Source filter
       if (state.filters.source) {
         filtered = filtered.filter(a => (a.source || '').toLowerCase() === state.filters.source.toLowerCase());
       }
 
-      // Type filter
       if (state.filters.type) {
         filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
       }
 
-      // Priority filter
       if (state.filters.priority) {
         filtered = filtered.filter(a => (a.priority || '').toLowerCase() === state.filters.priority.toLowerCase());
       }
 
-      // Alert type filter
       if (state.filters.type) {
         filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
       }
 
-      // Time range filter
       if (state.filters.timeRange) {
         filtered = filtered.filter((alert: Alert) => isDateInRange(alert.created_at as string, state.filters.timeRange, state.filters.customDateRange));
       }
 
-      // Sorting
       const getValue = (item: Alert, key: string) => {
         const v = item[key as keyof Alert] as unknown;
         if (v === undefined || v === null) return '';
@@ -223,16 +211,13 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   }
 };
 
-// The custom hook
 export const useAlerts = () => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
 
   const fetchAlerts = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
     try {
-      // Fetch all alerts. In a real-world scenario with large datasets,
-      // filtering and pagination should be done on the server.
-      const response = await triageService.getAlerts({ limit: 1000 }); // Fetch a large number to simulate all data
+      const response = await triageService.getAlerts({ limit: 1000 });
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -253,8 +238,6 @@ export const useAlerts = () => {
   }, [fetchAlerts]);
 
   useEffect(() => {
-    // This effect will re-run whenever the filters or sorting change
-    // and apply them to the `allAlerts` list.
     dispatch({ type: 'APPLY_FILTERS_AND_SORT' });
   }, [state.allAlerts, state.filters, state.sort]);
 
@@ -274,7 +257,6 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
-  // Memoize the paginated alerts to prevent re-calculation on every render
   const paginatedAlerts = useMemo(() => {
     const { currentPage, pageSize } = state.pagination;
     const start = (currentPage - 1) * pageSize;

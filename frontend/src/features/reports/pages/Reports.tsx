@@ -12,24 +12,73 @@ import InvestigatorWorkloadReport from './InvestigatorWorkloadReport';
 import TaskCompletionReport from './TaskCompletionReport';
 import AuditLogsReport from './AuditLogsReport';
 import CaseAgeingReport from './CaseAgeingReport';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 type ReportType = 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
 
 const Reports: React.FC = () => {
   const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear'>('last30');
-  const { data: reportsData, isLoading, error } = useReports(dateRange);
+  const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
+  const { data: reportsData, isLoading, error } = useReports(dateRange, filters);
 
   const handleExportExcel = () => {
-    console.log('Exporting to Excel...');
+    try {
+      const data = getCurrentReportData();
+      const formattedData = formatDataForExport(data, reportType);
+      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(formattedData, filename, `${reportType} Report`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
   };
 
   const handleExportCSV = () => {
-    console.log('Exporting to CSV...');
+    try {
+      const data = getCurrentReportData();
+      const formattedData = formatDataForExport(data, reportType);
+      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      exportToCSV(formattedData, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
   };
 
-  const handleExportPDF = () => {
-    console.log('Exporting to PDF...');
+  const handleExportPDF = async () => {
+    try {
+      const data = getCurrentReportData();
+      const formattedData = formatDataForExport(data, reportType);
+      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      const columns = getColumnsForReport(reportType);
+      const title = getPageTitle();
+      await exportToPDF(formattedData, filename, title, columns);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleApplyFilters = (newFilters: { caseType: string; priority: string; investigator: string }) => {
+    setFilters(newFilters);
+  };
+
+  const getCurrentReportData = () => {
+    switch (reportType) {
+      case 'CASE_STATUS':
+        return statusDetails;
+      case 'TASK_COMPLETION':
+        return [];
+      case 'AUDIT_LOGS':
+        return [];
+      case 'CASE_AGEING':
+        return [];
+      case 'INVESTIGATOR_WORKLOAD':
+        return [];
+      default:
+        return [];
+    }
   };
 
 
@@ -136,41 +185,46 @@ const Reports: React.FC = () => {
         dateRange={dateRange}
         onChangeReportType={setReportType}
         onChangeDateRange={setDateRange}
+        onApplyFilters={handleApplyFilters}
       />
       {reportType === 'CASE_STATUS' && (
         <>
           <ReportStatsCards stats={stats} />
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <PieChart 
-              data={statusDistributionData} 
-              title="Case Status Distribution" 
+            <PieChart
+              data={statusDistributionData}
+              title="Case Status Distribution"
+              isLoading={isLoading}
             />
-            <BarChart 
-              data={caseTypes.map(type => ({ 
-                label: type.name, 
-                value: type.count, 
-                color: type.color 
-              }))} 
-              title="Case Types" 
+            <BarChart
+              data={caseTypes.map(type => ({
+                label: type.name,
+                value: type.count,
+                color: type.color
+              }))}
+              title="Case Types"
+              isLoading={isLoading}
             />
           </div>
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <PieChart 
-              data={outcomeData} 
-              title="Case Outcomes" 
+            <PieChart
+              data={outcomeData}
+              title="Case Outcomes"
+              isLoading={isLoading}
             />
-            <LineChart 
+            <LineChart
               data={monthlyTrend.map(trend => ({
                 label: trend.month,
                 casesCreated: trend.casesCreated,
                 casesClosed: trend.casesClosed
-              }))} 
-              title="Monthly Case Trend" 
+              }))}
+              title="Monthly Case Trend"
+              isLoading={isLoading}
             />
           </div>
-          <ReportsTable 
-            data={statusDetails} 
-            title="Case Status Details" 
+          <ReportsTable
+            data={statusDetails}
+            title="Case Status Details"
             onExportExcel={handleExportExcel}
             onExportCSV={handleExportCSV}
             onExportPDF={handleExportPDF}
@@ -179,7 +233,7 @@ const Reports: React.FC = () => {
       )}
 
       {reportType === 'TASK_COMPLETION' && (
-        <TaskCompletionReport 
+        <TaskCompletionReport
           onExportExcel={handleExportExcel}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
@@ -188,7 +242,7 @@ const Reports: React.FC = () => {
       )}
 
       {reportType === 'AUDIT_LOGS' && (
-        <AuditLogsReport 
+        <AuditLogsReport
           onExportExcel={handleExportExcel}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
@@ -197,7 +251,7 @@ const Reports: React.FC = () => {
       )}
 
       {reportType === 'CASE_AGEING' && (
-        <CaseAgeingReport 
+        <CaseAgeingReport
           onExportExcel={handleExportExcel}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
@@ -206,7 +260,7 @@ const Reports: React.FC = () => {
       )}
 
       {reportType === 'INVESTIGATOR_WORKLOAD' && (
-        <InvestigatorWorkloadReport 
+        <InvestigatorWorkloadReport
           onExportExcel={handleExportExcel}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}

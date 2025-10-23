@@ -137,14 +137,14 @@ export const TableSkeleton: React.FC<TableSkeletonProps> = ({
 }) => {
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Table Header Skeleton */}
+      {}
       <div className="flex space-x-4">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} className="h-4 flex-1" />
         ))}
       </div>
-      
-      {/* Table Rows Skeleton */}
+
+      {}
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div key={rowIndex} className="flex space-x-4">
           {Array.from({ length: columns }).map((_, colIndex) => (

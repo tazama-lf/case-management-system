@@ -1,7 +1,6 @@
 import apiClient from '../../../shared/services/apiClient';
 import type { Case, ApiErrorResponse } from '../../alerts/types/triage.types';
 
-// Backend DTO types matching the API
 export interface GetUserCasesQueryDto {
   status?: string;
   priority?: string;
@@ -72,21 +71,18 @@ export interface UserWorkloadStatsDto {
   averageCaseAge: number;
 }
 
-// Close Case DTOs matching backend
 export interface CloseCaseDto {
   recommendedOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
   finalNotes?: string;
   recommendations?: string;
 }
 
-// Manual Case Creation DTOs matching backend ManualCreateCaseDto
 export interface ManualCreateCaseDto {
   alertId?: string;
   priorityScore?: number;
   alertType: string;
 }
 
-// Update Case DTO for completing draft cases
 export interface UpdateCaseDto {
   status?: string;
   priority?: string;
@@ -94,48 +90,39 @@ export interface UpdateCaseDto {
   caseOwnerUserId?: string;
 }
 
-// Abandon Case DTO
 export interface AbandonCaseDto {
   reason: string;
 }
 
-// Resume Case DTO
 export interface ResumeCaseDto {
   reason: string;
 }
 
-// Reject Case DTO
 export interface RejectCaseDto {
   rejectionReason: string;
 }
 
-// Reopen Case DTO
 export interface ReopenCaseDto {
   reason: string;
 }
 
-// Suspend Case DTO
 export interface SuspendCaseDto {
   reason: string;
 }
 
-// Approve Case Closure DTO
 export interface ApproveCaseClosureDto {
   finalOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
   supervisorComments?: string;
 }
 
-// Return Case For Review DTO
 export interface ReturnCaseForReviewDto {
   reviewComments: string;
 }
 
-// Reject Case Creation DTO
 export interface RejectCaseCreationDto {
   reason: string;
 }
 
-// Approve/Reopen response wrappers from backend
 export interface ApproveReopenResponseDto {
   success: boolean;
   message: string;
@@ -171,15 +158,13 @@ export interface CloseCaseResponseDto {
 export class CaseService {
   private baseUrl = '/api/v1/cases';
 
-  // GET /api/v1/cases/user/assigned
   async getUserCases(query?: GetUserCasesQueryDto): Promise<GetUserCasesResponseDto> {
     try {
       const params = new URLSearchParams();
-      
-      // Set defaults to get all cases assigned to current user
+
       const includeTaskAssignments = query?.includeTaskAssignments ?? true;
       const includeOwnedCases = query?.includeOwnedCases ?? true;
-      
+
       if (query?.status) params.append('status', query.status);
       if (query?.priority) params.append('priority', query.priority);
       params.append('includeTaskAssignments', String(includeTaskAssignments));
@@ -191,7 +176,7 @@ export class CaseService {
 
       const queryString = params.toString();
       const url = `${this.baseUrl}/user/assigned${queryString ? `?${queryString}` : ''}`;
-      
+
       const response = await apiClient.get<GetUserCasesResponseDto>(url);
       return response;
     } catch (error: any) {
@@ -199,7 +184,6 @@ export class CaseService {
     }
   }
 
-  // GET /api/v1/cases/user/workload
   async getUserWorkloadStats(): Promise<UserWorkloadStatsDto> {
     try {
       const response = await apiClient.get<UserWorkloadStatsDto>(`${this.baseUrl}/user/workload`);
@@ -209,7 +193,6 @@ export class CaseService {
     }
   }
 
-  // GET /api/v1/cases/:caseId
   async getCaseDetails(caseId: string): Promise<Case> {
     try {
       const response = await apiClient.get<Case>(`${this.baseUrl}/${caseId}`);
@@ -219,7 +202,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/close
   async closeCase(caseId: string, closeCaseData: CloseCaseDto): Promise<CloseCaseResponseDto> {
     try {
       const response = await apiClient.put<CloseCaseResponseDto>(`${this.baseUrl}/${caseId}/close`, closeCaseData);
@@ -229,7 +211,6 @@ export class CaseService {
     }
   }
 
-  // POST /api/v1/cases/manual - Manual case creation
   async createCase(manualCreateCaseData: ManualCreateCaseDto): Promise<Case> {
     try {
       const response = await apiClient.post<Case>(`${this.baseUrl}/manual`, manualCreateCaseData);
@@ -239,7 +220,6 @@ export class CaseService {
     }
   }
 
-  // POST /api/v1/cases/:caseId 
   async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
       const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
@@ -249,12 +229,9 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/abandon - Abandon a case
   async abandonCase(caseId: string, abandonCaseData: AbandonCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/abandon`, abandonCaseData);
-      // For abandon case, the response structure is different { success: true, case: Case, task: Task }
-      // We need to extract the case object from the response
       if (response && typeof response === 'object' && 'case' in response) {
         return this.validateCaseResponse(response.case);
       }
@@ -264,7 +241,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/resume - Resume a suspended case
   async resumeCase(caseId: string, resumeCaseData: ResumeCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/resume`, resumeCaseData);
@@ -274,7 +250,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/reject - Reject a case closure
   async rejectCase(caseId: string, rejectCaseData: RejectCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject`, rejectCaseData);
@@ -284,7 +259,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/reopen - Reopen a closed case
   async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
@@ -294,22 +268,18 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/approve-reopening - Supervisor approves case reopening
   async approveCaseReopening(caseId: string): Promise<ApproveReopenResponseDto> {
     try {
       const response = await apiClient.put<ApproveReopenResponseDto>(`${this.baseUrl}/${caseId}/approve-reopening`, {});
-      // Ensure nested case object is normalized
       if (response && (response as any).case) {
         return response as ApproveReopenResponseDto;
       }
-      // Fallback: wrap direct case
       return { success: true, message: 'Case reopening approved', case: this.validateCaseResponse(response as unknown as Case) } as ApproveReopenResponseDto;
     } catch (error: any) {
       throw this.handleError(error, 'approve case reopening');
     }
   }
 
-  // PUT /api/v1/cases/:caseId/reject-reopening - Supervisor rejects case reopening
   async rejectCaseReopening(caseId: string, rejectionReason: string): Promise<RejectReopenResponseDto> {
     try {
       const response = await apiClient.put<RejectReopenResponseDto>(`${this.baseUrl}/${caseId}/reject-reopening`, { rejectionReason });
@@ -322,7 +292,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/suspend - Suspend a case
   async suspendCase(caseId: string, suspendCaseData: SuspendCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/suspend`, suspendCaseData);
@@ -332,7 +301,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/approve - Approve case closure
   async approveCaseClosure(caseId: string, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve`, approveCaseData);
@@ -342,7 +310,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/return-for-review - Return case for review
   async returnCaseForReview(caseId: string, returnCaseData: ReturnCaseForReviewDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/return-for-review`, returnCaseData);
@@ -352,7 +319,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/approve-creation - Approve case creation
   async approveCaseCreation(caseId: string): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve-creation`, {});
@@ -362,7 +328,6 @@ export class CaseService {
     }
   }
 
-  // PUT /api/v1/cases/:caseId/reject-creation - Reject case creation
   async rejectCaseCreation(caseId: string, rejectCaseData: RejectCaseCreationDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject-creation`, rejectCaseData);
@@ -377,13 +342,10 @@ export class CaseService {
       throw new Error('Invalid case data received');
     }
 
-    // Handle different response structures
-    // Direct case object
     if ('case_id' in data) {
       return data as Case;
     }
-    
-    // Nested case object (e.g., from abandon case response)
+
     if ('case' in data && typeof data.case === 'object' && data.case !== null && 'case_id' in data.case) {
       return data.case as Case;
     }
@@ -391,11 +353,10 @@ export class CaseService {
     throw new Error('Case ID is missing from response');
   }
 
-  // GET /api/v1/cases/user/assigned - Get cases assigned to current user
   async getUserAssignedCases(query?: GetUserCasesQueryDto): Promise<{ cases: CaseWithTasksDto[]; pagination?: any }> {
     try {
       const params = new URLSearchParams();
-      
+
       if (query?.status) params.append('status', query.status);
       if (query?.priority) params.append('priority', query.priority);
       if (query?.includeTaskAssignments) params.append('includeTaskAssignments', String(query.includeTaskAssignments));
@@ -407,7 +368,7 @@ export class CaseService {
 
       const queryString = params.toString();
       const url = `${this.baseUrl}/user/assigned${queryString ? `?${queryString}` : ''}`;
-      
+
       const response = await apiClient.get<{ cases: CaseWithTasksDto[]; pagination?: any }>(url);
       return response;
     } catch (error: any) {
@@ -415,11 +376,10 @@ export class CaseService {
     }
   }
 
-  // GET /api/v1/cases/all - Get all cases in the system (requires supervisor role)
   async getAllCases(query?: GetUserCasesQueryDto): Promise<{ cases: CaseWithTasksDto[]; pagination?: any }> {
     try {
       const params = new URLSearchParams();
-      
+
       if (query?.status) params.append('status', query.status);
       if (query?.priority) params.append('priority', query.priority);
       if (query?.page) params.append('page', String(query.page));
@@ -429,7 +389,7 @@ export class CaseService {
 
       const queryString = params.toString();
       const url = `${this.baseUrl}/all${queryString ? `?${queryString}` : ''}`;
-      
+
       const response = await apiClient.get<{ cases: CaseWithTasksDto[]; pagination?: any }>(url);
       return response;
     } catch (error: any) {

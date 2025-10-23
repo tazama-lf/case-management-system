@@ -20,7 +20,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state on app start
   useEffect(() => {
     const initializeAuth = () => {
       try {
@@ -41,7 +40,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsAuthenticated(true);
         } else {
           console.log('No valid session found, cleaning up');
-          // Clean up if token is expired
           authService.logout();
         }
       } catch (error) {
@@ -55,14 +53,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Auto-refresh token before expiration
   useEffect(() => {
     let refreshTimer: NodeJS.Timeout;
 
     if (token && isAuthenticated) {
       const tokenExpiration = authService.getTokenExpiration(token);
       if (tokenExpiration) {
-        // Refresh 5 minutes before expiration
         const refreshTime =
           tokenExpiration.getTime() - Date.now() - 5 * 60 * 1000;
 
@@ -70,10 +66,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           refreshTimer = setTimeout(async () => {
             const refreshed = await authService.refreshToken();
             if (!refreshed) {
-              // If refresh fails, logout user
               logout();
             } else {
-              // Update token state
               const newToken = authService.getToken();
               setToken(newToken);
             }
@@ -103,11 +97,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           hasUser: !!response.user,
           userClaims: response.user.backendClaims
         });
-        
+
         setToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
-        
+
         console.log('AuthContext.login() - Auth state updated successfully');
       } else {
         console.log('AuthContext.login() - Missing token or user in response', response);
@@ -131,7 +125,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(false);
     setError(null);
 
-    // Redirect to login page
     window.location.href = '/login';
   };
 
@@ -162,7 +155,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

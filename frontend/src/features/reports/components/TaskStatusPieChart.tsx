@@ -9,21 +9,21 @@ interface TaskStatusPieChartProps {
 
 const TaskStatusPieChart: React.FC<TaskStatusPieChartProps> = ({ data, title, size = 200 }) => {
   const total = data.reduce((sum, item) => sum + item.count, 0);
-  
+
   let cumulativePercentage = 0;
   const segments = data.map((item) => {
     const percentage = (item.count / total) * 100;
     const startAngle = cumulativePercentage * 3.6;
     const endAngle = (cumulativePercentage + percentage) * 3.6;
     cumulativePercentage += percentage;
-    
+
     const x1 = 50 + 40 * Math.cos((startAngle - 90) * Math.PI / 180);
     const y1 = 50 + 40 * Math.sin((startAngle - 90) * Math.PI / 180);
     const x2 = 50 + 40 * Math.cos((endAngle - 90) * Math.PI / 180);
     const y2 = 50 + 40 * Math.sin((endAngle - 90) * Math.PI / 180);
-    
+
     const largeArcFlag = percentage > 50 ? 1 : 0;
-    
+
     return {
       ...item,
       percentage,
@@ -51,8 +51,8 @@ const TaskStatusPieChart: React.FC<TaskStatusPieChartProps> = ({ data, title, si
         <div className="ml-6 space-y-2">
           {segments.map((segment, index) => (
             <div key={index} className="flex items-center text-sm">
-              <div 
-                className="w-3 h-3 rounded-full mr-2" 
+              <div
+                className="w-3 h-3 rounded-full mr-2"
                 style={{ backgroundColor: segment.color }}
               />
               <span className="text-gray-600 mr-2">{segment.status}:</span>

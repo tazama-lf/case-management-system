@@ -16,48 +16,41 @@ export interface SystemConfigResponse {
 export class SystemConfigService {
   private baseUrl = '/api/v1/config';
 
-  /**
-   * Get current system configuration
-   */
+
   async getSystemConfig(): Promise<SystemConfig> {
     try {
       const response = await apiClient.get<SystemConfigResponse>(`${this.baseUrl}/system`);
       return response;
     } catch (error: any) {
       console.error('Failed to fetch system configuration:', error);
-      
+
       if (error.response?.data) {
         const apiError = error.response.data as ApiErrorResponse;
         throw new Error(apiError.message || 'Failed to fetch system configuration');
       }
-      
+
       throw new Error('Failed to fetch system configuration');
     }
   }
 
-  /**
-   * Update system configuration (if backend supports it)
-   * Note: Currently backend only provides GET endpoint, this is for future implementation
-   */
+
   async updateSystemConfig(config: Partial<SystemConfig>): Promise<SystemConfig> {
     try {
       const response = await apiClient.put<SystemConfigResponse>(`${this.baseUrl}/system`, config);
       return response;
     } catch (error: any) {
       console.error('Failed to update system configuration:', error);
-      
+
       if (error.response?.data) {
         const apiError = error.response.data as ApiErrorResponse;
         throw new Error(apiError.message || 'Failed to update system configuration');
       }
-      
+
       throw new Error('Failed to update system configuration');
     }
   }
 
-  /**
-   * Validate configuration values
-   */
+
   validateConfig(config: Partial<SystemConfig>): string[] {
     const errors: string[] = [];
 

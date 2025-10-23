@@ -18,9 +18,7 @@ interface WorkQueueErrorBoundaryState {
   error: Error | null;
 }
 
-/**
- * Enhanced Error Boundary specifically for Work Queue components
- */
+
 export class WorkQueueErrorBoundary extends React.Component<
   WorkQueueErrorBoundaryProps,
   WorkQueueErrorBoundaryState
@@ -46,8 +44,8 @@ export class WorkQueueErrorBoundary extends React.Component<
     if (this.state.hasError && this.state.error) {
       const FallbackComponent = this.props.fallback || DefaultWorkQueueErrorFallback;
       return (
-        <FallbackComponent 
-          error={this.state.error} 
+        <FallbackComponent
+          error={this.state.error}
           resetError={this.resetError}
         />
       );
@@ -57,35 +55,33 @@ export class WorkQueueErrorBoundary extends React.Component<
   }
 }
 
-/**
- * Default error fallback component for work queue errors
- */
-export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps> = ({ 
-  error, 
+
+export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps> = ({
+  error,
   resetError,
-  retry 
+  retry
 }) => {
   const errorInfo = createErrorMessage(error, 'Failed to load work queue');
-  
+
   return (
     <div className="min-h-96 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
       <div className="text-center px-6 py-8 max-w-md">
         <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500 mb-4" />
-        
+
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           Work Queue Error
         </h3>
-        
+
         <p className="text-sm text-gray-600 mb-4">
           {errorInfo.message}
         </p>
-        
+
         {errorInfo.actionSuggestion && (
           <p className="text-xs text-gray-500 mb-6 italic">
             {errorInfo.actionSuggestion}
           </p>
         )}
-        
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {errorInfo.canRetry && (
             <button
@@ -96,7 +92,7 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
               Try Again
             </button>
           )}
-          
+
           <button
             onClick={resetError}
             className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -104,7 +100,7 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
             Reset View
           </button>
         </div>
-        
+
         {error instanceof FlowableError && (
           <details className="mt-6 text-left">
             <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
@@ -130,12 +126,10 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
   );
 };
 
-/**
- * Hook for handling work queue errors with consistent error processing
- */
+
 export const useWorkQueueErrorHandler = () => {
   const [error, setError] = React.useState<FlowableError | null>(null);
-  
+
   const handleError = React.useCallback((error: unknown) => {
     if (error instanceof FlowableError) {
       setError(error);
@@ -145,16 +139,16 @@ export const useWorkQueueErrorHandler = () => {
       setError(new FlowableError('An unexpected error occurred', 'UNKNOWN_ERROR'));
     }
   }, []);
-  
+
   const clearError = React.useCallback(() => {
     setError(null);
   }, []);
-  
+
   const getErrorDisplay = React.useCallback(() => {
     if (!error) return null;
     return createErrorMessage(error);
   }, [error]);
-  
+
   return {
     error,
     hasError: error !== null,
@@ -164,9 +158,7 @@ export const useWorkQueueErrorHandler = () => {
   };
 };
 
-/**
- * Higher-order component for adding error handling to work queue components
- */
+
 export function withWorkQueueErrorHandling<P extends object>(
   Component: React.ComponentType<P>,
   customFallback?: React.ComponentType<WorkQueueErrorFallbackProps>
@@ -176,9 +168,9 @@ export function withWorkQueueErrorHandling<P extends object>(
       <Component {...props} />
     </WorkQueueErrorBoundary>
   );
-  
+
   WithErrorHandling.displayName = `withWorkQueueErrorHandling(${Component.displayName || Component.name})`;
-  
+
   return WithErrorHandling;
 }
 

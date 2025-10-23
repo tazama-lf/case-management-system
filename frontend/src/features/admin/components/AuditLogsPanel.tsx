@@ -9,7 +9,7 @@ interface AuditLogsPanelProps {
 const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
   const { data, isLoading, error, filters, updateFilters, resetFilters } = useAuditLogs();
   const { exportLogs, isExporting, exportError } = useExportAuditLogs();
-  
+
   const [showFilters, setShowFilters] = useState(false);
   const [localFilters, setLocalFilters] = useState<Partial<AuditLogFilters>>({});
 
@@ -100,7 +100,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         )}
       </div>
 
-      {/* Filters Panel */}
+      {}
       {showFilters && (
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -167,7 +167,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         </div>
       )}
 
-      {/* Audit Logs Table */}
+      {}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -231,7 +231,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         )}
       </div>
 
-      {/* Pagination */}
+      {}
       {data && data.totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-700">

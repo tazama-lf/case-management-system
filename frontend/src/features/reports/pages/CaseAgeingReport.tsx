@@ -7,6 +7,7 @@ import CaseAgeingPieChart from '../components/CaseAgeingPieChart';
 import CaseTypeResolutionChart from '../components/CaseTypeResolutionChart';
 import CaseAgeingTable from '../components/CaseAgeingTable';
 import { useCaseAgeing } from '../hooks/useReports';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface CaseAgeingReportProps {
   onExportExcel: () => void;
@@ -16,9 +17,6 @@ interface CaseAgeingReportProps {
 }
 
 const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
-  onExportExcel,
-  onExportCSV,
-  onExportPDF,
   dateRange
 }) => {
   const { data: ageingData, isLoading, error } = useCaseAgeing(dateRange);
@@ -59,38 +57,82 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
     caseDetails: []
   };
 
+  const handleExportExcel = () => {
+    try {
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(formattedData, filename, 'Case Ageing Report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      exportToCSV(formattedData, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      const columns = getColumnsForReport('CASE_AGEING');
+      await exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
   return (
     <>
       <CaseAgeingStatsCards stats={stats} />
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <CaseAgeingBarChart 
-          data={ageingByStatus} 
-          title="Case Ageing by Status" 
-        />
-        <ResolutionTimeTrendChart 
-          data={resolutionTrend} 
-          title="Average Resolution Time Trend" 
-        />
+      <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0 mb-8">
+        <div className="flex-1 w-full md:w-1/2">
+          <CaseAgeingBarChart
+            data={ageingByStatus}
+            title="Case Ageing by Status"
+            height={320}
+          />
+        </div>
+        <div className="flex-1 w-full md:w-1/2">
+          <ResolutionTimeTrendChart
+            data={resolutionTrend}
+            title="Average Resolution Time Trend"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <CaseAgeingPieChart 
-          data={ageingDistribution} 
-          title="Case Ageing Distribution" 
-        />
-        <CaseTypeResolutionChart 
-          data={caseTypeResolution} 
-          title="Case Type vs Resolution Time" 
-        />
+      <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0 mb-8">
+        <div className="flex-1 w-full md:w-1/2">
+          <CaseAgeingPieChart
+            data={ageingDistribution}
+            title="Case Ageing Distribution"
+            size={240}
+          />
+        </div>
+        <div className="flex-1 w-full md:w-1/2">
+          <CaseTypeResolutionChart
+            data={caseTypeResolution}
+            title="Case Type vs Resolution Time"
+          />
+        </div>
       </div>
 
-      <CaseAgeingTable 
-        data={caseDetails} 
-        title="Case Ageing Details" 
-        onExportExcel={onExportExcel}
-        onExportCSV={onExportCSV}
-        onExportPDF={onExportPDF}
+      <CaseAgeingTable
+        data={caseDetails}
+        title="Case Ageing Details"
+        onExportExcel={handleExportExcel}
+        onExportCSV={handleExportCSV}
+        onExportPDF={handleExportPDF}
       />
     </>
   );

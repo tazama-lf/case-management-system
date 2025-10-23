@@ -2,9 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { auditLogService, type AuditLogFilters } from '../services/auditLogService';
 import { useState, useCallback } from 'react';
 
-/**
- * Hook to fetch audit logs with filtering
- */
+
 export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
   const [filters, setFilters] = useState<AuditLogFilters>({
     page: 1,
@@ -17,8 +15,8 @@ export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
   const query = useQuery({
     queryKey: ['auditLogs', filters],
     queryFn: () => auditLogService.getAuditLogs(filters),
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
     retry: 2,
   });
 
@@ -26,7 +24,7 @@ export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      page: newFilters.page || 1, // Reset to page 1 unless explicitly set
+      page: newFilters.page || 1,
     }));
   }, []);
 
@@ -47,22 +45,18 @@ export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
   };
 };
 
-/**
- * Hook to fetch a specific audit log entry
- */
+
 export const useAuditLogEntry = (id: string | undefined) => {
   return useQuery({
     queryKey: ['auditLog', id],
     queryFn: () => auditLogService.getAuditLogById(id!),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };
 
-/**
- * Hook to export audit logs
- */
+
 export const useExportAuditLogs = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -73,8 +67,7 @@ export const useExportAuditLogs = () => {
 
     try {
       const blob = await auditLogService.exportAuditLogs(filters);
-      
-      // Create download link
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

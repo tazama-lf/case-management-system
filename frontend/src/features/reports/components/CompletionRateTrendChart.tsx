@@ -9,11 +9,11 @@ interface CompletionRateTrendChartProps {
 
 const CompletionRateTrendChart: React.FC<CompletionRateTrendChartProps> = ({ data, title, height = 200 }) => {
   const maxValue = Math.max(...data.map(item => item.completionRate));
-  
+
   const chartHeight = height - 60;
   const chartWidth = 300;
   const stepX = chartWidth / (data.length - 1);
-  
+
   const createPath = () => {
     return data
       .map((item, index) => {
@@ -23,7 +23,7 @@ const CompletionRateTrendChart: React.FC<CompletionRateTrendChartProps> = ({ dat
       })
       .join(' ');
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -35,7 +35,7 @@ const CompletionRateTrendChart: React.FC<CompletionRateTrendChartProps> = ({ dat
             stroke="#3b82f6"
             strokeWidth="2"
           />
-          
+
           {data.map((item, index) => (
             <g key={index}>
               <circle

@@ -9,7 +9,7 @@ interface WorkloadBarChartProps {
 
 const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height = 200 }) => {
   const maxValue = Math.max(...data.map(item => item.activeCases + item.pendingTasks));
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -17,7 +17,7 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height
         {data.map((item, index) => {
           const activeBarWidth = (item.activeCases / maxValue) * 100;
           const pendingBarWidth = (item.pendingTasks / maxValue) * 100;
-          
+
           return (
             <div key={index} className="flex items-center">
               <div className="w-24 text-sm text-gray-600 truncate mr-4">
@@ -25,15 +25,15 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height
               </div>
               <div className="flex-1 flex items-center space-x-2">
                 <div className="flex-1 bg-gray-100 rounded-full h-6 relative">
-                  <div 
+                  <div
                     className="bg-blue-500 h-6 rounded-l-full"
                     style={{ width: `${activeBarWidth}%` }}
                   />
-                  <div 
+                  <div
                     className="bg-purple-500 h-6 rounded-r-full absolute top-0"
-                    style={{ 
-                      width: `${pendingBarWidth}%`, 
-                      left: `${activeBarWidth}%` 
+                    style={{
+                      width: `${pendingBarWidth}%`,
+                      left: `${activeBarWidth}%`
                     }}
                   />
                 </div>

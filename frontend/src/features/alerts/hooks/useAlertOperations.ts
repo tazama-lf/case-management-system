@@ -27,7 +27,6 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
       refreshAlerts();
     } catch (error) {
       console.error('Error closing alert:', error);
-      // Here you would typically show a toast notification
       throw error;
     } finally {
       setOperationStates(prev => {

@@ -48,7 +48,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions = [];
 
-    // Show Assign action only for unassigned tasks
     if (!task.assignee) {
       actions.push(
         <button
@@ -63,7 +62,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Reassign action only for assigned tasks
     if (task.assignee && onReassign) {
       actions.push(
         <button
@@ -78,7 +76,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Unassign action only for assigned tasks
     if (task.assignee && onUnassign) {
       actions.push(
         <button
@@ -93,7 +90,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Complete action for assigned tasks only if handler provided
     if (task.assignee && onComplete) {
       actions.push(
         <button
@@ -108,7 +104,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Update Status action for all tasks if handler is provided
     if (onUpdateStatus) {
       actions.push(
         <button

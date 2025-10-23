@@ -7,6 +7,7 @@ import CompletionRateTrendChart from '../components/CompletionRateTrendChart';
 import TaskStatusPieChart from '../components/TaskStatusPieChart';
 import TaskCompletionTable from '../components/TaskCompletionTable';
 import { useTaskCompletion } from '../hooks/useReports';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface TaskCompletionReportProps {
   onExportExcel: () => void;
@@ -16,9 +17,6 @@ interface TaskCompletionReportProps {
 }
 
 const TaskCompletionReport: React.FC<TaskCompletionReportProps> = ({
-  onExportExcel,
-  onExportCSV,
-  onExportPDF,
   dateRange
 }) => {
   const { data: taskData, isLoading, error } = useTaskCompletion(dateRange);
@@ -59,38 +57,72 @@ const TaskCompletionReport: React.FC<TaskCompletionReportProps> = ({
     taskDetails: []
   };
 
+  const handleExportExcel = () => {
+    try {
+      const formattedData = formatDataForExport(taskDetails, 'TASK_COMPLETION');
+      const filename = `task-completion-report-${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(formattedData, filename, 'Task Completion Report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const formattedData = formatDataForExport(taskDetails, 'TASK_COMPLETION');
+      const filename = `task-completion-report-${new Date().toISOString().split('T')[0]}`;
+      exportToCSV(formattedData, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const formattedData = formatDataForExport(taskDetails, 'TASK_COMPLETION');
+      const filename = `task-completion-report-${new Date().toISOString().split('T')[0]}`;
+      const columns = getColumnsForReport('TASK_COMPLETION');
+      await exportToPDF(formattedData, filename, 'Task Completion Report', columns);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
   return (
     <>
       <TaskStatsCards stats={stats} />
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <TaskCompletionBarChart 
-          data={completionByType} 
-          title="Task Completion by Type" 
+        <TaskCompletionBarChart
+          data={completionByType}
+          title="Task Completion by Type"
         />
-        <CompletionTimeChart 
-          data={avgCompletionTime} 
-          title="Average Completion Time (Days)" 
+        <CompletionTimeChart
+          data={avgCompletionTime}
+          title="Average Completion Time (Days)"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <CompletionRateTrendChart 
-          data={completionTrend} 
-          title="Task Completion Rate Trend" 
+        <CompletionRateTrendChart
+          data={completionTrend}
+          title="Task Completion Rate Trend"
         />
-        <TaskStatusPieChart 
-          data={statusDistribution} 
-          title="Task Status Distribution" 
+        <TaskStatusPieChart
+          data={statusDistribution}
+          title="Task Status Distribution"
         />
       </div>
 
-      <TaskCompletionTable 
-        data={taskDetails} 
-        title="Task Completion Details" 
-        onExportExcel={onExportExcel}
-        onExportCSV={onExportCSV}
-        onExportPDF={onExportPDF}
+      <TaskCompletionTable
+        data={taskDetails}
+        title="Task Completion Details"
+        onExportExcel={handleExportExcel}
+        onExportCSV={handleExportCSV}
+        onExportPDF={handleExportPDF}
       />
     </>
   );

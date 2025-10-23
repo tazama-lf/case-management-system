@@ -1,9 +1,7 @@
 import type { FlowableErrorResponse } from '../types/flowable.types';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
-/**
- * Enhanced error handling utilities for Flowable BPM integration
- */
+
 
 export class FlowableError extends Error {
   public readonly type: 'FLOWABLE_ERROR' | 'API_ERROR' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
@@ -12,7 +10,7 @@ export class FlowableError extends Error {
   public readonly timestamp: string;
 
   constructor(
-    message: string, 
+    message: string,
     type: FlowableError['type'] = 'UNKNOWN_ERROR',
     statusCode?: number,
     originalError?: any
@@ -26,33 +24,26 @@ export class FlowableError extends Error {
   }
 }
 
-/**
- * Flowable-specific error codes and messages
- */
+
 export const FlowableErrorCodes = {
-  // Task-related errors
   TASK_NOT_FOUND: 'TASK_NOT_FOUND',
   TASK_ALREADY_ASSIGNED: 'TASK_ALREADY_ASSIGNED',
   TASK_ALREADY_COMPLETED: 'TASK_ALREADY_COMPLETED',
   TASK_SUSPENDED: 'TASK_SUSPENDED',
   INVALID_TASK_STATE: 'INVALID_TASK_STATE',
-  
-  // Assignment errors
+
   ASSIGNEE_NOT_FOUND: 'ASSIGNEE_NOT_FOUND',
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
   INVALID_CANDIDATE_GROUP: 'INVALID_CANDIDATE_GROUP',
-  
-  // Process errors
+
   PROCESS_NOT_FOUND: 'PROCESS_NOT_FOUND',
   PROCESS_DEFINITION_NOT_FOUND: 'PROCESS_DEFINITION_NOT_FOUND',
   INVALID_PROCESS_STATE: 'INVALID_PROCESS_STATE',
-  
-  // Authentication/Authorization
+
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
-  
-  // Server errors
+
   FLOWABLE_SERVER_ERROR: 'FLOWABLE_SERVER_ERROR',
   DATABASE_ERROR: 'DATABASE_ERROR',
   NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
@@ -60,44 +51,37 @@ export const FlowableErrorCodes = {
 
 export type FlowableErrorCode = typeof FlowableErrorCodes[keyof typeof FlowableErrorCodes];
 
-/**
- * User-friendly error messages for different error types
- */
+
 export const ErrorMessages: Record<FlowableErrorCode, string> = {
   [FlowableErrorCodes.TASK_NOT_FOUND]: 'The requested task could not be found. It may have been completed or deleted.',
   [FlowableErrorCodes.TASK_ALREADY_ASSIGNED]: 'This task is already assigned to another user.',
   [FlowableErrorCodes.TASK_ALREADY_COMPLETED]: 'This task has already been completed.',
   [FlowableErrorCodes.TASK_SUSPENDED]: 'This task is currently suspended and cannot be modified.',
   [FlowableErrorCodes.INVALID_TASK_STATE]: 'The task is in an invalid state for this operation.',
-  
+
   [FlowableErrorCodes.ASSIGNEE_NOT_FOUND]: 'The specified user could not be found or is not available for assignment.',
   [FlowableErrorCodes.INSUFFICIENT_PERMISSIONS]: 'You do not have sufficient permissions to perform this action.',
   [FlowableErrorCodes.INVALID_CANDIDATE_GROUP]: 'The specified work queue or candidate group is not valid.',
-  
+
   [FlowableErrorCodes.PROCESS_NOT_FOUND]: 'The process instance could not be found.',
   [FlowableErrorCodes.PROCESS_DEFINITION_NOT_FOUND]: 'The process definition could not be found.',
   [FlowableErrorCodes.INVALID_PROCESS_STATE]: 'The process is in an invalid state for this operation.',
-  
+
   [FlowableErrorCodes.UNAUTHORIZED]: 'Authentication required. Please log in again.',
   [FlowableErrorCodes.FORBIDDEN]: 'You are not authorized to access this resource.',
   [FlowableErrorCodes.TOKEN_EXPIRED]: 'Your session has expired. Please log in again.',
-  
+
   [FlowableErrorCodes.FLOWABLE_SERVER_ERROR]: 'The workflow engine is experiencing issues. Please try again later.',
   [FlowableErrorCodes.DATABASE_ERROR]: 'Database error occurred. Please contact support if the issue persists.',
   [FlowableErrorCodes.NETWORK_TIMEOUT]: 'Network timeout occurred. Please check your connection and try again.',
 };
 
-/**
- * Parse and categorize errors from Flowable API responses
- */
+
 export class FlowableErrorHandler {
-  /**
-   * Parse error from API response and create appropriate FlowableError
-   */
+
   static parseError(error: any, operation: string): FlowableError {
     console.error(`Flowable error during ${operation}:`, error);
-    
-    // Handle network errors
+
     if (!error.response) {
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         return new FlowableError(
@@ -114,14 +98,13 @@ export class FlowableErrorHandler {
         error
       );
     }
-    
+
     const { status, data } = error.response;
-    
-    // Handle Flowable-specific error responses
+
     if (FlowableErrorHandler.isFlowableError(data)) {
       const flowableError = data as FlowableErrorResponse;
       const errorCode = FlowableErrorHandler.mapFlowableErrorCode(flowableError, status);
-      
+
       return new FlowableError(
         ErrorMessages[errorCode] || flowableError.message,
         'FLOWABLE_ERROR',
@@ -129,8 +112,7 @@ export class FlowableErrorHandler {
         flowableError
       );
     }
-    
-    // Handle generic API errors
+
     if (FlowableErrorHandler.isApiError(data)) {
       const apiError = data as ApiErrorResponse;
       return new FlowableError(
@@ -140,18 +122,14 @@ export class FlowableErrorHandler {
         apiError
       );
     }
-    
-    // Handle HTTP status codes
+
     return FlowableErrorHandler.createErrorFromStatus(status, operation, data);
   }
-  
-  /**
-   * Map Flowable error messages to standardized error codes
-   */
+
+
   private static mapFlowableErrorCode(error: FlowableErrorResponse, status: number): FlowableErrorCode {
     const message = error.message?.toLowerCase() || '';
-    
-    // Task-related errors
+
     if (message.includes('task') && message.includes('not found')) {
       return FlowableErrorCodes.TASK_NOT_FOUND;
     }
@@ -164,44 +142,37 @@ export class FlowableErrorHandler {
     if (message.includes('suspended')) {
       return FlowableErrorCodes.TASK_SUSPENDED;
     }
-    
-    // Assignment errors
+
     if (message.includes('assignee') && message.includes('not found')) {
       return FlowableErrorCodes.ASSIGNEE_NOT_FOUND;
     }
     if (message.includes('candidate group') || message.includes('invalid group')) {
       return FlowableErrorCodes.INVALID_CANDIDATE_GROUP;
     }
-    
-    // Authentication/Authorization
+
     if (status === 401) {
       return FlowableErrorCodes.UNAUTHORIZED;
     }
     if (status === 403) {
       return FlowableErrorCodes.FORBIDDEN;
     }
-    
-    // Process errors
+
     if (message.includes('process') && message.includes('not found')) {
       return FlowableErrorCodes.PROCESS_NOT_FOUND;
     }
-    
-    // Server errors
+
     if (status >= 500) {
       return FlowableErrorCodes.FLOWABLE_SERVER_ERROR;
     }
-    
-    // Default based on status
+
     if (status === 404) {
       return FlowableErrorCodes.TASK_NOT_FOUND;
     }
-    
+
     return FlowableErrorCodes.FLOWABLE_SERVER_ERROR;
   }
-  
-  /**
-   * Create error from HTTP status code
-   */
+
+
   private static createErrorFromStatus(status: number, operation: string, data?: any): FlowableError {
     switch (status) {
       case 400:
@@ -258,42 +229,36 @@ export class FlowableErrorHandler {
         );
     }
   }
-  
-  /**
-   * Type guard for Flowable error responses
-   */
+
+
   private static isFlowableError(error: any): error is FlowableErrorResponse {
-    return error && 
-           typeof error.message === 'string' && 
+    return error &&
+           typeof error.message === 'string' &&
            typeof error.status === 'number' &&
            typeof error.error === 'string' &&
            typeof error.timestamp === 'string';
   }
-  
-  /**
-   * Type guard for API error responses
-   */
+
+
   private static isApiError(error: any): error is ApiErrorResponse {
     return error && typeof error.message === 'string';
   }
-  
-  /**
-   * Get user-friendly error message with optional retry suggestion
-   */
+
+
   static getDisplayMessage(error: FlowableError): { message: string; canRetry: boolean; actionSuggestion?: string } {
     const canRetry = [
       'NETWORK_ERROR',
       'FLOWABLE_ERROR'
-    ].includes(error.type) && 
+    ].includes(error.type) &&
     ![
       FlowableErrorCodes.UNAUTHORIZED,
       FlowableErrorCodes.FORBIDDEN,
       FlowableErrorCodes.TASK_NOT_FOUND,
       FlowableErrorCodes.TASK_ALREADY_COMPLETED
     ].includes(error.originalError?.errorCode);
-    
+
     let actionSuggestion: string | undefined;
-    
+
     if (error.type === 'NETWORK_ERROR') {
       actionSuggestion = 'Check your internet connection and try again.';
     } else if (error.statusCode === 401) {
@@ -301,7 +266,7 @@ export class FlowableErrorHandler {
     } else if (error.statusCode === 403) {
       actionSuggestion = 'Contact your supervisor for access to this resource.';
     }
-    
+
     return {
       message: error.message,
       canRetry,
@@ -310,21 +275,19 @@ export class FlowableErrorHandler {
   }
 }
 
-/**
- * Error boundary helper for React components
- */
+
 export const createErrorMessage = (error: unknown, defaultMessage: string = 'An unexpected error occurred') => {
   if (error instanceof FlowableError) {
     return FlowableErrorHandler.getDisplayMessage(error);
   }
-  
+
   if (error instanceof Error) {
     return {
       message: error.message || defaultMessage,
       canRetry: true
     };
   }
-  
+
   return {
     message: defaultMessage,
     canRetry: true

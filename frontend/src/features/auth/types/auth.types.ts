@@ -1,9 +1,8 @@
-// Backend claim constants (must match backend TazamaClaims)
 export const BACKEND_CLAIMS = {
-  ALERT_TRIAGE: 'alert-triage',  // Admin access claim
-  CMS_TEST_ROLE: 'CMS-TEST-ROLE', // Legacy admin claim for backward compatibility
-  CMS_INVESTIGATOR: 'CMS_INVESTIGATOR', // Investigator role claim
-  CMS_SUPERVISOR: 'CMS_SUPERVISOR', // Supervisor role claim
+  ALERT_TRIAGE: 'alert-triage',
+  CMS_TEST_ROLE: 'CMS-TEST-ROLE',
+  CMS_INVESTIGATOR: 'CMS_INVESTIGATOR',
+  CMS_SUPERVISOR: 'CMS_SUPERVISOR',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -81,11 +80,11 @@ export interface AuthContextType extends AuthState {
   clearError: () => void;
   hasBackendClaim: (claim: string) => boolean;
   hasCMSTestRole: () => boolean;
-  hasAlertTriageRole: () => boolean; // Admin access claim
-  hasInvestigatorRole: () => boolean; // CMS_INVESTIGATOR claim
-  hasSupervisorRole: () => boolean; // CMS_SUPERVISOR claim
-  hasAdminRole: () => boolean; // Combined admin role checking
-  hasAnyRole: (roles: string[]) => boolean; // Check if user has any of the specified roles
-  hasAllRoles: (roles: string[]) => boolean; // Check if user has all of the specified roles
+  hasAlertTriageRole: () => boolean;
+  hasInvestigatorRole: () => boolean;
+  hasSupervisorRole: () => boolean;
+  hasAdminRole: () => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+  hasAllRoles: (roles: string[]) => boolean;
   validateBackendAccess: () => boolean;
 }

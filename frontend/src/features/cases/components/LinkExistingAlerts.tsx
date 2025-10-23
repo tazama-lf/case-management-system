@@ -7,7 +7,6 @@ interface LinkExistingAlertsTabProps {
   selectedAlerts: Alert[];
   onAlertsChange: (alerts: Alert[]) => void;
   isVisible: boolean;
-  // Add a callback to notify parent when alerts are selected
   onAlertsSelected?: (hasAlerts: boolean) => void;
 }
 
@@ -21,17 +20,15 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   const [availableAlerts, setAvailableAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Notify parent when selected alerts change
   useEffect(() => {
     if (onAlertsSelected) {
       onAlertsSelected(selectedAlerts.length > 0);
     }
   }, [selectedAlerts, onAlertsSelected]);
 
-  // Load NALT alerts when tab becomes visible (same logic as main form)
   useEffect(() => {
     if (!isVisible) return;
-    
+
     const loadNALTAlerts = async () => {
       setIsLoading(true);
       try {
@@ -61,49 +58,42 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     return selectedAlerts.some(a => a.alert_id === alert.alert_id);
   };
 
-  // Search by ID, type, and description
   const filteredAlerts = React.useMemo(() => {
     if (!searchTerm || searchTerm.length < 1) {
       return availableAlerts.slice(0, 50);
     }
 
     const searchTermLower = searchTerm.toLowerCase();
-    
+
     return availableAlerts.filter(alert => {
-      // Search in Alert ID
       const alertIdMatch = alert.alert_id.toLowerCase().includes(searchTermLower);
-      
-      // Search in Type (txtp or alert_type) - handle specific types
+
       const typeMatch = (alert.txtp && alert.txtp.toLowerCase().includes(searchTermLower)) ||
                        (alert.alert_type && alert.alert_type.toLowerCase().includes(searchTermLower)) ||
-                       // Handle specific type searches
                        (searchTermLower === 'fraud' && (alert.txtp?.toLowerCase().includes('fraud') || alert.alert_type?.toLowerCase().includes('fraud'))) ||
                        (searchTermLower === 'aml' && (alert.txtp?.toLowerCase().includes('aml') || alert.alert_type?.toLowerCase().includes('aml'))) ||
-                       (searchTermLower.includes('fraud') && searchTermLower.includes('aml') && 
+                       (searchTermLower.includes('fraud') && searchTermLower.includes('aml') &&
                         ((alert.txtp?.toLowerCase().includes('fraud') && alert.txtp?.toLowerCase().includes('aml')) ||
                          (alert.alert_type?.toLowerCase().includes('fraud') && alert.alert_type?.toLowerCase().includes('aml'))));
-      
-      // Search in Description (if available)
-      const descriptionMatch = alert.description && 
-                              typeof alert.description === 'string' && 
+
+      const descriptionMatch = alert.description &&
+                              typeof alert.description === 'string' &&
                               alert.description.toLowerCase().includes(searchTermLower);
-      
-      // Search in Source (additional field)
+
       const sourceMatch = alert.source && alert.source.toLowerCase().includes(searchTermLower);
-      
+
       return alertIdMatch || typeMatch || descriptionMatch || sourceMatch;
     }).sort((a, b) => {
       const aId = a.alert_id.toLowerCase();
       const bId = b.alert_id.toLowerCase();
       const search = searchTermLower;
-      
-      // Prioritize exact ID matches first
+
       const aIdStartsWith = aId.startsWith(search);
       const bIdStartsWith = bId.startsWith(search);
-      
+
       if (aIdStartsWith && !bIdStartsWith) return -1;
       if (!aIdStartsWith && bIdStartsWith) return 1;
-      
+
       return aId.localeCompare(bId);
     }).slice(0, 50);
   }, [availableAlerts, searchTerm]);
@@ -148,7 +138,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Header with search */}
+      {}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium text-gray-900">Link Existing Alerts</h3>
@@ -163,7 +153,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         )}
       </div>
 
-      {/* Search by ID, Type, Description */}
+      {}
       <div className="relative">
         <input
           type="text"
@@ -175,7 +165,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
       </div>
 
-      {/* Selected alerts summary */}
+      {}
       {selectedAlerts.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
           <div className="flex items-center justify-between">
@@ -195,7 +185,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         </div>
       )}
 
-      {/* Alerts table */}
+      {}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -233,7 +223,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                 </tr>
               ) : (
                 filteredAlerts.map((alert) => (
-                  <tr 
+                  <tr
                     key={alert.alert_id}
                     className={`hover:bg-gray-50 cursor-pointer ${
                       isAlertSelected(alert) ? 'bg-blue-50' : ''
@@ -276,12 +266,12 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         </div>
       </div>
 
-      {/* Warning message */}
+      {}
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
         <div className="flex">
           <div className="ml-3">
             <div className="text-sm text-yellow-800">
-              <strong>Note:</strong> Selected alerts will be linked to this case. 
+              <strong>Note:</strong> Selected alerts will be linked to this case.
               You can manage linked alerts after case creation from the case details page.
               {selectedAlerts.length > 0 && (
                 <p className="mt-1 font-medium">The Create Case button is now enabled. Click it to create a case with the first selected alert.</p>

@@ -37,21 +37,19 @@ interface CreateCaseModalProps {
   };
 }
 
-const CreateCaseModal: React.FC<CreateCaseModalProps> = ({ 
-  open, 
-  onClose, 
-  onCreate, 
-  onUpdate, 
-  loading, 
-  error, 
+const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
+  open,
+  onClose,
+  onCreate,
+  onUpdate,
+  loading,
+  error,
   mode = 'create',
   existingCaseId,
-  initial 
+  initial
 }) => {
-  // Tab state
   const [activeTab, setActiveTab] = React.useState<'case-details' | 'link-alerts'>('case-details');
-  
-  // Single alert selection 
+
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
@@ -81,7 +79,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   React.useEffect(() => {
     if (!open) return;
-    
+
     const loadNALTAlerts = async () => {
       setIsLoadingAlerts(true);
       setAlertSearchError('');
@@ -102,7 +100,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   React.useEffect(() => {
     if (!open) return;
-    
+
     setSelectedAlert(null);
     setPriorityScore(initial?.priorityScore || 0.33);
     setAlertType(initial?.alertType || 'FRAUD');
@@ -123,7 +121,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   React.useEffect(() => {
     if (!open) return;
-    
+
     const timeoutId = setTimeout(async () => {
       if (alertSearchTerm.length === 0) {
         setIsLoadingAlerts(true);
@@ -149,7 +147,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           setIsLoadingAlerts(false);
         }
       }
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [alertSearchTerm, open]);
@@ -163,7 +161,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     setSelectedAlert(alert);
     setAlertSearchTerm(alert.alert_id);
     setShowAlertDropdown(false);
-    
+
     if (alert.alert_type) {
       setAlertType(alert.alert_type as AlertType);
     }
@@ -186,29 +184,29 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       return availableAlerts.slice(0, 10);
     }
 
-    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, ''); 
-    
+    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, '');
+
     return availableAlerts.filter(alert => {
       const alertIdClean = alert.alert_id.toLowerCase().replace(/[-\s]/g, '');
-      
+
       const exactMatch = alert.alert_id.toLowerCase().includes(alertSearchTerm.toLowerCase());
       const partialMatch = alertIdClean.includes(searchTerm);
       const startsWithMatch = alertIdClean.startsWith(searchTerm);
-      
+
       return exactMatch || partialMatch || startsWithMatch;
     }).sort((a, b) => {
       const aId = a.alert_id.toLowerCase();
       const bId = b.alert_id.toLowerCase();
       const search = alertSearchTerm.toLowerCase();
-      
+
       const aStartsWith = aId.startsWith(search);
       const bStartsWith = bId.startsWith(search);
-      
+
       if (aStartsWith && !bStartsWith) return -1;
       if (!aStartsWith && bStartsWith) return 1;
-      
+
       return aId.localeCompare(bId);
-    }).slice(0, 20); // Limit to 20 results for performance
+    }).slice(0, 20);
   }, [availableAlerts, alertSearchTerm]);
 
 
@@ -216,9 +214,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   const validateForm = (): Record<string, string> => {
     const errors: Record<string, string> = {};
-    
-    // For edit mode, alert selection is not required as it's already associated
-    // For create mode, either a single alert or at least one linked alert must be selected
+
     if (mode === 'create' && !selectedAlert && selectedAlerts.length === 0) {
       errors.alertId = 'Please select an alert in either the Case Details tab or link existing alerts in the Link Existing Alerts tab';
     }
@@ -235,14 +231,14 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   };
 
   const canSubmit = Boolean(
-    priority && 
-    alertType && 
+    priority &&
+    alertType &&
     (mode === 'edit' || selectedAlert || selectedAlerts.length > 0)
   );
 
   const submit = (draft = false) => {
     const errors = validateForm();
-    
+
     if (Object.keys(errors).length > 0 && !draft) {
       setValidationErrors(errors);
       return;
@@ -250,7 +246,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     setValidationErrors({});
 
     if (mode === 'edit' && onUpdate && existingCaseId) {
-      // Update existing draft case
       onUpdate(existingCaseId, {
         priority,
         priorityScore,
@@ -258,10 +253,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         assignee: assignee || undefined,
       });
     } else {
-      // Create new case
-      // Determine which alert to use (single selected alert takes precedence)
       const alertIdToUse = selectedAlert?.alert_id || (selectedAlerts.length > 0 ? selectedAlerts[0].alert_id : undefined);
-      
+
       onCreate({
         alertId: alertIdToUse,
         priority,
@@ -289,7 +282,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           </button>
         </div>
 
-        {/* Tabs - Only show in create mode */}
+        {}
         {mode === 'create' && (
           <div className="border-b border-gray-200 px-6">
             <nav className="-mb-px flex space-x-8">
@@ -328,7 +321,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         )}
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {/* Error Display */}
+          {}
           {(error || Object.keys(validationErrors).length > 0) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -348,12 +341,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             </div>
           )}
 
-          {/* Tab Content */}
+          {}
           {mode === 'edit' || activeTab === 'case-details' ? (
             <>
-              {/* Alert Selection - Only show in create mode */}
+              {}
 
-              {/* Alert Type */}
+              {}
               <div className="space-y-2">
                 <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
                   Alert Type *
@@ -363,8 +356,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   value={alertType}
                   onChange={(e) => setAlertType(e.target.value as AlertType)}
                   className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
-                    validationErrors.alertType 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                    validationErrors.alertType
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                       : 'border-gray-300'
                   }`}
                 >
@@ -378,20 +371,20 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 )}
               </div>
 
-              {/* Priority Score with Visual Feedback */}
+              {}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority Score *
                   <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
                 </label>
                 <div className="space-y-2">
-                  <input 
-                    type="range" 
-                    value={priorityScore} 
-                    onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                  <input
+                    type="range"
+                    value={priorityScore}
+                    onChange={(e) => setPriorityScore(Number(e.target.value))}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    min={0} 
-                    max={1} 
+                    min={0}
+                    max={1}
                     step={0.01}
                   />
                   <div className="flex justify-between text-xs text-gray-600">
@@ -401,17 +394,17 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     <span>1.0 (BREACH)</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <input 
-                      type="number" 
-                      value={priorityScore} 
-                      onChange={(e) => setPriorityScore(Number(e.target.value))} 
+                    <input
+                      type="number"
+                      value={priorityScore}
+                      onChange={(e) => setPriorityScore(Number(e.target.value))}
                       className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${
-                        validationErrors.priorityScore 
-                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        validationErrors.priorityScore
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'border-gray-300'
                       }`}
-                      min={0} 
-                      max={1} 
+                      min={0}
+                      max={1}
                       step={0.01}
                     />
                     <span className={`text-sm font-medium px-2 py-1 rounded ${
@@ -429,10 +422,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 )}
               </div>
 
-              {/* Priority - Read-only, calculated from score */}
+              {}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Priority 
+                  Priority
                   <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
                 </label>
                 <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
@@ -445,7 +438,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 </div>
               </div>
 
-              {/* Assignee */}
+              {}
               <div className="space-y-2">
                 <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
                   Assignee
@@ -466,13 +459,13 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               onAlertsChange={setSelectedAlerts}
               isVisible={activeTab === 'link-alerts'}
               onAlertsSelected={(hasAlerts) => {
-                
+
               }}
             />
           )}
         </div>
 
-        {/* Footer */}
+        {}
         <div className="flex items-center justify-between px-6 py-4">
           {mode === 'create' && (
             <button

@@ -15,10 +15,10 @@ import ApproveCaseCreationModal from '../components/ApproveCaseCreationModal';
 import RejectCaseCreationModal from '../components/RejectCaseCreationModal';
 import ReturnCaseForReviewModal from '../components/ReturnCaseForReviewModal';
 import CasesTableSkeleton from '../components/CasesTableSkeleton';
-import { 
-  caseService, 
-  type CloseCaseDto, 
-  type UpdateCaseDto, 
+import {
+  caseService,
+  type CloseCaseDto,
+  type UpdateCaseDto,
   type AbandonCaseDto,
   type RejectCaseDto,
   type SuspendCaseDto,
@@ -65,7 +65,7 @@ const CasesDashboard: React.FC = () => {
     const fetchAllCases = async () => {
       setLoading(true);
       setErrorState(null);
-      
+
       try {
         const response = await caseService.getAllCases({
           status: statusFilter || undefined,
@@ -73,7 +73,7 @@ const CasesDashboard: React.FC = () => {
           sortBy: 'updated_at',
           sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
         });
-        
+
         const transformedCases = response.cases.map(transformBackendCaseToUI);
         setCases(transformedCases);
       } catch (err) {
@@ -115,7 +115,7 @@ const CasesDashboard: React.FC = () => {
   }) => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
-    
+
     try {
       const manualCreateCaseData = {
         alertId: payload.alertId,
@@ -126,15 +126,15 @@ const CasesDashboard: React.FC = () => {
       console.log('Creating case with data:', manualCreateCaseData);
       console.log('Associated with Alert ID:', payload.alertId);
       console.log('Alert Type:', payload.alertType);
-      
+
       const newCase = await caseService.createCase(manualCreateCaseData);
       console.log('Case created successfully:', newCase);
-      
+
       const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
       success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
-      
+
       setIsCreateOpen(false);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -148,7 +148,7 @@ const CasesDashboard: React.FC = () => {
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error creating case:', err);
@@ -167,7 +167,7 @@ const CasesDashboard: React.FC = () => {
   }) => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
-    
+
     try {
       const updateCaseData: UpdateCaseDto = {
         status: 'STATUS_02_READY_FOR_ASSIGNMENT',
@@ -177,17 +177,16 @@ const CasesDashboard: React.FC = () => {
       };
 
       console.log('Updating case with data:', updateCaseData);
-      
+
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
       console.log('Case updated successfully:', updatedCase);
-      
-      // Replace alert with toast notification
+
       success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
-      
+
       setIsCreateOpen(false);
       setCreateModalMode('create');
       setEditingCaseId(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -201,13 +200,12 @@ const CasesDashboard: React.FC = () => {
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error updating case:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
       setCreateCaseError(errorMessage);
-      // Show error toast
       error('Update Case Failed', errorMessage);
     } finally {
       setCreateCaseLoading(false);
@@ -234,10 +232,10 @@ const CasesDashboard: React.FC = () => {
 
   const handleCloseCaseSubmit = async (data: CloseCaseDto) => {
     if (!selectedRow) return;
-    
+
     try {
       const response = await caseService.closeCase(selectedRow.id, data);
-      
+
       console.log(`Case ${selectedRow.id} submitted for approval:`, {
         caseId: selectedRow.id,
         newStatus: response.closed_case.status,
@@ -245,8 +243,7 @@ const CasesDashboard: React.FC = () => {
         approvalTaskStatus: response.approval_task.status,
         recommendedOutcome: data.recommendedOutcome
       });
-      
-      // Replace alert with toast notification
+
       success('Case Investigation Complete', `Case ${selectedRow.id} has been submitted for supervisor approval.
 
 Status Updates:
@@ -256,10 +253,10 @@ Status Updates:
 • Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}
 
 Supervisor has been notified of the new approval task.`);
-      
+
       setIsCloseCaseOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -275,13 +272,13 @@ Supervisor has been notified of the new approval task.`);
         }
       };
       fetchAllCases();
-      
+
     } catch (err) {
       console.error('Failed to close case:', err);
-      
+
       let errorMessage = 'Failed to close case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in a closeable state')) {
         errorMessage = `Case cannot be closed.
 
@@ -302,8 +299,7 @@ Please ensure you are the assigned investigator.`;
 
 The case may have been deleted or moved.`;
       }
-      
-      // Show error toast
+
       error('Close Case Failed', errorMessage);
     }
   };
@@ -395,16 +391,15 @@ The case may have been deleted or moved.`;
       };
 
       console.log('Abandoning case:', caseId, 'Reason:', reason);
-      
+
       const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
       console.log('Case abandoned successfully:', abandonedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Abandoned', `Case ${caseId} has been successfully abandoned.\nReason: ${reason}\nStatus: ${abandonedCase.status}`);
-      
+
       setIsAbandonOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -418,14 +413,14 @@ The case may have been deleted or moved.`;
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error abandoning case:', err);
-      
+
       let errorMessage = 'Failed to abandon case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('Cannot abandon case other than draft status')) {
         errorMessage = `Case cannot be abandoned.\n\n` +
                       `This case may not meet the abandonment requirements:\n` +
@@ -446,8 +441,7 @@ The case may have been deleted or moved.`;
         errorMessage = `Case Not Found.\n\n` +
                       `The case may have been deleted or moved.`;
       }
-      
-      // Show error toast
+
       error('Abandon Case Failed', errorMessage);
     }
   };
@@ -459,20 +453,19 @@ The case may have been deleted or moved.`;
       };
 
       console.log('Suspending case:', caseId, 'Reason:', reason);
-      
+
       const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
       console.log('Case suspended successfully:', suspendedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Suspended', `Case ${caseId} has been successfully suspended.
 Reason: ${reason}
 Status: ${suspendedCase.status}
 
 The case has been suspended and all associated tasks have been blocked. Supervisor has been notified of the suspension.`);
-      
+
       setIsSuspendOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -486,18 +479,17 @@ The case has been suspended and all associated tasks have been blocked. Supervis
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error suspending case:', err);
-      
+
       let errorMessage = 'Failed to suspend case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      // Normalize backend message casing for UI consistency
       const normalizedErrorString = (errorString || '')
         .replace(/"Investigate case"/g, '"Investigate Case"')
         .replace(/\bcase\b/g, 'Case');
-      
+
       if (errorString.includes('not in a suspendable state')) {
         errorMessage = `Case cannot be suspended.\n\n` +
                       `This case may not meet the suspension requirements:\n` +
@@ -513,11 +505,9 @@ The case has been suspended and all associated tasks have been blocked. Supervis
 
 The case may have been deleted or moved.`;
       } else if (normalizedErrorString) {
-        // Fall back to normalized backend error if provided
         errorMessage = normalizedErrorString;
       }
-      
-      // Show error toast
+
       error('Suspend Case Failed', errorMessage);
     }
   };
@@ -534,20 +524,20 @@ The case may have been deleted or moved.`;
       };
 
       console.log('Resuming case:', caseId, 'Reason:', reason);
-      
+
       const resumedCase = await caseService.resumeCase(caseId, resumeCaseData);
       console.log('Case resumed successfully:', resumedCase);
-      
-      
+
+
       success('Case Resumed', `Case ${caseId} has been successfully resumed.
 Reason: ${reason}
 Status: ${resumedCase.status}
 
 The case has been moved back to "In Progress" status. All associated tasks have been unblocked.`);
-      
+
       setIsResumeOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -561,14 +551,14 @@ The case has been moved back to "In Progress" status. All associated tasks have 
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error resuming case:', err);
-      
+
       let errorMessage = 'Failed to resume case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in a resumable state')) {
         errorMessage = `Case cannot be resumed.
 
@@ -594,8 +584,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 ` +
                       `The case may have been deleted or moved.`;
       }
-      
-      // Show error toast
+
       error('Resume Case Failed', errorMessage);
     }
   };
@@ -607,27 +596,26 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 
   const handleRejectSubmit = async (rejectionReason: string) => {
     if (!selectedRow) return;
-    
+
     try {
       const rejectCaseData: RejectCaseDto = {
         rejectionReason: rejectionReason.trim()
       };
 
       console.log('Rejecting case:', selectedRow.id, 'Reason:', rejectionReason);
-      
+
       const rejectedCase = await caseService.rejectCase(selectedRow.id, rejectCaseData);
       console.log('Case rejected successfully:', rejectedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Closure Rejected', `Case ${selectedRow.id} closure has been successfully rejected.
 Reason: ${rejectionReason}
 Status: ${rejectedCase.status}
 
 The case has been returned to the investigator for additional work.`);
-      
+
       setIsRejectOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -641,14 +629,14 @@ The case has been returned to the investigator for additional work.`);
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error rejecting case:', err);
-      
+
       let errorMessage = 'Failed to reject case closure. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in a rejectable state')) {
         errorMessage = `Case cannot be rejected.
 
@@ -672,11 +660,9 @@ The case has been returned to the investigator for additional work.`);
 ` +
                       `The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {
-        // Show backend message as-is to "follow the backend"
         errorMessage = errorString;
       }
-      
-      // Show error toast
+
       error('Reject Case Failed', errorMessage);
     }
   };
@@ -688,22 +674,21 @@ The case has been returned to the investigator for additional work.`);
 
   const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
     if (!selectedRow) return;
-    
+
     try {
       const approvedCase = await caseService.approveCaseClosure(selectedRow.id, data);
       console.log('Case approved successfully:', approvedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Closure Approved', `Case ${selectedRow.id} closure has been successfully approved.
 
 Final Outcome: ${data.finalOutcome.replace('STATUS_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
 Status: ${approvedCase.status}
 
 The case has been finalized with the selected outcome.`);
-      
+
       setIsApproveOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -717,14 +702,14 @@ The case has been finalized with the selected outcome.`);
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error approving case:', err);
-      
+
       let errorMessage = 'Failed to approve case closure. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in pending approval status')) {
         errorMessage = `Case cannot be approved.
 
@@ -747,7 +732,7 @@ The case may have been deleted or moved.`;
         errorMessage = `Approval Task Validation Failed.
 
 ` +
-                      `The case may not have the required "Approve case closure" task, 
+                      `The case may not have the required "Approve case closure" task,
 ` +
                       `or the task may not be in the correct state.
 
@@ -760,8 +745,7 @@ The case may have been deleted or moved.`;
 ` +
                       `• The task is in "UNASSIGNED" state and assigned to you`;
       }
-      
-      // Show error toast
+
       error('Approve Case Failed', errorMessage);
     }
   };
@@ -775,17 +759,16 @@ The case may have been deleted or moved.`;
     try {
       const approvedCase = await caseService.approveCaseCreation(caseId);
       console.log('Case creation approved successfully:', approvedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Creation Approved', `Case ${caseId} creation has been successfully approved.
 
 Status: ${approvedCase.status}
 
 The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" task has been created in the Flowable investigations queue.`);
-      
+
       setIsApproveCreationOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -799,14 +782,14 @@ The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" 
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error approving case creation:', err);
-      
+
       let errorMessage = 'Failed to approve case creation. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
         errorMessage = `Case cannot be approved.
 
@@ -825,8 +808,7 @@ Please ensure you have supervisor role.`;
 
 The case may have been deleted or moved.`;
       }
-      
-      // Show error toast
+
       error('Approve Case Creation Failed', errorMessage);
     }
   };
@@ -840,18 +822,17 @@ The case may have been deleted or moved.`;
     try {
       const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
       console.log('Case creation rejected successfully:', rejectedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Creation Rejected', `Case ${caseId} creation has been successfully rejected.
 
 Reason: ${data.reason}
 Status: ${rejectedCase.status}
 
 The case has been returned to "DRAFT" status. A "Complete New Case" task has been assigned to the original creator.`);
-      
+
       setIsRejectCreationOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -865,14 +846,14 @@ The case has been returned to "DRAFT" status. A "Complete New Case" task has bee
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error rejecting case creation:', err);
-      
+
       let errorMessage = 'Failed to reject case creation. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
         errorMessage = `Case cannot be rejected.
 
@@ -891,8 +872,7 @@ Please ensure you have supervisor role.`;
 
 The case may have been deleted or moved.`;
       }
-      
-      // Show error toast
+
       error('Reject Case Creation Failed', errorMessage);
     }
   };
@@ -904,22 +884,21 @@ The case may have been deleted or moved.`;
 
   const handleReturnForReviewSubmit = async (caseId: string, data: ReturnCaseForReviewDto) => {
     if (!selectedRow) return;
-    
+
     try {
       const returnedCase = await caseService.returnCaseForReview(caseId, data);
       console.log('Case returned for review successfully:', returnedCase);
-      
-      // Replace alert with toast notification
+
       success('Case Returned for Review', `Case ${caseId} has been successfully returned for additional review.
 
 Review Comments: ${data.reviewComments}
 Status: ${returnedCase.status}
 
 The case has been returned to the investigator for additional work.`);
-      
+
       setIsReturnForReviewOpen(false);
       setSelectedRow(null);
-      
+
       const fetchAllCases = async () => {
         try {
           const response = await caseService.getAllCases({
@@ -933,14 +912,14 @@ The case has been returned to the investigator for additional work.`);
           console.error('Failed to refresh cases:', refreshError);
         }
       };
-      
+
       await fetchAllCases();
     } catch (err) {
       console.error('Error returning case for review:', err);
-      
+
       let errorMessage = 'Failed to return case for review. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
-      
+
       if (errorString.includes('not in pending approval status')) {
         errorMessage = `Case cannot be returned.
 
@@ -962,7 +941,7 @@ The case may have been deleted or moved.`;
         errorMessage = `Approval Task Validation Failed.
 
 ` +
-                      `The case may not have the required "Approve case closure" task, 
+                      `The case may not have the required "Approve case closure" task,
 ` +
                       `or the task may not be in the correct state.
 
@@ -975,8 +954,7 @@ The case may have been deleted or moved.`;
 ` +
                       `• The task is in "UNASSIGNED" state and assigned to you`;
       }
-      
-      // Show error toast
+
       error('Return Case for Review Failed', errorMessage);
     }
   };
@@ -1073,7 +1051,7 @@ The case may have been deleted or moved.`;
             <p className="text-red-600 text-sm">{errorState}</p>
           </div>
         )}
-        
+
         {loading ? (
           <CasesTableSkeleton rows={10} />
         ) : (
@@ -1093,12 +1071,12 @@ The case may have been deleted or moved.`;
             onApproveCaseCreation={handleApproveCaseCreation}
             onRejectCaseCreation={handleRejectCaseCreation}
             onReturnForReview={handleReturnForReview}
-            
+
           />
         )}
       </Card>
 
-      {/* Modals */}
+      {}
       <CreateCaseModal
         open={isCreateOpen}
         onClose={() => {
@@ -1116,7 +1094,6 @@ The case may have been deleted or moved.`;
         initial={selectedRow ? {
           alertId: selectedRow.alertId,
           alertType: ((): AlertType => {
-            // Map backend alert types to modal options
             const t = (selectedRow.type || '').toUpperCase();
             if (t.includes('FRAUD') && t.includes('AML')) return 'FRAUD_AND_AML';
             if (t.includes('FRAUD')) return 'FRAUD';
@@ -1124,7 +1101,7 @@ The case may have been deleted or moved.`;
             return 'NONE';
           })(),
           priority: (selectedRow.priority?.toUpperCase() as Priority) || 'NEW',
-          priorityScore: 0.33 // Default priority score
+          priorityScore: 0.33
         } : undefined}
       />
       <ViewCaseModal

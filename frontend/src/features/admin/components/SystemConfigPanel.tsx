@@ -9,11 +9,10 @@ interface SystemConfigPanelProps {
 const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' }) => {
   const { data: config, isLoading, error, refetch } = useSystemConfig();
   const updateConfigMutation = useUpdateSystemConfig();
-  
+
   const [localConfig, setLocalConfig] = useState<Partial<SystemConfig>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Update local state when config is loaded
   React.useEffect(() => {
     if (config) {
       setLocalConfig(config);
@@ -31,12 +30,11 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
 
   const handleSave = async () => {
     if (!hasChanges) return;
-    
+
     try {
       await updateConfigMutation.mutateAsync(localConfig);
       setHasChanges(false);
     } catch (error) {
-      // Error is handled by the mutation
     }
   };
 
@@ -97,7 +95,7 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
         </div>
 
         <div className="space-y-6">
-          {/* Triage Type */}
+          {}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Triage Type
@@ -116,7 +114,7 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
             </p>
           </div>
 
-          {/* Confidence Threshold */}
+          {}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Confidence Threshold ({localConfig.confidenceThreshold || 95}%)
@@ -140,7 +138,7 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
             </p>
           </div>
 
-          {/* Interdiction Enabled */}
+          {}
           <div>
             <div className="flex items-center">
               <input
@@ -159,7 +157,7 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
             </p>
           </div>
 
-          {/* Action Buttons */}
+          {}
           <div className="flex items-center space-x-4 pt-4 border-t">
             <button
               onClick={handleSave}
@@ -175,7 +173,7 @@ const SystemConfigPanel: React.FC<SystemConfigPanelProps> = ({ className = '' })
                 'Save Changes'
               )}
             </button>
-            
+
             <button
               onClick={handleReset}
               disabled={!hasChanges || updateConfigMutation.isPending}

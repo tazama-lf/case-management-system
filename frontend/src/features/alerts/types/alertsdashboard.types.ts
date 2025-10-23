@@ -1,9 +1,7 @@
 import React from 'react';
 
-// Re-export Alert from triage types to maintain consistency
 export type { Alert, Priority, AlertType } from './triage.types';
 
-// Transaction message interface
 export interface TransactionMessage {
   id: string;
   type: string;
@@ -12,18 +10,16 @@ export interface TransactionMessage {
   status: 'sent' | 'received' | 'processing' | 'failed';
 }
 
-// Search and filter interfaces
 export interface AlertsSearchFilters {
   query: string;
   source: string;
-  type: string; // Alert type filter
-  priority: string; // Priority filter
+  type: string;
+  priority: string;
   timeRange: string;
   startDate?: string;
   endDate?: string;
 }
 
-// Table column interface for alerts
 export interface AlertsTableColumn<T> {
   key: keyof T | string;
   header: string;
@@ -33,7 +29,6 @@ export interface AlertsTableColumn<T> {
   align?: 'left' | 'center' | 'right';
 }
 
-// Table action interface for alerts
 export interface AlertsTableAction<T> {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -42,7 +37,6 @@ export interface AlertsTableAction<T> {
   disabled?: (row: T) => boolean;
 }
 
-// Props interfaces for components
 export interface AlertsTableProps<T> {
   data: T[];
   columns: AlertsTableColumn<T>[];

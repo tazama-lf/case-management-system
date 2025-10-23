@@ -60,7 +60,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [addToast]);
 
   const error = useCallback((title: string, message?: string) => {
-    addToast({ type: 'error', title, message, duration: 8000 }); // Longer duration for errors
+    addToast({ type: 'error', title, message, duration: 8000 });
   }, [addToast]);
 
   const warning = useCallback((title: string, message?: string) => {

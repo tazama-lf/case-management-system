@@ -24,7 +24,7 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isReasonValid) {
       setError('Rejection reason must be at least 15 characters');
       return;
@@ -32,7 +32,7 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
 
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       await onSubmit(rejectionReason.trim());
       onClose();
@@ -58,7 +58,7 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-        {/* Header */}
+        {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Reject Case Closure</h3>
@@ -78,9 +78,9 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
           </button>
         </div>
 
-        {/* Form */}
+        {}
         <form onSubmit={handleSubmit} className="p-6">
-          {/* Workflow Information */}
+          {}
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Supervisor Case Closure Approval Workflow</h4>
             <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
@@ -92,16 +92,16 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
             </ul>
           </div>
 
-          {/* Instructions */}
+          {}
           <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-md p-4">
             <p className="text-sm text-yellow-800">
-              <strong>Important:</strong> When rejecting a case closure, please provide detailed feedback 
-              explaining what additional investigation or information is required. The case will be 
+              <strong>Important:</strong> When rejecting a case closure, please provide detailed feedback
+              explaining what additional investigation or information is required. The case will be
               returned to the investigator for further work.
             </p>
           </div>
 
-          {/* Rejection Reason */}
+          {}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Rejection Reason <span className="text-red-500">*</span>
@@ -127,14 +127,14 @@ const RejectCaseModal: React.FC<RejectCaseModalProps> = ({
             )}
           </div>
 
-          {/* Submit Error */}
+          {}
           {error && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
-          {/* Actions */}
+          {}
           <div className="flex justify-end gap-3">
             <button
               type="button"
