@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import * as pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-(pdfMake as any).vfs = pdfFonts;
+(pdfMake as any).vfs = (pdfFonts as any).vfs;
 
 export interface ExportData {
   [key: string]: any;

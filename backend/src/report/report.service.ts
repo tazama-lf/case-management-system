@@ -563,9 +563,20 @@ export class ReportsService {
     };
   }
 
-  async getTaskCompletion(dateRange?: string) {
+  async getTaskCompletion(
+    dateRange?: string,
+    filters?: { taskType?: string; priority?: string; investigator?: string }
+  ) {
     try {
       const { startDate, endDate } = this.getDateRange(dateRange);
+
+      // Build a reusable where clause for all queries
+      const where: any = {
+        created_at: { gte: startDate, lte: endDate },
+      };
+      if (filters?.taskType) where.task_type = filters.taskType;
+      if (filters?.priority) where.priority = filters.priority;
+      if (filters?.investigator) where.assigned_user_id = filters.investigator;
 
       try {
         const sampleTask = await this.prisma.task.findFirst();
@@ -575,60 +586,27 @@ export class ReportsService {
 
       const taskCounts = await this.prisma.task.groupBy({
         by: ['status'],
-        where: {
-          created_at: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
+        where,
         _count: { task_id: true },
       });
 
       const taskTypeCounts = await this.prisma.task.groupBy({
         by: ['task_type'],
-        where: {
-          created_at: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
+        where,
         _count: { task_id: true },
       });
 
-      const totalTasks = await this.prisma.task.count({
-        where: {
-          created_at: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      });
+      const totalTasks = await this.prisma.task.count({ where });
 
       const completedTasks = await this.prisma.task.count({
-        where: {
-          created_at: {
-            gte: startDate,
-            lte: endDate,
-          },
-          status: TaskStatus.STATUS_30_COMPLETED,
-        },
+        where: { ...where, status: TaskStatus.STATUS_30_COMPLETED },
       });
 
       const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       const completedTasksWithTimes = await this.prisma.task.findMany({
-        where: {
-          created_at: {
-            gte: startDate,
-            lte: endDate,
-          },
-          status: TaskStatus.STATUS_30_COMPLETED,
-          completed_at: { not: null },
-        },
-        select: {
-          created_at: true,
-          completed_at: true,
-        },
+        where: { ...where, status: TaskStatus.STATUS_30_COMPLETED, completed_at: { not: null } },
+        select: { created_at: true, completed_at: true },
       });
 
       const avgCompletionTime = completedTasksWithTimes.length > 0
@@ -639,19 +617,20 @@ export class ReportsService {
           }, 0) / completedTasksWithTimes.length
         : 0;
 
+      // Overdue tasks: due_date < now and not completed
+      const overdueTasks = await this.prisma.task.count({
+        where: {
+          ...where,
+          due_date: { lt: new Date() },
+          status: { not: TaskStatus.STATUS_30_COMPLETED },
+        },
+      });
+
       const completionByType = await Promise.all(taskTypeCounts.map(async ({ task_type, _count }) => {
         try {
           const completedTasks = await this.prisma.task.count({
-            where: {
-              created_at: {
-                gte: startDate,
-                lte: endDate,
-              },
-              status: TaskStatus.STATUS_30_COMPLETED,
-              task_type: task_type,
-            },
+            where: { ...where, status: TaskStatus.STATUS_30_COMPLETED, task_type: task_type },
           });
-          
           return {
             type: task_type || 'UNKNOWN',
             total: _count.task_id,
@@ -673,29 +652,22 @@ export class ReportsService {
       for (let i = 5; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-        
+
+        // Apply filters to trend queries as well
+        const trendWhere: any = {
+          created_at: { gte: monthStart, lte: monthEnd },
+        };
+        if (filters?.taskType) trendWhere.task_type = filters.taskType;
+        if (filters?.priority) trendWhere.priority = filters.priority;
+        if (filters?.investigator) trendWhere.assigned_user_id = filters.investigator;
+
         const [totalTasks, completedTasks] = await Promise.all([
-          this.prisma.task.count({
-            where: {
-              created_at: {
-                gte: monthStart,
-                lte: monthEnd,
-              },
-            },
-          }),
-          this.prisma.task.count({
-            where: {
-              created_at: {
-                gte: monthStart,
-                lte: monthEnd,
-              },
-              status: TaskStatus.STATUS_30_COMPLETED,
-            },
-          }),
+          this.prisma.task.count({ where: trendWhere }),
+          this.prisma.task.count({ where: { ...trendWhere, status: TaskStatus.STATUS_30_COMPLETED } }),
         ]);
 
         const monthRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-        
+
         completionTrend.push({
           month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
           completionRate: Math.round(monthRate * 10) / 10,
@@ -706,19 +678,8 @@ export class ReportsService {
 
       const avgCompletionTimeByType = await Promise.all(taskTypeCounts.map(async ({ task_type }) => {
         const completedTasksWithTimes = await this.prisma.task.findMany({
-          where: {
-            created_at: {
-              gte: startDate,
-              lte: endDate,
-            },
-            status: TaskStatus.STATUS_30_COMPLETED,
-            task_type: task_type,
-            completed_at: { not: null },
-          },
-          select: {
-            created_at: true,
-            completed_at: true,
-          },
+          where: { ...where, status: TaskStatus.STATUS_30_COMPLETED, task_type: task_type, completed_at: { not: null } },
+          select: { created_at: true, completed_at: true },
         });
 
         const avgDays = completedTasksWithTimes.length > 0
@@ -747,7 +708,7 @@ export class ReportsService {
           totalTasks,
           completionRate: Math.round(completionRate * 10) / 10,
           avgCompletionTime: Math.round(avgCompletionTime * 10) / 10,
-          overdueTasks: 0,
+          overdueTasks,
         },
         completionByType,
         avgCompletionTime: avgCompletionTimeByType,
