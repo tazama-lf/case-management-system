@@ -122,7 +122,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
         <div className="flex-1 w-full md:w-1/2">
           <CaseTypeResolutionChart
             data={caseTypeResolution}
-            title="Case Type vs Resolution Time"
+            title="Case Type Resolution Time"
           />
         </div>
       </div>

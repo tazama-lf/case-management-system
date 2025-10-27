@@ -570,7 +570,6 @@ export class ReportsService {
     try {
       const { startDate, endDate } = this.getDateRange(dateRange);
 
-     
       const where: any = {
         created_at: { gte: startDate, lte: endDate },
       };
@@ -617,7 +616,7 @@ export class ReportsService {
           }, 0) / completedTasksWithTimes.length
         : 0;
 
-    
+     
       const overdueTasks = await this.prisma.task.count({
         where: {
           ...where,
@@ -850,10 +849,59 @@ export class ReportsService {
       item.percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
     });
 
-    const caseTypeResolution = Object.values(CaseType).map(type => ({
-      caseType: type,
-      avgDays: 0,
-    }));
+    const closedStatuses = [
+      CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+      CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+      CaseStatus.STATUS_81_CLOSED_REFUTED,
+      CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+      CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    ];
+
+    const caseTypeResolution = await Promise.all(
+      Object.values(CaseType).map(async (type) => {
+       
+        const whereClause: any = {
+          status: {
+            in: closedStatuses,
+          },
+        };
+
+        if (type === CaseType.NONE) {
+        
+          whereClause.OR = [
+            { case_type: null },
+            { case_type: CaseType.NONE }
+          ];
+        } else {
+          whereClause.case_type = type;
+        }
+
+        const closedCasesOfType = await this.prisma.case.findMany({
+          where: whereClause,
+          select: {
+            created_at: true,
+            updated_at: true,
+          },
+        });
+
+        if (closedCasesOfType.length === 0) {
+          return {
+            caseType: type,
+            avgDays: 0,
+          };
+        }
+
+        const avgResolutionTime = closedCasesOfType.reduce((sum, case_) => {
+          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + resolutionTime;
+        }, 0) / closedCasesOfType.length;
+
+        return {
+          caseType: type,
+          avgDays: Math.round(avgResolutionTime * 10) / 10,
+        };
+      })
+    );
 
     const resolutionTrend: any[] = [];
     const currentDate = new Date();
