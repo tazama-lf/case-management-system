@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { InvestigatorWorkload } from '../types/reports.types';
 
 interface WorkloadBarChartProps {
@@ -7,54 +8,39 @@ interface WorkloadBarChartProps {
   height?: number;
 }
 
-const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height = 200 }) => {
-  const maxValue = Math.max(...data.map(item => item.activeCases + item.pendingTasks));
+const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height = 350 }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48">
+          <p className="text-gray-500 text-center">No data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Transform data for recharts
+  const chartData = data.map(item => ({
+    name: item.name,
+    'Active Cases': item.activeCases,
+    'Pending Tasks': item.pendingTasks
+  }));
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="space-y-4" style={{ height }}>
-        {data.map((item, index) => {
-          const activeBarWidth = (item.activeCases / maxValue) * 100;
-          const pendingBarWidth = (item.pendingTasks / maxValue) * 100;
-
-          return (
-            <div key={index} className="flex items-center">
-              <div className="w-24 text-sm text-gray-600 truncate mr-4">
-                {item.name}
-              </div>
-              <div className="flex-1 flex items-center space-x-2">
-                <div className="flex-1 bg-gray-100 rounded-full h-6 relative">
-                  <div
-                    className="bg-blue-500 h-6 rounded-l-full"
-                    style={{ width: `${activeBarWidth}%` }}
-                  />
-                  <div
-                    className="bg-purple-500 h-6 rounded-r-full absolute top-0"
-                    style={{
-                      width: `${pendingBarWidth}%`,
-                      left: `${activeBarWidth}%`
-                    }}
-                  />
-                </div>
-                <div className="w-16 text-xs text-gray-500 text-right">
-                  {item.activeCases + item.pendingTasks}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-center mt-4 space-x-6">
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2" />
-          <span className="text-sm text-gray-600">Active Cases</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-purple-500 rounded-full mr-2" />
-          <span className="text-sm text-gray-600">Pending Tasks</span>
-        </div>
-      </div>
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="Active Cases" fill="#3b82f6" />
+          <Bar dataKey="Pending Tasks" fill="#8b5cf6" />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 };

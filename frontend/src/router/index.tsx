@@ -4,7 +4,7 @@ import ProtectedRoute from '../features/auth/components/ProtectedRoute';
 import RoleBasedRedirect from '../shared/components/navigation/RoleBasedRedirect';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
-import Reports from '../features/reports/pages/Reports';
+import Reports from '../features/reports/pages/CaseStatusReport';
 import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
 import CasesDashboard from '../features/cases/pages/CasesDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';

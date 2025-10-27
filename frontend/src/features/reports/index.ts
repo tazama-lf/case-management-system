@@ -1,4 +1,4 @@
-export { default as Reports } from './pages/Reports';
+export { default as Reports } from './pages/CaseStatusReport';
 export { default as InvestigatorWorkloadReport } from './pages/InvestigatorWorkloadReport';
 export { default as TaskCompletionReport } from './pages/TaskCompletionReport';
 export { default as AuditLogsReport } from './pages/AuditLogsReport';

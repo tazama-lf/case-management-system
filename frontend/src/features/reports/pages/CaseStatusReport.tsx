@@ -5,7 +5,7 @@ import ReportStatsCards from '../components/ReportStatsCards';
 import ReportFilters from '../components/ReportFilters';
 import PieChart from '../components/PieChart';
 import BarChart from '../components/BarChart';
-import LineChart from '../components/LineChart';
+import MultiBarChart from '../components/MultiBarChart';
 import ReportsTable from '../components/ReportsTable';
 import { useReports } from '../hooks/useReports';
 import InvestigatorWorkloadReport from './InvestigatorWorkloadReport';
@@ -140,6 +140,7 @@ const Reports: React.FC = () => {
     percentage: (item.value / stats.totalCases) * 100
   }));
 
+  const totalOutcomes = outcomes.resolved + outcomes.confirmed + outcomes.inconclusive + outcomes.pending;
   const outcomeData = [
     { label: 'RESOLVED', value: outcomes.resolved, color: '#10b981', percentage: 0 },
     { label: 'CONFIRMED', value: outcomes.confirmed, color: '#ef4444', percentage: 0 },
@@ -147,7 +148,7 @@ const Reports: React.FC = () => {
     { label: 'PENDING', value: outcomes.pending, color: '#3b82f6', percentage: 0 }
   ].map(item => ({
     ...item,
-    percentage: (item.value / (outcomes.resolved + outcomes.confirmed + outcomes.inconclusive + outcomes.pending)) * 100
+    percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0
   }));
 
   const getPageTitle = () => {
@@ -212,7 +213,7 @@ const Reports: React.FC = () => {
               title="Case Outcomes"
               isLoading={isLoading}
             />
-            <LineChart
+            <MultiBarChart
               data={monthlyTrend.map(trend => ({
                 label: trend.month,
                 casesCreated: trend.casesCreated,

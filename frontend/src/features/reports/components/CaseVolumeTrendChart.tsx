@@ -1,4 +1,5 @@
 import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { VolumeTrend } from '../types/reports.types';
 
 interface CaseVolumeTrendChartProps {
@@ -7,11 +8,11 @@ interface CaseVolumeTrendChartProps {
   height?: number;
 }
 
-const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title, height = 200 }) => {
+const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title, height = 350 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
         <div className="flex items-center justify-center h-48">
           <p className="text-gray-500 text-center">No volume trend data available</p>
         </div>
@@ -21,81 +22,36 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
 
   const investigators = Object.keys(data[0]?.investigators || {});
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
-  const maxValue = Math.max(...data.flatMap(d => Object.values(d.investigators)), 1); // Ensure at least 1 to avoid division by 0
 
-  const chartHeight = height - 60;
-  const chartWidth = 300;
-  const stepX = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth / 2;
-
-  const createPath = (investigator: string) => {
-    return data
-      .map((d, index) => {
-        const x = index * stepX;
-        const y = chartHeight - (d.investigators[investigator] / maxValue) * chartHeight;
-        return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-      })
-      .join(' ');
-  };
+  // Transform data for recharts
+  const chartData = data.map(item => ({
+    month: item.month,
+    ...item.investigators
+  }));
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="relative">
-        <svg width={chartWidth} height={height} className="overflow-visible">
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
           {investigators.map((investigator, index) => (
-            <g key={investigator}>
-              <path
-                d={createPath(investigator)}
-                fill="none"
-                stroke={colors[index % colors.length]}
-                strokeWidth="2"
-              />
-              {data.map((d, i) => (
-                <circle
-                  key={i}
-                  cx={i * stepX}
-                  cy={chartHeight - (d.investigators[investigator] / maxValue) * chartHeight}
-                  r="3"
-                  fill={colors[index % colors.length]}
-                />
-              ))}
-            </g>
+            <Line
+              key={investigator}
+              type="monotone"
+              dataKey={investigator}
+              stroke={colors[index % colors.length]}
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+            />
           ))}
-
-          {data.map((_, index) => (
-            <g key={index}>
-              <line
-                x1={index * stepX}
-                y1={chartHeight}
-                x2={index * stepX}
-                y2={chartHeight + 5}
-                stroke="#e5e7eb"
-                strokeWidth="1"
-              />
-              <text
-                x={index * stepX}
-                y={chartHeight + 20}
-                textAnchor="middle"
-                className="text-xs fill-gray-600"
-              >
-                {data[index].month}
-              </text>
-            </g>
-          ))}
-        </svg>
-
-        <div className="flex items-center justify-center mt-4 space-x-4 flex-wrap">
-          {investigators.map((investigator, index) => (
-            <div key={investigator} className="flex items-center">
-              <div
-                className="w-3 h-3 rounded-full mr-2"
-                style={{ backgroundColor: colors[index % colors.length] }}
-              />
-              <span className="text-sm text-gray-600">{investigator}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 };

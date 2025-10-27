@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { TaskCompletionByType } from '../types/reports.types';
 
 interface TaskCompletionBarChartProps {
@@ -7,49 +8,39 @@ interface TaskCompletionBarChartProps {
   height?: number;
 }
 
-const TaskCompletionBarChart: React.FC<TaskCompletionBarChartProps> = ({ data, title, height = 200 }) => {
-  const maxValue = Math.max(...data.map(item => item.total));
+const TaskCompletionBarChart: React.FC<TaskCompletionBarChartProps> = ({ data, title, height = 350 }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48">
+          <p className="text-gray-500 text-center">No data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Transform data for recharts
+  const chartData = data.map(item => ({
+    type: item.type,
+    Completed: item.completed,
+    Pending: item.total - item.completed
+  }));
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="flex items-end justify-between space-x-2" style={{ height }}>
-        {data.map((item, index) => {
-          const totalHeight = (item.total / maxValue) * (height - 40);
-          const completedHeight = (item.completed / maxValue) * (height - 40);
-
-          return (
-            <div key={index} className="flex flex-col items-center flex-1">
-              <div className="text-xs font-medium text-gray-900 mb-1">
-                {item.total}
-              </div>
-              <div className="w-full relative">
-                <div
-                  className="w-full rounded-t bg-gray-200"
-                  style={{ height: `${totalHeight}px` }}
-                />
-                <div
-                  className="w-full rounded-t bg-green-500 absolute bottom-0"
-                  style={{ height: `${completedHeight}px` }}
-                />
-              </div>
-              <div className="text-xs text-gray-600 mt-2 text-center">
-                {item.type}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-center mt-4 space-x-6">
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-green-500 rounded-full mr-2" />
-          <span className="text-sm text-gray-600">Completed</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-gray-200 rounded-full mr-2" />
-          <span className="text-sm text-gray-600">Pending</span>
-        </div>
-      </div>
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis dataKey="type" tick={{ fontSize: 12 }} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="Completed" stackId="a" fill="#10b981" />
+          <Bar dataKey="Pending" stackId="a" fill="#e5e7eb" />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 };
