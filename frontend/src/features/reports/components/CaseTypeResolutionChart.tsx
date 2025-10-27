@@ -36,7 +36,7 @@ const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({ data,
   // Transform data for recharts
   const chartData = filteredData.map(item => ({
     type: item.caseType === 'NONE' ? 'None' : item.caseType.replace(/_/g, ' ').replace(/AND/g, '&'),
-    averageDays: Math.round(item.avgDays * 10) / 10
+    averageDays: Math.round(item.avgDays)
   }));
 
   return (

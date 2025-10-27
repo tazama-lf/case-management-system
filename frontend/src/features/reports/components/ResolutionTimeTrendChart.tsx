@@ -51,7 +51,7 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
               borderRadius: '6px',
               padding: '8px 12px'
             }}
-            formatter={(value: number) => [`${value.toFixed(1)} days`, 'Average Days']}
+            formatter={(value: number) => [`${Math.round(value)} days`, 'Average Days']}
           />
           <Line 
             type="monotone" 

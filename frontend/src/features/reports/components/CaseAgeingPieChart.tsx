@@ -47,10 +47,6 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
     percentage: ((item.count / total) * 100).toFixed(1)
   }));
 
-  const renderLabel = ({ name, percentage }: any) => {
-    return `${name}: ${percentage}%`;
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
       <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
@@ -60,8 +56,8 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
             data={chartData}
             cx="50%"
             cy="50%"
-            labelLine={true}
-            label={renderLabel}
+            labelLine={false}
+            label={false}
             outerRadius="70%"
             fill="#8884d8"
             dataKey="value"
@@ -70,8 +66,14 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
               <Cell key={`cell-${index}`} fill={ageColors[entry.name as keyof typeof ageColors] || '#94a3b8'} />
             ))}
           </Pie>
-          <Tooltip formatter={(value) => `${value} cases`} />
-          <Legend />
+          <Tooltip 
+            formatter={(value, _name, props) => [`${value} cases (${props.payload.percentage}%)`, props.payload.name]}
+          />
+          <Legend 
+            verticalAlign="bottom" 
+            height={36}
+            formatter={(value, entry: any) => `${value}: ${entry.payload.percentage}%`}
+          />
         </PieChart>
       </ResponsiveContainer>
     </div>
