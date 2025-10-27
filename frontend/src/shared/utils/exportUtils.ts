@@ -137,7 +137,7 @@ export const exportToPDF = async (
 
     const docDefinition = {
       pageSize: 'A4',
-      pageOrientation: 'landscape', // Use landscape for better table fitting
+      pageOrientation: 'landscape', 
       pageMargins: [40, 60, 40, 60],
       content: [
         {

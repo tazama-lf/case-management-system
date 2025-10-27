@@ -570,7 +570,7 @@ export class ReportsService {
     try {
       const { startDate, endDate } = this.getDateRange(dateRange);
 
-      // Build a reusable where clause for all queries
+     
       const where: any = {
         created_at: { gte: startDate, lte: endDate },
       };
@@ -617,7 +617,7 @@ export class ReportsService {
           }, 0) / completedTasksWithTimes.length
         : 0;
 
-      // Overdue tasks: due_date < now and not completed
+    
       const overdueTasks = await this.prisma.task.count({
         where: {
           ...where,
@@ -653,7 +653,7 @@ export class ReportsService {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
 
-        // Apply filters to trend queries as well
+    
         const trendWhere: any = {
           created_at: { gte: monthStart, lte: monthEnd },
         };
