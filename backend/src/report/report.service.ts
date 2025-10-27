@@ -281,7 +281,7 @@ export class ReportsService {
 
       resolutionTrend.push({
         month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-        avgResolutionTime: Math.round(avgResolutionTimeMonth * 10) / 10,
+        avgResolutionTime: Math.round(avgResolutionTimeMonth),
         casesResolved: monthClosedCases.length,
       });
     }
@@ -291,7 +291,7 @@ export class ReportsService {
         totalCases,
         closedCases,
         openCases: totalCases - closedCases,
-        avgResolutionTime: Math.round(avgResolutionTime * 10) / 10,
+        avgResolutionTime: Math.round(avgResolutionTime),
       },
       statusDistribution,
       caseTypes,
@@ -399,7 +399,7 @@ export class ReportsService {
 
         return {
           name: `User ${case_owner_user_id}`,
-          avgDays: Math.round(avgResolutionDays * 10) / 10,
+          avgDays: Math.round(avgResolutionDays),
         };
       })
     );
@@ -551,7 +551,7 @@ export class ReportsService {
     return {
       stats: {
         totalInvestigators,
-        avgCasesPerInvestigator: Math.round(avgCasesPerInvestigator * 10) / 10,
+        avgCasesPerInvestigator: Math.round(avgCasesPerInvestigator),
         avgResolutionTime: 0,
         caseClosureRate: 0,
       },
@@ -669,7 +669,7 @@ export class ReportsService {
 
         completionTrend.push({
           month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-          completionRate: Math.round(monthRate * 10) / 10,
+          completionRate: Math.round(monthRate),
           totalTasks,
           completedTasks,
         });
@@ -691,7 +691,7 @@ export class ReportsService {
 
         return {
           type: task_type || 'UNKNOWN',
-          avgDays: Math.round(avgDays * 10) / 10,
+          avgDays: Math.round(avgDays),
         };
       }));
 
@@ -705,8 +705,8 @@ export class ReportsService {
       const result = {
         stats: {
           totalTasks,
-          completionRate: Math.round(completionRate * 10) / 10,
-          avgCompletionTime: Math.round(avgCompletionTime * 10) / 10,
+          completionRate: Math.round(completionRate),
+          avgCompletionTime: Math.round(avgCompletionTime),
           overdueTasks,
         },
         completionByType,
@@ -719,7 +719,7 @@ export class ReportsService {
             taskType: ct.type,
             total: ct.total,
             completed: ct.completed,
-            completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100 * 10) / 10 : 0,
+            completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100) : 0,
             avgTime: avgTimeData ? avgTimeData.avgDays : 0,
             trend: 0,
           };
@@ -898,7 +898,7 @@ export class ReportsService {
 
         return {
           caseType: type,
-          avgDays: Math.round(avgResolutionTime * 10) / 10,
+          avgDays: Math.round(avgResolutionTime),
         };
       })
     );
@@ -940,7 +940,7 @@ export class ReportsService {
 
       resolutionTrend.push({
         month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
-        avgDays: Math.round(avgResolutionTime * 10) / 10,
+        avgDays: Math.round(avgResolutionTime),
       });
     }
 
@@ -957,7 +957,7 @@ export class ReportsService {
 
     return {
       stats: {
-        avgCaseAge: Math.round(avgCaseAge * 10) / 10,
+        avgCaseAge: Math.round(avgCaseAge),
         avgResolutionTime: 0,
         casesOver15Days,
         casesOver30Days,
