@@ -885,10 +885,7 @@ export class ReportsService {
         });
 
         if (closedCasesOfType.length === 0) {
-          return {
-            caseType: type,
-            avgDays: 0,
-          };
+          return null;
         }
 
         const avgResolutionTime = closedCasesOfType.reduce((sum, case_) => {
@@ -901,48 +898,43 @@ export class ReportsService {
           avgDays: Math.round(avgResolutionTime),
         };
       })
-    );
+    ).then(results => results.filter(item => item !== null));
 
     const resolutionTrend: any[] = [];
     const currentDate = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
-      
-      const closedCasesInMonth = await this.prisma.case.findMany({
-        where: {
-          updated_at: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-          status: {
-            in: [
-              CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-              CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-              CaseStatus.STATUS_81_CLOSED_REFUTED,
-              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-            ],
-          },
+    const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
+    
+    const recentClosedCases = await this.prisma.case.findMany({
+      where: {
+        updated_at: {
+          gte: trendStartDate,
         },
-        select: {
-          created_at: true,
-          updated_at: true,
+        status: {
+          in: [
+            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+            CaseStatus.STATUS_81_CLOSED_REFUTED,
+            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+          ],
         },
-      });
+      },
+      select: {
+        created_at: true,
+        updated_at: true,
+      },
+      orderBy: {
+        updated_at: 'asc',
+      },
+    });
 
-      const avgResolutionTime = closedCasesInMonth.length > 0
-        ? closedCasesInMonth.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / closedCasesInMonth.length
-        : 0;
-
+    recentClosedCases.forEach((case_) => {
+      const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
       resolutionTrend.push({
-        month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
-        avgDays: Math.round(avgResolutionTime),
+        month: case_.updated_at.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
+        avgDays: Math.round(resolutionTime),
       });
-    }
+    });
 
     const caseDetails = casesWithAge.slice(0, 5).map(case_ => ({
       caseId: case_.case_id,
