@@ -87,8 +87,9 @@ export const exportToPDF = async (
       throw new Error('No data to export');
     }
 
-    // Calculate optimal column widths for A4 paper (595 units wide, minus margins = ~515 units)
-    const availableWidth = 515;
+    // A4 dimensions in points: 841.89 x 595.28 (landscape)
+    // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
+    const availableWidth = 700;
     const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
     const widthScale = availableWidth / totalRequestedWidth;
 
@@ -97,7 +98,8 @@ export const exportToPDF = async (
         text: col.label,
         style: 'tableHeader',
         fillColor: '#3b82f6',
-        color: '#ffffff'
+        color: '#ffffff',
+        alignment: 'center'
       })),
       ...data.map(row =>
         columns.map(col => {
@@ -106,106 +108,130 @@ export const exportToPDF = async (
           
           if (value !== undefined && value !== null) {
             displayValue = String(value);
-            // For ID fields, ensure full display without truncation
-            if (col.key.toLowerCase().includes('id') || col.key.toLowerCase().includes('case')) {
-              displayValue = String(value); // Keep full ID
-            }
           }
           
           return {
             text: displayValue,
             style: 'tableCell',
-            // For ID columns, use smaller font to fit more content
-            fontSize: col.key.toLowerCase().includes('id') ? 7 : 8
+            fontSize: col.key.toLowerCase().includes('id') ? 7 : 9
           };
         })
       )
     ];
 
-    // Calculate responsive column widths for A4
+    // Calculate responsive column widths to fill A4 page width
     const columnWidths = columns.map(col => {
       const requestedWidth = col.width || 100;
       const scaledWidth = Math.floor(requestedWidth * widthScale);
       
       // Ensure minimum width for ID columns
       if (col.key.toLowerCase().includes('id')) {
-        return Math.max(scaledWidth, 60);
+        return Math.max(scaledWidth, 70);
       }
       
-      return scaledWidth;
+      return Math.max(scaledWidth, 50); // Minimum width for any column
     });
 
     const docDefinition = {
       pageSize: 'A4',
-      pageOrientation: 'landscape', 
-      pageMargins: [40, 60, 40, 60],
+      pageOrientation: 'landscape' as const,
+      pageMargins: [40, 60, 100, 60] as [number, number, number, number],
       content: [
         {
           text: title,
           style: 'header',
-          margin: [0, 0, 0, 15]
+          margin: [0, 0, 0, 20] as [number, number, number, number]
         },
         {
-          text: `Generated on: ${new Date().toLocaleString()}`,
+          text: `Generated on: ${new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`,
           style: 'subheader',
-          margin: [0, 0, 0, 15]
+          margin: [0, 0, 0, 20] as [number, number, number, number]
         },
         {
           table: {
             headerRows: 1,
             widths: columnWidths,
             body: tableBody,
-            // Enable word wrapping for long content
-            dontBreakRows: true,
+            dontBreakRows: false,
             keepWithHeaderRows: 1
           },
           layout: {
             fillColor: function (rowIndex: number) {
-              return (rowIndex === 0) ? '#3b82f6' : (rowIndex % 2 === 0) ? '#f9fafb' : null;
+              return (rowIndex === 0) ? '#3b82f6' : (rowIndex % 2 === 0) ? '#f3f4f6' : '#ffffff';
             },
-            hLineWidth: function () {
-              return 0.5;
+            hLineWidth: function (i: number, node: any) {
+              return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5;
             },
-            vLineWidth: function () {
-              return 0.5;
+            vLineWidth: function (i: number, node: any) {
+              return (i === 0 || i === node.table.widths.length) ? 1 : 0.5;
             },
-            hLineColor: function () {
-              return '#e5e7eb';
+            hLineColor: function (i: number, node: any) {
+              return (i === 0 || i === 1 || i === node.table.body.length) ? '#1f2937' : '#d1d5db';
             },
             vLineColor: function () {
-              return '#e5e7eb';
+              return '#d1d5db';
+            },
+            paddingLeft: function () {
+              return 6;
+            },
+            paddingRight: function () {
+              return 6;
+            },
+            paddingTop: function () {
+              return 6;
+            },
+            paddingBottom: function () {
+              return 6;
             }
           }
+        },
+        {
+          text: `Total Records: ${data.length}`,
+          style: 'footer',
+          margin: [0, 20, 0, 0] as [number, number, number, number]
         }
       ],
       styles: {
         header: {
-          fontSize: 16,
+          fontSize: 20,
           bold: true,
-          alignment: 'center',
-          margin: [0, 0, 0, 10]
+          alignment: 'center' as const,
+          color: '#1f2937'
         },
         subheader: {
-          fontSize: 10,
-          alignment: 'center',
-          margin: [0, 5, 0, 5]
+          fontSize: 11,
+          alignment: 'center' as const,
+          color: '#6b7280',
+          italics: true
         },
         tableHeader: {
           bold: true,
-          fontSize: 8,
-          color: 'white',
+          fontSize: 10,
+          color: '#ffffff',
           fillColor: '#3b82f6',
-          alignment: 'center'
+          alignment: 'center' as const
         },
         tableCell: {
-          fontSize: 8,
-          margin: [2, 3, 2, 3],
-          alignment: 'left'
+          fontSize: 9,
+          alignment: 'left' as const,
+          color: '#1f2937'
+        },
+        footer: {
+          fontSize: 10,
+          alignment: 'right' as const,
+          color: '#6b7280',
+          bold: true
         }
       },
       defaultStyle: {
-        fontSize: 8,
-        font: 'Roboto'
+        fontSize: 9
       }
     };
 

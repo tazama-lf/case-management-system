@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { AgeingDistribution } from '../types/reports.types';
 
 interface CaseAgeingPieChartProps {
@@ -27,7 +27,16 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
     );
   }
 
-  const total = data.reduce((sum, item) => sum + (item.count || 0), 0);
+  const allAgeRanges = ['0-7 days', '8-15 days', '16-30 days', '30+ days'];
+  const completeData = allAgeRanges.map(range => {
+    const existing = data.find(item => item.ageRange === range);
+    return {
+      ageRange: range,
+      count: existing?.count || 0
+    };
+  });
+
+  const total = completeData.reduce((sum, item) => sum + (item.count || 0), 0);
 
   if (total === 0) {
     return (
@@ -40,12 +49,29 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = completeData.map(item => ({
     name: item.ageRange,
     value: item.count,
-    percentage: ((item.count / total) * 100).toFixed(1)
+    percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0'
   }));
+
+  const pieData = chartData.filter(item => item.value > 0);
+
+  const CustomLegend = () => (
+    <div className="flex flex-wrap justify-center gap-4 mt-4">
+      {chartData.map((item) => (
+        <div key={item.name} className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded-sm" 
+            style={{ backgroundColor: ageColors[item.name as keyof typeof ageColors] || '#94a3b8' }}
+          />
+          <span className="text-sm text-gray-700">
+            {item.name}: {item.percentage}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
@@ -53,7 +79,7 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
       <ResponsiveContainer width="100%" height={size}>
         <PieChart>
           <Pie
-            data={chartData}
+            data={pieData}
             cx="50%"
             cy="50%"
             labelLine={false}
@@ -61,21 +87,18 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({ data, title, si
             outerRadius="70%"
             fill="#8884d8"
             dataKey="value"
+            minAngle={5}
           >
-            {chartData.map((entry, index) => (
+            {pieData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={ageColors[entry.name as keyof typeof ageColors] || '#94a3b8'} />
             ))}
           </Pie>
           <Tooltip 
             formatter={(value, _name, props) => [`${value} cases (${props.payload.percentage}%)`, props.payload.name]}
           />
-          <Legend 
-            verticalAlign="bottom" 
-            height={36}
-            formatter={(value, entry: any) => `${value}: ${entry.payload.percentage}%`}
-          />
         </PieChart>
       </ResponsiveContainer>
+      <CustomLegend />
     </div>
   );
 };

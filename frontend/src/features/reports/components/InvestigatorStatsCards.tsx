@@ -32,21 +32,21 @@ const InvestigatorStatsCards: React.FC<InvestigatorStatsCardsProps> = ({ stats }
       <StatsCard
         title="Avg. Cases per Investigator"
         value={safeFormatNumber(stats.avgCasesPerInvestigator, '', 1)}
-        subtitle="0.6 from previous period"
+        subtitle=""
         icon={<ChartBarIcon className="h-6 w-6" />}
         color="green"
       />
       <StatsCard
         title="Avg. Resolution Time"
-        value={safeFormatNumber(stats.avgResolutionTime, ' days', 1)}
-        subtitle="1.8 days from previous period"
+        value={safeFormatNumber(stats.avgResolutionTime, ' days', 0)}
+        subtitle=""
         icon={<ClockIcon className="h-6 w-6" />}
         color="yellow"
       />
       <StatsCard
         title="Case Closure Rate"
-        value={safeFormatNumber(stats.caseClosureRate, '%', 1)}
-        subtitle="-3.7% from previous period"
+        value={safeFormatNumber(stats.caseClosureRate, '%', 0)}
+        subtitle=""
         icon={<CheckCircleIcon className="h-6 w-6" />}
         color="purple"
       />

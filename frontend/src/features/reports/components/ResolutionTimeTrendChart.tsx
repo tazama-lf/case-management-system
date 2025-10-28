@@ -20,21 +20,36 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
     );
   }
 
+  // Aggregate data by date - calculate average if multiple cases closed on same date
+  const aggregatedData = data.reduce((acc: { [key: string]: { total: number; count: number } }, item) => {
+    const date = item.month;
+    if (!acc[date]) {
+      acc[date] = { total: 0, count: 0 };
+    }
+    acc[date].total += item.avgDays || 0;
+    acc[date].count += 1;
+    return acc;
+  }, {});
+
   // Transform data for recharts
-  const chartData = data.map(item => ({
-    month: item.month,
-    averageDays: item.avgDays || 0
-  }));
+  const chartData = Object.entries(aggregatedData).map(([date, values]) => ({
+    month: date,
+    averageDays: Math.round(values.total / values.count)
+  })).sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
       <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+        <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 60, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={true} horizontal={true} />
           <XAxis 
             dataKey="month" 
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 11 }}
+            angle={-45}
+            textAnchor="end"
+            height={80}
+            interval="preserveStartEnd"
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />

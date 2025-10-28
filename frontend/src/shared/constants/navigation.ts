@@ -4,6 +4,7 @@ import {
   ExclamationTriangleIcon,
   FolderIcon,
   Cog6ToothIcon,
+  QueueListIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItem } from '../types/navigation.types';
 export const NAVIGATION_ITEMS: NavItem[] = [
@@ -26,11 +27,18 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
+    name: 'Work Queues',
+    href: '/work-queue',
+    icon: QueueListIcon,
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
+  },
+  {
     name: 'Reports',
     href: '/reports',
     icon: ChartBarIcon,
     roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
+  
   {
     name: 'Admin',
     href: '/admin',
