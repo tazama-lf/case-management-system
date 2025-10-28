@@ -126,13 +126,13 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-80" />  {/* Task ID - wider for full UUID */}
-            <col className="w-72" />  {/* Case ID - wider for full UUID */}
-            <col className="w-32" />  {/* Queue */}
-            <col className="w-32" />  {/* Status */}
-            <col className="w-40" />  {/* Created */}
-            <col className="w-48" />  {/* Assigned To */}
-            <col className="w-40" />  {/* Actions */}
+            <col className="w-80" />
+            <col className="w-72" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-48" />
+            <col className="w-40" />
           </colgroup>
           <thead className="bg-gray-50">
             <tr>

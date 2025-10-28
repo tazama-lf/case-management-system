@@ -281,7 +281,7 @@ export class ReportsService {
 
       resolutionTrend.push({
         month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-        avgResolutionTime: Math.round(avgResolutionTimeMonth * 10) / 10,
+        avgResolutionTime: Math.round(avgResolutionTimeMonth),
         casesResolved: monthClosedCases.length,
       });
     }
@@ -291,7 +291,7 @@ export class ReportsService {
         totalCases,
         closedCases,
         openCases: totalCases - closedCases,
-        avgResolutionTime: Math.round(avgResolutionTime * 10) / 10,
+        avgResolutionTime: Math.round(avgResolutionTime),
       },
       statusDistribution,
       caseTypes,
@@ -399,7 +399,7 @@ export class ReportsService {
 
         return {
           name: `User ${case_owner_user_id}`,
-          avgDays: Math.round(avgResolutionDays * 10) / 10,
+          avgDays: Math.round(avgResolutionDays),
         };
       })
     );
@@ -551,7 +551,7 @@ export class ReportsService {
     return {
       stats: {
         totalInvestigators,
-        avgCasesPerInvestigator: Math.round(avgCasesPerInvestigator * 10) / 10,
+        avgCasesPerInvestigator: Math.round(avgCasesPerInvestigator),
         avgResolutionTime: 0,
         caseClosureRate: 0,
       },
@@ -669,7 +669,7 @@ export class ReportsService {
 
         completionTrend.push({
           month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-          completionRate: Math.round(monthRate * 10) / 10,
+          completionRate: Math.round(monthRate),
           totalTasks,
           completedTasks,
         });
@@ -691,7 +691,7 @@ export class ReportsService {
 
         return {
           type: task_type || 'UNKNOWN',
-          avgDays: Math.round(avgDays * 10) / 10,
+          avgDays: Math.round(avgDays),
         };
       }));
 
@@ -705,8 +705,8 @@ export class ReportsService {
       const result = {
         stats: {
           totalTasks,
-          completionRate: Math.round(completionRate * 10) / 10,
-          avgCompletionTime: Math.round(avgCompletionTime * 10) / 10,
+          completionRate: Math.round(completionRate),
+          avgCompletionTime: Math.round(avgCompletionTime),
           overdueTasks,
         },
         completionByType,
@@ -719,7 +719,7 @@ export class ReportsService {
             taskType: ct.type,
             total: ct.total,
             completed: ct.completed,
-            completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100 * 10) / 10 : 0,
+            completionRate: ct.total > 0 ? Math.round((ct.completed / ct.total) * 100) : 0,
             avgTime: avgTimeData ? avgTimeData.avgDays : 0,
             trend: 0,
           };
@@ -885,10 +885,7 @@ export class ReportsService {
         });
 
         if (closedCasesOfType.length === 0) {
-          return {
-            caseType: type,
-            avgDays: 0,
-          };
+          return null;
         }
 
         const avgResolutionTime = closedCasesOfType.reduce((sum, case_) => {
@@ -898,51 +895,46 @@ export class ReportsService {
 
         return {
           caseType: type,
-          avgDays: Math.round(avgResolutionTime * 10) / 10,
+          avgDays: Math.round(avgResolutionTime),
         };
       })
-    );
+    ).then(results => results.filter(item => item !== null));
 
     const resolutionTrend: any[] = [];
     const currentDate = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
-      
-      const closedCasesInMonth = await this.prisma.case.findMany({
-        where: {
-          updated_at: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-          status: {
-            in: [
-              CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-              CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-              CaseStatus.STATUS_81_CLOSED_REFUTED,
-              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-            ],
-          },
+    const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
+    
+    const recentClosedCases = await this.prisma.case.findMany({
+      where: {
+        updated_at: {
+          gte: trendStartDate,
         },
-        select: {
-          created_at: true,
-          updated_at: true,
+        status: {
+          in: [
+            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+            CaseStatus.STATUS_81_CLOSED_REFUTED,
+            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+          ],
         },
-      });
+      },
+      select: {
+        created_at: true,
+        updated_at: true,
+      },
+      orderBy: {
+        updated_at: 'asc',
+      },
+    });
 
-      const avgResolutionTime = closedCasesInMonth.length > 0
-        ? closedCasesInMonth.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / closedCasesInMonth.length
-        : 0;
-
+    recentClosedCases.forEach((case_) => {
+      const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
       resolutionTrend.push({
-        month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
-        avgDays: Math.round(avgResolutionTime * 10) / 10,
+        month: case_.updated_at.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
+        avgDays: Math.round(resolutionTime),
       });
-    }
+    });
 
     const caseDetails = casesWithAge.slice(0, 5).map(case_ => ({
       caseId: case_.case_id,
@@ -957,7 +949,7 @@ export class ReportsService {
 
     return {
       stats: {
-        avgCaseAge: Math.round(avgCaseAge * 10) / 10,
+        avgCaseAge: Math.round(avgCaseAge),
         avgResolutionTime: 0,
         casesOver15Days,
         casesOver30Days,
