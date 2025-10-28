@@ -88,8 +88,8 @@ export const exportToPDF = async (
     }
 
     // A4 dimensions in points: 841.89 x 595.28 (landscape)
-    // With margins [40, 60, 40, 60], available width = 841.89 - 80 = 761.89
-    const availableWidth = 761;
+    // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
+    const availableWidth = 700;
     const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
     const widthScale = availableWidth / totalRequestedWidth;
 
@@ -135,7 +135,7 @@ export const exportToPDF = async (
     const docDefinition = {
       pageSize: 'A4',
       pageOrientation: 'landscape' as const,
-      pageMargins: [40, 60, 40, 60] as [number, number, number, number],
+      pageMargins: [40, 60, 100, 60] as [number, number, number, number],
       content: [
         {
           text: title,
