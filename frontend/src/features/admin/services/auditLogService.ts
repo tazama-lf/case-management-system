@@ -40,11 +40,14 @@ export interface AuditLogResponse {
 export class AuditLogService {
   private baseUrl = '/auth';
 
-
+  /**
+   * Get audit logs with filtering
+   */
   async getAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLogResponse> {
     try {
       const queryParams = new URLSearchParams();
-
+      
+      // Add filters to query params
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
@@ -56,38 +59,43 @@ export class AuditLogService {
       return response;
     } catch (error: any) {
       console.error('Failed to fetch audit logs:', error);
-
+      
       if (error.response?.data) {
         const apiError = error.response.data as ApiErrorResponse;
         throw new Error(apiError.message || 'Failed to fetch audit logs');
       }
-
+      
       throw new Error('Failed to fetch audit logs');
     }
   }
 
-
+  /**
+   * Get audit log entry by ID
+   */
   async getAuditLogById(id: string): Promise<AuditLogEntry> {
     try {
       const response = await apiClient.get<AuditLogEntry>(`${this.baseUrl}/audit-logs/${id}`);
       return response;
     } catch (error: any) {
       console.error('Failed to fetch audit log entry:', error);
-
+      
       if (error.response?.data) {
         const apiError = error.response.data as ApiErrorResponse;
         throw new Error(apiError.message || 'Failed to fetch audit log entry');
       }
-
+      
       throw new Error('Failed to fetch audit log entry');
     }
   }
 
-
+  /**
+   * Export audit logs (for compliance)
+   */
   async exportAuditLogs(filters: AuditLogFilters = {}): Promise<Blob> {
     try {
       const queryParams = new URLSearchParams();
-
+      
+      // Add filters to query params
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
@@ -95,7 +103,8 @@ export class AuditLogService {
       });
 
       const endpoint = `${this.baseUrl}/audit-logs/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-
+      
+      // Note: This would need to be implemented in the backend
       const response = await fetch(endpoint, {
         headers: {
           ...authService.getAuthHeader(),
@@ -113,7 +122,9 @@ export class AuditLogService {
     }
   }
 
-
+  /**
+   * Format audit log action for display
+   */
   formatAction(action: string): string {
     return action
       .split('_')
@@ -121,7 +132,9 @@ export class AuditLogService {
       .join(' ');
   }
 
-
+  /**
+   * Format audit log outcome for display
+   */
   formatOutcome(outcome: string): string {
     switch (outcome) {
       case 'SUCCESS':
@@ -135,7 +148,9 @@ export class AuditLogService {
     }
   }
 
-
+  /**
+   * Get outcome color class for UI
+   */
   getOutcomeColorClass(outcome: string): string {
     switch (outcome) {
       case 'SUCCESS':
