@@ -81,28 +81,28 @@ const CaseAgeingStatsCards: React.FC<CaseAgeingStatsCardsProps> = ({ stats }) =>
       <DaysStatsCard
         title="Avg. Case Age"
         days={stats.avgCaseAge}
-        subtitle="-2.3 days from previous period"
+        subtitle=""
         icon={<CalendarDaysIcon className="h-6 w-6" />}
         color="blue"
       />
       <DaysStatsCard
         title="Avg. Resolution Time"
         days={stats.avgResolutionTime}
-        subtitle="-1.5 days from previous period"
+        subtitle=""
         icon={<ClockIcon className="h-6 w-6" />}
         color="green"
       />
       <StatsCard
         title="Cases > 15 Days"
         value={formatCount(stats.casesOver15Days)}
-        subtitle="14.7% of all open cases"
+        subtitle=""
         icon={<ExclamationTriangleIcon className="h-6 w-6" />}
         color="yellow"
       />
       <StatsCard
         title="Cases > 30 Days"
         value={formatCount(stats.casesOver30Days)}
-        subtitle="2.9% of all open cases"
+        subtitle=""
         icon={<ExclamationCircleIcon className="h-6 w-6" />}
         color="red"
       />

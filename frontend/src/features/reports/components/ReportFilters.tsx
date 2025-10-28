@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { FunnelIcon, DocumentArrowDownIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { FunnelIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
-  onExportExcel: () => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
   reportType: 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
   dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
@@ -14,9 +11,6 @@ interface ReportFiltersProps {
 }
 
 const ReportFilters: React.FC<ReportFiltersProps> = ({
-  onExportExcel,
-  onExportCSV,
-  onExportPDF,
   reportType,
   dateRange,
   onChangeReportType,
@@ -148,16 +142,6 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
           >
             <FunnelIcon className="h-4 w-4 text-gray-500" />
             <span>Filters</span>
-          </button>
-        </div>
-
-        <div className="flex items-center">
-          <button
-            onClick={onExportPDF}
-            className="inline-flex items-center px-4 py-2 shadow-sm text-sm rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-            Export Report
           </button>
         </div>
       </div>

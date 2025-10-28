@@ -32,10 +32,10 @@ const ResolutionEfficiencyChart: React.FC<ResolutionEfficiencyChartProps> = ({ d
       <ResponsiveContainer width="100%" height={height}>
         <BarChart data={chartData} layout="vertical" margin={{ top: 20, right: 30, bottom: 5, left: 80 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis type="number" />
+          <XAxis type="number" domain={[0, (dataMax: number) => Math.max(dataMax + 1, 5)]} />
           <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={70} />
-          <Tooltip formatter={(value) => [`${value} days`, 'Average Days']} />
-          <Bar dataKey="avgDays" fill="#3b82f6" />
+          <Tooltip formatter={(value) => value === 0 ? ['< 1 day', 'Average Days'] : [`${Math.round(Number(value))} days`, 'Average Days']} />
+          <Bar dataKey="avgDays" fill="#3b82f6" minPointSize={5} />
         </BarChart>
       </ResponsiveContainer>
     </div>

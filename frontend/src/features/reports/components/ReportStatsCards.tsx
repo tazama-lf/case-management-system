@@ -13,6 +13,13 @@ interface ReportStatsCardsProps {
 }
 
 const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
+  const formatDays = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '0 days';
+    }
+    return `${Math.round(value)} days`;
+  };
+
   return (
     <div className="grid grid-cols-4 gap-6 mb-8">
       <StatsCard
@@ -35,7 +42,7 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
       />
       <StatsCard
         title="Avg Resolution Time"
-        value={stats.avgResolutionTime}
+        value={formatDays(stats.avgResolutionTime)}
         icon={<ClockIcon className="h-6 w-6" />}
         color="red"
       />

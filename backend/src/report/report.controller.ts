@@ -142,68 +142,6 @@ export class ReportsController {
     return this.reportsService.getInvestigatorWorkload(dateRange);
   }
 
-  @Get('task-completion')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
-    summary: 'Get task completion report',
-    description: 'Retrieve task completion analytics including completion rates, types, and performance metrics'
-  })
-  @ApiQuery({ 
-    name: 'dateRange', 
-    required: false, 
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
-    description: 'Time period for the report data',
-    example: 'last30'
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Task completion report data retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        stats: {
-          type: 'object',
-          properties: {
-            totalTasks: { type: 'number', example: 120 },
-            completionRate: { type: 'number', example: 75.0 },
-            avgCompletionTime: { type: 'number', example: 3.2 },
-            overdueTasks: { type: 'number', example: 0 }
-          }
-        },
-        completionByType: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              type: { type: 'string', example: 'INVESTIGATION' },
-              total: { type: 'number', example: 45 },
-              completed: { type: 'number', example: 38 },
-              pending: { type: 'number', example: 7 }
-            }
-          }
-        },
-        statusDistribution: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              status: { type: 'string', example: 'Completed' },
-              count: { type: 'number', example: 90 },
-              percentage: { type: 'number', example: 75 },
-              color: { type: 'string', example: '#10b981' }
-            }
-          }
-        }
-      }
-    }
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  getTaskCompletion(@Query('dateRange') dateRange?: string) {
-    return this.reportsService.getTaskCompletion(dateRange);
-  }
-
   @Get('audit-logs')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ 

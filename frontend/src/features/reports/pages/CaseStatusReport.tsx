@@ -142,7 +142,7 @@ const Reports: React.FC = () => {
 
   const totalOutcomes = outcomes.resolved + outcomes.confirmed + outcomes.inconclusive + outcomes.pending;
   const outcomeData = [
-    { label: 'RESOLVED', value: outcomes.resolved, color: '#10b981', percentage: 0 },
+    { label: 'REFUTED', value: outcomes.resolved, color: '#10b981', percentage: 0 },
     { label: 'CONFIRMED', value: outcomes.confirmed, color: '#ef4444', percentage: 0 },
     { label: 'INCONCLUSIVE', value: outcomes.inconclusive, color: '#f59e0b', percentage: 0 },
     { label: 'PENDING', value: outcomes.pending, color: '#3b82f6', percentage: 0 }
@@ -179,9 +179,6 @@ const Reports: React.FC = () => {
       subtitle={getPageSubtitle()}
     >
       <ReportFilters
-        onExportExcel={handleExportExcel}
-        onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
         reportType={reportType}
         dateRange={dateRange}
         onChangeReportType={setReportType}
