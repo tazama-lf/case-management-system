@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {Injectable, NotFoundException} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { Outcome } from '../audit/types/outcome';
-import { CaseCreatedEvent } from '../events/domain-events';
+import {CaseCreatedEvent, CaseStatusChangedEvent} from '../events/domain-events';
+import {CaseStatus, CaseType, Priority} from "@prisma/client";
 
 @Injectable()
 export class CaseWorkflowService {
@@ -57,6 +58,68 @@ export class CaseWorkflowService {
       return createdCase;
     } catch (error) {
       this.logger.error(`[CaseWorkflow] Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
+      throw error;
+    }
+  }
+
+  async updateCaseStatus(
+      caseId: string,
+      status: CaseStatus,
+      userId: string,
+      additionalUpdates?: { priority?: Priority; caseType?: CaseType }
+  ): Promise<void> {
+    try {
+      const existingCase = await this.prismaService.case.findUnique({
+        where: { case_id: caseId },
+      });
+
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${caseId} not found`);
+      }
+
+      const updateData: Record<string, unknown> = {
+        status,
+        updated_at: new Date(),
+      };
+
+      if (additionalUpdates?.priority) {
+        updateData.priority = additionalUpdates.priority;
+      }
+
+      if (additionalUpdates?.caseType) {
+        updateData.case_type = additionalUpdates.caseType;
+      }
+
+      await this.prismaService.case.update({
+        where: { case_id: caseId },
+        data: updateData,
+      });
+
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              existingCase.status,
+              status,
+              additionalUpdates ? 'Case updated with additional fields' : 'Status updated'
+          ),
+      );
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'updateCaseStatus',
+        entityName: 'CaseWorkflowService',
+        actionPerformed: `Updated case ${caseId} status to ${status}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(`Case ${caseId} status updated to ${status}`, 'CaseWorkflowService');
+    } catch (error) {
+      this.logger.error(
+          `Failed to update case status for ${caseId}: ${error.message}`,
+          error.stack,
+          'CaseWorkflowService',
+      );
       throw error;
     }
   }
