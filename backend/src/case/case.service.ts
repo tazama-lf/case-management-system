@@ -1746,22 +1746,32 @@ export class CaseService {
         });
 
         const approvalTask = await this.taskService.createTask(
-          {
-            caseId,
-            name: 'Approve Case Reopening',
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            description: `Case reopening approval required. Reason: ${reason}`,
-            candidateGroup: 'supervisors',
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+            {
+              caseId,
+              name: 'Approve Case Reopening',
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              description: `Case reopening approval required. Reason: ${reason}`,
+              candidateGroup: 'supervisors',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
         );
 
         return { case: updatedCase, approvalTask };
       });
 
-      this.eventEmitter.emit('case.created', new CaseCreatedEvent(caseId, tenantId, CaseCreationType.MANUAL, undefined, false));
+      // Emit with the actual case status from the updated case
+      this.eventEmitter.emit(
+          'case.created',
+          new CaseCreatedEvent(
+              caseId,
+              tenantId,
+              CaseCreationType.MANUAL,
+              result.case.status,  // ← Use the status from the updated case
+              false
+          )
+      );
 
       await this.auditLogService.logAction({
         userId,

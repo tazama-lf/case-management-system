@@ -714,4 +714,61 @@ export class TaskController {
 
     return this.taskService.reassignTaskToWorkQueue(taskId, dto.targetWorkQueueId, userId, tenantId, dto.reason, dto.assignedUserId);
   }
+
+  @Get('statistics')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get work queue statistics' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Work queue statistics retrieved successfully' })
+  async getWorkQueueStatistics(@Req() req: AuthenticatedRequest) {
+    try {
+      const userId = req.user.token.clientId;
+      const statistics = await this.taskService.getWorkQueueStatistics(userId);
+      return {
+        success: true,
+        data: statistics,
+      };
+    } catch (error) {
+      this.loggerService.error(`Failed to get work queue statistics: ${error.message}`, error.stack, TaskController.name);
+      throw error;
+    }
+  }
+
+  @Get('work-queues/:candidateGroup/tasks')
+  @RequireAnyValidRole()
+  @ApiOperation({ summary: 'Get tasks for a specific candidate group' })
+  @ApiParam({ name: 'candidateGroup', description: 'The candidate group name (e.g., supervisors, investigations, analysts)' })
+  @ApiQuery({ name: 'unassignedOnly', required: false, type: Boolean, description: 'Filter for unassigned tasks only' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Tasks retrieved successfully' })
+  async getTasksForCandidateGroup(
+      @Param('candidateGroup') candidateGroup: string,
+      @Query('unassignedOnly') unassignedOnly?: string,
+      @Req() req?: AuthenticatedRequest,
+  ) {
+    try {
+      const userId = req?.user?.token?.clientId;
+      if (!userId) {
+        throw new BadRequestException('User not authenticated or missing client ID');
+      }
+      const tasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
+
+      // Apply additional filtering if requested
+      let filteredTasks = tasks;
+      if (unassignedOnly === 'true') {
+        filteredTasks = tasks.filter((t: any) => !t.assigned_user_id);
+      }
+
+      return {
+        success: true,
+        data: filteredTasks,
+      };
+    } catch (error) {
+      this.loggerService.error(
+          `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
+          error.stack,
+          TaskController.name,
+      );
+      throw error;
+    }
+  }
+
 }
