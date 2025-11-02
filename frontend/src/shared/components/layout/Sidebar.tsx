@@ -8,17 +8,16 @@ import type { SidebarProps, NavItem } from '../../types/navigation.types';
 const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const { 
-    hasAdminRole, 
-    hasInvestigatorRole, 
-    hasSupervisorRole, 
-    hasBackendClaim 
+  const {
+    hasAdminRole,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasBackendClaim
   } = useAuth();
 
   const hasAccess = (item: NavItem): boolean => {
     if (!item.roles || item.roles.length === 0) return true;
-    
-    // Check each role requirement
+
     return item.roles.some((role) => {
       switch (role) {
         case 'alert-triage':
@@ -136,19 +135,18 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
 
   return (
     <div className="flex h-full grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
-      {/* Logo/Brand */}
+      {}
       <div className="flex h-16 shrink-0 items-center">
         <div className="flex items-center">
-          {/* <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">T</span>
-          </div> */}
+          {
+}
           <span className="ml-3 text-xl font-semibold text-gray-900">
             Investigation Platform
           </span>
         </div>
       </div>
 
-      {/* Navigation */}
+      {}
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>
@@ -157,7 +155,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
             </ul>
           </li>
 
-          {/* User section */}
+          {}
           <li className="mt-auto">
             {onLogout && (
               <button

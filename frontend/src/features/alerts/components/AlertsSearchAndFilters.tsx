@@ -5,7 +5,6 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../types/alertsdashboard.types';
-// triageService not needed for client-side filter options
 
 interface AlertsSearchAndFiltersProps {
   searchFilters: AlertsSearchFilters;
@@ -16,7 +15,6 @@ interface AlertsSearchAndFiltersProps {
     endDate: string;
   };
   onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
-  // onSearch deprecated; search is handled by parent via `searchFilters.query`
   alertTypes?: string[];
   priorities?: string[];
   sources?: string[];
@@ -34,7 +32,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onClearFilters,
   customDateRange,
   onCustomDateRangeChange,
-  
+
   alertTypes
   ,priorities, sources
 }) => {
@@ -47,7 +45,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   });
   const [loadingOptions] = useState(false);
 
-  // Populate filter options from props (computed by parent) or fall back to static defaults
   useEffect(() => {
     setFilterOptions({
       priorities: (priorities && priorities.length > 0) ? priorities : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
@@ -59,7 +56,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
-      if (key === 'query') return false; // Don't count search query as filter
+      if (key === 'query') return false;
       return value && value !== '';
     },
   );
@@ -99,7 +96,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     <div className="bg-white rounded-lg shadow mb-6">
       <div className="p-4">
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-          {/* Search Input */}
+          {}
           <div className="flex-1">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -113,7 +110,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           </div>
 
-          {/* Filter Toggle */}
+          {}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -127,7 +124,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             )}
           </button>
 
-          {/* Clear Filters */}
+          {}
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
@@ -140,7 +137,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         </div>
       </div>
 
-      {/* Expanded Filters */}
+      {}
       {showFilters && (
         <div className="p-4 bg-gray-50 border-t border-gray-200">
           {loadingOptions ? (
@@ -152,7 +149,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              {/* Alert Type Filter */}
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Alert Type
@@ -171,7 +168,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              {/* Priority Filter */}
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
@@ -190,7 +187,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              {/* Source Filter */}
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Source
@@ -209,7 +206,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              {/* Time Range Filter */}
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time Range
@@ -233,7 +230,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           )}
 
-          {/* Custom Date Range Picker */}
+          {}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
               <h4 className="text-sm font-medium text-gray-700 mb-3">

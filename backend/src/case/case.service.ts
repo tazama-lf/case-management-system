@@ -283,7 +283,7 @@ export class CaseService {
         CaseService.name,
       );
 
-      // Emit task.completed event - this will complete the BPMN task
+      
       this.logger.log(
         `[ApproveCaseCreation] Emitting task.completed event for approval task ${result.approvedTask.task_id}`,
         CaseService.name,
@@ -658,7 +658,7 @@ export class CaseService {
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
-        throw error;
+      throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1268,8 +1268,8 @@ export class CaseService {
         });
       }
 
-      try {
-        await this.validateApprovalPreconditions(caseId);
+    try {
+      await this.validateApprovalPreconditions(caseId);
       } catch (validationError) {
         await this.auditLogService.logAction({
           userId: supervisorId,
@@ -1434,7 +1434,7 @@ export class CaseService {
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
-        throw error;
+      throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1718,7 +1718,7 @@ export class CaseService {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseService.name);
 
-      const existingCase = await this.retrieveCase(caseId);
+    const existingCase = await this.retrieveCase(caseId);
 
       const allowedStates: CaseStatus[] = [
         CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -1768,8 +1768,8 @@ export class CaseService {
         operation: 'reopenCase',
         entityName: CaseService.name,
         actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
+          outcome: Outcome.SUCCESS,
+        });
 
       return {
         success: true,

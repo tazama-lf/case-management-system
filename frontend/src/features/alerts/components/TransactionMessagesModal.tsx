@@ -20,7 +20,6 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Extract transaction messages from alert data when modal opens or alert changes
   useEffect(() => {
     const extractMessages = () => {
       if (!isOpen || !alert) {
@@ -55,17 +54,17 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
-        {/* Background overlay */}
+        {}
         <div
           className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         ></div>
 
-        {/* Modal */}
+        {}
         <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-2xl w-full">
           <div className="bg-white px-6 pt-6 pb-6">
-            {/* Header */}
+            {}
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
@@ -85,14 +84,14 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </button>
             </div>
 
-            {/* Error Message */}
+            {}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
                 <p className="text-sm">{error}</p>
               </div>
             )}
 
-            {/* Loading State */}
+            {}
             {loading && (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -100,7 +99,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </div>
             )}
 
-            {/* Messages List */}
+            {}
             {!loading && messages.length > 0 && (
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {messages.map((message) => (
@@ -152,7 +151,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </div>
             )}
 
-            {/* Empty state */}
+            {}
             {!loading && messages.length === 0 && !error && (
               <div className="text-center py-8">
                 <div className="text-gray-400 text-4xl mb-4">📄</div>
@@ -163,11 +162,11 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
             )}
           </div>
 
-          {/* Footer */}
+          {}
           <div className="bg-gray-50 px-6 py-3">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">
-                {loading ? 'Loading...' : 
+                {loading ? 'Loading...' :
                  error ? 'Error occurred' :
                  `${messages.length} message${messages.length !== 1 ? 's' : ''} found`}
               </p>

@@ -1,9 +1,9 @@
 import apiClient from '../../../shared/services/apiClient';
 import type { Alert } from '../types/alertsdashboard.types';
-import type { 
-  ManualTriageDto, 
-  UpdateAlertDto, 
-  CloseAlertDto, 
+import type {
+  ManualTriageDto,
+  UpdateAlertDto,
+  CloseAlertDto,
   AlertStatus,
   AlertsFilter,
   ActionHistory
@@ -12,7 +12,6 @@ import type {
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
 
-  // Error handling utility
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
@@ -29,7 +28,6 @@ class TriageService {
     return new Error(`Failed to ${operation}`);
   }
 
-  // Response validation utility
   private validateAlertResponse(data: unknown): Alert {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid alert data received');
@@ -44,7 +42,6 @@ class TriageService {
     return data as Alert;
   }
 
-  // GET /api/v1/triage/alerts
   async getAlerts(filters: AlertsFilter = {}): Promise<{
     alerts: Alert[];
     pagination: {
@@ -66,14 +63,12 @@ class TriageService {
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-    
-    // Request full details including alert_data for risk score calculation
+
     params.append('includeData', 'true');
 
     const queryString = params.toString();
     const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
 
-    // Get the raw backend response
     const backendResponse = await apiClient.get<{
       data: Alert[];
       page: number;
@@ -82,23 +77,17 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    // Transform to expected frontend format
     const alerts = backendResponse.data || [];
-    
-    // Optionally fetch detailed data for each alert to get risk scores
-    // This adds extra API calls but ensures we have complete data
+
     const detailedAlerts = await Promise.all(
       alerts.map(async (alert) => {
         try {
-          // Try to get detailed alert data
           const detailedAlert = await this.getAlertById(alert.alert_id);
-          // Preserve alert_type from list response if detailed response doesn't have it
           return {
             ...detailedAlert,
             alert_type: detailedAlert.alert_type || alert.alert_type,
           };
         } catch (error) {
-          // If individual fetch fails, return the basic alert
           console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
           return alert;
         }
@@ -116,7 +105,6 @@ class TriageService {
     };
   }
 
-  // GET /api/v1/triage/alerts/filter-options
   async getFilterOptions(): Promise<{
     priorities: string[];
     statuses: string[];
@@ -136,7 +124,6 @@ class TriageService {
     }
   }
 
-  // GET /api/v1/triage/alerts/:alertId
   async getAlertById(alertId: string): Promise<Alert> {
     try {
       const response = await apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
@@ -146,7 +133,6 @@ class TriageService {
     }
   }
 
-  // GET /api/v1/triage/alerts/:alertId/action-history
   async getAlertActionHistory(alertId: string): Promise<ActionHistory[]> {
     try {
       const response = await apiClient.get<{ history: ActionHistory[] }>(
@@ -158,7 +144,6 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId - Manual Triage
   async performManualTriage(alertId: string, data: ManualTriageDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
@@ -171,7 +156,6 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId - Update Alert (legacy)
   async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
@@ -184,7 +168,6 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId/close
   async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
     try {
       const data: CloseAlertDto = { status, reason: notes };
@@ -195,12 +178,11 @@ class TriageService {
     }
   }
 
-  // Get alerts with NALT reportStatus for case creation
   async getNALTAlerts(search?: string): Promise<Alert[]> {
     try {
       const filters: AlertsFilter = {
         reportStatus: 'NALT',
-        limit: 100, // Get a reasonable number of NALT alerts
+        limit: 100,
         page: 1,
       };
 
@@ -215,8 +197,6 @@ class TriageService {
     }
   }
 
-  // Removed convert-to-case functionality from frontend
-  // Removed getTransactionMessages - now extracted from alert data using transactionUtils
 }
 
 export default new TriageService();

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import { Link, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 import type { BreadcrumbItem } from '../../types/navigation.types';
 
 interface BreadcrumbProps {
@@ -20,7 +21,6 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
       currentPath += `/${segment}`;
       const isLast = index === pathSegments.length - 1;
 
-      // Capitalize and format segment name
       const name =
         segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
 
@@ -44,11 +44,10 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
     <nav className={`flex ${className}`} aria-label="Breadcrumb">
       <ol role="list" className="flex items-center space-x-4">
         {breadcrumbItems.map((item, index) => (
-          <li key={`${item.name}-${index}`}>
+          <li key={uuidv4()}>
             <div className="flex items-center">
-              {/* {index === 0 && (
-                <HomeIcon className="h-5 w-5 flex-shrink-0 text-gray-400 mr-2" aria-hidden="true" />
-              )} */}
+              {
+}
               {index > 0 && (
                 <ChevronRightIcon
                   className="h-5 w-5 flex-shrink-0 text-gray-400 mr-4"

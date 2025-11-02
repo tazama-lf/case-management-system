@@ -9,18 +9,17 @@ interface ErrorFallbackProps {
   showRetry?: boolean;
 }
 
-const ErrorFallback: React.FC<ErrorFallbackProps> = ({ 
-  error, 
-  resetError, 
+const ErrorFallback: React.FC<ErrorFallbackProps> = ({
+  error,
+  resetError,
   title = "Something went wrong",
   message,
-  showRetry = true 
+  showRetry = true
 }) => {
   const getErrorMessage = () => {
     if (message) return message;
-    
+
     if (error?.message) {
-      // Handle common API errors with user-friendly messages
       if (error.message.includes('Network Error') || error.message.includes('fetch')) {
         return "Unable to connect to the server. Please check your internet connection and try again.";
       }
@@ -36,10 +35,10 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
       if (error.message.includes('500') || error.message.includes('Internal Server Error')) {
         return "A server error occurred. Please try again later or contact support if the problem persists.";
       }
-      
+
       return error.message;
     }
-    
+
     return "An unexpected error occurred. Please try again.";
   };
 
@@ -49,15 +48,15 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
         <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
           <ExclamationTriangleIcon className="h-8 w-8 text-red-600" aria-hidden="true" />
         </div>
-        
+
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           {title}
         </h3>
-        
+
         <p className="text-sm text-gray-600 mb-6">
           {getErrorMessage()}
         </p>
-        
+
         {showRetry && resetError && (
           <button
             onClick={resetError}
@@ -67,7 +66,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
             Try Again
           </button>
         )}
-        
+
         {process.env.NODE_ENV === 'development' && error?.stack && (
           <details className="mt-6 text-left">
             <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">

@@ -17,7 +17,6 @@ class SystemConfigService {
       return response;
     } catch (error) {
       console.error('Failed to fetch system config:', error);
-      // Fallback to default configuration
       return {
         triageType: 'MANUAL',
         confidenceThreshold: 95,

@@ -22,13 +22,11 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
 
-    // Default headers
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,
     };
 
-    // Add authentication header if not skipped
     if (!skipAuth) {
       const authHeaders = authService.getAuthHeader();
       Object.assign(headers, authHeaders);
@@ -42,12 +40,9 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
-      // Handle token expiration
       if (response.status === 401 && !skipAuth) {
-        // Try to refresh token
         const refreshed = await authService.refreshToken();
         if (refreshed) {
-          // Retry the request with new token
           const newAuthHeaders = authService.getAuthHeader();
           const retryConfig: RequestInit = {
             ...config,
@@ -59,7 +54,6 @@ class ApiClient {
           const retryResponse = await fetch(url, retryConfig);
           return this.handleResponse<T>(retryResponse);
         } else {
-          // Refresh failed, logout user
           authService.logout();
           window.location.href = '/login';
           throw new Error('Session expired. Please login again.');
@@ -89,7 +83,6 @@ class ApiClient {
     return response.text() as unknown as T;
   }
 
-  // HTTP methods
   async get<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
@@ -134,7 +127,6 @@ class ApiClient {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 
-  // File upload
   async upload<T>(
     endpoint: string,
     formData: FormData,
@@ -143,11 +135,9 @@ class ApiClient {
     const { skipAuth = false, ...fetchOptions } = options || {};
 
     const headers: HeadersInit = {
-      // Don't set Content-Type for FormData, let browser set it with boundary
       ...fetchOptions.headers,
     };
 
-    // Remove Content-Type if it was set
     if (headers && 'Content-Type' in headers) {
       delete (headers as any)['Content-Type'];
     }
@@ -162,7 +152,6 @@ class ApiClient {
   }
 }
 
-// Create singleton instance
 const apiClient = new ApiClient();
 
 export default apiClient;

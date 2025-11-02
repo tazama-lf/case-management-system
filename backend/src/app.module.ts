@@ -19,6 +19,7 @@ import { FlowableModule } from './flowable/flowable.module';
 import { WorkQueueModule } from './work-queue/work-queue.module';
 import { NotificationModule } from './notification/notification.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
+import { ReportsModule } from './report/report.module';
 import { validate } from './config/env.validation';
 import {ConfigManagementModule} from "./config-management/config-management.module";
 
@@ -30,7 +31,7 @@ import {ConfigManagementModule} from "./config-management/config-management.modu
       validate,
     }),
     EventEmitterModule.forRoot(),
-    SharedModule, // Add this before other modules
+    SharedModule, 
     PrismaModule,
     CaseWorkflowModule,
     FlowableModule,
@@ -46,6 +47,7 @@ import {ConfigManagementModule} from "./config-management/config-management.modu
     WorkQueueModule,
     NotificationModule,
     NotificationPreferencesModule,
+    ReportsModule,
   ],
   providers: [
     PrismaService,

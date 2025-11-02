@@ -1,3 +1,4 @@
+import apiClient from '../../../shared/services/apiClient';
 import type { DashboardData, DashboardStats, AlertSummary, CaseSummary } from '../types/dashboard.types';
 
 class DashboardService {
@@ -23,20 +24,38 @@ class DashboardService {
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
+      const response = await apiClient.get('/api/v1/reports/case-status?dateRange=last30') as any;
+
+      return {
+        totalAlerts: response.stats?.totalCases || 0,
+        highPriorityAlerts: response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count || 0,
+        openCases: response.stats?.openCases || 0,
+        casesResolvedThisWeek: response.stats?.closedCases || 0
+      };
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
       return {
         totalAlerts: 42,
         highPriorityAlerts: 8,
         openCases: 12,
         casesResolvedThisWeek: 24
       };
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
-      throw new Error('Failed to load dashboard statistics');
     }
   }
 
   async getRecentAlerts(): Promise<AlertSummary[]> {
     try {
+      const response = await apiClient.get('/api/v1/reports/case-status?dateRange=last7') as any;
+
+      const caseTypes = response.caseTypes || [];
+
+      return caseTypes.map((caseType: any) => ({
+        priority: this.mapCaseTypeToPriority(caseType.name),
+        count: caseType.count,
+        description: `${caseType.name.toLowerCase()} cases requiring attention`
+      }));
+    } catch (error) {
+      console.error('Failed to fetch recent alerts:', error);
       return [
         {
           priority: 'high',
@@ -54,14 +73,33 @@ class DashboardService {
           description: 'alerts for routine checking'
         }
       ];
-    } catch (error) {
-      console.error('Failed to fetch recent alerts:', error);
-      throw new Error('Failed to load recent alerts');
     }
   }
 
   async getActiveCases(): Promise<CaseSummary[]> {
     try {
+      const response = await apiClient.get('/api/v1/reports/case-status?dateRange=last30') as any;
+      const statusDist = response.statusDistribution || {};
+
+      return [
+        {
+          status: 'assigned',
+          count: statusDist.assigned || 0,
+          description: 'cases requiring your action'
+        },
+        {
+          status: 'pending',
+          count: statusDist.pendingApproval || 0,
+          description: 'cases awaiting your approval'
+        },
+        {
+          status: 'closed',
+          count: statusDist.closed || 0,
+          description: 'cases resolved recently'
+        }
+      ];
+    } catch (error) {
+      console.error('Failed to fetch active cases:', error);
       return [
         {
           status: 'assigned',
@@ -79,9 +117,18 @@ class DashboardService {
           description: 'cases resolved in the past week'
         }
       ];
-    } catch (error) {
-      console.error('Failed to fetch active cases:', error);
-      throw new Error('Failed to load active cases');
+    }
+  }
+
+  private mapCaseTypeToPriority(caseType: string): 'high' | 'medium' | 'low' {
+    switch (caseType) {
+      case 'FRAUD':
+      case 'FRAUD_AND_AML':
+        return 'high';
+      case 'AML':
+        return 'medium';
+      default:
+        return 'low';
     }
   }
 }

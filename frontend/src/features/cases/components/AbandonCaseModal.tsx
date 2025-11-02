@@ -27,7 +27,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
 
     setIsSubmitting(true);
     setErrors({});
-    
+
     try {
       await onAbandon(caseData.id, reason.trim());
       setReason('');
@@ -85,14 +85,14 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
                   Warning: This action cannot be undone
                 </h4>
                 <p className="text-sm text-red-700">
-                  Abandoning this case will permanently remove it from active investigation. 
+                  Abandoning this case will permanently remove it from active investigation.
                   All associated tasks will be cancelled and the case will be marked as abandoned.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Important note about draft status requirement */}
+          {}
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
             <p className="text-sm text-yellow-800">
               <strong>Note:</strong> Only cases in DRAFT status can be abandoned. The case must have a "Complete New Case" task associated with it.
@@ -131,7 +131,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
               )}
             </div>
 
-            {/* Submit Error */}
+            {}
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>

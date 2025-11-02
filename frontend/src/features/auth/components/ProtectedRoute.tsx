@@ -2,14 +2,15 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import authService from '../services/authService';
+import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
   requireBackendAccess?: boolean;
-  requireInvestigator?: boolean; // Require CMS_INVESTIGATOR claim
-  requireSupervisor?: boolean; // Require CMS_SUPERVISOR claim
-  requireAdmin?: boolean; // Require alert-triage or CMS-TEST-ROLE claim
+  requireInvestigator?: boolean;
+  requireSupervisor?: boolean;
+  requireAdmin?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -20,48 +21,30 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireSupervisor = false,
   requireAdmin = false,
 }) => {
-  const { 
-    isAuthenticated, 
-    user, 
-    loading, 
-    hasInvestigatorRole, 
-    hasSupervisorRole, 
-    hasAdminRole 
+  const {
+    isAuthenticated,
+    user,
+    loading,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasAdminRole
   } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute Debug:', {
-    isAuthenticated,
-    loading,
-    requireBackendAccess,
-    requiredRoles,
-    userExists: !!user,
-    path: location.pathname
-  });
-
-  // Show loading spinner while checking authentication
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log('ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check backend access if required
   if (requireBackendAccess && !authService.validateBackendAccess()) {
-    console.log('ProtectedRoute: Backend access validation failed');
     const hasAlertTriage = authService.hasAlertTriageRole();
     const hasCMSTestRole = authService.hasCMSTestRole();
     const hasInvestigator = authService.hasInvestigatorRole();
     const hasSupervisor = authService.hasSupervisorRole();
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md">
@@ -95,7 +78,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </p>
           <button
             onClick={() => window.history.back()}
-            className="btn btn-primary"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
           </button>
@@ -104,7 +87,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check specific role requirements
   if (requireInvestigator && !hasInvestigatorRole()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -117,7 +99,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </p>
           <button
             onClick={() => window.history.back()}
-            className="btn btn-primary"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
           </button>
@@ -138,7 +120,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </p>
           <button
             onClick={() => window.history.back()}
-            className="btn btn-primary"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
           </button>
@@ -159,7 +141,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </p>
           <button
             onClick={() => window.history.back()}
-            className="btn btn-primary"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
           </button>
@@ -168,25 +150,64 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check role permissions if required roles are specified
   if (requiredRoles.length > 0 && user) {
-    const hasRequiredRole = requiredRoles.some(
-      (role) => user.roles.includes(role) || user.roles.includes('admin'), // Admin has access to everything
-    );
+    // Use the auth service methods to check backend claims instead of user.roles
+    const hasRequiredRole = requiredRoles.some(role => {
+      // Check each required role using the appropriate auth service method
+      switch (role) {
+        case 'alert-triage':
+          return authService.hasAlertTriageRole();
+        case 'CMS_SUPERVISOR':
+          return authService.hasSupervisorRole();
+        case 'CMS_INVESTIGATOR':
+          return authService.hasInvestigatorRole();
+        case 'CMS-TEST-ROLE':
+          return authService.hasCMSTestRole();
+        default:
+          // For any other roles, check backend claims directly
+          return authService.hasBackendClaim(role);
+      }
+    });
 
     if (!hasRequiredRole) {
       return (
         <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center max-w-md">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Access Denied
             </h2>
             <p className="text-gray-600 mb-4">
-              You don't have permission to access this page.
+              You don't have the required role to access this page.
+            </p>
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+              <div className="text-sm text-red-800">
+                <p className="font-medium mb-2">Required Roles:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {requiredRoles.map(role => (
+                    <li key={role}>
+                      {role}: {(() => {
+                        switch (role) {
+                          case 'alert-triage':
+                            return authService.hasAlertTriageRole() ? '✓ Available' : '✗ Missing';
+                          case 'CMS_SUPERVISOR':
+                            return authService.hasSupervisorRole() ? '✓ Available' : '✗ Missing';
+                          case 'CMS_INVESTIGATOR':
+                            return authService.hasInvestigatorRole() ? '✓ Available' : '✗ Missing';
+                          default:
+                            return authService.hasBackendClaim(role) ? '✓ Available' : '✗ Missing';
+                        }
+                      })()}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Please contact your administrator to get the required roles added to your account.
             </p>
             <button
               onClick={() => window.history.back()}
-              className="btn btn-primary"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Go Back
             </button>

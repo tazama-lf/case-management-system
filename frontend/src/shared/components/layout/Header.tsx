@@ -19,7 +19,7 @@ const Header: React.FC<HeaderComponentProps> = ({
     <header className="sticky top-0 z-40 bg-white">
       <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Mobile menu button - only visible on mobile/tablet screens */}
+          {}
           <div className="flex items-center md:hidden">
             {setSidebarOpen && (
               <button
@@ -37,7 +37,7 @@ const Header: React.FC<HeaderComponentProps> = ({
             )}
           </div>
 
-          {/* Title and Breadcrumbs */}
+          {}
           <div className="flex flex-1 items-center lg:ml-0">
             <div className="hidden lg:block">
               {title ? (
@@ -55,9 +55,9 @@ const Header: React.FC<HeaderComponentProps> = ({
             </div>
           </div>
 
-          {/* Right side - notifications and user menu */}
+          {}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-            {/* User info on larger screens */}
+            {}
             <div className="hidden lg:flex lg:items-center lg:gap-x-2">
               <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-gray-700">
@@ -78,7 +78,7 @@ const Header: React.FC<HeaderComponentProps> = ({
           </div>
         </div>
 
-        {/* Mobile breadcrumbs */}
+        {}
         <div className="lg:hidden pb-4">
           {title && (
             <h1 className="text-xl font-semibold text-gray-900 mb-2">

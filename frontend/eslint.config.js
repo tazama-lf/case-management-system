@@ -15,10 +15,6 @@ export default tseslint.config([
       ecmaVersion: 2020,
       globals: globals.browser,
       sourceType: 'module',
-      // Explicitly set tsconfigRootDir so typescript-eslint can correctly
-      // resolve the TS project when multiple tsconfig roots (frontend & backend)
-      // exist in the monorepo. Without this you may see the error:
-      // "Parsing error: No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs are present"
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
       },
@@ -33,7 +29,6 @@ export default tseslint.config([
         'warn',
         { allowConstantExport: true },
       ],
-      // Relax some strict rules for development
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_' },

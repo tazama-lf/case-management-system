@@ -1,4 +1,5 @@
 import React from 'react';
+import { useFilters } from '../hooks/useFilters';
 
 interface FiltersPanelProps {
   caseType: string;
@@ -17,6 +18,30 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
   onApply,
   onReset
 }) => {
+  const { data: filtersData, isLoading } = useFilters();
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="text-sm font-medium text-gray-700 mb-3">Additional Filters</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
       <div className="text-sm font-medium text-gray-700 mb-3">Additional Filters</div>
@@ -29,9 +54,11 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="">All Types</option>
-            <option value="FRAUD">Fraud</option>
-            <option value="AML">AML</option>
-            <option value="FRAUD_AND_AML">Fraud and AML</option>
+            {filtersData?.caseTypes.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -43,10 +70,11 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="">All Priorities</option>
-            <option value="LOW">Low</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HIGH">High</option>
-            <option value="CRITICAL">Critical</option>
+            {filtersData?.priorities.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -58,8 +86,11 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="">All Investigators</option>
-            <option value="name">Gerald Limbando</option>
-            <option value="name">Jay Smith</option>
+            {filtersData?.investigators.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>

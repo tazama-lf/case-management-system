@@ -16,7 +16,7 @@ const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({ 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-      {/* Case Information */}
+      {}
       <div className="space-y-3">
         <div className="text-sm font-semibold text-gray-700">Case Information</div>
         <SectionCard>
@@ -48,7 +48,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </SectionCard>
       </div>
 
-      {/* Creditor Information */}
+      {}
       <div className="space-y-3">
         <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
         <SectionCard>
@@ -63,7 +63,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </SectionCard>
       </div>
 
-      {/* Block/Allow List Status */}
+      {}
       <div className="space-y-3">
         <div className="text-sm font-semibold text-gray-700">Block/Allow List Status</div>
         <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
@@ -73,7 +73,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </select>
       </div>
 
-      {/* Debtor Information */}
+      {}
       <div className="space-y-3 md:col-span-2">
         <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
         <SectionCard>
@@ -88,7 +88,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </SectionCard>
       </div>
 
-      {/* Recent Activity */}
+      {}
       <div className="space-y-3 md:col-span-2">
         <div className="text-sm font-semibold text-gray-700">Recent Activity</div>
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">

@@ -48,7 +48,7 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-lg rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        {/* Header */}
+        {}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900">Create New Discussion Thread</h3>
           <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Close">
@@ -56,7 +56,7 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
           </button>
         </div>
 
-        {/* Content */}
+        {}
         <div className="px-6 py-4 overflow-y-auto flex-1">
           <div className="space-y-4">
             <div>
@@ -102,7 +102,7 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
           </div>
         </div>
 
-        {/* Footer */}
+        {}
         <div className="flex items-center justify-end gap-2 border-t px-6 py-3">
           <button onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>
           <button

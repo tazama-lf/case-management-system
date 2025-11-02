@@ -7,11 +7,11 @@ interface DashboardSectionProps {
   children: React.ReactNode;
 }
 
-const DashboardSection: React.FC<DashboardSectionProps> = ({ 
-  title, 
-  subtitle, 
-  viewAllHref, 
-  children 
+const DashboardSection: React.FC<DashboardSectionProps> = ({
+  title,
+  subtitle,
+  viewAllHref,
+  children
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

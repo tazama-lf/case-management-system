@@ -76,8 +76,8 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
             >
               <option value="">Select New Status</option>
               {statusOptions.map((option) => (
-                <option 
-                  key={option.value} 
+                <option
+                  key={option.value}
                   value={option.value}
                   disabled={option.value === task.status}
                 >

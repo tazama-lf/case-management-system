@@ -31,7 +31,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        {/* Header */}
+        {}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
@@ -56,7 +56,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
           </button>
         </div>
 
-        {/* Tabs */}
+        {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
             {[
@@ -79,7 +79,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
           </div>
         )}
 
-        {/* Content */}
+        {}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />

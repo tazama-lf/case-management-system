@@ -73,10 +73,10 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Resuming this case will move it back to "In Progress" status. 
+            Resuming this case will move it back to "In Progress" status.
             The investigation task will be unblocked and assigned to the investigator.
           </p>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <p className="text-sm text-blue-800">
               <strong>Note:</strong> All team members will be notified of the case resumption.

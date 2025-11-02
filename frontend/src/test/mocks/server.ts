@@ -2,7 +2,6 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import type { Alert, ActionHistory } from '../../features/alerts/types/triage.types';
 
-// Mock data
 const mockAlerts: Alert[] = [
   {
     alert_id: 'ALERT-001',
@@ -77,9 +76,7 @@ const mockActionHistory: ActionHistory[] = [
   },
 ];
 
-// API handlers
 export const handlers = [
-  // Get alerts with filtering and pagination
   http.get('/api/v1/triage/alerts', ({ request }) => {
     const url = new URL(request.url);
     const search = url.searchParams.get('search') || '';
@@ -89,7 +86,6 @@ export const handlers = [
 
     let filteredAlerts = [...mockAlerts];
 
-    // Apply search filter
     if (search) {
       filteredAlerts = filteredAlerts.filter(
         (alert) =>
@@ -98,17 +94,14 @@ export const handlers = [
       );
     }
 
-    // Apply priority filter
     if (priority) {
       filteredAlerts = filteredAlerts.filter((alert) => alert.priority === priority);
     }
 
-    // Apply pagination
     const start = (page - 1) * limit;
     const end = start + limit;
     const paginatedAlerts = filteredAlerts.slice(start, end);
 
-    // Match backend response format
     const response = {
       data: paginatedAlerts,
       page,
@@ -120,7 +113,6 @@ export const handlers = [
     return HttpResponse.json(response);
   }),
 
-  // Get single alert
   http.get('/api/v1/triage/alerts/:alertId', ({ params }) => {
     const { alertId } = params;
     const alert = mockAlerts.find((a) => a.alert_id === alertId);
@@ -135,7 +127,6 @@ export const handlers = [
     return HttpResponse.json(alert);
   }),
 
-  // Get alert action history
   http.get('/api/v1/triage/alerts/:alertId/history', ({ params }) => {
     const { alertId } = params;
     const history = mockActionHistory.filter((h) => h.entity_name === alertId);
@@ -143,11 +134,10 @@ export const handlers = [
     return HttpResponse.json(history);
   }),
 
-  // Manual triage endpoint
   http.patch('/api/v1/triage/alerts/:alertId', async ({ params, request }) => {
     const { alertId } = params;
     const updates = await request.json() as any;
-    
+
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
       return HttpResponse.json(
@@ -156,9 +146,7 @@ export const handlers = [
       );
     }
 
-    // Check if this is a manual triage request (has specific fields)
     if (updates.priorityScore !== undefined || updates.predictionOutcome !== undefined) {
-      // This is a manual triage request - validate AlertType
       if (updates.alertType && !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)) {
         return HttpResponse.json(
           {
@@ -171,7 +159,7 @@ export const handlers = [
           { status: 400 }
         );
       }
-      
+
       const updatedAlert = {
         ...mockAlerts[alertIndex],
         priority: updates.priority || mockAlerts[alertIndex].priority,
@@ -179,10 +167,9 @@ export const handlers = [
         alert_type: updates.alertType || mockAlerts[alertIndex].alert_type,
         prediction_outcome: updates.predictionOutcome,
       };
-      
+
       mockAlerts[alertIndex] = updatedAlert;
-      
-      // Add action history entry
+
       const newHistoryEntry: ActionHistory = {
         audit_log_id: `LOG-${Date.now()}`,
         user_id: 'test-user@example.com',
@@ -193,10 +180,9 @@ export const handlers = [
         performed_at: new Date().toISOString(),
       };
       mockActionHistory.push(newHistoryEntry);
-      
+
       return HttpResponse.json(updatedAlert);
     } else {
-      // Regular alert update
       mockAlerts[alertIndex] = {
         ...mockAlerts[alertIndex],
         ...updates,
@@ -205,10 +191,9 @@ export const handlers = [
     }
   }),
 
-  // Convert alert to case
   http.post('/api/v1/triage/alerts/:alertId/convert-to-case', async ({ params }) => {
     const { alertId } = params;
-    
+
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
       return HttpResponse.json(
@@ -217,7 +202,6 @@ export const handlers = [
       );
     }
 
-    // Update alert with case ID
     const caseId = `CASE-${Date.now()}`;
     mockAlerts[alertIndex] = {
       ...mockAlerts[alertIndex],
@@ -230,10 +214,9 @@ export const handlers = [
     });
   }),
 
-  // Close alert
   http.patch('/api/v1/triage/alerts/:alertId/close', async ({ params }) => {
     const { alertId } = params;
-    
+
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
       return HttpResponse.json(
@@ -242,15 +225,10 @@ export const handlers = [
       );
     }
 
-    // Update alert (no status to update since alerts don't have status anymore)
-    // mockAlerts[alertIndex] = {
-    //   ...mockAlerts[alertIndex],
-    // };
 
     return HttpResponse.json(mockAlerts[alertIndex]);
   }),
 
-  // Error simulation endpoints for testing
   http.get('/api/v1/triage/alerts/error-test', () => {
     return HttpResponse.json(
       { error: 'Internal server error' },
@@ -259,12 +237,9 @@ export const handlers = [
   }),
 
   http.get('/api/v1/triage/alerts/timeout-test', () => {
-    // Simulate network timeout
     return new Promise(() => {
-      // Never resolves, simulating timeout
     });
   }),
 ];
 
-// Create and export the server
 export const server = setupServer(...handlers);

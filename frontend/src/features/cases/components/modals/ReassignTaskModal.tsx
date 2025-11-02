@@ -24,7 +24,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
   useEffect(() => {
     if (open) {
-      console.log('ReassignTaskModal opened, fetching investigators');
       fetchInvestigators();
     }
   }, [open]);
@@ -33,19 +32,14 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
     setLoading(true);
     try {
       const data = await authService.fetchAllInvestigators();
-      console.log('Fetched investigators from API:', data);
-      
-      // Use API data if it's not empty, otherwise use mock data
+
       if (data && data.length > 0) {
-        console.log('Using API data for investigators');
         setInvestigators(data);
       } else {
-        console.log('API returned empty data, using mock data');
         useMockData();
       }
     } catch (error) {
       console.error('Failed to fetch investigators:', error);
-      console.log('Using mock data due to API error');
       useMockData();
     } finally {
       setLoading(false);
@@ -53,7 +47,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   };
 
   const useMockData = () => {
-    // Using the exact same mock data from the backend auth-helper.service.ts
     const mockInvestigators: Investigator[] = [
       { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
       { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
@@ -61,40 +54,36 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
       { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
       { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
     ];
-    console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
   };
 
   if (!open || !task) return null;
 
   const canConfirm = Boolean(assignee && justification.trim());
-  console.log('ReassignTaskModal canConfirm:', canConfirm, 'assignee:', assignee, 'justification:', justification);
 
   const handleSubmit = async () => {
     if (!canConfirm || isSubmitting) {
       console.warn('Cannot reassign task: form not valid or already submitting');
       return;
     }
-    
+
     if (!task) {
       console.warn('Cannot reassign task: no task selected');
       return;
     }
-    
+
     if (!assignee) {
       console.warn('Cannot reassign task: assignee is empty');
       return;
     }
-    
+
     if (!justification.trim()) {
       console.warn('Cannot reassign task: justification is empty');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
-      console.log('Reassigning task:', { taskId: task.id, assignee, justification });
-      console.log('Calling onReassign callback with:', { task, assignee, justification });
       await Promise.resolve(onReassign(task, assignee, justification));
       onClose();
     } catch (error) {
@@ -142,7 +131,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   <select
                     value={assignee}
                     onChange={(e) => {
-                      console.log('Assignee selected:', e.target.value);
                       setAssignee(e.target.value);
                     }}
                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -150,10 +138,8 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   >
                     <option value="">Select Investigator</option>
                     {investigators
-                      .filter(investigator => investigator.id !== task.assignee) // Don't show current assignee in the list
+                      .filter(investigator => investigator.id !== task.assignee)
                       .map((investigator) => {
-                        console.log('Rendering investigator option:', investigator);
-                        // Display the investigator's name and username instead of just the ID
                         return (
                           <option key={investigator.id} value={investigator.id}>
                             {investigator.firstName} {investigator.lastName} ({investigator.username})
@@ -200,8 +186,8 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
               disabled={isSubmitting}
             >

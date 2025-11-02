@@ -7,7 +7,6 @@ import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsFilter, ManualTriageDto } from '../types/triage.types';
 import type { AlertStatus } from '../types/triage.types';
 
-// Query keys for consistent cache management
 export const alertsQueryKeys = {
   all: ['alerts'] as const,
   lists: () => [...alertsQueryKeys.all, 'list'] as const,
@@ -18,11 +17,9 @@ export const alertsQueryKeys = {
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
-// Enhanced useAlerts hook with React Query
 export const useAlerts = (filters: AlertsFilter = {}) => {
-  // Debounce search to avoid excessive API calls
   const [debouncedSearch] = useDebounce(filters.search, 300);
-  
+
   const debouncedFilters = useMemo(() => ({
     ...filters,
     search: debouncedSearch,
@@ -39,8 +36,8 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
     queryKey: alertsQueryKeys.list(debouncedFilters),
     queryFn: () => triageService.getAlerts(debouncedFilters),
     enabled: true,
-    staleTime: 30000, // 30 seconds
-    gcTime: 300000, // 5 minutes
+    staleTime: 30000,
+    gcTime: 300000,
   });
 
   return {
@@ -60,7 +57,6 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
   };
 };
 
-// Enhanced useAlertDetails hook
 export const useAlertDetails = (alertId: string | null) => {
   const {
     data: alert,
@@ -71,7 +67,7 @@ export const useAlertDetails = (alertId: string | null) => {
     queryKey: alertsQueryKeys.detail(alertId!),
     queryFn: () => triageService.getAlertById(alertId!),
     enabled: !!alertId,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 
   return {
@@ -82,7 +78,6 @@ export const useAlertDetails = (alertId: string | null) => {
   };
 };
 
-// Enhanced useAlertActionHistory hook
 export const useAlertActionHistory = (alertId: string | null) => {
   const {
     data: actionHistory,
@@ -92,7 +87,7 @@ export const useAlertActionHistory = (alertId: string | null) => {
     queryKey: alertsQueryKeys.actionHistory(alertId!),
     queryFn: () => triageService.getAlertActionHistory(alertId!),
     enabled: !!alertId,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 
   return {
@@ -102,7 +97,6 @@ export const useAlertActionHistory = (alertId: string | null) => {
   };
 };
 
-// Enhanced useAlertOperations hook with React Query mutations
 export const useAlertOperations = () => {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useNotifications();
@@ -112,16 +106,13 @@ export const useAlertOperations = () => {
       triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
       showSuccess('Alert closed successfully');
-      // Invalidate and refetch alerts list
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
-      // Update the specific alert in cache
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
+
+      const caseId = data.case_id ||
         queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
@@ -142,9 +133,8 @@ export const useAlertOperations = () => {
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
       );
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
+
+      const caseId = data.case_id ||
         queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
@@ -178,7 +168,6 @@ export const useAlertOperations = () => {
     isClosingAlert: closeAlertMutation.isPending,
     isUpdatingAlert: updateAlertMutation.isPending,
     isPerformingManualTriage: manualTriageMutation.isPending,
-    // Legacy support for existing components
     operationStates: {
       closingAlert: new Set(closeAlertMutation.isPending ? ['pending'] : []),
       updatingAlert: new Set(updateAlertMutation.isPending ? ['pending'] : []),
@@ -188,9 +177,7 @@ export const useAlertOperations = () => {
   };
 };
 
-// Hook for filter options
 export const useAlertFilterOptions = () => {
-  // For now, return static filter options since backend doesn't support this endpoint yet
   const filterOptions = {
     priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],

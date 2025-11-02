@@ -16,7 +16,6 @@ const NavigationProvider: React.FC<NavigationProviderProps> = ({
   const { user: authUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
 
-  // Sync with auth context user
   useEffect(() => {
     setUser(authUser);
   }, [authUser]);

@@ -14,19 +14,24 @@ import UpdateTaskStatusModal from '../../cases/components/modals/UpdateTaskStatu
 
 
 const WorkQueueDashboard: React.FC = () => {
-  // State for filters and search
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  
-  // Data state
+
   const [tasks, setTasks] = useState<UnifiedWorkQueueTask[]>([]);
+
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'UNASSIGNED', label: 'Unassigned' },
+    { value: 'ASSIGNED', label: 'Assigned' },
+    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'SUSPENDED', label: 'Suspended' },
+  ];
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Enhanced error handling
+
   const { error, handleError, clearError, getErrorDisplay } = useWorkQueueErrorHandler();
 
-  // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
@@ -34,16 +39,14 @@ const WorkQueueDashboard: React.FC = () => {
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
-  // Available candidate groups for queue selection
   const candidateGroups = flowableWorkQueueService.getCandidateGroups();
 
 
-  // Load work queue data
   useEffect(() => {
     const loadWorkQueue = async () => {
       setIsLoading(true);
       clearError();
-      
+
       try {
         const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
         setTasks(workQueueTasks);
@@ -58,7 +61,7 @@ const WorkQueueDashboard: React.FC = () => {
     loadWorkQueue();
   }, [candidateGroupFilter, clearError, handleError]);
 
-  // Filter tasks based on search and status
+
   const filteredTasks = tasks.filter((task: UnifiedWorkQueueTask) => {
     const matchesSearch = search === '' || [
       task.id,
@@ -91,15 +94,15 @@ const WorkQueueDashboard: React.FC = () => {
     setUnassignModalOpen(true);
   };
 
-  // Modal action handlers
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
-    // Add validation to check if task ID is valid
+
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, _notes?: string) => {
+
     if (!task || !task.id) {
       console.error('Cannot assign task: task or task ID is missing', { task });
       handleError(new Error('Task ID is required for assignment'));
       return;
     }
-    
+
     if (!assignee) {
       console.error('Cannot assign task: assignee is missing', { task, assignee });
       handleError(new Error('Assignee is required for assignment'));
@@ -108,10 +111,10 @@ const WorkQueueDashboard: React.FC = () => {
 
     try {
       await flowableWorkQueueService.assignTask(task.id, assignee);
-      
+
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
-      
+
       setAssignModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
@@ -119,21 +122,16 @@ const WorkQueueDashboard: React.FC = () => {
     }
   };
 
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, _justification: string) => {
     try {
-      // For work queue dashboard, we need to use the flowable service for reassignment
       await flowableWorkQueueService.assignTask(task.id, assignee);
-      
-      // Refresh the task list
+
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
-      
-      // Close the modal and clear selected task
+
       setReassignModalOpen(false);
       setSelectedTask(null);
-      
-      // Show success message (in a real implementation, you might want to use a toast notification)
-      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
+
     } catch (error) {
       handleError(error);
     }
@@ -142,10 +140,10 @@ const WorkQueueDashboard: React.FC = () => {
   const handleModalUnassign = async (taskId: string) => {
     try {
       await flowableWorkQueueService.unassignTask(taskId);
-      
+
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
-      
+
       setUnassignModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
@@ -163,14 +161,13 @@ const WorkQueueDashboard: React.FC = () => {
     setUpdateStatusModalOpen(true);
   };
 
-  // Modal action handlers for new modals
   const handleModalCloseTask = async (task: UnifiedWorkQueueTask, notes: string) => {
     try {
       await flowableWorkQueueService.completeTask(task.id, { notes });
-      
+
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
-      
+
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
@@ -182,21 +179,21 @@ const WorkQueueDashboard: React.FC = () => {
     try {
       const statusMapping = {
         'Unassigned': 'UNASSIGNED',
-        'Assigned': 'ASSIGNED', 
+        'Assigned': 'ASSIGNED',
         'In Progress': 'IN_PROGRESS',
         'Blocked': 'SUSPENDED',
         'Complete': 'COMPLETED'
       };
-      
+
       const mappedStatus = statusMapping[newStatus as keyof typeof statusMapping];
-      
+
       if (mappedStatus === 'COMPLETED') {
         await flowableWorkQueueService.completeTask(task.id, { notes });
       }
-      
+
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
-      
+
       setUpdateStatusModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
@@ -209,11 +206,11 @@ const WorkQueueDashboard: React.FC = () => {
       title="Work Queue"
       subtitle="View and manage tasks in various work queues"
     >
-      {/* Queue Selection and Filters */}
+      {}
       <Card className="mb-4">
         <div className="p-4">
           <div className="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
-            {/* Queue Selection */}
+            {}
             <div className="flex items-center space-x-2">
               <QueueListIcon className="h-5 w-5 text-gray-400" />
               <span className="text-sm font-medium text-gray-700">Queue:</span>
@@ -236,7 +233,7 @@ const WorkQueueDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Status Filter */}
+            {}
             <div className="relative w-full lg:max-w-[160px]">
               <select
                 aria-label="Status filter"
@@ -244,19 +241,18 @@ const WorkQueueDashboard: React.FC = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">All Statuses</option>
-                <option value="UNASSIGNED">Unassigned</option>
-                <option value="ASSIGNED">Assigned</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="SUSPENDED">Suspended</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                 <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
 
-            {/* Search */}
+            {}
             <div className="relative w-full">
               <input
                 type="text"
@@ -273,9 +269,9 @@ const WorkQueueDashboard: React.FC = () => {
         </div>
       </Card>
 
-    
 
-      {/* Work Queue Table */}
+
+      {}
       <Card>
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
@@ -294,7 +290,6 @@ const WorkQueueDashboard: React.FC = () => {
                 <button
                   onClick={() => {
                     clearError();
-                    // Trigger a refresh
                     const loadWorkQueue = async () => {
                       setIsLoading(true);
                       try {
@@ -316,7 +311,7 @@ const WorkQueueDashboard: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {isLoading ? (
           <WorkQueueTableSkeleton rows={10} />
         ) : filteredTasks.length === 0 ? (
@@ -340,7 +335,7 @@ const WorkQueueDashboard: React.FC = () => {
         )}
       </Card>
 
-      {/* Task Management Modals */}
+      {}
       <AssignTaskModal
         open={assignModalOpen}
         onClose={() => {
@@ -394,7 +389,6 @@ const WorkQueueDashboard: React.FC = () => {
   );
 };
 
-// Wrap with error boundary for additional protection
 const WorkQueueDashboardWithErrorBoundary: React.FC = () => (
   <WorkQueueErrorBoundary>
     <WorkQueueDashboard />

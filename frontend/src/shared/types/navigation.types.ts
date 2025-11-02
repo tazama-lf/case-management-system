@@ -6,7 +6,7 @@ export interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   current?: boolean;
   badge?: number;
-  roles?: string[]; // Role-based access
+  roles?: string[];
   children?: NavItem[];
 }
 

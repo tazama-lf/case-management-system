@@ -74,7 +74,7 @@ export const DotsSpinner: React.FC<DotsSpinnerProps> = ({
   className = '',
 }) => {
   const dotClass = `${getDotSize(size)} ${getDotColor(color)} rounded-full`;
-  
+
   return (
     <div className={`flex space-x-1 ${className}`} role="status" aria-label="Loading">
       <div className={`${dotClass} animate-bounce`} style={{ animationDelay: '0ms' }}></div>

@@ -4,7 +4,7 @@ import ProtectedRoute from '../features/auth/components/ProtectedRoute';
 import RoleBasedRedirect from '../shared/components/navigation/RoleBasedRedirect';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
-import Reports from '../features/reports/pages/Reports';
+import Reports from '../features/reports/pages/CaseStatusReport';
 import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
 import CasesDashboard from '../features/cases/pages/CasesDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
@@ -38,7 +38,7 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
             <Reports />
           </ProtectedRoute>
         ),
@@ -46,7 +46,7 @@ export const router = createBrowserRouter([
       {
         path: 'alerts',
         element: (
-          <ProtectedRoute requireAdmin>
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
             <AlertsDashboard />
           </ProtectedRoute>
         ),
@@ -54,7 +54,7 @@ export const router = createBrowserRouter([
       {
         path: 'cases',
         element: (
-          <ProtectedRoute requireInvestigator>
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
             <CasesDashboard />
           </ProtectedRoute>
         ),
@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
       {
         path: 'work-queue',
         element: (
-          <ProtectedRoute requireSupervisor>
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
             <WorkQueueDashboard />
           </ProtectedRoute>
         ),
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: (
-          <ProtectedRoute requireAdmin>
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage']}>
             <AdminDashboard />
           </ProtectedRoute>
         ),

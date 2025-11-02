@@ -15,7 +15,7 @@ interface AlertsDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCloseAlert?: (alert: LegacyAlert, status: AlertStatus, notes: string) => void;
-  onAlertUpdated?: () => void; 
+  onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
 }
 
@@ -43,11 +43,10 @@ const getRiskScore = (alert: TriageAlert): number => {
     CRITICAL: 2,
     BREACH: 3,
   };
-  console.log('Calculating risk score for alert:', alert);
 
   const baseScore = alert.confidence_per || 50;
   const weight = priorityWeights[alert.priority] || 1;
-  return Math.round(baseScore * weight * 10); 
+  return Math.round(baseScore * weight * 10);
 };
 
 const getRiskBreakdown = (alert: TriageAlert) => {
@@ -81,17 +80,17 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     {
       name: 'Multiple ATM Withdrawals',
       type: 'Velocity',
-      score: Math.round(totalScore * 0.31), // ~31% of total
+      score: Math.round(totalScore * 0.31),
     },
     {
       name: 'High-Value Cash Transactions',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.34), // ~34% of total
+      score: Math.round(totalScore * 0.34),
     },
     {
       name: 'Geographic Distribution',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.34), // ~34% of total
+      score: Math.round(totalScore * 0.34),
     },
   ];
 
@@ -160,12 +159,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onManualTriage,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
-  
+
   const [alert, setAlert] = useState<TriageAlert | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
-  
+
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -287,14 +286,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
+        {}
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         ></div>
 
-        {/* This element is to trick the browser into centering the modal contents */}
+        {}
         <span
           className="hidden sm:inline-block sm:align-middle sm:h-screen"
           aria-hidden="true"
@@ -302,9 +301,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           &#8203;
         </span>
 
-        {/* Modal panel */}
+        {}
         <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
-          {/* Close button */}
+          {}
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={onClose}
@@ -315,10 +314,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Modal content */}
+          {}
           <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              {/* Header Section */}
+              {}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
@@ -331,23 +330,23 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {alert.priority}
                     </span>
 
-                    {/* Actions buttons moved here after priority badge */}
+                    {}
                     <div className="flex items-center space-x-2 ml-4">
-                      {/* Manual Triage button - only show in MANUAL mode or DISABLED mode for updates, not in AI mode */}
+                      {}
                       {canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && (
                         <button
                           onClick={() => onManualTriage(convertToLegacyAlert(alert))}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                          title={isManualMode 
-                            ? "Perform manual triage - update alert and make case decision" 
+                          title={isManualMode
+                            ? "Perform manual triage - update alert and make case decision"
                             : "Update alert details - direct investigation mode"
                           }
                         >
                           {isManualMode ? "Update Alert" : "Update Alert"}
                         </button>
                       )}
-                      
-                      {/* AI Mode indicator - show when in AI mode */}
+
+                      {}
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
@@ -362,10 +361,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Row 1: Alert Summary & Transaction Data */}
+              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {/* Column 1: Alert Summary */}
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Alert Summary
@@ -406,7 +405,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Column 2: Transaction Data */}
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Transaction Data
@@ -425,10 +424,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Row 2: Related Items & Action History */}
+              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {/* Column 1: Related Items */}
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Related Items
@@ -443,7 +442,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Column 2: Action History */}
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
@@ -519,7 +518,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Row 3: Rules & Typologies */}
+              {}
               <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
@@ -550,7 +549,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   </div>
                 </div>
 
-                {/* Collapsible detailed risk breakdown */}
+                {}
                 <div
                   className={`overflow-hidden transition-all duration-300 ${showRules ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                 >

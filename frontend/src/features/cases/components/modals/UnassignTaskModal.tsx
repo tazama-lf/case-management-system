@@ -88,7 +88,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
           <p className="text-sm text-gray-700 mb-4">
             This task will be unassigned and returned to the work queue. The current assignee will be notified of the unassignment.
           </p>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <div className="text-sm text-blue-800">
               <strong>Workflow:</strong> Upon unassignment:

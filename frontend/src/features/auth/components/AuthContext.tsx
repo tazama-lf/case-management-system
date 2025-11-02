@@ -20,28 +20,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state on app start
   useEffect(() => {
     const initializeAuth = () => {
       try {
         const storedToken = authService.getToken();
         const storedUser = authService.getUser();
 
-        console.log('Auth initialization:', {
-          hasStoredToken: !!storedToken,
-          hasStoredUser: !!storedUser,
-          isTokenValid: storedToken ? !authService.isTokenExpired(storedToken) : false,
-          isAuthenticated: authService.isAuthenticated()
-        });
-
         if (storedToken && authService.isAuthenticated()) {
-          console.log('Restoring authenticated session');
           setToken(storedToken);
           setUser(storedUser);
           setIsAuthenticated(true);
         } else {
-          console.log('No valid session found, cleaning up');
-          // Clean up if token is expired
           authService.logout();
         }
       } catch (error) {
@@ -55,14 +44,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Auto-refresh token before expiration
   useEffect(() => {
     let refreshTimer: NodeJS.Timeout;
 
     if (token && isAuthenticated) {
       const tokenExpiration = authService.getTokenExpiration(token);
       if (tokenExpiration) {
-        // Refresh 5 minutes before expiration
         const refreshTime =
           tokenExpiration.getTime() - Date.now() - 5 * 60 * 1000;
 
@@ -70,10 +57,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           refreshTimer = setTimeout(async () => {
             const refreshed = await authService.refreshToken();
             if (!refreshed) {
-              // If refresh fails, logout user
               logout();
             } else {
-              // Update token state
               const newToken = authService.getToken();
               setToken(newToken);
             }
@@ -94,23 +79,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      console.log('AuthContext.login() - Starting login...');
       const response = await authService.login(credentials);
 
       if (response.token && response.user) {
-        console.log('AuthContext.login() - Setting auth state', {
-          hasToken: !!response.token,
-          hasUser: !!response.user,
-          userClaims: response.user.backendClaims
-        });
-        
         setToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
-        
-        console.log('AuthContext.login() - Auth state updated successfully');
+
       } else {
-        console.log('AuthContext.login() - Missing token or user in response', response);
       }
     } catch (error) {
       const errorMessage =
@@ -120,7 +96,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     } finally {
       setLoading(false);
-      console.log('AuthContext.login() - Login process completed');
     }
   };
 
@@ -131,7 +106,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(false);
     setError(null);
 
-    // Redirect to login page
     window.location.href = '/login';
   };
 
@@ -162,7 +136,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

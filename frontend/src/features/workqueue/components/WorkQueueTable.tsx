@@ -1,5 +1,7 @@
 import React from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { formatDate } from '../../../shared/utils/dateUtils';
+import { EmptyState } from '../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
 
 interface WorkQueueTableProps {
@@ -36,19 +38,9 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions = [];
 
-    // Show Assign action only for unassigned tasks
     if (!task.assignee) {
       actions.push(
         <button
@@ -63,7 +55,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Reassign action only for assigned tasks
     if (task.assignee && onReassign) {
       actions.push(
         <button
@@ -78,7 +69,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Unassign action only for assigned tasks
     if (task.assignee && onUnassign) {
       actions.push(
         <button
@@ -93,7 +83,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Complete action for assigned tasks only if handler provided
     if (task.assignee && onComplete) {
       actions.push(
         <button
@@ -108,7 +97,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    // Show Update Status action for all tasks if handler is provided
     if (onUpdateStatus) {
       actions.push(
         <button
@@ -129,28 +117,37 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <colgroup>
+            <col className="w-80" />
+            <col className="w-72" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-48" />
+            <col className="w-40" />
+          </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Task
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Case
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Queue
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Assigned To
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -158,47 +155,47 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks.map((task, index) => (
               <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={task.id || 'No ID'}>
-                      {task.id ? `${task.id.slice(0, 8)}...` : 'No ID'}
+                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id || 'No ID'}>
+                      {task.id || 'No ID'}
                     </div>
                     {task.name && (
-                      <div className="text-xs text-gray-500 truncate max-w-[150px]" title={task.name}>
+                      <div className="text-xs text-gray-500 break-words mt-1" title={task.name}>
                         {task.name}
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 truncate max-w-[120px]" title={task.caseId || ''}>
-                    {task.caseId?.slice(0, 8)}...
+                <td className="px-4 py-3">
+                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId || ''}>
+                    {task.caseId || ''}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
+                <td className="px-4 py-3">
+                  <div className="text-sm text-gray-900 break-words">
                     {task.candidateGroup || 'General'}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3">
                   {getStatusBadge(task.status)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
                     <ClockIcon className="h-4 w-4 mr-1" />
                     {formatDate(task.createdAt)}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3">
                   <div className="text-sm text-gray-900">
                     {task.assignee ? (
-                      <span className="text-blue-600">{task.assigneeName || task.assignee}</span>
+                      <span className="text-blue-600 break-words">{task.assigneeName || task.assignee}</span>
                     ) : (
                       <span className="text-gray-400">Unassigned</span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-4 py-3 text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
                     {getAvailableActions(task)}
                   </div>
@@ -210,9 +207,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       </div>
 
       {tasks.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-sm text-gray-500">No tasks found in work queue</p>
-        </div>
+        <EmptyState
+          title="No tasks found"
+          description="No tasks are currently available in this work queue"
+          icon="folder"
+        />
       )}
     </div>
   );

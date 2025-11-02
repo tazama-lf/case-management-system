@@ -47,7 +47,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl">
-        {/* Header */}
+        {}
         <div className="sticky top-0 bg-white px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Alert Details</h2>
@@ -64,7 +64,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
 
         <div className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Alert Summary */}
+            {}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Alert Summary</h3>
@@ -92,7 +92,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
                 </div>
               </div>
 
-              {/* Related Items */}
+              {}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Items</h3>
                 <div className="space-y-2">
@@ -117,7 +117,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
               </div>
             </div>
 
-            {/* Right Column - Transaction Data & Action History */}
+            {}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Data</h3>
@@ -139,7 +139,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
             </div>
           </div>
 
-          {/* Rules & Typologies */}
+          {}
           <div className="mt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Rules & Typologies</h3>
             <div className="space-y-3">

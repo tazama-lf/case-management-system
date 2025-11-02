@@ -4,7 +4,7 @@ import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export const TaskStatus = {
   STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
-  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED', 
+  STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
   STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
   STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
   STATUS_21_BLOCKED: 'STATUS_21_BLOCKED'
@@ -22,7 +22,7 @@ export interface TaskForSupervisor {
   candidateGroup?: string;
   created_at: string;
   updated_at: string;
-  
+
   assignedUser?: {
     user_id: string;
     username: string;
@@ -83,7 +83,7 @@ export interface TasksResponse {
 }
 
 export interface SupervisorTasksResponse {
-  tasks?: TaskForSupervisor[]; 
+  tasks?: TaskForSupervisor[];
   total?: number;
   page?: number;
   limit?: number;
@@ -108,7 +108,6 @@ export interface WorkQueueResponse {
 export class TaskService {
   private baseUrl = '/api/v1/task';
 
-  // GET /api/v1/task
   async getTasks(filters?: TaskFilters): Promise<TasksResponse> {
     try {
       const params = new URLSearchParams();
@@ -119,7 +118,7 @@ export class TaskService {
           }
         });
       }
-      
+
       const response = await apiClient.get<TasksResponse>(`${this.baseUrl}?${params}`);
       return response;
     } catch (error: any) {
@@ -127,22 +126,17 @@ export class TaskService {
     }
   }
 
-  // GET /api/v1/task - Returns raw backend task objects for supervisor view
   async getAllTasks(status?: string): Promise<TaskForSupervisor[]> {
     try {
       const params = new URLSearchParams();
       if (status) {
         params.append('status', status);
       }
-      
+
       const queryString = params.toString();
       const url = `${this.baseUrl}${queryString ? `?${queryString}` : ''}`;
-      
-      console.log('TaskService: Fetching tasks from:', url);
-      
-      // Backend returns array of Task objects directly
+
       const response = await apiClient.get<TaskForSupervisor[]>(url);
-      console.log('TaskService: Backend response received:', Array.isArray(response) ? response.length : 'not array', 'items');
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
       console.error('TaskService: Failed to get all tasks from backend:', error);
@@ -150,7 +144,6 @@ export class TaskService {
     }
   }
 
-  // GET /api/v1/task/:taskId
   async getTaskDetails(taskId: string): Promise<Task> {
     try {
       const response = await apiClient.get<Task>(`${this.baseUrl}/${taskId}`);
@@ -160,17 +153,13 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/assign - Assign task to investigator (supervisor action)
   async assignTaskToInvestigator(taskId: string, assignedUserId: string): Promise<TaskForSupervisor> {
     try {
-      console.log('TaskService: Assigning task', taskId, 'to user', assignedUserId);
-      
       const response = await apiClient.patch<TaskForSupervisor>(
-        `${this.baseUrl}/${taskId}/assign`, 
+        `${this.baseUrl}/${taskId}/assign`,
         { assignedUserId }
       );
-      
-      console.log('TaskService: Task assignment successful:', response);
+
       return response;
     } catch (error: any) {
       console.error('TaskService: Task assignment failed:', error);
@@ -178,17 +167,13 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/reassign
   async reassignTask(taskId: string, assignedUserId: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('TaskService: Reassigning task', taskId, 'to user', assignedUserId);
-      
       const response = await apiClient.patch<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/reassign`, 
+        `${this.baseUrl}/${taskId}/reassign`,
         { assignedUserId }
       );
-      
-      console.log('TaskService: Task reassignment successful:', response);
+
       return response;
     } catch (error: any) {
       console.error('TaskService: Task reassignment failed:', error);
@@ -196,11 +181,10 @@ export class TaskService {
     }
   }
 
-  // POST /api/v1/task/:taskId/assign
   async assignTask(taskId: string, data: AssignTaskData): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.post<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/assign`, 
+        `${this.baseUrl}/${taskId}/assign`,
         data
       );
       return response;
@@ -209,11 +193,10 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/unassign
   async unassignTask(taskId: string, data: UnassignTaskData): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.patch<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/unassign`, 
+        `${this.baseUrl}/${taskId}/unassign`,
         data
       );
       return response;
@@ -222,7 +205,6 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId
   async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
     try {
       const response = await apiClient.patch<Task>(`${this.baseUrl}/${taskId}`, data);
@@ -232,7 +214,6 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId - Update task for supervisor operations
   async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string }): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
@@ -242,7 +223,6 @@ export class TaskService {
     }
   }
 
-  // POST /api/v1/task
   async createTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
     try {
       const response = await apiClient.post<Task>(this.baseUrl, data);
@@ -252,7 +232,6 @@ export class TaskService {
     }
   }
 
-  // GET /api/v1/task/work-queue
   async getWorkQueue(filters?: WorkQueueFilters): Promise<WorkQueueResponse> {
     try {
       const params = new URLSearchParams();
@@ -263,7 +242,7 @@ export class TaskService {
           }
         });
       }
-      
+
       const response = await apiClient.get<WorkQueueResponse>(`${this.baseUrl}/work-queue?${params}`);
       return response;
     } catch (error: any) {
@@ -271,14 +250,11 @@ export class TaskService {
     }
   }
 
-  // GET /api/v1/task/case/:caseId - Get all tasks for a specific case
   async getTasksByCaseId(caseId: string): Promise<TaskForSupervisor[]> {
     try {
       const url = `${this.baseUrl}/case/${caseId}`;
-      console.log('TaskService: Fetching tasks for case:', caseId, 'from:', url);
-      
+
       const response = await apiClient.get<TaskForSupervisor[]>(url);
-      console.log('TaskService: Tasks for case received:', Array.isArray(response) ? response.length : 'not array', 'items');
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
       console.error('TaskService: Failed to get tasks for case:', caseId, error);
@@ -286,15 +262,14 @@ export class TaskService {
     }
   }
 
-  // Helper method to complete a task
   async completeTask(taskId: string): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
         status: TaskStatus.STATUS_30_COMPLETED
       };
-      
+
       await this.updateTask(taskId, updateData);
-      
+
       return {
         success: true,
         message: 'Task completed successfully'
@@ -304,16 +279,14 @@ export class TaskService {
     }
   }
 
-  // PATCH /api/v1/task/:taskId/close - Close task with notes only
   async closeTask(taskId: string, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
     try {
-      // For now, we'll update the task status and could extend this later to send additional data
       const updateData: Partial<Task> = {
         status: TaskStatus.STATUS_30_COMPLETED
       };
-      
+
       await this.updateTask(taskId, updateData);
-      
+
       return {
         success: true,
         message: 'Task closed successfully'
@@ -323,7 +296,6 @@ export class TaskService {
     }
   }
 
-  // Helper methods for supervisor task operations
   async startTask(taskId: string): Promise<TaskForSupervisor> {
     return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_20_IN_PROGRESS });
   }

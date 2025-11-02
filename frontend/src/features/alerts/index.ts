@@ -6,21 +6,19 @@ export { default as ManualTriageModal } from './components/ManualTriageModal';
 export { default as TransactionMessagesModal } from './components/TransactionMessagesModal';
 export { default as MessagePayloadModal } from './components/MessagePayloadModal';
 
-// Hooks
 export { useAlerts } from './hooks/useAlerts';
-export { 
-  useAlerts as useAlertsQuery, 
-  useAlertDetails, 
+export {
+  useAlerts as useAlertsQuery,
+  useAlertDetails,
   useAlertActionHistory,
   useAlertOperations as useAlertMutations,
   useAlertFilterOptions,
-  alertsQueryKeys 
+  alertsQueryKeys
 } from './hooks/useAlertsQuery';
 export { useAlertOperations } from './hooks/useAlertOperations';
 
-// Types - export specific types to avoid conflicts
-export type { 
-  ActionHistory 
+export type {
+  ActionHistory
 } from './types/triage.types';
 
 export type {
@@ -33,11 +31,8 @@ export type {
   AlertsDashboardProps
 } from './types/alertsdashboard.types';
 
-// Services
 export { default as triageService } from './services/triageservice';
 
-// Utils
 export * from './utils/alertTransformers';
 
-// Pages
 export { default as AlertsDashboard } from './pages/AlertsDashboard';

@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationProvider } from '../../../../shared/providers/NotificationProvider';
 import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
-// Test component that uses the hook
 const TestComponent = () => {
   const { alerts, isLoading, error, refetch } = useAlerts({
     search: '',
@@ -83,15 +82,12 @@ describe('useAlerts', () => {
   it('should fetch alerts successfully', async () => {
     renderWithProviders(<TestComponent />);
 
-    // Should show loading initially
     expect(screen.getByText('Loading...')).toBeInTheDocument();
 
-    // Wait for data to load
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
 
-    // Should display mock alerts
     expect(screen.getByTestId('alert-ALERT-001')).toBeInTheDocument();
     expect(screen.getByTestId('alert-ALERT-002')).toBeInTheDocument();
   });
@@ -102,10 +98,8 @@ describe('useAlerts', () => {
 
     const searchInput = screen.getByTestId('search-input');
 
-    // Type in search input
     await user.type(searchInput, 'ALERT-001');
 
-    // Should debounce and search
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('1');
     }, { timeout: 1000 });
@@ -115,26 +109,22 @@ describe('useAlerts', () => {
     const user = userEvent.setup();
     renderWithProviders(<TestComponent />);
 
-    // Wait for initial load
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
 
-    // Click refetch button
     const refetchButton = screen.getByText('Refetch');
     await user.click(refetchButton);
 
-    // Should refetch data
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
   });
 
   it('should handle API errors', async () => {
-    // Mock API to return error
     const { server } = await import('../../../../test/mocks/server');
     const { http, HttpResponse } = await import('msw');
-    
+
     server.use(
       http.get('/api/v1/triage/alerts', () => {
         return HttpResponse.json(
@@ -146,7 +136,6 @@ describe('useAlerts', () => {
 
     renderWithProviders(<TestComponent />);
 
-    // Should show error
     await waitFor(() => {
       expect(screen.getByText(/Error:/)).toBeInTheDocument();
     });
@@ -155,8 +144,8 @@ describe('useAlerts', () => {
 
 describe('useAlertOperations', () => {
   const TestAlertOperations = () => {
-    const { 
-      updateAlert, 
+    const {
+      updateAlert,
       closeAlert,
       isUpdatingAlert,
       isClosingAlert
@@ -171,10 +160,10 @@ describe('useAlertOperations', () => {
 
 
     const handleClose = () => {
-      closeAlert({ 
-        alertId: 'ALERT-001', 
-        status: 'CLOSED', 
-        notes: 'Test closure' 
+      closeAlert({
+        alertId: 'ALERT-001',
+        status: 'CLOSED',
+        notes: 'Test closure'
       });
     };
 
@@ -197,7 +186,6 @@ describe('useAlertOperations', () => {
     const updateButton = screen.getByText('Update Alert');
     await user.click(updateButton);
 
-    // Should handle the mutation (success handled by notifications)
     expect(updateButton).toBeInTheDocument();
   });
 
@@ -208,7 +196,6 @@ describe('useAlertOperations', () => {
     const convertButton = screen.getByText('Convert to Case');
     await user.click(convertButton);
 
-    // Should handle the mutation (success handled by notifications)
     expect(convertButton).toBeInTheDocument();
   });
 
@@ -219,7 +206,6 @@ describe('useAlertOperations', () => {
     const closeButton = screen.getByText('Close Alert');
     await user.click(closeButton);
 
-    // Should handle the mutation (success handled by notifications)
     expect(closeButton).toBeInTheDocument();
   });
 });

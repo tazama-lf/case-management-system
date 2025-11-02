@@ -22,7 +22,6 @@ import { useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQue
 const AlertsDashboard: React.FC = () => {
   const { isAIMode, isManualMode, isDisabledMode } = useSystemConfig();
 
-  // Use client-side filtering hook
   const {
     paginatedAlerts: alerts,
     pagination,
@@ -57,7 +56,7 @@ const AlertsDashboard: React.FC = () => {
         data: triageData,
       });
       success('Triage Complete', 'Alert triage completed successfully');
-      refreshAlerts(); // Refresh the alerts list
+      refreshAlerts();
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
       showError('Triage Failed', 'Failed to perform triage. Please try again.');
@@ -65,12 +64,10 @@ const AlertsDashboard: React.FC = () => {
     }
   };
 
-  // Modal state for alert details
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
 
-  // Transaction modals state
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
@@ -91,15 +88,13 @@ const AlertsDashboard: React.FC = () => {
     setSelectedAlert(null);
   };
 
-  // Utility function to convert Alert to TriageAlert for modal compatibility
   const convertToTriageAlert = (alert: Alert): TriageAlert => {
     return {
       ...alert,
-      alert_type: (alert.alert_type as AlertType) || null, 
+      alert_type: (alert.alert_type as AlertType) || null,
     };
   };
 
-  // Transaction modal handlers
   const handleTransactionIdClick = (alert: Alert) => {
     setSelectedAlertForTransaction(alert);
     setShowTransactionMessages(true);
@@ -132,7 +127,6 @@ const AlertsDashboard: React.FC = () => {
     }
   };
 
-  // Define table columns
   const columns: AlertsTableColumn<Alert>[] = [
     {
       key: 'alert_id',
@@ -141,7 +135,7 @@ const AlertsDashboard: React.FC = () => {
       render: (value) => {
         const alertId = value as string;
         return (
-          <div 
+          <div
             className="font-medium text-gray-900"
             title={`Alert ID: ${alertId}`}
           >
@@ -156,7 +150,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (_, alert) => {
         const transactionId = extractTransactionIdFromAlert(alert);
-        
+
         return (
           <button
             onClick={(e) => {
@@ -197,7 +191,7 @@ const AlertsDashboard: React.FC = () => {
           if (score > 0) return 'text-green-600 bg-green-50';
           return 'text-gray-600 bg-gray-50';
         };
-        
+
         return (
           <div className="flex items-center">
             <span className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(score)}`}>
@@ -245,7 +239,6 @@ const AlertsDashboard: React.FC = () => {
     }
   ];
 
-  // Get dynamic subtitle based on triage mode
   const getSubtitle = () => {
     if (isAIMode) {
       return "AI-automated triage with confidence-based routing and manual review for uncertain cases";
@@ -257,7 +250,6 @@ const AlertsDashboard: React.FC = () => {
     return "Triage and investigate alerts, convert to cases, and manage alert workflows";
   };
 
-  // Main loading and error states
   if (loading && alerts.length === 0) {
     return (
       <PageContainer
@@ -275,7 +267,7 @@ const AlertsDashboard: React.FC = () => {
         title="Alerts Dashboard"
         subtitle={getSubtitle()}
       >
-        <ErrorFallback 
+        <ErrorFallback
           error={error ? new Error(error) : undefined}
           resetError={() => refreshAlerts()}
           title="Failed to load alerts"
@@ -290,7 +282,7 @@ const AlertsDashboard: React.FC = () => {
       title="Alerts Dashboard"
       subtitle={getSubtitle()}
     >
-        {/* API Error Banner */}
+        {}
         {error && (
           <div className="mb-4">
             <Notification
@@ -301,12 +293,12 @@ const AlertsDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Search and Filters */}
+        {}
         <AlertsSearchAndFilters
           searchFilters={filters}
           onFilterChange={(key, value) => {
             setFilters({ ...filters, [key]: value });
-            setPage(1); // Reset to first page when filters change
+            setPage(1);
           }}
           onClearFilters={() => {
             setFilters({
@@ -317,7 +309,7 @@ const AlertsDashboard: React.FC = () => {
               timeRange: '',
               customDateRange: undefined
             });
-            setPage(1); // Reset to first page when clearing filters
+            setPage(1);
           }}
           customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
           onCustomDateRangeChange={(range) => setFilters({ ...filters, customDateRange: range })}
@@ -332,19 +324,19 @@ const AlertsDashboard: React.FC = () => {
           lastUpdated={lastUpdated}
           onPageSizeChange={(size) => {
             setPageSize(size);
-            setPage(1); // Reset to first page when page size changes
+            setPage(1);
           }}
           sort={{ column: String(sort.column), direction: sort.direction }}
         />
 
-        {/* Alerts Table */}
+        {}
         <div className="bg-white rounded-lg shadow">
           <AlertsTable
             data={alerts}
             columns={columns}
-            onSort={(column, direction) => { 
-              setSort(String(column), direction); 
-              setPage(1); 
+            onSort={(column, direction) => {
+              setSort(String(column), direction);
+              setPage(1);
             }}
             sortColumn={sort.column}
             sortDirection={sort.direction}
@@ -354,7 +346,7 @@ const AlertsDashboard: React.FC = () => {
           />
         </div>
 
-      {/* Alert Detail Modal */}
+      {}
       <AlertsDetailModal
         alertId={selectedAlert?.alert_id || null}
         isOpen={showModal}
@@ -367,7 +359,7 @@ const AlertsDashboard: React.FC = () => {
         }}
       />
 
-      {/* Manual Triage Modal */}
+      {}
       {selectedAlert && (
         <ManualTriageModal
           isOpen={showManualTriageModal}
@@ -380,7 +372,7 @@ const AlertsDashboard: React.FC = () => {
         />
       )}
 
-      {/* Transaction Messages Modal */}
+      {}
       <TransactionMessagesModal
         isOpen={showTransactionMessages}
         onClose={handleCloseTransactionMessages}
@@ -388,7 +380,7 @@ const AlertsDashboard: React.FC = () => {
         onMessageClick={handleTransactionMessageClick}
       />
 
-      {/* Message Payload Modal */}
+      {}
       <MessagePayloadModal
         isOpen={showMessagePayload}
         onClose={handleCloseMessagePayload}

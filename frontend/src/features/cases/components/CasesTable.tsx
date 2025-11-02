@@ -95,7 +95,6 @@ interface CasesTableProps {
   onRejectCase?: (row: CaseRow) => void;
   onApproveCase?: (row: CaseRow) => void;
   onApproveCaseReopen?: (row: CaseRow) => void;
-  onRejectCaseReopen?: (row: CaseRow) => void;
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
   onReturnForReview?: (row: CaseRow) => void;
@@ -113,7 +112,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onRejectCase,
   onApproveCase,
   onApproveCaseReopen,
-  onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
   onReturnForReview
@@ -236,20 +234,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <CheckIcon className="h-3 w-3" />
                       Approve Reopen
-                    </button>
-                  )}
-
-                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
-                  {onRejectCaseReopen && (
-                    c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-                    c.status.includes('PENDING CASE REOPENING APPROVAL')
-                  ) && (
-                    <button
-                      onClick={() => onRejectCaseReopen(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <XCircleIcon className="h-3 w-3" />
-                      Reject Reopen
                     </button>
                   )}
                   
