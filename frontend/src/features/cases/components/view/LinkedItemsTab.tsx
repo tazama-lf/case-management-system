@@ -1,8 +1,45 @@
-import React, { useState } from 'react';
-import RelatedCaseModal from '../modals/RelatedCaseModal';
-import RelatedAlertModal from '../modals/RelatedAlertModal';
-import TransactionMessagesModal from '../modals/TransactionMessagesModal';
-import { MessagePayloadModal } from '../../../alerts';
+import React, { useState, Suspense, lazy } from 'react';
+import { LoadingState } from '@/shared/components/ui';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+
+const RelatedCaseModal = lazy(() => import('@/features/cases/components/modals/RelatedCaseModal'));
+const RelatedAlertModal = lazy(() => import('@/features/cases/components/modals/RelatedAlertModal'));
+const TransactionMessagesModal = lazy(() => import('@/features/cases/components/modals/TransactionMessagesModal'));
+const MessagePayloadModal = lazy(() => import('@/features/alerts').then(module => ({ default: module.MessagePayloadModal })));
+
+const getRiskThresholdLabel = (score: number): string => {
+  return score > 80 ? 'High' : score > 60 ? 'Medium' : 'Low';
+};
+
+
+const createModalHandlers = <T,>(setter: React.Dispatch<React.SetStateAction<T | null>>) => ({
+  open: (value: T) => setter(value),
+  close: () => setter(null),
+});
+
+const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="text-center py-8">
+    <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+    <h3 className="text-sm font-medium text-gray-900 mb-2">{title}</h3>
+    <p className="text-sm text-gray-500">{description}</p>
+  </div>
+);
+
+const ErrorBoundaryFallback: React.FC<{ error: string; onRetry?: () => void }> = ({ error, onRetry }) => (
+  <div className="text-center py-8 border border-red-200 rounded-lg bg-red-50">
+    <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500 mb-4" />
+    <h3 className="text-sm font-medium text-red-900 mb-2">Something went wrong</h3>
+    <p className="text-sm text-red-700 mb-4">{error}</p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+      >
+        Try again
+      </button>
+    )}
+  </div>
+);
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2">
@@ -45,7 +82,7 @@ const TypologyItem: React.FC<{ id: string; title: string; score: number; isExpan
         <p>Detailed information about this typology rule and its matching criteria would be displayed here.</p>
         <div className="mt-2 space-y-1">
           <div className="text-xs text-gray-500">• Transaction pattern analysis</div>
-          <div className="text-xs text-gray-500">• Risk threshold: {score > 80 ? 'High' : score > 60 ? 'Medium' : 'Low'}</div>
+          <div className="text-xs text-gray-500">• Risk threshold: {getRiskThresholdLabel(score)}</div>
           <div className="text-xs text-gray-500">• Last triggered: 2024-01-15 09:30:00</div>
         </div>
       </div>
@@ -53,14 +90,174 @@ const TypologyItem: React.FC<{ id: string; title: string; score: number; isExpan
   </div>
 );
 
-const LinkedItemsTab: React.FC = () => {
+// Broken down focused components
+const RelatedCasesSection: React.FC<{
+  cases: Array<{ id: string; title: string }>;
+  onCaseClick: (id: string) => void;
+}> = ({ cases, onCaseClick }) => (
+  <div className="space-y-2">
+    <div className="text-sm font-medium text-gray-600">Related Cases</div>
+    {cases.length === 0 ? (
+      <EmptyState title="No Related Cases" description="No related cases found for this item." />
+    ) : (
+      cases.map((caseItem) => (
+        <LinkItem key={caseItem.id} onClick={() => onCaseClick(caseItem.id)}>
+          {caseItem.title}
+        </LinkItem>
+      ))
+    )}
+  </div>
+);
+
+const RelatedAlertsSection: React.FC<{
+  alerts: Array<{ id: string; title: string; status: string }>;
+  onAlertClick: (id: string) => void;
+}> = ({ alerts, onAlertClick }) => (
+  <div className="space-y-2">
+    <div className="text-sm font-medium text-gray-600">Related Alerts</div>
+    {alerts.length === 0 ? (
+      <EmptyState title="No Related Alerts" description="No related alerts found for this item." />
+    ) : (
+      alerts.map((alert) => (
+        <LinkItem key={alert.id} onClick={() => onAlertClick(alert.id)}>
+          {alert.title}<Pill>{alert.status}</Pill>
+        </LinkItem>
+      ))
+    )}
+  </div>
+);
+
+const RelatedTransactionsSection: React.FC<{
+  transactions: Array<{ id: string; title: string }>;
+  messagePayloads: Array<{ id: string; type: string }>;
+  onTransactionClick: (id: string) => void;
+  onMessagePayloadClick: (message: any) => void;
+}> = ({ transactions, messagePayloads, onTransactionClick, onMessagePayloadClick }) => (
+  <div className="space-y-2">
+    <div className="text-sm font-medium text-gray-600">Related Transactions</div>
+    {transactions.length === 0 ? (
+      <EmptyState title="No Related Transactions" description="No related transactions found for this item." />
+    ) : (
+      <>
+        {transactions.map((transaction) => (
+          <LinkItem key={transaction.id} onClick={() => onTransactionClick(transaction.id)}>
+            {transaction.title}
+          </LinkItem>
+        ))}
+        <div className="mt-2 space-y-1">
+          <div className="text-xs text-gray-500">Message Payloads:</div>
+          {messagePayloads.map((message) => (
+            <LinkItem key={message.id} onClick={() => onMessagePayloadClick(message)}>
+              View {message.type} Payload
+            </LinkItem>
+          ))}
+        </div>
+      </>
+    )}
+  </div>
+);
+
+const TypologiesSection: React.FC<{
+  typologies: Array<{ id: string; title: string; score: number }>;
+  expandedTypologies: Set<string>;
+  onToggleTypology: (id: string) => void;
+}> = ({ typologies, expandedTypologies, onToggleTypology }) => (
+  <Section title="Typologies Triggered">
+    <div className="space-y-2">
+      {typologies.length === 0 ? (
+        <EmptyState title="No Typologies Triggered" description="No typology rules have been triggered for this item." />
+      ) : (
+        typologies.map((typology) => (
+          <TypologyItem
+            key={typology.id}
+            id={typology.id}
+            title={typology.title}
+            score={typology.score}
+            isExpanded={expandedTypologies.has(typology.id)}
+            onToggle={() => onToggleTypology(typology.id)}
+          />
+        ))
+      )}
+    </div>
+  </Section>
+);
+
+const ModalManager: React.FC<{
+  selectedCaseModal: string | null;
+  selectedAlertModal: string | null;
+  selectedTransactionModal: string | null;
+  selectedMessagePayload: any;
+  caseModalHandlers: { close: () => void };
+  alertModalHandlers: { close: () => void };
+  transactionModalHandlers: { close: () => void };
+  messagePayloadHandlers: { close: () => void };
+  mockCaseData: any;
+  mockAlertData: any;
+  mockTransactionMessages: any[];
+}> = ({
+  selectedCaseModal,
+  selectedAlertModal,
+  selectedTransactionModal,
+  selectedMessagePayload,
+  caseModalHandlers,
+  alertModalHandlers,
+  transactionModalHandlers,
+  messagePayloadHandlers,
+  mockCaseData,
+  mockAlertData,
+  mockTransactionMessages,
+}) => (
+  <>
+    <Suspense fallback={<div>Loading modal...</div>}>
+      <RelatedCaseModal
+        isOpen={selectedCaseModal !== null}
+        onClose={caseModalHandlers.close}
+        caseData={selectedCaseModal ? mockCaseData : null}
+      />
+    </Suspense>
+
+    <Suspense fallback={<div>Loading modal...</div>}>
+      <RelatedAlertModal
+        isOpen={selectedAlertModal !== null}
+        onClose={alertModalHandlers.close}
+        alertData={selectedAlertModal ? mockAlertData : null}
+      />
+    </Suspense>
+
+    <Suspense fallback={<div>Loading modal...</div>}>
+      <TransactionMessagesModal
+        isOpen={selectedTransactionModal !== null}
+        onClose={transactionModalHandlers.close}
+        transactionId={selectedTransactionModal || ''}
+        messages={selectedTransactionModal ? mockTransactionMessages : []}
+      />
+    </Suspense>
+
+    <Suspense fallback={<div>Loading modal...</div>}>
+      <MessagePayloadModal
+        isOpen={selectedMessagePayload !== null}
+        onClose={messagePayloadHandlers.close}
+        message={selectedMessagePayload}
+      />
+    </Suspense>
+  </>
+);
+
+const useLinkedItemsState = () => {
   const [selectedCaseModal, setSelectedCaseModal] = useState<string | null>(null);
   const [selectedAlertModal, setSelectedAlertModal] = useState<string | null>(null);
   const [selectedTransactionModal, setSelectedTransactionModal] = useState<string | null>(null);
   const [selectedMessagePayload, setSelectedMessagePayload] = useState<any | null>(null);
   const [expandedTypologies, setExpandedTypologies] = useState<Set<string>>(new Set());
+  const [isLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleTypology = (id: string) => {
+  const caseModalHandlers = createModalHandlers(setSelectedCaseModal);
+  const alertModalHandlers = createModalHandlers(setSelectedAlertModal);
+  const transactionModalHandlers = createModalHandlers(setSelectedTransactionModal);
+  const messagePayloadHandlers = createModalHandlers(setSelectedMessagePayload);
+
+  const handleToggleTypology = (id: string) => {
     const newExpanded = new Set(expandedTypologies);
     if (newExpanded.has(id)) {
       newExpanded.delete(id);
@@ -69,6 +266,45 @@ const LinkedItemsTab: React.FC = () => {
     }
     setExpandedTypologies(newExpanded);
   };
+
+  return {
+    selectedCaseModal,
+    selectedAlertModal,
+    selectedTransactionModal,
+    selectedMessagePayload,
+    expandedTypologies,
+    isLoading,
+    error,
+    setError,
+    caseModalHandlers,
+    alertModalHandlers,
+    transactionModalHandlers,
+    messagePayloadHandlers,
+    handleToggleTypology,
+  };
+};
+
+const useMockData = () => {
+  const relatedCases = [
+    { id: 'A-10023', title: 'Case A-10023 – Investigation' },
+    { id: 'B-10024', title: 'Case B-10024 – Under Investigation' }
+  ];
+
+  const relatedAlerts = [
+    { id: 'A-001', title: 'A-001 – Alert Type 1', status: 'Active' },
+    { id: 'A-002', title: 'A-002 – Alert Type 2', status: 'Closed' }
+  ];
+
+  const relatedTransactions = [
+    { id: 'ADPSPKR28392', title: 'ADPSPKR28392 – Increased Debtor Activity' },
+    { id: 'ADPSPKR28393', title: 'ADPSPKR28393 – Multiple Same-Amount Transfers' },
+    { id: 'ADPSPKR28394', title: 'ADPSPKR28394 – Unusual Geographic Pattern' }
+  ];
+
+  const typologies = [
+    { id: 'typology-1', title: 'False promotions, phishing, or social engineering scams', score: 85 },
+    { id: 'typology-2', title: 'Duplication of payments from a single account', score: 75 }
+  ];
 
   const mockCaseData = {
     caseId: 'A-10023',
@@ -149,86 +385,93 @@ const LinkedItemsTab: React.FC = () => {
     }
   ];
 
+  return {
+    relatedCases,
+    relatedAlerts,
+    relatedTransactions,
+    typologies,
+    mockCaseData,
+    mockAlertData,
+    mockTransactionMessages,
+  };
+};
+
+const LinkedItemsTab: React.FC = () => {
+  const {
+    selectedCaseModal,
+    selectedAlertModal,
+    selectedTransactionModal,
+    selectedMessagePayload,
+    expandedTypologies,
+    isLoading,
+    error,
+    setError,
+    caseModalHandlers,
+    alertModalHandlers,
+    transactionModalHandlers,
+    messagePayloadHandlers,
+    handleToggleTypology,
+  } = useLinkedItemsState();
+
+  const {
+    relatedCases,
+    relatedAlerts,
+    relatedTransactions,
+    typologies,
+    mockCaseData,
+    mockAlertData,
+    mockTransactionMessages,
+  } = useMockData();
+
   return (
-    <div className="space-y-6">
-      <Section title="Related Items">
+    <LoadingState loading={isLoading} error={error} empty={!relatedCases.length && !relatedAlerts.length && !relatedTransactions.length}>
+      {error ? (
+        <ErrorBoundaryFallback error={error} onRetry={() => setError(null)} />
+      ) : (
         <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-600">Related Cases</div>
-            <LinkItem onClick={() => setSelectedCaseModal('A-10023')}>Case A-10023 – Investigation</LinkItem>
-            <LinkItem onClick={() => setSelectedCaseModal('B-10024')}>Case B-10024 – Under Investigation</LinkItem>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-600">Related Alerts</div>
-            <LinkItem onClick={() => setSelectedAlertModal('A-001')}>
-              A-001 – Alert Type 1<Pill>Active</Pill>
-            </LinkItem>
-            <LinkItem onClick={() => setSelectedAlertModal('A-002')}>
-              A-002 – Alert Type 2<Pill>Closed</Pill>
-            </LinkItem>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-600">Related Transactions</div>
-            <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28392')}>ADPSPKR28392 – Increased Debtor Activity</LinkItem>
-            <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28393')}>ADPSPKR28393 – Multiple Same-Amount Transfers</LinkItem>
-            <LinkItem onClick={() => setSelectedTransactionModal('ADPSPKR28394')}>ADPSPKR28394 – Unusual Geographic Pattern</LinkItem>
-            <div className="mt-2 space-y-1">
-              <div className="text-xs text-gray-500">Message Payloads:</div>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[0])}>View pacs.008 Payload</LinkItem>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[1])}>View pacs.002 Payload</LinkItem>
-              <LinkItem onClick={() => setSelectedMessagePayload(mockTransactionMessages[2])}>View camt.056 Payload</LinkItem>
+          <Section title="Related Items">
+            <div className="space-y-6">
+              <RelatedCasesSection 
+                cases={relatedCases} 
+                onCaseClick={caseModalHandlers.open} 
+              />
+              
+              <RelatedAlertsSection 
+                alerts={relatedAlerts} 
+                onAlertClick={alertModalHandlers.open} 
+              />
+              
+              <RelatedTransactionsSection 
+                transactions={relatedTransactions}
+                messagePayloads={mockTransactionMessages}
+                onTransactionClick={transactionModalHandlers.open}
+                onMessagePayloadClick={messagePayloadHandlers.open}
+              />
             </div>
-          </div>
-        </div>
-      </Section>
+          </Section>
 
-      <Section title="Typologies Triggered">
-        <div className="space-y-2">
-          <TypologyItem
-            id="typology-1"
-            title="False promotions, phishing, or social engineering scams"
-            score={85}
-            isExpanded={expandedTypologies.has('typology-1')}
-            onToggle={() => toggleTypology('typology-1')}
+          <TypologiesSection 
+            typologies={typologies}
+            expandedTypologies={expandedTypologies}
+            onToggleTypology={handleToggleTypology}
           />
-          <TypologyItem
-            id="typology-2"
-            title="Duplication of payments from a single account"
-            score={75}
-            isExpanded={expandedTypologies.has('typology-2')}
-            onToggle={() => toggleTypology('typology-2')}
+
+          <ModalManager
+            selectedCaseModal={selectedCaseModal}
+            selectedAlertModal={selectedAlertModal}
+            selectedTransactionModal={selectedTransactionModal}
+            selectedMessagePayload={selectedMessagePayload}
+            caseModalHandlers={caseModalHandlers}
+            alertModalHandlers={alertModalHandlers}
+            transactionModalHandlers={transactionModalHandlers}
+            messagePayloadHandlers={messagePayloadHandlers}
+            mockCaseData={mockCaseData}
+            mockAlertData={mockAlertData}
+            mockTransactionMessages={mockTransactionMessages}
           />
         </div>
-      </Section>
-
-      {}
-      <RelatedCaseModal
-        isOpen={selectedCaseModal !== null}
-        onClose={() => setSelectedCaseModal(null)}
-        caseData={selectedCaseModal ? mockCaseData : null}
-      />
-
-      <RelatedAlertModal
-        isOpen={selectedAlertModal !== null}
-        onClose={() => setSelectedAlertModal(null)}
-        alertData={selectedAlertModal ? mockAlertData : null}
-      />
-
-      <TransactionMessagesModal
-        isOpen={selectedTransactionModal !== null}
-        onClose={() => setSelectedTransactionModal(null)}
-        transactionId={selectedTransactionModal || ''}
-        messages={selectedTransactionModal ? mockTransactionMessages : []}
-      />
-
-      <MessagePayloadModal
-        isOpen={selectedMessagePayload !== null}
-        onClose={() => setSelectedMessagePayload(null)}
-        message={selectedMessagePayload}
-      />
-    </div>
+      )}
+    </LoadingState>
   );
 };
 

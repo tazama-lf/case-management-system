@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { PageContainer } from '../../../shared/components/ui';
+import React, { useState, Suspense, lazy } from 'react';
+import { PageContainer } from '@/shared/components/ui';
 import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import type { WorkQueue } from '../types/admindashboard.types';
-import CreateWorkQueueModal from './CreateWorkQueueModal';
+import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
+
+// Dynamic import for modal
+const CreateWorkQueueModal = lazy(() => import('./CreateWorkQueueModal'));
 
 interface WorkQueueManagementProps {
   className?: string;
@@ -179,9 +181,9 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
-                    {queue.roles.map((role, index) => (
+                    {queue.roles.map((role) => (
                       <span
-                        key={index}
+                        key={role}
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           roleColors[role] || 'bg-gray-100 text-gray-800'
                         }`}
@@ -193,9 +195,9 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
-                    {queue.taskTypes.map((taskType, index) => (
+                    {queue.taskTypes.map((taskType) => (
                       <span
-                        key={index}
+                        key={taskType}
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           taskTypeColors[taskType] || 'bg-gray-100 text-gray-800'
                         }`}
@@ -237,11 +239,13 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
       </div>
 
       {/* Create Work Queue Modal */}
-      <CreateWorkQueueModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSave={handleCreateWorkQueue}
-      />
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <CreateWorkQueueModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSave={handleCreateWorkQueue}
+        />
+      </Suspense>
     </PageContainer>
   );
 };

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../../features/auth/components/AuthContext';
-import type { SidebarProps, NavItem } from '../../types/navigation.types';
+import { useAuth } from '@/features/auth/components/AuthContext';
+import type { SidebarProps, NavItem } from '@/shared/types/navigation.types';
 
 const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const location = useLocation();

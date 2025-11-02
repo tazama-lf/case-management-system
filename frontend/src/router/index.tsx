@@ -1,19 +1,36 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import LayoutWithProvider from '../shared/components/layout/LayoutWithProvider';
-import ProtectedRoute from '../features/auth/components/ProtectedRoute';
-import RoleBasedRedirect from '../shared/components/navigation/RoleBasedRedirect';
-import Login from '../features/auth/pages/Login';
-import Dashboard from '../features/dashboard/pages/Dashboard';
-import Reports from '../features/reports/pages/CaseStatusReport';
-import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
-import CasesDashboard from '../features/cases/pages/CasesDashboard';
-import AdminDashboard from '../features/admin/pages/AdminDashboard';
-import WorkQueueDashboard from '../features/workqueue/pages/WorkQueueDashboard';
+import { lazy, Suspense } from 'react';
+import LayoutWithProvider from '@/shared/components/layout/LayoutWithProvider';
+import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
+import RoleBasedRedirect from '@/shared/components/navigation/RoleBasedRedirect';
+
+// Dynamic imports for route-level code splitting
+const Login = lazy(() => import('@/features/auth/pages/Login'));
+const Dashboard = lazy(() => import('@/features/dashboard/pages/Dashboard'));
+const Reports = lazy(() => import('@/features/reports/pages/CaseStatusReport'));
+const AlertsDashboard = lazy(() => import('@/features/alerts/pages/AlertsDashboard'));
+const CasesDashboard = lazy(() => import('@/features/cases/pages/CasesDashboard'));
+const AdminDashboard = lazy(() => import('@/features/admin/pages/AdminDashboard'));
+const WorkQueueDashboard = lazy(() => import('@/features/workqueue/pages/WorkQueueDashboard'));
+
+// Loading fallback component
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading page...</p>
+    </div>
+  </div>
+);
 
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Login />,
+    element: (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <Login />
+      </Suspense>
+    ),
   },
   {
     path: '/',
@@ -31,7 +48,9 @@ export const router = createBrowserRouter([
         path: 'dashboard',
         element: (
           <ProtectedRoute>
-            <Dashboard />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Dashboard />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -39,7 +58,9 @@ export const router = createBrowserRouter([
         path: 'reports',
         element: (
           <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
-            <Reports />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Reports />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -47,7 +68,9 @@ export const router = createBrowserRouter([
         path: 'alerts',
         element: (
           <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
-            <AlertsDashboard />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AlertsDashboard />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -55,7 +78,49 @@ export const router = createBrowserRouter([
         path: 'cases',
         element: (
           <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
-            <CasesDashboard />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <CasesDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'cases/:caseId',
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <CasesDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'alerts/:alertId',
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AlertsDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'work-queue/:taskId?',
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <WorkQueueDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/:reportType?',
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Reports />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -63,7 +128,9 @@ export const router = createBrowserRouter([
         path: 'work-queue',
         element: (
           <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
-            <WorkQueueDashboard />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <WorkQueueDashboard />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -71,7 +138,9 @@ export const router = createBrowserRouter([
         path: 'admin',
         element: (
           <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage']}>
-            <AdminDashboard />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AdminDashboard />
+            </Suspense>
           </ProtectedRoute>
         ),
       },

@@ -12,7 +12,7 @@ export const useReports = (dateRange?: string, filters?: { caseType: string; pri
   return useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
     queryFn: () => reportsService.getReportsData(dateRange, filters),
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0, // Force fresh data for debugging
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
   });

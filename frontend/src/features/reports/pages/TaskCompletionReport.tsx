@@ -1,16 +1,15 @@
-import React from 'react';
-import TaskStatsCards from '../components/TaskStatsCards';
-import TaskCompletionBarChart from '../components/TaskCompletionBarChart';
-import CompletionTimeChart from '../components/CompletionTimeChart';
-import CompletionRateTrendChart from '../components/CompletionRateTrendChart';
-import TaskStatusPieChart from '../components/TaskStatusPieChart';
-import TaskCompletionTable from '../components/TaskCompletionTable';
+import React, { Suspense } from 'react';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
+
+const TaskStatsCards = React.lazy(() => import('../components/TaskStatsCards'));
+const TaskCompletionBarChart = React.lazy(() => import('../components/TaskCompletionBarChart'));
+const CompletionTimeChart = React.lazy(() => import('../components/CompletionTimeChart'));
+const CompletionRateTrendChart = React.lazy(() => import('../components/CompletionRateTrendChart'));
+const TaskStatusPieChart = React.lazy(() => import('../components/TaskStatusPieChart'));
+const TaskCompletionTable = React.lazy(() => import('../components/TaskCompletionTable'));
+
 interface TaskCompletionReportProps {
-  onExportExcel: () => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
   dateRange: string;
 }
 
@@ -55,7 +54,7 @@ const dummyTaskData = {
   ]
 };
 
-const TaskCompletionReport: React.FC<TaskCompletionReportProps> = () => {
+const TaskCompletionReport: React.FC<TaskCompletionReportProps> = ({ dateRange: _dateRange }) => {
   const taskData = dummyTaskData;
   const isLoading = false;
 
@@ -113,37 +112,49 @@ const TaskCompletionReport: React.FC<TaskCompletionReportProps> = () => {
 
   return (
     <>
-      <TaskStatsCards stats={stats} />
+      <Suspense fallback={<div className="bg-gray-200 h-32 rounded-lg animate-pulse"></div>}>
+        <TaskStatsCards stats={stats} />
+      </Suspense>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <TaskCompletionBarChart
-          data={completionByType}
-          title="Task Completion by Type"
-        />
-        <CompletionTimeChart
-          data={avgCompletionTime}
-          title="Average Completion Time (Days)"
-        />
+        <Suspense fallback={<div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>}>
+          <TaskCompletionBarChart
+            data={completionByType}
+            title="Task Completion by Type"
+          />
+        </Suspense>
+        <Suspense fallback={<div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>}>
+          <CompletionTimeChart
+            data={avgCompletionTime}
+            title="Average Completion Time (Days)"
+          />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
-        <CompletionRateTrendChart
-          data={completionTrend}
-          title="Task Completion Rate Trend"
-        />
-        <TaskStatusPieChart
-          data={statusDistribution}
-          title="Task Status Distribution"
-        />
+        <Suspense fallback={<div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>}>
+          <CompletionRateTrendChart
+            data={completionTrend}
+            title="Task Completion Rate Trend"
+          />
+        </Suspense>
+        <Suspense fallback={<div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>}>
+          <TaskStatusPieChart
+            data={statusDistribution}
+            title="Task Status Distribution"
+          />
+        </Suspense>
       </div>
 
-      <TaskCompletionTable
-        data={taskDetails}
-        title="Task Completion Details"
-        onExportExcel={handleExportExcel}
-        onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
-      />
+      <Suspense fallback={<div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>}>
+        <TaskCompletionTable
+          data={taskDetails}
+          title="Task Completion Details"
+          onExportExcel={handleExportExcel}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+        />
+      </Suspense>
     </>
   );
 };

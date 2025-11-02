@@ -1,7 +1,7 @@
 import React from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import triageService from '../../alerts/services/triageservice';
-import type { Alert } from '../../alerts/types/triage.types';
+import triageService from '@/features/alerts/services/triageservice';
+import type { Alert } from '@/features/alerts/types/triage.types';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';

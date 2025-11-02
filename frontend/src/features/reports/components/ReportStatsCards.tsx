@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import {
   FolderIcon,
   FolderOpenIcon,
   ClockIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import StatsCard from '../../dashboard/components/StatsCard';
 import type { CaseStatusStats } from '../types/reports.types';
+
+const StatsCard = React.lazy(() => import('../../dashboard/components/StatsCard'));
 
 interface ReportStatsCardsProps {
   stats: CaseStatusStats;
@@ -50,13 +51,14 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
   return (
     <div className="grid grid-cols-4 gap-6 mb-8">
       {statsCardsConfig.map((card) => (
-        <StatsCard
-          key={card.title}
-          title={card.title}
-          value={card.value}
-          icon={card.icon}
-          color={card.color}
-        />
+        <Suspense key={card.title} fallback={<div className="bg-gray-200 h-32 rounded-lg animate-pulse"></div>}>
+          <StatsCard
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            color={card.color}
+          />
+        </Suspense>
       ))}
     </div>
   );

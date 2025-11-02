@@ -290,7 +290,6 @@ class AuthService {
 
   async fetchAllInvestigators(): Promise<Investigator[]> {
     try {
-      console.log('Fetching investigators from:', `${API_BASE_URL}/auth/investigators`);
       const response = await fetch(`${API_BASE_URL}/auth/investigators`, {
         method: 'GET',
         headers: {
@@ -299,14 +298,11 @@ class AuthService {
         },
       });
 
-      console.log('Investigators API response status:', response.status);
-
       if (!response.ok) {
         throw new Error(`Failed to fetch investigators: ${response.status} ${response.statusText}`);
       }
 
       const data: Investigator[] = await response.json();
-      console.log('Investigators API response data:', data);
       return data;
     } catch (error) {
       console.error('Error fetching investigators:', error);

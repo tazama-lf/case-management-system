@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { PageContainer } from '../../../shared/components/ui';
-import ReportStatsCards from '../components/ReportStatsCards';
-import ReportFilters from '../components/ReportFilters';
-import PieChart from '../components/PieChart';
-import BarChart from '../components/BarChart';
-import MultiBarChart from '../components/MultiBarChart';
-import ReportsTable from '../components/ReportsTable';
-import { useReports } from '../hooks/useReports';
-import InvestigatorWorkloadReport from './InvestigatorWorkloadReport';
-import TaskCompletionReport from './TaskCompletionReport';
-import AuditLogsReport from './AuditLogsReport';
-import CaseAgeingReport from './CaseAgeingReport';
-import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
-import { getCaseTypeColor } from '../../../shared/utils/colors';
+import { PageContainer } from '@/shared/components/ui';
+import ReportStatsCards from '@/features/reports/components/ReportStatsCards';
+import ReportFilters from '@/features/reports/components/ReportFilters';
+import ReportsTable from '@/features/reports/components/ReportsTable';
+import { useReports } from '@/features/reports/hooks/useReports';
+import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '@/shared/utils/exportUtils';
+import { getCaseTypeColor } from '@/shared/utils/colors';
+
+
+const PieChart = lazy(() => import('@/features/reports/components/PieChart'));
+const BarChart = lazy(() => import('@/features/reports/components/BarChart'));
+const MultiBarChart = lazy(() => import('@/features/reports/components/MultiBarChart'));
+
+
+const InvestigatorWorkloadReport = lazy(() => import('./InvestigatorWorkloadReport'));
+const TaskCompletionReport = lazy(() => import('./TaskCompletionReport'));
+const AuditLogsReport = lazy(() => import('./AuditLogsReport'));
+const CaseAgeingReport = lazy(() => import('./CaseAgeingReport'));
 
 type ReportType = 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
 
@@ -138,19 +142,27 @@ const Reports: React.FC = () => {
     { label: 'CLOSED', value: statusDistribution.closed, color: '#6b7280', percentage: 0 }
   ].map(item => ({
     ...item,
-    percentage: (item.value / stats.totalCases) * 100
+    percentage: stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0
   }));
 
-  const totalOutcomes = outcomes.resolved + outcomes.confirmed + outcomes.inconclusive + outcomes.pending;
+  // Debug outcomes data
+  console.log('Debug - reportsData:', reportsData);
+  console.log('Debug - outcomes:', outcomes);
+
+  // Improved outcome data processing with better fallbacks
+  const totalOutcomes = (outcomes?.resolved || 0) + (outcomes?.confirmed || 0) + (outcomes?.inconclusive || 0) + (outcomes?.pending || 0);
   const outcomeData = [
-    { label: 'REFUTED', value: outcomes.resolved, color: '#10b981', percentage: 0 },
-    { label: 'CONFIRMED', value: outcomes.confirmed, color: '#ef4444', percentage: 0 },
-    { label: 'INCONCLUSIVE', value: outcomes.inconclusive, color: '#f59e0b', percentage: 0 },
-    { label: 'PENDING', value: outcomes.pending, color: '#3b82f6', percentage: 0 }
+    { label: 'REFUTED', value: outcomes?.resolved || 0, color: '#10b981', percentage: 0 },
+    { label: 'CONFIRMED', value: outcomes?.confirmed || 0, color: '#ef4444', percentage: 0 },
+    { label: 'INCONCLUSIVE', value: outcomes?.inconclusive || 0, color: '#f59e0b', percentage: 0 },
+    { label: 'PENDING', value: outcomes?.pending || 0, color: '#3b82f6', percentage: 0 }
   ].map(item => ({
     ...item,
     percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0
   }));
+
+  console.log('Debug - totalOutcomes:', totalOutcomes);
+  console.log('Debug - outcomeData:', outcomeData);
 
   const getPageTitle = () => {
     switch (reportType) {
@@ -190,36 +202,44 @@ const Reports: React.FC = () => {
         <>
           <ReportStatsCards stats={stats} />
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <PieChart
-              data={statusDistributionData}
-              title="Case Status Distribution"
-              isLoading={isLoading}
-            />
-            <BarChart
-              data={caseTypes.map(type => ({
-                label: type.name,
-                value: type.count,
-                color: getCaseTypeColor(type.name)
-              }))}
-              title="Case Types"
-              isLoading={isLoading}
-            />
+            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+              <PieChart
+                data={statusDistributionData}
+                title="Case Status Distribution"
+                isLoading={isLoading}
+              />
+            </Suspense>
+            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+              <BarChart
+                data={caseTypes.map(type => ({
+                  label: type.name,
+                  value: type.count,
+                  color: getCaseTypeColor(type.name)
+                }))}
+                title="Case Types"
+                isLoading={isLoading}
+              />
+            </Suspense>
           </div>
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <PieChart
-              data={outcomeData}
-              title="Case Outcomes"
-              isLoading={isLoading}
-            />
-            <MultiBarChart
-              data={monthlyTrend.map(trend => ({
-                label: trend.month,
-                casesCreated: trend.casesCreated,
-                casesClosed: trend.casesClosed
-              }))}
-              title="Monthly Case Trend"
-              isLoading={isLoading}
-            />
+            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+              <PieChart
+                data={outcomeData}
+                title="Case Outcomes"
+                isLoading={isLoading}
+              />
+            </Suspense>
+            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+              <MultiBarChart
+                data={monthlyTrend.map(trend => ({
+                  label: trend.month,
+                  casesCreated: trend.casesCreated,
+                  casesClosed: trend.casesClosed
+                }))}
+                title="Monthly Case Trends"
+                isLoading={isLoading}
+              />
+            </Suspense>
           </div>
           <ReportsTable
             data={statusDetails}
@@ -232,39 +252,35 @@ const Reports: React.FC = () => {
       )}
 
       {reportType === 'TASK_COMPLETION' && (
-        <TaskCompletionReport
-          onExportExcel={handleExportExcel}
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-          dateRange={dateRange}
-        />
+        <Suspense fallback={<div>Loading Task Completion Report...</div>}>
+          <TaskCompletionReport
+            dateRange={dateRange}
+          />
+        </Suspense>
       )}
 
       {reportType === 'AUDIT_LOGS' && (
-        <AuditLogsReport
-          onExportExcel={handleExportExcel}
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-          dateRange={dateRange}
-        />
+        <Suspense fallback={<div>Loading Audit Logs Report...</div>}>
+          <AuditLogsReport
+            dateRange={dateRange}
+          />
+        </Suspense>
       )}
 
       {reportType === 'CASE_AGEING' && (
-        <CaseAgeingReport
-          onExportExcel={handleExportExcel}
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-          dateRange={dateRange}
-        />
+        <Suspense fallback={<div>Loading Case Ageing Report...</div>}>
+          <CaseAgeingReport
+            dateRange={dateRange}
+          />
+        </Suspense>
       )}
 
       {reportType === 'INVESTIGATOR_WORKLOAD' && (
-        <InvestigatorWorkloadReport
-          onExportExcel={handleExportExcel}
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-          dateRange={dateRange}
-        />
+        <Suspense fallback={<div>Loading Investigator Workload Report...</div>}>
+          <InvestigatorWorkloadReport
+            dateRange={dateRange}
+          />
+        </Suspense>
       )}
     </PageContainer>
   );
