@@ -17,7 +17,7 @@ import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TaskService } from 'src/task/task.service';
 import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
 import { CommentService } from 'src/comment/comment.service';
-import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
+import { CaseCreationService } from '../case-creation/case-creation.service';
 import {
   CaseCreatedEvent,
   CaseAbandonedEvent,
@@ -40,7 +40,7 @@ export class CaseService {
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly commentService: CommentService,
-    private readonly caseWorkflowService: CaseWorkflowService,
+    private readonly caseWorkflowService: CaseCreationService,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly notificationService: NotificationService,
     private readonly authHelperService: AuthHelperService,

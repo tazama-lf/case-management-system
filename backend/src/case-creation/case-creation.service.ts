@@ -9,7 +9,7 @@ import {CaseCreatedEvent, CaseStatusChangedEvent} from '../events/domain-events'
 import {CaseStatus, CaseType, Priority} from "@prisma/client";
 
 @Injectable()
-export class CaseWorkflowService {
+export class CaseCreationService {
   constructor(
     private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
@@ -19,7 +19,7 @@ export class CaseWorkflowService {
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string) {
     try {
-      this.logger.log(`[CaseWorkflow] Creating case for user ${userId}`, CaseWorkflowService.name);
+      this.logger.log(`[CaseWorkflow] Creating case for user ${userId}`, CaseCreationService.name);
 
       const createdCase = await this.prismaService.case.create({
         data: {
@@ -34,7 +34,7 @@ export class CaseWorkflowService {
         },
       });
 
-      this.logger.log(`[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event`, CaseWorkflowService.name);
+      this.logger.log(`[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event`, CaseCreationService.name);
 
       this.eventEmitter.emit(
           'case.created',
@@ -57,7 +57,7 @@ export class CaseWorkflowService {
 
       return createdCase;
     } catch (error) {
-      this.logger.error(`[CaseWorkflow] Error creating case: ${error.message}`, error.stack, CaseWorkflowService.name);
+      this.logger.error(`[CaseWorkflow] Error creating case: ${error.message}`, error.stack, CaseCreationService.name);
       throw error;
     }
   }
@@ -108,17 +108,17 @@ export class CaseWorkflowService {
       await this.auditLogService.logAction({
         userId,
         operation: 'updateCaseStatus',
-        entityName: 'CaseWorkflowService',
+        entityName: 'CaseCreationService',
         actionPerformed: `Updated case ${caseId} status to ${status}`,
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Case ${caseId} status updated to ${status}`, 'CaseWorkflowService');
+      this.logger.log(`Case ${caseId} status updated to ${status}`, 'CaseCreationService');
     } catch (error) {
       this.logger.error(
           `Failed to update case status for ${caseId}: ${error.message}`,
           error.stack,
-          'CaseWorkflowService',
+          'CaseCreationService',
       );
       throw error;
     }

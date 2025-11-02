@@ -10,7 +10,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
-import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
+import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus, CaseType } from '@prisma/client';
 import { Outcome } from 'src/audit/types/outcome';
@@ -24,7 +24,7 @@ export class TriageService {
     private readonly logger: LoggerService,
     private prisma: PrismaService,
     private audit: AuditLogService,
-    private readonly caseWorkflowService: CaseWorkflowService,
+    private readonly caseWorkflowService: CaseCreationService,
     private taskService: TaskService,
     private commentService: CommentService,
     private configService: ConfigService,
