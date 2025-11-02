@@ -182,7 +182,13 @@ export class TriageService {
 
       this.eventEmitter.emit(
           'case.created',
-          new CaseCreatedEvent(createdCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, false),
+          new CaseCreatedEvent(
+              createdCase.case_id,
+              tenantId,
+              CaseCreationType.AUTOMATIC_SYSTEM,
+              createdCase.status,
+              false
+          ),
       );
 
       this.logger.log(
@@ -833,7 +839,13 @@ export class TriageService {
 
       this.eventEmitter.emit(
           'case.created',
-          new CaseCreatedEvent(newCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, false),
+          new CaseCreatedEvent(
+              newCase.case_id,
+              tenantId,
+              CaseCreationType.AUTOMATIC_SYSTEM,
+              newCase.status,
+              false
+          ),
       );
 
       this.logger.log(

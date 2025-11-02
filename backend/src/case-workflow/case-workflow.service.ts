@@ -37,7 +37,13 @@ export class CaseWorkflowService {
 
       this.eventEmitter.emit(
           'case.created',
-          new CaseCreatedEvent(createdCase.case_id, createdCase.tenant_id, createCaseDTO.caseCreationType, false),
+          new CaseCreatedEvent(
+              createdCase.case_id,
+              createdCase.tenant_id,
+              createCaseDTO.caseCreationType,
+              createdCase.status,
+              false
+          ),
       );
 
       this.auditLogService.logAction({

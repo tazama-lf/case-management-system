@@ -30,7 +30,7 @@ export class FlowableEventListener {
   async handleCaseCreated(event: CaseCreatedEvent) {
     try {
       this.logger.log(
-          `[Flowable-CaseCreated] Starting process for case ${event.caseId}`,
+          `[Flowable-CaseCreated] Starting process for case ${event.caseId} with status ${event.caseStatus}`,
           FlowableEventListener.name,
       );
 
@@ -40,6 +40,7 @@ export class FlowableEventListener {
             caseId: event.caseId,
             tenantId: event.tenantId,
             creationType: event.creationType,
+            caseStatus: event.caseStatus,
             autocloseEligible: String(event.autocloseEligible),
           },
           event.caseId,
@@ -196,7 +197,13 @@ export class FlowableEventListener {
       }
 
       const taskObj = flowableTask as Record<string, unknown>;
-      const completionVars = event.completionVariables || {};
+
+      const completionVars: Record<string, string> = {};
+      if (event.completionVariables) {
+        Object.entries(event.completionVariables).forEach(([key, value]) => {
+          completionVars[key] = String(value);
+        });
+      }
 
       await this.flowableService.completeTask(taskObj.id as string, completionVars);
 
