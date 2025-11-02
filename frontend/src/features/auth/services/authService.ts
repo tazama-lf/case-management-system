@@ -17,8 +17,6 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      console.log('Starting login process...');
-
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -32,18 +30,15 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
-      console.log('Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
       if (data.token) {
         this.setToken(data.token);
 
         const user = this.decodeToken(data.token);
         if (user) {
-          console.log('User decoded from token successfully');
           this.setUser(user);
           data.user = user;
         } else {
-          console.log('Failed to decode user from token');
         }
       }
 
@@ -91,7 +86,6 @@ class AuthService {
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded) {
-      console.log('decodeToken failed: could not decode token');
       return null;
     }
 
@@ -108,17 +102,6 @@ class AuthService {
         permissions: decoded.claims || [],
         backendClaims: this.extractBackendClaims(decoded),
       };
-
-      console.log('decodeToken success:', {
-        user_id: user.user_id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        tenantId: user.tenantId,
-        roles: user.roles,
-        backendClaims: user.backendClaims
-      });
 
       return user;
     } catch (error) {
@@ -170,18 +153,7 @@ class AuthService {
       });
     }
 
-    console.log('extractBackendClaims() Debug - Raw claims found:', {
-      originalClaims: claims,
-      payloadStructure: {
-        claims: payload.claims,
-        realm_access: payload.realm_access,
-        resource_access: Object.keys(payload.resource_access || {})
-      }
-    });
-
     const finalClaims = [...new Set(claims)];
-
-    console.log('extractBackendClaims() Final claims:', finalClaims);
 
     return finalClaims;
   }
@@ -292,19 +264,8 @@ class AuthService {
     const hasCMSTest = this.hasCMSTestRole();
     const hasInvestigator = this.hasInvestigatorRole();
     const hasSupervisor = this.hasSupervisorRole();
-    const user = this.getUser();
 
     const result = hasAlertTriage || hasCMSTest || hasInvestigator || hasSupervisor;
-
-    console.log('validateBackendAccess() Debug:', {
-      hasAlertTriage,
-      hasCMSTest,
-      hasInvestigator,
-      hasSupervisor,
-      userClaims: user?.backendClaims,
-      allUserData: user,
-      result
-    });
 
     return result;
   }

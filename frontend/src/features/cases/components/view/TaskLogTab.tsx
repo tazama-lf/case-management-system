@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import UnassignTaskModal from '../modals/UnassignTaskModal';
 import AssignTaskModal from '../modals/AssignTaskModal';
@@ -124,7 +123,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     setUpdateStatusModalOpen(true);
   };
 
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, _notes?: string) => {
     try {
       if (!task || !assignee) {
         console.warn('Cannot assign task: missing task or assignee', { task, assignee });
@@ -132,7 +131,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         return;
       }
 
-      console.log('Assigning task to investigator:', { taskId: task.id, assignee, notes });
       await taskService.assignTaskToInvestigator(task.id, assignee);
 
       setAssignModalOpen(false);
@@ -147,7 +145,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     }
   };
 
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, _justification: string) => {
     try {
       if (!task || !assignee) {
         console.warn('Cannot reassign task: missing task or assignee', { task, assignee });
@@ -155,7 +153,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         return;
       }
 
-      console.log('Reassigning task:', { taskId: task.id, assignee, justification });
       await taskService.reassignTask(task.id, assignee);
 
       setReassignModalOpen(false);
@@ -173,7 +170,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
 
 
-  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
+  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, _notes?: string) => {
     try {
       const statusMap: Record<string, TaskStatusType> = {
         'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,

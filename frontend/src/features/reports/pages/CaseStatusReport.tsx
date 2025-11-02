@@ -13,6 +13,7 @@ import TaskCompletionReport from './TaskCompletionReport';
 import AuditLogsReport from './AuditLogsReport';
 import CaseAgeingReport from './CaseAgeingReport';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
+import { getCaseTypeColor } from '../../../shared/utils/colors';
 
 type ReportType = 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
 
@@ -198,7 +199,7 @@ const Reports: React.FC = () => {
               data={caseTypes.map(type => ({
                 label: type.name,
                 value: type.count,
-                color: type.color
+                color: getCaseTypeColor(type.name)
               }))}
               title="Case Types"
               isLoading={isLoading}

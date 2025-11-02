@@ -20,10 +20,9 @@ const CompletionRateTrendChart: React.FC<CompletionRateTrendChartProps> = ({ dat
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     week: item.week,
-    completionRate: item.completionRate
+    rate: item.completionRate
   }));
 
   return (

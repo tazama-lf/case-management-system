@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
@@ -53,9 +53,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
-  const [isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
-  const [showAlertDropdown, setShowAlertDropdown] = React.useState(false);
-  const [alertSearchError, setAlertSearchError] = React.useState<string>('');
+  const [_isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
+  const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
+  const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
 
   const [selectedAlerts, setSelectedAlerts] = React.useState<Alert[]>([]);
 
@@ -152,21 +152,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     return () => clearTimeout(timeoutId);
   }, [alertSearchTerm, open]);
 
-  const handleAlertSearch = (searchTerm: string) => {
-    setAlertSearchTerm(searchTerm);
-    setShowAlertDropdown(true);
-  };
-
-  const handleAlertSelect = (alert: Alert) => {
-    setSelectedAlert(alert);
-    setAlertSearchTerm(alert.alert_id);
-    setShowAlertDropdown(false);
-
-    if (alert.alert_type) {
-      setAlertType(alert.alert_type as AlertType);
-    }
-  };
-
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -178,36 +163,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const filteredAlerts = React.useMemo(() => {
-    if (!alertSearchTerm || alertSearchTerm.length < 2) {
-      return availableAlerts.slice(0, 10);
-    }
-
-    const searchTerm = alertSearchTerm.toLowerCase().replace(/[-\s]/g, '');
-
-    return availableAlerts.filter(alert => {
-      const alertIdClean = alert.alert_id.toLowerCase().replace(/[-\s]/g, '');
-
-      const exactMatch = alert.alert_id.toLowerCase().includes(alertSearchTerm.toLowerCase());
-      const partialMatch = alertIdClean.includes(searchTerm);
-      const startsWithMatch = alertIdClean.startsWith(searchTerm);
-
-      return exactMatch || partialMatch || startsWithMatch;
-    }).sort((a, b) => {
-      const aId = a.alert_id.toLowerCase();
-      const bId = b.alert_id.toLowerCase();
-      const search = alertSearchTerm.toLowerCase();
-
-      const aStartsWith = aId.startsWith(search);
-      const bStartsWith = bId.startsWith(search);
-
-      if (aStartsWith && !bStartsWith) return -1;
-      if (!aStartsWith && bStartsWith) return 1;
-
-      return aId.localeCompare(bId);
-    }).slice(0, 20);
-  }, [availableAlerts, alertSearchTerm]);
 
 
   if (!open) return null;
@@ -458,7 +413,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               selectedAlerts={selectedAlerts}
               onAlertsChange={setSelectedAlerts}
               isVisible={activeTab === 'link-alerts'}
-              onAlertsSelected={(hasAlerts) => {
+              onAlertsSelected={(_hasAlerts) => {
 
               }}
             />

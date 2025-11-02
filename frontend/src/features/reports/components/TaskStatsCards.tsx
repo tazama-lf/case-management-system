@@ -34,7 +34,7 @@ const TaskStatsCards: React.FC<TaskStatsCardsProps> = ({ stats }) => {
         value={`${stats.avgCompletionTime} days`}
         subtitle="-0.5 days from previous period"
         icon={<ClockIcon className="h-6 w-6" />}
-        color="orange"
+        color="yellow"
       />
       <StatsCard
         title="Overdue Tasks"

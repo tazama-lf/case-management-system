@@ -12,7 +12,6 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   const [animatedValue, setAnimatedValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
-  // Determine if value is numeric for animation
   const isNumeric = typeof value === 'number';
 
   const colorClasses = {
@@ -34,8 +33,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   useEffect(() => {
     setIsVisible(true);
 
-    // Only animate numeric values
-    if (isNumeric && typeof value === 'number') {
+        if (isNumeric) {
       const duration = 1000;
       const steps = 60;
       const increment = value / steps;
@@ -53,17 +51,14 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
 
       return () => clearInterval(timer);
     } else {
-      // For string values, just set to 0 (no animation)
       setAnimatedValue(0);
     }
   }, [value, isNumeric]);
 
-  // Helper function to safely display the value
   const getDisplayValue = () => {
     if (typeof value === 'string') {
       return value;
     }
-    // Handle NaN, null, undefined for numeric values
     if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
       return '0';
     }

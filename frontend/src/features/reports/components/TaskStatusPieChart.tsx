@@ -22,8 +22,7 @@ const TaskStatusPieChart: React.FC<TaskStatusPieChartProps> = ({ data, title, si
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.status,
     value: item.count,
     percentage: ((item.count / total) * 100).toFixed(1),

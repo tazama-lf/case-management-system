@@ -23,8 +23,7 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
   const investigators = Object.keys(data[0]?.investigators || {});
   const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     month: item.month,
     ...item.investigators
   }));

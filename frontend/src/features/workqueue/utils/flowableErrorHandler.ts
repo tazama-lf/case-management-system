@@ -174,60 +174,56 @@ export class FlowableErrorHandler {
 
 
   private static createErrorFromStatus(status: number, operation: string, data?: any): FlowableError {
-    switch (status) {
-      case 400:
-        return new FlowableError(
-          `Invalid request: ${data?.message || 'Bad request'}`,
-          'API_ERROR',
-          status,
-          data
-        );
-      case 401:
-        return new FlowableError(
-          ErrorMessages[FlowableErrorCodes.UNAUTHORIZED],
-          'FLOWABLE_ERROR',
-          status,
-          data
-        );
-      case 403:
-        return new FlowableError(
-          ErrorMessages[FlowableErrorCodes.FORBIDDEN],
-          'FLOWABLE_ERROR',
-          status,
-          data
-        );
-      case 404:
-        return new FlowableError(
-          ErrorMessages[FlowableErrorCodes.TASK_NOT_FOUND],
-          'FLOWABLE_ERROR',
-          status,
-          data
-        );
-      case 409:
-        return new FlowableError(
-          'Conflict: The resource is in a state that conflicts with the request',
-          'FLOWABLE_ERROR',
-          status,
-          data
-        );
-      case 500:
-      case 502:
-      case 503:
-      case 504:
-        return new FlowableError(
-          ErrorMessages[FlowableErrorCodes.FLOWABLE_SERVER_ERROR],
-          'FLOWABLE_ERROR',
-          status,
-          data
-        );
-      default:
-        return new FlowableError(
-          `Failed to ${operation}: HTTP ${status}`,
-          'API_ERROR',
-          status,
-          data
-        );
+    const statusErrorMap: Record<number, { message: string; type: FlowableError['type'] }> = {
+      400: {
+        message: `Invalid request: ${data?.message || 'Bad request'}`,
+        type: 'API_ERROR',
+      },
+      401: {
+        message: ErrorMessages[FlowableErrorCodes.UNAUTHORIZED],
+        type: 'FLOWABLE_ERROR',
+      },
+      403: {
+        message: ErrorMessages[FlowableErrorCodes.FORBIDDEN],
+        type: 'FLOWABLE_ERROR',
+      },
+      404: {
+        message: ErrorMessages[FlowableErrorCodes.TASK_NOT_FOUND],
+        type: 'FLOWABLE_ERROR',
+      },
+      409: {
+        message: 'Conflict: The resource is in a state that conflicts with the request',
+        type: 'FLOWABLE_ERROR',
+      },
+    };
+
+    // Handle server errors (500-504)
+    if (status >= 500 && status <= 504) {
+      return new FlowableError(
+        ErrorMessages[FlowableErrorCodes.FLOWABLE_SERVER_ERROR],
+        'FLOWABLE_ERROR',
+        status,
+        data
+      );
     }
+
+    const errorConfig = statusErrorMap[status];
+    if (errorConfig) {
+      return new FlowableError(
+        errorConfig.message,
+        errorConfig.type,
+        status,
+        data
+      );
+    }
+
+    // Default fallback
+    return new FlowableError(
+      `Failed to ${operation}: HTTP ${status}`,
+      'API_ERROR',
+      status,
+      data
+    );
   }
 
 

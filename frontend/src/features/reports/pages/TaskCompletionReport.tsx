@@ -14,7 +14,6 @@ interface TaskCompletionReportProps {
   dateRange: string;
 }
 
-// Dummy data for task completion
 const dummyTaskData = {
   stats: {
     totalTasks: 120,
@@ -57,7 +56,6 @@ const dummyTaskData = {
 };
 
 const TaskCompletionReport: React.FC<TaskCompletionReportProps> = () => {
-  // Using dummy data instead of API call
   const taskData = dummyTaskData;
   const isLoading = false;
 

@@ -1,5 +1,7 @@
 import React from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { formatDate } from '../../../shared/utils/dateUtils';
+import { EmptyState } from '../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
 
 interface WorkQueueTableProps {
@@ -34,15 +36,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         {config.label}
       </span>
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
@@ -214,9 +207,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       </div>
 
       {tasks.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-sm text-gray-500">No tasks found in work queue</p>
-        </div>
+        <EmptyState
+          title="No tasks found"
+          description="No tasks are currently available in this work queue"
+          icon="folder"
+        />
       )}
     </div>
   );

@@ -1,11 +1,11 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
 
 @ApiTags('Reports')
-@ApiBearerAuth()
+@ApiBearerAuth('jwt')
 @Controller('api/v1/reports')
 @UseGuards(TazamaAuthGuard)
 export class ReportsController {
@@ -73,8 +73,7 @@ export class ReportsController {
             type: 'object',
             properties: {
               name: { type: 'string', example: 'FRAUD' },
-              count: { type: 'number', example: 75 },
-              color: { type: 'string', example: '#ef4444' }
+              count: { type: 'number', example: 75 }
             }
           }
         }
@@ -85,7 +84,7 @@ export class ReportsController {
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   getCaseStatus(
-    @Query('dateRange') dateRange?: string,
+    @Query('dateRange') dateRange: string = 'last30',
     @Query('caseType') caseType?: string,
     @Query('priority') priority?: string,
     @Query('investigator') investigator?: string
@@ -138,7 +137,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getInvestigatorWorkload(@Query('dateRange') dateRange?: string) {
+  getInvestigatorWorkload(@Query('dateRange') dateRange: string = 'last30') {
     return this.reportsService.getInvestigatorWorkload(dateRange);
   }
 
@@ -192,7 +191,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getAuditLogs(@Query('dateRange') dateRange?: string) {
+  getAuditLogs(@Query('dateRange') dateRange: string = 'last30') {
     return this.reportsService.getAuditLogs(dateRange);
   }
 
@@ -244,8 +243,7 @@ export class ReportsController {
             properties: {
               ageRange: { type: 'string', example: '0-7 days' },
               count: { type: 'number', example: 45 },
-              percentage: { type: 'number', example: 30 },
-              color: { type: 'string', example: '#10b981' }
+              percentage: { type: 'number', example: 30 }
             }
           }
         }

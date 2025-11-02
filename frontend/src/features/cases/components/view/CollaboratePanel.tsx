@@ -47,7 +47,6 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
 
   const handleCreate = (payload: NewDiscussionThreadPayload) => {
     if (onCreateThread) onCreateThread(payload);
-    else console.log('New thread created', payload);
     setOpenCreate(false);
   };
 

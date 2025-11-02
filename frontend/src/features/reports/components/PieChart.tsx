@@ -41,8 +41,7 @@ const PieChart: React.FC<PieChartProps> = ({ data, title, size = 350, isLoading 
     );
   }
 
-  // Transform data for recharts
-  const chartData = validData.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.label,
     value: item.value,
     percentage: item.percentage.toFixed(1),

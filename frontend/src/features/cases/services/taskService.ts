@@ -136,10 +136,7 @@ export class TaskService {
       const queryString = params.toString();
       const url = `${this.baseUrl}${queryString ? `?${queryString}` : ''}`;
 
-      console.log('TaskService: Fetching tasks from:', url);
-
       const response = await apiClient.get<TaskForSupervisor[]>(url);
-      console.log('TaskService: Backend response received:', Array.isArray(response) ? response.length : 'not array', 'items');
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
       console.error('TaskService: Failed to get all tasks from backend:', error);
@@ -158,14 +155,11 @@ export class TaskService {
 
   async assignTaskToInvestigator(taskId: string, assignedUserId: string): Promise<TaskForSupervisor> {
     try {
-      console.log('TaskService: Assigning task', taskId, 'to user', assignedUserId);
-
       const response = await apiClient.patch<TaskForSupervisor>(
         `${this.baseUrl}/${taskId}/assign`,
         { assignedUserId }
       );
 
-      console.log('TaskService: Task assignment successful:', response);
       return response;
     } catch (error: any) {
       console.error('TaskService: Task assignment failed:', error);
@@ -175,14 +169,11 @@ export class TaskService {
 
   async reassignTask(taskId: string, assignedUserId: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('TaskService: Reassigning task', taskId, 'to user', assignedUserId);
-
       const response = await apiClient.patch<{ success: boolean; message: string }>(
         `${this.baseUrl}/${taskId}/reassign`,
         { assignedUserId }
       );
 
-      console.log('TaskService: Task reassignment successful:', response);
       return response;
     } catch (error: any) {
       console.error('TaskService: Task reassignment failed:', error);
@@ -262,10 +253,8 @@ export class TaskService {
   async getTasksByCaseId(caseId: string): Promise<TaskForSupervisor[]> {
     try {
       const url = `${this.baseUrl}/case/${caseId}`;
-      console.log('TaskService: Fetching tasks for case:', caseId, 'from:', url);
 
       const response = await apiClient.get<TaskForSupervisor[]>(url);
-      console.log('TaskService: Tasks for case received:', Array.isArray(response) ? response.length : 'not array', 'items');
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
       console.error('TaskService: Failed to get tasks for case:', caseId, error);

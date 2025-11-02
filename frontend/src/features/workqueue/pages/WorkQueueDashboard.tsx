@@ -19,6 +19,15 @@ const WorkQueueDashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   const [tasks, setTasks] = useState<UnifiedWorkQueueTask[]>([]);
+
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'UNASSIGNED', label: 'Unassigned' },
+    { value: 'ASSIGNED', label: 'Assigned' },
+    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'SUSPENDED', label: 'Suspended' },
+  ];
   const [isLoading, setIsLoading] = useState(true);
 
   const { error, handleError, clearError, getErrorDisplay } = useWorkQueueErrorHandler();
@@ -86,7 +95,7 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
 
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, _notes?: string) => {
 
     if (!task || !task.id) {
       console.error('Cannot assign task: task or task ID is missing', { task });
@@ -113,7 +122,7 @@ const WorkQueueDashboard: React.FC = () => {
     }
   };
 
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, _justification: string) => {
     try {
       await flowableWorkQueueService.assignTask(task.id, assignee);
 
@@ -123,7 +132,6 @@ const WorkQueueDashboard: React.FC = () => {
       setReassignModalOpen(false);
       setSelectedTask(null);
 
-      console.log(`Task ${task.id} successfully reassigned to user ${assignee}`);
     } catch (error) {
       handleError(error);
     }
@@ -233,12 +241,11 @@ const WorkQueueDashboard: React.FC = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">All Statuses</option>
-                <option value="UNASSIGNED">Unassigned</option>
-                <option value="ASSIGNED">Assigned</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="SUSPENDED">Suspended</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                 <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />

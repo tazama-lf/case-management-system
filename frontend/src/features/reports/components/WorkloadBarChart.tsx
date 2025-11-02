@@ -20,8 +20,7 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.name,
     'Active Cases': item.activeCases,
     'Pending Tasks': item.pendingTasks

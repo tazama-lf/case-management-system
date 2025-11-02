@@ -23,7 +23,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
 
   useEffect(() => {
     if (open) {
-      console.log('AssignTaskModal opened, fetching investigators');
       fetchInvestigators();
     }
   }, [open]);
@@ -32,18 +31,14 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
     setLoading(true);
     try {
       const data = await authService.fetchAllInvestigators();
-      console.log('Fetched investigators from API:', data);
 
       if (data && data.length > 0) {
-        console.log('Using API data for investigators');
         setInvestigators(data);
       } else {
-        console.log('API returned empty data, using mock data');
         useMockData();
       }
     } catch (error) {
       console.error('Failed to fetch investigators:', error);
-      console.log('Using mock data due to API error');
       useMockData();
     } finally {
       setLoading(false);
@@ -58,7 +53,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
       { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
       { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
     ];
-    console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
   };
 
@@ -83,7 +77,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ open, onClose, onAssi
       return;
     }
 
-    console.log('Assigning task:', { taskId: task.id, assignee, notes });
     onAssign(task, assignee, notes);
   };
 

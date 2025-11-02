@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface BarChartData {
   label: string;
@@ -37,8 +37,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, title, height = 350, isLoadin
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.label,
     count: item.value,
     color: item.color
@@ -55,7 +54,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, title, height = 350, isLoadin
           <Tooltip />
           <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+              <Cell key={`${entry.name}-${entry.count}-${index}`} fill={entry.color} />
             ))}
           </Bar>
         </ReBarChart>

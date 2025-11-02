@@ -25,7 +25,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('User is authenticated, redirecting to role-based dashboard');
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -43,14 +42,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
 
     try {
-      console.log('Starting login process...');
       await login(credentials);
 
       if (onLoginSuccess) {
-        console.log('Calling onLoginSuccess callback');
         onLoginSuccess();
       }
-      console.log('Login function completed, waiting for auth state update...');
     } catch (error) {
       console.error('Login failed:', error);
     }

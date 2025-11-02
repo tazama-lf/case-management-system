@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '../../../shared/components/ui';
 import { CasesTable, CreateCaseModal, ViewCaseModal } from '..';
+import CaseFilters from '../components/CaseFilters';
 import CloseCaseModal from '../components/CloseCaseModal';
 import ApproveCaseReopenModal from '../components/ApproveCaseReopenModal';
 import RejectCaseReopenModal from '../components/RejectCaseReopenModal';
@@ -19,9 +20,6 @@ import {
   caseService,
   type CloseCaseDto,
   type UpdateCaseDto,
-  type AbandonCaseDto,
-  type RejectCaseDto,
-  type SuspendCaseDto,
   type ApproveCaseClosureDto,
   type ReturnCaseForReviewDto,
   type RejectCaseCreationDto} from '../services/caseService';
@@ -30,9 +28,10 @@ import { transformBackendCaseToUI } from '../components/CasesTable';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
 import { useAuth } from '../../auth/components/AuthContext';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { useCaseActions } from '../hooks';
 
 const CasesDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
   const { success, error, } = useToast();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
@@ -61,32 +60,65 @@ const CasesDashboard: React.FC = () => {
   const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
   const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAllCases = async () => {
-      setLoading(true);
-      setErrorState(null);
+ 
+ 
+  const {
+    handleCloseCaseSubmit: hookHandleCloseSubmit,
+    handleAbandonSubmit: hookHandleAbandonSubmit,
+    handleSuspendSubmit: hookHandleSuspendSubmit,
+    handleResumeSubmit: hookHandleResumeSubmit,
+    handleApproveClosureSubmit: hookHandleApproveClosureSubmit,
+    handleApproveCreation: hookHandleApproveCreation,
+    handleRejectCaseCreation: hookHandleRejectCaseCreation,
+    handleRejectCase: hookHandleRejectCase,
+    handleReturnForReview: hookHandleReturnForReview,
+    handleReopenSubmit: hookHandleReopenSubmit,
+  } = useCaseActions(() => fetchCases());
 
-      try {
-        const response = await caseService.getAllCases({
+ 
+  const fetchCases = async () => {
+    setLoading(true);
+    setErrorState(null);
+
+    try {
+      let response;
+      
+     
+      const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
+      
+      if (isInvestigatorOnly) {
+       
+        response = await caseService.getUserAssignedCases({
+          status: statusFilter || undefined,
+          priority: priorityFilter || undefined,
+          includeTaskAssignments: true,
+          includeOwnedCases: true,
+          sortBy: 'updated_at',
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+        });
+      } else {
+     
+        response = await caseService.getAllCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           sortBy: 'updated_at',
           sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
         });
-
-        const transformedCases = response.cases.map(transformBackendCaseToUI);
-        setCases(transformedCases);
-      } catch (err) {
-        console.error('Failed to fetch all cases:', err);
-        setErrorState('Failed to load cases. Please try again.');
-        setCases([]);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchAllCases();
-  }, [statusFilter, priorityFilter, sortBy]);
+      const transformedCases = response.cases.map(transformBackendCaseToUI);
+      setCases(transformedCases);
+    } catch (err) {
+      setErrorState('Failed to load cases. Please try again.');
+      setCases([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCases();
+  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasAdminRole]);
 
 
   const filtered = cases.filter((c) =>
@@ -123,35 +155,16 @@ const CasesDashboard: React.FC = () => {
         alertType: payload.alertType,
       };
 
-      console.log('Creating case with data:', manualCreateCaseData);
-      console.log('Associated with Alert ID:', payload.alertId);
-      console.log('Alert Type:', payload.alertType);
 
       const newCase = await caseService.createCase(manualCreateCaseData);
-      console.log('Case created successfully:', newCase);
 
       const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
       success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
 
       setIsCreateOpen(false);
 
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
+      await fetchCases();
     } catch (err) {
-      console.error('Error creating case:', err);
       setCreateCaseError(err instanceof Error ? err.message : 'Failed to create case');
       error('Create Case Failed', err instanceof Error ? err.message : 'Failed to create case');
     } finally {
@@ -176,10 +189,8 @@ const CasesDashboard: React.FC = () => {
         caseOwnerUserId: payload.assignee || user?.user_id || 'system-user-id',
       };
 
-      console.log('Updating case with data:', updateCaseData);
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
-      console.log('Case updated successfully:', updatedCase);
 
       success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
 
@@ -187,23 +198,8 @@ const CasesDashboard: React.FC = () => {
       setCreateModalMode('create');
       setEditingCaseId(null);
 
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
+      await fetchCases();
     } catch (err) {
-      console.error('Error updating case:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
       setCreateCaseError(errorMessage);
       error('Update Case Failed', errorMessage);
@@ -218,7 +214,6 @@ const CasesDashboard: React.FC = () => {
   };
 
   const handleComplete = (row: CaseRow) => {
-    console.log('Complete case - opening draft case completion', row);
     setSelectedRow(row);
     setCreateModalMode('edit');
     setEditingCaseId(row.id);
@@ -232,91 +227,14 @@ const CasesDashboard: React.FC = () => {
 
   const handleCloseCaseSubmit = async (data: CloseCaseDto) => {
     if (!selectedRow) return;
-
-    try {
-      const response = await caseService.closeCase(selectedRow.id, data);
-
-      console.log(`Case ${selectedRow.id} submitted for approval:`, {
-        caseId: selectedRow.id,
-        newStatus: response.closed_case.status,
-        approvalTaskId: response.approval_task.task_id,
-        approvalTaskStatus: response.approval_task.status,
-        recommendedOutcome: data.recommendedOutcome
-      });
-
-      success('Case Investigation Complete', `Case ${selectedRow.id} has been submitted for supervisor approval.
-
-Status Updates:
-• Case Status: ${response.closed_case.status}
-• Approval Task: ${response.approval_task.name}
-• Assigned to: ${response.approval_task.assigned_to}
-• Recommended Outcome: ${data.recommendedOutcome.replace('STATUS_', '').replace('_', ' - ')}
-
-Supervisor has been notified of the new approval task.`);
-
-      setIsCloseCaseOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          const transformedCases = response.cases.map(transformBackendCaseToUI);
-          setCases(transformedCases);
-        } catch (err) {
-          console.error('Failed to refresh cases:', err);
-        }
-      };
-      fetchAllCases();
-
-    } catch (err) {
-      console.error('Failed to close case:', err);
-
-      let errorMessage = 'Failed to close case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in a closeable state')) {
-        errorMessage = `Case cannot be closed.
-
-This case may not meet the closure requirements:
-• Case must be "IN PROGRESS" status
-• Must have an active "Investigate case" task
-• Task must be assigned to you
-• All other tasks must be complete
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to close this case.
-Please ensure you are the assigned investigator.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      }
-
-      error('Close Case Failed', errorMessage);
-    }
+    await hookHandleCloseSubmit(selectedRow.id, data);
+    setIsCloseCaseOpen(false);
+    setSelectedRow(null);
   };
 
   const handleReopenCase = (row: CaseRow) => {
     setSelectedRow(row);
     setIsReopenOpen(true);
-  };
-
-  const handleApproveCaseReopen = (row: CaseRow) => {
-    setSelectedRow(row);
-    setIsApproveReopenOpen(true);
-  };
-
-  const handleRejectCaseReopen = (row: CaseRow) => {
-    setSelectedRow(row);
-    setIsRejectReopenOpen(true);
   };
 
   const handleAbandonCase = (row: CaseRow) => {
@@ -330,186 +248,21 @@ The case may have been deleted or moved.`;
   };
 
   const handleReopenSubmit = async (caseId: string, reason: string) => {
-    try {
-      const reopenCaseData = {
-        reason: reason.trim()
-      };
-
-      console.log('Reopening case:', caseId, 'Reason:', reason);
-      const reopenedCase = await caseService.reopenCase(caseId, reopenCaseData);
-      console.log('Case reopened successfully:', reopenedCase);
-
-      success('Case Reopened', `Case ${caseId} has been successfully reopened.`);
-
-      setIsReopenOpen(false);
-      setSelectedRow(null);
-
-      try {
-        const response = await caseService.getAllCases({
-          status: statusFilter || undefined,
-          priority: priorityFilter || undefined,
-          sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-        });
-        setCases(response.cases.map(transformBackendCaseToUI));
-      } catch (refreshError) {
-        console.error('Failed to refresh cases:', refreshError);
-      }
-    } catch (err) {
-      console.error('Error reopening case:', err);
-
-      let errorMessage = 'Failed to request case reopening. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in a reopenable state')) {
-        errorMessage = `Case cannot be reopened.
-
-This case may not meet the reopening requirements:
-• Case must be in "CLOSED" status
-• Case must not be already reopened
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to reopen this case.
-Please ensure you have the appropriate role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      }
-
-      error('Reopen Case Failed', errorMessage);
-    }
+    await hookHandleReopenSubmit(caseId, reason);
+    setIsReopenOpen(false);
+    setSelectedRow(null);
   };
 
   const handleAbandonSubmit = async (caseId: string, reason: string) => {
-    try {
-      const abandonCaseData: AbandonCaseDto = {
-        reason: reason.trim()
-      };
-
-      console.log('Abandoning case:', caseId, 'Reason:', reason);
-
-      const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
-      console.log('Case abandoned successfully:', abandonedCase);
-
-      success('Case Abandoned', `Case ${caseId} has been successfully abandoned.\nReason: ${reason}\nStatus: ${abandonedCase.status}`);
-
-      setIsAbandonOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error abandoning case:', err);
-
-      let errorMessage = 'Failed to abandon case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('Cannot abandon case other than draft status')) {
-        errorMessage = `Case cannot be abandoned.\n\n` +
-                      `This case may not meet the abandonment requirements:\n` +
-                      `• Case must be in "DRAFT" status\n` +
-                      `• Case must have a "Complete New Case" task\n\n` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('No complete new Case Task exists')) {
-        errorMessage = `Case cannot be abandoned.\n\n` +
-                      `This case may not meet the abandonment requirements:\n` +
-                      `• Case must be in "DRAFT" status\n` +
-                      `• Case must have a "Complete New Case" task\n\n` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to abandon this case.\n` +
-                      `Please ensure you have the appropriate role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.\n\n` +
-                      `The case may have been deleted or moved.`;
-      }
-
-      error('Abandon Case Failed', errorMessage);
-    }
+    await hookHandleAbandonSubmit(caseId, reason);
+    setIsAbandonOpen(false);
+    setSelectedRow(null);
   };
 
   const handleSuspendSubmit = async (caseId: string, reason: string) => {
-    try {
-      const suspendCaseData: SuspendCaseDto = {
-        reason: reason.trim()
-      };
-
-      console.log('Suspending case:', caseId, 'Reason:', reason);
-
-      const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
-      console.log('Case suspended successfully:', suspendedCase);
-
-      success('Case Suspended', `Case ${caseId} has been successfully suspended.
-Reason: ${reason}
-Status: ${suspendedCase.status}
-
-The case has been suspended and all associated tasks have been blocked. Supervisor has been notified of the suspension.`);
-
-      setIsSuspendOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error suspending case:', err);
-
-      let errorMessage = 'Failed to suspend case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-      const normalizedErrorString = (errorString || '')
-        .replace(/"Investigate case"/g, '"Investigate Case"')
-        .replace(/\bcase\b/g, 'Case');
-
-      if (errorString.includes('not in a suspendable state')) {
-        errorMessage = `Case cannot be suspended.\n\n` +
-                      `This case may not meet the suspension requirements:\n` +
-                      `• Case must be in "IN PROGRESS" status\n` +
-                      `• Case must not be already suspended or closed\n\n` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to suspend this case.\n` +
-                      `Please ensure you have the appropriate role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      } else if (normalizedErrorString) {
-        errorMessage = normalizedErrorString;
-      }
-
-      error('Suspend Case Failed', errorMessage);
-    }
+    await hookHandleSuspendSubmit(caseId, reason);
+    setIsSuspendOpen(false);
+    setSelectedRow(null);
   };
 
   const handleResumeCase = (row: CaseRow) => {
@@ -518,75 +271,9 @@ The case may have been deleted or moved.`;
   };
 
   const handleResumeSubmit = async (caseId: string, reason: string) => {
-    try {
-      const resumeCaseData = {
-        reason: reason.trim()
-      };
-
-      console.log('Resuming case:', caseId, 'Reason:', reason);
-
-      const resumedCase = await caseService.resumeCase(caseId, resumeCaseData);
-      console.log('Case resumed successfully:', resumedCase);
-
-
-      success('Case Resumed', `Case ${caseId} has been successfully resumed.
-Reason: ${reason}
-Status: ${resumedCase.status}
-
-The case has been moved back to "In Progress" status. All associated tasks have been unblocked.`);
-
-      setIsResumeOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error resuming case:', err);
-
-      let errorMessage = 'Failed to resume case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in a resumable state')) {
-        errorMessage = `Case cannot be resumed.
-
-` +
-                      `This case may not meet the resumption requirements:
-` +
-                      `• Case must be in "SUSPENDED" status
-` +
-                      `• Case must not be already closed or completed
-
-` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-` +
-                      `You don't have permission to resume this case.
-` +
-                      `Please ensure you have the appropriate role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-` +
-                      `The case may have been deleted or moved.`;
-      }
-
-      error('Resume Case Failed', errorMessage);
-    }
+    await hookHandleResumeSubmit(caseId, reason);
+    setIsResumeOpen(false);
+    setSelectedRow(null);
   };
 
   const handleRejectCase = (row: CaseRow) => {
@@ -596,75 +283,9 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 
   const handleRejectSubmit = async (rejectionReason: string) => {
     if (!selectedRow) return;
-
-    try {
-      const rejectCaseData: RejectCaseDto = {
-        rejectionReason: rejectionReason.trim()
-      };
-
-      console.log('Rejecting case:', selectedRow.id, 'Reason:', rejectionReason);
-
-      const rejectedCase = await caseService.rejectCase(selectedRow.id, rejectCaseData);
-      console.log('Case rejected successfully:', rejectedCase);
-
-      success('Case Closure Rejected', `Case ${selectedRow.id} closure has been successfully rejected.
-Reason: ${rejectionReason}
-Status: ${rejectedCase.status}
-
-The case has been returned to the investigator for additional work.`);
-
-      setIsRejectOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error rejecting case:', err);
-
-      let errorMessage = 'Failed to reject case closure. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in a rejectable state')) {
-        errorMessage = `Case cannot be rejected.
-
-` +
-                      `This case may not meet the rejection requirements:
-` +
-                      `• Case must be pending final approval
-
-` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-` +
-                      `You don't have permission to reject this case.
-` +
-                      `Please ensure you have the appropriate role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-` +
-                      `The case may have been deleted or moved.`;
-      } else if (errorString.includes('Approval task validation failed')) {
-        errorMessage = errorString;
-      }
-
-      error('Reject Case Failed', errorMessage);
-    }
+    await hookHandleRejectCase(selectedRow.id, rejectionReason);
+    setIsRejectOpen(false);
+    setSelectedRow(null);
   };
 
   const handleApproveCase = (row: CaseRow) => {
@@ -674,80 +295,9 @@ The case has been returned to the investigator for additional work.`);
 
   const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
     if (!selectedRow) return;
-
-    try {
-      const approvedCase = await caseService.approveCaseClosure(selectedRow.id, data);
-      console.log('Case approved successfully:', approvedCase);
-
-      success('Case Closure Approved', `Case ${selectedRow.id} closure has been successfully approved.
-
-Final Outcome: ${data.finalOutcome.replace('STATUS_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-Status: ${approvedCase.status}
-
-The case has been finalized with the selected outcome.`);
-
-      setIsApproveOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error approving case:', err);
-
-      let errorMessage = 'Failed to approve case closure. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in pending approval status')) {
-        errorMessage = `Case cannot be approved.
-
-This case may not meet the approval requirements:
-• Case must be in "PENDING FINAL APPROVAL" status
-• Case must have an "Approve case closure" task
-• Task must be assigned to supervisor
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to approve this case closure.
-Please ensure you have supervisor role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      } else if (errorString.includes('Approval task validation failed')) {
-        errorMessage = `Approval Task Validation Failed.
-
-` +
-                      `The case may not have the required "Approve case closure" task,
-` +
-                      `or the task may not be in the correct state.
-
-` +
-                      `Please verify that:
-` +
-                      `• The case is in "PENDING FINAL APPROVAL" status
-` +
-                      `• An "Approve case closure" task exists for this case
-` +
-                      `• The task is in "UNASSIGNED" state and assigned to you`;
-      }
-
-      error('Approve Case Failed', errorMessage);
-    }
+    await hookHandleApproveClosureSubmit(selectedRow.id, data.finalOutcome, data.supervisorComments);
+    setIsApproveOpen(false);
+    setSelectedRow(null);
   };
 
   const handleApproveCaseCreation = (row: CaseRow) => {
@@ -756,61 +306,9 @@ The case may have been deleted or moved.`;
   };
 
   const handleApproveCreationSubmit = async (caseId: string) => {
-    try {
-      const approvedCase = await caseService.approveCaseCreation(caseId);
-      console.log('Case creation approved successfully:', approvedCase);
-
-      success('Case Creation Approved', `Case ${caseId} creation has been successfully approved.
-
-Status: ${approvedCase.status}
-
-The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" task has been created in the Flowable investigations queue.`);
-
-      setIsApproveCreationOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error approving case creation:', err);
-
-      let errorMessage = 'Failed to approve case creation. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
-        errorMessage = `Case cannot be approved.
-
-This case may not meet the approval requirements:
-• Case must be in "PENDING CASE CREATION APPROVAL" status
-• Case must have an "Approve Case Creation" task
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to approve this case creation.
-Please ensure you have supervisor role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      }
-
-      error('Approve Case Creation Failed', errorMessage);
-    }
+    await hookHandleApproveCreation(caseId);
+    setIsApproveCreationOpen(false);
+    setSelectedRow(null);
   };
 
   const handleRejectCaseCreation = (row: CaseRow) => {
@@ -819,62 +317,9 @@ The case may have been deleted or moved.`;
   };
 
   const handleRejectCreationSubmit = async (caseId: string, data: RejectCaseCreationDto) => {
-    try {
-      const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
-      console.log('Case creation rejected successfully:', rejectedCase);
-
-      success('Case Creation Rejected', `Case ${caseId} creation has been successfully rejected.
-
-Reason: ${data.reason}
-Status: ${rejectedCase.status}
-
-The case has been returned to "DRAFT" status. A "Complete New Case" task has been assigned to the original creator.`);
-
-      setIsRejectCreationOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error rejecting case creation:', err);
-
-      let errorMessage = 'Failed to reject case creation. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in PENDING_CASE_CREATION_APPROVAL state')) {
-        errorMessage = `Case cannot be rejected.
-
-This case may not meet the rejection requirements:
-• Case must be in "PENDING CASE CREATION APPROVAL" status
-• Case must have an "Approve Case Creation" task
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to reject this case creation.
-Please ensure you have supervisor role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      }
-
-      error('Reject Case Creation Failed', errorMessage);
-    }
+    await hookHandleRejectCaseCreation(caseId, data.reason);
+    setIsRejectCreationOpen(false);
+    setSelectedRow(null);
   };
 
   const handleReturnForReview = (row: CaseRow) => {
@@ -884,79 +329,9 @@ The case may have been deleted or moved.`;
 
   const handleReturnForReviewSubmit = async (caseId: string, data: ReturnCaseForReviewDto) => {
     if (!selectedRow) return;
-
-    try {
-      const returnedCase = await caseService.returnCaseForReview(caseId, data);
-      console.log('Case returned for review successfully:', returnedCase);
-
-      success('Case Returned for Review', `Case ${caseId} has been successfully returned for additional review.
-
-Review Comments: ${data.reviewComments}
-Status: ${returnedCase.status}
-
-The case has been returned to the investigator for additional work.`);
-
-      setIsReturnForReviewOpen(false);
-      setSelectedRow(null);
-
-      const fetchAllCases = async () => {
-        try {
-          const response = await caseService.getAllCases({
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
-            sortBy: 'updated_at',
-            sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
-          });
-          setCases(response.cases.map(transformBackendCaseToUI));
-        } catch (refreshError) {
-          console.error('Failed to refresh cases:', refreshError);
-        }
-      };
-
-      await fetchAllCases();
-    } catch (err) {
-      console.error('Error returning case for review:', err);
-
-      let errorMessage = 'Failed to return case for review. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
-
-      if (errorString.includes('not in pending approval status')) {
-        errorMessage = `Case cannot be returned.
-
-This case may not meet the return requirements:
-• Case must be in "PENDING FINAL APPROVAL" status
-• Case must have an "Approve case closure" task
-
-Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
-
-You don't have permission to return this case for review.
-Please ensure you have supervisor role.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
-
-The case may have been deleted or moved.`;
-      } else if (errorString.includes('Approval task validation failed')) {
-        errorMessage = `Approval Task Validation Failed.
-
-` +
-                      `The case may not have the required "Approve case closure" task,
-` +
-                      `or the task may not be in the correct state.
-
-` +
-                      `Please verify that:
-` +
-                      `• The case is in "PENDING FINAL APPROVAL" status
-` +
-                      `• An "Approve case closure" task exists for this case
-` +
-                      `• The task is in "UNASSIGNED" state and assigned to you`;
-      }
-
-      error('Return Case for Review Failed', errorMessage);
-    }
+    await hookHandleReturnForReview(caseId, data.reviewComments);
+    setIsReturnForReviewOpen(false);
+    setSelectedRow(null);
   };
 
   return (
@@ -975,75 +350,16 @@ The case may have been deleted or moved.`;
         </button>
       }
     >
-      <Card className="bg-indigo-50/40" padding="sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row">
-            <div className="relative w-full sm:max-w-[160px]">
-              <select
-                aria-label="Status filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="STATUS_10_ASSIGNED">Assigned</option>
-                <option value="STATUS_20_IN_PROGRESS">In Progress</option>
-                <option value="STATUS_00_DRAFT">Draft</option>
-                <option value="STATUS_31_REOPENED">Reopened</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-              </div>
-            </div>
-
-            <div className="relative w-full sm:max-w-[160px]">
-              <select
-                aria-label="Priority filter"
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">All Priorities</option>
-                <option value="NEW">New</option>
-                <option value="URGENT">Urgent</option>
-                <option value="CRITICAL">Critical</option>
-                <option value="BREACH">Breach</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-              </div>
-            </div>
-
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
-                className="w-full rounded-md border border-gray-300 bg-white px-10 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                <MagnifyingGlassIcon className="h-5 w-5" aria-hidden="true" />
-              </div>
-            </div>
-
-            <div className="relative w-full sm:max-w-[160px]">
-              <select
-                aria-label="Sort by"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'recent' | 'oldest')}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="recent">Most Recent</option>
-                <option value="oldest">Oldest</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <CaseFilters
+        search={search}
+        onSearchChange={setSearch}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={setPriorityFilter}
+      />
 
       <Card className="mt-4">
         {errorState && (
@@ -1066,8 +382,6 @@ The case may have been deleted or moved.`;
             onResumeCase={handleResumeCase}
             onRejectCase={handleRejectCase}
             onApproveCase={handleApproveCase}
-            onApproveCaseReopen={handleApproveCaseReopen}
-            onRejectCaseReopen={handleRejectCaseReopen}
             onApproveCaseCreation={handleApproveCaseCreation}
             onRejectCaseCreation={handleRejectCaseCreation}
             onReturnForReview={handleReturnForReview}
@@ -1207,7 +521,6 @@ The case may have been deleted or moved.`;
             });
             setCases(response.cases.map(transformBackendCaseToUI));
           } catch (err) {
-            console.error('Error approving case reopening:', err);
             const message = err instanceof Error ? err.message : 'Failed to approve case reopening';
             error('Approve Case Reopening Failed', message);
           }
@@ -1240,7 +553,6 @@ The case may have been deleted or moved.`;
             });
             setCases(response.cases.map(transformBackendCaseToUI));
           } catch (err) {
-            console.error('Error rejecting case reopening:', err);
             const message = err instanceof Error ? err.message : 'Failed to reject case reopening';
             error('Reject Case Reopening Failed', message);
           }
