@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
-import { SubmitAlertDto } from './dto/submit-alert.dto';
+import { IngestAlertDto } from './dto/ingest-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -14,7 +14,6 @@ import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, Prisma, TaskStatus, CaseType } from '@prisma/client';
 import { Outcome } from 'src/audit/types/outcome';
-import { ManualTriageDto } from './dto/manual-triage.dto';
 import { Prediction } from './types/Prediction';
 import { CaseCreatedEvent, CaseStatusChangedEvent, TaskStatusChangedEvent } from '../events/domain-events';
 
@@ -46,7 +45,7 @@ export class TriageService {
   }
 
   async processIncomingAlert(req: any, source: string, userId: string, tenantId: string) {
-    const submitAlertDto: SubmitAlertDto = {
+    const submitAlertDto: IngestAlertDto = {
       message: req.message,
       report: req.report,
       transaction: req.transaction,
@@ -116,7 +115,7 @@ export class TriageService {
     }
   }
 
-  async handleNotAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
+  async handleNotAlert(alert: IngestAlertDto, userId: string, tenantId: string, source: string) {
     const txtp = alert.transaction.TxTp;
 
     try {
@@ -149,7 +148,7 @@ export class TriageService {
     }
   }
 
-  async handleNewAlert(alert: SubmitAlertDto, userId: string, tenantId: string, source: string) {
+  async handleNewAlert(alert: IngestAlertDto, userId: string, tenantId: string, source: string) {
     const txtp = alert.transaction?.TxTp;
 
     try {
@@ -192,17 +191,17 @@ export class TriageService {
     }
   }
 
-  async handleManualTriage(alertId: string, manualTriageDto: ManualTriageDto, userId: string, tenantId: string) {
+  async handleManualTriage(alertId: string, updateAlertDto: UpdateAlertDto, userId: string, tenantId: string) {
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
     if (triageType !== 'MANUAL') {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
 
     try {
-      const priorityScore = manualTriageDto.priorityScore ?? 0.33;
+      const priorityScore = updateAlertDto.priorityScore ?? 0.33;
       const priority = this.determinePriority(priorityScore);
-      manualTriageDto.priority = priority;
-      const alert = await this.updateAlertData(alertId, manualTriageDto, userId, tenantId);
+      updateAlertDto.priority = priority;
+      const alert = await this.updateAlertData(alertId, updateAlertDto, userId, tenantId);
       if (!alert.case_id) {
         throw new InternalServerErrorException('Alert case_id is missing.');
       }
@@ -227,8 +226,8 @@ export class TriageService {
 
       if (triageTask) {
         this.logger.log(
-          `Found triage task ${triageTask.task_id} with assigned_user_id: ${triageTask.assigned_user_id}, current userId: ${userId}`,
-          TriageService.name,
+            `Found triage task ${triageTask.task_id} with assigned_user_id: ${triageTask.assigned_user_id}, current userId: ${userId}`,
+            TriageService.name,
         );
 
         if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
@@ -241,18 +240,15 @@ export class TriageService {
         this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
       }
 
-      const { status, ...alertFields } = manualTriageDto;
-      const updateAlertDto: UpdateAlertDto = { ...alertFields };
-
       if (triageTask) {
         this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
-          triageTask.task_id,
-          {
-            status: TaskStatus.STATUS_30_COMPLETED,
-          },
-          userId,
-          this.audit,
+            triageTask.task_id,
+            {
+              status: TaskStatus.STATUS_30_COMPLETED,
+            },
+            userId,
+            this.audit,
         );
       }
 
@@ -266,21 +262,21 @@ export class TriageService {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
       }
 
-      if (manualTriageDto?.status && closableStatuses.includes(manualTriageDto.status)) {
+      if (updateAlertDto?.status && closableStatuses.includes(updateAlertDto.status)) {
         await this.caseWorkflowService.updateCaseStatus(
             alert.case_id,
-            manualTriageDto.status,
+            updateAlertDto.status,
             userId
         );
 
         this.eventEmitter.emit(
             'case.status.changed',
-            new CaseStatusChangedEvent(alert.case_id, existingCase.status, manualTriageDto.status, 'Manual triage closed case'),
+            new CaseStatusChangedEvent(alert.case_id, existingCase.status, updateAlertDto.status, 'Manual triage closed case'),
         );
 
         this.logger.log(
-          `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${manualTriageDto.status}`,
-          TriageService.name,
+            `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
+            TriageService.name,
         );
       } else {
         await this.caseWorkflowService.updateCaseStatus(
@@ -288,7 +284,7 @@ export class TriageService {
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
             {
-              caseType: this.casePriorityUtil.mapAlertTypeToCaseType(manualTriageDto.alertType),
+              caseType: this.casePriorityUtil.mapAlertTypeToCaseType(updateAlertDto.alertType),
               priority: priority,
             }
         );
@@ -303,27 +299,27 @@ export class TriageService {
             ),
         );
 
-        if (manualTriageDto.alertType === AlertType.FRAUD_AND_AML) {
+        if (updateAlertDto.alertType === AlertType.FRAUD_AND_AML) {
           await this.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
           await this.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
         } else {
           await this.taskService.createTask(
-            {
-              caseId: alert.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Case',
-              description: `Investigate case: ${alert.case_id}`,
-              candidateGroup: 'Investigations',
-            },
-            userId,
-            this.audit,
-            this.logger,
+              {
+                caseId: alert.case_id,
+                status: TaskStatus.STATUS_01_UNASSIGNED,
+                name: 'Investigate Case',
+                description: `Investigate case: ${alert.case_id}`,
+                candidateGroup: 'Investigations',
+              },
+              userId,
+              this.audit,
+              this.logger,
           );
         }
 
         this.logger.log(
-          `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Sent to investigation`,
-          TriageService.name,
+            `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Sent to investigation`,
+            TriageService.name,
         );
       }
 
@@ -563,7 +559,7 @@ export class TriageService {
     };
   }
 
-  async handleAITriage(alertId: string, caseId: string, dto: SubmitAlertDto, userId: string, tenantId: string) {
+  async handleAITriage(alertId: string, caseId: string, dto: IngestAlertDto, userId: string, tenantId: string) {
     try {
       const triageTask = await this.taskService.createTask(
         {

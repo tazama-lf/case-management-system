@@ -1,16 +1,16 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { SubmitAlertDto } from '../../../src/triage/dto/submit-alert.dto';
+import { IngestAlertDto } from '../../../src/triage/dto/ingest-alert.dto';
 
 describe('SubmitAlertDto', () => {
   it('should be defined', () => {
-    expect(SubmitAlertDto).toBeDefined();
+    expect(IngestAlertDto).toBeDefined();
   });
 
   it('should create an instance with all properties', () => {
-    const dto = new SubmitAlertDto();
-    expect(dto).toBeInstanceOf(SubmitAlertDto);
+    const dto = new IngestAlertDto();
+    expect(dto).toBeInstanceOf(IngestAlertDto);
     expect(dto).toHaveProperty('message');
     expect(dto).toHaveProperty('report');
     expect(dto).toHaveProperty('transaction');
@@ -18,7 +18,7 @@ describe('SubmitAlertDto', () => {
   });
 
   it('should allow setting and getting all properties', () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     const testMessage = 'Test alert message';
     const testReport = { test: 'report data' };
     const testTransaction = { test: 'transaction data' };
@@ -36,7 +36,7 @@ describe('SubmitAlertDto', () => {
   });
 
   it('should validate class-validator decorators are applied', async () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     
     // Test that validation actually works (which proves decorators are applied)
     const errors = await validate(dto);
@@ -61,7 +61,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -72,7 +72,7 @@ describe('SubmitAlertDto', () => {
   });
 
   it('should validate with direct property assignment', async () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     dto.message = 'Direct assignment message';
     dto.report = { type: 'test-report' } as any;
     dto.transaction = { TenantId: 'test-tenant', TxTp: 'payment' } as any;
@@ -83,7 +83,7 @@ describe('SubmitAlertDto', () => {
   });
 
   it('should handle undefined values during validation', async () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     // Properties are undefined by default
     
     const errors = await validate(dto);
@@ -103,7 +103,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -120,7 +120,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { nodes: ['node1'], edges: [] }
     };
 
-    const dto = plainToClass(SubmitAlertDto, data);
+    const dto = plainToClass(IngestAlertDto, data);
     
     // Verify transformation worked correctly
     expect(typeof dto.message).toBe('string');
@@ -143,7 +143,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -159,7 +159,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -175,7 +175,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -191,7 +191,7 @@ describe('SubmitAlertDto', () => {
       transaction: { test: 'transaction data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -208,7 +208,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -225,7 +225,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -242,7 +242,7 @@ describe('SubmitAlertDto', () => {
       networkMap: ['not', 'an', 'object'],
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -274,7 +274,7 @@ describe('SubmitAlertDto', () => {
       },
     };
 
-    const dto = plainToClass(SubmitAlertDto, complexData);
+    const dto = plainToClass(IngestAlertDto, complexData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -315,7 +315,7 @@ describe('SubmitAlertDto', () => {
       }
     };
 
-    const dto = plainToClass(SubmitAlertDto, alertData);
+    const dto = plainToClass(IngestAlertDto, alertData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -334,7 +334,7 @@ describe('SubmitAlertDto', () => {
       networkMap: {},
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -352,7 +352,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -367,7 +367,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { test: 'network data' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -382,7 +382,7 @@ describe('SubmitAlertDto', () => {
       networkMap: { node: '🌐', edge: '→' },
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -429,7 +429,7 @@ describe('SubmitAlertDto', () => {
       },
     };
 
-    const dto = plainToClass(SubmitAlertDto, validData);
+    const dto = plainToClass(IngestAlertDto, validData);
     const errors = await validate(dto);
 
     expect(errors).toHaveLength(0);
@@ -446,7 +446,7 @@ describe('SubmitAlertDto', () => {
       networkMap: 'not an object',
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
@@ -464,7 +464,7 @@ describe('SubmitAlertDto', () => {
       networkMap: null,
     };
 
-    const dto = plainToClass(SubmitAlertDto, invalidData);
+    const dto = plainToClass(IngestAlertDto, invalidData);
     const errors = await validate(dto);
 
     // Null values should fail validation for @IsObject() decorated fields
@@ -475,7 +475,7 @@ describe('SubmitAlertDto', () => {
   });
 
   it('should handle property enumeration and serialization', () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     dto.message = 'Test message';
     dto.report = { evaluationID: 'test' } as any;
     dto.transaction = { TenantId: 'tenant' } as any;
@@ -500,25 +500,25 @@ describe('SubmitAlertDto', () => {
 
   it('should support different instantiation patterns', () => {
     // Constructor pattern
-    const dto1 = new SubmitAlertDto();
-    expect(dto1).toBeInstanceOf(SubmitAlertDto);
+    const dto1 = new IngestAlertDto();
+    expect(dto1).toBeInstanceOf(IngestAlertDto);
 
     // Object.create pattern
-    const dto2 = Object.create(SubmitAlertDto.prototype);
-    expect(dto2).toBeInstanceOf(SubmitAlertDto);
+    const dto2 = Object.create(IngestAlertDto.prototype);
+    expect(dto2).toBeInstanceOf(IngestAlertDto);
 
     // plainToClass pattern (already tested but important for coverage)
-    const dto3 = plainToClass(SubmitAlertDto, {
+    const dto3 = plainToClass(IngestAlertDto, {
       message: 'test',
       report: {},
       transaction: {},
       networkMap: {}
     });
-    expect(dto3).toBeInstanceOf(SubmitAlertDto);
+    expect(dto3).toBeInstanceOf(IngestAlertDto);
   });
 
   it('should validate decorator behavior on each property', async () => {
-    const dto = new SubmitAlertDto();
+    const dto = new IngestAlertDto();
     
     // Test @IsString on message
     dto.message = 123 as any;

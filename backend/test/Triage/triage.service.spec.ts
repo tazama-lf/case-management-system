@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TriageService } from '../../src/triage/triage.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
-import { SubmitAlertDto } from '../../src/triage/dto/submit-alert.dto';
+import { IngestAlertDto } from '../../src/triage/dto/ingest-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -163,7 +163,7 @@ describe('TriageService', () => {
   });
 
   describe('handleNewAlert', () => {
-      const mockSubmitAlertDto: SubmitAlertDto = {
+      const mockSubmitAlertDto: IngestAlertDto = {
         message: 'Test Alert',
         report: {} as any,
         transaction: { TxTp: 'test-txtp' } as any,
@@ -270,7 +270,7 @@ describe('TriageService', () => {
 
   describe('txtp extraction coverage', () => {
     it('should extract txtp from result.report.txtp', async () => {
-      const dto: SubmitAlertDto = {
+      const dto: IngestAlertDto = {
         message: 'Test alert',
         report: { txtp: 'report-txtp' } as any,
         transaction: {} as any,
@@ -299,7 +299,7 @@ describe('TriageService', () => {
     });
 
     it('should extract txtp from result.transaction.TxTp', async () => {
-      const dto: SubmitAlertDto = {
+      const dto: IngestAlertDto = {
         message: 'Test alert',
         report: {} as any,
         transaction: { TxTp: 'transaction-txtp' } as any,
@@ -329,7 +329,7 @@ describe('TriageService', () => {
     });
 
     it('should extract txtp from result.networkMap.txtp', async () => {
-      const dto: SubmitAlertDto = {
+      const dto: IngestAlertDto = {
         message: 'Test alert',
         report: {} as any,
         transaction: {} as any,
@@ -360,7 +360,7 @@ describe('TriageService', () => {
 
   describe('error handling coverage', () => {
     it('should handle database errors in handleNewAlert', async () => {
-      const dto: SubmitAlertDto = {
+      const dto: IngestAlertDto = {
         message: 'Test alert',
         report: {} as any,
         transaction: {} as any,
@@ -1034,7 +1034,7 @@ describe('TriageService', () => {
       transaction: {},
       networkMap: {},
       report: { tadpResult: null }
-    } as unknown as SubmitAlertDto;
+    } as unknown as IngestAlertDto;
 
     beforeEach(() => {
       // Mock TaskService with consistent task_id
@@ -1114,7 +1114,7 @@ describe('TriageService', () => {
             }]
           }
         }
-      } as SubmitAlertDto;
+      } as IngestAlertDto;
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
         confidence_per: 95,
@@ -1204,7 +1204,7 @@ describe('TriageService', () => {
             }]
           }
         }
-      } as SubmitAlertDto;
+      } as IngestAlertDto;
 
       // Mock configuration values
       service['configService'] = {
@@ -1251,7 +1251,7 @@ describe('TriageService', () => {
             }]
           }
         }
-      } as SubmitAlertDto;
+      } as IngestAlertDto;
 
       // Mock configuration values
       service['configService'] = {
