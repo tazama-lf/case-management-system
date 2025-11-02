@@ -54,6 +54,19 @@ export class TaskService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        const caseData = await tx.case.findUnique({
+          where: { case_id: taskDTO.caseId },
+          select: {
+            tenant_id: true,
+            priority: true,
+            status: true,
+          },
+        });
+
+        if (!caseData) {
+          throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
+        }
+
         const taskData: Prisma.TaskCreateInput = {
           case: {
             connect: { case_id: taskDTO.caseId },
@@ -71,19 +84,6 @@ export class TaskService {
         const task = await tx.task.create({
           data: taskData,
         });
-
-        const caseData = await tx.case.findUnique({
-          where: { case_id: taskDTO.caseId },
-          select: {
-            tenant_id: true,
-            priority: true,
-            status: true,
-          },
-        });
-
-        if (!caseData) {
-          throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
-        }
 
         return { task, tenantId: caseData.tenant_id, caseData };
       });

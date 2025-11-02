@@ -1761,7 +1761,7 @@ export class CaseService {
         return { case: updatedCase, approvalTask };
       });
 
-      this.eventEmitter.emit('case.created', new CaseCreatedEvent(caseId, tenantId, CaseCreationType.MANUAL, undefined, false));
+      this.eventEmitter.emit('case.created', new CaseCreatedEvent(caseId, tenantId, CaseCreationType.MANUAL, false));
 
       await this.auditLogService.logAction({
         userId,

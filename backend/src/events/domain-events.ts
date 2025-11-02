@@ -1,10 +1,9 @@
 export class CaseCreatedEvent {
   constructor(
-    public readonly caseId: string,
-    public readonly tenantId: string,
-    public readonly creationType: string,
-    public readonly creatorRole?: string,
-    public readonly autocloseEligible: boolean = false,
+      public readonly caseId: string,
+      public readonly tenantId: string,
+      public readonly creationType: string,
+      public readonly autocloseEligible: boolean = false,
   ) {}
 }
 

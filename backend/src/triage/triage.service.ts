@@ -181,8 +181,8 @@ export class TriageService {
       });
 
       this.eventEmitter.emit(
-        'case.created',
-        new CaseCreatedEvent(createdCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, undefined, false),
+          'case.created',
+          new CaseCreatedEvent(createdCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, false),
       );
 
       this.logger.log(
@@ -832,8 +832,8 @@ export class TriageService {
       );
 
       this.eventEmitter.emit(
-        'case.created',
-        new CaseCreatedEvent(newCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, undefined, false),
+          'case.created',
+          new CaseCreatedEvent(newCase.case_id, tenantId, CaseCreationType.AUTOMATIC_SYSTEM, false),
       );
 
       this.logger.log(
