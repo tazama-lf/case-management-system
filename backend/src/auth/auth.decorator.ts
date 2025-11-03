@@ -2,17 +2,17 @@ import { SetMetadata } from '@nestjs/common';
 
 export const CLAIMS_KEY = 'claims';
 export const IS_PUBLIC_KEY = 'isPublic';
-export const ANY_CLAIMS_KEY = 'anyClaims'; // New key for "any of these claims" logic
+export const ANY_CLAIMS_KEY = 'anyClaims';
 
 /**
  * Decorator to specify required claims for a route
- * @param claims - Array of required claims (all must be present)
+ * @param claims
  */
 export const RequireClaims = (...claims: string[]) => SetMetadata(CLAIMS_KEY, claims);
 
 /**
  * Decorator to specify claims where ANY of them can satisfy the requirement
- * @param claims - Array of claims (user needs at least one)
+ * @param claims
  */
 export const RequireAnyClaims = (...claims: string[]) => SetMetadata(ANY_CLAIMS_KEY, claims);
 
@@ -23,7 +23,7 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
 /**
  * Decorator to specify a single claim requirement
- * @param claim - Single required claim
+ * @param claim
  */
 export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
 
@@ -32,7 +32,7 @@ export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
  */
 export const TazamaClaims = {
   ALERT_TRIAGE: 'alert-triage',
-  CMS_TEST_ROLE: 'CMS-TEST-ROLE', // Legacy claim for backward compatibility
+  CMS_TEST_ROLE: 'CMS-TEST-ROLE',
   CMS_INVESTIGATOR: 'CMS_INVESTIGATOR',
   CMS_SUPERVISOR: 'CMS_SUPERVISOR',
   MANAGE_ACCOUNT: 'manage-account',
@@ -49,15 +49,28 @@ export const TazamaClaims = {
  * Convenience decorators for common Tazama roles
  */
 
-export const RequireAdminRole = () =>
-    RequireAnyClaims(TazamaClaims.CMS_ADMIN);
+export const RequireAdminRole = () => RequireAnyClaims(TazamaClaims.CMS_ADMIN);
 
-export const RequireAnalystRole = () =>
-    RequireAnyClaims(TazamaClaims.CMS_ANALYST);
+export const RequireAnalystRole = () => RequireAnyClaims(TazamaClaims.CMS_ANALYST);
 export const RequireAlertTriageRole = () => RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE);
 export const RequireInvestigatorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR);
 export const RequireSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_SUPERVISOR);
 export const RequireInvestigatorOrSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
+
+/**
+ * Allows any authenticated user (no specific role required).
+ * This is preferred over hardcoding specific roles.
+ * If you need role-based access control, use specific role decorators instead.
+ */
+export const RequireAuthenticated = () => SetMetadata(ANY_CLAIMS_KEY, []);
+
+/**
+ * @deprecated Use RequireAuthenticated() instead for any authenticated user,
+ * or use specific role decorators (RequireAdminRole, RequireAnalystRole, etc.)
+ * for role-based access control. This decorator has a hardcoded list of roles
+ * which requires maintenance and may become outdated.
+ */
 export const RequireAnyValidRole = () =>
   RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE, TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
+
 export const RequireAccountManagement = () => RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);
