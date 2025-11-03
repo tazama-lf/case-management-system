@@ -51,8 +51,8 @@ export class FlowableService implements OnModuleInit {
         this.logger.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
 
         await this.healthCheck();
-        await this.initializeCandidateGroups();
         await this.deployBpmnProcess();
+        await this.initializeCandidateGroups();
 
         this.logger.log('Flowable initialized successfully', FlowableService.name);
         return;
@@ -127,6 +127,42 @@ export class FlowableService implements OnModuleInit {
       } catch (error) {
         this.logger.error(`Failed to initialize group ${groupName}: ${error.message}`, error.stack, FlowableService.name);
       }
+    }
+  }
+
+  /**
+   * Ensure a user is a member of a Flowable identity group
+   */
+  async addUserToGroup(groupId: string, userId: string) {
+    try {
+      const response = await this.flowableClient.post(`/service/identity/groups/${groupId}/members`, {
+        userId,
+      });
+      return response.data;
+    } catch (error) {
+      // 409 means membership already exists; treat as success
+      if (error.response?.status === 409) {
+        this.logger.log(`User ${userId} already a member of group ${groupId}`, FlowableService.name);
+        return null;
+      }
+      this.logger.error(`Failed to add user ${userId} to group ${groupId}: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to add user to group', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Remove a user from a Flowable identity group
+   */
+  async removeUserFromGroup(groupId: string, userId: string) {
+    try {
+      await this.flowableClient.delete(`/service/identity/groups/${groupId}/members/${userId}`);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // Not a member; ignore
+        return;
+      }
+      this.logger.error(`Failed to remove user ${userId} from group ${groupId}: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to remove user from group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

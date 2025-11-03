@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { TaskStatus } from '@prisma/client';
+import { EventDeduplicator } from '../shared/utils/event-deduplicator';
 
 /**
  * SLA Monitoring Service
@@ -21,6 +22,7 @@ export class SlaMonitoringService {
   private readonly warningThresholdHours: number;
   private readonly gracePeriodMinutes: number;
   private isProcessing = false;
+  private readonly eventDeduplicator = new EventDeduplicator(5000); // 5 second dedup window
 
   constructor(
     private readonly prisma: PrismaService,
@@ -51,12 +53,13 @@ export class SlaMonitoringService {
       this.logger.log('Starting SLA check');
 
       const now = new Date();
+      const timeThresholds = this.calculateTimeThresholds(now);
 
-      await this.checkSLAWarnings(now);
+      await this.checkSLAWarnings(now, timeThresholds);
 
-      await this.checkSLABreaches(now);
+      await this.checkSLABreaches(now, timeThresholds);
 
-      await this.checkOverdueTasks(now);
+      await this.checkOverdueTasks(now, timeThresholds);
 
       const duration = Date.now() - startTime;
       this.logger.log(`SLA check completed in ${duration}ms`);
@@ -68,23 +71,34 @@ export class SlaMonitoringService {
   }
 
   /**
+   * Calculate all time thresholds once to avoid repeated date math
+   */
+  private calculateTimeThresholds(now: Date) {
+    return {
+      warningTime: new Date(now.getTime() + this.warningThresholdHours * 60 * 60 * 1000),
+      graceTime: new Date(now.getTime() - this.gracePeriodMinutes * 60 * 1000),
+      overdueThreshold: new Date(now.getTime() - 72 * 60 * 60 * 1000),
+      thirtyMinutesAgo: new Date(now.getTime() - 30 * 60 * 1000),
+      oneHourAgo: new Date(now.getTime() - 60 * 60 * 1000),
+    };
+  }
+
+  /**
    * Check for tasks approaching SLA deadline
    */
-  private async checkSLAWarnings(now: Date) {
+  private async checkSLAWarnings(now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      const warningTime = new Date(now.getTime() + this.warningThresholdHours * 60 * 60 * 1000);
-
       const tasksApproachingDeadline = await this.prisma.task.findMany({
         where: {
           sla_deadline: {
             gte: now,
-            lte: warningTime,
+            lte: timeThresholds.warningTime,
           },
           status: {
             not: TaskStatus.STATUS_30_COMPLETED,
           },
           updated_at: {
-            lt: new Date(now.getTime() - 30 * 60 * 1000),
+            lt: timeThresholds.thirtyMinutesAgo,
           },
         },
         include: {
@@ -111,7 +125,7 @@ export class SlaMonitoringService {
         for (const task of tasksApproachingDeadline) {
           const timeUntilDeadline = task.sla_deadline ? Math.round((task.sla_deadline.getTime() - now.getTime()) / (60 * 1000)) : null;
 
-          this.eventEmitter.emit('task.sla-warning', {
+          const warningPayload = {
             taskId: task.task_id,
             taskName: task.name,
             caseId: task.case_id,
@@ -120,12 +134,14 @@ export class SlaMonitoringService {
             workQueueName: task.workQueue?.name,
             assignedUserId: task.assigned_user_id,
             slaDeadline: task.sla_deadline,
-            timeUntilDeadline: timeUntilDeadline,
             timeUntilDeadlineMinutes: timeUntilDeadline,
             status: task.status,
             tenantId: task.case?.tenant_id,
             timestamp: now,
-          });
+          };
+
+          // Emit event with deduplication
+          this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.sla-warning', warningPayload);
 
           this.logger.debug(`Emitted SLA warning for task ${task.task_id} (${timeUntilDeadline} minutes remaining)`);
         }
@@ -138,14 +154,12 @@ export class SlaMonitoringService {
   /**
    * Check for tasks that have breached SLA deadline
    */
-  private async checkSLABreaches(now: Date) {
+  private async checkSLABreaches(now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      const graceTime = new Date(now.getTime() - this.gracePeriodMinutes * 60 * 1000);
-
       const tasksBreached = await this.prisma.task.findMany({
         where: {
           sla_deadline: {
-            lte: graceTime,
+            lte: timeThresholds.graceTime,
           },
           status: {
             not: TaskStatus.STATUS_30_COMPLETED,
@@ -175,7 +189,7 @@ export class SlaMonitoringService {
         for (const task of tasksBreached) {
           const breachDuration = task.sla_deadline ? Math.round((now.getTime() - task.sla_deadline.getTime()) / (60 * 1000)) : null;
 
-          this.eventEmitter.emit('task.sla-breach', {
+          const breachPayload = {
             taskId: task.task_id,
             taskName: task.name,
             caseId: task.case_id,
@@ -184,13 +198,15 @@ export class SlaMonitoringService {
             workQueueName: task.workQueue?.name,
             assignedUserId: task.assigned_user_id,
             slaDeadline: task.sla_deadline,
-            breachDuration: breachDuration,
             breachDurationMinutes: breachDuration,
             status: task.status,
             tenantId: task.case?.tenant_id,
             timestamp: now,
             severity: this.calculateBreachSeverity(breachDuration, task.case?.priority),
-          });
+          };
+
+          // Emit event with deduplication
+          this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.sla-breach', breachPayload);
 
           this.logger.warn(`Emitted SLA breach for task ${task.task_id} (${breachDuration} minutes overdue)`);
         }
@@ -203,20 +219,18 @@ export class SlaMonitoringService {
   /**
    * Check for overdue tasks (tasks that should have been completed by now)
    */
-  private async checkOverdueTasks(now: Date) {
+  private async checkOverdueTasks(now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      const overdueThreshold = new Date(now.getTime() - 72 * 60 * 60 * 1000);
-
       const overdueTasks = await this.prisma.task.findMany({
         where: {
           created_at: {
-            lte: overdueThreshold,
+            lte: timeThresholds.overdueThreshold,
           },
           status: {
             not: TaskStatus.STATUS_30_COMPLETED,
           },
           updated_at: {
-            lt: new Date(now.getTime() - 60 * 60 * 1000),
+            lt: timeThresholds.oneHourAgo,
           },
         },
         include: {
@@ -243,7 +257,7 @@ export class SlaMonitoringService {
         for (const task of overdueTasks) {
           const daysOverdue = Math.floor((now.getTime() - task.created_at.getTime()) / (24 * 60 * 60 * 1000));
 
-          this.eventEmitter.emit('task.overdue', {
+          const overduePayload = {
             taskId: task.task_id,
             taskName: task.name,
             caseId: task.case_id,
@@ -256,7 +270,10 @@ export class SlaMonitoringService {
             status: task.status,
             tenantId: task.case?.tenant_id,
             timestamp: now,
-          });
+          };
+
+          // Emit event with deduplication
+          this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.overdue', overduePayload);
 
           this.logger.debug(`Emitted overdue event for task ${task.task_id} (${daysOverdue} days old)`);
         }
@@ -322,9 +339,7 @@ export class SlaMonitoringService {
     overdueTasksCount: number;
   }> {
     const now = new Date();
-    const warningTime = new Date(now.getTime() + this.warningThresholdHours * 60 * 60 * 1000);
-    const graceTime = new Date(now.getTime() - this.gracePeriodMinutes * 60 * 1000);
-    const overdueThreshold = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+    const timeThresholds = this.calculateTimeThresholds(now);
 
     const whereClause: any = {
       status: {
@@ -351,7 +366,7 @@ export class SlaMonitoringService {
           ...whereClause,
           sla_deadline: {
             gte: now,
-            lte: warningTime,
+            lte: timeThresholds.warningTime,
           },
         },
       }),
@@ -360,7 +375,7 @@ export class SlaMonitoringService {
         where: {
           ...whereClause,
           sla_deadline: {
-            lt: graceTime,
+            lt: timeThresholds.graceTime,
           },
         },
       }),
@@ -369,7 +384,7 @@ export class SlaMonitoringService {
         where: {
           ...whereClause,
           created_at: {
-            lt: overdueThreshold,
+            lt: timeThresholds.overdueThreshold,
           },
         },
       }),

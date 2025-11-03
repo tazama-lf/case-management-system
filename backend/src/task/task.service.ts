@@ -67,6 +67,41 @@ export class TaskService {
           throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
         }
 
+        // Auto-assign work queue based on candidateGroup
+        let workQueueId: string | undefined;
+        let matchingQueue: any = null;
+        if (taskDTO.candidateGroup) {
+          try {
+            matchingQueue = await tx.workQueue.findFirst({
+              where: {
+                tenant_id: caseData.tenant_id,
+                is_active: true,
+                OR: [
+                  // Match by name (case-insensitive)
+                  { name: { contains: taskDTO.candidateGroup, mode: 'insensitive' } },
+                  // Match by role assignments
+                  {
+                    roles: {
+                      some: {
+                        role: taskDTO.candidateGroup.toUpperCase() as any,
+                      },
+                    },
+                  },
+                ],
+              },
+            });
+
+            if (matchingQueue) {
+              workQueueId = matchingQueue.work_queue_id;
+              loggerService.log(`Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId})`, TaskService.name);
+            } else {
+              loggerService.warn(`No work queue found for candidateGroup: ${taskDTO.candidateGroup}`, TaskService.name);
+            }
+          } catch (error) {
+            loggerService.warn(`Failed to auto-assign work queue: ${error.message}`, TaskService.name);
+          }
+        }
+
         const taskData: Prisma.TaskCreateInput = {
           case: {
             connect: { case_id: taskDTO.caseId },
@@ -81,11 +116,30 @@ export class TaskService {
           taskData.assigned_user_id = taskDTO.assignedUserId;
         }
 
+        if (workQueueId) {
+          taskData.workQueue = {
+            connect: { work_queue_id: workQueueId },
+          };
+          
+          // Set candidateGroup to the derived Flowable group ID for this work queue
+          const queueName = matchingQueue?.name;
+          if (queueName) {
+            const flowableGroupId = `tenant-${caseData.tenant_id}__queue-${queueName
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 50)}`;
+            taskData.candidateGroup = flowableGroupId;
+            loggerService.log(`Set candidateGroup to Flowable group ID: ${flowableGroupId}`, TaskService.name);
+          }
+        }
+
         const task = await tx.task.create({
           data: taskData,
         });
 
-        return { task, tenantId: caseData.tenant_id, caseData };
+        return { task, tenantId: caseData.tenant_id, caseData, workQueueId, matchingQueue };
       });
 
       let updatedTask = result.task;
@@ -191,11 +245,24 @@ export class TaskService {
           taskDTO.caseId,
           taskDTO.name,
           taskDTO.description || '',
-          taskDTO.candidateGroup || 'Investigations',
+          updatedTask.candidateGroup || taskDTO.candidateGroup || 'Investigations',
           updatedTask.status,
           updatedTask.assigned_user_id ?? undefined,
         ),
       );
+
+      // Emit work queue assignment event if auto-assigned
+      if (result.workQueueId && result.matchingQueue) {
+        this.eventEmitter.emit('task.workQueueAssigned', {
+          taskId: updatedTask.task_id,
+          workQueueId: result.workQueueId,
+          workQueueName: result.matchingQueue.name,
+          candidateGroup: updatedTask.candidateGroup,
+          autoAssigned: true,
+          assignedBy: 'SYSTEM',
+          tenantId: result.tenantId,
+        });
+      }
 
       auditLogService.logAction({
         userId,
@@ -847,7 +914,7 @@ export class TaskService {
 
   async getWorkQueueStatistics(userId: string) {
     try {
-      const candidateGroups = ['supervisors', 'investigations', 'analysts'];
+      const candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
       const statistics: Record<string, any> = {};
 
       for (const group of candidateGroups) {

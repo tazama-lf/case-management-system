@@ -61,16 +61,40 @@ export class FlowableEventListener {
 
   @OnEvent('task.created')
   async handleTaskCreated(event: TaskCreatedEvent) {
+    const maxRetries = 3;
+    const retryDelayMs = 1000; // 1 second between retries
+
     try {
       this.logger.log(
           `Handling task.created for task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
           FlowableEventListener.name,
       );
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+      let processInstance: any = null;
+      
+      // Retry logic to handle race condition between case creation and task creation
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+        
+        if (processInstance) {
+          this.logger.log(
+              `Found Flowable process ${processInstance.id} for case ${event.caseId} on attempt ${attempt}`,
+              FlowableEventListener.name,
+          );
+          break;
+        }
+
+        if (attempt < maxRetries) {
+          this.logger.warn(
+              `Process not found for case ${event.caseId}, retrying (${attempt}/${maxRetries}) in ${retryDelayMs}ms`,
+              FlowableEventListener.name,
+          );
+          await this.sleep(retryDelayMs);
+        }
+      }
 
       if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
+        throw new NotFoundException(`No Flowable process found for case ${event.caseId} after ${maxRetries} attempts`);
       }
 
       const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
@@ -80,20 +104,29 @@ export class FlowableEventListener {
         const task = t as Record<string, unknown>;
         const taskVars = (task.variables as unknown[]) || [];
 
+        // Check by postgres_task_id first (most reliable)
         const hasMatchingPostgresId = taskVars.some((v: unknown) => {
           const variable = v as Record<string, unknown>;
           return variable.name === 'postgres_task_id' && variable.value === event.taskId;
         });
 
-        const hasMatchingName = task.name === event.taskName;
+        // If no postgres_task_id, check by task name
+        const hasMatchingName = task.name === event.taskName && !taskVars.some((v: unknown) =>{
+          const variable = v as Record<string, unknown>;
+          return variable.name === 'postgres_task_id';
+        });
 
         return hasMatchingPostgresId || hasMatchingName;
       });
 
       if (existingTask) {
         const taskObj = existingTask as Record<string, unknown>;
+        this.logger.error(
+            `Task "${event.taskName}" already exists in process ${processInstance.id}. Cannot create duplicate task.`,
+            FlowableEventListener.name,
+        );
         throw new Error(
-            `Task "${event.taskName}" (${taskObj.id}) already exists in process ${processInstance.id}. Duplicate task creation prevented.`
+            `Task "${event.taskName}" already exists in process ${processInstance.id}. Duplicate task creation prevented.`
         );
       }
 
@@ -114,15 +147,18 @@ export class FlowableEventListener {
       });
 
       this.logger.log(
-          `Successfully created Flowable task ${flowableTask.id} for PostgreSQL task ${event.taskId} (${event.taskName})`,
+          ` Database ↔ Flowable SYNC SUCCESS: Created Flowable task ${flowableTask.id} for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
           FlowableEventListener.name,
       );
     } catch (error) {
       this.logger.error(
-          `Failed to create Flowable task for ${event.taskId}: ${error.message}`,
+          ` Database ↔ Flowable SYNC FAILED: Failed to create Flowable task for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}: ${error.message}`,
           error.stack,
           FlowableEventListener.name,
       );
+      
+      // This is critical - task exists in DB but not in Flowable, breaking work queue sync
+      throw error;
     }
   }
 
@@ -415,5 +451,12 @@ export class FlowableEventListener {
           FlowableEventListener.name,
       );
     }
+  }
+
+  /**
+   * Utility method to sleep for a specified number of milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
