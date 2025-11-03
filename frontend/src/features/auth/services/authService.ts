@@ -17,7 +17,7 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,8 +38,7 @@ class AuthService {
         if (user) {
           this.setUser(user);
           data.user = user;
-        } else {
-        }
+        } else { /* empty */ }
       }
 
       return data;
