@@ -8,7 +8,7 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType, CaseType } from '@prisma/client';
+import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';
@@ -40,7 +40,7 @@ export class CaseService {
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly commentService: CommentService,
-    private readonly caseWorkflowService: CaseCreationService,
+    private readonly caseCreationService: CaseCreationService,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly notificationService: NotificationService,
     private readonly authHelperService: AuthHelperService,
@@ -101,7 +101,7 @@ export class CaseService {
 
     const priorityScore = dto.priorityScore ?? 0.33;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
-    const caseType = this.casePriorityUtil.mapAlertTypeToCaseType(dto.alertType);
+    const caseType = dto.alertType;
 
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
@@ -124,7 +124,7 @@ export class CaseService {
           caseCreationType: CaseCreationType.MANUAL,
         };
 
-        const createdCase = await this.caseWorkflowService.createCase(caseDetail, userId);
+        const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
 
         this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via workflow service`, CaseService.name);
 
