@@ -3,8 +3,18 @@ import { Request } from 'express';
 export interface TazamaToken {
   clientId: string;
   tenantId?: string;
-  claims?: string[];
-  // ...other fields as needed
+  claims: string[];
+  realmRoles?: string[];
+  preferredUsername?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  subject?: string;
+  issuer?: string;
+  expiresAt?: number;
+  issuedAt?: number;
+  raw?: Record<string, unknown>;
 }
 
 export interface AuthenticatedUser {

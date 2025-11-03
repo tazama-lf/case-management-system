@@ -30,6 +30,8 @@ describe('TaskController', () => {
       sub: 'user-123',
       iat: 1234567890,
       exp: 1234567890,
+      claims: [],
+      realmRoles: [],
     },
     validated: {
       isValid: true,

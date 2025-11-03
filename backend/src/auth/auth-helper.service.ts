@@ -1,197 +1,413 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+import type { AxiosError } from 'axios';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  roles: string[];
+}
+
+interface AuthServiceUserResponse {
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  roles?: string[];
+}
+
+interface KeycloakGroup {
+  id: string;
+  name: string;
+}
+
+interface KeycloakSubGroup extends KeycloakGroup {
+  realmRoles?: string[];
+}
+
+interface KeycloakGroupMember {
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
 
 @Injectable()
 export class AuthHelperService {
-  // Simulated Keycloak users with roles
-  private mockUsers = [
-    // Supervisors
-    {
-      id: 'b29bda5d-f8b4-4a5d-8f12-5b6d6027cf90',
-      username: 'alice.mwangi',
-      firstName: 'Alice',
-      lastName: 'Mwangi',
-      email: 'alice.mwangi@cms.org',
-      roles: ['CMS_SUPERVISOR'],
-    },
-    {
-      id: 'f8a2c016-2b8d-41da-bbb9-41ad3c26dfc2',
-      username: 'brian.otieno',
-      firstName: 'Brian',
-      lastName: 'Otieno',
-      email: 'brian.otieno@cms.org',
-      roles: ['CMS_SUPERVISOR'],
-    },
-    {
-      id: 'a60b4fa7-b4e2-4651-8a6b-d3d024ba89f1',
-      username: 'clara.kamau',
-      firstName: 'Clara',
-      lastName: 'Kamau',
-      email: 'clara.kamau@cms.org',
-      roles: ['CMS_SUPERVISOR'],
-    },
+  constructor(
+    private readonly http: HttpService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {}
 
-    // Analysts
-    {
-      id: 'c3c23b1d-ff1c-4922-9f16-89e6d5f334bb',
-      username: 'felix.mutiso',
-      firstName: 'Felix',
-      lastName: 'Mutiso',
-      email: 'felix.mutiso@cms.org',
-      roles: ['CMS_ANALYST'],
-    },
-    {
-      id: 'e0ff568c-b2a8-4b46-88f9-96a89952c3ef',
-      username: 'grace.otieno',
-      firstName: 'Grace',
-      lastName: 'Otieno',
-      email: 'grace.otieno@cms.org',
-      roles: ['CMS_ANALYST'],
-    },
-    {
-      id: 'fa9e32a9-441f-4a7c-91a7-173a81d55472',
-      username: 'henry.wambua',
-      firstName: 'Henry',
-      lastName: 'Wambua',
-      email: 'henry.wambua@cms.org',
-      roles: ['CMS_ANALYST'],
-    },
+  async getAllUsersWithRole(roleName: string, token?: string, groupName?: string): Promise<AuthUser[]> {
+    const normalizedRole = roleName.trim();
+    if (!normalizedRole) {
+      throw new BadRequestException('Role name is required');
+    }
 
-    // Investigators
-    {
-      id: 'c98db341-beb6-457c-98e0-406cc1c71662',
-      username: 'karen.mworia',
-      firstName: 'Karen',
-      lastName: 'Mworia',
-      email: 'karen.mworia@cms.org',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: '085b7a75-c39d-44f8-868f-6c419f578627',
-      username: 'cms_investigator_1',
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'investigator1@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02',
-      username: 'cms_investigator_1',
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'investigator1@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5',
-      username: 'cms_investigator_2',
-      firstName: 'Jane',
-      lastName: 'Doe',
-      email: 'investigator2@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: '875e1911-fe1b-451d-877f-4f771ef85f58',
-      username: 'cms_investigator_3',
-      firstName: 'Bob',
-      lastName: 'Wilson',
-      email: 'investigator3@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: '36febe5b-49fe-4abd-b294-f7afc995574e',
-      username: 'cms_investigator_4',
-      firstName: 'Alice',
-      lastName: 'Johnson',
-      email: 'investigator4@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348',
-      username: 'cms_investigator_5',
-      firstName: 'Charlie',
-      lastName: 'Brown',
-      email: 'investigator5@example.com',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: '42c2e610-0a59-4ab7-88cb-6804ed20e3d0',
-      username: 'leonard.ochieng',
-      firstName: 'Leonard',
-      lastName: 'Ochieng',
-      email: 'leonard.ochieng@cms.org',
-      roles: ['CMS_INVESTIGATOR'],
-    },
-    {
-      id: '0fd2adf8-cf8c-4b7a-9807-03fd1a4e4236',
-      username: 'mary.njoki',
-      firstName: 'Mary',
-      lastName: 'Njoki',
-      email: 'mary.njoki@cms.org',
-      roles: ['CMS_INVESTIGATOR'],
-    },
+    const effectiveGroupName = groupName || this.configService.get<string>('KEYCLOAK_GROUP_NAME');
 
-    // Admins
-    {
-      id: '67f83c76-b39a-4b9e-bf61-10a9f231d3a5',
-      username: 'emily.njeri',
-      firstName: 'Emily',
-      lastName: 'Njeri',
-      email: 'emily.njeri@cms.org',
-      roles: ['CMS_ADMIN'],
-    },
-    {
-      id: 'bc176cd4-0f6e-402c-8ac0-6cbafc67a7e8',
-      username: 'nicholas.mwenda',
-      firstName: 'Nicholas',
-      lastName: 'Mwenda',
-      email: 'nicholas.mwenda@cms.org',
-      roles: ['CMS_ADMIN'],
-    },
-    {
-      id: 'aab4c061-2041-4a4f-89c2-51fd7799c9df',
-      username: 'olivia.mutua',
-      firstName: 'Olivia',
-      lastName: 'Mutua',
-      email: 'olivia.mutua@cms.org',
-      roles: ['CMS_ADMIN'],
-    },
-  ];
+    try {
+      const authServiceUrl = this.getAuthServiceBaseUrl();
+      // Auth-service endpoint: GET /v1/auth/user/:rolename?groupName=xxx
+      let url = `${authServiceUrl}/user/${encodeURIComponent(normalizedRole)}`;
+      if (effectiveGroupName) {
+        url += `?groupName=${encodeURIComponent(effectiveGroupName)}`;
+      }
 
-  /**
-   * Mock: Return all users with a specific role.
-   */
-  async getAllUsersWithRole(roleName: string): Promise<any[]> {
-    return this.mockUsers.filter((u) => u.roles.includes(roleName));
+      this.logger.log(
+        `Fetching users with role ${normalizedRole} from auth-service at ${url}${token ? ' (with Bearer token)' : ' (no token provided)'}`,
+        AuthHelperService.name,
+      );
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const { data } = await firstValueFrom(
+        this.http.get<AuthServiceUserResponse[]>(url, {
+          headers,
+          timeout: 5000,
+        }),
+      );
+
+      if (!Array.isArray(data)) {
+        this.logger.warn(`Auth-service returned non-array response for role ${normalizedRole}`, AuthHelperService.name);
+        return [];
+      }
+
+      this.logger.log(`Found ${data.length} users with role ${normalizedRole}`, AuthHelperService.name);
+
+      return data.map((user) => this.mapAuthServiceUser(user));
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      
+      // Log the auth-service error with details
+      const status = axiosError.response?.status;
+      const errorData = axiosError.response?.data;
+      this.logger.warn(
+        `Auth-service call failed for role '${normalizedRole}': ${status ?? 'No response'} - ${JSON.stringify(errorData) || axiosError.message}. ` +
+          'Attempting Keycloak fallback...',
+        AuthHelperService.name,
+      );
+
+      // Try fallback for network errors or 5xx errors
+      if (!axiosError.response || (status && status >= 500)) {
+        const fallbackUsers = await this.fetchUsersByRoleFromKeycloak(normalizedRole, effectiveGroupName);
+        if (fallbackUsers !== null) {
+          this.logger.log(
+            `Successfully retrieved ${fallbackUsers.length} users via Keycloak fallback for role '${normalizedRole}'`,
+            AuthHelperService.name,
+          );
+          return fallbackUsers;
+        }
+        this.logger.error(
+          `Both auth-service and Keycloak fallback failed for role '${normalizedRole}'. ` +
+            'Please check: 1) auth-service is running and configured correctly, ' +
+            '2) CLIENT_ID and CLIENT_SECRET are valid Keycloak service account credentials with admin permissions.',
+          AuthHelperService.name,
+        );
+      }
+      
+      if (status === 404) {
+        this.logger.warn(
+          `Auth-service endpoint returned 404 for role '${normalizedRole}'. The role may not exist or no users are assigned to it.`,
+          AuthHelperService.name,
+        );
+        return [];
+      }
+      if (status === 401) {
+        this.logger.error(
+          `Auth-service returned 401 Unauthorized when fetching users for role '${normalizedRole}'. Make sure a valid bearer token is provided.`,
+          AuthHelperService.name,
+        );
+        return [];
+      }
+      return this.handleAuthServiceError('fetch users by role', error, roleName);
+    }
   }
 
-  /**
-   * Mock: Return roles for a given user.
-   */
   async getUserRolesFromAuthService(userId: string): Promise<string[]> {
-    const user = this.mockUsers.find((u) => u.id === userId);
-    if (!user) throw new BadRequestException(`User ${userId} not found`);
-    return user.roles;
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+
+    try {
+      const authServiceUrl = this.getAuthServiceBaseUrl();
+      const url = `${authServiceUrl}/users/${encodeURIComponent(userId)}/roles`;
+
+      const { data } = await firstValueFrom(
+        this.http.get<{ roles: string[] }>(url, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      return Array.isArray(data.roles) ? data.roles : [];
+    } catch (error) {
+      return this.handleAuthServiceError('fetch user roles', error, userId);
+    }
   }
 
-  async getUserDetailsFromAuthService(userId: string): Promise<any> {
-    const user = this.mockUsers.find((u) => u.id === userId);
-    if (!user) throw new BadRequestException(`User ${userId} not found`);
-    return user;
+  async getUserDetailsFromAuthService(userId: string): Promise<AuthUser> {
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+
+    try {
+      const authServiceUrl = this.getAuthServiceBaseUrl();
+      const url = `${authServiceUrl}/users/${encodeURIComponent(userId)}`;
+
+      const { data } = await firstValueFrom(
+        this.http.get<AuthServiceUserResponse>(url, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      if (!data.id) {
+        throw new BadRequestException(`User ${userId} not found`);
+      }
+
+      return this.mapAuthServiceUser(data);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.handleAuthServiceError('fetch user details', error, userId);
+      throw new BadRequestException(`User ${userId} not found`);
+    }
   }
 
-  /**
-   * Mock: Check if user exists.
-   */
   async userExists(userId: string): Promise<boolean> {
-    return this.mockUsers.some((u) => u.id === userId);
+    if (!userId) {
+      return false;
+    }
+
+    try {
+      await this.getUserDetailsFromAuthService(userId);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  /**
-   * Mock: Check if a user has a given role.
-   */
   async userHasRole(userId: string, requiredRole: string): Promise<boolean> {
-    const user = this.mockUsers.find((u) => u.id === userId);
-    if (!user) throw new BadRequestException(`User ${userId} not found`);
-    return user.roles.includes(requiredRole);
+    if (!userId || !requiredRole) {
+      throw new BadRequestException('User ID and role are required');
+    }
+
+    try {
+      const roles = await this.getUserRolesFromAuthService(userId);
+      return roles.includes(requiredRole);
+    } catch {
+      this.logger.warn(`Error checking role ${requiredRole} for user ${userId}`, AuthHelperService.name);
+      return false;
+    }
+  }
+
+  private mapAuthServiceUser(user: AuthServiceUserResponse): AuthUser {
+    return {
+      id: user.id,
+      username: user.username ?? '',
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      email: user.email ?? '',
+      roles: Array.isArray(user.roles) ? user.roles : [],
+    };
+  }
+
+  private getAuthServiceBaseUrl(): string {
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+    if (!authUrl) {
+      this.logger.error('TAZAMA_AUTH_URL is not set in environment variables', AuthHelperService.name);
+      throw new ServiceUnavailableException('Authentication service configuration missing');
+    }
+    // Remove /v1/auth/login suffix if present and replace with base path
+    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/, '');
+    return `${baseUrl}/v1/auth`;
+  }
+
+  private handleAuthServiceError(operation: string, error: unknown, context?: string): never {
+    const axiosError = error as AxiosError | undefined;
+    const status = axiosError?.response?.status;
+    const statusText = axiosError?.response?.statusText ?? axiosError?.message ?? 'Unknown error';
+
+    const contextMsg = context ? ` (${context})` : '';
+    this.logger.error(`Auth-service ${operation} failed${contextMsg}: ${status ?? 'N/A'} ${statusText}`, AuthHelperService.name);
+
+    if (status === 404) {
+      this.logger.warn('Auth-service endpoint not found. The auth-service may not implement this endpoint yet.', AuthHelperService.name);
+      return [] as never;
+    }
+
+    throw new ServiceUnavailableException('Authentication service unavailable');
+  }
+
+  private async fetchUsersByRoleFromKeycloak(roleName: string, groupName?: string): Promise<AuthUser[] | null> {
+    const AUTH_URL = this.configService.get<string>('AUTH_URL');
+    const KEYCLOAK_REALM = this.configService.get<string>('KEYCLOAK_REALM');
+    const CLIENT_ID = this.configService.get<string>('CLIENT_ID');
+    const CLIENT_SECRET = this.configService.get<string>('CLIENT_SECRET');
+    const effectiveGroupName = groupName || this.configService.get<string>('KEYCLOAK_GROUP_NAME');
+
+    // Check for missing or placeholder values
+    const isPlaceholder = (value: string | undefined): boolean => {
+      if (!value) return true;
+      const lower = value.toLowerCase();
+      return lower.includes('your-') || lower.includes('placeholder') || lower.includes('replace-me') || lower === 'changeme';
+    };
+
+    if (
+      !AUTH_URL ||
+      !KEYCLOAK_REALM ||
+      !CLIENT_ID ||
+      !CLIENT_SECRET ||
+      !effectiveGroupName ||
+      isPlaceholder(CLIENT_ID) ||
+      isPlaceholder(CLIENT_SECRET)
+    ) {
+      this.logger.warn(
+        'Skipping direct Keycloak fallback: required configuration (AUTH_URL, KEYCLOAK_REALM, CLIENT_ID, CLIENT_SECRET, KEYCLOAK_GROUP_NAME) is missing or contains placeholder values. ' +
+          `CLIENT_ID=${CLIENT_ID ? '***' : 'missing'}, CLIENT_SECRET=${CLIENT_SECRET ? '***' : 'missing'}`,
+        AuthHelperService.name,
+      );
+      return null;
+    }
+
+    const baseUrl = AUTH_URL.replace(/\/$/, '');
+
+    try {
+      const serviceToken = await this.requestKeycloakServiceToken(baseUrl, KEYCLOAK_REALM, CLIENT_ID, CLIENT_SECRET);
+      const group = await this.getKeycloakGroup(baseUrl, KEYCLOAK_REALM, effectiveGroupName, serviceToken);
+      if (!group) {
+        this.logger.warn(`Keycloak group '${effectiveGroupName}' not found when resolving role '${roleName}'`, AuthHelperService.name);
+        return [];
+      }
+
+      const subGroup = await this.getKeycloakSubGroupWithRole(baseUrl, KEYCLOAK_REALM, group.id, roleName, serviceToken);
+      if (!subGroup) {
+        this.logger.warn(
+          `Role '${roleName}' not found within group '${effectiveGroupName}' while using Keycloak fallback`,
+          AuthHelperService.name,
+        );
+        return [];
+      }
+
+      const members = await this.getKeycloakGroupMembers(baseUrl, KEYCLOAK_REALM, subGroup.id, serviceToken);
+
+      this.logger.log(
+        `Keycloak fallback resolved ${members.length} users for role '${roleName}' in group '${effectiveGroupName}'`,
+        AuthHelperService.name,
+      );
+
+      return members.map((member) => ({
+        id: member.id,
+        username: member.username ?? '',
+        firstName: member.firstName ?? '',
+        lastName: member.lastName ?? '',
+        email: member.email ?? '',
+        roles: [],
+      }));
+    } catch (fallbackError) {
+      const err = fallbackError instanceof Error ? fallbackError : new Error('Unknown Keycloak fallback error');
+      this.logger.error(`Direct Keycloak fallback failed for role '${roleName}': ${err.message}`, AuthHelperService.name);
+      return null;
+    }
+  }
+
+  private async requestKeycloakServiceToken(baseUrl: string, realm: string, clientId: string, clientSecret: string): Promise<string> {
+    const tokenUrl = `${baseUrl}/realms/${realm}/protocol/openid-connect/token`;
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+
+    const { data } = await firstValueFrom(
+      this.http.post<{ access_token?: string }>(tokenUrl, params.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 5000,
+      }),
+    );
+
+    if (!data.access_token) {
+      throw new Error('Keycloak token endpoint did not return an access_token');
+    }
+
+    return data.access_token;
+  }
+
+  private async getKeycloakGroup(baseUrl: string, realm: string, groupName: string, token: string): Promise<KeycloakGroup | null> {
+    const groupUrl = `${baseUrl}/admin/realms/${realm}/groups?search=${encodeURIComponent(groupName)}`;
+
+    const { data } = await firstValueFrom(
+      this.http.get<KeycloakGroup[]>(groupUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+        timeout: 5000,
+      }),
+    );
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return null;
+    }
+
+    return data.find((group) => group.name === groupName) ?? data[0];
+  }
+
+  private async getKeycloakSubGroupWithRole(
+    baseUrl: string,
+    realm: string,
+    groupId: string,
+    roleName: string,
+    token: string,
+  ): Promise<KeycloakSubGroup | null> {
+    const subgroupUrl = `${baseUrl}/admin/realms/${realm}/groups/${groupId}/children`;
+
+    const { data } = await firstValueFrom(
+      this.http.get<KeycloakSubGroup[]>(subgroupUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+        timeout: 5000,
+      }),
+    );
+
+    if (!Array.isArray(data)) {
+      return null;
+    }
+
+    return data.find((subGroup) => Array.isArray(subGroup.realmRoles) && subGroup.realmRoles.includes(roleName)) ?? null;
+  }
+
+  private async getKeycloakGroupMembers(baseUrl: string, realm: string, subGroupId: string, token: string): Promise<KeycloakGroupMember[]> {
+    const membersUrl = `${baseUrl}/admin/realms/${realm}/groups/${subGroupId}/members`;
+
+    const { data } = await firstValueFrom(
+      this.http.get<KeycloakGroupMember[]>(membersUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+        timeout: 5000,
+      }),
+    );
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data;
   }
 }
