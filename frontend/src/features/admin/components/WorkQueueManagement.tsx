@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { PageContainer } from '../../../shared/components/ui';
-import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, FunnelIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import type { WorkQueue } from '../types/admindashboard.types';
-import CreateWorkQueueModal from './CreateWorkQueueModal';
-
 interface WorkQueueManagementProps {
   className?: string;
   onNavigateBack?: () => void;
@@ -12,7 +10,6 @@ interface WorkQueueManagementProps {
 const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '', onNavigateBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   const initialWorkQueues: WorkQueue[] = [
     {
@@ -49,16 +46,9 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
     }
   ];
 
-  const [workQueues, setWorkQueues] = useState<WorkQueue[]>(initialWorkQueues);
+  const [workQueues] = useState<WorkQueue[]>(initialWorkQueues);
 
-  const handleCreateWorkQueue = (newWorkQueue: Omit<WorkQueue, 'id'>) => {
-    const workQueueWithId: WorkQueue = {
-      ...newWorkQueue,
-      id: Date.now().toString(),
-    };
-    setWorkQueues(prev => [...prev, workQueueWithId]);
-    setIsCreateModalOpen(false);
-  };
+
 
   const roleColors: Record<string, string> = {
     'Supervisor': 'bg-blue-100 text-blue-800',
@@ -133,14 +123,6 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
           </div>
         </div>
 
-        {/* Create Button */}
-        <button 
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Create Work Queue
-        </button>
       </div>
 
       {/* Work Queues Table */}
@@ -236,12 +218,6 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
         )}
       </div>
 
-      {/* Create Work Queue Modal */}
-      <CreateWorkQueueModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSave={handleCreateWorkQueue}
-      />
     </PageContainer>
   );
 };
