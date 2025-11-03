@@ -42,7 +42,6 @@ export const TazamaClaims = {
   OFFLINE_ACCESS: 'offline_access',
   UMA_AUTHORIZATION: 'uma_authorization',
   CMS_ADMIN: 'CMS_ADMIN',
-  CMS_ANALYST: 'CMS_ANALYST',
 } as const;
 
 /**
@@ -51,7 +50,6 @@ export const TazamaClaims = {
 
 export const RequireAdminRole = () => RequireAnyClaims(TazamaClaims.CMS_ADMIN);
 
-export const RequireAnalystRole = () => RequireAnyClaims(TazamaClaims.CMS_ANALYST);
 export const RequireAlertTriageRole = () => RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE);
 export const RequireInvestigatorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR);
 export const RequireSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_SUPERVISOR);

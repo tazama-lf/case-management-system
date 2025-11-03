@@ -151,23 +151,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requiredRoles.length > 0 && user) {
-    // Use the auth service methods to check backend claims instead of user.roles
-    const hasRequiredRole = requiredRoles.some(role => {
-      // Check each required role using the appropriate auth service method
-      switch (role) {
-        case 'alert-triage':
-          return authService.hasAlertTriageRole();
-        case 'CMS_SUPERVISOR':
-          return authService.hasSupervisorRole();
-        case 'CMS_INVESTIGATOR':
-          return authService.hasInvestigatorRole();
-        case 'CMS-TEST-ROLE':
-          return authService.hasCMSTestRole();
-        default:
-          // For any other roles, check backend claims directly
-          return authService.hasBackendClaim(role);
-      }
-    });
+    // Check if user has any of the required roles using backend claims
+    const hasRequiredRole = requiredRoles.some(role => authService.hasBackendClaim(role));
 
     if (!hasRequiredRole) {
       return (
@@ -185,18 +170,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 <ul className="list-disc list-inside space-y-1">
                   {requiredRoles.map(role => (
                     <li key={role}>
-                      {role}: {(() => {
-                        switch (role) {
-                          case 'alert-triage':
-                            return authService.hasAlertTriageRole() ? '✓ Available' : '✗ Missing';
-                          case 'CMS_SUPERVISOR':
-                            return authService.hasSupervisorRole() ? '✓ Available' : '✗ Missing';
-                          case 'CMS_INVESTIGATOR':
-                            return authService.hasInvestigatorRole() ? '✓ Available' : '✗ Missing';
-                          default:
-                            return authService.hasBackendClaim(role) ? '✓ Available' : '✗ Missing';
-                        }
-                      })()}
+                      {role}: {authService.hasBackendClaim(role) ? '✓ Available' : '✗ Missing'}
                     </li>
                   ))}
                 </ul>

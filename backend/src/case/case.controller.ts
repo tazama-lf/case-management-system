@@ -885,7 +885,7 @@ export class CaseController {
   - If ANALYST/INVESTIGATOR requested: Case assigned directly to that analyst (STATUS_10_ASSIGNED)
   - If SUPERVISOR requested OR role unclear: Case assigned to investigations queue (STATUS_02_READY_FOR_ASSIGNMENT)
  
-  **Note:** The system checks for role values like 'ANALYST', 'INVESTIGATOR', 'CMS_ANALYST', 'CMS_INVESTIGATOR' (case-insensitive).
+  **Note:** The system checks for role values like 'ANALYST', 'INVESTIGATOR', 'CMS_INVESTIGATOR' (case-insensitive).
   Creates "Investigate Case" task and notifies relevant parties.`,
   })
   @ApiParam({

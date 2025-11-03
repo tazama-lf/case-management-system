@@ -3,6 +3,7 @@ export const BACKEND_CLAIMS = {
   CMS_TEST_ROLE: 'CMS-TEST-ROLE',
   CMS_INVESTIGATOR: 'CMS_INVESTIGATOR',
   CMS_SUPERVISOR: 'CMS_SUPERVISOR',
+  CMS_ADMIN: 'CMS_ADMIN',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -83,6 +84,7 @@ export interface AuthContextType extends AuthState {
   hasAlertTriageRole: () => boolean;
   hasInvestigatorRole: () => boolean;
   hasSupervisorRole: () => boolean;
+  hasCMSAdminRole: () => boolean;
   hasAdminRole: () => boolean;
   hasAnyRole: (roles: string[]) => boolean;
   hasAllRoles: (roles: string[]) => boolean;
