@@ -6,9 +6,6 @@ import { useAuditLogs } from '../hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface AuditLogsReportProps {
-  onExportExcel: () => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
   dateRange: string;
 }
 

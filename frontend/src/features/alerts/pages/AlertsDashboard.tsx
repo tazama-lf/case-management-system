@@ -1,23 +1,25 @@
-import React, { useState } from 'react';
-import { AlertsTable, AlertsSearchAndFilters } from '../components';
-import AlertsDetailModal from '../components/AlertsDetailModal';
-import ManualTriageModal from '../components/ManualTriageModal';
-import TransactionMessagesModal from '../components/TransactionMessagesModal';
-import MessagePayloadModal from '../components/MessagePayloadModal';
-import AlertsTableSkeleton from '../components/AlertsTableSkeleton';
-import ResultsSummary from '../../../shared/components/ui/ResultsSummary';
-import { PageContainer, Notification } from '../../../shared/components/ui';
-import ErrorFallback from '../../../shared/components/ErrorFallback';
-import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
-import { useToast } from '../../../shared/providers/ToastProvider';
+import React, { useState, Suspense, lazy } from 'react';
+import { AlertsTable, AlertsSearchAndFilters } from '@/features/alerts/components';
+import AlertsTableSkeleton from '@/features/alerts/components/AlertsTableSkeleton';
+import ResultsSummary from '@/shared/components/ui/ResultsSummary';
+import { PageContainer, Notification } from '@/shared/components/ui';
+import ErrorFallback from '@/shared/components/ErrorFallback';
+import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
+import { useToast } from '@/shared/providers/ToastProvider';
 
-import type { Alert, AlertsTableColumn, TransactionMessage } from '../types/alertsdashboard.types';
-import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '../types/triage.types';
-import triageService from '../services/triageservice';
-import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import { extractTransactionIdFromAlert } from '../utils/transactionUtils';
-import { useAlerts } from '../hooks/useAlerts';
-import { useAlertFilterOptions, useAlertOperations } from '../hooks/useAlertsQuery';
+import type { Alert, AlertsTableColumn, TransactionMessage } from '@/features/alerts/types/alertsdashboard.types';
+import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '@/features/alerts/types/triage.types';
+import triageService from '@/features/alerts/services/triageservice';
+import { transformBackendAlertToUI } from '@/features/alerts/utils/alertTransformers';
+import { extractTransactionIdFromAlert } from '@/features/alerts/utils/transactionUtils';
+import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { useAlertFilterOptions, useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
+
+// Dynamic imports for modals
+const AlertsDetailModal = lazy(() => import('@/features/alerts/components/AlertsDetailModal'));
+const ManualTriageModal = lazy(() => import('@/features/alerts/components/ManualTriageModal'));
+const TransactionMessagesModal = lazy(() => import('@/features/alerts/components/TransactionMessagesModal'));
+const MessagePayloadModal = lazy(() => import('@/features/alerts/components/MessagePayloadModal'));
 
 const AlertsDashboard: React.FC = () => {
   const { isAIMode, isManualMode, isDisabledMode } = useSystemConfig();
@@ -346,46 +348,54 @@ const AlertsDashboard: React.FC = () => {
           />
         </div>
 
-      {}
-      <AlertsDetailModal
-        alertId={selectedAlert?.alert_id || null}
-        isOpen={showModal}
-        onClose={handleCloseModal}
-        onAlertUpdated={refreshAlerts}
-        onManualTriage={(alert: Alert) => {
-          setSelectedAlert(alert);
-          setShowModal(false);
-          setShowManualTriageModal(true);
-        }}
-      />
-
-      {}
-      {selectedAlert && (
-        <ManualTriageModal
-          isOpen={showManualTriageModal}
-          alert={convertToTriageAlert(selectedAlert)}
-          onClose={() => {
-            setShowManualTriageModal(false);
-            setSelectedAlert(null);
+      {/* Alerts Detail Modal */}
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <AlertsDetailModal
+          alertId={selectedAlert?.alert_id || null}
+          isOpen={showModal}
+          onClose={handleCloseModal}
+          onAlertUpdated={refreshAlerts}
+          onManualTriage={(alert: Alert) => {
+            setSelectedAlert(alert);
+            setShowModal(false);
+            setShowManualTriageModal(true);
           }}
-          onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
         />
+      </Suspense>
+
+      {/* Manual Triage Modal */}
+      {selectedAlert && (
+        <Suspense fallback={<div>Loading modal...</div>}>
+          <ManualTriageModal
+            isOpen={showManualTriageModal}
+            alert={convertToTriageAlert(selectedAlert)}
+            onClose={() => {
+              setShowManualTriageModal(false);
+              setSelectedAlert(null);
+            }}
+            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+          />
+        </Suspense>
       )}
 
-      {}
-      <TransactionMessagesModal
-        isOpen={showTransactionMessages}
-        onClose={handleCloseTransactionMessages}
-        alert={selectedAlertForTransaction}
-        onMessageClick={handleTransactionMessageClick}
-      />
+      {/* Transaction Messages Modal */}
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <TransactionMessagesModal
+          isOpen={showTransactionMessages}
+          onClose={handleCloseTransactionMessages}
+          alert={selectedAlertForTransaction}
+          onMessageClick={handleTransactionMessageClick}
+        />
+      </Suspense>
 
-      {}
-      <MessagePayloadModal
-        isOpen={showMessagePayload}
-        onClose={handleCloseMessagePayload}
-        message={selectedMessage}
-      />
+      {/* Message Payload Modal */}
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <MessagePayloadModal
+          isOpen={showMessagePayload}
+          onClose={handleCloseMessagePayload}
+          message={selectedMessage}
+        />
+      </Suspense>
     </PageContainer>
   );
 };

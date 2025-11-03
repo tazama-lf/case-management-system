@@ -37,7 +37,7 @@ const Header: React.FC<HeaderComponentProps> = ({
             )}
           </div>
 
-          {}
+          {/* Page title/breadcrumbs */}
           <div className="flex flex-1 items-center lg:ml-0">
             <div className="hidden lg:block">
               {title ? (
@@ -55,23 +55,29 @@ const Header: React.FC<HeaderComponentProps> = ({
             </div>
           </div>
 
-          {}
+          {/* User profile section */}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-            {}
-            <div className="hidden lg:flex lg:items-center lg:gap-x-2">
-              <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-700">
-                  {user?.initials ||
-                    user?.username?.slice(0, 2).toUpperCase() ||
-                    'U'}
+            {/* User avatar and info */}
+            <div className="hidden lg:flex lg:items-center lg:gap-x-3">
+              <div className="h-9 w-9 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span className="text-sm font-semibold text-white">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
+                    : user?.username?.slice(0, 2).toUpperCase() || 'U'}
                 </span>
               </div>
-              <div className="text-sm">
-                <div className="font-medium text-gray-900">
-                  {user?.name || user?.username || 'User'}
+              <div className="text-sm leading-tight">
+                <div className="font-semibold text-gray-900">
+                  {user?.fullName || 
+                   (user?.firstName && user?.lastName 
+                     ? `${user.firstName} ${user.lastName}` 
+                     : user?.username || 'User')}
                 </div>
-                <div className="text-gray-500">
-                  {user?.roles?.[0] || 'Investigator'}
+                <div className="text-xs text-gray-500">
+                  {user?.email || 
+                   (user?.roles && user.roles.length > 0 
+                     ? user.roles[0].replace(/_/g, ' ').replace(/-/g, ' ')
+                     : 'User')}
                 </div>
               </div>
             </div>

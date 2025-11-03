@@ -10,9 +10,6 @@ import { useCaseAgeing } from '../hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface CaseAgeingReportProps {
-  onExportExcel: () => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
   dateRange: string;
 }
 

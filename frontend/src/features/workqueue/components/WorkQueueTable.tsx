@@ -21,6 +21,15 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   onComplete,
   onUpdateStatus,
 }) => {
+  const tableColumns = [
+    { key: 'task', label: 'Task', width: 'w-80' },
+    { key: 'case', label: 'Case', width: 'w-72' },
+    { key: 'queue', label: 'Queue', width: 'w-32' },
+    { key: 'status', label: 'Status', width: 'w-32' },
+    { key: 'created', label: 'Created', width: 'w-40' },
+    { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
+    { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' }
+  ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
@@ -119,37 +128,22 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-80" />
-            <col className="w-72" />
-            <col className="w-32" />
-            <col className="w-32" />
-            <col className="w-40" />
-            <col className="w-48" />
-            <col className="w-40" />
+            {tableColumns.map((col) => (
+              <col key={col.key} className={col.width} />
+            ))}
           </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Task
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Case
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Queue
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Assigned To
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {tableColumns.map((col) => (
+                <th 
+                  key={col.key}
+                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    col.align === 'right' ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">

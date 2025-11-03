@@ -44,32 +44,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Token expiration monitoring - logout when token expires
   useEffect(() => {
-    let refreshTimer: NodeJS.Timeout;
+    let expirationCheckTimer: NodeJS.Timeout;
 
     if (token && isAuthenticated) {
       const tokenExpiration = authService.getTokenExpiration(token);
       if (tokenExpiration) {
-        const refreshTime =
-          tokenExpiration.getTime() - Date.now() - 5 * 60 * 1000;
+        const timeUntilExpiration = tokenExpiration.getTime() - Date.now();
 
-        if (refreshTime > 0) {
-          refreshTimer = setTimeout(async () => {
-            const refreshed = await authService.refreshToken();
-            if (!refreshed) {
-              logout();
-            } else {
-              const newToken = authService.getToken();
-              setToken(newToken);
-            }
-          }, refreshTime);
+        // If token is already expired or will expire soon, logout
+        if (timeUntilExpiration <= 0) {
+          logout();
+        } else {
+          // Set timer to logout when token expires
+          expirationCheckTimer = setTimeout(() => {
+            logout();
+          }, timeUntilExpiration);
         }
       }
     }
 
     return () => {
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
+      if (expirationCheckTimer) {
+        clearTimeout(expirationCheckTimer);
       }
     };
   }, [token, isAuthenticated]);
@@ -85,8 +83,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
-
-      } else {
       }
     } catch (error) {
       const errorMessage =
@@ -127,6 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
     hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
     hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
+    hasCMSAdminRole: authService.hasCMSAdminRole.bind(authService),
     hasAdminRole: authService.hasAdminRole.bind(authService),
     hasAnyRole: authService.hasAnyRole.bind(authService),
     hasAllRoles: authService.hasAllRoles.bind(authService),

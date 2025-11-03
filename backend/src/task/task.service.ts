@@ -323,7 +323,6 @@ export class TaskService {
         supervisors: 'CMS_SUPERVISOR',
         investigators: 'CMS_INVESTIGATOR',
         investigations: 'CMS_INVESTIGATOR',
-        analysts: 'CMS_ANALYST',
       };
 
       const group = existingTask.candidateGroup?.toLowerCase() || '';
@@ -1049,7 +1048,6 @@ export class TaskService {
         supervisors: 'CMS_SUPERVISOR',
         investigators: 'CMS_INVESTIGATOR',
         investigations: 'CMS_INVESTIGATOR',
-        analysts: 'CMS_ANALYST',
       };
 
       const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';

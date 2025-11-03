@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { CaseStatusDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
-import PaginationControls from '../../../shared/components/PaginationControls';
+
+const PaginationControls = React.lazy(() => import('../../../shared/components/PaginationControls'));
 
 interface ReportsTableProps {
   data: CaseStatusDetail[];
@@ -35,18 +36,18 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
     defaultItemsPerPage: 10,
   });
 
-    const exportButtons = [
-    { label: 'Export as Excel', onClick: onExportExcel },
-    { label: 'Export as CSV', onClick: onExportCSV },
-    { label: 'Export as PDF', onClick: onExportPDF },
-  ].filter(action => action.onClick); // Only include buttons with handlers
+  const exportActions = [
+    { label: 'Export as Excel', onClick: onExportExcel, key: 'excel' },
+    { label: 'Export as CSV', onClick: onExportCSV, key: 'csv' },
+    { label: 'Export as PDF', onClick: onExportPDF, key: 'pdf' },
+  ].filter(action => action.onClick);
 
   const tableHeaders = [
-    { label: 'Status', width: 'w-40' },
-    { label: 'Count', width: 'w-24' },
-    { label: 'Percentage', width: 'w-32' },
-    { label: 'Avg Time in Status', width: 'w-40' },
-    { label: 'Current Trend Period', width: 'w-48' },
+    { label: 'Status', width: 'w-40', key: 'status' },
+    { label: 'Count', width: 'w-24', key: 'count' },
+    { label: 'Percentage', width: 'w-32', key: 'percentage' },
+    { label: 'Avg Time in Status', width: 'w-40', key: 'avgTime' },
+    { label: 'Current Trend Period', width: 'w-48', key: 'trend' },
   ];
 
   const getTrendColor = (trend: string) => {
@@ -61,9 +62,9 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <div className="flex items-center gap-2">
-            {exportButtons.map(({ label, onClick }) => (
+            {exportActions.map(({ label, onClick, key }) => (
               <button
-                key={label}
+                key={key}
                 onClick={onClick}
                 className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
@@ -78,14 +79,14 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
             {tableHeaders.map((header) => (
-              <col key={header.label} className={header.width} />
+              <col key={header.key} className={header.width} />
             ))}
           </colgroup>
           <thead className="bg-gray-50">
             <tr>
               {tableHeaders.map((header) => (
                 <th 
-                  key={header.label}
+                  key={header.key}
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   {header.label}
@@ -96,7 +97,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center">
+                <td colSpan={tableHeaders.length} className="px-6 py-12 text-center">
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
                     <p className="mt-1">There are no case status records to display.</p>
@@ -134,19 +135,21 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
         </table>
       </div>
 
-      <PaginationControls
-        currentPage={currentPage}
-        totalPages={totalPages}
-        itemsPerPage={itemsPerPage}
-        totalItems={data.length}
-        pageRange={pageRange}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        onNext={goToNextPage}
-        onPrevious={goToPreviousPage}
-      />
+      <Suspense fallback={<div className="bg-gray-200 h-16 rounded-lg animate-pulse"></div>}>
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={data.length}
+          pageRange={pageRange}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          onNext={goToNextPage}
+          onPrevious={goToPreviousPage}
+        />
+      </Suspense>
     </div>
   );
 };
