@@ -1,4 +1,4 @@
-import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
+import { Priority, AlertType, PredictionOutcome, CaseStatus } from '@prisma/client';
 import { IsOptional, IsEnum, IsNumber, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -69,4 +69,15 @@ export class UpdateAlertDto {
   @IsString()
   @MaxLength(500)
   note: string;
+
+  @ApiProperty({
+    description: 'Case status after triage',
+    enum: CaseStatus,
+    example: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+    required: false,
+    enumName: 'CaseStatus',
+  })
+  @IsOptional()
+  @IsEnum(CaseStatus)
+  status?: CaseStatus;
 }

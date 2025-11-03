@@ -1,10 +1,10 @@
-import { IsString, IsObject, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { TransactionDTO } from 'src/nats/dto/Transaction.dto';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 
-export class SubmitAlertDto {
+export class IngestAlertDto {
   @ApiProperty({
     description: 'Alert message',
     example: 'Suspicious transaction detected',
@@ -36,16 +36,4 @@ export class SubmitAlertDto {
   })
   @IsObject()
   networkMap: NetworkMap;
-
-  @ApiProperty({
-    description: 'Confidence percentage (0-100)',
-    example: 75.5,
-    required: false,
-    type: 'number',
-    minimum: 0,
-    maximum: 100,
-  })
-  @IsOptional()
-  @IsNumber()
-  confidence_per?: number;
 }

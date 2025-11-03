@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Priority, AlertType, CaseType } from '@prisma/client';
+import { Priority } from '@prisma/client';
 
 @Injectable()
 export class CasePriorityUtil {
@@ -24,18 +24,4 @@ export class CasePriorityUtil {
     }
   }
 
-  mapAlertTypeToCaseType(alertType?: AlertType): CaseType | undefined {
-    switch (alertType) {
-      case AlertType.FRAUD:
-        return CaseType.FRAUD;
-      case AlertType.AML:
-        return CaseType.AML;
-      case AlertType.FRAUD_AND_AML:
-        return CaseType.FRAUD_AND_AML;
-      case AlertType.NONE:
-        return CaseType.NONE;
-      default:
-        return undefined;
-    }
-  }
 }

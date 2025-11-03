@@ -2,8 +2,15 @@ import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
-import e = require('express');
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import FormData = require('form-data');
+
+interface FlowableVariable {
+  name: string;
+  value: string;
+  type: 'string';
+}
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
@@ -11,10 +18,13 @@ export class FlowableService implements OnModuleInit {
   private readonly flowableUrl: string;
   private readonly flowableAuth: { username: string; password: string };
   private readonly candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
+  private readonly tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
+  private readonly maxRetries = 3;
+  private readonly retryDelayMs = 5000;
 
   constructor(
-    private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
+      private readonly configService: ConfigService,
+      private readonly logger: LoggerService,
   ) {
     this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');
 
@@ -23,36 +33,90 @@ export class FlowableService implements OnModuleInit {
       password: this.configService.get<string>('FLOWABLE_PASSWORD', 'test'),
     };
 
+    const timeoutMs = this.configService.get<number>('FLOWABLE_TIMEOUT_MS', 10000);
+
     this.flowableClient = axios.create({
       baseURL: this.flowableUrl,
       auth: this.flowableAuth,
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 10000, // 10 second timeout
+      timeout: timeoutMs,
     });
   }
 
   async onModuleInit() {
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        this.logger.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
+
+        await this.healthCheck();
+        await this.deployBpmnProcess();
+        await this.initializeCandidateGroups();
+
+        this.logger.log('Flowable initialized successfully', FlowableService.name);
+        return;
+      } catch (error) {
+        this.logger.error(
+            `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${error.message}`,
+            error.stack,
+            FlowableService.name,
+        );
+
+        if (attempt === this.maxRetries) {
+          this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', error.stack, FlowableService.name);
+          throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${error.message}`);
+        }
+
+        this.logger.log(`Retrying Flowable initialization in ${this.retryDelayMs / 1000} seconds...`, FlowableService.name);
+        await this.sleep(this.retryDelayMs);
+      }
+    }
+  }
+
+  private async deployBpmnProcess() {
+    const bpmnFilePath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
+
     try {
-      await this.initializeCandidateGroups();
-      await this.initializeUsers();
-      await this.healthCheckOrFail();
-      this.logger.log('Flowable initialized successfully', FlowableService.name);
+      this.logger.log('Deploying BPMN process', FlowableService.name);
+
+      const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
+      const formData = new FormData();
+      const buffer = Buffer.from(bpmnXml);
+
+      formData.append('deployment', buffer, {
+        filename: 'UnifiedCaseManagementProcess.bpmn20.xml',
+        contentType: 'text/xml',
+      });
+
+      const headers: Record<string, string> = { ...formData.getHeaders() };
+
+      const response = await this.flowableClient.post('/service/repository/deployments', formData, {
+        headers,
+        params: {
+          tenantId: this.tenantId,
+        },
+      });
+
+      this.logger.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
+      return response.data;
     } catch (error) {
-      this.logger.error(`Failed to initialize Flowable: ${error.message}`, error.stack, FlowableService.name);
-      throw new Error(`Flowable initialization failed: ${error.message}`);
+      if (error.code === 'ENOENT') {
+        this.logger.error(`BPMN file not found at ${bpmnFilePath}. Cannot start CMS without BPMN process.`, error.stack, FlowableService.name);
+        throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`);
+      }
+
+      this.logger.error(`Failed to deploy BPMN process: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to deploy BPMN process', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private async initializeCandidateGroups() {
     for (const groupName of this.candidateGroups) {
       try {
-        // Check if group exists
         const existingGroup = await this.getGroup(groupName.toLowerCase());
 
         if (!existingGroup) {
-          // Create group if it doesn't exist
           await this.createGroup({
             id: groupName.toLowerCase(),
             name: groupName,
@@ -68,28 +132,39 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  private async initializeUsers() {
-    const systemUsers = [
-      {
-        id: this.configService.get<string>('SYSTEM_UUID', 'system-user'),
-        firstName: 'System',
-        lastName: 'User',
-        email: 'system@tazama.org',
-        password: 'system123',
-      },
-    ];
-
-    for (const user of systemUsers) {
-      try {
-        const existingUser = await this.getUser(user.id);
-
-        if (!existingUser) {
-          await this.createUser(user);
-          this.logger.log(`Created system user: ${user.id}`, FlowableService.name);
-        }
-      } catch (error) {
-        this.logger.error(`Failed to initialize user ${user.id}: ${error.message}`, error.stack, FlowableService.name);
+  /**
+   * Ensure a user is a member of a Flowable identity group
+   */
+  async addUserToGroup(groupId: string, userId: string) {
+    try {
+      const response = await this.flowableClient.post(`/service/identity/groups/${groupId}/members`, {
+        userId,
+      });
+      return response.data;
+    } catch (error) {
+      // 409 means membership already exists; treat as success
+      if (error.response?.status === 409) {
+        this.logger.log(`User ${userId} already a member of group ${groupId}`, FlowableService.name);
+        return null;
       }
+      this.logger.error(`Failed to add user ${userId} to group ${groupId}: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to add user to group', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Remove a user from a Flowable identity group
+   */
+  async removeUserFromGroup(groupId: string, userId: string) {
+    try {
+      await this.flowableClient.delete(`/service/identity/groups/${groupId}/members/${userId}`);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // Not a member; ignore
+        return;
+      }
+      this.logger.error(`Failed to remove user ${userId} from group ${groupId}: ${error.message}`, error.stack, FlowableService.name);
+      throw new HttpException('Failed to remove user from group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -99,7 +174,6 @@ export class FlowableService implements OnModuleInit {
       return response.data;
     } catch (error) {
       if (error.response?.status === 409) {
-        // Group already exists
         this.logger.log(`Group ${groupData.id} already exists`, FlowableService.name);
         return null;
       }
@@ -119,84 +193,41 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async createUser(userData: { id: string; firstName: string; lastName: string; email: string; password: string }) {
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
     try {
-      const response = await this.flowableClient.post('/service/identity/users', userData);
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 409) {
-        // User already exists
-        this.logger.log(`User ${userData.id} already exists`, FlowableService.name);
-        return null;
-      }
-      throw new HttpException(`Failed to create user: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async getUser(userId: string) {
-    try {
-      const response = await this.flowableClient.get(`/service/identity/users/${userId}`);
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        return null;
-      }
-      throw new HttpException(`Failed to get user: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async addUserToGroup(userId: string, groupId: string) {
-    try {
-      const response = await this.flowableClient.post(`/service/identity/groups/${groupId}/members`, {
-        userId,
-      });
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to add user ${userId} to group ${groupId}: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException(`Failed to add user to group: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async deployProcess(bpmnXml: string, deploymentName: string, tenantId?: string) {
-    try {
-      const formData = new FormData();
-      const buffer = Buffer.from(bpmnXml);
-      formData.append('deployment', buffer, {
-        filename: `${deploymentName}.bpmn20.xml`,
-        contentType: 'text/xml',
-      });
-
-      const headers: Record<string, string> = { ...formData.getHeaders() };
-      if (tenantId) {
-        headers['tenantId'] = tenantId;
+      // First, verify the process definition exists
+      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey);
+      if (!processDefinitions || processDefinitions.length === 0) {
+        throw new Error(`Process definition '${processDefinitionKey}' not found. Available definitions: ${await this.listProcessDefinitions()}`);
       }
 
-      const response = await this.flowableClient.post('/service/repository/deployments', formData, {
-        headers,
-      });
-
-      this.logger.log(`Process deployed successfully: ${response.data.id}`, FlowableService.name);
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to deploy process: ${error.message}`, error.stack, FlowableService.name);
-      throw new HttpException('Failed to deploy process', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey?: string) {
-    try {
+      const formattedVariables = this.formatVariables(variables);
       const payload = {
         processDefinitionKey,
-        variables: this.formatVariables(variables),
+        variables: formattedVariables,
         businessKey,
+        tenantId: this.tenantId, // Add tenant ID to payload
       };
+
+      this.logger.log(`Starting process instance with payload: ${JSON.stringify({
+        processDefinitionKey,
+        businessKey,
+        tenantId: this.tenantId,
+        variableCount: formattedVariables.length,
+        variables: formattedVariables.map(v => `${v.name}=${v.value}`).join(', ')
+      })}`, FlowableService.name);
 
       const response = await this.flowableClient.post('/service/runtime/process-instances', payload);
 
-      this.logger.log(`Process instance started: ${response.data.id}`, FlowableService.name);
+      this.logger.log(`Process instance started: ${response.data.id} with businessKey: ${businessKey}`, FlowableService.name);
       return response.data;
     } catch (error) {
-      console.log(error);
+      // Enhanced error logging with more details
+      if (error.response) {
+        this.logger.error(`Flowable API error - Status: ${error.response.status}`, FlowableService.name);
+        this.logger.error(`Flowable API error - Response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
+        this.logger.error(`Flowable API error - Headers: ${JSON.stringify(error.response.headers)}`, FlowableService.name);
+      }
       this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to start process instance', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -248,30 +279,33 @@ export class FlowableService implements OnModuleInit {
     assignee?: string;
     candidateGroups?: string[];
     tenantId?: string;
-    variables?: Record<string, any>;
+    variables?: Record<string, string>;
+    priority?: number;
+    dueDate?: string;
   }) {
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: taskData.name,
         description: taskData.description,
         assignee: taskData.assignee,
         tenantId: taskData.tenantId,
+        priority: taskData.priority || 50,
       };
+
+      if (taskData.dueDate) {
+        payload.dueDate = taskData.dueDate;
+      }
+
+      if (taskData.candidateGroups && taskData.candidateGroups.length > 0) {
+        payload.candidateGroups = taskData.candidateGroups;
+      }
+
+      if (taskData.variables) {
+        payload.variables = this.formatVariables(taskData.variables);
+      }
 
       const response = await this.flowableClient.post('/service/runtime/tasks', payload);
       const taskId = response.data.id;
-
-      // Add candidate groups if specified
-      if (taskData.candidateGroups && taskData.candidateGroups.length > 0) {
-        for (const group of taskData.candidateGroups) {
-          await this.assignTaskToCandidateGroup(taskId, group);
-        }
-      }
-
-      // Add variables if specified
-      if (taskData.variables) {
-        await this.setTaskVariables(taskId, taskData.variables);
-      }
 
       this.logger.log(`Task created: ${taskId}`, FlowableService.name);
       return response.data;
@@ -281,9 +315,9 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async completeTask(taskId: string, variables?: Record<string, any>) {
+  async completeTask(taskId: string, variables?: Record<string, string>) {
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         action: 'complete',
         variables: variables ? this.formatVariables(variables) : [],
       };
@@ -298,59 +332,48 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async claimTask(taskId: string, userId: string | null): Promise<any> {
-    if (!userId) {
-      throw new HttpException('User ID cannot be null for task claiming', HttpStatus.BAD_REQUEST);
-    }
-
+  async claimTask(taskId: string, userId: string): Promise<void> {
     try {
       const payload = {
         action: 'claim',
         assignee: userId,
       };
 
-      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
+      await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
 
       this.logger.log(`Task ${taskId} claimed by user ${userId}`, FlowableService.name);
-      return response.data;
     } catch (error) {
       this.logger.error(`Failed to claim task: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to claim task', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async unclaimTask(taskId: string) {
+  async unclaimTask(taskId: string): Promise<void> {
     try {
       const payload = {
         action: 'claim',
         assignee: null,
       };
 
-      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
+      await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
 
       this.logger.log(`Task ${taskId} unclaimed`, FlowableService.name);
-      return response.data;
     } catch (error) {
       this.logger.error(`Failed to unclaim task: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to unclaim task', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async delegateTask(taskId: string, userId: string | null): Promise<any> {
-    if (!userId) {
-      throw new HttpException('User ID cannot be null for task delegation', HttpStatus.BAD_REQUEST);
-    }
-
+  async delegateTask(taskId: string, userId: string): Promise<void> {
     try {
       const payload = {
         action: 'delegate',
         assignee: userId,
       };
 
-      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
+      await this.flowableClient.post(`/service/runtime/tasks/${taskId}`, payload);
 
       this.logger.log(`Task ${taskId} delegated to user ${userId}`, FlowableService.name);
-      return response.data;
     } catch (error) {
       this.logger.error(`Failed to delegate task: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to delegate task', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -361,13 +384,17 @@ export class FlowableService implements OnModuleInit {
     try {
       const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/identitylinks`, {
         type: 'candidate',
-        group: group.toLowerCase(), // Ensure lowercase for consistency
+        group: group.toLowerCase(),
       });
 
       this.logger.log(`Task ${taskId} assigned to candidate group ${group}`, FlowableService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableService.name);
+      this.logger.error(
+          `Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`,
+          error.stack,
+          FlowableService.name,
+      );
       throw new HttpException('Failed to assign task to candidate group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -394,18 +421,18 @@ export class FlowableService implements OnModuleInit {
 
       const tasks = response.data.data || [];
 
-      // Enhance tasks with variable information
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-          tasks.map(async (task: any) => {
-            try {
-              const variables = await this.getTaskVariables(task.id);
-              return { ...task, variables };
-            } catch (error) {
-              this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
-              return task;
-            }
-          }),
+            tasks.map(async (task: unknown) => {
+              const taskObj = task as Record<string, unknown>;
+              try {
+                const variables = await this.getTaskVariables(taskObj.id as string);
+                return { ...taskObj, variables };
+              } catch (error) {
+                this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
+                return taskObj;
+              }
+            }),
         );
         return enhancedTasks;
       }
@@ -429,18 +456,18 @@ export class FlowableService implements OnModuleInit {
 
       const tasks = response.data.data || [];
 
-      // Enhance tasks with variable information
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-          tasks.map(async (task: any) => {
-            try {
-              const variables = await this.getTaskVariables(task.id);
-              return { ...task, variables };
-            } catch (error) {
-              this.logger.warn(`Failed to get variables for task ${task.id}`, FlowableService.name);
-              return task;
-            }
-          }),
+            tasks.map(async (task: unknown) => {
+              const taskObj = task as Record<string, unknown>;
+              try {
+                const variables = await this.getTaskVariables(taskObj.id as string);
+                return { ...taskObj, variables };
+              } catch (error) {
+                this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
+                return taskObj;
+              }
+            }),
         );
         return enhancedTasks;
       }
@@ -452,14 +479,11 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async setProcessVariables(processInstanceId: string, variables: Record<string, any>) {
+  async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(
-        `/service/runtime/process-instances/${processInstanceId}/variables`,
-        formattedVariables,
-      );
+      const response = await this.flowableClient.post(`/service/runtime/process-instances/${processInstanceId}/variables`, formattedVariables);
 
       this.logger.log(`Variables set successfully for process ${processInstanceId}`, FlowableService.name);
       return response.data;
@@ -476,15 +500,15 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getTenantTasks(
-    tenantId: string,
-    filters?: {
-      candidateGroup?: string;
-      assignee?: string;
-      unassigned?: boolean;
-    },
+      tenantId: string,
+      filters?: {
+        candidateGroup?: string;
+        assignee?: string;
+        unassigned?: boolean;
+      },
   ) {
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         tenantId,
       };
 
@@ -521,14 +545,11 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async setTaskVariables(taskId: string, variables: Record<string, any>) {
+  async setTaskVariables(taskId: string, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(
-        `/service/runtime/tasks/${taskId}/variables`,
-        formattedVariables, // Send the array directly
-      );
+      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
 
       this.logger.log(`Variables set successfully for task ${taskId}`, FlowableService.name);
       return response.data;
@@ -544,15 +565,15 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async getTaskVariables(taskId: string) {
+  async getTaskVariables(taskId: string): Promise<Record<string, string>> {
     try {
       const response = await this.flowableClient.get(`/service/runtime/tasks/${taskId}/variables`);
 
-      // Convert array of variables to object
-      const variables: Record<string, any> = {};
+      const variables: Record<string, string> = {};
       if (Array.isArray(response.data)) {
-        response.data.forEach((variable: any) => {
-          variables[variable.name] = variable.value;
+        response.data.forEach((variable: unknown) => {
+          const varObj = variable as Record<string, unknown>;
+          variables[varObj.name as string] = varObj.value as string;
         });
       }
 
@@ -563,12 +584,12 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  async updateTaskVariable(taskId: string, variableName: string, value: any) {
+  async updateTaskVariable(taskId: string, variableName: string, value: string) {
     try {
       const response = await this.flowableClient.put(`/service/runtime/tasks/${taskId}/variables/${variableName}`, {
         name: variableName,
         value,
-        type: this.getVariableType(value),
+        type: 'string',
       });
 
       this.logger.log(`Variable ${variableName} updated for task ${taskId}`, FlowableService.name);
@@ -643,15 +664,15 @@ export class FlowableService implements OnModuleInit {
   async getWorkQueueStatistics(candidateGroup?: string) {
     try {
       const groups = candidateGroup ? [candidateGroup] : this.candidateGroups;
-      const statistics: Record<string, any> = {};
+      const statistics: Record<string, unknown> = {};
 
       for (const group of groups) {
         const tasks = await this.getCandidateGroupTasks(group, false);
 
         statistics[group] = {
           total: tasks.length,
-          unassigned: tasks.filter((t: any) => !t.assignee).length,
-          assigned: tasks.filter((t: any) => t.assignee).length,
+          unassigned: tasks.filter((t: unknown) => !(t as Record<string, unknown>).assignee).length,
+          assigned: tasks.filter((t: unknown) => !!(t as Record<string, unknown>).assignee).length,
         };
       }
 
@@ -659,123 +680,6 @@ export class FlowableService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`Failed to get work queue statistics: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to get work queue statistics', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  private formatVariables(variables: Record<string, any>) {
-    return Object.entries(variables).map(([name, value]) => ({
-      name,
-      value,
-      type: this.getVariableType(value),
-    }));
-  }
-
-  private getVariableType(value: any): string {
-    if (value === null || value === undefined) return 'string';
-    if (typeof value === 'string') return 'string';
-    if (typeof value === 'number') {
-      return Number.isInteger(value) ? 'integer' : 'double';
-    }
-    if (typeof value === 'boolean') return 'boolean';
-    if (value instanceof Date) return 'date';
-    if (typeof value === 'object') return 'json';
-    return 'string';
-  }
-
-  async syncTaskWithDatabase(
-    flowableTaskId: string,
-    dbTaskData: {
-      postgres_task_id: string;
-      postgres_case_id: string;
-      task_status: string;
-      task_name?: string;
-      candidate_group?: string;
-      assignee_user_id?: string;
-      flowable_case_id?: string;
-    },
-  ) {
-    try {
-      this.logger.log(
-        `[Flowable-Sync] Syncing Flowable task ${flowableTaskId} with PostgreSQL task ${dbTaskData.postgres_task_id}`,
-        FlowableService.name,
-      );
-
-      const variables: Record<string, any> = {
-        postgres_task_id: dbTaskData.postgres_task_id,
-        postgres_case_id: dbTaskData.postgres_case_id,
-        task_status: dbTaskData.task_status,
-      };
-
-      // Only add variables if they have values
-      if (dbTaskData.task_name) {
-        variables.task_name = dbTaskData.task_name;
-      }
-
-      if (dbTaskData.candidate_group) {
-        variables.candidate_group = dbTaskData.candidate_group;
-      }
-
-      if (dbTaskData.assignee_user_id) {
-        variables.assignee_user_id = dbTaskData.assignee_user_id;
-      }
-
-      if (dbTaskData.flowable_case_id) {
-        variables.flowable_case_id = dbTaskData.flowable_case_id;
-      }
-
-      this.logger.log(
-        `[Flowable-Sync] Setting ${Object.keys(variables).length} variables: ${Object.keys(variables).join(', ')}`,
-        FlowableService.name,
-      );
-
-      this.logger.log(`[Flowable-Sync] Variable values: ${JSON.stringify(variables)}`, FlowableService.name);
-
-      await this.setTaskVariables(flowableTaskId, variables);
-
-      this.logger.log(
-        `[Flowable-Sync] Successfully synced Flowable task ${flowableTaskId} with database task ${dbTaskData.postgres_task_id}`,
-        FlowableService.name,
-      );
-
-      return true;
-    } catch (error) {
-      this.logger.error(`[Flowable-Sync] Failed to sync task with database: ${error.message}`, error.stack, FlowableService.name);
-      this.logger.error(
-        `[Flowable-Sync] Flowable task ID: ${flowableTaskId}, PostgreSQL task ID: ${dbTaskData.postgres_task_id}`,
-        FlowableService.name,
-      );
-      return false;
-    }
-  }
-
-  async createTaskWithContext(taskData: {
-    name: string;
-    description: string;
-    tenantId: string;
-    candidateGroup: string;
-    postgresTaskId: string;
-    postgresCaseId: string;
-    status: string;
-  }) {
-    try {
-      // Create the Flowable task
-      const flowableTask = await this.createTask({
-        name: taskData.name,
-        description: taskData.description,
-        tenantId: taskData.tenantId,
-        candidateGroups: [taskData.candidateGroup],
-        variables: {
-          postgres_task_id: taskData.postgresTaskId,
-          postgres_case_id: taskData.postgresCaseId,
-          task_status: taskData.status,
-        },
-      });
-
-      this.logger.log(`Created Flowable task ${flowableTask.id} with context for case ${taskData.postgresCaseId}`, FlowableService.name);
-      return flowableTask;
-    } catch (error) {
-      this.logger.error(`Failed to create task with context: ${error.message}`, error.stack, FlowableService.name);
-      throw error;
     }
   }
 
@@ -800,21 +704,51 @@ export class FlowableService implements OnModuleInit {
       });
       return { status: 'healthy' };
     } catch (error) {
-      return {
-        status: 'unhealthy',
-        message: `Flowable connection failed: ${error.message}`,
-      };
+      throw new Error(`Flowable connection failed: ${error.message}`);
     }
   }
 
-  private async healthCheckOrFail() {
+  async getProcessDefinitions(processDefinitionKey?: string) {
     try {
-      const health = await this.healthCheck();
-      if (health.status !== 'healthy') {
-        throw new Error(health.message || 'Flowable health check failed');
+      const params: Record<string, unknown> = {};
+      if (processDefinitionKey) {
+        params.key = processDefinitionKey;
       }
-    } catch (err) {
-      throw new Error(`Flowable unreachable or unhealthy: ${err.message}`);
+      params.tenantId = this.tenantId;
+
+      const response = await this.flowableClient.get('/service/repository/process-definitions', {
+        params,
+      });
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to get process definitions: ${error.message}`, error.stack, FlowableService.name);
+      return [];
     }
+  }
+
+  async listProcessDefinitions(): Promise<string> {
+    try {
+      const definitions = await this.getProcessDefinitions();
+      return definitions.map((def: any) => def.key).join(', ');
+    } catch (error) {
+      return 'Unable to list process definitions';
+    }
+  }
+
+  private formatVariables(variables: Record<string, string>): FlowableVariable[] {
+    return Object.entries(variables).map(([name, value]) => {
+      if (value === undefined) {
+        throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
+      }
+      return {
+        name,
+        value: String(value),
+        type: 'string',
+      };
+    });
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

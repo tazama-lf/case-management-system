@@ -1,7 +1,7 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CaseStatus, Priority, CaseType } from '@prisma/client';
+import { CaseStatus, Priority, AlertType } from '@prisma/client';
 
 export class GetAllCasesQueryDto {
   @ApiProperty({
@@ -26,13 +26,13 @@ export class GetAllCasesQueryDto {
 
   @ApiProperty({
     description: 'Filter by case type',
-    enum: CaseType,
+    enum: AlertType,
     required: false,
     example: 'FRAUD',
   })
   @IsOptional()
-  @IsEnum(CaseType)
-  caseType?: CaseType;
+  @IsEnum(AlertType)
+  caseType?: AlertType;
 
   @ApiProperty({
     description: 'Filter by case owner user ID',
@@ -131,7 +131,6 @@ export class GetAllCasesQueryDto {
   sortOrder?: 'asc' | 'desc' = 'desc';
 }
 
-// Move PaginationDto before its usage
 export class PaginationDto {
   @ApiProperty({ example: 100 })
   total: number;
@@ -188,10 +187,10 @@ export class CaseDetailsDto {
 
   @ApiProperty({
     description: 'Case type',
-    enum: CaseType,
+    enum: AlertType,
     example: 'FRAUD',
   })
-  case_type: CaseType;
+  case_type: AlertType;
 
   @ApiProperty({
     description: 'Case creation timestamp',

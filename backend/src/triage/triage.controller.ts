@@ -13,14 +13,13 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { SubmitAlertDto } from './dto/submit-alert.dto';
+import { IngestAlertDto } from './dto/ingest-alert.dto';
+import { UpdateAlertDto } from './dto/update-alert.dto';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireAlertTriageRole, RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
-import { ManualTriageDto } from './dto/manual-triage.dto';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { CreateNaltAlertDto } from './dto/create-nalt-alert.dto';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')
@@ -33,13 +32,13 @@ export class TriageController {
   @RequireAlertTriageRole()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Submit a new alert',
-    description: 'Submit a new alert for triage processing',
+    summary: 'Ingest a new alert',
+    description: 'Ingest a new alert for triage processing',
   })
-  @ApiBody({ type: SubmitAlertDto })
+  @ApiBody({ type: IngestAlertDto })
   @ApiResponse({
     status: 201,
-    description: 'Alert submitted successfully',
+    description: 'Alert ingested successfully',
     schema: {
       type: 'object',
       properties: {
@@ -54,7 +53,7 @@ export class TriageController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async submitAlert(@Body() dto: SubmitAlertDto, @Req() req: AuthenticatedRequest) {
+  async ingestAlert(@Body() dto: IngestAlertDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -95,7 +94,7 @@ export class TriageController {
     description: 'UUID of the alert to triage',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  @ApiBody({ type: ManualTriageDto })
+  @ApiBody({ type: UpdateAlertDto })
   @ApiResponse({
     status: 200,
     description: 'Alert triaged successfully',
@@ -113,7 +112,7 @@ export class TriageController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualTriageDto, @Req() req: AuthenticatedRequest) {
+  async manualTriage(@Param('alertId') alertId: string, @Body() dto: UpdateAlertDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -226,17 +225,17 @@ export class TriageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
-    @Req() req: AuthenticatedRequest,
-    @Query('priority') priority?: string,
-    @Query('type') type?: string,
-    @Query('alertType') alertType?: string,
-    @Query('search') search?: string,
-    @Query('source') source?: string,
-    @Query('reportStatus') reportStatus?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+      @Req() req: AuthenticatedRequest,
+      @Query('priority') priority?: string,
+      @Query('type') type?: string,
+      @Query('alertType') alertType?: string,
+      @Query('search') search?: string,
+      @Query('source') source?: string,
+      @Query('reportStatus') reportStatus?: string,
+      @Query('page') page = 1,
+      @Query('limit') limit = 10,
+      @Query('sortBy') sortBy = 'created_at',
+      @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -335,61 +334,17 @@ export class TriageController {
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
-
-  @Post('create-nalt-alert')
-  @RequireInvestigatorOrSupervisorRole()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create a NALT alert for manual case creation',
-    description: 'Creates an alert with NALT status that can be used to manually create a case',
-  })
-  @ApiBody({ type: CreateNaltAlertDto })
-  @ApiResponse({
-    status: 201,
-    description: 'NALT alert created successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        alert_id: { type: 'string', format: 'uuid' },
-        message: { type: 'string' },
-        priority: { type: 'string' },
-        confidence_per: { type: 'number' },
-        created_at: { type: 'string', format: 'date-time' },
-        alert_data: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', example: 'NALT' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 400, description: 'Bad Request - Invalid payload' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createNaltAlert(@Body() dto: CreateNaltAlertDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    if (!userId) throw new BadRequestException('Missing userId');
-
-    const submitAlertDto: SubmitAlertDto = {
-      message: dto.message,
-      report: {
-        ...dto.report,
-        status: 'NALT',
-      },
-      transaction: dto.transaction,
-      networkMap: dto.networkMap,
-      confidence_per: 0,
-    };
-
-    const alert = await this.triageService.handleNotAlert(submitAlertDto, userId, tenantId, 'REST API');
-    return alert;
-  }
-
+  
   @Post('ingest')
   @RequireAlertTriageRole()
-  // using for testing purpose will remove in final
+  @ApiOperation({
+    summary: 'Process incoming alert event',
+    description: 'Internal endpoint for alert ingestion from event stream',
+  })
+  @ApiBody({ type: AlertMessageDto })
+  @ApiResponse({ status: 201, description: 'Alert processed successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async processIncomingAlert(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;

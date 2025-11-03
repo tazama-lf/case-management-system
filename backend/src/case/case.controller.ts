@@ -42,7 +42,7 @@ export class CaseController {
   async abandonCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
     return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
   }
 
@@ -140,7 +140,6 @@ export class CaseController {
       properties: {
         caseId: { type: 'string', format: 'uuid' },
         status: { type: 'string' },
-        processInstanceId: { type: 'string' },
       },
     },
   })
@@ -194,7 +193,7 @@ export class CaseController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'ANALYST';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
 
     return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
   }
@@ -404,7 +403,7 @@ export class CaseController {
   }
 
   @Get(':caseId')
-  @RequireAnyValidRole() // Allow any valid CMS role to view case details
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Retrieve case by ID',
     description: 'Get detailed information about a specific case',
@@ -419,7 +418,7 @@ export class CaseController {
   }
 
   @Post(':caseId')
-  @RequireAnyValidRole() // Allow any valid CMS role to update cases
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Update case',
     description: 'Update case details such as status, priority, or assignment',

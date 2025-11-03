@@ -25,7 +25,7 @@ export class AlertPriorityService implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.logger.log('Alert priority service initialized. Recalculation will run via scheduled task every hour.');
+    this.logger.log('Alert priority service initialized. Recalculation will run via configurable scheduled task.');
   }
 
   async runRecalculation() {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditLogService } from '../audit/auditLog.service';
@@ -23,7 +23,7 @@ import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from 
 import { RuleEngineService } from './rule-engine.service';
 
 @Injectable()
-export class WorkQueueService {
+export class WorkQueueService implements OnModuleInit {
   private readonly logger = new Logger(WorkQueueService.name);
 
   constructor(
@@ -32,6 +32,60 @@ export class WorkQueueService {
     private readonly ruleEngine: RuleEngineService,
     private readonly auditLogService: AuditLogService,
   ) {}
+
+  async onModuleInit() {
+    // Emit a bootstrap sync event for all active work queues so Flowable can reconcile identity.
+    try {
+      const queues = await this.prisma.workQueue.findMany({
+        where: { is_active: true },
+        select: { work_queue_id: true, name: true, tenant_id: true, is_active: true },
+      });
+
+      // Prepare all sync events first to avoid synchronous emission in loop
+      const syncEvents = await Promise.all(
+        queues.map(async (q) => {
+          const flowableGroupId = this.deriveFlowableGroupId(q.tenant_id, q.name);
+          const members = await this.prisma.workQueueMember.findMany({
+            where: { work_queue_id: q.work_queue_id },
+            select: { user_id: true },
+          });
+
+          return {
+            workQueueId: q.work_queue_id,
+            tenantId: q.tenant_id,
+            name: q.name,
+            isActive: q.is_active,
+            flowableGroupId,
+            members: members.map((m) => m.user_id),
+          };
+        })
+      );
+
+      // Emit all events asynchronously using setImmediate to avoid blocking
+      syncEvents.forEach((syncEvent) => {
+        setImmediate(() => {
+          this.eventEmitter.emit('workQueue.sync', syncEvent);
+        });
+      });
+      this.logger.log(`Emitted sync for ${queues.length} work queues`);
+    } catch (e) {
+      this.logger.error(`Failed to emit work queue sync on init: ${e.message}`);
+    }
+  }
+
+  /**
+   * Canonical Flowable group ID derivation for a work queue
+   * Format: tenant-<tenantId>__queue-<slug(name)>
+   */
+  private deriveFlowableGroupId(tenantId: string, name: string): string {
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50);
+    return `tenant-${tenantId}__queue-${slug}`;
+  }
 
   /**
    * Create a new work queue
@@ -102,6 +156,7 @@ export class WorkQueueService {
       name: workQueue.name,
       tenantId: workQueue.tenant_id,
       userId,
+      flowableGroupId: this.deriveFlowableGroupId(workQueue.tenant_id, workQueue.name),
     });
 
     this.logger.log(`Work queue '${workQueue.name}' created successfully by user ${userId}`);
@@ -312,11 +367,18 @@ export class WorkQueueService {
 
     await this.logAuditEvent(userId, 'UPDATE', 'WorkQueue', `Updated work queue: ${workQueue?.name || workQueueId}`, 'SUCCESS');
 
+    const oldFlowableGroupId = this.deriveFlowableGroupId(tenantId, existing.name);
+    const newName = dto.name ?? existing.name;
+    const flowableGroupId = this.deriveFlowableGroupId(tenantId, newName);
+
     this.eventEmitter.emit('workQueue.updated', {
       workQueueId,
       tenantId,
       userId,
       changes: dto,
+      name: newName,
+      flowableGroupId,
+      oldFlowableGroupId,
     });
 
     this.logger.log(`Work queue ${workQueueId} updated by user ${userId}`);
@@ -350,6 +412,7 @@ export class WorkQueueService {
       workQueueId,
       tenantId,
       userId,
+      flowableGroupId: this.deriveFlowableGroupId(tenantId, workQueue.name),
     });
 
     this.logger.log(`Work queue ${workQueue.name} deactivated by user ${userId}`);
@@ -400,6 +463,7 @@ export class WorkQueueService {
       tenantId,
       userId,
       reassignQueueId,
+      flowableGroupId: this.deriveFlowableGroupId(tenantId, workQueue.name),
     });
 
     this.logger.log(`Work queue ${workQueueId} deleted by user ${userId}`);
@@ -607,6 +671,7 @@ export class WorkQueueService {
           assignmentType,
           tenantId,
           workQueueName: workQueue.name,
+          flowableGroupId: this.deriveFlowableGroupId(tenantId, workQueue.name),
         });
 
         this.logger.log(`User ${userId} assigned to work queue ${workQueueId} by ${assignedByUserId}`);
@@ -663,6 +728,7 @@ export class WorkQueueService {
           removedBy: removedByUserId,
           tenantId,
           workQueueName: workQueue.name,
+          flowableGroupId: this.deriveFlowableGroupId(tenantId, workQueue.name),
         });
 
         this.logger.log(`User ${userId} removed from work queue ${workQueueId} by ${removedByUserId}`);
@@ -829,6 +895,7 @@ export class WorkQueueService {
           reason: 'ROLE_CHANGE',
           tenantId,
           workQueueName: assignment.workQueue.name,
+          flowableGroupId: this.deriveFlowableGroupId(tenantId, assignment.workQueue.name),
         });
 
         this.logger.log(`Removed user ${userId} from queue ${assignment.work_queue_id} due to role change`);

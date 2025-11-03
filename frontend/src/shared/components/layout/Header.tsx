@@ -37,7 +37,7 @@ const Header: React.FC<HeaderComponentProps> = ({
             )}
           </div>
 
-          {/* Page title/breadcrumbs */}
+          
           <div className="flex flex-1 items-center lg:ml-0">
             <div className="hidden lg:block">
               {title ? (
@@ -55,9 +55,9 @@ const Header: React.FC<HeaderComponentProps> = ({
             </div>
           </div>
 
-          {/* User profile section */}
+      
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-            {/* User avatar and info */}
+           
             <div className="hidden lg:flex lg:items-center lg:gap-x-3">
               <div className="h-9 w-9 bg-indigo-600 rounded-full flex items-center justify-center">
                 <span className="text-sm font-semibold text-white">

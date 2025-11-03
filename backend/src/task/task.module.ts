@@ -7,9 +7,18 @@ import { TaskController } from './task.controller';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { WorkQueueModule } from '../work-queue/work-queue.module';
+import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
-  imports: [PrismaModule, AuditLogModule, LoggerModule, AuthModule, NotificationModule, forwardRef(() => WorkQueueModule)],
+  imports: [
+    PrismaModule, 
+    AuditLogModule, 
+    LoggerModule, 
+    AuthModule, 
+    NotificationModule, 
+    forwardRef(() => FlowableModule),
+    forwardRef(() => WorkQueueModule)
+  ],
   providers: [TaskService],
   exports: [TaskService],
   controllers: [TaskController],

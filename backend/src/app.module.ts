@@ -8,7 +8,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { SharedModule } from './shared/shared.module';
-import { CaseWorkflowModule } from './case-workflow/case-workflow.module';
+import { CaseCreationModule } from './case-creation/case-creation.module';
 import { TriageModule } from './triage/triage.module';
 import { CaseModule } from './case/case.module';
 import { CommentModule } from './comment/comment.module';
@@ -33,7 +33,7 @@ import {ConfigManagementModule} from "./config-management/config-management.modu
     EventEmitterModule.forRoot(),
     SharedModule, 
     PrismaModule,
-    CaseWorkflowModule,
+    CaseCreationModule,
     FlowableModule,
     NatsModule,
     AuditLogModule,
