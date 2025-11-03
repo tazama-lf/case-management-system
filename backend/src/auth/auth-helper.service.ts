@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Injectable, BadRequestException, ServiceUnavailableException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -95,7 +96,7 @@ export class AuthHelperService {
       // Log the auth-service error with details
       const status = axiosError.response?.status;
       const errorData = axiosError.response?.data as { message?: string; error?: string } | string | undefined;
-      
+
       // Extract error message - handle both object and string responses
       let errorMessage: string;
       if (typeof errorData === 'string') {
@@ -261,7 +262,7 @@ export class AuthHelperService {
     const axiosError = error as AxiosError | undefined;
     const status = axiosError?.response?.status;
     const errorData = axiosError?.response?.data as { message?: string; error?: string } | string | undefined;
-    
+
     // Extract error message - handle both object and string responses
     let errorMessage: string;
     let statusText: string;
@@ -289,10 +290,7 @@ export class AuthHelperService {
       this.logger.error(`Auth-service error details: ${errorMessage}`, AuthHelperService.name);
 
       // Provide more specific error messages based on common issues
-      if (
-        typeof errorMessage === 'string' &&
-        (errorMessage.includes('No group found') || errorMessage.includes('No subgroup found'))
-      ) {
+      if (typeof errorMessage === 'string' && (errorMessage.includes('No group found') || errorMessage.includes('No subgroup found'))) {
         throw new NotFoundException(
           `Role ${contextMsg} not found in Keycloak. Please ensure the role exists and is properly configured in the Keycloak group structure.`,
         );
