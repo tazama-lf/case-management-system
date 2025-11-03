@@ -1,7 +1,6 @@
 import React from 'react';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import { Link, useLocation } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
 import type { BreadcrumbItem } from '../../types/navigation.types';
 
 interface BreadcrumbProps {
@@ -44,7 +43,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
     <nav className={`flex ${className}`} aria-label="Breadcrumb">
       <ol role="list" className="flex items-center space-x-4">
         {breadcrumbItems.map((item, index) => (
-          <li key={uuidv4()}>
+          <li key={`${item.name}-${index}`}>
             <div className="flex items-center">
               {
 }
