@@ -1,41 +1,49 @@
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsObject } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { TransactionDTO } from '../../nats/dto/Transaction.dto';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 
 export class SystemCaseCreationDto {
-  @IsString()
-  tenant_id: string;
-
-  @IsOptional()
-  @IsString()
-  source?: string;
-
-  @IsOptional()
-  @IsString()
-  txtp?: string;
-
+  @ApiProperty({
+    description: 'Case message describing the alert/incident',
+    example: 'Suspicious transaction detected via system monitoring',
+    type: 'string',
+  })
   @IsString()
   message: string;
 
-  @ValidateNested()
-  @Type(() => Alert)
+  @ApiProperty({
+    description: 'Alert report object containing detection details',
+    type: 'object',
+    additionalProperties: true,
+  })
+  @IsObject()
   report: Alert;
 
-  @ValidateNested()
-  @Type(() => TransactionDTO)
+  @ApiProperty({
+    description: 'Transaction details involved in the case',
+    type: 'object',
+    additionalProperties: true,
+  })
+  @IsObject()
   transaction: TransactionDTO;
 
-  @ValidateNested()
-  @Type(() => NetworkMap)
+  @ApiProperty({
+    description: 'Network map data showing transaction relationships',
+    type: 'object',
+    additionalProperties: true,
+  })
+  @IsObject()
   networkMap: NetworkMap;
 
+  @ApiProperty({
+    description: 'Optional transaction type identifier',
+    example: 'PAYMENT_TRANSFER',
+    required: false,
+    type: 'string',
+  })
   @IsOptional()
   @IsString()
-  case_id?: string;
-
-  @IsOptional()
-  @IsString()
-  userId?: string;
+  txtp?: string;
 }

@@ -116,7 +116,7 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      {/* Header with Export Buttons */}
+      
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Audit Logs</h3>
@@ -152,7 +152,7 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
         </div>
       </div>
 
-      {/* Filters */}
+      
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Outcome</label>
@@ -212,7 +212,7 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
         </div>
       </div>
 
-      {/* Table */}
+  
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
