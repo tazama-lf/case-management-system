@@ -45,9 +45,25 @@ const defaultCollaborators: Collaborator[] = [
 const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = defaultCollaborators, onCreateThread }) => {
   const [openCreate, setOpenCreate] = React.useState(false);
 
+  // Data arrays for repetitive structures
+  const typologies = [
+    { id: 'account-muling', name: 'Account Muling', score: 85 },
+    { id: 'transaction-structuring', name: 'Transaction Structuring', score: 75 }
+  ];
+
+  const linkedAlerts = [
+    { id: 'A-30023', title: 'Large Transaction', status: 'Active' },
+    { id: 'A-30024', title: 'Unusual Patterns', status: 'Closed' }
+  ];
+
+  const collaboratorData = [
+    { id: 'john-smith', name: 'John Smith', role: 'Lead Investigator', status: 'Viewed' },
+    { id: 'sarah-johnson', name: 'Sarah Johnson', role: 'Risk Analyst', status: 'Not viewed' },
+    { id: 'michael-brown', name: 'Michael Brown', role: 'Compliance Officer', status: 'Viewed' }
+  ];
+
   const handleCreate = (payload: NewDiscussionThreadPayload) => {
     if (onCreateThread) onCreateThread(payload);
-    else console.log('New thread created', payload);
     setOpenCreate(false);
   };
 
@@ -98,59 +114,42 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
 
         <Card title="Typologies Triggered">
           <div className="space-y-2">
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div className="text-sm">Account Muling</div>
-              <Pill color="gray">Score 85</Pill>
-            </div>
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div className="text-sm">Transaction Structuring</div>
-              <Pill color="gray">Score 75</Pill>
-            </div>
+            {typologies.map((typology) => (
+              <div key={typology.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="text-sm">{typology.name}</div>
+                <Pill color="gray">Score {typology.score}</Pill>
+              </div>
+            ))}
           </div>
         </Card>
 
         <Card title="Linked Alerts">
           <div className="space-y-2">
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div>
-                <div className="text-sm font-medium">A-30023</div>
-                <div className="text-xs text-gray-500">Large Transaction</div>
+            {linkedAlerts.map((alert) => (
+              <div key={alert.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                <div>
+                  <div className="text-sm font-medium">{alert.id}</div>
+                  <div className="text-xs text-gray-500">{alert.title}</div>
+                </div>
+                <Pill color={alert.status === 'Active' ? 'green' : 'gray'}>{alert.status}</Pill>
               </div>
-              <Pill color="green">Active</Pill>
-            </div>
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div>
-                <div className="text-sm font-medium">A-30024</div>
-                <div className="text-xs text-gray-500">Unusual Patterns</div>
-              </div>
-              <Pill color="gray">Closed</Pill>
-            </div>
+            ))}
           </div>
         </Card>
 
         <Card title="Collaborators & Task Assignments" right={<div className="text-xs text-gray-500">3 people</div>}>
           <div className="space-y-2">
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div>
-                <div className="text-sm">John Smith</div>
-                <div className="text-xs text-gray-500">Lead Investigator</div>
+            {collaboratorData.map((collaborator) => (
+              <div key={collaborator.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                <div>
+                  <div className="text-sm">{collaborator.name}</div>
+                  <div className="text-xs text-gray-500">{collaborator.role}</div>
+                </div>
+                <div className={`text-xs ${collaborator.status === 'Viewed' ? 'text-green-600' : 'text-gray-400'}`}>
+                  {collaborator.status}
+                </div>
               </div>
-              <div className="text-xs text-green-600">Viewed</div>
-            </div>
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div>
-                <div className="text-sm">Sarah Johnson</div>
-                <div className="text-xs text-gray-500">Risk Analyst</div>
-              </div>
-              <div className="text-xs text-gray-400">Not viewed</div>
-            </div>
-            <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
-              <div>
-                <div className="text-sm">Michael Brown</div>
-                <div className="text-xs text-gray-500">Compliance Officer</div>
-              </div>
-              <div className="text-xs text-green-600">Viewed</div>
-            </div>
+            ))}
           </div>
         </Card>
       </div>

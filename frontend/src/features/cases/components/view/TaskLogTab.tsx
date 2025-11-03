@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
-import UnassignTaskModal from '../modals/UnassignTaskModal';
-import AssignTaskModal from '../modals/AssignTaskModal';
-import ReassignTaskModal from '../modals/ReassignTaskModal';
-import UpdateTaskStatusModal from '../modals/UpdateTaskStatusModal';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
+
+// Dynamic imports for better performance
+const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
+const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
+const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
+const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal'));
 
 interface TaskLogTabProps {
   caseId: string;
@@ -84,6 +85,16 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     }
   };
 
+  // Status options mapping for the filter dropdown
+  const statusOptions = [
+    { value: 'all', label: 'Status: All' },
+    { value: TaskStatus.STATUS_01_UNASSIGNED, label: 'Unassigned' },
+    { value: TaskStatus.STATUS_10_ASSIGNED, label: 'Assigned' },
+    { value: TaskStatus.STATUS_20_IN_PROGRESS, label: 'In Progress' },
+    { value: TaskStatus.STATUS_21_BLOCKED, label: 'Blocked' },
+    { value: TaskStatus.STATUS_30_COMPLETED, label: 'Completed' },
+  ];
+
   const filteredTasks = tasks.filter(task => {
     const taskId = task.task_id || '';
     const taskName = task.name || '';
@@ -124,96 +135,118 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     setUpdateStatusModalOpen(true);
   };
 
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+  // Unified handler for all task operations with type checking
+  type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus';
+  
+  interface TaskOperationParams {
+    task: UnifiedWorkQueueTask;
+    assignee?: string;
+    newStatus?: string;
+    reason?: string;
+    notes?: string;
+    justification?: string;
+  }
+
+  const handleTaskOperation = async (
+    operation: TaskOperation,
+    params: TaskOperationParams
+  ): Promise<void> => {
+    const { task, assignee, newStatus, reason } = params;
+
     try {
-      if (!task || !assignee) {
-        console.warn('Cannot assign task: missing task or assignee', { task, assignee });
-        toastError('Assign Task Failed', 'Missing task or assignee');
+      // Validation based on operation type
+      if ((operation === 'assign' || operation === 'reassign') && !assignee) {
+        console.warn(`Cannot ${operation} task: missing assignee`, { task, assignee });
+        toastError(`${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`, 'Missing assignee');
         return;
       }
 
-      console.log('Assigning task to investigator:', { taskId: task.id, assignee, notes });
-      await taskService.assignTaskToInvestigator(task.id, assignee);
+      if (operation === 'updateStatus' && !newStatus) {
+        console.warn('Cannot update task status: missing status', { task, newStatus });
+        toastError('Update Task Status Failed', 'Missing status');
+        return;
+      }
 
+      if (operation === 'unassign' && !reason) {
+        console.warn('Cannot unassign task: missing reason', { task, reason });
+        toastError('Unassign Task Failed', 'Missing reason');
+        return;
+      }
+
+      // Execute the appropriate operation
+      switch (operation) {
+        case 'assign':
+          await taskService.assignTaskToInvestigator(task.id, assignee!);
+          break;
+        case 'reassign':
+          await taskService.reassignTask(task.id, assignee!);
+          break;
+        case 'unassign':
+          await taskService.unassignTask(task.id, { reason: reason! });
+          break;
+        case 'updateStatus':
+          const statusMap: Record<string, TaskStatusType> = {
+            'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
+            'Assigned': TaskStatus.STATUS_10_ASSIGNED,
+            'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
+            'Blocked': TaskStatus.STATUS_21_BLOCKED,
+            'Complete': TaskStatus.STATUS_30_COMPLETED
+          };
+          const backendStatus = statusMap[newStatus!];
+          if (backendStatus) {
+            await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
+          }
+          break;
+        default:
+          throw new Error(`Unknown operation: ${operation}`);
+      }
+
+      // Close modals and refresh tasks
       setAssignModalOpen(false);
-      setSelectedTask(null);
-      const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-      setTasks(fetchedTasks);
-
-      success('Task Assigned Successfully', `Task ${task.id} has been assigned successfully.`);
-    } catch (error) {
-      console.error('Failed to assign task:', error);
-      toastError('Assign Task Failed', error instanceof Error ? error.message : 'Failed to assign task');
-    }
-  };
-
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
-    try {
-      if (!task || !assignee) {
-        console.warn('Cannot reassign task: missing task or assignee', { task, assignee });
-        toastError('Reassign Task Failed', 'Missing task or assignee');
-        return;
-      }
-
-      console.log('Reassigning task:', { taskId: task.id, assignee, justification });
-      await taskService.reassignTask(task.id, assignee);
-
       setReassignModalOpen(false);
-      setSelectedTask(null);
-
-      const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-      setTasks(fetchedTasks);
-
-      success('Task Reassigned Successfully', `Task ${task.id} has been reassigned successfully.`);
-    } catch (error) {
-      console.error('Failed to reassign task:', error);
-      toastError('Reassign Task Failed', error instanceof Error ? error.message : 'Failed to reassign task');
-    }
-  };
-
-
-
-  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
-    try {
-      const statusMap: Record<string, TaskStatusType> = {
-        'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
-        'Assigned': TaskStatus.STATUS_10_ASSIGNED,
-        'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
-        'Blocked': TaskStatus.STATUS_21_BLOCKED,
-        'Complete': TaskStatus.STATUS_30_COMPLETED
-      };
-
-      const backendStatus = statusMap[newStatus];
-      if (backendStatus) {
-        await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
-      }
-
+      setUnassignModalOpen(false);
       setUpdateStatusModalOpen(false);
       setSelectedTask(null);
+
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
 
-      success('Task Status Updated Successfully', `Task ${task.id} status has been updated successfully.`);
+      // Success message
+      const operationMessages = {
+        assign: 'Task Assigned Successfully',
+        reassign: 'Task Reassigned Successfully',
+        unassign: 'Task Unassigned Successfully',
+        updateStatus: 'Task Status Updated Successfully'
+      };
+
+      success(operationMessages[operation], `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation + 'ed'} successfully.`);
     } catch (error) {
-      console.error('Failed to update task status:', error);
-      toastError('Update Task Status Failed', error instanceof Error ? error.message : 'Failed to update task status');
+      console.error(`Failed to ${operation} task:`, error);
+      const operationLabels = {
+        assign: 'Assign Task Failed',
+        reassign: 'Reassign Task Failed',
+        unassign: 'Unassign Task Failed',
+        updateStatus: 'Update Task Status Failed'
+      };
+      toastError(operationLabels[operation], error instanceof Error ? error.message : `Failed to ${operation} task`);
     }
   };
 
-  const handleUnassignTask = async (taskId: string, reason: string) => {
-    try {
-      await taskService.unassignTask(taskId, { reason });
-      setUnassignModalOpen(false);
-      setSelectedTask(null);
-      const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-      setTasks(fetchedTasks);
+  // Simplified handler functions that use the unified handler
+  const handleModalAssign = (task: UnifiedWorkQueueTask, assignee: string, notes?: string) =>
+    handleTaskOperation('assign', { task, assignee, notes });
 
-      success('Task Unassigned Successfully', `Task ${taskId} has been unassigned successfully.`);
-    } catch (error) {
-      console.error('Failed to unassign task:', error);
-      toastError('Unassign Task Failed', error instanceof Error ? error.message : 'Failed to unassign task');
+  const handleModalReassign = (task: UnifiedWorkQueueTask, assignee: string, justification: string) =>
+    handleTaskOperation('reassign', { task, assignee, justification });
+
+  const handleUnassignTask = (_taskId: string, reason: string) => {
+    if (selectedTask) {
+      return handleTaskOperation('unassign', { task: selectedTask, reason });
     }
   };
+
+  const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
+    handleTaskOperation('updateStatus', { task, newStatus, notes });
 
   if (loading) {
     return (
@@ -250,12 +283,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
-            <option value="all">Status: All</option>
-            <option value={TaskStatus.STATUS_01_UNASSIGNED}>Unassigned</option>
-            <option value={TaskStatus.STATUS_10_ASSIGNED}>Assigned</option>
-            <option value={TaskStatus.STATUS_20_IN_PROGRESS}>In Progress</option>
-            <option value={TaskStatus.STATUS_21_BLOCKED}>Blocked</option>
-            <option value={TaskStatus.STATUS_30_COMPLETED}>Completed</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -276,46 +308,62 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         />
       )}
 
-      {}
-      <AssignTaskModal
-        open={assignModalOpen}
-        onClose={() => {
-          setAssignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onAssign={handleModalAssign}
-        task={selectedTask}
-      />
+      {/* Conditional modal rendering to prevent performance bottlenecks */}
+      {assignModalOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <AssignTaskModal
+            open={assignModalOpen}
+            onClose={() => {
+              setAssignModalOpen(false);
+              setSelectedTask(null);
+            }}
+            onAssign={handleModalAssign}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
 
-      <ReassignTaskModal
-        open={reassignModalOpen}
-        onClose={() => {
-          setReassignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onReassign={handleModalReassign}
-        task={selectedTask}
-      />
+      {reassignModalOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <ReassignTaskModal
+            open={reassignModalOpen}
+            onClose={() => {
+              setReassignModalOpen(false);
+              setSelectedTask(null);
+            }}
+            onReassign={handleModalReassign}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
 
-      <UnassignTaskModal
-        open={unassignModalOpen}
-        onClose={() => {
-          setUnassignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onUnassign={handleUnassignTask}
-        task={selectedTask}
-      />
+      {unassignModalOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <UnassignTaskModal
+            open={unassignModalOpen}
+            onClose={() => {
+              setUnassignModalOpen(false);
+              setSelectedTask(null);
+            }}
+            onUnassign={handleUnassignTask}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
 
-      <UpdateTaskStatusModal
-        open={updateStatusModalOpen}
-        onClose={() => {
-          setUpdateStatusModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onUpdateStatus={handleModalUpdateStatus}
-        task={selectedTask}
-      />
+      {updateStatusModalOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <UpdateTaskStatusModal
+            open={updateStatusModalOpen}
+            onClose={() => {
+              setUpdateStatusModalOpen(false);
+              setSelectedTask(null);
+            }}
+            onUpdateStatus={handleModalUpdateStatus}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

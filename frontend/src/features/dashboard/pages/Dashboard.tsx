@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { PageContainer } from '../../../shared/components/ui';
-import StatsCards from '../components/StatsCards';
-import DashboardSection from '../components/DashboardSection';
-import AlertSummaryItem from '../components/AlertSummaryItem';
-import CaseSummaryItem from '../components/CaseSummaryItem';
-import { useDashboard } from '../hooks/useDashboard';
+import { PageContainer, LoadingState, ErrorState } from '@/shared/components/ui';
+import StatsCards from '@/features/dashboard/components/StatsCards';
+import DashboardSection from '@/features/dashboard/components/DashboardSection';
+import AlertSummaryItem from '@/features/dashboard/components/AlertSummaryItem';
+import CaseSummaryItem from '@/features/dashboard/components/CaseSummaryItem';
+import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
 
 const Dashboard: React.FC = () => {
   const { data: dashboardData, isLoading, error } = useDashboard();
@@ -24,17 +23,24 @@ const Dashboard: React.FC = () => {
         title="Dashboard"
         subtitle="Welcome to the Fraud Case Management System"
       >
-        <div className="animate-pulse">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-gray-200 h-32 rounded-lg animate-pulse"></div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>
-            <div className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>
-          </div>
-        </div>
+        <LoadingState
+          loading={true}
+          loadingComponent={
+            <div className="animate-pulse">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-gray-200 h-32 rounded-lg"></div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-200 h-64 rounded-lg"></div>
+                <div className="bg-gray-200 h-64 rounded-lg"></div>
+              </div>
+            </div>
+          }
+        >
+          <div /> {/* Empty children required by LoadingState */}
+        </LoadingState>
       </PageContainer>
     );
   }
@@ -45,12 +51,13 @@ const Dashboard: React.FC = () => {
         title="Dashboard"
         subtitle="Welcome to the Fraud Case Management System"
       >
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-            <p className="text-red-700">Failed to load dashboard data. Please try again.</p>
-          </div>
-        </div>
+        <ErrorState
+          title="Dashboard Error"
+          message="Failed to load dashboard data. Please try again."
+          showRetry={true}
+          onRetry={() => window.location.reload()}
+          severity="error"
+        />
       </PageContainer>
     );
   }

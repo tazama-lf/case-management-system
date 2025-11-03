@@ -89,7 +89,6 @@ const CreateWorkQueueModal: React.FC<CreateWorkQueueModalProps> = ({
       taskTypes: formData.taskTypes
     });
     
-    // Reset form
     setFormData({
       name: '',
       description: '',

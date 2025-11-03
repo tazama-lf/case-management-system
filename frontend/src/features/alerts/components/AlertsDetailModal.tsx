@@ -43,7 +43,6 @@ const getRiskScore = (alert: TriageAlert): number => {
     CRITICAL: 2,
     BREACH: 3,
   };
-  console.log('Calculating risk score for alert:', alert);
 
   const baseScore = alert.confidence_per || 50;
   const weight = priorityWeights[alert.priority] || 1;

@@ -24,7 +24,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
   useEffect(() => {
     if (open) {
-      console.log('ReassignTaskModal opened, fetching investigators');
       fetchInvestigators();
     }
   }, [open]);
@@ -33,18 +32,14 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
     setLoading(true);
     try {
       const data = await authService.fetchAllInvestigators();
-      console.log('Fetched investigators from API:', data);
 
       if (data && data.length > 0) {
-        console.log('Using API data for investigators');
         setInvestigators(data);
       } else {
-        console.log('API returned empty data, using mock data');
         useMockData();
       }
     } catch (error) {
       console.error('Failed to fetch investigators:', error);
-      console.log('Using mock data due to API error');
       useMockData();
     } finally {
       setLoading(false);
@@ -59,14 +54,12 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
       { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
       { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
     ];
-    console.log('Setting mock investigators:', mockInvestigators);
     setInvestigators(mockInvestigators);
   };
 
   if (!open || !task) return null;
 
   const canConfirm = Boolean(assignee && justification.trim());
-  console.log('ReassignTaskModal canConfirm:', canConfirm, 'assignee:', assignee, 'justification:', justification);
 
   const handleSubmit = async () => {
     if (!canConfirm || isSubmitting) {
@@ -91,8 +84,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
     setIsSubmitting(true);
     try {
-      console.log('Reassigning task:', { taskId: task.id, assignee, justification });
-      console.log('Calling onReassign callback with:', { task, assignee, justification });
       await Promise.resolve(onReassign(task, assignee, justification));
       onClose();
     } catch (error) {
@@ -140,7 +131,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   <select
                     value={assignee}
                     onChange={(e) => {
-                      console.log('Assignee selected:', e.target.value);
                       setAssignee(e.target.value);
                     }}
                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -150,7 +140,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                     {investigators
                       .filter(investigator => investigator.id !== task.assignee)
                       .map((investigator) => {
-                        console.log('Rendering investigator option:', investigator);
                         return (
                           <option key={investigator.id} value={investigator.id}>
                             {investigator.firstName} {investigator.lastName} ({investigator.username})

@@ -32,33 +32,15 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
     hasAdminRole
   } = useAuth();
 
-  if (requireSupervisor && !hasSupervisorRole() && !hasAdminRole()) {
-    return <>{fallback}</>;
-  }
+  const hasAccess = (
+    (!requireAdmin || hasAdminRole()) &&
+    (!requireSupervisor || hasSupervisorRole() || hasAdminRole()) &&
+    (!requireInvestigator || hasInvestigatorRole() || hasAdminRole()) &&
+    (!requireBackendClaim || hasBackendClaim(requireBackendClaim)) &&
+    (requiredRoles.length === 0 || (requireAll ? hasAllRoles(requiredRoles) : hasAnyRole(requiredRoles)))
+  );
 
-  if (requireInvestigator && !hasInvestigatorRole() && !hasAdminRole()) {
-    return <>{fallback}</>;
-  }
-
-  if (requireAdmin && !hasAdminRole()) {
-    return <>{fallback}</>;
-  }
-
-  if (requireBackendClaim && !hasBackendClaim(requireBackendClaim)) {
-    return <>{fallback}</>;
-  }
-
-  if (requiredRoles.length > 0) {
-    const hasPermission = requireAll
-      ? hasAllRoles(requiredRoles)
-      : hasAnyRole(requiredRoles);
-
-    if (!hasPermission) {
-      return <>{fallback}</>;
-    }
-  }
-
-  return <>{children}</>;
+  return hasAccess ? <>{children}</> : <>{fallback}</>;
 };
 
 export default RoleGuard;

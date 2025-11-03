@@ -17,9 +17,7 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      console.log('Starting login process...');
-
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,19 +30,15 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
-      console.log('Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
       if (data.token) {
         this.setToken(data.token);
 
         const user = this.decodeToken(data.token);
         if (user) {
-          console.log('User decoded from token successfully');
           this.setUser(user);
           data.user = user;
-        } else {
-          console.log('Failed to decode user from token');
-        }
+        } else { /* empty */ }
       }
 
       return data;
@@ -91,7 +85,6 @@ class AuthService {
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded) {
-      console.log('decodeToken failed: could not decode token');
       return null;
     }
 
@@ -108,17 +101,6 @@ class AuthService {
         permissions: decoded.claims || [],
         backendClaims: this.extractBackendClaims(decoded),
       };
-
-      console.log('decodeToken success:', {
-        user_id: user.user_id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        tenantId: user.tenantId,
-        roles: user.roles,
-        backendClaims: user.backendClaims
-      });
 
       return user;
     } catch (error) {
@@ -170,18 +152,7 @@ class AuthService {
       });
     }
 
-    console.log('extractBackendClaims() Debug - Raw claims found:', {
-      originalClaims: claims,
-      payloadStructure: {
-        claims: payload.claims,
-        realm_access: payload.realm_access,
-        resource_access: Object.keys(payload.resource_access || {})
-      }
-    });
-
     const finalClaims = [...new Set(claims)];
-
-    console.log('extractBackendClaims() Final claims:', finalClaims);
 
     return finalClaims;
   }
@@ -292,19 +263,8 @@ class AuthService {
     const hasCMSTest = this.hasCMSTestRole();
     const hasInvestigator = this.hasInvestigatorRole();
     const hasSupervisor = this.hasSupervisorRole();
-    const user = this.getUser();
 
     const result = hasAlertTriage || hasCMSTest || hasInvestigator || hasSupervisor;
-
-    console.log('validateBackendAccess() Debug:', {
-      hasAlertTriage,
-      hasCMSTest,
-      hasInvestigator,
-      hasSupervisor,
-      userClaims: user?.backendClaims,
-      allUserData: user,
-      result
-    });
 
     return result;
   }
@@ -329,7 +289,6 @@ class AuthService {
 
   async fetchAllInvestigators(): Promise<Investigator[]> {
     try {
-      console.log('Fetching investigators from:', `${API_BASE_URL}/auth/investigators`);
       const response = await fetch(`${API_BASE_URL}/auth/investigators`, {
         method: 'GET',
         headers: {
@@ -338,14 +297,11 @@ class AuthService {
         },
       });
 
-      console.log('Investigators API response status:', response.status);
-
       if (!response.ok) {
         throw new Error(`Failed to fetch investigators: ${response.status} ${response.statusText}`);
       }
 
       const data: Investigator[] = await response.json();
-      console.log('Investigators API response data:', data);
       return data;
     } catch (error) {
       console.error('Error fetching investigators:', error);

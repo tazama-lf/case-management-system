@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import { NAVIGATION_ITEMS } from '../../constants/navigation';
-import { useAuth } from '../../../features/auth/components/AuthContext';
-import type { LayoutProps } from '../../types/navigation.types';
+import { NAVIGATION_ITEMS } from '@/shared/constants/navigation';
+import { useAuth } from '@/features/auth/components/AuthContext';
+import type { LayoutProps } from '@/shared/types/navigation.types';
 
 const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
       {}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          user={user || undefined}
+          user={user ?? undefined}
           breadcrumbs={breadcrumbs}
           title={title}
           sidebarOpen={sidebarOpen}

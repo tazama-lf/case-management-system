@@ -12,7 +12,6 @@ const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) 
 );
 
 const AdminDashboard: React.FC = () => {
-  // Placeholder stats
   const stats = [
     { label: 'Active Work Queues', value: '1,254' },
     { label: 'User Accounts', value: '312' },
