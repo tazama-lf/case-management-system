@@ -90,10 +90,12 @@ export class FlowableService implements OnModuleInit {
       });
 
       const headers: Record<string, string> = { ...formData.getHeaders() };
-      headers['tenantId'] = this.tenantId;
 
       const response = await this.flowableClient.post('/service/repository/deployments', formData, {
         headers,
+        params: {
+          tenantId: this.tenantId,
+        },
       });
 
       this.logger.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
@@ -193,17 +195,39 @@ export class FlowableService implements OnModuleInit {
 
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
     try {
+      // First, verify the process definition exists
+      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey);
+      if (!processDefinitions || processDefinitions.length === 0) {
+        throw new Error(`Process definition '${processDefinitionKey}' not found. Available definitions: ${await this.listProcessDefinitions()}`);
+      }
+
+      const formattedVariables = this.formatVariables(variables);
       const payload = {
         processDefinitionKey,
-        variables: this.formatVariables(variables),
+        variables: formattedVariables,
         businessKey,
+        tenantId: this.tenantId, // Add tenant ID to payload
       };
+
+      this.logger.log(`Starting process instance with payload: ${JSON.stringify({
+        processDefinitionKey,
+        businessKey,
+        tenantId: this.tenantId,
+        variableCount: formattedVariables.length,
+        variables: formattedVariables.map(v => `${v.name}=${v.value}`).join(', ')
+      })}`, FlowableService.name);
 
       const response = await this.flowableClient.post('/service/runtime/process-instances', payload);
 
       this.logger.log(`Process instance started: ${response.data.id} with businessKey: ${businessKey}`, FlowableService.name);
       return response.data;
     } catch (error) {
+      // Enhanced error logging with more details
+      if (error.response) {
+        this.logger.error(`Flowable API error - Status: ${error.response.status}`, FlowableService.name);
+        this.logger.error(`Flowable API error - Response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
+        this.logger.error(`Flowable API error - Headers: ${JSON.stringify(error.response.headers)}`, FlowableService.name);
+      }
       this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to start process instance', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -681,6 +705,33 @@ export class FlowableService implements OnModuleInit {
       return { status: 'healthy' };
     } catch (error) {
       throw new Error(`Flowable connection failed: ${error.message}`);
+    }
+  }
+
+  async getProcessDefinitions(processDefinitionKey?: string) {
+    try {
+      const params: Record<string, unknown> = {};
+      if (processDefinitionKey) {
+        params.key = processDefinitionKey;
+      }
+      params.tenantId = this.tenantId;
+
+      const response = await this.flowableClient.get('/service/repository/process-definitions', {
+        params,
+      });
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to get process definitions: ${error.message}`, error.stack, FlowableService.name);
+      return [];
+    }
+  }
+
+  async listProcessDefinitions(): Promise<string> {
+    try {
+      const definitions = await this.getProcessDefinitions();
+      return definitions.map((def: any) => def.key).join(', ');
+    } catch (error) {
+      return 'Unable to list process definitions';
     }
   }
 

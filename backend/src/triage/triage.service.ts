@@ -617,13 +617,16 @@ export class TriageService {
         TriageService.name,
       );
 
-      const priority = this.determinePriority(predictedPriorityScore);
+      // Handle optional priorityScore - provide default if undefined
+      const finalPriorityScore = predictedPriorityScore ?? 0.5; // Default to medium priority
+      const priority = this.determinePriority(finalPriorityScore);
+      
       await this.updateAlertAndUpdateTriageTask(
         alertId,
         triageTaskId,
         predictedAlertType,
         predictedConfidence,
-        predictedPriorityScore,
+        finalPriorityScore,
         priority,
         predictedTruePositive,
         userId,

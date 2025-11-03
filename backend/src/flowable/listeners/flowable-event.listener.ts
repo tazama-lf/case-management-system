@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableService } from '../flowable.service';
 import { TaskService } from '../../task/task.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 import {
   CaseCreatedEvent,
@@ -24,6 +25,7 @@ export class FlowableEventListener {
       private readonly logger: LoggerService,
       private readonly taskService: TaskService,
       private readonly auditLogService: AuditLogService,
+      private readonly prismaService: PrismaService,
   ) {}
 
   @OnEvent('case.created')
@@ -34,6 +36,9 @@ export class FlowableEventListener {
           FlowableEventListener.name,
       );
 
+      // Determine creator role based on creation type
+      const creatorRole = event.creationType === 'MANUAL' ? 'SUPERVISOR' : 'SYSTEM';
+
       const processInstance = await this.flowableService.startProcessInstance(
           'caseManagementProcess',
           {
@@ -42,6 +47,7 @@ export class FlowableEventListener {
             creationType: event.creationType,
             caseStatus: event.caseStatus,
             autocloseEligible: String(event.autocloseEligible),
+            creatorRole: creatorRole, // Add missing variable required by BPMN
           },
           event.caseId,
       );
@@ -50,6 +56,16 @@ export class FlowableEventListener {
           `[Flowable-CaseCreated] Successfully started process ${processInstance.id} for case ${event.caseId}`,
           FlowableEventListener.name,
       );
+
+      // Trigger immediate sync of any BPMN-created tasks
+      setTimeout(async () => {
+        try {
+          await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id);
+          this.logger.log(`[Flowable-CaseCreated] BPMN task sync completed for case ${event.caseId}`, FlowableEventListener.name);
+        } catch (syncError) {
+          this.logger.error(`[Flowable-CaseCreated] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`, syncError.stack, FlowableEventListener.name);
+        }
+      }, 2000); // Wait 2 seconds for BPMN tasks to be created
     } catch (error) {
       this.logger.error(
           `[Flowable-CaseCreated] Failed to start process for case ${event.caseId}: ${error.message}`,
@@ -450,6 +466,148 @@ export class FlowableEventListener {
           error.stack,
           FlowableEventListener.name,
       );
+    }
+  }
+
+  /**
+   * Sync BPMN-created tasks to the database
+   * This handles tasks that are automatically created by the BPMN process
+   */
+  private async syncBpmnCreatedTasksForCase(caseId: string, processInstanceId: string): Promise<void> {
+    try {
+      // Get all Flowable tasks for this process instance
+      const flowableTasks = await this.flowableService.getProcessTasks(processInstanceId);
+
+      this.logger.log(
+        `[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`,
+        FlowableEventListener.name,
+      );
+
+      for (const flowableTask of flowableTasks) {
+        await this.syncSingleBpmnTask(flowableTask, caseId);
+      }
+
+      this.logger.log(
+        `[BPMN-Sync] Completed sync for all tasks in case ${caseId}`,
+        FlowableEventListener.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[BPMN-Sync] Failed to sync BPMN tasks for case ${caseId}: ${error.message}`,
+        error.stack,
+        FlowableEventListener.name,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Sync a single BPMN-created Flowable task with the database
+   */
+  private async syncSingleBpmnTask(flowableTask: any, caseId: string): Promise<void> {
+    const taskId = flowableTask.id;
+
+    try {
+      // Check if this task already has variables set (indicating it's already synced)
+      const taskVariables = await this.flowableService.getTaskVariables(taskId);
+
+      if (taskVariables.postgres_task_id) {
+        // Task is already synced, verify the database task exists
+        const dbTask = await this.prismaService.task.findUnique({
+          where: { task_id: taskVariables.postgres_task_id },
+        });
+
+        if (dbTask) {
+          this.logger.debug(
+            `[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`,
+            FlowableEventListener.name,
+          );
+          return;
+        } else {
+          this.logger.warn(
+            `[BPMN-Sync] Flowable task ${taskId} references non-existent database task ${taskVariables.postgres_task_id}`,
+            FlowableEventListener.name,
+          );
+        }
+      }
+
+      // Check if the case exists in the database
+      const dbCase = await this.prismaService.case.findUnique({
+        where: { case_id: caseId },
+      });
+
+      if (!dbCase) {
+        this.logger.error(
+          `[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`,
+          FlowableEventListener.name,
+        );
+        return;
+      }
+
+      // Create the corresponding database task
+      const candidateGroup = this.determineCandidateGroupFromTask(flowableTask);
+      const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
+
+      const dbTask = await this.taskService.createTask(
+        {
+          caseId,
+          status: taskStatus,
+          name: flowableTask.name,
+          description: flowableTask.description || `Task created from BPMN process: ${flowableTask.name}`,
+          candidateGroup,
+          assignedUserId: flowableTask.assignee,
+        },
+        'system', // Created by system sync
+        this.auditLogService,
+        this.logger,
+      );
+
+      // Set variables on the Flowable task to link it to the database task
+      const variables = {
+        postgres_task_id: dbTask.task_id,
+        postgres_case_id: caseId,
+        task_status: dbTask.status,
+        task_name: flowableTask.name,
+        candidate_group: dbTask.candidateGroup || '',
+      };
+
+      await this.flowableService.setTaskVariables(taskId, variables);
+
+      this.logger.log(
+        `[BPMN-Sync] ✅ Successfully synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,
+        FlowableEventListener.name,
+      );
+
+    } catch (error) {
+      this.logger.error(
+        `[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`,
+        error.stack,
+        FlowableEventListener.name,
+      );
+    }
+  }
+
+  /**
+   * Determine the appropriate candidate group based on the Flowable task
+   */
+  private determineCandidateGroupFromTask(flowableTask: any): string {
+    // Check if the task already has candidate groups assigned
+    if (flowableTask.candidateGroups && flowableTask.candidateGroups.length > 0) {
+      const group = flowableTask.candidateGroups[0].toLowerCase();
+      if (['supervisors', 'investigations', 'investigator'].includes(group)) {
+        return group;
+      }
+    }
+
+    // Determine based on task name
+    const taskName = flowableTask.name.toLowerCase();
+    
+    if (taskName.includes('approve') || taskName.includes('supervisor')) {
+      return 'supervisors';
+    } else if (taskName.includes('investigate') || taskName.includes('investigation')) {
+      return 'investigations';
+    } else {
+      return 'investigations'; // Default fallback
     }
   }
 
