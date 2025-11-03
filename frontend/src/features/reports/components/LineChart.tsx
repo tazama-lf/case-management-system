@@ -37,8 +37,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, title, height = 350, isLoad
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     month: item.label,
     'Cases Created': item.casesCreated,
     'Cases Closed': item.casesClosed

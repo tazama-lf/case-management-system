@@ -20,8 +20,7 @@ const ResolutionEfficiencyChart: React.FC<ResolutionEfficiencyChartProps> = ({ d
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.name,
     avgDays: item.avgDays
   }));

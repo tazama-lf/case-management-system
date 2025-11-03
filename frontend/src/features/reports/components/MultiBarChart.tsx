@@ -37,8 +37,7 @@ const MultiBarChart: React.FC<MultiBarChartProps> = ({ data, title, height = 350
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.label,
     'Cases Created': item.casesCreated,
     'Cases Closed': item.casesClosed

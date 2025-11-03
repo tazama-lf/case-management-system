@@ -20,8 +20,7 @@ const TaskCompletionBarChart: React.FC<TaskCompletionBarChartProps> = ({ data, t
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     type: item.type,
     Completed: item.completed,
     Pending: item.total - item.completed

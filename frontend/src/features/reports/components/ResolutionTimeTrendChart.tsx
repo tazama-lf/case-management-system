@@ -31,7 +31,6 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
     return acc;
   }, {});
 
-  // Transform data for recharts
   const chartData = Object.entries(aggregatedData).map(([date, values]) => ({
     month: date,
     averageDays: Math.round(values.total / values.count)

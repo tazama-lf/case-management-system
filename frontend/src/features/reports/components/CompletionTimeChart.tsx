@@ -20,8 +20,7 @@ const CompletionTimeChart: React.FC<CompletionTimeChartProps> = ({ data, title, 
     );
   }
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     name: item.type,
     days: item.avgDays
   }));

@@ -17,16 +17,13 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
   onExportPDF, 
   isLoading = false 
 }) => {
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
-  // Filter states
   const [outcomeFilter, setOutcomeFilter] = useState('All');
   const [entityFilter, setEntityFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
 
-  // Calculate pagination
   const filteredData = useMemo(() => {
     return data.filter(log => {
       const matchesOutcome = outcomeFilter === 'All' || log.outcome === outcomeFilter;
@@ -41,12 +38,10 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
-  // Get unique values for filter options
   const uniqueOutcomes = Array.from(new Set(data.map(log => log.outcome).filter(Boolean)));
   const uniqueEntities = Array.from(new Set(data.map(log => log.entity_name).filter(Boolean)));
   const uniqueTypes = Array.from(new Set(data.map(log => log.type).filter(Boolean)));
 
-  // Reset pagination when filters change
   React.useEffect(() => {
     setCurrentPage(1);
   }, [outcomeFilter, entityFilter, typeFilter]);

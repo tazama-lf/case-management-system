@@ -28,8 +28,7 @@ const CaseAgeingBarChart: React.FC<CaseAgeingBarChartProps> = ({ data, title, he
       .trim();
   };
 
-  // Transform data for recharts
-  const chartData = data.map(item => ({
+  const chartData = data.map((item) => ({
     status: formatStatusName(item.status),
     '0-7 days': item.age0to7,
     '8-15 days': item.age8to15,

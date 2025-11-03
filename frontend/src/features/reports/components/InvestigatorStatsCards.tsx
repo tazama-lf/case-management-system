@@ -12,9 +12,9 @@ interface InvestigatorStatsCardsProps {
   stats: InvestigatorStats;
 }
 
-// Helper function to safely format numeric values
-const safeFormatNumber = (value: number | null | undefined, unit?: string, decimals = 0): string => {
-  const safeValue = value === null || value === undefined || isNaN(value) || !isFinite(value) ? 0 : value;
+const safeFormatNumber = (value: number | string | undefined, unit = '', decimals = 0): string => {
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  const safeValue = numValue === null || numValue === undefined || isNaN(numValue) || !isFinite(numValue) ? 0 : numValue;
   const formatted = decimals > 0 ? safeValue.toFixed(decimals) : Math.round(safeValue).toString();
   return unit ? `${formatted}${unit}` : formatted;
 };
