@@ -44,7 +44,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   return (
     <div className="mb-6 space-y-4">
-      {/* Search Bar */}
+      {}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -58,9 +58,9 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         />
       </div>
 
-      {/* Filters Row */}
+      {}
       <div className="flex flex-wrap gap-4">
-        {/* Sort By */}
+        {}
         <div className="relative">
           <select
             value={sortBy}
@@ -75,7 +75,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           </div>
         </div>
 
-        {/* Status Filter */}
+        {}
         <div className="relative">
           <select
             value={statusFilter}
@@ -93,7 +93,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           </div>
         </div>
 
-        {/* Priority Filter */}
+        {}
         <div className="relative">
           <select
             value={priorityFilter}

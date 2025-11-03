@@ -5,7 +5,8 @@ import {
   UserIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import StatsCard from '../../dashboard/components/StatsCard';
+import StatsCard from '@/features/dashboard/components/StatsCard';
+import { formatNumber } from '@/shared/utils/numberUtils';
 import type { AuditLogsStats } from '../types/reports.types';
 
 interface AuditLogsStatsCardsProps {
@@ -17,7 +18,7 @@ const AuditLogsStatsCards: React.FC<AuditLogsStatsCardsProps> = ({ stats }) => {
     <div className="grid grid-cols-4 gap-6 mb-8">
       <StatsCard
         title="Total Audit Logs"
-        value={stats.totalLogs.toLocaleString()}
+        value={formatNumber(stats.totalLogs)}
         subtitle="Last 30 days"
         icon={<DocumentTextIcon className="h-6 w-6" />}
         color="blue"

@@ -1,5 +1,10 @@
 import React from 'react';
 import { EyeIcon, CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { 
+  getCaseStatusColorClass, 
+  getTypeColorClass
+} from '@/shared/utils/colors';
+import { formatDateGB } from '@/shared/utils/dateUtils';
 import type { CaseWithTasksDto } from '../services/caseService';
 
 export type CaseRow = {
@@ -22,40 +27,6 @@ export type CaseRow = {
   confidencePercent?: number;
 };
 
-export const getStatusColor = (status: string): string => {
-  const statusColors: Record<string, string> = {
-    'STATUS_00_DRAFT': 'bg-gray-100 text-gray-700',
-    'STATUS_02_READY_FOR_ASSIGNMENT': 'bg-indigo-50 text-indigo-700',
-    'STATUS_10_ASSIGNED': 'bg-blue-50 text-blue-700',
-    'STATUS_20_IN_PROGRESS': 'bg-yellow-50 text-yellow-700',
-    'STATUS_22_PENDING_FINAL_APPROVAL': 'bg-purple-50 text-purple-700',
-    'STATUS_31_REOPENED': 'bg-orange-50 text-orange-700',
-    'STATUS_81_CLOSED_REFUTED': 'bg-red-50 text-red-700',
-    'STATUS_82_CLOSED_CONFIRMED': 'bg-green-50 text-green-700',
-    'STATUS_83_CLOSED_INCONCLUSIVE': 'bg-gray-50 text-gray-700',
-  };
-  return statusColors[status] || 'bg-gray-100 text-gray-700';
-};
-
-export const getTypeColor = (caseType: string): string => {
-  const typeColors: Record<string, string> = {
-    'FRAUD': 'bg-red-50 text-red-700 ring-red-200',
-    'AML': 'bg-purple-50 text-purple-700 ring-purple-200',
-    'FRAUD_AND_AML': 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-  };
-  return typeColors[caseType] || 'bg-gray-50 text-gray-700 ring-gray-200';
-};
-
-export const getPriorityColor = (priority: string): string => {
-  const priorityColors: Record<string, string> = {
-    'NEW': 'bg-blue-50 text-blue-700 ring-blue-200',
-    'URGENT': 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    'CRITICAL': 'bg-orange-50 text-orange-700 ring-orange-200',
-    'BREACH': 'bg-red-50 text-red-700 ring-red-200',
-  };
-  return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
-};
-
 export const formatStatus = (status: string): string => {
   
   return status;
@@ -65,13 +36,13 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
-    typeColor: getTypeColor(backendCase.case_type),
+    typeColor: getTypeColorClass(backendCase.case_type),
     status: formatStatus(backendCase.status),
-    statusColor: getStatusColor(backendCase.status),
+    statusColor: getCaseStatusColorClass(backendCase.status),
     typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
-    createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
-    pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
+    createdOn: formatDateGB(backendCase.created_at),
+    pickedOn: backendCase.user_role === 'owner' ? formatDateGB(backendCase.updated_at) : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
     assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
@@ -134,7 +105,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 bg-white">
-          {rows.map((c) => (
+          {rows?.length > 0 ? (
+            rows.map((c) => (
             <tr key={c.id} className="hover:bg-gray-50/50">
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.id}</td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
@@ -169,7 +141,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Close Case button - show for in-progress cases */}
+                  {}
                   {onCloseCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
@@ -183,7 +155,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Closure button - show for cases pending final approval */}
+                  {}
                   {onApproveCase && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
@@ -197,7 +169,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Return for Review button - show for cases pending final approval */}
+                  {}
                   {onReturnForReview && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
@@ -211,7 +183,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Creation button - show for cases pending creation approval */}
+                  {}
                   {onApproveCaseCreation && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
@@ -225,7 +197,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Reopening button - show for cases pending reopening approval */}
+                  {}
                   {onApproveCaseReopen && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
@@ -239,7 +211,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
+                  {}
                   {onRejectCaseReopen && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
@@ -253,7 +225,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case Creation button - show for cases pending creation approval */}
+                  {}
                   {onRejectCaseCreation && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
@@ -267,7 +239,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reopen Case button - show for closed cases */}
+                  {}
                   {onReopenCase && (
                     c.status === 'STATUS_81_CLOSED_REFUTED' ||
                     c.status === 'STATUS_82_CLOSED_CONFIRMED' ||
@@ -283,7 +255,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Abandon Case button - show for draft cases only */}
+                  {}
                   {onAbandonCase && (
                     c.status === 'STATUS_00_DRAFT'
                   ) && (
@@ -296,7 +268,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Suspend Case button - show for in-progress cases */}
+                  {}
                   {onSuspendCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
@@ -310,7 +282,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Resume Case button - show for suspended cases */}
+                  {}
                   {onResumeCase && (
                     c.status === 'STATUS_21_SUSPENDED' ||
                     c.status.includes('SUSPENDED')
@@ -324,7 +296,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case button - show for cases pending final approval */}
+                  {}
                   {onRejectCase && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
@@ -340,7 +312,20 @@ const CasesTable: React.FC<CasesTableProps> = ({
                 </div>
               </td>
             </tr>
-          ))}
+          ))
+          ) : (
+            <tr>
+              <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                <div className="flex flex-col items-center">
+                  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-900 mb-1">No cases found</p>
+                  <p className="text-sm text-gray-500">Try adjusting your filters or search criteria.</p>
+                </div>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

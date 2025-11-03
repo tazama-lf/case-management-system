@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import { Link, useLocation } from 'react-router-dom';
+import { kebabToTitleCase } from '@/shared/utils/stringUtils';
 import type { BreadcrumbItem } from '../../types/navigation.types';
 
 interface BreadcrumbProps {
@@ -20,8 +21,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
       currentPath += `/${segment}`;
       const isLast = index === pathSegments.length - 1;
 
-      const name =
-        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+      const name = kebabToTitleCase(segment);
 
       breadcrumbs.push({
         name,

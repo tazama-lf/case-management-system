@@ -13,8 +13,6 @@ class AuthService {
   private tokenKey = 'authToken';
   private userKey = 'user';
 
-
-
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
@@ -38,7 +36,7 @@ class AuthService {
         if (user) {
           this.setUser(user);
           data.user = user;
-        } else { /* empty */ }
+        } else {  }
       }
 
       return data;
@@ -48,39 +46,32 @@ class AuthService {
     }
   }
 
-
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
   }
 
-
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
 
-
   setToken(token: string): void {
     localStorage.setItem(this.tokenKey, token);
   }
-
 
   getUser(): User | null {
     const userData = localStorage.getItem(this.userKey);
     return userData ? JSON.parse(userData) : null;
   }
 
-
   setUser(user: User): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
-
 
   isAuthenticated(): boolean {
     const token = this.getToken();
     return token ? !this.isTokenExpired(token) : false;
   }
-
 
   decodeToken(token: string): User | null {
     const decoded = this.getDecodedToken(token);
@@ -109,7 +100,6 @@ class AuthService {
     }
   }
 
-
   private extractRoles(payload: DecodedToken): string[] {
     const roles: string[] = [];
 
@@ -129,7 +119,6 @@ class AuthService {
 
     return roles;
   }
-
 
   private extractBackendClaims(payload: DecodedToken): string[] {
     const claims: string[] = [];
@@ -167,7 +156,6 @@ class AuthService {
     }
   }
 
-
   isTokenExpired(token: string): boolean {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -178,7 +166,6 @@ class AuthService {
     return decoded.exp < currentTime;
   }
 
-
   getTokenExpiration(token: string): Date | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -186,7 +173,6 @@ class AuthService {
     }
     return new Date(decoded.exp * 1000);
   }
-
 
   async refreshToken(): Promise<boolean> {
     try {
@@ -216,47 +202,38 @@ class AuthService {
     }
   }
 
-
   hasBackendClaim(claim: string): boolean {
     const user = this.getUser();
     return user?.backendClaims?.includes(claim) || false;
   }
 
-
   hasCMSTestRole(): boolean {
     return this.hasBackendClaim('CMS-TEST-ROLE');
   }
-
 
   hasAlertTriageRole(): boolean {
     return this.hasBackendClaim('alert-triage');
   }
 
-
   hasInvestigatorRole(): boolean {
     return this.hasBackendClaim('CMS_INVESTIGATOR');
   }
-
 
   hasSupervisorRole(): boolean {
     return this.hasBackendClaim('CMS_SUPERVISOR');
   }
 
-
   hasAdminRole(): boolean {
     return this.hasAlertTriageRole() || this.hasCMSTestRole();
   }
-
 
   hasAnyRole(roles: string[]): boolean {
     return roles.some(role => this.hasBackendClaim(role));
   }
 
-
   hasAllRoles(roles: string[]): boolean {
     return roles.every(role => this.hasBackendClaim(role));
   }
-
 
   validateBackendAccess(): boolean {
     const hasAlertTriage = this.hasAlertTriageRole();
@@ -269,12 +246,10 @@ class AuthService {
     return result;
   }
 
-
   getAuthHeader(): Record<string, string> {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
-
 
   private buildFullName(firstName?: string, lastName?: string): string {
     const first = firstName?.trim() || '';
@@ -285,7 +260,6 @@ class AuthService {
     }
     return first || last || '';
   }
-
 
   async fetchAllInvestigators(): Promise<Investigator[]> {
     try {

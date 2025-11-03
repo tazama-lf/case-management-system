@@ -1,4 +1,4 @@
-import apiClient from '../../../shared/services/apiClient';
+import apiClient from '@/shared/services/apiClient';
 import type {
   FlowableTask,
   UnifiedWorkQueueTask,
@@ -9,10 +9,8 @@ import type {
 import { WorkQueueCandidateGroup } from '../types/flowable.types';
 import { FlowableErrorHandler, FlowableError } from '../utils/flowableErrorHandler';
 
-
 export class FlowableWorkQueueService {
   private baseUrl = '/api/v1/task';
-
 
   async getWorkQueueByGroup(candidateGroup: WorkQueueCandidateGroupType): Promise<UnifiedWorkQueueTask[]> {
     try {
@@ -25,7 +23,6 @@ export class FlowableWorkQueueService {
       throw this.handleFlowableError(error, `get work queue for ${candidateGroup}`);
     }
   }
-
 
   async getAllWorkQueues(): Promise<Record<string, number>> {
     try {
@@ -49,7 +46,6 @@ export class FlowableWorkQueueService {
       throw this.handleFlowableError(error, 'get all work queues');
     }
   }
-
 
   async assignTask(taskId: string, assigneeUserId: string): Promise<UnifiedWorkQueueTask> {
     if (!taskId) {
@@ -76,7 +72,6 @@ export class FlowableWorkQueueService {
     }
   }
 
-
   async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
@@ -94,7 +89,6 @@ export class FlowableWorkQueueService {
     }
   }
 
-
   async completeTask(taskId: string, data: { notes?: string }): Promise<void> {
     try {
       const completionRequest: FlowableTaskCompletionRequest = {
@@ -109,7 +103,6 @@ export class FlowableWorkQueueService {
     }
   }
 
-
   async getTaskDetails(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
       const response = await apiClient.get<FlowableTask>(`${this.baseUrl}/${taskId}`);
@@ -118,7 +111,6 @@ export class FlowableWorkQueueService {
       throw this.handleFlowableError(error, `get task details for ${taskId}`);
     }
   }
-
 
   private transformFlowableTask(flowableTask: any): UnifiedWorkQueueTask {
     return {
@@ -144,7 +136,6 @@ export class FlowableWorkQueueService {
     };
   }
 
-
   private mapFlowableStatus(task: any): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' {
     const taskStatus = task.variables?.task_status;
     if (taskStatus) {
@@ -163,7 +154,6 @@ export class FlowableWorkQueueService {
     return 'IN_PROGRESS';
   }
 
-
   private mapFlowablePriority(priority: number): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
     if (priority >= 90) return 'BREACH';
     if (priority >= 70) return 'CRITICAL';
@@ -171,11 +161,9 @@ export class FlowableWorkQueueService {
     return 'NEW';
   }
 
-
   private handleFlowableError(error: any, operation: string): FlowableError {
     return FlowableErrorHandler.parseError(error, operation);
   }
-
 
   getCandidateGroups(): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
     return [

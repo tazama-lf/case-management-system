@@ -53,7 +53,6 @@ export interface ActionHistory {
   performed_at: string;
 }
 
-
 export const CaseType = {
   FRAUD: 'FRAUD',
   AML: 'AML',
@@ -130,7 +129,6 @@ export interface AlertsApiResponse {
   pagination: PaginationResponse;
 }
 
-
 export interface ManualTriageDto {
   confidence_per?: number;
   priority?: Priority;
@@ -188,7 +186,6 @@ export interface SubmitAlertDto {
   networkMap: unknown;
   };
 }
-
 
 export interface ConvertToCaseData {
   caseId?: string;

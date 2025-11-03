@@ -43,9 +43,7 @@ const defaultCollaborators: Collaborator[] = [
 ];
 
 const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = defaultCollaborators, onCreateThread }) => {
-  const [openCreate, setOpenCreate] = React.useState(false);
-
-  // Data arrays for repetitive structures
+  const [openCreate, setOpenCreate] = React.useState(false);
   const typologies = [
     { id: 'account-muling', name: 'Account Muling', score: 85 },
     { id: 'transaction-structuring', name: 'Transaction Structuring', score: 75 }

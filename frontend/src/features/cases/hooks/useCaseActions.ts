@@ -7,7 +7,6 @@ import { useRejectCaseActions } from './useRejectCaseActions';
 import { useReturnCaseActions } from './useReturnCaseActions';
 import { useReopenCaseActions } from './useReopenCaseActions';
 
-
 export const useCaseActions = (refreshCases: () => Promise<void>) => {
   const { handleCloseCaseSubmit } = useCloseCaseActions(refreshCases);
   const { handleAbandonSubmit } = useAbandonCaseActions(refreshCases);
@@ -26,29 +25,21 @@ export const useCaseActions = (refreshCases: () => Promise<void>) => {
   const { handleReturnForReview } = useReturnCaseActions(refreshCases);
   const { handleReopenSubmit } = useReopenCaseActions(refreshCases);
 
-  return {
-    // Case management actions
+  return {
     handleCloseCaseSubmit,
     handleAbandonSubmit,
     handleSuspendSubmit,
     handleResumeSubmit,
-    handleReopenSubmit,
-    
-    // Approval actions
+    handleReopenSubmit,
     handleApproveClosureSubmit,
     handleApproveCreation,
-    handleApproveReopening,
-    
-    // Rejection actions
+    handleApproveReopening,
     handleRejectCaseCreation,
     handleRejectCase,
-    handleRejectReopening,
-    
-    // Review actions
+    handleRejectReopening,
     handleReturnForReview,
   };
 };
-
 
 export {
   useCloseCaseActions,

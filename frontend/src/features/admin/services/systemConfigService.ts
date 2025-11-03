@@ -16,9 +16,6 @@ export interface SystemConfigResponse {
 export class SystemConfigService {
   private baseUrl = '/api/v1/config';
 
-  /**
-   * Get current system configuration
-   */
   async getSystemConfig(): Promise<SystemConfig> {
     try {
       const response = await apiClient.get<SystemConfigResponse>(`${this.baseUrl}/system`);
@@ -35,10 +32,6 @@ export class SystemConfigService {
     }
   }
 
-  /**
-   * Update system configuration (if backend supports it)
-   * Note: Currently backend only provides GET endpoint, this is for future implementation
-   */
   async updateSystemConfig(config: Partial<SystemConfig>): Promise<SystemConfig> {
     try {
       const response = await apiClient.put<SystemConfigResponse>(`${this.baseUrl}/system`, config);
@@ -55,9 +48,6 @@ export class SystemConfigService {
     }
   }
 
-  /**
-   * Validate configuration values
-   */
   validateConfig(config: Partial<SystemConfig>): string[] {
     const errors: string[] = [];
 

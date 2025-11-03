@@ -97,7 +97,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     loadNALTAlerts();
   }, [open]);
 
-
   React.useEffect(() => {
     if (!open) return;
 
@@ -163,7 +162,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
 
   if (!open) return null;
 

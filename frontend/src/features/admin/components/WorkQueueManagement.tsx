@@ -1,9 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { PageContainer } from '@/shared/components/ui';
 import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
-
-// Dynamic import for modal
+import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
 const CreateWorkQueueModal = lazy(() => import('./CreateWorkQueueModal'));
 
 interface WorkQueueManagementProps {
@@ -94,7 +92,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
       subtitle="Manage work queues for different user groups"
       className={className}
     >
-      {/* Header Actions */}
+      {}
       <div className="flex justify-between items-center mb-6">
         {onNavigateBack && (
           <div className="absolute top-6 right-6">
@@ -108,7 +106,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
           </div>
         )}
         <div className="flex items-center space-x-4">
-          {/* Search */}
+          {}
           <div className="relative">
             <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -120,7 +118,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
             />
           </div>
 
-          {/* Status Filter */}
+          {}
           <div className="relative">
             <FunnelIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <select
@@ -135,7 +133,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
           </div>
         </div>
 
-        {/* Create Button */}
+        {}
         <button 
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -145,7 +143,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
         </button>
       </div>
 
-      {/* Work Queues Table */}
+      {}
       <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -238,7 +236,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ className = '
         )}
       </div>
 
-      {/* Create Work Queue Modal */}
+      {}
       <Suspense fallback={<div>Loading modal...</div>}>
         <CreateWorkQueueModal
           isOpen={isCreateModalOpen}

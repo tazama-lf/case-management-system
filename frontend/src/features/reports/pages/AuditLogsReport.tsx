@@ -4,6 +4,7 @@ import AuditLogsStatsCards from '../components/AuditLogsStatsCards';
 import AuditLogsTable from '../components/AuditLogsTable';
 import { useAuditLogs } from '../hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
+import { generateReportFilename } from '@/shared/utils/stringUtils';
 
 interface AuditLogsReportProps {
   dateRange: string;
@@ -46,7 +47,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
   const handleExportExcel = () => {
     try {
       const formattedData = formatDataForExport(auditLogs, 'AUDIT_LOGS');
-      const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename('audit-logs-report');
       exportToExcel(formattedData, filename, 'Audit Logs Report');
     } catch (error) {
       console.error('Export failed:', error);
@@ -57,7 +58,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
   const handleExportCSV = () => {
     try {
       const formattedData = formatDataForExport(auditLogs, 'AUDIT_LOGS');
-      const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename('audit-logs-report');
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);

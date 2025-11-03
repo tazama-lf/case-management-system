@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate } from '@/shared/utils/dateUtils';
+import { getAuditTypeColorClass } from '@/shared/utils/colors';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { AuditLog } from '../types/reports.types';
 
@@ -45,26 +47,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
   React.useEffect(() => {
     setCurrentPage(1);
   }, [outcomeFilter, entityFilter, typeFilter]);
-
-  const getTypeColor = (type: string) => {
-    if (!type) return 'bg-blue-100 text-blue-800';
-
-    switch (type) {
-      case 'Success': return 'bg-green-100 text-green-800';
-      case 'Warning': return 'bg-yellow-100 text-yellow-800';
-      case 'Error': return 'bg-red-100 text-red-800';
-      default: return 'bg-blue-100 text-blue-800';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -116,7 +98,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      {/* Header with Export Buttons */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Audit Logs</h3>
@@ -152,7 +133,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
         </div>
       </div>
 
-      {/* Filters */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Outcome</label>
@@ -212,7 +192,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
@@ -305,7 +284,7 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(log.type)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getAuditTypeColorClass(log.type)}`}>
                       {log.type || 'Info'}
                     </span>
                   </td>
@@ -316,7 +295,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="flex items-center text-sm text-gray-700">

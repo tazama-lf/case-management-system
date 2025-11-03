@@ -11,7 +11,6 @@ const getRiskThresholdLabel = (score: number): string => {
   return score > 80 ? 'High' : score > 60 ? 'Medium' : 'Low';
 };
 
-
 const createModalHandlers = <T,>(setter: React.Dispatch<React.SetStateAction<T | null>>) => ({
   open: (value: T) => setter(value),
   close: () => setter(null),
@@ -88,9 +87,7 @@ const TypologyItem: React.FC<{ id: string; title: string; score: number; isExpan
       </div>
     )}
   </div>
-);
-
-// Broken down focused components
+);
 const RelatedCasesSection: React.FC<{
   cases: Array<{ id: string; title: string }>;
   onCaseClick: (id: string) => void;

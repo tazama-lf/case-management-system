@@ -13,9 +13,7 @@ import triageService from '@/features/alerts/services/triageservice';
 import { transformBackendAlertToUI } from '@/features/alerts/utils/alertTransformers';
 import { extractTransactionIdFromAlert } from '@/features/alerts/utils/transactionUtils';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
-import { useAlertFilterOptions, useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
-
-// Dynamic imports for modals
+import { useAlertFilterOptions, useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 const AlertsDetailModal = lazy(() => import('@/features/alerts/components/AlertsDetailModal'));
 const ManualTriageModal = lazy(() => import('@/features/alerts/components/ManualTriageModal'));
 const TransactionMessagesModal = lazy(() => import('@/features/alerts/components/TransactionMessagesModal'));
@@ -348,7 +346,7 @@ const AlertsDashboard: React.FC = () => {
           />
         </div>
 
-      {/* Alerts Detail Modal */}
+      {}
       <Suspense fallback={<div>Loading modal...</div>}>
         <AlertsDetailModal
           alertId={selectedAlert?.alert_id || null}
@@ -363,7 +361,7 @@ const AlertsDashboard: React.FC = () => {
         />
       </Suspense>
 
-      {/* Manual Triage Modal */}
+      {}
       {selectedAlert && (
         <Suspense fallback={<div>Loading modal...</div>}>
           <ManualTriageModal
@@ -378,7 +376,7 @@ const AlertsDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {/* Transaction Messages Modal */}
+      {}
       <Suspense fallback={<div>Loading modal...</div>}>
         <TransactionMessagesModal
           isOpen={showTransactionMessages}
@@ -388,7 +386,7 @@ const AlertsDashboard: React.FC = () => {
         />
       </Suspense>
 
-      {/* Message Payload Modal */}
+      {}
       <Suspense fallback={<div>Loading modal...</div>}>
         <MessagePayloadModal
           isOpen={showMessagePayload}

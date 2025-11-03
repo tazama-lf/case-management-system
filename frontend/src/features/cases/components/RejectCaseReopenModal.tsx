@@ -111,4 +111,3 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
 
 export default RejectCaseReopenModal;
 
-

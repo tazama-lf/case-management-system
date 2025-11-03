@@ -39,7 +39,7 @@ const Dashboard: React.FC = () => {
             </div>
           }
         >
-          <div /> {/* Empty children required by LoadingState */}
+          <div /> {}
         </LoadingState>
       </PageContainer>
     );

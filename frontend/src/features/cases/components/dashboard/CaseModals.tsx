@@ -49,7 +49,6 @@ interface CaseModalsProps {
   setIsRejectReopenOpen: (open: boolean) => void;
   
   selectedRow: CaseRow | null;
-  
 
   handleCreate: (payload: {
     alertId?: string;

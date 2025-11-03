@@ -7,10 +7,32 @@ export { default as CaseAgeingReport } from './pages/CaseAgeingReport';
 export { default as ReportStatsCards } from './components/ReportStatsCards';
 export { default as ReportFilters } from './components/ReportFilters';
 export { default as FiltersPanel } from './components/FiltersPanel';
-export { default as PieChart } from './components/PieChart';
-export { default as BarChart } from './components/BarChart';
-export { default as LineChart } from './components/LineChart';
-export { default as ReportsTable } from './components/ReportsTable';
+
+export {
+  PieChart,
+  BarChart,
+  LineChart,
+  MultiBarChart,
+  CaseAgeingBarChart,
+  CaseAgeingPieChart,
+  CaseTypeResolutionChart,
+  CaseVolumeTrendChart,
+  CompletionRateTrendChart,
+  CompletionTimeChart,
+  OutcomeDistributionChart,
+  ResolutionEfficiencyChart,
+  ResolutionTimeTrendChart,
+  TaskCompletionBarChart,
+  TaskStatusPieChart,
+  WorkloadBarChart,
+  AuditLogsTable,
+  CaseAgeingTable,
+  TaskCompletionTable,
+  InvestigatorPerformanceTable,
+  ReportsTable
+} from './utils/chartLoader';
+
+export { ChartLoadingFallback, TableLoadingFallback, ChartContainer } from './components/ChartComponents';
 
 export {
   useReports,

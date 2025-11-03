@@ -40,14 +40,9 @@ export interface AuditLogResponse {
 export class AuditLogService {
   private baseUrl = '/auth';
 
-  /**
-   * Get audit logs with filtering
-   */
   async getAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLogResponse> {
     try {
-      const queryParams = new URLSearchParams();
-      
-      // Add filters to query params
+      const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
@@ -69,9 +64,6 @@ export class AuditLogService {
     }
   }
 
-  /**
-   * Get audit log entry by ID
-   */
   async getAuditLogById(id: string): Promise<AuditLogEntry> {
     try {
       const response = await apiClient.get<AuditLogEntry>(`${this.baseUrl}/audit-logs/${id}`);
@@ -88,23 +80,16 @@ export class AuditLogService {
     }
   }
 
-  /**
-   * Export audit logs (for compliance)
-   */
   async exportAuditLogs(filters: AuditLogFilters = {}): Promise<Blob> {
     try {
-      const queryParams = new URLSearchParams();
-      
-      // Add filters to query params
+      const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
         }
       });
 
-      const endpoint = `${this.baseUrl}/audit-logs/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      
-      // Note: This would need to be implemented in the backend
+      const endpoint = `${this.baseUrl}/audit-logs/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await fetch(endpoint, {
         headers: {
           ...authService.getAuthHeader(),
@@ -122,9 +107,6 @@ export class AuditLogService {
     }
   }
 
-  /**
-   * Format audit log action for display
-   */
   formatAction(action: string): string {
     return action
       .split('_')
@@ -132,9 +114,6 @@ export class AuditLogService {
       .join(' ');
   }
 
-  /**
-   * Format audit log outcome for display
-   */
   formatOutcome(outcome: string): string {
     switch (outcome) {
       case 'SUCCESS':
@@ -148,9 +127,6 @@ export class AuditLogService {
     }
   }
 
-  /**
-   * Get outcome color class for UI
-   */
   getOutcomeColorClass(outcome: string): string {
     switch (outcome) {
       case 'SUCCESS':

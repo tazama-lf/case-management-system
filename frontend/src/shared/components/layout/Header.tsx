@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { getInitials } from '@/shared/utils/stringUtils';
 import Breadcrumb from './Breadcrumb';
 import type { HeaderProps } from '../../types/navigation.types';
 
@@ -62,7 +63,7 @@ const Header: React.FC<HeaderComponentProps> = ({
               <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-gray-700">
                   {user?.initials ||
-                    user?.username?.slice(0, 2).toUpperCase() ||
+                    getInitials(user?.username || '') ||
                     'U'}
                 </span>
               </div>

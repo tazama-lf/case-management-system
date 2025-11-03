@@ -158,7 +158,6 @@ describe('useAlertOperations', () => {
       });
     };
 
-
     const handleClose = () => {
       closeAlert({
         alertId: 'ALERT-001',

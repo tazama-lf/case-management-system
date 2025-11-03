@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { formatDate } from '../../../shared/utils/dateUtils';
-import { EmptyState } from '../../../shared/components/ui';
+import { formatDate } from '@/shared/utils/dateUtils';
+import { EmptyState } from '@/shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
 
 interface WorkQueueTableProps {

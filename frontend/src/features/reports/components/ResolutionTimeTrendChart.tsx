@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { ResolutionTrend } from '../types/reports.types';
 
@@ -8,33 +8,47 @@ interface ResolutionTimeTrendChartProps {
   height?: number;
 }
 
-const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ data, title, height = 350 }) => {
+const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = React.memo(({ data, title, height = 350 }) => {
+  const chartData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    return data
+      .map(item => ({
+        month: item.month,
+        averageDays: Math.max(item.avgDays || 0, 0),
+        casesResolved: (item as any).casesResolved || 0
+      }))
+      .filter(item => item.casesResolved > 0 && item.averageDays >= 0)
+      .sort((a, b) => new Date(`${a.month} 1`).getTime() - new Date(`${b.month} 1`).getTime());
+  }, [data]);
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6 w-full max-w-full">
         <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
         <div className="flex items-center justify-center h-48">
-          <p className="text-gray-500 text-center">No data available</p>
+          <div className="text-center">
+            <p className="text-gray-500 mb-2">Loading trend data...</p>
+            <p className="text-gray-400 text-sm">This chart displays average resolution times over time.</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Aggregate data by date - calculate average if multiple cases closed on same date
-  const aggregatedData = data.reduce((acc: { [key: string]: { total: number; count: number } }, item) => {
-    const date = item.month;
-    if (!acc[date]) {
-      acc[date] = { total: 0, count: 0 };
-    }
-    acc[date].total += item.avgDays || 0;
-    acc[date].count += 1;
-    return acc;
-  }, {});
-
-  const chartData = Object.entries(aggregatedData).map(([date, values]) => ({
-    month: date,
-    averageDays: Math.round(values.total / values.count)
-  })).sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6 w-full max-w-full">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48">
+          <div className="text-center">
+            <p className="text-gray-500 mb-2">Processing resolution trends...</p>
+            <p className="text-gray-400 text-sm">Please wait while we analyze case resolution patterns.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
@@ -65,7 +79,13 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
               borderRadius: '6px',
               padding: '8px 12px'
             }}
-            formatter={(value: number) => [`${Math.round(value)} days`, 'Average Days']}
+            formatter={(value: number, name: string) => {
+              if (name === 'averageDays') {
+                return [`${Math.round(value)} days`, 'Average Resolution Time'];
+              }
+              return [value, name];
+            }}
+            labelFormatter={(label: string) => `Month: ${label}`}
           />
           <Line 
             type="monotone" 
@@ -80,6 +100,8 @@ const ResolutionTimeTrendChart: React.FC<ResolutionTimeTrendChartProps> = ({ dat
       </ResponsiveContainer>
     </div>
   );
-};
+});
+
+ResolutionTimeTrendChart.displayName = 'ResolutionTimeTrendChart';
 
 export default ResolutionTimeTrendChart;

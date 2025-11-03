@@ -225,7 +225,6 @@ export const handlers = [
       );
     }
 
-
     return HttpResponse.json(mockAlerts[alertIndex]);
   }),
 

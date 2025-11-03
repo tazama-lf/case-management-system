@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuditLogs, useExportAuditLogs } from '../hooks/useAuditLogs';
 import { auditLogService, type AuditLogFilters } from '../services/auditLogService';
+import { formatDateTime } from '@/shared/utils/dateUtils';
 
 interface AuditLogsPanelProps {
   className?: string;
@@ -100,7 +101,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         )}
       </div>
 
-      {/* Filters Panel */}
+      {}
       {showFilters && (
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -167,7 +168,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         </div>
       )}
 
-      {/* Audit Logs Table */}
+      {}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -193,7 +194,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
             {data?.logs.map((log) => (
               <tr key={log.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(log.timestamp).toLocaleString()}
+                  {formatDateTime(log.timestamp)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div>
@@ -231,7 +232,7 @@ const AuditLogsPanel: React.FC<AuditLogsPanelProps> = ({ className = '' }) => {
         )}
       </div>
 
-      {/* Pagination */}
+      {}
       {data && data.totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-700">

@@ -1,12 +1,4 @@
-/**
- * Date formatting utilities for consistent date display across the application
- */
 
-/**
- * Formats a date string to a localized short format
- * @param dateString - ISO date string or Date object
- * @returns Formatted date string (e.g., "Oct 15, 2:30 PM")
- */
 export const formatDate = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
@@ -22,11 +14,6 @@ export const formatDate = (dateString: string | Date): string => {
   });
 };
 
-/**
- * Formats a date string to a full format
- * @param dateString - ISO date string or Date object
- * @returns Formatted date string (e.g., "October 15, 2024 at 2:30 PM")
- */
 export const formatDateFull = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
@@ -43,11 +30,6 @@ export const formatDateFull = (dateString: string | Date): string => {
   });
 };
 
-/**
- * Formats a date string to time only
- * @param dateString - ISO date string or Date object
- * @returns Formatted time string (e.g., "2:30 PM")
- */
 export const formatTime = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
@@ -61,11 +43,6 @@ export const formatTime = (dateString: string | Date): string => {
   });
 };
 
-/**
- * Formats a date string to date only (no time)
- * @param dateString - ISO date string or Date object
- * @returns Formatted date string (e.g., "October 15, 2024")
- */
 export const formatDateOnly = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
@@ -80,12 +57,6 @@ export const formatDateOnly = (dateString: string | Date): string => {
   });
 };
 
-/**
- * Calculates the time difference between two dates
- * @param startDate - Start date string or Date object
- * @param endDate - End date string or Date object (defaults to now)
- * @returns Human readable time difference (e.g., "2 hours ago", "3 days ago")
- */
 export const getTimeAgo = (startDate: string | Date, endDate: string | Date = new Date()): string => {
   const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
@@ -105,4 +76,42 @@ export const getTimeAgo = (startDate: string | Date, endDate: string | Date = ne
   if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
   
   return formatDateOnly(start);
+};
+
+export const formatDateGB = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  
+  if (isNaN(date.getTime())) {
+    return 'Invalid Date';
+  }
+  
+  return date.toLocaleDateString('en-GB');
+};
+
+export const formatDateTime = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  
+  if (isNaN(date.getTime())) {
+    return 'Invalid Date';
+  }
+  
+  return date.toLocaleString();
+};
+
+export const formatDateForChart = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  
+  if (isNaN(date.getTime())) {
+    return 'Invalid Date';
+  }
+  
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+export const getTodayString = (): string => {
+  return new Date().toISOString().split('T')[0];
 };

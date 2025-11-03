@@ -53,7 +53,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     });
   }, [alertTypes, priorities, sources]);
 
-
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
       if (key === 'query') return false;

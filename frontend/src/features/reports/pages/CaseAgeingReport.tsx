@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import CaseAgeingStatsCards from '../components/CaseAgeingStatsCards';
-import CaseAgeingBarChart from '../components/CaseAgeingBarChart';
-import ResolutionTimeTrendChart from '../components/ResolutionTimeTrendChart';
-import CaseAgeingPieChart from '../components/CaseAgeingPieChart';
-import CaseTypeResolutionChart from '../components/CaseTypeResolutionChart';
 import CaseAgeingTable from '../components/CaseAgeingTable';
+import { ChartLoadingFallback } from '../components/ChartComponents';
+
+const CaseAgeingBarChart = lazy(() => import('../components/CaseAgeingBarChart'));
+const ResolutionTimeTrendChart = lazy(() => import('../components/ResolutionTimeTrendChart'));
+const CaseAgeingPieChart = lazy(() => import('../components/CaseAgeingPieChart'));
+const CaseTypeResolutionChart = lazy(() => import('../components/CaseTypeResolutionChart'));
 import { useCaseAgeing } from '../hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
+import { generateReportFilename } from '@/shared/utils/stringUtils';
 
 interface CaseAgeingReportProps {
   dateRange: string;
@@ -45,19 +48,19 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
     );
   }
 
-  const { stats, ageingByStatus, resolutionTrend, ageingDistribution, caseTypeResolution, caseDetails } = ageingData || {
-    stats: { avgCaseAge: 0, avgResolutionTime: 0, casesOver15Days: 0, casesOver30Days: 0 },
-    ageingByStatus: [],
-    resolutionTrend: [],
-    ageingDistribution: [],
-    caseTypeResolution: [],
-    caseDetails: []
-  };
+  const {
+    stats = { avgCaseAge: 0, avgResolutionTime: 0, casesOver15Days: 0, casesOver30Days: 0 },
+    ageingByStatus = [],
+    resolutionTrend = [],
+    ageingDistribution = [],
+    caseTypeResolution = [],
+    caseDetails = []
+  } = ageingData || {};
 
   const handleExportExcel = () => {
     try {
       const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
-      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename('case-ageing-report');
       exportToExcel(formattedData, filename, 'Case Ageing Report');
     } catch (error) {
       console.error('Export failed:', error);
@@ -68,7 +71,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
   const handleExportCSV = () => {
     try {
       const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
-      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename('case-ageing-report');
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
@@ -79,7 +82,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
   const handleExportPDF = async () => {
     try {
       const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
-      const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename('case-ageing-report');
       const columns = getColumnsForReport('CASE_AGEING');
       await exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
     } catch (error) {
@@ -94,33 +97,41 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
 
       <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0 mb-8">
         <div className="flex-1 w-full md:w-1/2">
-          <CaseAgeingBarChart
-            data={ageingByStatus}
-            title="Case Ageing by Status"
-            height={320}
-          />
+          <Suspense fallback={<ChartLoadingFallback />}>
+            <CaseAgeingBarChart
+              data={ageingByStatus}
+              title="Case Ageing by Status"
+              height={320}
+            />
+          </Suspense>
         </div>
         <div className="flex-1 w-full md:w-1/2">
-          <ResolutionTimeTrendChart
-            data={resolutionTrend}
-            title="Average Resolution Time Trend"
-          />
+          <Suspense fallback={<ChartLoadingFallback />}>
+            <ResolutionTimeTrendChart
+              data={resolutionTrend}
+              title="Average Resolution Time Trend"
+            />
+          </Suspense>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0 mb-8">
         <div className="flex-1 w-full md:w-1/2">
-          <CaseAgeingPieChart
-            data={ageingDistribution}
-            title="Case Ageing Distribution"
-            size={240}
-          />
+          <Suspense fallback={<ChartLoadingFallback />}>
+            <CaseAgeingPieChart
+              data={ageingDistribution}
+              title="Case Ageing Distribution"
+              size={240}
+            />
+          </Suspense>
         </div>
         <div className="flex-1 w-full md:w-1/2">
-          <CaseTypeResolutionChart
-            data={caseTypeResolution}
-            title="Case Type Resolution Time"
-          />
+          <Suspense fallback={<ChartLoadingFallback />}>
+            <CaseTypeResolutionChart
+              data={caseTypeResolution}
+              title="Case Type Resolution Time"
+            />
+          </Suspense>
         </div>
       </div>
 

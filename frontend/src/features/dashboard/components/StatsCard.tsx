@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { formatNumber } from '@/shared/utils/numberUtils';
 
 interface StatsCardProps {
   title: string;
@@ -62,7 +63,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
     if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
       return '0';
     }
-    return animatedValue.toLocaleString();
+    return formatNumber(animatedValue);
   };
 
   return (

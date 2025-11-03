@@ -1,7 +1,6 @@
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import React from 'react';
 
-
 interface UpdateTaskStatusModalProps {
   open: boolean;
   onClose: () => void;

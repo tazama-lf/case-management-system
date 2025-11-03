@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { formatDate } from '@/shared/utils/dateUtils';
+import { getRiskScoreColorClass, getAlertTypeBadgeColor } from '@/shared/utils/colors';
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
 
@@ -97,42 +99,6 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
       return aId.localeCompare(bId);
     }).slice(0, 50);
   }, [availableAlerts, searchTerm]);
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const getRiskScoreBadge = (score: number | string) => {
-    const numScore = typeof score === 'string' ? parseInt(score, 10) : score;
-    if (numScore >= 800) return 'bg-red-100 text-red-800';
-    if (numScore >= 600) return 'bg-orange-100 text-orange-800';
-    if (numScore >= 400) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-green-100 text-green-800';
-  };
-
-  const getTypeBadge = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'fraud':
-        return 'bg-red-100 text-red-800';
-      case 'aml':
-        return 'bg-blue-100 text-blue-800';
-      case 'fraud_and_aml':
-      case 'fraud and aml':
-        return 'bg-purple-100 text-purple-800';
-      case 'suspicious':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   if (!isVisible) return null;
 
@@ -243,14 +209,14 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        getTypeBadge(alert.txtp || alert.alert_type || 'Unknown')
+                        getAlertTypeBadgeColor(alert.txtp || alert.alert_type || 'Unknown')
                       }`}>
                         {alert.txtp || alert.alert_type || 'Unknown'}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        getRiskScoreBadge(alert.priority || 0)
+                        getRiskScoreColorClass(alert.priority || 0)
                       }`}>
                         {alert.priority || 0}
                       </span>

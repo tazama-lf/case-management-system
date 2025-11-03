@@ -12,7 +12,7 @@ export const useReports = (dateRange?: string, filters?: { caseType: string; pri
   return useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
     queryFn: () => reportsService.getReportsData(dateRange, filters),
-    staleTime: 0, // Force fresh data for debugging
+    staleTime: 0,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
   });
@@ -62,8 +62,9 @@ export const useCaseAgeing = (dateRange?: string) => {
   return useQuery<CaseAgeingData>({
     queryKey: ['reports', 'case-ageing', dateRange],
     queryFn: () => reportsService.getCaseAgeingData(dateRange),
-    staleTime: 1000 * 60 * 10,
-    refetchInterval: 1000 * 60 * 10,
-    refetchOnWindowFocus: true,
+    staleTime: 0,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 };

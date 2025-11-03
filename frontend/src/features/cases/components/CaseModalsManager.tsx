@@ -1,5 +1,4 @@
 import React, { Suspense, lazy } from 'react';
-import { CreateCaseModal, ViewCaseModal } from '..';
 import { 
   caseService,
   type CloseCaseDto,
@@ -12,7 +11,8 @@ import type { Priority, AlertType } from '@/features/cases/components/CreateCase
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 
-// Dynamic imports for modals
+const CreateCaseModal = lazy(() => import('@/features/cases/components/CreateCaseModal'));
+const ViewCaseModal = lazy(() => import('@/features/cases/components/ViewCaseModal'));
 const CloseCaseModal = lazy(() => import('@/features/cases/components/CloseCaseModal'));
 const ApproveCaseReopenModal = lazy(() => import('@/features/cases/components/ApproveCaseReopenModal'));
 const RejectCaseReopenModal = lazy(() => import('@/features/cases/components/RejectCaseReopenModal'));
@@ -320,7 +320,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         onClose={() => {
           modalActions.setIsViewOpen(false);
           modalActions.setSelectedRow(null);
-          // Clear case ID from URL when closing modal
+
           if (params.caseId) {
             navigate('/cases');
           }

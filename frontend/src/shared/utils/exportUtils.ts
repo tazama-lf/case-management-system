@@ -87,8 +87,6 @@ export const exportToPDF = async (
       throw new Error('No data to export');
     }
 
-    // A4 dimensions in points: 841.89 x 595.28 (landscape)
-    // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
     const availableWidth = 700;
     const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
     const widthScale = availableWidth / totalRequestedWidth;
@@ -119,17 +117,15 @@ export const exportToPDF = async (
       )
     ];
 
-    // Calculate responsive column widths to fill A4 page width
     const columnWidths = columns.map(col => {
       const requestedWidth = col.width || 100;
       const scaledWidth = Math.floor(requestedWidth * widthScale);
-      
-      // Ensure minimum width for ID columns
+
       if (col.key.toLowerCase().includes('id')) {
         return Math.max(scaledWidth, 70);
       }
       
-      return Math.max(scaledWidth, 50); // Minimum width for any column
+      return Math.max(scaledWidth, 50);
     });
 
     const docDefinition = {
@@ -302,12 +298,11 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
       }));
 
     default:
-      // For unknown report types, preserve all fields including IDs
+
       return data.map(item => {
         const formatted: ExportData = {};
         Object.keys(item).forEach(key => {
           const value = item[key];
-          // Preserve full values for all ID fields
           if (key.toLowerCase().includes('id') || key.toLowerCase().includes('case')) {
             formatted[key] = String(value || '');
           } else {

@@ -2,33 +2,19 @@ import React from 'react';
 import { ExclamationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface ErrorStateProps {
-  /**
-   * Error message to display
-   */
+  
   message?: string;
-  /**
-   * Error title/heading
-   */
+  
   title?: string;
-  /**
-   * Whether to show a retry button
-   */
+  
   showRetry?: boolean;
-  /**
-   * Retry function to call when retry button is clicked
-   */
+  
   onRetry?: () => void;
-  /**
-   * Size variant for the error component
-   */
+  
   size?: 'small' | 'medium' | 'large';
-  /**
-   * Custom className for additional styling
-   */
+  
   className?: string;
-  /**
-   * Whether this is a critical error (affects styling)
-   */
+  
   severity?: 'error' | 'warning' | 'info';
 }
 

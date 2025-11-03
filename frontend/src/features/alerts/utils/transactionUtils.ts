@@ -1,6 +1,5 @@
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
-
 export function extractTransactionMessagesFromAlert(
   transactionData: any,
   transactionId: string
@@ -58,7 +57,6 @@ export function extractTransactionMessagesFromAlert(
     return [];
   }
 }
-
 
 export function extractTransactionIdFromAlert(alert: any): string {
   try {

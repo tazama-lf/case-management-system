@@ -8,13 +8,11 @@ import { flowableWorkQueueService } from '@/features/workqueue/services/flowable
 import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 
-// Dynamic imports for modals
 const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('@/features/cases/components/modals/ReassignTaskModal'));
 const UnassignTaskModal = lazy(() => import('@/features/cases/components/modals/UnassignTaskModal'));
 const CloseTaskModal = lazy(() => import('@/features/cases/components/modals/CloseTaskModal'));
 const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/modals/UpdateTaskStatusModal'));
-
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
@@ -45,7 +43,6 @@ const WorkQueueDashboard: React.FC = () => {
 
   const candidateGroups = flowableWorkQueueService.getCandidateGroups();
 
-
   useEffect(() => {
     const loadWorkQueue = async () => {
       setIsLoading(true);
@@ -65,26 +62,24 @@ const WorkQueueDashboard: React.FC = () => {
     loadWorkQueue();
   }, [candidateGroupFilter, clearError, handleError]);
 
-  // Handle URL-based task viewing
   useEffect(() => {
     const taskId = params.taskId;
     if (taskId && tasks.length > 0) {
       const taskToView = tasks.find(t => t.id === taskId);
       if (taskToView) {
         setSelectedTask(taskToView);
-        // Auto-open the most relevant modal based on task status
+     
         if (taskToView.status === 'UNASSIGNED') {
           setAssignModalOpen(true);
         } else if (taskToView.status === 'ASSIGNED' || taskToView.status === 'IN_PROGRESS') {
           setUpdateStatusModalOpen(true);
         }
       } else {
-        // Task not found, redirect to work queue
+     
         navigate('/work-queue');
       }
     }
   }, [tasks, params.taskId, navigate]);
-
 
   const filteredTasks = tasks.filter((task: UnifiedWorkQueueTask) => {
     const matchesSearch = search === '' || [
@@ -106,24 +101,23 @@ const WorkQueueDashboard: React.FC = () => {
   const handleAssignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setAssignModalOpen(true);
-    // Update URL to include task ID for deep linking
+  
     navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleReassignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setReassignModalOpen(true);
-    // Update URL to include task ID for deep linking
+   
     navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleUnassignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setUnassignModalOpen(true);
-    // Update URL to include task ID for deep linking
+ 
     navigate(`/work-queue/${taskData.id}`);
   };
-
 
   const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, _notes?: string) => {
 
@@ -184,14 +178,14 @@ const WorkQueueDashboard: React.FC = () => {
   const handleCompleteTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setCloseTaskModalOpen(true);
-    // Update URL to include task ID for deep linking
+    
     navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleUpdateTaskStatus = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setUpdateStatusModalOpen(true);
-    // Update URL to include task ID for deep linking
+   
     navigate(`/work-queue/${taskData.id}`);
   };
 
@@ -303,8 +297,6 @@ const WorkQueueDashboard: React.FC = () => {
         </div>
       </Card>
 
-
-
       {}
       <Card>
         {error && (
@@ -369,14 +361,13 @@ const WorkQueueDashboard: React.FC = () => {
         )}
       </Card>
 
-      {/* Task Modals */}
+      {}
       <Suspense fallback={<div>Loading modal...</div>}>
         <AssignTaskModal
           open={assignModalOpen}
           onClose={() => {
             setAssignModalOpen(false);
-            setSelectedTask(null);
-            // Clear task ID from URL when closing modal
+            setSelectedTask(null);
             if (params.taskId) {
               navigate('/work-queue');
             }
@@ -391,8 +382,7 @@ const WorkQueueDashboard: React.FC = () => {
           open={reassignModalOpen}
           onClose={() => {
             setReassignModalOpen(false);
-            setSelectedTask(null);
-            // Clear task ID from URL when closing modal
+            setSelectedTask(null);
             if (params.taskId) {
               navigate('/work-queue');
             }
@@ -407,8 +397,7 @@ const WorkQueueDashboard: React.FC = () => {
           open={unassignModalOpen}
           onClose={() => {
             setUnassignModalOpen(false);
-            setSelectedTask(null);
-            // Clear task ID from URL when closing modal
+            setSelectedTask(null);
             if (params.taskId) {
               navigate('/work-queue');
             }
@@ -423,8 +412,7 @@ const WorkQueueDashboard: React.FC = () => {
           open={closeTaskModalOpen}
           onClose={() => {
             setCloseTaskModalOpen(false);
-            setSelectedTask(null);
-            // Clear task ID from URL when closing modal
+            setSelectedTask(null);
             if (params.taskId) {
               navigate('/work-queue');
             }
@@ -439,8 +427,7 @@ const WorkQueueDashboard: React.FC = () => {
           open={updateStatusModalOpen}
           onClose={() => {
             setUpdateStatusModalOpen(false);
-            setSelectedTask(null);
-            // Clear task ID from URL when closing modal
+            setSelectedTask(null);
             if (params.taskId) {
               navigate('/work-queue');
             }

@@ -20,7 +20,6 @@ const OutcomeDistributionChart: React.FC<OutcomeDistributionChartProps> = ({ dat
     );
   }
 
- 
   const chartData = data.map(item => ({
     name: item.name,
     Confirmed: item.confirmed,

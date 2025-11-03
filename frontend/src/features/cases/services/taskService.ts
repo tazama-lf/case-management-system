@@ -1,6 +1,5 @@
-import apiClient from '../../../shared/services/apiClient';
+import apiClient from '@/shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
-
 
 export const TaskStatus = {
   STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
@@ -34,7 +33,6 @@ export interface TaskForSupervisor {
     priority?: string;
   };
 }
-
 
 export interface Task {
   id: string;

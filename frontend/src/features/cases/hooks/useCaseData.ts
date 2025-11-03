@@ -27,7 +27,6 @@ export const useCaseData = () => {
 
     try {
       let response;
-      
 
       const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
       

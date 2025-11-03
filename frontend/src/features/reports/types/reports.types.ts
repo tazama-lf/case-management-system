@@ -21,10 +21,9 @@ export interface CaseType {
 }
 
 export interface CaseOutcome {
-  resolved: number;
+  refuted: number;
   confirmed: number;
   inconclusive: number;
-  pending: number;
 }
 
 export interface MonthlyCaseTrend {
@@ -56,7 +55,6 @@ export interface ReportFilters {
   status: string;
   assignee: string;
 }
-
 
 export interface InvestigatorStats {
   totalInvestigators: number;
@@ -108,7 +106,6 @@ export interface InvestigatorWorkloadData {
   performanceData: InvestigatorPerformance[];
 }
 
-
 export interface TaskStats {
   totalTasks: number;
   completionRate: number;
@@ -158,7 +155,6 @@ export interface TaskCompletionData {
   taskDetails: TaskDetail[];
 }
 
-
 export interface AuditLogsStats {
   totalLogs: number;
   caseActions: number;
@@ -182,7 +178,6 @@ export interface AuditLogsData {
   auditLogs: AuditLog[];
 }
 
-
 export interface CaseAgeingStats {
   avgCaseAge: number;
   avgResolutionTime: number;
@@ -201,6 +196,7 @@ export interface AgeingByStatus {
 export interface ResolutionTrend {
   month: string;
   avgDays: number;
+  casesResolved?: number;
 }
 
 export interface AgeingDistribution {

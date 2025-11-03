@@ -1,6 +1,7 @@
 import React from 'react';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { FlowableError, createErrorMessage } from '../utils/flowableErrorHandler';
+import { formatDateTime } from '@/shared/utils/dateUtils';
 
 interface WorkQueueErrorBoundaryProps {
   children: React.ReactNode;
@@ -17,7 +18,6 @@ interface WorkQueueErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
-
 
 export class WorkQueueErrorBoundary extends React.Component<
   WorkQueueErrorBoundaryProps,
@@ -54,7 +54,6 @@ export class WorkQueueErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-
 
 export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps> = ({
   error,
@@ -109,7 +108,7 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
             <div className="mt-2 p-3 bg-gray-100 rounded text-xs text-gray-600 font-mono">
               <div><strong>Type:</strong> {error.type}</div>
               {error.statusCode && <div><strong>Status:</strong> {error.statusCode}</div>}
-              <div><strong>Timestamp:</strong> {new Date(error.timestamp).toLocaleString()}</div>
+              <div><strong>Timestamp:</strong> {formatDateTime(error.timestamp)}</div>
               {error.originalError && (
                 <div className="mt-2">
                   <strong>Details:</strong>
@@ -125,7 +124,6 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
     </div>
   );
 };
-
 
 export const useWorkQueueErrorHandler = () => {
   const [error, setError] = React.useState<FlowableError | null>(null);
@@ -157,7 +155,6 @@ export const useWorkQueueErrorHandler = () => {
     getErrorDisplay
   };
 };
-
 
 export function withWorkQueueErrorHandling<P extends object>(
   Component: React.ComponentType<P>,

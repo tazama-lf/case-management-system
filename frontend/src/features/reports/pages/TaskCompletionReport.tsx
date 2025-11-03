@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
-
 const TaskStatsCards = React.lazy(() => import('../components/TaskStatsCards'));
 const TaskCompletionBarChart = React.lazy(() => import('../components/TaskCompletionBarChart'));
 const CompletionTimeChart = React.lazy(() => import('../components/CompletionTimeChart'));

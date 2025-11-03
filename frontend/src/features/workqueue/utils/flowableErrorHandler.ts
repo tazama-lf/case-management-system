@@ -1,8 +1,6 @@
 import type { FlowableErrorResponse } from '../types/flowable.types';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
-
-
 export class FlowableError extends Error {
   public readonly type: 'FLOWABLE_ERROR' | 'API_ERROR' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
   public readonly statusCode?: number;
@@ -23,7 +21,6 @@ export class FlowableError extends Error {
     this.timestamp = new Date().toISOString();
   }
 }
-
 
 export const FlowableErrorCodes = {
   TASK_NOT_FOUND: 'TASK_NOT_FOUND',
@@ -51,7 +48,6 @@ export const FlowableErrorCodes = {
 
 export type FlowableErrorCode = typeof FlowableErrorCodes[keyof typeof FlowableErrorCodes];
 
-
 export const ErrorMessages: Record<FlowableErrorCode, string> = {
   [FlowableErrorCodes.TASK_NOT_FOUND]: 'The requested task could not be found. It may have been completed or deleted.',
   [FlowableErrorCodes.TASK_ALREADY_ASSIGNED]: 'This task is already assigned to another user.',
@@ -75,7 +71,6 @@ export const ErrorMessages: Record<FlowableErrorCode, string> = {
   [FlowableErrorCodes.DATABASE_ERROR]: 'Database error occurred. Please contact support if the issue persists.',
   [FlowableErrorCodes.NETWORK_TIMEOUT]: 'Network timeout occurred. Please check your connection and try again.',
 };
-
 
 export class FlowableErrorHandler {
 
@@ -126,7 +121,6 @@ export class FlowableErrorHandler {
     return FlowableErrorHandler.createErrorFromStatus(status, operation, data);
   }
 
-
   private static mapFlowableErrorCode(error: FlowableErrorResponse, status: number): FlowableErrorCode {
     const message = error.message?.toLowerCase() || '';
 
@@ -172,7 +166,6 @@ export class FlowableErrorHandler {
     return FlowableErrorCodes.FLOWABLE_SERVER_ERROR;
   }
 
-
   private static createErrorFromStatus(status: number, operation: string, data?: any): FlowableError {
     const statusErrorMap: Record<number, { message: string; type: FlowableError['type'] }> = {
       400: {
@@ -195,9 +188,7 @@ export class FlowableErrorHandler {
         message: 'Conflict: The resource is in a state that conflicts with the request',
         type: 'FLOWABLE_ERROR',
       },
-    };
-
-    // Handle server errors (500-504)
+    };
     if (status >= 500 && status <= 504) {
       return new FlowableError(
         ErrorMessages[FlowableErrorCodes.FLOWABLE_SERVER_ERROR],
@@ -215,9 +206,7 @@ export class FlowableErrorHandler {
         status,
         data
       );
-    }
-
-    // Default fallback
+    }
     return new FlowableError(
       `Failed to ${operation}: HTTP ${status}`,
       'API_ERROR',
@@ -225,7 +214,6 @@ export class FlowableErrorHandler {
       data
     );
   }
-
 
   private static isFlowableError(error: any): error is FlowableErrorResponse {
     return error &&
@@ -235,11 +223,9 @@ export class FlowableErrorHandler {
            typeof error.timestamp === 'string';
   }
 
-
   private static isApiError(error: any): error is ApiErrorResponse {
     return error && typeof error.message === 'string';
   }
-
 
   static getDisplayMessage(error: FlowableError): { message: string; canRetry: boolean; actionSuggestion?: string } {
     const canRetry = [
@@ -270,7 +256,6 @@ export class FlowableErrorHandler {
     };
   }
 }
-
 
 export const createErrorMessage = (error: unknown, defaultMessage: string = 'An unexpected error occurred') => {
   if (error instanceof FlowableError) {

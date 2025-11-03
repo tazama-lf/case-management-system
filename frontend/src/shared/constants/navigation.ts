@@ -30,7 +30,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Work Queues',
     href: '/work-queue',
     icon: QueueListIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'], // Added CMS_INVESTIGATOR back
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'], 
   },
   {
     name: 'Reports',

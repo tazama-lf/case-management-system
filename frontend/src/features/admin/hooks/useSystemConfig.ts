@@ -2,9 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { systemConfigService, type SystemConfig } from '../services/systemConfigService';
 import toast from 'react-hot-toast';
 
-/**
- * Hook to fetch system configuration
- */
 export const useSystemConfig = () => {
   return useQuery({
     queryKey: ['systemConfig'],
@@ -15,23 +12,18 @@ export const useSystemConfig = () => {
   });
 };
 
-/**
- * Hook to update system configuration
- */
 export const useUpdateSystemConfig = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (config: Partial<SystemConfig>) => {
-      // Validate config before sending
+    mutationFn: (config: Partial<SystemConfig>) => {
       const errors = systemConfigService.validateConfig(config);
       if (errors.length > 0) {
         throw new Error(errors.join(', '));
       }
       return systemConfigService.updateSystemConfig(config);
     },
-    onSuccess: (data) => {
-      // Update the cache with new data
+    onSuccess: (data) => {
       queryClient.setQueryData(['systemConfig'], data);
       toast.success('System configuration updated successfully');
     },
@@ -42,9 +34,6 @@ export const useUpdateSystemConfig = () => {
   });
 };
 
-/**
- * Hook to check if system configuration is available
- */
 export const useSystemConfigAvailable = () => {
   const { data, error, isLoading } = useSystemConfig();
   

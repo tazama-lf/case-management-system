@@ -1,4 +1,6 @@
 import React, { createContext, useContext } from 'react';
+import { formatDate, formatDateTime } from '@/shared/utils/dateUtils';
+import { getPriorityColorClass } from '@/shared/utils/colors';
 import { XMarkIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { Alert } from '../types/triage.types';
 import type { ActionHistory } from '../types/triage.types';
@@ -89,23 +91,8 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
 
   if (!alert) return null;
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority?.toUpperCase()) {
-      case 'BREACH':
-        return 'text-red-600 bg-red-100';
-      case 'CRITICAL':
-        return 'text-red-600 bg-red-100';
-      case 'URGENT':
-        return 'text-orange-600 bg-orange-100';
-      case 'NEW':
-        return 'text-blue-600 bg-blue-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   return (
-    <div className={`p-6 border-b border-gray-200 ${className}`}>
+    <div className={`p-6 border-b border-gray-200`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
@@ -114,7 +101,7 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
               Alert Details
             </h2>
           </div>
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(alert.priority)}`}>
+          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColorClass(alert.priority)}`}>
             {alert.priority}
           </span>
         </div>
@@ -165,14 +152,6 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
   }
 
   if (!alert) return null;
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
 
   const renderJSONData = (data: unknown, title: string) => {
     if (!data) return null;
@@ -346,7 +325,7 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
               </p>
               <div className="flex items-center space-x-2 text-xs text-gray-500">
                 <span>
-                  {new Date(action.performed_at).toLocaleString()}
+                  {formatDateTime(action.performed_at)}
                 </span>
                 {action.user_id && (
                   <>

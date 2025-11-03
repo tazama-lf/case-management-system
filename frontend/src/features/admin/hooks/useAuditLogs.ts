@@ -2,9 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { auditLogService, type AuditLogFilters } from '../services/auditLogService';
 import { useState, useCallback } from 'react';
 
-/**
- * Hook to fetch audit logs with filtering
- */
 export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
   const [filters, setFilters] = useState<AuditLogFilters>({
     page: 1,
@@ -47,9 +44,6 @@ export const useAuditLogs = (initialFilters: AuditLogFilters = {}) => {
   };
 };
 
-/**
- * Hook to fetch a specific audit log entry
- */
 export const useAuditLogEntry = (id: string | undefined) => {
   return useQuery({
     queryKey: ['auditLog', id],
@@ -60,9 +54,6 @@ export const useAuditLogEntry = (id: string | undefined) => {
   });
 };
 
-/**
- * Hook to export audit logs
- */
 export const useExportAuditLogs = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -72,9 +63,7 @@ export const useExportAuditLogs = () => {
     setExportError(null);
 
     try {
-      const blob = await auditLogService.exportAuditLogs(filters);
-      
-      // Create download link
+      const blob = await auditLogService.exportAuditLogs(filters);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

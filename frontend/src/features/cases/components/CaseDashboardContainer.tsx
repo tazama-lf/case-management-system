@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import CaseDashboardContent from './CaseDashboardContent';
-import CaseModalsManager from './CaseModalsManager';
 import { useCaseDashboard } from '../hooks/useCaseDashboard';
+
+const CaseModalsManager = lazy(() => import('./CaseModalsManager'));
 
 const CaseDashboardContainer: React.FC = () => {
   const {
@@ -39,12 +40,14 @@ const CaseDashboardContainer: React.FC = () => {
         onRejectCaseReopen={dashboardActions.handleRejectCaseReopen}
       />
       
-      <CaseModalsManager
-        modalState={modalState}
-        modalActions={modalActions}
-        onRefreshCases={refreshCases}
-        caseActions={caseActions}
-      />
+      <Suspense fallback={<div>Loading...</div>}>
+        <CaseModalsManager
+          modalState={modalState}
+          modalActions={modalActions}
+          onRefreshCases={refreshCases}
+          caseActions={caseActions}
+        />
+      </Suspense>
     </>
   );
 };

@@ -38,7 +38,6 @@ class TriageService {
       throw new Error('Alert ID is missing from response');
     }
 
-
     return data as Alert;
   }
 

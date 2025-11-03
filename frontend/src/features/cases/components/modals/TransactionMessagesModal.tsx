@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MessagePayloadModal } from '../../../alerts';
 
-
 interface TransactionMessage {
   id: string;
   type: string;
@@ -30,7 +29,6 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
     setSelectedMessage(message);
     setPayloadModalOpen(true);
   };
-
 
   if (!isOpen) return null;
 

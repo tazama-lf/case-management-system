@@ -1,4 +1,5 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
+import { generateReportFilename } from '@/shared/utils/stringUtils';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { PageContainer } from '@/shared/components/ui';
 import ReportStatsCards from '@/features/reports/components/ReportStatsCards';
@@ -6,8 +7,7 @@ import ReportFilters from '@/features/reports/components/ReportFilters';
 import ReportsTable from '@/features/reports/components/ReportsTable';
 import { useReports } from '@/features/reports/hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '@/shared/utils/exportUtils';
-import { getCaseTypeColor } from '@/shared/utils/colors';
-
+import { ReportsProcessor } from '@/features/reports/utils/reportsProcessor';
 
 const PieChart = lazy(() => import('@/features/reports/components/PieChart'));
 const BarChart = lazy(() => import('@/features/reports/components/BarChart'));
@@ -31,7 +31,7 @@ const Reports: React.FC = () => {
     try {
       const data = getCurrentReportData();
       const formattedData = formatDataForExport(data, reportType);
-      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename(reportType);
       exportToExcel(formattedData, filename, `${reportType} Report`);
     } catch (error) {
       console.error('Export failed:', error);
@@ -43,7 +43,7 @@ const Reports: React.FC = () => {
     try {
       const data = getCurrentReportData();
       const formattedData = formatDataForExport(data, reportType);
-      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename(reportType);
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
@@ -55,7 +55,7 @@ const Reports: React.FC = () => {
     try {
       const data = getCurrentReportData();
       const formattedData = formatDataForExport(data, reportType);
-      const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
+      const filename = generateReportFilename(reportType);
       const columns = getColumnsForReport(reportType);
       const title = getPageTitle();
       await exportToPDF(formattedData, filename, title, columns);
@@ -124,45 +124,12 @@ const Reports: React.FC = () => {
     );
   }
 
-  const { stats, statusDistribution, caseTypes, outcomes, monthlyTrend, statusDetails } = reportsData || {
-    stats: { totalCases: 0, closedCases: 0, openCases: 0, avgResolutionTime: 0 },
-    statusDistribution: { assigned: 0, inProgress: 0, draft: 0, suspended: 0, pendingApproval: 0, closed: 0 },
-    caseTypes: [],
-    outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
-    monthlyTrend: [],
-    statusDetails: []
-  };
+  const { stats, statusDistribution, caseTypes, outcomes, monthlyTrend, statusDetails } = reportsData || 
+    ReportsProcessor.createFallbackData();
 
-  const statusDistributionData = [
-    { label: 'ASSIGNED', value: statusDistribution.assigned, color: '#3b82f6', percentage: 0 },
-    { label: 'IN PROGRESS', value: statusDistribution.inProgress, color: '#10b981', percentage: 0 },
-    { label: 'DRAFT', value: statusDistribution.draft, color: '#f59e0b', percentage: 0 },
-    { label: 'SUSPENDED', value: statusDistribution.suspended, color: '#ef4444', percentage: 0 },
-    { label: 'PENDING APPROVAL', value: statusDistribution.pendingApproval, color: '#8b5cf6', percentage: 0 },
-    { label: 'CLOSED', value: statusDistribution.closed, color: '#6b7280', percentage: 0 }
-  ].map(item => ({
-    ...item,
-    percentage: stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0
-  }));
+  const statusDistributionData = ReportsProcessor.processStatusDistributionData(statusDistribution, stats.totalCases);
 
-  // Debug outcomes data
-  console.log('Debug - reportsData:', reportsData);
-  console.log('Debug - outcomes:', outcomes);
-
-  // Improved outcome data processing with better fallbacks
-  const totalOutcomes = (outcomes?.resolved || 0) + (outcomes?.confirmed || 0) + (outcomes?.inconclusive || 0) + (outcomes?.pending || 0);
-  const outcomeData = [
-    { label: 'REFUTED', value: outcomes?.resolved || 0, color: '#10b981', percentage: 0 },
-    { label: 'CONFIRMED', value: outcomes?.confirmed || 0, color: '#ef4444', percentage: 0 },
-    { label: 'INCONCLUSIVE', value: outcomes?.inconclusive || 0, color: '#f59e0b', percentage: 0 },
-    { label: 'PENDING', value: outcomes?.pending || 0, color: '#3b82f6', percentage: 0 }
-  ].map(item => ({
-    ...item,
-    percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0
-  }));
-
-  console.log('Debug - totalOutcomes:', totalOutcomes);
-  console.log('Debug - outcomeData:', outcomeData);
+  const outcomeData = ReportsProcessor.processOutcomeData(outcomes);
 
   const getPageTitle = () => {
     switch (reportType) {
@@ -211,11 +178,7 @@ const Reports: React.FC = () => {
             </Suspense>
             <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
               <BarChart
-                data={caseTypes.map(type => ({
-                  label: type.name,
-                  value: type.count,
-                  color: getCaseTypeColor(type.name)
-                }))}
+                data={ReportsProcessor.processCaseTypesData(caseTypes)}
                 title="Case Types"
                 isLoading={isLoading}
               />

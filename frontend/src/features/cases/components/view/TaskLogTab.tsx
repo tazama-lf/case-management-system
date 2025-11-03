@@ -3,9 +3,7 @@ import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
-import { useToast } from '../../../../shared/providers/ToastProvider';
-
-// Dynamic imports for better performance
+import { useToast } from '../../../../shared/providers/ToastProvider';
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
@@ -48,7 +46,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     fetchTasks();
   }, [caseId]);
 
-
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
 
     let effectiveStatus = backendTask.status;
@@ -83,9 +80,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       case 'STATUS_21_BLOCKED': return 'SUSPENDED';
       default: return 'UNASSIGNED';
     }
-  };
-
-  // Status options mapping for the filter dropdown
+  };
   const statusOptions = [
     { value: 'all', label: 'Status: All' },
     { value: TaskStatus.STATUS_01_UNASSIGNED, label: 'Unassigned' },
@@ -112,13 +107,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
   const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
 
-
   const handleAssign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setAssignModalOpen(true);
   };
-
-
 
   const handleUnassign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
@@ -133,9 +125,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const handleUpdateStatus = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setUpdateStatusModalOpen(true);
-  };
-
-  // Unified handler for all task operations with type checking
+  };
   type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus';
   
   interface TaskOperationParams {
@@ -153,8 +143,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   ): Promise<void> => {
     const { task, assignee, newStatus, reason } = params;
 
-    try {
-      // Validation based on operation type
+    try {
       if ((operation === 'assign' || operation === 'reassign') && !assignee) {
         console.warn(`Cannot ${operation} task: missing assignee`, { task, assignee });
         toastError(`${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`, 'Missing assignee');
@@ -171,9 +160,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         console.warn('Cannot unassign task: missing reason', { task, reason });
         toastError('Unassign Task Failed', 'Missing reason');
         return;
-      }
-
-      // Execute the appropriate operation
+      }
       switch (operation) {
         case 'assign':
           await taskService.assignTaskToInvestigator(task.id, assignee!);
@@ -199,9 +186,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           break;
         default:
           throw new Error(`Unknown operation: ${operation}`);
-      }
-
-      // Close modals and refresh tasks
+      }
       setAssignModalOpen(false);
       setReassignModalOpen(false);
       setUnassignModalOpen(false);
@@ -209,9 +194,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       setSelectedTask(null);
 
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-      setTasks(fetchedTasks);
-
-      // Success message
+      setTasks(fetchedTasks);
       const operationMessages = {
         assign: 'Task Assigned Successfully',
         reassign: 'Task Reassigned Successfully',
@@ -230,9 +213,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       };
       toastError(operationLabels[operation], error instanceof Error ? error.message : `Failed to ${operation} task`);
     }
-  };
-
-  // Simplified handler functions that use the unified handler
+  };
   const handleModalAssign = (task: UnifiedWorkQueueTask, assignee: string, notes?: string) =>
     handleTaskOperation('assign', { task, assignee, notes });
 
@@ -308,7 +289,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         />
       )}
 
-      {/* Conditional modal rendering to prevent performance bottlenecks */}
+      {}
       {assignModalOpen && (
         <Suspense fallback={<div>Loading...</div>}>
           <AssignTaskModal

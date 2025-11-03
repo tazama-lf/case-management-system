@@ -30,13 +30,11 @@ export const useCaseDashboard = () => {
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
-  
- 
+
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
-
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -56,9 +54,7 @@ export const useCaseDashboard = () => {
   const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
   const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
-  const [createCaseError, setCreateCaseError] = useState<string>('');
-
-  // Case actions hook
+  const [createCaseError, setCreateCaseError] = useState<string>('');
   const caseActions = useCaseActions(() => fetchCases());
 
   const fetchCases = async () => {
@@ -80,8 +76,7 @@ export const useCaseDashboard = () => {
           sortBy: 'updated_at',
           sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
         });
-      } else {
-        // Fetch all cases for supervisors and admins
+      } else {
         response = await caseService.getAllCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
@@ -104,7 +99,6 @@ export const useCaseDashboard = () => {
     fetchCases();
   }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasAdminRole]);
 
- 
   useEffect(() => {
     const caseId = params.caseId;
     if (caseId && cases.length > 0) {
@@ -119,7 +113,6 @@ export const useCaseDashboard = () => {
       }
     }
   }, [cases, params.caseId, navigate, error]);
-
 
   const filteredCases = cases.filter((c) =>
     search === '' || [
@@ -137,7 +130,6 @@ export const useCaseDashboard = () => {
       .includes(search.toLowerCase())
   );
 
-  
   const dashboardActions = {
     handleView: (row: CaseRow) => {
       setSelectedRow(row);
@@ -228,7 +220,6 @@ export const useCaseDashboard = () => {
     setPriorityFilter
   };
 
-
   const modalState: CaseModalState = {
     isCreateOpen,
     isViewOpen,
@@ -273,7 +264,6 @@ export const useCaseDashboard = () => {
     setCreateCaseError
   };
 
-  
   const dashboardState: CaseDashboardState = {
     cases: filteredCases,
     loading,
@@ -290,14 +280,12 @@ export const useCaseDashboard = () => {
    
     dashboardState,
     modalState,
-    
-  
+
     dashboardActions,
     filterActions,
     modalActions,
     caseActions,
-    
- 
+
     refreshCases: fetchCases
   };
 };

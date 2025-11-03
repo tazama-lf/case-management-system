@@ -12,7 +12,6 @@ interface RoleGuardProps {
   requireAdmin?: boolean;
 }
 
-
 const RoleGuard: React.FC<RoleGuardProps> = ({
   children,
   requiredRoles = [],

@@ -120,4 +120,3 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
 
 export default ApproveCaseReopenModal;
 
-

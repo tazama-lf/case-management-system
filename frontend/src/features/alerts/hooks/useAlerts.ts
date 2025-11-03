@@ -264,7 +264,6 @@ export const useAlerts = () => {
     return state.filteredAlerts.slice(start, end);
   }, [state.filteredAlerts, state.pagination]);
 
-
   return {
     ...state,
     paginatedAlerts,

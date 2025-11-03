@@ -150,10 +150,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (requiredRoles.length > 0 && user) {
-    // Use the auth service methods to check backend claims instead of user.roles
-    const hasRequiredRole = requiredRoles.some(role => {
-      // Check each required role using the appropriate auth service method
+  if (requiredRoles.length > 0 && user) {
+    const hasRequiredRole = requiredRoles.some(role => {
       switch (role) {
         case 'alert-triage':
           return authService.hasAlertTriageRole();
@@ -163,8 +161,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return authService.hasInvestigatorRole();
         case 'CMS-TEST-ROLE':
           return authService.hasCMSTestRole();
-        default:
-          // For any other roles, check backend claims directly
+        default:
           return authService.hasBackendClaim(role);
       }
     });

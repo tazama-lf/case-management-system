@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatTime } from '@/shared/utils/dateUtils';
 
 interface ResultsSummaryProps {
   pagination: {
@@ -29,7 +30,7 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
         )}
         {lastUpdated && !loading && (
           <span className="ml-4 text-xs text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
+            Last updated: {formatTime(lastUpdated)}
           </span>
         )}
       </div>
@@ -44,11 +45,9 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
+            {[5, 10, 25, 50, 100].map(size => (
+              <option key={size} value={size}>{size}</option>
+            ))}
           </select>
           <span className="text-sm text-gray-600">per page</span>
         </div>
