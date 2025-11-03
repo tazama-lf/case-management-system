@@ -1,53 +1,141 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CaseService } from '../case/case.service';
-import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
+  private readonly CLOSED_CASE_STATUSES = [
+    CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+    CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+    CaseStatus.STATUS_81_CLOSED_REFUTED,
+    CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+    CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+  ];
+
+  private readonly ACTIVE_TASK_STATUSES = [
+    TaskStatus.STATUS_10_ASSIGNED,
+    TaskStatus.STATUS_20_IN_PROGRESS,
+  ];
+
+  private readonly STATUS_MAP: Record<CaseStatus, string> = {
+    [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
+    [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
+    [CaseStatus.STATUS_00_DRAFT]: 'draft',
+    [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
+    [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
+    [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingApproval',
+    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'assigned',
+    [CaseStatus.STATUS_03_RETURNED]: 'returned',
+    [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingApproval',
+    [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'confirmed',
+    [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED]: 'refuted',
+    [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'refuted',
+    [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'confirmed',
+    [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'inconclusive',
+    [CaseStatus.STATUS_99_ABANDONED]: 'abandoned',
+  };
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly caseService: CaseService,
-    private readonly taskService: TaskService,
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  private getDateRange(dateRange?: string): { startDate: Date; endDate: Date } {
+  private processCaseDataForInvestigator(
+    allCases: any[],
+    allTasks: any[],
+    investigatorId: string
+  ) {
+    const investigatorCases = allCases.filter(c => c.case_owner_user_id === investigatorId);
+    const investigatorTasks = allTasks.filter(t => t.assigned_user_id === investigatorId);
+    
+    const activeCases = investigatorCases.filter(c => 
+      !this.CLOSED_CASE_STATUSES.includes(c.status)
+    ).length;
+    
+    const closedCases = investigatorCases.filter(c => 
+      this.CLOSED_CASE_STATUSES.includes(c.status)
+    );
+    
+    const pendingTasks = investigatorTasks.filter(t => 
+      this.ACTIVE_TASK_STATUSES.includes(t.status)
+    ).length;
+    
+    const avgResolutionTime = closedCases.length > 0
+      ? closedCases.reduce((sum, case_) => {
+          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + resolutionTime;
+        }, 0) / closedCases.length
+      : 0;
+    
+    const totalCases = investigatorCases.length;
+    const completionRate = totalCases > 0 ? Math.round((closedCases.length / totalCases) * 100) : 0;
+    
+    return {
+      totalCases,
+      activeCases,
+      closedCases: closedCases.length,
+      pendingTasks,
+      avgResolutionTime: Math.round(avgResolutionTime),
+      completionRate,
+      cases: investigatorCases,
+    };
+  }
+
+  private getDateRange(dateRange: string): { startDate: Date; endDate: Date } {
     const now = new Date();
     let endDate = new Date(now);
     let startDate = new Date(now);
 
     switch (dateRange) {
       case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
+      
       case 'yesterday':
-        startDate.setDate(now.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setDate(now.getDate() - 1);
-        endDate.setHours(23, 59, 59, 999);
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+        endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
         break;
+      
       case 'last7':
+        startDate = new Date(now);
         startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
+      
       case 'last30':
+        startDate = new Date(now);
         startDate.setDate(now.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
+      
       case 'last90':
+        startDate = new Date(now);
         startDate.setDate(now.getDate() - 90);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
+      
       case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         break;
+      
       case 'lastYear':
-        startDate = new Date(now.getFullYear() - 1, 0, 1);
-        endDate = new Date(now.getFullYear() - 1, 11, 31);
+        startDate = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
         break;
+      
       default:
+        startDate = new Date(now);
         startDate.setDate(now.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     }
 
     return { startDate, endDate };
@@ -57,108 +145,53 @@ export class ReportsService {
     dateRange?: string, 
     filters?: { caseType?: string; priority?: string; investigator?: string }
   ) {
-    const { startDate, endDate } = this.getDateRange(dateRange);
+    const { startDate, endDate } = this.getDateRange(dateRange || 'last30');
+    const now = new Date();
+    const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const whereClause: any = {
-      created_at: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-
-    if (filters?.caseType) {
-      whereClause.case_type = filters.caseType;
-    }
-    if (filters?.priority) {
-      whereClause.priority = filters.priority;
-    }
-    if (filters?.investigator) {
-      whereClause.case_owner_user_id = filters.investigator;
-    }
-
-    const statusCounts = await this.prisma.case.groupBy({
-      by: ['status'],
-      where: whereClause,
-      _count: { case_id: true },
-    });
-
-    const typeCounts = await this.prisma.case.groupBy({
-      by: ['case_type'],
-      where: whereClause,
-      _count: { case_id: true },
-    });
-
-    const totalCases = await this.prisma.case.count({
-      where: whereClause,
-    });
-
-    const closedCasesWhere = {
-      ...whereClause,
-      status: {
-        in: [
-          CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-          CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-          CaseStatus.STATUS_81_CLOSED_REFUTED,
-          CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-          CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-        ],
-      },
-    };
-    
-    const closedCases = await this.prisma.case.count({
-      where: closedCasesWhere,
-    });
-
-    const allClosedCasesWithTimes = await this.prisma.case.findMany({
+    const allCases = await this.prisma.case.findMany({
       where: {
-        status: {
-          in: [
-            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-            CaseStatus.STATUS_81_CLOSED_REFUTED,
-            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-          ],
+        created_at: {
+          gte: trendStartDate,
         },
       },
       select: {
+        case_id: true,
+        status: true,
+        case_type: true,
+        priority: true,
+        case_owner_user_id: true,
         created_at: true,
         updated_at: true,
       },
     });
 
-    const avgResolutionTime = allClosedCasesWithTimes.length > 0
-      ? allClosedCasesWithTimes.reduce((sum, case_) => {
+    const filteredCases = allCases.filter(case_ => {
+      const inDateRange = case_.created_at >= startDate && case_.created_at <= endDate;
+      const matchesType = !filters?.caseType || case_.case_type === filters.caseType;
+      const matchesPriority = !filters?.priority || case_.priority === filters.priority;
+      const matchesInvestigator = !filters?.investigator || case_.case_owner_user_id === filters.investigator;
+      return inDateRange && matchesType && matchesPriority && matchesInvestigator;
+    });
+
+    const totalCases = filteredCases.length;
+    const closedCases = filteredCases.filter(c => this.CLOSED_CASE_STATUSES.includes(c.status as any)).length;
+    
+    const closedCasesWithTimes = filteredCases.filter(c => this.CLOSED_CASE_STATUSES.includes(c.status as any));
+    const avgResolutionTime = closedCasesWithTimes.length > 0
+      ? closedCasesWithTimes.reduce((sum, case_) => {
           const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
           return sum + resolutionTime;
-        }, 0) / allClosedCasesWithTimes.length
+        }, 0) / closedCasesWithTimes.length
       : 0;
 
-    const statusMap: Record<CaseStatus, string> = {
-      [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
-      [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
-      [CaseStatus.STATUS_00_DRAFT]: 'draft',
-      [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
-      [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
-      [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingApproval',
-      [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'assigned',
-      [CaseStatus.STATUS_03_RETURNED]: 'draft',
-      [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingApproval',
-      [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'closed',
-      [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED]: 'closed',
-      [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closed',
-      [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
-      [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
-      [CaseStatus.STATUS_99_ABANDONED]: 'closed',
-    };
 
-    const closedStatuses = [
-      CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-      CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-      CaseStatus.STATUS_81_CLOSED_REFUTED,
-      CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-      CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-    ];
+
+    const statusCounts = new Map<CaseStatus, number>();
+    filteredCases.forEach(case_ => {
+      const currentCount = statusCounts.get(case_.status) || 0;
+      statusCounts.set(case_.status, currentCount + 1);
+    });
 
     const statusDistribution = {
       assigned: 0,
@@ -169,35 +202,29 @@ export class ReportsService {
       closed: 0,
     };
 
-    statusCounts.forEach(({ status, _count }) => {
-      if (closedStatuses.includes(status as any)) {
-        statusDistribution.closed += _count.case_id;
-      } else if (statusMap[status]) {
-        const mappedStatus = statusMap[status] as keyof typeof statusDistribution;
-        statusDistribution[mappedStatus] += _count.case_id;
+    statusCounts.forEach((count, status) => {
+      if (this.CLOSED_CASE_STATUSES.includes(status as any)) {
+        statusDistribution.closed += count;
+      } else if (this.STATUS_MAP[status]) {
+        const mappedStatus = this.STATUS_MAP[status] as keyof typeof statusDistribution;
+        statusDistribution[mappedStatus] += count;
       }
     });
 
-    const caseTypes = typeCounts.map(({ case_type, _count }) => ({
-      name: case_type || 'NONE',
-      count: _count.case_id,
-      color: this.getCaseTypeColor(case_type),
-    }));
 
-    const outcomeCounts = await this.prisma.case.groupBy({
-      by: ['status'],
-      where: {
-        created_at: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: {
-          in: closedStatuses,
-        },
-      },
-      _count: { case_id: true },
+    const typeCounts = new Map<string, number>();
+    filteredCases.forEach(case_ => {
+      const type = case_.case_type || 'NONE';
+      const currentCount = typeCounts.get(type) || 0;
+      typeCounts.set(type, currentCount + 1);
     });
 
+    const caseTypes = Array.from(typeCounts.entries()).map(([type, count]) => ({
+      name: type,
+      count,
+    }));
+
+    
     const outcomes = {
       resolved: 0,
       confirmed: 0,
@@ -205,39 +232,21 @@ export class ReportsService {
       pending: 0,
     };
 
-    outcomeCounts.forEach(({ status, _count }) => {
-      if (status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || status === CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED) {
-        outcomes.confirmed += _count.case_id;
-      } else if (status === CaseStatus.STATUS_81_CLOSED_REFUTED || status === CaseStatus.STATUS_72_AUTOCLOSED_REFUTED) {
-        outcomes.resolved += _count.case_id;
-      } else if (status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE) {
-        outcomes.inconclusive += _count.case_id;
+    filteredCases.forEach(case_ => {
+      if (case_.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || case_.status === CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED) {
+        outcomes.confirmed += 1;
+      } else if (case_.status === CaseStatus.STATUS_81_CLOSED_REFUTED || case_.status === CaseStatus.STATUS_72_AUTOCLOSED_REFUTED) {
+        outcomes.resolved += 1;
+      } else if (case_.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE) {
+        outcomes.inconclusive += 1;
       }
     });
 
+    
     const monthlyTrend: any[] = [];
-    const now = new Date();
-    const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-
-    const recentCases = await this.prisma.case.findMany({
-      where: {
-        created_at: {
-          gte: trendStartDate,
-        },
-      },
-      select: {
-        created_at: true,
-        updated_at: true,
-        status: true,
-      },
-      orderBy: {
-        created_at: 'asc',
-      },
-    });
-
     const casesByDate = new Map<string, { created: number; closed: number }>();
 
-    recentCases.forEach((case_) => {
+    allCases.forEach((case_) => {
       const createdDate = case_.created_at.toLocaleDateString('en-US', { 
         day: 'numeric', 
         month: 'long', 
@@ -251,7 +260,7 @@ export class ReportsService {
       const dateEntry = casesByDate.get(createdDate)!;
       dateEntry.created += 1;
 
-      if (closedStatuses.includes(case_.status as any)) {
+      if (this.CLOSED_CASE_STATUSES.includes(case_.status as any)) {
         dateEntry.closed += 1;
       }
     });
@@ -264,62 +273,42 @@ export class ReportsService {
       });
     });
 
-    const statusDetails: any[] = await Promise.all(
-      statusCounts.map(async ({ status, _count }) => {
-        const percentage = totalCases > 0 ? ((_count.case_id / totalCases) * 100).toFixed(1) : '0.0';
-        
-       
-        const casesInStatus = await this.prisma.case.findMany({
-          where: {
-            ...whereClause,
-            status: status,
-          },
-          select: {
-            created_at: true,
-            updated_at: true,
-          },
-        });
+    
+    const statusDetails: any[] = [];
+    statusCounts.forEach((count, status) => {
+      const percentage = totalCases > 0 ? ((count / totalCases) * 100).toFixed(1) : '0.0';
+      
+      const casesInStatus = filteredCases.filter(c => c.status === status);
+      let avgTimeInStatus = 'N/A';
+      if (casesInStatus.length > 0) {
+        const totalDays = casesInStatus.reduce((sum, case_) => {
+          const timeInStatus = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + timeInStatus;
+        }, 0);
+        const avgDays = Math.round(totalDays / casesInStatus.length);
+        avgTimeInStatus = avgDays === 0 ? '< 1 day' : `${avgDays} ${avgDays === 1 ? 'day' : 'days'}`;
+      }
 
-        let avgTimeInStatus = 'N/A';
-        if (casesInStatus.length > 0) {
-          const totalDays = casesInStatus.reduce((sum, case_) => {
-            const timeInStatus = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + timeInStatus;
-          }, 0);
-          const avgDays = Math.round(totalDays / casesInStatus.length);
-          avgTimeInStatus = avgDays === 0 ? '< 1 day' : `${avgDays} ${avgDays === 1 ? 'day' : 'days'}`;
-        }
+      statusDetails.push({
+        status: this.formatStatusName(status),
+        count: count,
+        percentage: `${percentage}%`,
+        avgTimeInStatus,
+        currentTrendPeriod: '+0%', 
+      });
+    });
 
-        return {
-          status: this.formatStatusName(status),
-          count: _count.case_id,
-          percentage: `${percentage}%`,
-          avgTimeInStatus,
-          currentTrendPeriod: '+0%', 
-        };
-      })
-    );
-
+   
     const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
       
-      const monthClosedCases = await this.prisma.case.findMany({
-        where: {
-          updated_at: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-          status: {
-            in: closedStatuses,
-          },
-        },
-        select: {
-          created_at: true,
-          updated_at: true,
-        },
-      });
+      const monthClosedCases = allCases.filter(c => 
+        c.updated_at >= monthStart && 
+        c.updated_at <= monthEnd &&
+        this.CLOSED_CASE_STATUSES.includes(c.status as any)
+      );
 
       const avgResolutionTimeMonth = monthClosedCases.length > 0
         ? monthClosedCases.reduce((sum, case_) => {
@@ -352,9 +341,10 @@ export class ReportsService {
   }
 
   async getInvestigatorWorkload(dateRange?: string) {
-    const { startDate, endDate } = this.getDateRange(dateRange);
+    const { startDate, endDate } = this.getDateRange(dateRange || 'last30');
 
-    const investigators = await this.prisma.case.findMany({
+    
+    const allCases = await this.prisma.case.findMany({
       where: {
         created_at: {
           gte: startDate,
@@ -363,231 +353,127 @@ export class ReportsService {
         case_owner_user_id: { not: null },
       },
       select: {
+        case_id: true,
         case_owner_user_id: true,
+        status: true,
+        created_at: true,
+        updated_at: true,
       },
-      distinct: ['case_owner_user_id'],
     });
 
-    const workloadData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
-        
-        const [activeCases, pendingTasks] = await Promise.all([
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: {
-                gte: startDate,
-                lte: endDate,
-              },
-              status: {
-                notIn: [
-                  CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-                  CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-                  CaseStatus.STATUS_81_CLOSED_REFUTED,
-                  CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                  CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                ],
-              },
-            },
-          }),
-          this.prisma.task.count({
-            where: {
-              assigned_user_id: case_owner_user_id,
-              status: {
-                in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
-              },
-            },
-          }),
-        ]);
+ 
+    const investigatorIds = [...new Set(allCases.map(c => c.case_owner_user_id).filter(Boolean))] as string[];
+    const allTasks = await this.prisma.task.findMany({
+      where: {
+        assigned_user_id: { in: investigatorIds },
+      },
+      select: {
+        assigned_user_id: true,
+        status: true,
+      },
+    });
 
+    const workloadData = investigatorIds.map(investigatorId => {
+      if (!investigatorId) {
         return {
-          investigatorId: case_owner_user_id,
-          name: `User ${case_owner_user_id}`,
-          activeCases,
-          pendingTasks,
+          investigatorId: '',
+          name: 'Unassigned',
+          activeCases: 0,
+          pendingTasks: 0,
         };
-      })
-    );
+      }
 
-    const validWorkloadData = workloadData.filter(Boolean);
+      const data = this.processCaseDataForInvestigator(allCases, allTasks, investigatorId);
+      
+      return {
+        investigatorId,
+        name: `User ${investigatorId}`,
+        activeCases: data.activeCases,
+        pendingTasks: data.pendingTasks,
+      };
+    });
 
-    const efficiencyData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
-        
-        const cases = await this.prisma.case.findMany({
-          where: {
-            case_owner_user_id,
-            created_at: {
-              gte: startDate,
-              lte: endDate,
-            },
-            status: {
-              in: [
-                CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-                CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-                CaseStatus.STATUS_81_CLOSED_REFUTED,
-                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-              ],
-            },
-          },
-          select: {
-            created_at: true,
-            updated_at: true,
-          },
-        });
-
-        const avgResolutionDays = cases.length > 0 
-          ? cases.reduce((sum, case_) => {
-              const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-              return sum + resolutionTime;
-            }, 0) / cases.length
-          : 0;
-
+    const efficiencyData = investigatorIds.map(investigatorId => {
+      if (!investigatorId) {
         return {
-          name: `User ${case_owner_user_id}`,
-          avgDays: Math.round(avgResolutionDays),
+          name: 'Unassigned',
+          avgDays: 0,
         };
-      })
-    );
+      }
+      
+      const data = this.processCaseDataForInvestigator(allCases, allTasks, investigatorId);
+      
+      return {
+        name: `User ${investigatorId}`,
+        avgDays: data.avgResolutionTime,
+      };
+    });
 
-    const outcomeData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
-        
-        const [confirmed, refuted, inconclusive] = await Promise.all([
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: {
-                in: [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, CaseStatus.STATUS_82_CLOSED_CONFIRMED],
-              },
-            },
-          }),
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: {
-                in: [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, CaseStatus.STATUS_81_CLOSED_REFUTED],
-              },
-            },
-          }),
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-            },
-          }),
-        ]);
-
+    const outcomeData = investigatorIds.map(investigatorId => {
+      if (!investigatorId) {
         return {
-          name: `User ${case_owner_user_id}`,
-          confirmed,
-          refuted,
-          inconclusive,
+          name: 'Unassigned',
+          confirmed: 0,
+          refuted: 0,
+          inconclusive: 0,
         };
-      })
-    );
+      }
+      
+      const investigatorCases = allCases.filter(c => c.case_owner_user_id === investigatorId);
+      
+      const confirmed = investigatorCases.filter(c => 
+        [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, CaseStatus.STATUS_82_CLOSED_CONFIRMED].includes(c.status as any)
+      ).length;
+      
+      const refuted = investigatorCases.filter(c => 
+        [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, CaseStatus.STATUS_81_CLOSED_REFUTED].includes(c.status as any)
+      ).length;
+      
+      const inconclusive = investigatorCases.filter(c => 
+        c.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE
+      ).length;
 
-    const performanceData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
-        
-        const [totalCases, activeCases, closedCases, pendingTasks, closedCasesWithTimes] = await Promise.all([
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-            },
-          }),
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: {
-                notIn: [
-                  CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-                  CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-                  CaseStatus.STATUS_81_CLOSED_REFUTED,
-                  CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                  CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                ],
-              },
-            },
-          }),
-          this.prisma.case.count({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: {
-                in: [
-                  CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-                  CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-                  CaseStatus.STATUS_81_CLOSED_REFUTED,
-                  CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                  CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                ],
-              },
-            },
-          }),
-          this.prisma.task.count({
-            where: {
-              assigned_user_id: case_owner_user_id,
-              status: {
-                in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
-              },
-            },
-          }),
-          this.prisma.case.findMany({
-            where: {
-              case_owner_user_id,
-              created_at: { gte: startDate, lte: endDate },
-              status: {
-                in: [
-                  CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-                  CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-                  CaseStatus.STATUS_81_CLOSED_REFUTED,
-                  CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                  CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                ],
-              },
-            },
-            select: {
-              created_at: true,
-              updated_at: true,
-            },
-          }),
-        ]);
+      return {
+        name: `User ${investigatorId}`,
+        confirmed,
+        refuted,
+        inconclusive,
+      };
+    });
 
-        const avgResolutionTime = closedCasesWithTimes.length > 0
-          ? closedCasesWithTimes.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-              return sum + resolutionTime;
-            }, 0) / closedCasesWithTimes.length
-          : 0;
-
-        const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
-
+    const performanceData = investigatorIds.map(investigatorId => {
+      if (!investigatorId) {
         return {
-          investigatorId: case_owner_user_id,
-          investigator: `User ${case_owner_user_id}`,
+          investigatorId: '',
+          investigator: 'Unassigned',
           role: 'Investigator',
-          totalCases,
-          activeCases,
-          completedCases: closedCases,
-          pendingTasks,
-          completionRate,
-          avgResolutionTime: Math.round(avgResolutionTime),
-          caseClosureRate: completionRate,
-          performanceTrend: completionRate >= 80 ? 'Improving' : completionRate <= 50 ? 'Declining' : 'Stable',
+          totalCases: 0,
+          activeCases: 0,
+          completedCases: 0,
+          pendingTasks: 0,
+          completionRate: 0,
+          avgResolutionTime: 0,
+          caseClosureRate: 0,
+          performanceTrend: 'Unknown' as const,
         };
-      })
-    );
+      }
+      
+      const data = this.processCaseDataForInvestigator(allCases, allTasks, investigatorId);
+      
+      return {
+        investigatorId,
+        investigator: `User ${investigatorId}`,
+        role: 'Investigator',
+        totalCases: data.totalCases,
+        activeCases: data.activeCases,
+        completedCases: data.closedCases,
+        pendingTasks: data.pendingTasks,
+        completionRate: data.completionRate,
+        avgResolutionTime: data.avgResolutionTime,
+        caseClosureRate: data.completionRate,
+        performanceTrend: data.completionRate >= 80 ? 'Improving' : data.completionRate <= 50 ? 'Declining' : 'Stable',
+      };
+    });
 
     const volumeTrend: Array<{ month: string; investigators: { [key: string]: number } }> = [];
     const now = new Date();
@@ -599,31 +485,27 @@ export class ReportsService {
       
       const monthData = { month: monthLabel, investigators: {} };
       
-      for (const { case_owner_user_id } of investigators) {
-        if (!case_owner_user_id) continue;
+      for (const investigatorId of investigatorIds) {
+        if (!investigatorId) continue;
         
-        const caseCount = await this.prisma.case.count({
-          where: {
-            case_owner_user_id,
-            created_at: {
-              gte: monthStart,
-              lte: monthEnd,
-            },
-          },
-        });
+        const monthCases = allCases.filter(c => 
+          c.case_owner_user_id === investigatorId &&
+          c.created_at >= monthStart &&
+          c.created_at <= monthEnd
+        );
         
-        monthData.investigators[`User ${case_owner_user_id}`] = caseCount;
+        monthData.investigators[`User ${investigatorId}`] = monthCases.length;
       }
       
       volumeTrend.push(monthData);
     }
 
-    const totalInvestigators = validWorkloadData.length;
+    const totalInvestigators = workloadData.length;
     const avgCasesPerInvestigator = totalInvestigators > 0 
-      ? validWorkloadData.reduce((sum, w) => sum + (w?.activeCases || 0), 0) / totalInvestigators 
+      ? workloadData.reduce((sum, w) => sum + (w?.activeCases || 0), 0) / totalInvestigators 
       : 0;
 
-    const validPerformanceData = performanceData.filter(Boolean);
+    const validPerformanceData = performanceData;
     const totalResolutionTime = validPerformanceData.reduce((sum, w) => sum + (w?.avgResolutionTime || 0), 0);
     const investigatorsWithClosedCases = validPerformanceData.filter(w => (w?.avgResolutionTime || 0) > 0).length;
     const avgResolutionTime = investigatorsWithClosedCases > 0
@@ -642,16 +524,16 @@ export class ReportsService {
         avgResolutionTime: Math.round(avgResolutionTime),
         caseClosureRate: Math.round(avgCaseClosureRate),
       },
-      workloadData: validWorkloadData,
+      workloadData: workloadData,
       volumeTrend: volumeTrend,
-      efficiencyData: efficiencyData.filter(Boolean),
-      outcomeData: outcomeData.filter(Boolean),
-      performanceData: performanceData.filter(Boolean),
+      efficiencyData: efficiencyData,
+      outcomeData: outcomeData,
+      performanceData: performanceData,
     };
   }
 
   async getAuditLogs(dateRange?: string) {
-    const { startDate, endDate } = this.getDateRange(dateRange);
+    const { startDate, endDate } = this.getDateRange(dateRange || 'last30');
 
     const auditLogs = await this.auditLogService.getLogs(100, 0);
 
@@ -704,9 +586,11 @@ export class ReportsService {
   }
 
   async getCaseAgeing(dateRange?: string) {
-    const { startDate, endDate } = this.getDateRange(dateRange);
+    const { startDate, endDate } = this.getDateRange(dateRange || 'last30');
+    const currentDate = new Date();
+    const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
 
-    const cases = await this.prisma.case.findMany({
+    const allCases = await this.prisma.case.findMany({
       select: {
         case_id: true,
         status: true,
@@ -719,7 +603,7 @@ export class ReportsService {
     });
 
     const now = new Date();
-    const casesWithAge = cases.map(case_ => {
+    const casesWithAge = allCases.map(case_ => {
       const ageDays = Math.floor((now.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
       return { ...case_, ageDays };
     });
@@ -728,16 +612,8 @@ export class ReportsService {
       ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length
       : 0;
 
-    const closedStatuses = [
-      CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-      CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-      CaseStatus.STATUS_81_CLOSED_REFUTED,
-      CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-      CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-    ];
-
     const closedCasesWithTimes = casesWithAge.filter(case_ => 
-      closedStatuses.includes(case_.status as any)
+      this.CLOSED_CASE_STATUSES.includes(case_.status as any)
     );
 
     const avgResolutionTime = closedCasesWithTimes.length > 0
@@ -750,28 +626,30 @@ export class ReportsService {
     const casesOver15Days = casesWithAge.filter(c => c.ageDays > 15).length;
     const casesOver30Days = casesWithAge.filter(c => c.ageDays >= 30).length;
 
-    const ageingByStatus: any[] = [];
-    const statusGroups = casesWithAge.reduce((acc, case_) => {
-      if (!acc[case_.status]) acc[case_.status] = [];
-      acc[case_.status].push(case_);
-      return acc;
-    }, {} as Record<string, typeof casesWithAge>);
-
-    Object.entries(statusGroups).forEach(([status, cases]) => {
-      ageingByStatus.push({
-        status: this.formatStatusName(status as CaseStatus),
-        age0to7: cases.filter(c => c.ageDays <= 7).length,
-        age8to15: cases.filter(c => c.ageDays > 7 && c.ageDays <= 15).length,
-        age16to30: cases.filter(c => c.ageDays > 15 && c.ageDays < 30).length,
-        age30Plus: cases.filter(c => c.ageDays >= 30).length,
-      });
+    const ageingByStatusMap = new Map<CaseStatus, { age0to7: number; age8to15: number; age16to30: number; age30Plus: number }>();
+    
+    casesWithAge.forEach(case_ => {
+      if (!ageingByStatusMap.has(case_.status)) {
+        ageingByStatusMap.set(case_.status, { age0to7: 0, age8to15: 0, age16to30: 0, age30Plus: 0 });
+      }
+      
+      const counts = ageingByStatusMap.get(case_.status)!;
+      if (case_.ageDays <= 7) counts.age0to7++;
+      else if (case_.ageDays <= 15) counts.age8to15++;
+      else if (case_.ageDays < 30) counts.age16to30++;
+      else counts.age30Plus++;
     });
 
+    const ageingByStatus = Array.from(ageingByStatusMap.entries()).map(([status, counts]) => ({
+      status: this.formatStatusName(status),
+      ...counts,
+    }));
+
     const ageingDistribution = [
-      { ageRange: '0-7 days', count: casesWithAge.filter(c => c.ageDays <= 7).length, percentage: 0, color: '#10b981' },
-      { ageRange: '8-15 days', count: casesWithAge.filter(c => c.ageDays > 7 && c.ageDays <= 15).length, percentage: 0, color: '#f59e0b' },
-      { ageRange: '16-30 days', count: casesWithAge.filter(c => c.ageDays > 15 && c.ageDays < 30).length, percentage: 0, color: '#ef4444' },
-      { ageRange: '30+ days', count: casesWithAge.filter(c => c.ageDays >= 30).length, percentage: 0, color: '#7c2d12' },
+      { ageRange: '0-7 days', count: casesWithAge.filter(c => c.ageDays <= 7).length, percentage: 0 },
+      { ageRange: '8-15 days', count: casesWithAge.filter(c => c.ageDays > 7 && c.ageDays <= 15).length, percentage: 0 },
+      { ageRange: '16-30 days', count: casesWithAge.filter(c => c.ageDays > 15 && c.ageDays < 30).length, percentage: 0 },
+      { ageRange: '30+ days', count: casesWithAge.filter(c => c.ageDays >= 30).length, percentage: 0 },
     ];
 
     const total = ageingDistribution.reduce((sum, item) => sum + item.count, 0);
@@ -779,83 +657,36 @@ export class ReportsService {
       item.percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
     });
 
-    const caseTypeResolution = await Promise.all(
-      Object.values(CaseType).map(async (type) => {
-       
-        const whereClause: any = {
-          status: {
-            in: closedStatuses,
-          },
-        };
-
-        if (type === CaseType.NONE) {
-        
-          whereClause.OR = [
-            { case_type: null },
-            { case_type: CaseType.NONE }
-          ];
-        } else {
-          whereClause.case_type = type;
-        }
-
-        const closedCasesOfType = await this.prisma.case.findMany({
-          where: whereClause,
-          select: {
-            created_at: true,
-            updated_at: true,
-          },
-        });
-
-        if (closedCasesOfType.length === 0) {
-          return null;
-        }
-
-        const avgResolutionTime = closedCasesOfType.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / closedCasesOfType.length;
-
-        return {
-          caseType: type,
-          avgDays: Math.round(avgResolutionTime),
-        };
-      })
-    ).then(results => results.filter(item => item !== null));
-
-    const resolutionTrend: any[] = [];
-    const currentDate = new Date();
-    const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
+    const caseTypeResolutionMap = new Map<CaseType, { totalResolutionTime: number; count: number }>();
     
-    const recentClosedCases = await this.prisma.case.findMany({
-      where: {
-        updated_at: {
-          gte: trendStartDate,
-        },
-        status: {
-          in: [
-            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-            CaseStatus.STATUS_81_CLOSED_REFUTED,
-            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-          ],
-        },
-      },
-      select: {
-        created_at: true,
-        updated_at: true,
-      },
-      orderBy: {
-        updated_at: 'asc',
-      },
+    closedCasesWithTimes.forEach(case_ => {
+      const type = case_.case_type || CaseType.NONE;
+      if (!caseTypeResolutionMap.has(type)) {
+        caseTypeResolutionMap.set(type, { totalResolutionTime: 0, count: 0 });
+      }
+      
+      const data = caseTypeResolutionMap.get(type)!;
+      const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+      data.totalResolutionTime += resolutionTime;
+      data.count++;
     });
 
-    recentClosedCases.forEach((case_) => {
+    const caseTypeResolution = Array.from(caseTypeResolutionMap.entries()).map(([type, data]) => ({
+      caseType: type,
+      avgDays: Math.round(data.totalResolutionTime / data.count),
+    }));
+
+    const recentClosedCases = allCases.filter(case_ => 
+      case_.updated_at >= trendStartDate && 
+      this.CLOSED_CASE_STATUSES.includes(case_.status as any)
+    );
+
+    const resolutionTrend = recentClosedCases.map(case_ => {
       const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-      resolutionTrend.push({
+      return {
         month: case_.updated_at.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
         avgDays: Math.round(resolutionTime),
-      });
+      };
     });
 
     const caseDetails = casesWithAge.slice(0, 5).map(case_ => ({
@@ -884,26 +715,6 @@ export class ReportsService {
     };
   }
 
-  private getCaseTypeColor(caseType: CaseType | null): string {
-    switch (caseType) {
-      case CaseType.FRAUD: return '#ef4444';
-      case CaseType.AML: return '#8b5cf6';
-      case CaseType.FRAUD_AND_AML: return '#f59e0b';
-      default: return '#3b82f6';
-    }
-  }
-
-  private getTaskStatusColor(status: TaskStatus): string {
-    switch (status) {
-      case TaskStatus.STATUS_30_COMPLETED: return '#10b981';
-      case TaskStatus.STATUS_20_IN_PROGRESS: return '#3b82f6';
-      case TaskStatus.STATUS_01_UNASSIGNED: return '#6b7280';
-      case TaskStatus.STATUS_21_BLOCKED: return '#f59e0b';
-      case TaskStatus.STATUS_10_ASSIGNED: return '#8b5cf6';
-      default: return '#6b7280';
-    }
-  }
-
   private formatStatusName(status: CaseStatus): string {
     return status.replace('STATUS_', '').replace(/_/g, ' ');
   }
@@ -929,34 +740,39 @@ export class ReportsService {
   }
 
   async getFilters() {
-    const caseTypes = await this.prisma.case.findMany({
-      select: { case_type: true },
-      distinct: ['case_type'],
+
+    const allCases = await this.prisma.case.findMany({
+      select: { 
+        case_type: true,
+        priority: true,
+        case_owner_user_id: true,
+      },
     });
 
-    const priorities = await this.prisma.case.findMany({
-      select: { priority: true },
-      distinct: ['priority'],
-    });
+    const uniqueCaseTypes = new Set<string>();
+    const uniquePriorities = new Set<string>();
+    const uniqueInvestigators = new Set<string>();
 
-    const investigators = await this.prisma.case.findMany({
-      where: { case_owner_user_id: { not: null } },
-      select: { case_owner_user_id: true },
-      distinct: ['case_owner_user_id'],
+    allCases.forEach(case_ => {
+      uniqueCaseTypes.add(case_.case_type || 'NONE');
+      uniquePriorities.add(case_.priority || 'NONE');
+      if (case_.case_owner_user_id) {
+        uniqueInvestigators.add(case_.case_owner_user_id);
+      }
     });
 
     return {
-      caseTypes: caseTypes.map(ct => ({
-        value: ct.case_type || 'NONE',
-        label: ct.case_type || 'None'
+      caseTypes: Array.from(uniqueCaseTypes).map(ct => ({
+        value: ct,
+        label: ct === 'NONE' ? 'None' : ct
       })),
-      priorities: priorities.map(p => ({
-        value: p.priority || 'NONE',
-        label: p.priority || 'None'
+      priorities: Array.from(uniquePriorities).map(p => ({
+        value: p,
+        label: p === 'NONE' ? 'None' : p
       })),
-      investigators: investigators.map(i => ({
-        value: i.case_owner_user_id || '',
-        label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned'
+      investigators: Array.from(uniqueInvestigators).map(i => ({
+        value: i,
+        label: `User ${i.slice(0, 8)}`
       }))
     };
   }

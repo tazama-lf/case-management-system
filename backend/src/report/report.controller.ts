@@ -5,7 +5,7 @@ import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
 
 @ApiTags('Reports')
-@ApiBearerAuth()
+@ApiBearerAuth('jwt')
 @Controller('api/v1/reports')
 @UseGuards(TazamaAuthGuard)
 export class ReportsController {
