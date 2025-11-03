@@ -17,7 +17,7 @@ import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
 import { TaskService } from 'src/task/task.service';
 import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
 import { CommentService } from 'src/comment/comment.service';
-import { CaseWorkflowService } from '../case-workflow/case-workflow.service';
+import { CaseCreationService } from '../case-creation/case-creation.service';
 import {
   CaseCreatedEvent,
   CaseAbandonedEvent,
@@ -40,7 +40,7 @@ export class CaseService {
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly commentService: CommentService,
-    private readonly caseWorkflowService: CaseWorkflowService,
+    private readonly caseWorkflowService: CaseCreationService,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly notificationService: NotificationService,
     private readonly authHelperService: AuthHelperService,
@@ -1736,6 +1736,9 @@ export class CaseService {
         throw new BadRequestException('Reason for reopening case is required and must be at least 10 characters');
       }
 
+      const userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+      const isSupervisor = userRoles.includes('CMS_SUPERVISOR');
+
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
@@ -1758,19 +1761,31 @@ export class CaseService {
             this.logger,
         );
 
+        await tx.comment.create({
+          data: {
+            user_id: userId,
+            task_id: approvalTask.task_id,
+            note: JSON.stringify({
+              requestedBy: userId,
+              requesterRole: userRoles[0] || 'UNKNOWN',
+              reason,
+              previousStatus: existingCase.status,
+              requestedAt: new Date().toISOString(),
+            }),
+          },
+        });
+
         return { case: updatedCase, approvalTask };
       });
 
-      // Emit with the actual case status from the updated case
       this.eventEmitter.emit(
-          'case.created',
-          new CaseCreatedEvent(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
               caseId,
-              tenantId,
-              CaseCreationType.MANUAL,
-              result.case.status,  // ← Use the status from the updated case
-              false
-          )
+              existingCase.status,
+              CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+              `Case reopening requested: ${reason}`
+          ),
       );
 
       await this.auditLogService.logAction({
@@ -2334,4 +2349,5 @@ export class CaseService {
       throw error;
     }
   }
+
 }
