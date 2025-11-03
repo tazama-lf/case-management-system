@@ -1,9 +1,6 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
 
-/**
- * Custom hook for handling dynamic route parameters
- */
 export const useDynamicRoute = () => {
   const params = useParams();
   const navigate = useNavigate();
@@ -13,13 +10,13 @@ export const useDynamicRoute = () => {
     params,
     navigate,
     location,
-    // Helper functions for common navigation patterns
+   
     goToCaseDetail: (caseId: string) => navigate(`/cases/${caseId}`),
     goToAlertDetail: (alertId: string) => navigate(`/alerts/${alertId}`),
     goToWorkQueueTask: (taskId: string) => navigate(`/work-queue/${taskId}`),
     goToReport: (reportType: string) => navigate(`/reports/${reportType}`),
     goBack: () => navigate(-1),
-    // Helper to get current route info
+    
     getCurrentRoute: () => ({
       pathname: location.pathname,
       search: location.search,
@@ -29,9 +26,7 @@ export const useDynamicRoute = () => {
   };
 };
 
-/**
- * Custom hook for managing URL search parameters
- */
+
 export const useUrlParams = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,14 +70,11 @@ export const useUrlParams = () => {
     setParam,
     removeParam,
     updateParams,
-    // Helper to get all params as object
+   
     getAllParams: () => Object.fromEntries(searchParams.entries())
   };
 };
 
-/**
- * Route path constants for type safety
- */
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
@@ -109,9 +101,7 @@ export const buildRoute = (route: string, params: Record<string, string>): strin
   return builtRoute;
 };
 
-/**
- * Helper function to check if current route matches a pattern
- */
+
 export const matchesRoute = (pathname: string, route: string): boolean => {
   const routePattern = route.replace(/:[^/]+/g, '[^/]+');
   const regex = new RegExp(`^${routePattern}$`);

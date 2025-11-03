@@ -14,12 +14,7 @@ const RoleBasedRedirect: React.FC = () => {
     return <LoadingSpinner fullScreen />;
   }
 
-  // Priority-based redirecting:
-  // 1. Triage (admin role) - can access everything, redirect to alerts
-  // 2. Supervisor - can access all except admin, redirect to cases
-  // 3. Investigator - can access all except admin, redirect to cases
-  // 4. Regular authenticated user - redirect to dashboard
-  // 5. Unauthenticated - redirect to login
+  
 
   if (adminRole) {
     return <Navigate to="/alerts" replace />;

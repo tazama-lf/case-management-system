@@ -1,4 +1,4 @@
-// Color utilities for case management system
+
 
 export const CaseType = {
   FRAUD: 'FRAUD',
@@ -19,9 +19,6 @@ export const TaskStatus = {
 
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 
-/**
- * Get color for case type
- */
 export function getCaseTypeColor(caseType: CaseType | string | null): string {
   switch (caseType) {
     case CaseType.FRAUD:
@@ -29,45 +26,41 @@ export function getCaseTypeColor(caseType: CaseType | string | null): string {
       return '#ef4444'; // Red
     case CaseType.AML:
     case 'AML':
-      return '#8b5cf6'; // Purple
+      return '#8b5cf6'; 
     case CaseType.FRAUD_AND_AML:
     case 'FRAUD_AND_AML':
-      return '#f59e0b'; // Orange
+      return '#f59e0b'; 
     case CaseType.NONE:
     case 'NONE':
     default:
-      return '#3b82f6'; // Blue
+      return '#3b82f6'; 
   }
 }
 
-/**
- * Get color for task status
- */
+
 export function getTaskStatusColor(status: TaskStatus | string): string {
   switch (status) {
     case TaskStatus.STATUS_30_COMPLETED:
     case 'STATUS_30_COMPLETED':
-      return '#10b981'; // Green
+      return '#10b981'; 
     case TaskStatus.STATUS_20_IN_PROGRESS:
     case 'STATUS_20_IN_PROGRESS':
-      return '#3b82f6'; // Blue
+      return '#3b82f6'; 
     case TaskStatus.STATUS_01_UNASSIGNED:
     case 'STATUS_01_UNASSIGNED':
-      return '#6b7280'; // Gray
+      return '#6b7280'; 
     case TaskStatus.STATUS_21_BLOCKED:
     case 'STATUS_21_BLOCKED':
-      return '#f59e0b'; // Orange
+      return '#f59e0b'; 
     case TaskStatus.STATUS_10_ASSIGNED:
     case 'STATUS_10_ASSIGNED':
-      return '#8b5cf6'; // Purple
+      return '#8b5cf6'; 
     default:
-      return '#6b7280'; // Gray
+      return '#6b7280'; 
   }
 }
 
-/**
- * Get Tailwind CSS class for case type
- */
+
 export function getCaseTypeColorClass(caseType: CaseType | string | null): string {
   switch (caseType) {
     case CaseType.FRAUD:
@@ -86,9 +79,7 @@ export function getCaseTypeColorClass(caseType: CaseType | string | null): strin
   }
 }
 
-/**
- * Get Tailwind CSS class for task status
- */
+
 export function getTaskStatusColorClass(status: TaskStatus | string): string {
   switch (status) {
     case TaskStatus.STATUS_30_COMPLETED:

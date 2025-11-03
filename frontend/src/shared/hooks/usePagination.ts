@@ -56,7 +56,7 @@ export const usePagination = <T>({
 
   const setItemsPerPage = (items: number) => {
     setItemsPerPageState(items);
-    setCurrentPage(1); // Reset to first page when changing items per page
+    setCurrentPage(1); 
   };
 
   const goToFirstPage = () => setCurrentPage(1);
