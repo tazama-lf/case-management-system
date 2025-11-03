@@ -1,9 +1,10 @@
 import { Request } from 'express';
+import { TazamaToken as BaseTazamaToken } from '@tazama-lf/auth-lib';
 
-export interface TazamaToken {
+export interface TazamaToken extends Partial<BaseTazamaToken> {
   clientId: string;
-  tenantId?: string;
   claims: string[];
+  tenantId?: string;
   realmRoles?: string[];
   preferredUsername?: string;
   email?: string;

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, BadRequestException, ServiceUnavailableException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -91,15 +91,36 @@ export class AuthHelperService {
       return data.map((user) => this.mapAuthServiceUser(user));
     } catch (error) {
       const axiosError = error as AxiosError;
-      
+
       // Log the auth-service error with details
       const status = axiosError.response?.status;
-      const errorData = axiosError.response?.data;
+      const errorData = axiosError.response?.data as { message?: string; error?: string } | string | undefined;
+      
+      // Extract error message - handle both object and string responses
+      let errorMessage: string;
+      if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (errorData && typeof errorData === 'object') {
+        errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+      } else {
+        errorMessage = axiosError.message;
+      }
+
+      // Log the full error data for debugging
       this.logger.warn(
-        `Auth-service call failed for role '${normalizedRole}': ${status ?? 'No response'} - ${JSON.stringify(errorData) || axiosError.message}. ` +
-          'Attempting Keycloak fallback...',
+        `Auth-service call failed for role '${normalizedRole}': ${status ?? 'No response'} - ${errorMessage}`,
         AuthHelperService.name,
       );
+
+      // Check if this is a role not found error - no need for fallback in this case
+      if (status === 500 && errorMessage && typeof errorMessage === 'string') {
+        if (errorMessage.includes('No group found') || errorMessage.includes('No subgroup found')) {
+          this.logger.warn(`Role '${normalizedRole}' not found in Keycloak. Skipping fallback.`, AuthHelperService.name);
+          throw new NotFoundException(
+            `Role '${normalizedRole}' not found in Keycloak. Please ensure the role exists and is properly configured in the Keycloak group structure.`,
+          );
+        }
+      }
 
       // Try fallback for network errors or 5xx errors
       if (!axiosError.response || (status && status >= 500)) {
@@ -118,7 +139,7 @@ export class AuthHelperService {
           AuthHelperService.name,
         );
       }
-      
+
       if (status === 404) {
         this.logger.warn(
           `Auth-service endpoint returned 404 for role '${normalizedRole}'. The role may not exist or no users are assigned to it.`,
@@ -239,14 +260,47 @@ export class AuthHelperService {
   private handleAuthServiceError(operation: string, error: unknown, context?: string): never {
     const axiosError = error as AxiosError | undefined;
     const status = axiosError?.response?.status;
-    const statusText = axiosError?.response?.statusText ?? axiosError?.message ?? 'Unknown error';
+    const errorData = axiosError?.response?.data as { message?: string; error?: string } | string | undefined;
+    
+    // Extract error message - handle both object and string responses
+    let errorMessage: string;
+    let statusText: string;
+    if (typeof errorData === 'string') {
+      errorMessage = errorData;
+      statusText = errorData;
+    } else if (errorData && typeof errorData === 'object') {
+      errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+      statusText = errorMessage;
+    } else {
+      statusText = axiosError?.response?.statusText ?? axiosError?.message ?? 'Unknown error';
+      errorMessage = statusText;
+    }
 
     const contextMsg = context ? ` (${context})` : '';
     this.logger.error(`Auth-service ${operation} failed${contextMsg}: ${status ?? 'N/A'} ${statusText}`, AuthHelperService.name);
 
     if (status === 404) {
       this.logger.warn('Auth-service endpoint not found. The auth-service may not implement this endpoint yet.', AuthHelperService.name);
-      return [] as never;
+      throw new NotFoundException(`User data not found${contextMsg}`);
+    }
+
+    if (status === 500) {
+      // Log the detailed error message
+      this.logger.error(`Auth-service error details: ${errorMessage}`, AuthHelperService.name);
+
+      // Provide more specific error messages based on common issues
+      if (
+        typeof errorMessage === 'string' &&
+        (errorMessage.includes('No group found') || errorMessage.includes('No subgroup found'))
+      ) {
+        throw new NotFoundException(
+          `Role ${contextMsg} not found in Keycloak. Please ensure the role exists and is properly configured in the Keycloak group structure.`,
+        );
+      }
+
+      throw new ServiceUnavailableException(
+        `Authentication service error: ${errorMessage}. Please check the role configuration in Keycloak.`,
+      );
     }
 
     throw new ServiceUnavailableException('Authentication service unavailable');
