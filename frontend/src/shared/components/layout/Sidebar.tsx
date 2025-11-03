@@ -159,7 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
           {/* User profile section and logout */}
           <li className="mt-auto border-t border-gray-200 pt-4">
             {/* User info */}
-            <div className="mb-3 px-2">
+            {/* <div className="mb-3 px-2">
               <div className="flex items-center gap-x-3">
                 <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center">
                   <span className="text-sm font-semibold text-white">
@@ -183,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Logout button */}
             {onLogout && (
