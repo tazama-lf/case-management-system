@@ -49,17 +49,16 @@ export class CaseService {
   async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
     try {
       this.logger.log('System-to-system case creation initiated', CaseService.name);
-      const systemUuid = this.configService.get<string>('SYSTEM_UUID', clientId);
 
       this.eventEmitter.emit('alert.incoming', {
         payload,
         source: 'REST API',
-        userId: systemUuid,
+        userId: clientId,
         tenantId,
       });
 
       await this.auditLogService.logAction({
-        userId: systemUuid,
+        userId: clientId,
         operation: 'createCase',
         entityName: CaseService.name,
         actionPerformed: 'Case creation triggered via system transmission',
@@ -75,11 +74,6 @@ export class CaseService {
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     this.logger.log(`[ManualCase] Starting manual case creation by user ${userId} with role ${role}`, CaseService.name);
 
-    if (!dto.alertId || !dto.alertType) {
-      this.logger.error('[ManualCase] Missing required fields in ManualCreateCaseDto', '', CaseService.name);
-      throw new BadRequestException('alertId and alertType are required');
-    }
-
     const existingAlert = await this.prismaService.alert.findUnique({
       where: { alert_id: dto.alertId },
     });
@@ -89,27 +83,26 @@ export class CaseService {
     }
 
     if (existingAlert.case_id) {
-      this.logger.error(`[ManualCase] Case already exists for alertId ${dto.alertId}`, '', CaseService.name);
       throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
     }
 
-    const alertStatus = (existingAlert.alert_data as any)?.status;
-    if (alertStatus !== 'NALT') {
-      this.logger.error('[ManualCase] Cannot create Case: alert_data.status is not NALT', '', CaseService.name);
-      throw new BadRequestException('Cannot create Case: alert_data.status is not NALT');
+    if ((existingAlert.alert_data as any)?.status !== 'NALT') {
+      throw new BadRequestException('Can only create manual cases from alerts with NALT status');
     }
 
-    const priorityScore = dto.priorityScore ?? 0.33;
+    const priorityScore = dto.priorityScore;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = dto.alertType;
 
     const needsApproval = role !== 'SUPERVISOR';
-    const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+    const caseStatus = needsApproval
+        ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
+        : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
     this.logger.log(
-      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-      CaseService.name,
+        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
+        CaseService.name,
     );
 
     try {
@@ -141,28 +134,47 @@ export class CaseService {
         this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseService.name);
 
         let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
+        let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
 
         if (needsApproval) {
           approvalTask = await this.taskService.createTask(
-            {
-              caseId: createdCase.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Approve Case Creation',
-              description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
-              candidateGroup: 'supervisors',
-            },
-            userId,
-            this.auditLogService,
-            this.logger,
+              {
+                caseId: createdCase.case_id,
+                status: TaskStatus.STATUS_01_UNASSIGNED,
+                name: 'Approve Case Creation',
+                description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
+                candidateGroup: 'supervisors',
+              },
+              userId,
+              this.auditLogService,
+              this.logger,
           );
 
           this.logger.log(
-            `[ManualCase] PostgreSQL approval task ${approvalTask.task_id} created for case ${createdCase.case_id}`,
-            CaseService.name,
+              `[ManualCase] Approval task ${approvalTask.task_id} created for case ${createdCase.case_id}`,
+              CaseService.name,
+          );
+        } else {
+          investigateTask = await this.taskService.createTask(
+              {
+                caseId: createdCase.case_id,
+                status: TaskStatus.STATUS_01_UNASSIGNED,
+                name: 'Investigate case',
+                description: `Investigation task for manually created case ${createdCase.case_id}`,
+                candidateGroup: 'investigations',
+              },
+              userId,
+              this.auditLogService,
+              this.logger,
+          );
+
+          this.logger.log(
+              `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${createdCase.case_id}`,
+              CaseService.name,
           );
         }
 
-        return { case: createdCase, alert: updatedAlert, approvalTask };
+        return { case: createdCase, alert: updatedAlert, approvalTask, investigateTask };
       });
 
       this.logger.log(`[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`, CaseService.name);
@@ -171,7 +183,7 @@ export class CaseService {
         userId,
         operation: 'createManualCase',
         entityName: CaseService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ''}`,
+        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -245,7 +257,6 @@ export class CaseService {
       await this.validateCaseCreationApprovalPreconditions(caseId);
 
       const result = await this.prismaService.$transaction(async (tx) => {
-        // Update case status
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
@@ -278,40 +289,47 @@ export class CaseService {
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      this.logger.log(
-        `[ApproveCaseCreation] Case ${caseId} and approval task ${result.approvedTask.task_id} updated in PostgreSQL`,
-        CaseService.name,
+      const investigateTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Investigation task for approved case ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
       );
 
-      
       this.logger.log(
-        `[ApproveCaseCreation] Emitting task.completed event for approval task ${result.approvedTask.task_id}`,
-        CaseService.name,
+          `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId}`,
+          CaseService.name,
       );
 
       this.eventEmitter.emit(
-        'task.completed',
-        new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
-          creationApproval: 'approve',
-          creationComments: 'Case creation approved by supervisor',
-        }),
+          'task.completed',
+          new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
+            creationApproval: 'approve',
+            creationComments: 'Case creation approved by supervisor',
+          }),
       );
 
       this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'Case creation approved by supervisor',
-        ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              'Case creation approved by supervisor',
+          ),
       );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseService.name,
-        actionPerformed: `Approved case creation for case ${caseId}`,
+        actionPerformed: `Approved case creation for case ${caseId}, created investigation task ${investigateTask.task_id}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -321,6 +339,7 @@ export class CaseService {
         success: true,
         case: result.case,
         approvedTask: result.approvedTask,
+        investigateTask,
       };
     } catch (error) {
       this.logger.error(`[ApproveCaseCreation] Failed to approve case creation: ${error.message}`, error.stack, CaseService.name);
@@ -341,9 +360,11 @@ export class CaseService {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case creation for case ${caseId}`, CaseService.name);
       await this.validateCaseCreationApprovalPreconditions(caseId);
+
       if (!reason || reason.trim().length < 10) {
         throw new BadRequestException('Rejection reason is required and must be at least 10 characters');
       }
+
       const existingCase = await this.retrieveCase(caseId);
 
       const result = await this.prismaService.$transaction(async (tx) => {
@@ -358,26 +379,28 @@ export class CaseService {
 
         if (!approvalTask) throw new NotFoundException('Approve Case Creation task not found');
 
-        const completedApprovalTask = await tx.task.update({
-          where: { task_id: approvalTask.task_id },
-          data: { status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: supervisorId, updated_at: new Date() },
-        });
+        await this.taskService.updateTask(
+            approvalTask.task_id,
+            { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
+            supervisorId,
+            this.auditLogService,
+        );
 
-        return { case: updatedCase, completedTask: completedApprovalTask };
+        return { case: updatedCase, completedTask: approvalTask };
       });
 
       const completeNewCaseTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_10_ASSIGNED,
-          assignedUserId: existingCase.case_creator_user_id,
-          name: 'Complete New Case',
-          description: 'Revise and complete the case as per supervisor feedback',
-          candidateGroup: 'investigations',
-        },
-        supervisorId,
-        this.auditLogService,
-        this.logger,
+          {
+            caseId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assignedUserId: existingCase.case_creator_user_id,
+            name: 'Complete New Case',
+            description: 'Revise and complete the case as per supervisor feedback',
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -389,13 +412,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-          CaseStatus.STATUS_00_DRAFT,
-          `Case creation rejected: ${reason}`,
-        ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+              CaseStatus.STATUS_00_DRAFT,
+              `Case creation rejected: ${reason}`,
+          ),
       );
 
       await this.auditLogService.logAction({
@@ -1944,7 +1967,6 @@ export class CaseService {
     if (!existingCase.case_type) missing.push('case_type');
     return missing;
   }
-
   private async validateApprovalPreconditions(caseId: string) {
     const caseData = await this.prismaService.case.findUnique({
       where: { case_id: caseId },
@@ -1968,6 +1990,11 @@ export class CaseService {
     TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
 
     const approvalTask = TaskValidationUtil.findApprovalTask(caseData.tasks);
+
+    if (!approvalTask) {
+      throw new NotFoundException('Approval task not found');
+    }
+
     const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
 
     if (!otherTasksValidation.isValid) {

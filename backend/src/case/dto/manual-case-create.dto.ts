@@ -1,5 +1,5 @@
-import { AlertType, Priority } from '@prisma/client';
-import { IsEnum, IsNumber, IsOptional, IsUUID } from 'class-validator';
+import { AlertType } from '@prisma/client';
+import { IsEnum, IsNumber, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ManualCreateCaseDto {
@@ -15,14 +15,12 @@ export class ManualCreateCaseDto {
   @ApiProperty({
     description: 'Priority score for the case (0-1)',
     example: 0.75,
-    required: false,
     type: 'number',
     minimum: 0,
     maximum: 1,
   })
-  @IsOptional()
   @IsNumber()
-  priorityScore?: number;
+  priorityScore: number;
 
   @ApiProperty({
     description: 'Type of alert',
