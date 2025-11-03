@@ -902,7 +902,6 @@ export class CaseService {
         requesterRole &&
         (requesterRole.toUpperCase() === 'ANALYST' ||
           requesterRole.toUpperCase() === 'INVESTIGATOR' ||
-          requesterRole.toUpperCase() === 'CMS_ANALYST' ||
           requesterRole.toUpperCase() === 'CMS_INVESTIGATOR');
 
       if (isAnalystOrInvestigator && requesterId) {

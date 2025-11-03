@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { MagnifyingGlassIcon, ChevronDownIcon, QueueListIcon } from '@heroicons/react/24/outline';
-import { PageContainer, Card } from '../../../shared/components/ui';
-import WorkQueueTable from '../components/WorkQueueTable';
-import WorkQueueTableSkeleton from '../components/WorkQueueTableSkeleton';
-import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '../components/WorkQueueErrorBoundary';
-import { flowableWorkQueueService } from '../services/flowableWorkQueueService';
-import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '../types/flowable.types';
-import AssignTaskModal from '../../cases/components/modals/AssignTaskModal';
-import ReassignTaskModal from '../../cases/components/modals/ReassignTaskModal';
-import UnassignTaskModal from '../../cases/components/modals/UnassignTaskModal';
-import CloseTaskModal from '../../cases/components/modals/CloseTaskModal';
-import UpdateTaskStatusModal from '../../cases/components/modals/UpdateTaskStatusModal';
+import { PageContainer, Card } from '@/shared/components/ui';
+import WorkQueueTable from '@/features/workqueue/components/WorkQueueTable';
+import WorkQueueTableSkeleton from '@/features/workqueue/components/WorkQueueTableSkeleton';
+import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '@/features/workqueue/components/WorkQueueErrorBoundary';
+import { flowableWorkQueueService } from '@/features/workqueue/services/flowableWorkQueueService';
+import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
+import { useDynamicRoute } from '@/shared/utils/routeUtils';
+
+// Dynamic imports for modals
+const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
+const ReassignTaskModal = lazy(() => import('@/features/cases/components/modals/ReassignTaskModal'));
+const UnassignTaskModal = lazy(() => import('@/features/cases/components/modals/UnassignTaskModal'));
+const CloseTaskModal = lazy(() => import('@/features/cases/components/modals/CloseTaskModal'));
+const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/modals/UpdateTaskStatusModal'));
 
 
 const WorkQueueDashboard: React.FC = () => {
+  const { params, navigate } = useDynamicRoute();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -61,6 +65,26 @@ const WorkQueueDashboard: React.FC = () => {
     loadWorkQueue();
   }, [candidateGroupFilter, clearError, handleError]);
 
+  // Handle URL-based task viewing
+  useEffect(() => {
+    const taskId = params.taskId;
+    if (taskId && tasks.length > 0) {
+      const taskToView = tasks.find(t => t.id === taskId);
+      if (taskToView) {
+        setSelectedTask(taskToView);
+        // Auto-open the most relevant modal based on task status
+        if (taskToView.status === 'UNASSIGNED') {
+          setAssignModalOpen(true);
+        } else if (taskToView.status === 'ASSIGNED' || taskToView.status === 'IN_PROGRESS') {
+          setUpdateStatusModalOpen(true);
+        }
+      } else {
+        // Task not found, redirect to work queue
+        navigate('/work-queue');
+      }
+    }
+  }, [tasks, params.taskId, navigate]);
+
 
   const filteredTasks = tasks.filter((task: UnifiedWorkQueueTask) => {
     const matchesSearch = search === '' || [
@@ -82,16 +106,22 @@ const WorkQueueDashboard: React.FC = () => {
   const handleAssignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setAssignModalOpen(true);
+    // Update URL to include task ID for deep linking
+    navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleReassignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setReassignModalOpen(true);
+    // Update URL to include task ID for deep linking
+    navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleUnassignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setUnassignModalOpen(true);
+    // Update URL to include task ID for deep linking
+    navigate(`/work-queue/${taskData.id}`);
   };
 
 
@@ -154,11 +184,15 @@ const WorkQueueDashboard: React.FC = () => {
   const handleCompleteTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setCloseTaskModalOpen(true);
+    // Update URL to include task ID for deep linking
+    navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleUpdateTaskStatus = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setUpdateStatusModalOpen(true);
+    // Update URL to include task ID for deep linking
+    navigate(`/work-queue/${taskData.id}`);
   };
 
   const handleModalCloseTask = async (task: UnifiedWorkQueueTask, notes: string) => {
@@ -335,56 +369,86 @@ const WorkQueueDashboard: React.FC = () => {
         )}
       </Card>
 
-      {}
-      <AssignTaskModal
-        open={assignModalOpen}
-        onClose={() => {
-          setAssignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onAssign={handleModalAssign}
-        task={selectedTask}
-      />
+      {/* Task Modals */}
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <AssignTaskModal
+          open={assignModalOpen}
+          onClose={() => {
+            setAssignModalOpen(false);
+            setSelectedTask(null);
+            // Clear task ID from URL when closing modal
+            if (params.taskId) {
+              navigate('/work-queue');
+            }
+          }}
+          onAssign={handleModalAssign}
+          task={selectedTask}
+        />
+      </Suspense>
 
-      <ReassignTaskModal
-        open={reassignModalOpen}
-        onClose={() => {
-          setReassignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onReassign={handleModalReassign}
-        task={selectedTask}
-      />
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <ReassignTaskModal
+          open={reassignModalOpen}
+          onClose={() => {
+            setReassignModalOpen(false);
+            setSelectedTask(null);
+            // Clear task ID from URL when closing modal
+            if (params.taskId) {
+              navigate('/work-queue');
+            }
+          }}
+          onReassign={handleModalReassign}
+          task={selectedTask}
+        />
+      </Suspense>
 
-      <UnassignTaskModal
-        open={unassignModalOpen}
-        onClose={() => {
-          setUnassignModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onUnassign={handleModalUnassign}
-        task={selectedTask}
-      />
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <UnassignTaskModal
+          open={unassignModalOpen}
+          onClose={() => {
+            setUnassignModalOpen(false);
+            setSelectedTask(null);
+            // Clear task ID from URL when closing modal
+            if (params.taskId) {
+              navigate('/work-queue');
+            }
+          }}
+          onUnassign={handleModalUnassign}
+          task={selectedTask}
+        />
+      </Suspense>
 
-      <CloseTaskModal
-        open={closeTaskModalOpen}
-        onClose={() => {
-          setCloseTaskModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onCloseTask={handleModalCloseTask}
-        task={selectedTask}
-      />
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <CloseTaskModal
+          open={closeTaskModalOpen}
+          onClose={() => {
+            setCloseTaskModalOpen(false);
+            setSelectedTask(null);
+            // Clear task ID from URL when closing modal
+            if (params.taskId) {
+              navigate('/work-queue');
+            }
+          }}
+          onCloseTask={handleModalCloseTask}
+          task={selectedTask}
+        />
+      </Suspense>
 
-      <UpdateTaskStatusModal
-        open={updateStatusModalOpen}
-        onClose={() => {
-          setUpdateStatusModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onUpdateStatus={handleModalUpdateStatus}
-        task={selectedTask}
-      />
+      <Suspense fallback={<div>Loading modal...</div>}>
+        <UpdateTaskStatusModal
+          open={updateStatusModalOpen}
+          onClose={() => {
+            setUpdateStatusModalOpen(false);
+            setSelectedTask(null);
+            // Clear task ID from URL when closing modal
+            if (params.taskId) {
+              navigate('/work-queue');
+            }
+          }}
+          onUpdateStatus={handleModalUpdateStatus}
+          task={selectedTask}
+        />
+      </Suspense>
     </PageContainer>
   );
 };

@@ -14,9 +14,13 @@ export interface User {
   user_id: string;
   username: string;
   email?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   tenantId: string;
   roles: string[];
   permissions?: string[];
+  backendClaims?: string[];
   name?: string;
   initials?: string;
 }

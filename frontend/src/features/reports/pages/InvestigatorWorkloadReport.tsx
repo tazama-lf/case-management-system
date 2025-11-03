@@ -10,9 +10,6 @@ import { useInvestigatorWorkload } from '../hooks/useReports';
 import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
 
 interface InvestigatorWorkloadReportProps {
-  onExportExcel: () => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
   dateRange: string;
 }
 

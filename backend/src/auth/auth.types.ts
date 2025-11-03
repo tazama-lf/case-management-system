@@ -1,10 +1,21 @@
 import { Request } from 'express';
+import { TazamaToken as BaseTazamaToken } from '@tazama-lf/auth-lib';
 
-export interface TazamaToken {
+export interface TazamaToken extends Partial<BaseTazamaToken> {
   clientId: string;
+  claims: string[];
   tenantId?: string;
-  claims?: string[];
-  // ...other fields as needed
+  realmRoles?: string[];
+  preferredUsername?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  subject?: string;
+  issuer?: string;
+  expiresAt?: number;
+  issuedAt?: number;
+  raw?: Record<string, unknown>;
 }
 
 export interface AuthenticatedUser {
@@ -14,5 +25,5 @@ export interface AuthenticatedUser {
 
 export interface AuthenticatedRequest extends Request {
   user: AuthenticatedUser;
-  [key: string]: any;
+  [key: string]: unknown;
 }
