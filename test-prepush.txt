@@ -1,2 +1,0 @@
-# Testing pre-push hook
-This is a test file to verify that the husky pre-push hook works correctly.
