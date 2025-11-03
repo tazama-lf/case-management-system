@@ -90,44 +90,6 @@ export class WorkQueueController {
     return this.workQueueService.getWorkQueuesByRole(roleName, tenantId!);
   }
 
-  @Get(':workQueueId/statistics')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get work queue statistics',
-    description: 'Retrieves task statistics for a specific work queue.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        workQueueId: {
-          type: 'string',
-          format: 'uuid',
-          example: '123e4567-e89b-12d3-a456-426614174000',
-        },
-        totalTasks: { type: 'number', example: 50 },
-        pendingTasks: { type: 'number', example: 15 },
-        inProgressTasks: { type: 'number', example: 20 },
-        completedTasks: { type: 'number', example: 12 },
-        blockedTasks: { type: 'number', example: 3 },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Missing or invalid JWT token',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Work queue not found',
-  })
-  async getWorkQueueStatistics(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest) {
-    const { tenantId } = req.user.token;
-    return this.workQueueService.getWorkQueueStatistics(workQueueId, tenantId);
-  }
-
   @Post()
   @RequireSupervisorRole()
   @HttpCode(HttpStatus.CREATED)
@@ -335,7 +297,7 @@ export class WorkQueueController {
   })
   @ApiResponse({
     status: 200,
-    description: 'User\'s work queue assignments retrieved successfully.',
+    description: "User's work queue assignments retrieved successfully.",
     schema: {
       type: 'array',
       items: {

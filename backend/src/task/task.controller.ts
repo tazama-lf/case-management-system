@@ -29,6 +29,7 @@ import {
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
+import { FlowableService } from '../flowable/flowable.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
@@ -52,6 +53,7 @@ export class TaskController {
     private readonly taskService: TaskService,
     private readonly auditLogService: AuditLogService,
     private readonly loggerService: LoggerService,
+    private readonly flowableService: FlowableService,
   ) {}
 
   @Post()
@@ -556,7 +558,7 @@ export class TaskController {
   @ApiOperation({
     summary: 'Get work queue for a candidate group',
     description:
-      'Retrieves active tasks for a specific work queue group (unassigned, assigned, or in progress). Requires INVESTIGATOR or SUPERVISOR role.',
+      'Retrieves active tasks for a specific candidate group from Flowable. Since Flowable and domain tables are in sync, candidate groups are better managed in Flowable for consistent workflow management.',
   })
   @ApiParam({
     name: 'candidateGroup',
@@ -565,30 +567,57 @@ export class TaskController {
     example: 'investigations',
     enum: ['supervisors', 'investigations', 'analysts'],
   })
+  @ApiQuery({
+    name: 'unassignedOnly',
+    required: false,
+    type: Boolean,
+    description: 'Filter for unassigned tasks only',
+    example: false,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+    example: 20,
+  })
   @ApiResponse({
     status: 200,
-    description: 'List of tasks in the work queue',
+    description: 'List of tasks in the work queue from Flowable',
     schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          task_id: { type: 'string', format: 'uuid' },
-          case_id: { type: 'string', format: 'uuid' },
-          name: { type: 'string' },
-          description: { type: 'string' },
-          status: { type: 'string' },
-          candidateGroup: { type: 'string' },
-          assigned_user_id: { type: 'string', format: 'uuid', nullable: true },
-          created_at: { type: 'string', format: 'date-time' },
-          case: {
-            type: 'object',
-            properties: {
-              case_id: { type: 'string', format: 'uuid' },
-              priority: { type: 'string' },
-              status: { type: 'string' },
-              created_at: { type: 'string', format: 'date-time' },
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            tasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  assignee: { type: 'string', nullable: true },
+                  candidateGroups: { type: 'array', items: { type: 'string' } },
+                  created: { type: 'string', format: 'date-time' },
+                  processInstanceId: { type: 'string' },
+                  taskDefinitionKey: { type: 'string' },
+                },
+              },
             },
+            total: { type: 'number', example: 50 },
+            page: { type: 'number', example: 1 },
+            limit: { type: 'number', example: 20 },
+            totalPages: { type: 'number', example: 3 },
           },
         },
       },
@@ -602,9 +631,87 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Invalid candidate group',
   })
-  async getTasksByCandidateGroup(@Param('candidateGroup') candidateGroup: string, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    return this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
+  @ApiResponse({
+    status: 503,
+    description: 'Service Unavailable - Flowable service unavailable, falling back to domain tables',
+  })
+  async getTasksByCandidateGroup(
+    @Param('candidateGroup') candidateGroup: string,
+    @Req() req: AuthenticatedRequest,
+    @Query('unassignedOnly') unassignedOnly?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    try {
+      const userId = req.user.token.clientId;
+      const tenantId = req.user.token.tenantId;
+
+      if (!userId) {
+        throw new BadRequestException('User not authenticated or missing client ID');
+      }
+
+      const pageNum = parseInt(page || '1');
+      const limitNum = parseInt(limit || '20');
+
+      try {
+        const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true);
+
+        let filteredTasks = flowableTasks;
+        if (unassignedOnly === 'true') {
+          filteredTasks = flowableTasks.filter((task: any) => !task.assignee);
+        }
+
+        const startIndex = (pageNum - 1) * limitNum;
+        const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
+
+        return {
+          success: true,
+          data: {
+            tasks: paginatedTasks,
+            total: filteredTasks.length,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(filteredTasks.length / limitNum),
+          },
+          source: 'flowable',
+        };
+      } catch (flowableError) {
+        this.loggerService.warn(
+          `Flowable service unavailable for candidate group ${candidateGroup}, falling back to domain tables: ${flowableError.message}`,
+          TaskController.name,
+        );
+
+        const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
+
+        let filteredTasks = domainTasks;
+        if (unassignedOnly === 'true') {
+          filteredTasks = domainTasks.filter((t: any) => !t.assigned_user_id);
+        }
+
+        const startIndex = (pageNum - 1) * limitNum;
+        const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
+
+        return {
+          success: true,
+          data: {
+            tasks: paginatedTasks,
+            total: filteredTasks.length,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(filteredTasks.length / limitNum),
+          },
+          source: 'domain_tables',
+          warning: 'Flowable service unavailable, using domain tables as fallback',
+        };
+      }
+    } catch (error) {
+      this.loggerService.error(
+        `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
+        error.stack,
+        TaskController.name,
+      );
+      throw error;
+    }
   }
 
   @Get(':taskId')
@@ -717,8 +824,39 @@ export class TaskController {
 
   @Get('statistics')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get work queue statistics' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Work queue statistics retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get work queue statistics',
+    description: 'Retrieves task statistics for work queues accessible to the authenticated user.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Work queue statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            totalTasks: { type: 'number', example: 50 },
+            pendingTasks: { type: 'number', example: 15 },
+            inProgressTasks: { type: 'number', example: 20 },
+            completedTasks: { type: 'number', example: 12 },
+            unassignedTasks: { type: 'number', example: 8 },
+            overdueTasks: { type: 'number', example: 3 },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing authentication',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
+  })
   async getWorkQueueStatistics(@Req() req: AuthenticatedRequest) {
     try {
       const userId = req.user.token.clientId;
@@ -732,43 +870,4 @@ export class TaskController {
       throw error;
     }
   }
-
-  @Get('work-queues/:candidateGroup/tasks')
-  @RequireAnyValidRole()
-  @ApiOperation({ summary: 'Get tasks for a specific candidate group' })
-  @ApiParam({ name: 'candidateGroup', description: 'The candidate group name (e.g., supervisors, investigations, analysts)' })
-  @ApiQuery({ name: 'unassignedOnly', required: false, type: Boolean, description: 'Filter for unassigned tasks only' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Tasks retrieved successfully' })
-  async getTasksForCandidateGroup(
-      @Param('candidateGroup') candidateGroup: string,
-      @Query('unassignedOnly') unassignedOnly?: string,
-      @Req() req?: AuthenticatedRequest,
-  ) {
-    try {
-      const userId = req?.user?.token?.clientId;
-      if (!userId) {
-        throw new BadRequestException('User not authenticated or missing client ID');
-      }
-      const tasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
-
-      // Apply additional filtering if requested
-      let filteredTasks = tasks;
-      if (unassignedOnly === 'true') {
-        filteredTasks = tasks.filter((t: any) => !t.assigned_user_id);
-      }
-
-      return {
-        success: true,
-        data: filteredTasks,
-      };
-    } catch (error) {
-      this.loggerService.error(
-          `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
-          error.stack,
-          TaskController.name,
-      );
-      throw error;
-    }
-  }
-
 }

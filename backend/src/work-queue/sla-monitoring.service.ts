@@ -24,17 +24,16 @@ export class SlaMonitoringService implements OnModuleInit {
   private readonly gracePeriodMinutes: number;
   private isProcessing = false;
   private processingStartTime: number | null = null;
-  private readonly eventDeduplicator = new EventDeduplicator(5000); // 5 second dedup window
-  private readonly tenantProcessingLocks = new Map<string, boolean>(); // Per-tenant processing locks
+  private readonly eventDeduplicator = new EventDeduplicator(5000);
+  private readonly tenantProcessingLocks = new Map<string, boolean>();
 
-  // Cache frequently used time constants (in milliseconds)
   private readonly TIME_CONSTANTS = {
     MINUTE_MS: 60 * 1000,
     HOUR_MS: 60 * 60 * 1000,
     DAY_MS: 24 * 60 * 60 * 1000,
   };
 
-  private readonly MAX_PROCESSING_TIME_MS = 10 * 60 * 1000; // 10 minutes max processing time
+  private readonly MAX_PROCESSING_TIME_MS = 10 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -49,21 +48,17 @@ export class SlaMonitoringService implements OnModuleInit {
     this.logger.log(`SLA Monitoring Service initialized (Warning: ${this.warningThresholdHours}h, Grace: ${this.gracePeriodMinutes}m)`);
   }
 
-  private readonly BATCH_SIZE = 100; // Process tasks in batches of 100 to avoid memory issues
+  private readonly BATCH_SIZE = 100;
 
   async onModuleInit() {
     // Set up configurable cron job for SLA monitoring
     const cronExpression = this.configService.get<string>('SLA_MONITORING_CRON', '*/5 * * * *'); // Default: every 5 minutes
-    
+
     try {
-      // Remove default cron job if it exists
       try {
         this.schedulerRegistry.deleteCronJob('sla-monitoring');
-      } catch (e) {
-        // Job doesn't exist, which is fine
-      }
+      } catch (e) {}
 
-      // Create new configurable cron job
       const job = new CronJob(cronExpression, () => {
         this.checkSLAs();
       });
@@ -80,9 +75,8 @@ export class SlaMonitoringService implements OnModuleInit {
   /**
    * Run SLA check on configurable schedule (default: every 5 minutes)
    */
-  @Cron(CronExpression.EVERY_5_MINUTES) // Default fallback, will be overridden dynamically
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async checkSLAs() {
-    // Enhanced race condition protection
     if (this.isProcessing) {
       const timeSinceStart = this.processingStartTime ? Date.now() - this.processingStartTime : 0;
       if (timeSinceStart > this.MAX_PROCESSING_TIME_MS) {
@@ -105,21 +99,18 @@ export class SlaMonitoringService implements OnModuleInit {
       const now = new Date();
       const timeThresholds = this.calculateTimeThresholds(now);
 
-      // Get all unique tenant IDs to ensure proper tenant isolation
       const activeTenants = await this.getActiveTenants();
       this.logger.log(`Processing SLA checks for ${activeTenants.length} active tenants`);
 
-      // Process each tenant with individual locks to prevent race conditions
       await Promise.allSettled(
         activeTenants.map(async (tenantId) => {
-          // Skip if this tenant is already being processed
           if (this.tenantProcessingLocks.get(tenantId)) {
             this.logger.debug(`Tenant ${tenantId} already being processed, skipping`);
             return;
           }
 
           this.tenantProcessingLocks.set(tenantId, true);
-          
+
           try {
             await this.checkSLAWarningsForTenant(tenantId, now, timeThresholds);
             await this.checkSLABreachesForTenant(tenantId, now, timeThresholds);
@@ -129,7 +120,7 @@ export class SlaMonitoringService implements OnModuleInit {
           } finally {
             this.tenantProcessingLocks.delete(tenantId);
           }
-        })
+        }),
       );
 
       const duration = Date.now() - this.processingStartTime;
@@ -143,14 +134,10 @@ export class SlaMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get all active tenant IDs that have tasks requiring SLA monitoring
-   */
   private async getActiveTenants(): Promise<string[]> {
     try {
       const tenants = await this.prisma.case.findMany({
         where: {
-          // Cases must have valid tenant_id for isolation
           tasks: {
             some: {
               status: {
@@ -168,21 +155,16 @@ export class SlaMonitoringService implements OnModuleInit {
         distinct: ['tenant_id'],
       });
 
-      const tenantIds = tenants
-        .map(t => t.tenant_id)
-        .filter((id): id is string => id !== null && id !== undefined && id.trim() !== '');
+      const tenantIds = tenants.map((t) => t.tenant_id).filter((id): id is string => id !== null && id !== undefined && id.trim() !== '');
 
       this.logger.debug(`Found ${tenantIds.length} active tenants with SLA monitoring requirements`);
       return tenantIds;
     } catch (error) {
       this.logger.error(`Failed to get active tenants: ${error.message}`, error.stack);
-      return []; // Return empty array to avoid breaking the monitoring loop
+      return [];
     }
   }
 
-  /**
-   * Calculate all time thresholds once to avoid repeated date math
-   */
   private calculateTimeThresholds(now: Date) {
     const nowTime = now.getTime();
     return {
@@ -194,12 +176,8 @@ export class SlaMonitoringService implements OnModuleInit {
     };
   }
 
-  /**
-   * Check for tasks approaching SLA deadline for a specific tenant
-   */
   private async checkSLAWarningsForTenant(tenantId: string, now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      // First get the total count to log and optimize processing
       const totalCount = await this.prisma.task.count({
         where: {
           sla_deadline: {
@@ -222,7 +200,6 @@ export class SlaMonitoringService implements OnModuleInit {
 
       this.logger.log(`Processing ${totalCount} tasks approaching SLA deadline for tenant ${tenantId}`);
 
-      // Process in batches to avoid memory issues
       let processed = 0;
       while (processed < totalCount) {
         const tasksApproachingDeadline = await this.prisma.task.findMany({
@@ -259,26 +236,30 @@ export class SlaMonitoringService implements OnModuleInit {
           },
           skip: processed,
           take: this.BATCH_SIZE,
-          orderBy: { sla_deadline: 'asc' }, // Process most urgent first
+          orderBy: { sla_deadline: 'asc' },
         });
 
         if (tasksApproachingDeadline.length === 0) break;
 
-        this.logger.debug(`Processing batch of ${tasksApproachingDeadline.length} tasks (${processed + 1}-${processed + tasksApproachingDeadline.length} of ${totalCount})`);
+        this.logger.debug(
+          `Processing batch of ${tasksApproachingDeadline.length} tasks (${processed + 1}-${processed + tasksApproachingDeadline.length} of ${totalCount})`,
+        );
 
-        // Process events asynchronously in batches to avoid blocking
-        const nowTime = now.getTime(); // Cache now timestamp for calculations
+        const nowTime = now.getTime();
         const warningPayloads = tasksApproachingDeadline
-          .filter(task => {
-            // Ensure essential fields are present
+          .filter((task) => {
             if (!task.task_id || !task.case_id || !task.case?.tenant_id) {
-              this.logger.warn(`Skipping task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}`);
+              this.logger.warn(
+                `Skipping task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}`,
+              );
               return false;
             }
             return true;
           })
-          .map(task => {
-            const timeUntilDeadline = task.sla_deadline ? Math.round((task.sla_deadline.getTime() - nowTime) / this.TIME_CONSTANTS.MINUTE_MS) : null;
+          .map((task) => {
+            const timeUntilDeadline = task.sla_deadline
+              ? Math.round((task.sla_deadline.getTime() - nowTime) / this.TIME_CONSTANTS.MINUTE_MS)
+              : null;
 
             return {
               taskId: task.task_id,
@@ -296,9 +277,8 @@ export class SlaMonitoringService implements OnModuleInit {
             };
           });
 
-        // Emit events asynchronously to avoid blocking the monitoring loop
         setImmediate(() => {
-          warningPayloads.forEach(payload => {
+          warningPayloads.forEach((payload) => {
             this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.sla-warning', payload);
             this.logger.debug(`Emitted SLA warning for task ${payload.taskId} (${payload.timeUntilDeadlineMinutes} minutes remaining)`);
           });
@@ -311,12 +291,8 @@ export class SlaMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Check for tasks that have breached SLA deadline for a specific tenant
-   */
   private async checkSLABreachesForTenant(tenantId: string, now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      // First get the total count to log and optimize processing
       const totalCount = await this.prisma.task.count({
         where: {
           sla_deadline: {
@@ -335,7 +311,6 @@ export class SlaMonitoringService implements OnModuleInit {
 
       this.logger.warn(`Processing ${totalCount} tasks with SLA breaches for tenant ${tenantId}`);
 
-      // Process in batches to avoid memory issues
       let processed = 0;
       while (processed < totalCount) {
         const tasksBreached = await this.prisma.task.findMany({
@@ -368,25 +343,27 @@ export class SlaMonitoringService implements OnModuleInit {
           },
           skip: processed,
           take: this.BATCH_SIZE,
-          orderBy: { sla_deadline: 'asc' }, // Process most overdue first
+          orderBy: { sla_deadline: 'asc' },
         });
 
         if (tasksBreached.length === 0) break;
 
-        this.logger.debug(`Processing breach batch of ${tasksBreached.length} tasks (${processed + 1}-${processed + tasksBreached.length} of ${totalCount})`);
+        this.logger.debug(
+          `Processing breach batch of ${tasksBreached.length} tasks (${processed + 1}-${processed + tasksBreached.length} of ${totalCount})`,
+        );
 
-        // Process events asynchronously in batches to avoid blocking
-        const nowTime = now.getTime(); // Cache now timestamp for calculations
+        const nowTime = now.getTime();
         const breachPayloads = tasksBreached
-          .filter(task => {
-            // Ensure essential fields are present
+          .filter((task) => {
             if (!task.task_id || !task.case_id || !task.case?.tenant_id || !task.sla_deadline) {
-              this.logger.warn(`Skipping breach task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}, sla_deadline=${task.sla_deadline}`);
+              this.logger.warn(
+                `Skipping breach task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}, sla_deadline=${task.sla_deadline}`,
+              );
               return false;
             }
             return true;
           })
-          .map(task => {
+          .map((task) => {
             const breachDuration = Math.round((nowTime - task.sla_deadline!.getTime()) / this.TIME_CONSTANTS.MINUTE_MS);
 
             return {
@@ -406,9 +383,8 @@ export class SlaMonitoringService implements OnModuleInit {
             };
           });
 
-        // Emit events asynchronously to avoid blocking the monitoring loop
         setImmediate(() => {
-          breachPayloads.forEach(payload => {
+          breachPayloads.forEach((payload) => {
             this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.sla-breach', payload);
             this.logger.warn(`Emitted SLA breach for task ${payload.taskId} (${payload.breachDurationMinutes} minutes overdue)`);
           });
@@ -421,12 +397,8 @@ export class SlaMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Check for overdue tasks (tasks that should have been completed by now) for a specific tenant
-   */
   private async checkOverdueTasksForTenant(tenantId: string, now: Date, timeThresholds: ReturnType<typeof this.calculateTimeThresholds>) {
     try {
-      // First get the total count to log and optimize processing
       const totalCount = await this.prisma.task.count({
         where: {
           created_at: {
@@ -448,7 +420,6 @@ export class SlaMonitoringService implements OnModuleInit {
 
       this.logger.log(`Processing ${totalCount} overdue tasks for tenant ${tenantId}`);
 
-      // Process in batches to avoid memory issues
       let processed = 0;
       while (processed < totalCount) {
         const overdueTasks = await this.prisma.task.findMany({
@@ -484,25 +455,27 @@ export class SlaMonitoringService implements OnModuleInit {
           },
           skip: processed,
           take: this.BATCH_SIZE,
-          orderBy: { created_at: 'asc' }, // Process oldest first
+          orderBy: { created_at: 'asc' },
         });
 
         if (overdueTasks.length === 0) break;
 
-        this.logger.debug(`Processing overdue batch of ${overdueTasks.length} tasks (${processed + 1}-${processed + overdueTasks.length} of ${totalCount})`);
+        this.logger.debug(
+          `Processing overdue batch of ${overdueTasks.length} tasks (${processed + 1}-${processed + overdueTasks.length} of ${totalCount})`,
+        );
 
-        // Process events asynchronously in batches to avoid blocking
-        const nowTime = now.getTime(); // Cache now timestamp for calculations
+        const nowTime = now.getTime();
         const overduePayloads = overdueTasks
-          .filter(task => {
-            // Ensure essential fields are present
+          .filter((task) => {
             if (!task.task_id || !task.case_id || !task.case?.tenant_id || !task.created_at) {
-              this.logger.warn(`Skipping overdue task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}, created_at=${task.created_at}`);
+              this.logger.warn(
+                `Skipping overdue task with missing required fields: task_id=${task.task_id}, case_id=${task.case_id}, tenant_id=${task.case?.tenant_id}, created_at=${task.created_at}`,
+              );
               return false;
             }
             return true;
           })
-          .map(task => {
+          .map((task) => {
             const daysOverdue = Math.floor((nowTime - task.created_at.getTime()) / this.TIME_CONSTANTS.DAY_MS);
 
             return {
@@ -521,9 +494,8 @@ export class SlaMonitoringService implements OnModuleInit {
             };
           });
 
-        // Emit events asynchronously to avoid blocking the monitoring loop
         setImmediate(() => {
-          overduePayloads.forEach(payload => {
+          overduePayloads.forEach((payload) => {
             this.eventDeduplicator.emitIfNotDuplicate(this.eventEmitter, 'task.overdue', payload);
             this.logger.debug(`Emitted overdue event for task ${payload.taskId} (${payload.daysOverdue} days old)`);
           });
@@ -547,7 +519,7 @@ export class SlaMonitoringService implements OnModuleInit {
 
     // Priority-based severity thresholds
     const isHighPriority = casePriority === 'URGENT' || casePriority === 'HIGH';
-    
+
     if (isHighPriority) {
       if (breachHours > 4) return 'CRITICAL';
       if (breachHours > 2) return 'HIGH';
@@ -562,9 +534,6 @@ export class SlaMonitoringService implements OnModuleInit {
     return 'INFO';
   }
 
-  /**
-   * Manually trigger SLA check (for testing or on-demand execution)
-   */
   async triggerSLACheck(): Promise<{ success: boolean; message: string }> {
     if (this.isProcessing) {
       return {

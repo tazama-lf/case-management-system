@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { FlowableService } from './flowable.service';
 import { FlowableEventListener } from './listeners/flowable-event.listener';
 import { FlowableWorkQueueListener } from './listeners/work-queue.listener';
@@ -9,7 +9,7 @@ import { AuditLogModule } from 'src/audit/auditLog.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [LoggerModule, ConfigModule, TaskModule, AuditLogModule, PrismaModule],
+  imports: [LoggerModule, ConfigModule, forwardRef(() => TaskModule), AuditLogModule, PrismaModule],
   providers: [FlowableService, FlowableEventListener, FlowableWorkQueueListener],
   exports: [FlowableService],
 })

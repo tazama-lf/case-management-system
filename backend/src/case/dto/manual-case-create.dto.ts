@@ -1,4 +1,4 @@
-import { AlertType, CaseType, Priority } from '@prisma/client';
+import { AlertType, Priority } from '@prisma/client';
 import { IsEnum, IsNumber, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 

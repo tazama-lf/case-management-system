@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { Outcome } from '../audit/types/outcome';
 import {CaseCreatedEvent, CaseStatusChangedEvent} from '../events/domain-events';
-import {CaseStatus, CaseType, Priority} from "@prisma/client";
+import {AlertType, CaseStatus, Priority} from "@prisma/client";
 
 @Injectable()
 export class CaseCreationService {
@@ -66,7 +66,7 @@ export class CaseCreationService {
       caseId: string,
       status: CaseStatus,
       userId: string,
-      additionalUpdates?: { priority?: Priority; caseType?: CaseType }
+      additionalUpdates?: { priority?: Priority; alertType?: AlertType }
   ): Promise<void> {
     try {
       const existingCase = await this.prismaService.case.findUnique({
@@ -86,23 +86,19 @@ export class CaseCreationService {
         updateData.priority = additionalUpdates.priority;
       }
 
-      if (additionalUpdates?.caseType) {
-        updateData.case_type = additionalUpdates.caseType;
+      if (additionalUpdates?.alertType) {
+        updateData.case_type = additionalUpdates.alertType;
       }
 
-      await this.prismaService.case.update({
+      const updatedCase = await this.prismaService.case.update({
         where: { case_id: caseId },
         data: updateData,
       });
 
+      // Emit event
       this.eventEmitter.emit(
           'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              existingCase.status,
-              status,
-              additionalUpdates ? 'Case updated with additional fields' : 'Status updated'
-          ),
+          new CaseStatusChangedEvent(caseId, existingCase.status, status, 'Case status updated')
       );
 
       await this.auditLogService.logAction({
