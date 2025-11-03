@@ -1399,6 +1399,9 @@ export class WorkQueueService {
       throw new NotFoundException(`Work queue with ID ${workQueueId} not found`);
     }
 
+    // ⚠️ RULE VALIDATION DISABLED - SHELVED FOR POST-MVP ⚠️
+    // Auto-assignment rule validation is not part of MVP
+    /*
     const validation = this.ruleEngine.validateRule(dto);
     if (!validation.isValid) {
       throw new BadRequestException({
@@ -1422,6 +1425,7 @@ export class WorkQueueService {
         conflicts,
       });
     }
+    */
 
     const rule = await this.prisma.workQueueAssignmentRule.create({
       data: {
@@ -1580,6 +1584,8 @@ export class WorkQueueService {
     }
 
     if (dto.conditions || dto.action) {
+      // RULE VALIDATION DISABLED - SHELVED FOR POST-MVP
+      /*
       const validationDto: CreateAssignmentRuleDto = {
         ruleName: dto.ruleName || existingRule.rule_name,
         triggerType: (dto.triggerType || existingRule.trigger_type) as any,
@@ -1598,6 +1604,7 @@ export class WorkQueueService {
           warnings: validation.warnings,
         });
       }
+      */
     }
 
     const updatedRule = await this.prisma.workQueueAssignmentRule.update({

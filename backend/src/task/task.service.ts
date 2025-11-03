@@ -12,7 +12,8 @@ import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { WorkQueueService } from '../work-queue/work-queue.service';
 import { RuleEngineService } from '../work-queue/rule-engine.service';
-import { RuleTrigger } from '../work-queue/dto/assignment-rule.dto';
+// RuleTrigger import disabled
+// import { RuleTrigger } from '../work-queue/dto/assignment-rule.dto';
 import {
   TaskCreatedEvent,
   TaskStatusChangedEvent,
@@ -89,6 +90,13 @@ export class TaskService {
       });
 
       let updatedTask = result.task;
+      
+      // ⚠️ AUTO-ASSIGNMENT DISABLED - SHELVED FOR POST-MVP ⚠️
+      // Auto-assignment rules are not part of MVP and have no frontend implementation.
+      // This code is commented out but kept for future use.
+      // To re-enable: Uncomment this block and the assignment rule endpoints in work-queue.controller.ts
+      
+      /*
       try {
         const rules = await this.workQueueService.getAllActiveAssignmentRules(result.tenantId);
 
@@ -183,6 +191,7 @@ export class TaskService {
           performedAt: new Date(),
         });
       }
+      */
 
       this.eventEmitter.emit(
         'task.created',

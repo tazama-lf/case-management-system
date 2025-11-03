@@ -13,6 +13,15 @@ import {
 
 /**
  * Service for evaluating and applying assignment rules with conditional logic
+ *
+ * DEPRECATED
+ * This service implements automated task assignment rules based on conditions.
+ * This functionality is NOT part of the MVP and has been disabled.
+ * No frontend exists for managing these rules.
+ *
+ * The code is kept for future implementation but should not be actively used.
+ * To re-enable: Uncomment controller endpoints in work-queue.controller.ts
+ * and task auto-assignment logic in task.service.ts
  */
 @Injectable()
 export class RuleEngineService {
