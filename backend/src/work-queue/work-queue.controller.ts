@@ -484,7 +484,12 @@ export class WorkQueueController {
   }
 
   // ========== Assignment Rule Management Endpoints ==========
+  // DISABLED
+  // Auto-assignment rules are not part of MVP and have no frontend implementation.
+  // These endpoints are commented out but kept for future use.
+  // To re-enable: Uncomment these endpoints and the auto-assignment logic in task.service.ts
 
+  /*
   @Post(':workQueueId/rules')
   @RequireSupervisorRole()
   @HttpCode(HttpStatus.CREATED)
@@ -654,4 +659,5 @@ export class WorkQueueController {
     const { clientId, tenantId } = req.user.token;
     return this.workQueueService.deactivateRule(workQueueId, ruleId, clientId, tenantId!);
   }
+  */
 }
