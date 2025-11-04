@@ -642,7 +642,7 @@ export class FlowableService implements OnModuleInit {
 
   async getWorkQueueStatistics(candidateGroup?: string) {
     try {
-      // If no specific candidate group provided, get all groups from Flowable
+      
       const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups();
       const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);
       const statistics: Record<string, unknown> = {};

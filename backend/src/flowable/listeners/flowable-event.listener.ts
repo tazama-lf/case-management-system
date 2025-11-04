@@ -116,7 +116,7 @@ export class FlowableEventListener {
 
       const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
 
-      // Check if task already exists (prevent duplicates)
+      
       const existingTask = flowableTasks.find((t: unknown) => {
         const task = t as Record<string, unknown>;
         const taskVars = (task.variables as unknown[]) || [];
@@ -172,7 +172,7 @@ export class FlowableEventListener {
         }
       }
 
-      // Create the task in Flowable
+      
       const flowableTask = await this.flowableService.createTask({
         name: event.taskName,
         description: event.description,

@@ -16,9 +16,11 @@ export class FlowableWorkQueueService {
 
   async getWorkQueueByGroup(candidateGroup: WorkQueueCandidateGroupType): Promise<UnifiedWorkQueueTask[]> {
     try {
-      const response = await apiClient.get<FlowableTask[]>(`${this.baseUrl}/work-queues/${candidateGroup}`);
+      const response = await apiClient.get<{data: {tasks: FlowableTask[]}}>(`${this.baseUrl}/work-queues/${candidateGroup}`);
 
-      const unifiedTasks = response.map((task) => this.transformFlowableTask(task));
+     
+      const tasks = response.data?.tasks || [];
+      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task));
 
       return unifiedTasks;
     } catch (error: any) {

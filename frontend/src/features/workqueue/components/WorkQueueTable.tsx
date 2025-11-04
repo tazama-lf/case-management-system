@@ -168,7 +168,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900 break-words">
-                    {task.candidateGroup || 'General'}
+                    {task.candidateGroup || 'invsestigations'}
                   </div>
                 </td>
                 <td className="px-4 py-3">
