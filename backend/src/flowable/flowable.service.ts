@@ -17,7 +17,6 @@ export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
   private readonly flowableAuth: { username: string; password: string };
-  private readonly candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
   private readonly tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
   private readonly maxRetries = 3;
   private readonly retryDelayMs = 5000;
@@ -52,7 +51,6 @@ export class FlowableService implements OnModuleInit {
 
         await this.healthCheck();
         await this.deployBpmnProcess();
-        await this.initializeCandidateGroups();
 
         this.logger.log('Flowable initialized successfully', FlowableService.name);
         return;
@@ -111,26 +109,7 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  private async initializeCandidateGroups() {
-    for (const groupName of this.candidateGroups) {
-      try {
-        const existingGroup = await this.getGroup(groupName.toLowerCase());
 
-        if (!existingGroup) {
-          await this.createGroup({
-            id: groupName.toLowerCase(),
-            name: groupName,
-            type: 'candidate',
-          });
-          this.logger.log(`Created candidate group: ${groupName}`, FlowableService.name);
-        } else {
-          this.logger.log(`Candidate group already exists: ${groupName}`, FlowableService.name);
-        }
-      } catch (error) {
-        this.logger.error(`Failed to initialize group ${groupName}: ${error.message}`, error.stack, FlowableService.name);
-      }
-    }
-  }
 
   /**
    * Ensure a user is a member of a Flowable identity group
@@ -663,7 +642,9 @@ export class FlowableService implements OnModuleInit {
 
   async getWorkQueueStatistics(candidateGroup?: string) {
     try {
-      const groups = candidateGroup ? [candidateGroup] : this.candidateGroups;
+      // If no specific candidate group provided, get all groups from Flowable
+      const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups();
+      const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);
       const statistics: Record<string, unknown> = {};
 
       for (const group of groups) {

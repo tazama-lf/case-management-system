@@ -21,56 +21,58 @@ import { AuditLogService } from '../../audit/auditLog.service';
 @Injectable()
 export class FlowableEventListener {
   constructor(
-      private readonly flowableService: FlowableService,
-      private readonly logger: LoggerService,
-      private readonly taskService: TaskService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
+    private readonly flowableService: FlowableService,
+    private readonly logger: LoggerService,
+    private readonly taskService: TaskService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
   ) {}
 
   @OnEvent('case.created')
   async handleCaseCreated(event: CaseCreatedEvent) {
     try {
       this.logger.log(
-          `[Flowable-CaseCreated] Starting process for case ${event.caseId} with status ${event.caseStatus}`,
-          FlowableEventListener.name,
+        `[Flowable-CaseCreated] Starting process for case ${event.caseId} with status ${event.caseStatus}`,
+        FlowableEventListener.name,
       );
 
-      // Determine creator role based on creation type
       const creatorRole = event.creationType === 'MANUAL' ? 'SUPERVISOR' : 'SYSTEM';
 
       const processInstance = await this.flowableService.startProcessInstance(
-          'caseManagementProcess',
-          {
-            caseId: event.caseId,
-            tenantId: event.tenantId,
-            creationType: event.creationType,
-            caseStatus: event.caseStatus,
-            autocloseEligible: String(event.autocloseEligible),
-            creatorRole: creatorRole, // Add missing variable required by BPMN
-          },
-          event.caseId,
+        'caseManagementProcess',
+        {
+          caseId: event.caseId,
+          tenantId: event.tenantId,
+          creationType: event.creationType,
+          caseStatus: event.caseStatus,
+          autocloseEligible: String(event.autocloseEligible),
+          creatorRole: creatorRole,
+        },
+        event.caseId,
       );
 
       this.logger.log(
-          `[Flowable-CaseCreated] Successfully started process ${processInstance.id} for case ${event.caseId}`,
-          FlowableEventListener.name,
+        `[Flowable-CaseCreated] Successfully started process ${processInstance.id} for case ${event.caseId}`,
+        FlowableEventListener.name,
       );
 
-      // Trigger immediate sync of any BPMN-created tasks
       setTimeout(async () => {
         try {
           await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id);
           this.logger.log(`[Flowable-CaseCreated] BPMN task sync completed for case ${event.caseId}`, FlowableEventListener.name);
         } catch (syncError) {
-          this.logger.error(`[Flowable-CaseCreated] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`, syncError.stack, FlowableEventListener.name);
+          this.logger.error(
+            `[Flowable-CaseCreated] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
+            syncError.stack,
+            FlowableEventListener.name,
+          );
         }
-      }, 2000); // Wait 2 seconds for BPMN tasks to be created
+      }, 2000);
     } catch (error) {
       this.logger.error(
-          `[Flowable-CaseCreated] Failed to start process for case ${event.caseId}: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
+        `[Flowable-CaseCreated] Failed to start process for case ${event.caseId}: ${error.message}`,
+        error.stack,
+        FlowableEventListener.name,
       );
     }
   }
@@ -78,32 +80,31 @@ export class FlowableEventListener {
   @OnEvent('task.created')
   async handleTaskCreated(event: TaskCreatedEvent) {
     const maxRetries = 3;
-    const retryDelayMs = 1000; // 1 second between retries
+    const retryDelayMs = 1000;
 
     try {
       this.logger.log(
-          `Handling task.created for task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
-          FlowableEventListener.name,
+        `Handling task.created for task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
+        FlowableEventListener.name,
       );
 
       let processInstance: any = null;
-      
-      // Retry logic to handle race condition between case creation and task creation
+
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
-        
+
         if (processInstance) {
           this.logger.log(
-              `Found Flowable process ${processInstance.id} for case ${event.caseId} on attempt ${attempt}`,
-              FlowableEventListener.name,
+            `Found Flowable process ${processInstance.id} for case ${event.caseId} on attempt ${attempt}`,
+            FlowableEventListener.name,
           );
           break;
         }
 
         if (attempt < maxRetries) {
           this.logger.warn(
-              `Process not found for case ${event.caseId}, retrying (${attempt}/${maxRetries}) in ${retryDelayMs}ms`,
-              FlowableEventListener.name,
+            `Process not found for case ${event.caseId}, retrying (${attempt}/${maxRetries}) in ${retryDelayMs}ms`,
+            FlowableEventListener.name,
           );
           await this.sleep(retryDelayMs);
         }
@@ -120,30 +121,55 @@ export class FlowableEventListener {
         const task = t as Record<string, unknown>;
         const taskVars = (task.variables as unknown[]) || [];
 
-        // Check by postgres_task_id first (most reliable)
         const hasMatchingPostgresId = taskVars.some((v: unknown) => {
           const variable = v as Record<string, unknown>;
           return variable.name === 'postgres_task_id' && variable.value === event.taskId;
         });
 
-        // If no postgres_task_id, check by task name
-        const hasMatchingName = task.name === event.taskName && !taskVars.some((v: unknown) =>{
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        });
+        const hasMatchingName =
+          task.name === event.taskName &&
+          !taskVars.some((v: unknown) => {
+            const variable = v as Record<string, unknown>;
+            return variable.name === 'postgres_task_id';
+          });
 
         return hasMatchingPostgresId || hasMatchingName;
       });
 
       if (existingTask) {
         const taskObj = existingTask as Record<string, unknown>;
-        this.logger.error(
-            `Task "${event.taskName}" already exists in process ${processInstance.id}. Cannot create duplicate task.`,
+
+        const taskVars = (taskObj.variables as unknown[]) || [];
+        const hasPostgresId = taskVars.some((v: unknown) => {
+          const variable = v as Record<string, unknown>;
+          return variable.name === 'postgres_task_id';
+        });
+
+        if (!hasPostgresId) {
+          this.logger.log(
+            `Found existing BPMN task "${event.taskName}" (${taskObj.id}) that needs syncing with database task ${event.taskId}`,
             FlowableEventListener.name,
-        );
-        throw new Error(
-            `Task "${event.taskName}" already exists in process ${processInstance.id}. Duplicate task creation prevented.`
-        );
+          );
+
+          await this.flowableService.setTaskVariables(taskObj.id as string, {
+            postgres_task_id: event.taskId,
+            task_status: event.status,
+            flowable_case_id: processInstance.id as string,
+            task_name: event.taskName,
+          });
+
+          this.logger.log(
+            ` Database ↔ Flowable SYNC SUCCESS: Synced existing Flowable task ${taskObj.id} with PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
+            FlowableEventListener.name,
+          );
+          return;
+        } else {
+          this.logger.error(
+            `Task "${event.taskName}" already exists in process ${processInstance.id} and is already synced. Cannot create duplicate task.`,
+            FlowableEventListener.name,
+          );
+          throw new Error(`Task "${event.taskName}" already exists in process ${processInstance.id}. Duplicate task creation prevented.`);
+        }
       }
 
       // Create the task in Flowable
@@ -154,26 +180,23 @@ export class FlowableEventListener {
         assignee: event.assignedUserId,
         variables: {
           postgres_task_id: event.taskId,
-          postgres_case_id: event.caseId,
           task_status: event.status,
-          assignee_user_id: event.assignedUserId || '',
           flowable_case_id: processInstance.id as string,
           task_name: event.taskName,
         },
       });
 
       this.logger.log(
-          ` Database ↔ Flowable SYNC SUCCESS: Created Flowable task ${flowableTask.id} for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
-          FlowableEventListener.name,
+        ` Database ↔ Flowable SYNC SUCCESS: Created Flowable task ${flowableTask.id} for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}`,
+        FlowableEventListener.name,
       );
     } catch (error) {
       this.logger.error(
-          ` Database ↔ Flowable SYNC FAILED: Failed to create Flowable task for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
+        ` Database ↔ Flowable SYNC FAILED: Failed to create Flowable task for PostgreSQL task ${event.taskId} (${event.taskName}) in case ${event.caseId}: ${error.message}`,
+        error.stack,
+        FlowableEventListener.name,
       );
-      
-      // This is critical - task exists in DB but not in Flowable, breaking work queue sync
+
       throw error;
     }
   }
@@ -206,16 +229,9 @@ export class FlowableEventListener {
       const taskObj = flowableTask as Record<string, unknown>;
       await this.flowableService.updateTaskVariable(taskObj.id as string, 'task_status', event.newStatus);
 
-      this.logger.log(
-          `Updated Flowable task ${taskObj.id} status to ${event.newStatus}`,
-          FlowableEventListener.name,
-      );
+      this.logger.log(`Updated Flowable task ${taskObj.id} status to ${event.newStatus}`, FlowableEventListener.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to update Flowable task status: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to update Flowable task status: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -259,16 +275,9 @@ export class FlowableEventListener {
 
       await this.flowableService.completeTask(taskObj.id as string, completionVars);
 
-      this.logger.log(
-          `Completed Flowable task ${taskObj.id} for PostgreSQL task ${event.taskId}`,
-          FlowableEventListener.name,
-      );
+      this.logger.log(`Completed Flowable task ${taskObj.id} for PostgreSQL task ${event.taskId}`, FlowableEventListener.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to complete Flowable task: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to complete Flowable task: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -309,16 +318,9 @@ export class FlowableEventListener {
 
       await this.flowableService.setTaskVariables(taskObj.id as string, variablesToUpdate);
 
-      this.logger.log(
-          `Successfully assigned Flowable task ${taskObj.id} to user ${event.assignedUserId}`,
-          FlowableEventListener.name,
-      );
+      this.logger.log(`Successfully assigned Flowable task ${taskObj.id} to user ${event.assignedUserId}`, FlowableEventListener.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to assign Flowable task: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to assign Flowable task: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -364,16 +366,9 @@ export class FlowableEventListener {
         await this.flowableService.assignTaskToCandidateGroup(taskObj.id as string, event.candidateGroup);
       }
 
-      this.logger.log(
-          `Unassigned Flowable task ${taskObj.id} from user ${event.previousAssignedUserId}`,
-          FlowableEventListener.name,
-      );
+      this.logger.log(`Unassigned Flowable task ${taskObj.id} from user ${event.previousAssignedUserId}`, FlowableEventListener.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to unassign Flowable task: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to unassign Flowable task: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -395,16 +390,9 @@ export class FlowableEventListener {
 
       await this.flowableService.setProcessVariables(processInstance.id as string, processVariables);
 
-      this.logger.log(
-          `Updated Flowable process ${processInstance.id} status for case ${event.caseId}`,
-          FlowableEventListener.name,
-      );
+      this.logger.log(`Updated Flowable process ${processInstance.id} status for case ${event.caseId}`, FlowableEventListener.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to update Flowable process status: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to update Flowable process status: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -412,16 +400,16 @@ export class FlowableEventListener {
   async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
     try {
       const postgresTask = await this.taskService.createTask(
-          {
-            caseId: event.caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: event.taskName,
-            description: event.description,
-            candidateGroup: event.candidateGroup,
-          },
-          'system',
-          this.auditLogService,
-          this.logger,
+        {
+          caseId: event.caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: event.taskName,
+          description: event.description,
+          candidateGroup: event.candidateGroup,
+        },
+        'system',
+        this.auditLogService,
+        this.logger,
       );
 
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
@@ -436,15 +424,11 @@ export class FlowableEventListener {
       });
 
       this.logger.log(
-          `Created and synced PostgreSQL task ${postgresTask.task_id} with BPMN task ${event.flowableTaskId}`,
-          FlowableEventListener.name,
+        `Created and synced PostgreSQL task ${postgresTask.task_id} with BPMN task ${event.flowableTaskId}`,
+        FlowableEventListener.name,
       );
     } catch (error) {
-      this.logger.error(
-          `Failed to create PostgreSQL task: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to create PostgreSQL task: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
@@ -454,43 +438,25 @@ export class FlowableEventListener {
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (processInstance) {
-        await this.flowableService.terminateProcessInstance(
-            processInstance.id as string,
-            `Case abandoned: ${event.reason}`,
-        );
+        await this.flowableService.terminateProcessInstance(processInstance.id as string, `Case abandoned: ${event.reason}`);
         this.logger.log(`Terminated Flowable process for abandoned case ${event.caseId}`, FlowableEventListener.name);
       }
     } catch (error) {
-      this.logger.error(
-          `Failed to terminate Flowable process: ${error.message}`,
-          error.stack,
-          FlowableEventListener.name,
-      );
+      this.logger.error(`Failed to terminate Flowable process: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
-  /**
-   * Sync BPMN-created tasks to the database
-   * This handles tasks that are automatically created by the BPMN process
-   */
   private async syncBpmnCreatedTasksForCase(caseId: string, processInstanceId: string): Promise<void> {
     try {
-      // Get all Flowable tasks for this process instance
       const flowableTasks = await this.flowableService.getProcessTasks(processInstanceId);
 
-      this.logger.log(
-        `[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`,
-        FlowableEventListener.name,
-      );
+      this.logger.log(`[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`, FlowableEventListener.name);
 
       for (const flowableTask of flowableTasks) {
         await this.syncSingleBpmnTask(flowableTask, caseId);
       }
 
-      this.logger.log(
-        `[BPMN-Sync] Completed sync for all tasks in case ${caseId}`,
-        FlowableEventListener.name,
-      );
+      this.logger.log(`[BPMN-Sync] Completed sync for all tasks in case ${caseId}`, FlowableEventListener.name);
     } catch (error) {
       this.logger.error(
         `[BPMN-Sync] Failed to sync BPMN tasks for case ${caseId}: ${error.message}`,
@@ -501,27 +467,19 @@ export class FlowableEventListener {
     }
   }
 
-  /**
-   * Sync a single BPMN-created Flowable task with the database
-   */
   private async syncSingleBpmnTask(flowableTask: any, caseId: string): Promise<void> {
     const taskId = flowableTask.id;
 
     try {
-      // Check if this task already has variables set (indicating it's already synced)
       const taskVariables = await this.flowableService.getTaskVariables(taskId);
 
       if (taskVariables.postgres_task_id) {
-        // Task is already synced, verify the database task exists
         const dbTask = await this.prismaService.task.findUnique({
           where: { task_id: taskVariables.postgres_task_id },
         });
 
         if (dbTask) {
-          this.logger.debug(
-            `[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`,
-            FlowableEventListener.name,
-          );
+          this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, FlowableEventListener.name);
           return;
         } else {
           this.logger.warn(
@@ -531,20 +489,15 @@ export class FlowableEventListener {
         }
       }
 
-      // Check if the case exists in the database
       const dbCase = await this.prismaService.case.findUnique({
         where: { case_id: caseId },
       });
 
       if (!dbCase) {
-        this.logger.error(
-          `[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`,
-          FlowableEventListener.name,
-        );
+        this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, FlowableEventListener.name);
         return;
       }
 
-      // Create the corresponding database task
       const candidateGroup = this.determineCandidateGroupFromTask(flowableTask);
       const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
 
@@ -557,12 +510,11 @@ export class FlowableEventListener {
           candidateGroup,
           assignedUserId: flowableTask.assignee,
         },
-        'system', // Created by system sync
+        'system',
         this.auditLogService,
         this.logger,
       );
 
-      // Set variables on the Flowable task to link it to the database task
       const variables = {
         postgres_task_id: dbTask.task_id,
         postgres_case_id: caseId,
@@ -574,24 +526,15 @@ export class FlowableEventListener {
       await this.flowableService.setTaskVariables(taskId, variables);
 
       this.logger.log(
-        `[BPMN-Sync] ✅ Successfully synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,
+        `[BPMN-Sync]  Successfully synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,
         FlowableEventListener.name,
       );
-
     } catch (error) {
-      this.logger.error(
-        `[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`,
-        error.stack,
-        FlowableEventListener.name,
-      );
+      this.logger.error(`[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`, error.stack, FlowableEventListener.name);
     }
   }
 
-  /**
-   * Determine the appropriate candidate group based on the Flowable task
-   */
   private determineCandidateGroupFromTask(flowableTask: any): string {
-    // Check if the task already has candidate groups assigned
     if (flowableTask.candidateGroups && flowableTask.candidateGroups.length > 0) {
       const group = flowableTask.candidateGroups[0].toLowerCase();
       if (['supervisors', 'investigations', 'investigator'].includes(group)) {
@@ -599,21 +542,17 @@ export class FlowableEventListener {
       }
     }
 
-    // Determine based on task name
     const taskName = flowableTask.name.toLowerCase();
-    
+
     if (taskName.includes('approve') || taskName.includes('supervisor')) {
       return 'supervisors';
     } else if (taskName.includes('investigate') || taskName.includes('investigation')) {
       return 'investigations';
     } else {
-      return 'investigations'; // Default fallback
+      return 'investigations';
     }
   }
 
-  /**
-   * Utility method to sleep for a specified number of milliseconds
-   */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditLogService } from '../audit/auditLog.service';
+import { FlowableService } from '../flowable/flowable.service';
 import {
   CreateWorkQueueDto,
   UpdateWorkQueueDto,
@@ -25,15 +27,24 @@ import { RuleEngineService } from './rule-engine.service';
 @Injectable()
 export class WorkQueueService implements OnModuleInit {
   private readonly logger = new Logger(WorkQueueService.name);
+  
+  // Predefined candidate groups managed by Work Queue module
+  private readonly predefinedCandidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly ruleEngine: RuleEngineService,
     private readonly auditLogService: AuditLogService,
+    @Inject(forwardRef(() => FlowableService))
+    private readonly flowableService: FlowableService,
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit() {
+    // Initialize predefined candidate groups in Flowable
+    await this.initializePredefinedCandidateGroups();
+    
     // Emit a bootstrap sync event for all active work queues so Flowable can reconcile identity.
     try {
       const queues = await this.prisma.workQueue.findMany({
@@ -70,6 +81,34 @@ export class WorkQueueService implements OnModuleInit {
       this.logger.log(`Emitted sync for ${queues.length} work queues`);
     } catch (e) {
       this.logger.error(`Failed to emit work queue sync on init: ${e.message}`);
+    }
+  }
+
+  /**
+   * Initialize predefined candidate groups in Flowable
+   **/
+ 
+  private async initializePredefinedCandidateGroups() {
+    this.logger.log('Initializing predefined candidate groups via WorkQueue module', WorkQueueService.name);
+    
+    for (const groupName of this.predefinedCandidateGroups) {
+      try {
+        // Use FlowableService to create the group in Flowable engine
+        const existingGroup = await this.flowableService.getGroup(groupName.toLowerCase());
+        
+        if (!existingGroup) {
+          await this.flowableService.createGroup({
+            id: groupName.toLowerCase(),
+            name: groupName,
+            type: 'candidate',
+          });
+          this.logger.log(`Created candidate group: ${groupName}`, WorkQueueService.name);
+        } else {
+          this.logger.log(`Candidate group already exists: ${groupName}`, WorkQueueService.name);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to initialize candidate group ${groupName}: ${error.message}`, error.stack, WorkQueueService.name);
+      }
     }
   }
 
@@ -808,6 +847,11 @@ export class WorkQueueService implements OnModuleInit {
    * Auto-assign users to work queues based on their roles
    */
   async autoAssignUsersByRole(userId: string, userRole: string, tenantId: string): Promise<any[]> {
+    if (this.configService.get('AUTO_ASSIGNMENT_ENABLED') !== 'true') {
+      this.logger.log('Auto-assignment is disabled by configuration.');
+      return [];
+    }
+
     const matchingQueues = await this.prisma.workQueue.findMany({
       where: {
         tenant_id: tenantId,

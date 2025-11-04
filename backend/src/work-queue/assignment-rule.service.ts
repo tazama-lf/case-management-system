@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AssignmentRuleType } from '@prisma/client';
 
@@ -22,13 +23,18 @@ interface TaskForAssignment {
 export class AssignmentRuleService {
   private readonly logger = new Logger(AssignmentRuleService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly configService: ConfigService) {}
 
   /**
    * Automatically assigns a task to the most appropriate work queue
    * based on active assignment rules
    */
   async autoAssignTask(taskId: string, tenantId: string): Promise<{ workQueueId: string; ruleName: string } | null> {
+    if (this.configService.get('AUTO_ASSIGNMENT_ENABLED') !== 'true') {
+      this.logger.log('Auto-assignment is disabled by configuration.');
+      return null;
+    }
+
     this.logger.log(`Auto-assigning task ${taskId} for tenant ${tenantId}`);
 
     // Get task details
