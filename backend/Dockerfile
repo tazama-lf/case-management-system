@@ -1,3 +1,4 @@
+
 # =============================================================================
 # Backend Development Dockerfile
 # =============================================================================
@@ -13,22 +14,21 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY .npmrc .npmrc ./
-COPY tsconfig.json ./
 
 # Install dependencies
-RUN npm install vite
-RUN npm ci
-RUN npm run build
+RUN npm install --ignore-scripts
 
 # Copy source code
 COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
-RUN npx prisma migrate dev --name init
+
+# Build the application
+RUN npm run build
 
 # Set Environment Variables
-ENV DATABASE_URL=postgresql://tazama_user:tazama_password@10.10.80.30:5432/tazama_cms
+ENV DATABASE_URL=postgresql://postgres:postgres@10.10.80.30:5432/tazama_cms
 ENV TRIAGE_TYPE=MANUAL
 ENV CONFIDENCE_THRESHOLD=95
 ENV CLIENT_SYSTEM_INTERDICTION_ENABLED=true

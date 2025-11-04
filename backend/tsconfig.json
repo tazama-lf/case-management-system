@@ -17,7 +17,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "types": ["vite/client", "node"],
+    "types": ["node"],
   },
   "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
 }
