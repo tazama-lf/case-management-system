@@ -13,36 +13,36 @@ export class ReportsController {
 
   @Get('case-status')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get case status report',
-    description: 'Retrieve comprehensive case status analytics including distribution, types, outcomes, and trends'
+    description: 'Retrieve comprehensive case status analytics including distribution, types, outcomes, and trends',
   })
-  @ApiQuery({ 
-    name: 'dateRange', 
-    required: false, 
+  @ApiQuery({
+    name: 'dateRange',
+    required: false,
     enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
     description: 'Time period for the report data',
-    example: 'last30'
+    example: 'last30',
   })
-  @ApiQuery({ 
-    name: 'caseType', 
-    required: false, 
+  @ApiQuery({
+    name: 'caseType',
+    required: false,
     enum: ['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'],
-    description: 'Filter by case type'
+    description: 'Filter by case type',
   })
-  @ApiQuery({ 
-    name: 'priority', 
-    required: false, 
+  @ApiQuery({
+    name: 'priority',
+    required: false,
     enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-    description: 'Filter by case priority'
+    description: 'Filter by case priority',
   })
-  @ApiQuery({ 
-    name: 'investigator', 
-    required: false, 
-    description: 'Filter by investigator user ID'
+  @ApiQuery({
+    name: 'investigator',
+    required: false,
+    description: 'Filter by investigator user ID',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Case status report data retrieved successfully',
     schema: {
       type: 'object',
@@ -53,8 +53,8 @@ export class ReportsController {
             totalCases: { type: 'number', example: 150 },
             closedCases: { type: 'number', example: 45 },
             openCases: { type: 'number', example: 105 },
-            avgResolutionTime: { type: 'number', example: 12.5 }
-          }
+            avgResolutionTime: { type: 'number', example: 12.5 },
+          },
         },
         statusDistribution: {
           type: 'object',
@@ -64,8 +64,8 @@ export class ReportsController {
             draft: { type: 'number', example: 10 },
             suspended: { type: 'number', example: 5 },
             pendingApproval: { type: 'number', example: 8 },
-            closed: { type: 'number', example: 45 }
-          }
+            closed: { type: 'number', example: 45 },
+          },
         },
         caseTypes: {
           type: 'array',
@@ -74,12 +74,12 @@ export class ReportsController {
             properties: {
               name: { type: 'string', example: 'FRAUD' },
               count: { type: 'number', example: 75 },
-              color: { type: 'string', example: '#ef4444' }
-            }
-          }
-        }
-      }
-    }
+              color: { type: 'string', example: '#ef4444' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
@@ -88,26 +88,26 @@ export class ReportsController {
     @Query('dateRange') dateRange?: string,
     @Query('caseType') caseType?: string,
     @Query('priority') priority?: string,
-    @Query('investigator') investigator?: string
+    @Query('investigator') investigator?: string,
   ) {
     return this.reportsService.getCaseStatus(dateRange, { caseType, priority, investigator });
   }
 
   @Get('investigator-workload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get investigator workload report',
-    description: 'Retrieve investigator performance metrics including case loads, completion rates, and efficiency data'
+    description: 'Retrieve investigator performance metrics including case loads, completion rates, and efficiency data',
   })
-  @ApiQuery({ 
-    name: 'dateRange', 
-    required: false, 
+  @ApiQuery({
+    name: 'dateRange',
+    required: false,
     enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
     description: 'Time period for the report data',
-    example: 'last30'
+    example: 'last30',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Investigator workload report data retrieved successfully',
     schema: {
       type: 'object',
@@ -118,8 +118,8 @@ export class ReportsController {
             totalInvestigators: { type: 'number', example: 8 },
             avgCasesPerInvestigator: { type: 'number', example: 18.8 },
             avgResolutionTime: { type: 'number', example: 0 },
-            caseClosureRate: { type: 'number', example: 0 }
-          }
+            caseClosureRate: { type: 'number', example: 0 },
+          },
         },
         workloadData: {
           type: 'array',
@@ -128,12 +128,12 @@ export class ReportsController {
             properties: {
               name: { type: 'string', example: 'User 12345678' },
               activeCases: { type: 'number', example: 15 },
-              pendingTasks: { type: 'number', example: 8 }
-            }
-          }
-        }
-      }
-    }
+              pendingTasks: { type: 'number', example: 8 },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
@@ -144,19 +144,19 @@ export class ReportsController {
 
   @Get('audit-logs')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get audit logs report',
-    description: 'Retrieve audit trail data including user actions, system events, and compliance information'
+    description: 'Retrieve audit trail data including user actions, system events, and compliance information',
   })
-  @ApiQuery({ 
-    name: 'dateRange', 
-    required: false, 
+  @ApiQuery({
+    name: 'dateRange',
+    required: false,
     enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
     description: 'Time period for the report data',
-    example: 'last30'
+    example: 'last30',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Audit logs report data retrieved successfully',
     schema: {
       type: 'object',
@@ -167,8 +167,8 @@ export class ReportsController {
             totalLogs: { type: 'number', example: 500 },
             caseActions: { type: 'number', example: 150 },
             userSessions: { type: 'number', example: 75 },
-            systemWarnings: { type: 'number', example: 12 }
-          }
+            systemWarnings: { type: 'number', example: 12 },
+          },
         },
         auditLogs: {
           type: 'array',
@@ -182,12 +182,12 @@ export class ReportsController {
               action_performed: { type: 'string', example: 'Case status updated' },
               outcome: { type: 'string', example: 'SUCCESS' },
               performed_at: { type: 'string', example: '10/22/2025, 02:30:45 PM' },
-              type: { type: 'string', example: 'Success' }
-            }
-          }
-        }
-      }
-    }
+              type: { type: 'string', example: 'Success' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
@@ -198,19 +198,19 @@ export class ReportsController {
 
   @Get('case-ageing')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get case ageing report',
-    description: 'Retrieve case ageing analytics including duration metrics, ageing distribution, and resolution trends'
+    description: 'Retrieve case ageing analytics including duration metrics, ageing distribution, and resolution trends',
   })
-  @ApiQuery({ 
-    name: 'dateRange', 
-    required: false, 
+  @ApiQuery({
+    name: 'dateRange',
+    required: false,
     enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
     description: 'Time period for the report data',
-    example: 'last30'
+    example: 'last30',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Case ageing report data retrieved successfully',
     schema: {
       type: 'object',
@@ -221,8 +221,8 @@ export class ReportsController {
             avgCaseAge: { type: 'number', example: 18.5 },
             avgResolutionTime: { type: 'number', example: 0 },
             casesOver15Days: { type: 'number', example: 25 },
-            casesOver30Days: { type: 'number', example: 8 }
-          }
+            casesOver30Days: { type: 'number', example: 8 },
+          },
         },
         ageingByStatus: {
           type: 'array',
@@ -233,9 +233,9 @@ export class ReportsController {
               age0to7: { type: 'number', example: 15 },
               age8to15: { type: 'number', example: 10 },
               age16to30: { type: 'number', example: 8 },
-              age30Plus: { type: 'number', example: 3 }
-            }
-          }
+              age30Plus: { type: 'number', example: 3 },
+            },
+          },
         },
         ageingDistribution: {
           type: 'array',
@@ -245,12 +245,12 @@ export class ReportsController {
               ageRange: { type: 'string', example: '0-7 days' },
               count: { type: 'number', example: 45 },
               percentage: { type: 'number', example: 30 },
-              color: { type: 'string', example: '#10b981' }
-            }
-          }
-        }
-      }
-    }
+              color: { type: 'string', example: '#10b981' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
@@ -261,12 +261,12 @@ export class ReportsController {
 
   @Get('filters')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get report filters',
-    description: 'Retrieve available filter options for reports including case types, priorities, and investigators'
+    description: 'Retrieve available filter options for reports including case types, priorities, and investigators',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Report filters retrieved successfully',
     schema: {
       type: 'object',
@@ -277,9 +277,9 @@ export class ReportsController {
             type: 'object',
             properties: {
               value: { type: 'string', example: 'FRAUD' },
-              label: { type: 'string', example: 'Fraud' }
-            }
-          }
+              label: { type: 'string', example: 'Fraud' },
+            },
+          },
         },
         priorities: {
           type: 'array',
@@ -287,9 +287,9 @@ export class ReportsController {
             type: 'object',
             properties: {
               value: { type: 'string', example: 'HIGH' },
-              label: { type: 'string', example: 'High' }
-            }
-          }
+              label: { type: 'string', example: 'High' },
+            },
+          },
         },
         investigators: {
           type: 'array',
@@ -297,12 +297,12 @@ export class ReportsController {
             type: 'object',
             properties: {
               value: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
-              label: { type: 'string', example: 'User 12345678' }
-            }
-          }
-        }
-      }
-    }
+              label: { type: 'string', example: 'User 12345678' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })

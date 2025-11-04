@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client';
+import { CaseStatus, TaskStatus, AlertType } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
@@ -53,10 +53,7 @@ export class ReportsService {
     return { startDate, endDate };
   }
 
-  async getCaseStatus(
-    dateRange?: string, 
-    filters?: { caseType?: string; priority?: string; investigator?: string }
-  ) {
+  async getCaseStatus(dateRange?: string, filters?: { caseType?: string; priority?: string; investigator?: string }) {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const whereClause: any = {
@@ -104,7 +101,7 @@ export class ReportsService {
         ],
       },
     };
-    
+
     const closedCases = await this.prisma.case.count({
       where: closedCasesWhere,
     });
@@ -127,12 +124,13 @@ export class ReportsService {
       },
     });
 
-    const avgResolutionTime = allClosedCasesWithTimes.length > 0
-      ? allClosedCasesWithTimes.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / allClosedCasesWithTimes.length
-      : 0;
+    const avgResolutionTime =
+      allClosedCasesWithTimes.length > 0
+        ? allClosedCasesWithTimes.reduce((sum, case_) => {
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / allClosedCasesWithTimes.length
+        : 0;
 
     const statusMap: Record<CaseStatus, string> = {
       [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
@@ -238,10 +236,10 @@ export class ReportsService {
     const casesByDate = new Map<string, { created: number; closed: number }>();
 
     recentCases.forEach((case_) => {
-      const createdDate = case_.created_at.toLocaleDateString('en-US', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
+      const createdDate = case_.created_at.toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
       });
 
       if (!casesByDate.has(createdDate)) {
@@ -267,8 +265,7 @@ export class ReportsService {
     const statusDetails: any[] = await Promise.all(
       statusCounts.map(async ({ status, _count }) => {
         const percentage = totalCases > 0 ? ((_count.case_id / totalCases) * 100).toFixed(1) : '0.0';
-        
-       
+
         const casesInStatus = await this.prisma.case.findMany({
           where: {
             ...whereClause,
@@ -295,16 +292,16 @@ export class ReportsService {
           count: _count.case_id,
           percentage: `${percentage}%`,
           avgTimeInStatus,
-          currentTrendPeriod: '+0%', 
+          currentTrendPeriod: '+0%',
         };
-      })
+      }),
     );
 
     const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-      
+
       const monthClosedCases = await this.prisma.case.findMany({
         where: {
           updated_at: {
@@ -321,12 +318,13 @@ export class ReportsService {
         },
       });
 
-      const avgResolutionTimeMonth = monthClosedCases.length > 0
-        ? monthClosedCases.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / monthClosedCases.length
-        : 0;
+      const avgResolutionTimeMonth =
+        monthClosedCases.length > 0
+          ? monthClosedCases.reduce((sum, case_) => {
+              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              return sum + resolutionTime;
+            }, 0) / monthClosedCases.length
+          : 0;
 
       resolutionTrend.push({
         month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
@@ -371,7 +369,7 @@ export class ReportsService {
     const workloadData = await Promise.all(
       investigators.map(async ({ case_owner_user_id }) => {
         if (!case_owner_user_id) return null;
-        
+
         const [activeCases, pendingTasks] = await Promise.all([
           this.prisma.case.count({
             where: {
@@ -407,7 +405,7 @@ export class ReportsService {
           activeCases,
           pendingTasks,
         };
-      })
+      }),
     );
 
     const validWorkloadData = workloadData.filter(Boolean);
@@ -415,7 +413,7 @@ export class ReportsService {
     const efficiencyData = await Promise.all(
       investigators.map(async ({ case_owner_user_id }) => {
         if (!case_owner_user_id) return null;
-        
+
         const cases = await this.prisma.case.findMany({
           where: {
             case_owner_user_id,
@@ -439,24 +437,25 @@ export class ReportsService {
           },
         });
 
-        const avgResolutionDays = cases.length > 0 
-          ? cases.reduce((sum, case_) => {
-              const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-              return sum + resolutionTime;
-            }, 0) / cases.length
-          : 0;
+        const avgResolutionDays =
+          cases.length > 0
+            ? cases.reduce((sum, case_) => {
+                const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
+                return sum + resolutionTime;
+              }, 0) / cases.length
+            : 0;
 
         return {
           name: `User ${case_owner_user_id}`,
           avgDays: Math.round(avgResolutionDays),
         };
-      })
+      }),
     );
 
     const outcomeData = await Promise.all(
       investigators.map(async ({ case_owner_user_id }) => {
         if (!case_owner_user_id) return null;
-        
+
         const [confirmed, refuted, inconclusive] = await Promise.all([
           this.prisma.case.count({
             where: {
@@ -491,13 +490,13 @@ export class ReportsService {
           refuted,
           inconclusive,
         };
-      })
+      }),
     );
 
     const performanceData = await Promise.all(
       investigators.map(async ({ case_owner_user_id }) => {
         if (!case_owner_user_id) return null;
-        
+
         const [totalCases, activeCases, closedCases, pendingTasks, closedCasesWithTimes] = await Promise.all([
           this.prisma.case.count({
             where: {
@@ -564,12 +563,13 @@ export class ReportsService {
           }),
         ]);
 
-        const avgResolutionTime = closedCasesWithTimes.length > 0
-          ? closedCasesWithTimes.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-              return sum + resolutionTime;
-            }, 0) / closedCasesWithTimes.length
-          : 0;
+        const avgResolutionTime =
+          closedCasesWithTimes.length > 0
+            ? closedCasesWithTimes.reduce((sum, case_) => {
+                const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+                return sum + resolutionTime;
+              }, 0) / closedCasesWithTimes.length
+            : 0;
 
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
 
@@ -586,22 +586,22 @@ export class ReportsService {
           caseClosureRate: completionRate,
           performanceTrend: completionRate >= 80 ? 'Improving' : completionRate <= 50 ? 'Declining' : 'Stable',
         };
-      })
+      }),
     );
 
     const volumeTrend: Array<{ month: string; investigators: { [key: string]: number } }> = [];
     const now = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       const monthLabel = monthStart.toLocaleString('default', { month: 'short', year: 'numeric' });
-      
+
       const monthData = { month: monthLabel, investigators: {} };
-      
+
       for (const { case_owner_user_id } of investigators) {
         if (!case_owner_user_id) continue;
-        
+
         const caseCount = await this.prisma.case.count({
           where: {
             case_owner_user_id,
@@ -611,29 +611,24 @@ export class ReportsService {
             },
           },
         });
-        
+
         monthData.investigators[`User ${case_owner_user_id}`] = caseCount;
       }
-      
+
       volumeTrend.push(monthData);
     }
 
     const totalInvestigators = validWorkloadData.length;
-    const avgCasesPerInvestigator = totalInvestigators > 0 
-      ? validWorkloadData.reduce((sum, w) => sum + (w?.activeCases || 0), 0) / totalInvestigators 
-      : 0;
+    const avgCasesPerInvestigator =
+      totalInvestigators > 0 ? validWorkloadData.reduce((sum, w) => sum + (w?.activeCases || 0), 0) / totalInvestigators : 0;
 
     const validPerformanceData = performanceData.filter(Boolean);
     const totalResolutionTime = validPerformanceData.reduce((sum, w) => sum + (w?.avgResolutionTime || 0), 0);
-    const investigatorsWithClosedCases = validPerformanceData.filter(w => (w?.avgResolutionTime || 0) > 0).length;
-    const avgResolutionTime = investigatorsWithClosedCases > 0
-      ? totalResolutionTime / investigatorsWithClosedCases
-      : 0;
+    const investigatorsWithClosedCases = validPerformanceData.filter((w) => (w?.avgResolutionTime || 0) > 0).length;
+    const avgResolutionTime = investigatorsWithClosedCases > 0 ? totalResolutionTime / investigatorsWithClosedCases : 0;
 
     const totalClosureRate = validPerformanceData.reduce((sum, w) => sum + (w?.caseClosureRate || 0), 0);
-    const avgCaseClosureRate = validPerformanceData.length > 0
-      ? totalClosureRate / validPerformanceData.length
-      : 0;
+    const avgCaseClosureRate = validPerformanceData.length > 0 ? totalClosureRate / validPerformanceData.length : 0;
 
     return {
       stats: {
@@ -655,23 +650,21 @@ export class ReportsService {
 
     const auditLogs = await this.auditLogService.getLogs(100, 0);
 
-    const filteredLogs = auditLogs.filter(log => 
-      log.performed_at >= startDate && log.performed_at <= endDate
-    );
+    const filteredLogs = auditLogs.filter((log) => log.performed_at >= startDate && log.performed_at <= endDate);
 
-    const caseActions = filteredLogs.filter(log => 
-      log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case'))
+    const caseActions = filteredLogs.filter(
+      (log) => log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case')),
     ).length;
 
-    const userSessions = filteredLogs.filter(log => 
-      log.action_performed && (log.action_performed.includes('login') || log.action_performed.includes('session'))
+    const userSessions = filteredLogs.filter(
+      (log) => log.action_performed && (log.action_performed.includes('login') || log.action_performed.includes('session')),
     ).length;
 
-    const systemWarnings = filteredLogs.filter(log => 
-      log.outcome && (log.outcome.includes('WARNING') || log.outcome.includes('ERROR'))
+    const systemWarnings = filteredLogs.filter(
+      (log) => log.outcome && (log.outcome.includes('WARNING') || log.outcome.includes('ERROR')),
     ).length;
 
-    const formattedLogs = filteredLogs.map(log => {
+    const formattedLogs = filteredLogs.map((log) => {
       return {
         audit_log_id: log.audit_log_id ? log.audit_log_id.toString() : '',
         user_id: log.user_id ? log.user_id.toString() : '',
@@ -679,15 +672,17 @@ export class ReportsService {
         entity_name: log.entity_name ? log.entity_name.toString() : '',
         action_performed: log.action_performed ? log.action_performed.toString() : '',
         outcome: log.outcome ? log.outcome.toString() : '',
-        performed_at: log.performed_at ? log.performed_at.toLocaleString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        }) : '',
+        performed_at: log.performed_at
+          ? log.performed_at.toLocaleString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+            })
+          : '',
         type: this.getAuditLogType(log.outcome || ''),
       };
     });
@@ -719,14 +714,12 @@ export class ReportsService {
     });
 
     const now = new Date();
-    const casesWithAge = cases.map(case_ => {
+    const casesWithAge = cases.map((case_) => {
       const ageDays = Math.floor((now.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
       return { ...case_, ageDays };
     });
 
-    const avgCaseAge = casesWithAge.length > 0
-      ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length
-      : 0;
+    const avgCaseAge = casesWithAge.length > 0 ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length : 0;
 
     const closedStatuses = [
       CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -736,64 +729,71 @@ export class ReportsService {
       CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
     ];
 
-    const closedCasesWithTimes = casesWithAge.filter(case_ => 
-      closedStatuses.includes(case_.status as any)
-    );
+    const closedCasesWithTimes = casesWithAge.filter((case_) => closedStatuses.includes(case_.status as any));
 
-    const avgResolutionTime = closedCasesWithTimes.length > 0
-      ? closedCasesWithTimes.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / closedCasesWithTimes.length
-      : 0;
+    const avgResolutionTime =
+      closedCasesWithTimes.length > 0
+        ? closedCasesWithTimes.reduce((sum, case_) => {
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / closedCasesWithTimes.length
+        : 0;
 
-    const casesOver15Days = casesWithAge.filter(c => c.ageDays > 15).length;
-    const casesOver30Days = casesWithAge.filter(c => c.ageDays >= 30).length;
+    const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
+    const casesOver30Days = casesWithAge.filter((c) => c.ageDays >= 30).length;
 
     const ageingByStatus: any[] = [];
-    const statusGroups = casesWithAge.reduce((acc, case_) => {
-      if (!acc[case_.status]) acc[case_.status] = [];
-      acc[case_.status].push(case_);
-      return acc;
-    }, {} as Record<string, typeof casesWithAge>);
+    const statusGroups = casesWithAge.reduce(
+      (acc, case_) => {
+        if (!acc[case_.status]) acc[case_.status] = [];
+        acc[case_.status].push(case_);
+        return acc;
+      },
+      {} as Record<string, typeof casesWithAge>,
+    );
 
     Object.entries(statusGroups).forEach(([status, cases]) => {
       ageingByStatus.push({
         status: this.formatStatusName(status as CaseStatus),
-        age0to7: cases.filter(c => c.ageDays <= 7).length,
-        age8to15: cases.filter(c => c.ageDays > 7 && c.ageDays <= 15).length,
-        age16to30: cases.filter(c => c.ageDays > 15 && c.ageDays < 30).length,
-        age30Plus: cases.filter(c => c.ageDays >= 30).length,
+        age0to7: cases.filter((c) => c.ageDays <= 7).length,
+        age8to15: cases.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
+        age16to30: cases.filter((c) => c.ageDays > 15 && c.ageDays < 30).length,
+        age30Plus: cases.filter((c) => c.ageDays >= 30).length,
       });
     });
 
     const ageingDistribution = [
-      { ageRange: '0-7 days', count: casesWithAge.filter(c => c.ageDays <= 7).length, percentage: 0, color: '#10b981' },
-      { ageRange: '8-15 days', count: casesWithAge.filter(c => c.ageDays > 7 && c.ageDays <= 15).length, percentage: 0, color: '#f59e0b' },
-      { ageRange: '16-30 days', count: casesWithAge.filter(c => c.ageDays > 15 && c.ageDays < 30).length, percentage: 0, color: '#ef4444' },
-      { ageRange: '30+ days', count: casesWithAge.filter(c => c.ageDays >= 30).length, percentage: 0, color: '#7c2d12' },
+      { ageRange: '0-7 days', count: casesWithAge.filter((c) => c.ageDays <= 7).length, percentage: 0, color: '#10b981' },
+      {
+        ageRange: '8-15 days',
+        count: casesWithAge.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
+        percentage: 0,
+        color: '#f59e0b',
+      },
+      {
+        ageRange: '16-30 days',
+        count: casesWithAge.filter((c) => c.ageDays > 15 && c.ageDays < 30).length,
+        percentage: 0,
+        color: '#ef4444',
+      },
+      { ageRange: '30+ days', count: casesWithAge.filter((c) => c.ageDays >= 30).length, percentage: 0, color: '#7c2d12' },
     ];
 
     const total = ageingDistribution.reduce((sum, item) => sum + item.count, 0);
-    ageingDistribution.forEach(item => {
+    ageingDistribution.forEach((item) => {
       item.percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
     });
 
     const caseTypeResolution = await Promise.all(
-      Object.values(CaseType).map(async (type) => {
-       
+      Object.values(AlertType).map(async (type) => {
         const whereClause: any = {
           status: {
             in: closedStatuses,
           },
         };
 
-        if (type === CaseType.NONE) {
-        
-          whereClause.OR = [
-            { case_type: null },
-            { case_type: CaseType.NONE }
-          ];
+        if (type === AlertType.NONE) {
+          whereClause.OR = [{ case_type: null }, { case_type: AlertType.NONE }];
         } else {
           whereClause.case_type = type;
         }
@@ -810,22 +810,23 @@ export class ReportsService {
           return null;
         }
 
-        const avgResolutionTime = closedCasesOfType.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / closedCasesOfType.length;
+        const avgResolutionTime =
+          closedCasesOfType.reduce((sum, case_) => {
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / closedCasesOfType.length;
 
         return {
           caseType: type,
           avgDays: Math.round(avgResolutionTime),
         };
-      })
-    ).then(results => results.filter(item => item !== null));
+      }),
+    ).then((results) => results.filter((item) => item !== null));
 
     const resolutionTrend: any[] = [];
     const currentDate = new Date();
     const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
-    
+
     const recentClosedCases = await this.prisma.case.findMany({
       where: {
         updated_at: {
@@ -858,7 +859,7 @@ export class ReportsService {
       });
     });
 
-    const caseDetails = casesWithAge.slice(0, 5).map(case_ => ({
+    const caseDetails = casesWithAge.slice(0, 5).map((case_) => ({
       caseId: case_.case_id,
       type: case_.case_type || 'NONE',
       status: this.formatStatusName(case_.status),
@@ -884,23 +885,33 @@ export class ReportsService {
     };
   }
 
-  private getCaseTypeColor(caseType: CaseType | null): string {
+  private getCaseTypeColor(caseType: AlertType | null): string {
     switch (caseType) {
-      case CaseType.FRAUD: return '#ef4444';
-      case CaseType.AML: return '#8b5cf6';
-      case CaseType.FRAUD_AND_AML: return '#f59e0b';
-      default: return '#3b82f6';
+      case AlertType.FRAUD:
+        return '#ef4444';
+      case AlertType.AML:
+        return '#8b5cf6';
+      case AlertType.FRAUD_AND_AML:
+        return '#f59e0b';
+      default:
+        return '#3b82f6';
     }
   }
 
   private getTaskStatusColor(status: TaskStatus): string {
     switch (status) {
-      case TaskStatus.STATUS_30_COMPLETED: return '#10b981';
-      case TaskStatus.STATUS_20_IN_PROGRESS: return '#3b82f6';
-      case TaskStatus.STATUS_01_UNASSIGNED: return '#6b7280';
-      case TaskStatus.STATUS_21_BLOCKED: return '#f59e0b';
-      case TaskStatus.STATUS_10_ASSIGNED: return '#8b5cf6';
-      default: return '#6b7280';
+      case TaskStatus.STATUS_30_COMPLETED:
+        return '#10b981';
+      case TaskStatus.STATUS_20_IN_PROGRESS:
+        return '#3b82f6';
+      case TaskStatus.STATUS_01_UNASSIGNED:
+        return '#6b7280';
+      case TaskStatus.STATUS_21_BLOCKED:
+        return '#f59e0b';
+      case TaskStatus.STATUS_10_ASSIGNED:
+        return '#8b5cf6';
+      default:
+        return '#6b7280';
     }
   }
 
@@ -910,18 +921,24 @@ export class ReportsService {
 
   private formatTaskStatusName(status: TaskStatus): string {
     switch (status) {
-      case TaskStatus.STATUS_30_COMPLETED: return 'Completed';
-      case TaskStatus.STATUS_20_IN_PROGRESS: return 'In Progress';
-      case TaskStatus.STATUS_01_UNASSIGNED: return 'Unassigned';
-      case TaskStatus.STATUS_21_BLOCKED: return 'Blocked';
-      case TaskStatus.STATUS_10_ASSIGNED: return 'Assigned';
-      default: return 'Unknown';
+      case TaskStatus.STATUS_30_COMPLETED:
+        return 'Completed';
+      case TaskStatus.STATUS_20_IN_PROGRESS:
+        return 'In Progress';
+      case TaskStatus.STATUS_01_UNASSIGNED:
+        return 'Unassigned';
+      case TaskStatus.STATUS_21_BLOCKED:
+        return 'Blocked';
+      case TaskStatus.STATUS_10_ASSIGNED:
+        return 'Assigned';
+      default:
+        return 'Unknown';
     }
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {
     if (!outcome || typeof outcome !== 'string') return 'Info';
-    
+
     if (outcome.includes('SUCCESS') || outcome.includes('COMPLETED')) return 'Success';
     if (outcome.includes('WARNING')) return 'Warning';
     if (outcome.includes('ERROR') || outcome.includes('FAILED')) return 'Error';
@@ -946,18 +963,18 @@ export class ReportsService {
     });
 
     return {
-      caseTypes: caseTypes.map(ct => ({
+      caseTypes: caseTypes.map((ct) => ({
         value: ct.case_type || 'NONE',
-        label: ct.case_type || 'None'
+        label: ct.case_type || 'None',
       })),
-      priorities: priorities.map(p => ({
+      priorities: priorities.map((p) => ({
         value: p.priority || 'NONE',
-        label: p.priority || 'None'
+        label: p.priority || 'None',
       })),
-      investigators: investigators.map(i => ({
+      investigators: investigators.map((i) => ({
         value: i.case_owner_user_id || '',
-        label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned'
-      }))
+        label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned',
+      })),
     };
   }
 }
