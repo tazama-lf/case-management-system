@@ -21,6 +21,7 @@ RUN npm install --ignore-scripts
 # Copy source code
 COPY . .
 
+RUN npx prisma generate
 # Build the application
 RUN npm run build
 # Expose port
