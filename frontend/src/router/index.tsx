@@ -8,10 +8,18 @@ import RoleBasedRedirect from '@/shared/components/navigation/RoleBasedRedirect'
 const Login = lazy(() => import('@/features/auth/pages/Login'));
 const Dashboard = lazy(() => import('@/features/dashboard/pages/Dashboard'));
 const Reports = lazy(() => import('@/features/reports/pages/CaseStatusReport'));
-const AlertsDashboard = lazy(() => import('@/features/alerts/pages/AlertsDashboard'));
-const CasesDashboard = lazy(() => import('@/features/cases/pages/CasesDashboard'));
-const AdminDashboard = lazy(() => import('@/features/admin/pages/AdminDashboard'));
-const WorkQueueDashboard = lazy(() => import('@/features/workqueue/pages/WorkQueueDashboard'));
+const AlertsDashboard = lazy(
+  () => import('@/features/alerts/pages/AlertsDashboard'),
+);
+const CasesDashboard = lazy(
+  () => import('@/features/cases/pages/CasesDashboard'),
+);
+const AdminDashboard = lazy(
+  () => import('@/features/admin/pages/AdminDashboard'),
+);
+const WorkQueueDashboard = lazy(
+  () => import('@/features/workqueue/pages/WorkQueueDashboard'),
+);
 
 // Loading fallback component
 const PageLoadingFallback = () => (
@@ -57,7 +65,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <Reports />
             </Suspense>
@@ -67,7 +78,10 @@ export const router = createBrowserRouter([
       {
         path: 'alerts',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <AlertsDashboard />
             </Suspense>
@@ -77,7 +91,10 @@ export const router = createBrowserRouter([
       {
         path: 'cases',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <CasesDashboard />
             </Suspense>
@@ -87,7 +104,10 @@ export const router = createBrowserRouter([
       {
         path: 'cases/:caseId',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <CasesDashboard />
             </Suspense>
@@ -97,7 +117,10 @@ export const router = createBrowserRouter([
       {
         path: 'alerts/:alertId',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <AlertsDashboard />
             </Suspense>
@@ -107,7 +130,10 @@ export const router = createBrowserRouter([
       {
         path: 'work-queue/:taskId?',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <WorkQueueDashboard />
             </Suspense>
@@ -117,7 +143,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports/:reportType?',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <Reports />
             </Suspense>
@@ -127,7 +156,10 @@ export const router = createBrowserRouter([
       {
         path: 'work-queue',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage', 'CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}>
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
             <Suspense fallback={<PageLoadingFallback />}>
               <WorkQueueDashboard />
             </Suspense>
@@ -137,7 +169,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['alert-triage']}>
+          <ProtectedRoute requireBackendAccess>
             <Suspense fallback={<PageLoadingFallback />}>
               <AdminDashboard />
             </Suspense>

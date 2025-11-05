@@ -12,7 +12,7 @@ export const BACKEND_CLAIMS = {
   UMA_AUTHORIZATION: 'uma_authorization',
 } as const;
 
-export type BackendClaim = typeof BACKEND_CLAIMS[keyof typeof BACKEND_CLAIMS];
+export type BackendClaim = (typeof BACKEND_CLAIMS)[keyof typeof BACKEND_CLAIMS];
 
 export interface LoginCredentials {
   username: string;
@@ -20,17 +20,25 @@ export interface LoginCredentials {
 }
 
 export interface User {
-  user_id: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
+  userId: string;
   tenantId: string;
-  roles: string[];
-  permissions: string[];
-  backendClaims: string[];
+  email: string;
+  fullName: string;
+  tenantName: string;
+  validatedClaims: Record<string, boolean>;
 }
+// export interface User {
+//   user_id: string;
+//   username: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   fullName: string;
+//   tenantId: string;
+//   roles: string[];
+//   permissions: string[];
+//   backendClaims: string[];
+// }
 
 export interface LoginResponse {
   message: string;
@@ -40,23 +48,18 @@ export interface LoginResponse {
 }
 
 export interface DecodedToken {
-  sub?: string;
-  clientId?: string;
-  preferred_username?: string;
-  username?: string;
-  email?: string;
-  given_name?: string;
-  first_name?: string;
-  family_name?: string;
-  last_name?: string;
-  name?: string;
-  tenant_id?: string;
-  claims?: string[];
-  realm_access?: {
-    roles: string[];
-  };
-  resource_access?: Record<string, { roles: string[] }>;
-  exp?: number;
+  exp: number;
+  sid: string;
+  iss: string;
+  tokenString: string;
+  clientId: string;
+  tenantId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  tenantName: string;
+  claims: string[];
 }
 
 export interface Investigator {
@@ -80,8 +83,8 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   clearError: () => void;
   hasBackendClaim: (claim: string) => boolean;
-  hasCMSTestRole: () => boolean;
-  hasAlertTriageRole: () => boolean;
+  // hasCMSTestRole: () => boolean;
+  // hasAlertTriageRole: () => boolean;
   hasInvestigatorRole: () => boolean;
   hasSupervisorRole: () => boolean;
   hasCMSAdminRole: () => boolean;

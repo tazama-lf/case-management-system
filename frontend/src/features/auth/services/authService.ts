@@ -13,8 +13,6 @@ class AuthService {
   private tokenKey = 'authToken';
   private userKey = 'user';
 
-
-
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
@@ -42,13 +40,16 @@ class AuthService {
             data.user = user;
           }
         } catch (error) {
-          console.warn('Failed to fetch user profile, falling back to token decode:', error);
+          console.warn(
+            'Failed to fetch user profile, falling back to token decode:',
+            error,
+          );
           // Fallback to decoding from token if /me endpoint fails
-          const user = this.decodeToken(data.token);
-          if (user) {
-            this.setUser(user);
-            data.user = user;
-          }
+          // const user = this.decodeToken(data.token);
+          // if (user) {
+          //   this.setUser(user);
+          //   data.user = user;
+          // }
         }
       }
 
@@ -79,23 +80,21 @@ class AuthService {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch user profile: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch user profile: ${response.status} ${response.statusText}`,
+        );
       }
 
       const data = await response.json();
 
       // Map backend response to User interface
       const user: User = {
-        user_id: data.subject || data.clientId || '',
-        username: data.username || '',
-        email: data.email || '',
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        fullName: data.fullName || this.buildFullName(data.firstName, data.lastName),
-        tenantId: data.tenantId || '',
-        roles: [], // Backend doesn't return roles in /me, extract from claims
-        permissions: data.claims || [],
-        backendClaims: data.claims || [],
+        userId: data.clientId,
+        tenantId: data.tenantId,
+        email: data.email,
+        fullName: data.fullName,
+        tenantName: data.tenantName,
+        validatedClaims: data.validatedClaims,
       };
 
       return user;
@@ -105,114 +104,101 @@ class AuthService {
     }
   }
 
-
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
   }
 
-
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
 
-
   setToken(token: string): void {
     localStorage.setItem(this.tokenKey, token);
   }
-
 
   getUser(): User | null {
     const userData = localStorage.getItem(this.userKey);
     return userData ? JSON.parse(userData) : null;
   }
 
-
   setUser(user: User): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
-
 
   isAuthenticated(): boolean {
     const token = this.getToken();
     return token ? !this.isTokenExpired(token) : false;
   }
 
+  // decodeToken(token: string): User | null {
+  //   const decoded = this.getDecodedToken(token);
+  //   if (!decoded) {
+  //     return null;
+  //   }
 
-  decodeToken(token: string): User | null {
-    const decoded = this.getDecodedToken(token);
-    if (!decoded) {
-      return null;
-    }
+  //   try {
+  //     const user: User = {
+  //       userId: decoded.clientId,
+  //       tenantId: decoded.tenantId,
+  //       email: decoded.email,
+  //       fullName: decoded.fullName,
+  //       tenantName: decoded.tenantName,
+  //       validatedClaims: decoded,
+  //     };
 
-    try {
-      const user: User = {
-        user_id: decoded.sub || decoded.clientId || '',
-        username: decoded.preferred_username || decoded.username || '',
-        email: decoded.email || '',
-        firstName: decoded.given_name || decoded.first_name || '',
-        lastName: decoded.family_name || decoded.last_name || '',
-        fullName: decoded.name || this.buildFullName(decoded.given_name || decoded.first_name, decoded.family_name || decoded.last_name),
-        tenantId: decoded.tenant_id || '',
-        roles: this.extractRoles(decoded),
-        permissions: decoded.claims || [],
-        backendClaims: this.extractBackendClaims(decoded),
-      };
+  //     return user;
+  //   } catch (error) {
+  //     console.error('Error extracting user info from decoded token:', error);
+  //     return null;
+  //   }
+  // }
 
-      return user;
-    } catch (error) {
-      console.error('Error extracting user info from decoded token:', error);
-      return null;
-    }
-  }
+  // private extractRoles(payload: DecodedToken): string[] {
+  //   const roles: string[] = [];
 
+  //   if (payload.resource_access?.CMS?.roles) {
+  //     roles.push(...payload.resource_access.CMS.roles);
+  //   }
 
-  private extractRoles(payload: DecodedToken): string[] {
-    const roles: string[] = [];
+  //   if (roles.length === 0 && payload.resource_access) {
+  //     Object.values(payload.resource_access).forEach(
+  //       (resource: { roles: string[] }) => {
+  //         if (resource.roles) {
+  //           roles.push(...resource.roles);
+  //         }
+  //       },
+  //     );
+  //   }
 
-    if (payload.resource_access?.CMS?.roles) {
-      roles.push(...payload.resource_access.CMS.roles);
-    }
+  //   return roles;
+  // }
 
-    if (roles.length === 0 && payload.resource_access) {
-      Object.values(payload.resource_access).forEach(
-        (resource: { roles: string[] }) => {
-          if (resource.roles) {
-            roles.push(...resource.roles);
-          }
-        },
-      );
-    }
+  // private extractBackendClaims(payload: DecodedToken): string[] {
+  //   const claims: string[] = [];
 
-    return roles;
-  }
+  //   if (payload.claims && Array.isArray(payload.claims)) {
+  //     claims.push(...payload.claims);
+  //   }
 
+  //   if (payload.realm_access?.roles) {
+  //     claims.push(...payload.realm_access.roles);
+  //   }
 
-  private extractBackendClaims(payload: DecodedToken): string[] {
-    const claims: string[] = [];
+  //   if (payload.resource_access) {
+  //     Object.entries(payload.resource_access).forEach(([, access]) => {
+  //       if (access.roles) {
+  //         access.roles.forEach((role) => {
+  //           claims.push(role);
+  //         });
+  //       }
+  //     });
+  //   }
 
-    if (payload.claims && Array.isArray(payload.claims)) {
-      claims.push(...payload.claims);
-    }
+  //   const finalClaims = [...new Set(claims)];
 
-    if (payload.realm_access?.roles) {
-      claims.push(...payload.realm_access.roles);
-    }
-
-    if (payload.resource_access) {
-      Object.entries(payload.resource_access).forEach(([, access]) => {
-        if (access.roles) {
-          access.roles.forEach(role => {
-            claims.push(role);
-          });
-        }
-      });
-    }
-
-    const finalClaims = [...new Set(claims)];
-
-    return finalClaims;
-  }
+  //   return finalClaims;
+  // }
 
   private getDecodedToken(token: string): DecodedToken | null {
     try {
@@ -224,7 +210,6 @@ class AuthService {
     }
   }
 
-
   isTokenExpired(token: string): boolean {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -235,7 +220,6 @@ class AuthService {
     return decoded.exp < currentTime;
   }
 
-
   getTokenExpiration(token: string): Date | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -245,25 +229,25 @@ class AuthService {
   }
 
   hasBackendClaim(claim: string): boolean {
-    const user = this.getUser();
-    return user?.backendClaims?.includes(claim) || false;
-  }
+    const user: User | null = this.getUser();
+    if (!user) {
+      return false;
+    }
 
+    return user.validatedClaims?.[claim] === true || false;
+  }
 
   hasCMSTestRole(): boolean {
     return this.hasBackendClaim('CMS-TEST-ROLE');
   }
 
-
   hasAlertTriageRole(): boolean {
     return this.hasBackendClaim('alert-triage');
   }
 
-
   hasInvestigatorRole(): boolean {
     return this.hasBackendClaim('CMS_INVESTIGATOR');
   }
-
 
   hasSupervisorRole(): boolean {
     return this.hasBackendClaim('CMS_SUPERVISOR');
@@ -281,14 +265,12 @@ class AuthService {
     return this.hasAlertTriageRole() || this.hasCMSTestRole();
   }
 
-
   hasAnyRole(roles: string[]): boolean {
-    return roles.some(role => this.hasBackendClaim(role));
+    return roles.some((role) => this.hasBackendClaim(role));
   }
 
-
   hasAllRoles(roles: string[]): boolean {
-    return roles.every(role => this.hasBackendClaim(role));
+    return roles.every((role) => this.hasBackendClaim(role));
   }
 
   /**
@@ -297,15 +279,8 @@ class AuthService {
    * @returns true if user has at least one valid CMS role
    */
   validateBackendAccess(): boolean {
-    const validRoles = [
-      'alert-triage',
-      'CMS-TEST-ROLE',
-      'CMS_INVESTIGATOR',
-      'CMS_SUPERVISOR',
-      'CMS_ADMIN',
-      'CMS_ANALYST',
-    ];
-    
+    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN'];
+
     return this.hasAnyRole(validRoles);
   }
 
@@ -326,7 +301,6 @@ class AuthService {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-
   private buildFullName(firstName?: string, lastName?: string): string {
     const first = firstName?.trim() || '';
     const last = lastName?.trim() || '';
@@ -343,16 +317,21 @@ class AuthService {
    */
   async fetchAllInvestigators(): Promise<Investigator[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/auth/user/CMS_INVESTIGATOR`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getAuthHeader(),
+      const response = await fetch(
+        `${API_BASE_URL}/v1/user/list-by-role/CMS_INVESTIGATOR`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeader(),
+          },
         },
-      });
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch investigators: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch investigators: ${response.status} ${response.statusText}`,
+        );
       }
 
       const data: Investigator[] = await response.json();

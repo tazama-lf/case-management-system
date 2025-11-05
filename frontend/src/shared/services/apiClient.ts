@@ -41,7 +41,7 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (response.status === 401 && !skipAuth) {
-        const refreshed = await authService.refreshToken();
+        const refreshed = await authService.refreshUserProfile();
         if (refreshed) {
           const newAuthHeaders = authService.getAuthHeader();
           const retryConfig: RequestInit = {
