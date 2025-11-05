@@ -121,7 +121,7 @@ export class TaskService {
           taskData.workQueue = {
             connect: { work_queue_id: workQueueId },
           };
-          
+
           // Set candidateGroup to the derived Flowable group ID for this work queue
           const queueName = matchingQueue?.name;
           if (queueName) {
@@ -144,12 +144,12 @@ export class TaskService {
       });
 
       let updatedTask = result.task;
-      
+
       // ⚠️ AUTO-ASSIGNMENT DISABLED - SHELVED FOR POST-MVP ⚠️
       // Auto-assignment rules are not part of MVP and have no frontend implementation.
       // This code is commented out but kept for future use.
       // To re-enable: Uncomment this block and the assignment rule endpoints in work-queue.controller.ts
-      
+
       /*
       try {
         const rules = await this.workQueueService.getAllActiveAssignmentRules(result.tenantId);
@@ -658,29 +658,29 @@ export class TaskService {
 
     this.logger.log(`[AssignTask] Looking up user ${assignedUserId} in auth service`, TaskService.name);
 
-    try {
-      const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
-      this.logger.log(`[AssignTask] Found roles for user ${assignedUserId}: ${investigatorRoles.join(', ')}`, TaskService.name);
+    // try {
+    // const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
+    // this.logger.log(`[AssignTask] Found roles for user ${assignedUserId}: ${investigatorRoles.join(', ')}`, TaskService.name);
 
-      if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
-        this.logger.error(
-          `[AssignTask] User ${assignedUserId} does not have INVESTIGATOR role. Current roles: ${investigatorRoles.join(', ')}`,
-          null,
-          TaskService.name,
-        );
-        throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
-      }
+    // if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
+    //   this.logger.error(
+    //     `[AssignTask] User ${assignedUserId} does not have INVESTIGATOR role. Current roles: ${investigatorRoles.join(', ')}`,
+    //     null,
+    //     TaskService.name,
+    //   );
+    //   throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
+    // }
 
-      this.logger.log(`[AssignTask] User ${assignedUserId} has CMS_INVESTIGATOR role`, TaskService.name);
-    } catch (error) {
-      this.logger.error(`[AssignTask] Failed to get roles for user ${assignedUserId}: ${error.message}`, error.stack, TaskService.name);
+    // this.logger.log(`[AssignTask] User ${assignedUserId} has CMS_INVESTIGATOR role`, TaskService.name);
+    // } catch (error) {
+    //   this.logger.error(`[AssignTask] Failed to get roles for user ${assignedUserId}: ${error.message}`, error.stack, TaskService.name);
 
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+    //   if (error instanceof BadRequestException) {
+    //     throw error;
+    //   }
 
-      throw new BadRequestException(`User ${assignedUserId} not found`);
-    }
+    //   throw new BadRequestException(`User ${assignedUserId} not found`);
+    // }
 
     try {
       this.logger.log(`[AssignTask] Fetching task ${taskId} details`, TaskService.name);

@@ -44,15 +44,6 @@ export class GetAllCasesQueryDto {
   ownerId?: string;
 
   @ApiProperty({
-    description: 'Filter by tenant ID',
-    required: false,
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsOptional()
-  @IsString()
-  tenantId?: string;
-
-  @ApiProperty({
     description: 'Include unassigned cases only',
     required: false,
     default: false,

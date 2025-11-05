@@ -302,8 +302,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
   async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    return this.caseService.getAllCases(query, userId);
+    const tenantId = req.user.token.tenantId;
+    return this.caseService.getAllCases(query, tenantId);
   }
 
   @Get('user/assigned')
@@ -360,7 +360,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: 'Get summary statistics of user\'s case workload',
+    description: "Get summary statistics of user's case workload",
   })
   @ApiResponse({
     status: 200,

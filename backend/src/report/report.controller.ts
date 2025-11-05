@@ -1,8 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
+import { AuthenticatedRequest } from 'src/auth/auth.types';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -85,12 +86,14 @@ export class ReportsController {
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   getCaseStatus(
+    @Req() req: AuthenticatedRequest,
     @Query('dateRange') dateRange?: string,
     @Query('caseType') caseType?: string,
     @Query('priority') priority?: string,
     @Query('investigator') investigator?: string,
   ) {
-    return this.reportsService.getCaseStatus(dateRange, { caseType, priority, investigator });
+    const tenantId = req.user.token.tenantId;
+    return this.reportsService.getCaseStatus(dateRange, { caseType, priority, investigator, tenantId });
   }
 
   @Get('investigator-workload')

@@ -29,7 +29,7 @@ export class TriageController {
   constructor(private readonly triageService: TriageService) {}
 
   @Post('')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Ingest a new alert',
@@ -82,7 +82,7 @@ export class TriageController {
   }
 
   @Patch(':alertId')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Perform manual triage on an alert',
@@ -121,7 +121,7 @@ export class TriageController {
   }
 
   @Get()
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get all alerts for current user',
     description: 'Retrieve paginated list of alerts with optional filtering',
@@ -225,17 +225,17 @@ export class TriageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
-      @Req() req: AuthenticatedRequest,
-      @Query('priority') priority?: string,
-      @Query('type') type?: string,
-      @Query('alertType') alertType?: string,
-      @Query('search') search?: string,
-      @Query('source') source?: string,
-      @Query('reportStatus') reportStatus?: string,
-      @Query('page') page = 1,
-      @Query('limit') limit = 10,
-      @Query('sortBy') sortBy = 'created_at',
-      @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+    @Req() req: AuthenticatedRequest,
+    @Query('priority') priority?: string,
+    @Query('type') type?: string,
+    @Query('alertType') alertType?: string,
+    @Query('search') search?: string,
+    @Query('source') source?: string,
+    @Query('reportStatus') reportStatus?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -255,7 +255,7 @@ export class TriageController {
   }
 
   @Get(':alertId/action-history')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get alert action history',
     description: 'Retrieve all actions taken on a specific alert',
@@ -334,9 +334,9 @@ export class TriageController {
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
   }
-  
+
   @Post('ingest')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Process incoming alert event',
     description: 'Internal endpoint for alert ingestion from event stream',

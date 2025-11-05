@@ -7,7 +7,7 @@ import { User } from 'src/auth/user.decorator';
 import { UserGroupDetails } from './types/UserList';
 import { UserService } from './user.service';
 
-@Controller('user')
+@Controller('/v1/user')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class UserController {

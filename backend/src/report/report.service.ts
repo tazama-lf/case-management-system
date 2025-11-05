@@ -53,7 +53,7 @@ export class ReportsService {
     return { startDate, endDate };
   }
 
-  async getCaseStatus(dateRange?: string, filters?: { caseType?: string; priority?: string; investigator?: string }) {
+  async getCaseStatus(dateRange?: string, filters?: { caseType?: string; priority?: string; investigator?: string; tenantId: string }) {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const whereClause: any = {
@@ -71,6 +71,11 @@ export class ReportsService {
     }
     if (filters?.investigator) {
       whereClause.case_owner_user_id = filters.investigator;
+    }
+    if (filters?.tenantId) {
+      whereClause.alert = {
+        tenant_id: filters.tenantId,
+      };
     }
 
     const statusCounts = await this.prisma.case.groupBy({
@@ -106,18 +111,26 @@ export class ReportsService {
       where: closedCasesWhere,
     });
 
-    const allClosedCasesWithTimes = await this.prisma.case.findMany({
-      where: {
-        status: {
-          in: [
-            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-            CaseStatus.STATUS_81_CLOSED_REFUTED,
-            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-          ],
-        },
+    const allClosedCasesWithTimesWhere: any = {
+      status: {
+        in: [
+          CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+          CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+          CaseStatus.STATUS_81_CLOSED_REFUTED,
+          CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+        ],
       },
+    };
+
+    if (filters?.tenantId) {
+      allClosedCasesWithTimesWhere.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
+    const allClosedCasesWithTimes = await this.prisma.case.findMany({
+      where: allClosedCasesWithTimesWhere,
       select: {
         created_at: true,
         updated_at: true,
@@ -182,17 +195,25 @@ export class ReportsService {
       color: this.getCaseTypeColor(case_type),
     }));
 
+    const outcomeCountsWhere: any = {
+      created_at: {
+        gte: startDate,
+        lte: endDate,
+      },
+      status: {
+        in: closedStatuses,
+      },
+    };
+
+    if (filters?.tenantId) {
+      outcomeCountsWhere.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
     const outcomeCounts = await this.prisma.case.groupBy({
       by: ['status'],
-      where: {
-        created_at: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: {
-          in: closedStatuses,
-        },
-      },
+      where: outcomeCountsWhere,
       _count: { case_id: true },
     });
 
@@ -217,12 +238,20 @@ export class ReportsService {
     const now = new Date();
     const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const recentCases = await this.prisma.case.findMany({
-      where: {
-        created_at: {
-          gte: trendStartDate,
-        },
+    const recentCasesWhere: any = {
+      created_at: {
+        gte: trendStartDate,
       },
+    };
+
+    if (filters?.tenantId) {
+      recentCasesWhere.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
+    const recentCases = await this.prisma.case.findMany({
+      where: recentCasesWhere,
       select: {
         created_at: true,
         updated_at: true,

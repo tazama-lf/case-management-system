@@ -95,14 +95,12 @@ export class CaseService {
     const caseType = dto.alertType;
 
     const needsApproval = role !== 'SUPERVISOR';
-    const caseStatus = needsApproval
-        ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
-        : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+    const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
     this.logger.log(
-        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-        CaseService.name,
+      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
+      CaseService.name,
     );
 
     try {
@@ -138,39 +136,36 @@ export class CaseService {
 
         if (needsApproval) {
           approvalTask = await this.taskService.createTask(
-              {
-                caseId: createdCase.case_id,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Approve Case Creation',
-                description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
-                candidateGroup: 'supervisors',
-              },
-              userId,
-              this.auditLogService,
-              this.logger,
+            {
+              caseId: createdCase.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Approve Case Creation',
+              description: `Manual case ${createdCase.case_id} created by investigator, requires supervisor approval`,
+              candidateGroup: 'supervisors',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
           );
 
-          this.logger.log(
-              `[ManualCase] Approval task ${approvalTask.task_id} created for case ${createdCase.case_id}`,
-              CaseService.name,
-          );
+          this.logger.log(`[ManualCase] Approval task ${approvalTask.task_id} created for case ${createdCase.case_id}`, CaseService.name);
         } else {
           investigateTask = await this.taskService.createTask(
-              {
-                caseId: createdCase.case_id,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Investigate case',
-                description: `Investigation task for manually created case ${createdCase.case_id}`,
-                candidateGroup: 'investigations',
-              },
-              userId,
-              this.auditLogService,
-              this.logger,
+            {
+              caseId: createdCase.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Investigate case',
+              description: `Investigation task for manually created case ${createdCase.case_id}`,
+              candidateGroup: 'investigations',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
           );
 
           this.logger.log(
-              `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${createdCase.case_id}`,
-              CaseService.name,
+            `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${createdCase.case_id}`,
+            CaseService.name,
           );
         }
 
@@ -290,39 +285,36 @@ export class CaseService {
       });
 
       const investigateTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for approved case ${caseId}`,
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Investigation task for approved case ${caseId}`,
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
-      this.logger.log(
-          `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId}`,
-          CaseService.name,
+      this.logger.log(`[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId}`, CaseService.name);
+
+      this.eventEmitter.emit(
+        'task.completed',
+        new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
+          creationApproval: 'approve',
+          creationComments: 'Case creation approved by supervisor',
+        }),
       );
 
       this.eventEmitter.emit(
-          'task.completed',
-          new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
-            creationApproval: 'approve',
-            creationComments: 'Case creation approved by supervisor',
-          }),
-      );
-
-      this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case creation approved by supervisor',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case creation approved by supervisor',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -380,27 +372,27 @@ export class CaseService {
         if (!approvalTask) throw new NotFoundException('Approve Case Creation task not found');
 
         await this.taskService.updateTask(
-            approvalTask.task_id,
-            { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
-            supervisorId,
-            this.auditLogService,
+          approvalTask.task_id,
+          { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
+          supervisorId,
+          this.auditLogService,
         );
 
         return { case: updatedCase, completedTask: approvalTask };
       });
 
       const completeNewCaseTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: existingCase.case_creator_user_id,
-            name: 'Complete New Case',
-            description: 'Revise and complete the case as per supervisor feedback',
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_10_ASSIGNED,
+          assignedUserId: existingCase.case_creator_user_id,
+          name: 'Complete New Case',
+          description: 'Revise and complete the case as per supervisor feedback',
+          candidateGroup: 'investigations',
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -412,13 +404,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_00_DRAFT,
-              `Case creation rejected: ${reason}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_00_DRAFT,
+          `Case creation rejected: ${reason}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -681,7 +673,7 @@ export class CaseService {
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
-      throw error;
+        throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1290,8 +1282,8 @@ export class CaseService {
         });
       }
 
-    try {
-      await this.validateApprovalPreconditions(caseId);
+      try {
+        await this.validateApprovalPreconditions(caseId);
       } catch (validationError) {
         await this.auditLogService.logAction({
           userId: supervisorId,
@@ -1456,7 +1448,7 @@ export class CaseService {
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
-      throw error;
+        throw error;
       }
 
       throw new InternalServerErrorException({
@@ -1740,7 +1732,7 @@ export class CaseService {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseService.name);
 
-    const existingCase = await this.retrieveCase(caseId);
+      const existingCase = await this.retrieveCase(caseId);
 
       const allowedStates: CaseStatus[] = [
         CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -1771,16 +1763,16 @@ export class CaseService {
         });
 
         const approvalTask = await this.taskService.createTask(
-            {
-              caseId,
-              name: 'Approve Case Reopening',
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              description: `Case reopening approval required. Reason: ${reason}`,
-              candidateGroup: 'supervisors',
-            },
-            userId,
-            this.auditLogService,
-            this.logger,
+          {
+            caseId,
+            name: 'Approve Case Reopening',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            description: `Case reopening approval required. Reason: ${reason}`,
+            candidateGroup: 'supervisors',
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
         );
 
         await tx.comment.create({
@@ -1801,13 +1793,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              existingCase.status,
-              CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-              `Case reopening requested: ${reason}`
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          existingCase.status,
+          CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+          `Case reopening requested: ${reason}`,
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -1815,8 +1807,8 @@ export class CaseService {
         operation: 'reopenCase',
         entityName: CaseService.name,
         actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-          outcome: Outcome.SUCCESS,
-        });
+        outcome: Outcome.SUCCESS,
+      });
 
       return {
         success: true,
@@ -2129,14 +2121,13 @@ export class CaseService {
     }
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, supervisorId: string) {
+  async getAllCases(query: GetAllCasesQueryDto, tenantId: string) {
     try {
       const {
         status,
         priority,
         caseType,
         ownerId,
-        tenantId,
         unassignedOnly,
         createdAfter,
         createdBefore,
@@ -2375,5 +2366,4 @@ export class CaseService {
       throw error;
     }
   }
-
 }
