@@ -17,40 +17,8 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { Outcome } from 'src/audit/types/outcome';
-import type { AuthenticatedUser, AuthenticatedRequest, ClaimValidationResult } from './auth.types';
-import { AuthMeResponseDto } from './dto/AuthMeResponse.dto';
-import { LoginRequestDto } from './dto/LoginRequest.dto';
-
-class AuthUserResponseDto {
-  @ApiProperty({ example: 'c98db341-beb6-457c-98e0-406cc1c71662' })
-  id!: string;
-
-  @ApiProperty({ example: 'karen.mworia' })
-  username!: string;
-
-  @ApiProperty({ example: 'Karen' })
-  firstName!: string;
-
-  @ApiProperty({ example: 'Mworia' })
-  lastName!: string;
-
-  @ApiProperty({ example: 'karen.mworia@cms.org' })
-  email!: string;
-
-  @ApiProperty({ type: [String], example: ['CMS_INVESTIGATOR'] })
-  roles!: string[];
-}
-
-class LoginResponseDto {
-  @ApiProperty({ example: 'Login successful' })
-  message!: string;
-
-  @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
-  token!: string;
-
-  @ApiProperty({ example: 3600, required: false, nullable: true })
-  expiresIn!: number | null | undefined;
-}
+import type { AuthenticatedUser } from './auth.types';
+import { AuthMeResponseDto, AuthUserResponseDto, LoginRequestDto, LoginResponseDto } from './dto';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -134,27 +102,27 @@ export class AuthController {
   //   return { roles };
   // }
 
-  @RequireSupervisorRole()
-  @UseGuards(TazamaAuthGuard)
-  @Get('user/:roleName')
-  @ApiOperation({
-    summary: 'Fetch users by role',
-    description: 'Returns all users assigned to the provided role name.',
-  })
-  @ApiOkResponse({ description: 'List of users for the requested role returned successfully.', type: AuthUserResponseDto, isArray: true })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token or insufficient claims.' })
-  async getUsersByRole(@Param('roleName') roleName: string, @Req() req: AuthenticatedRequest): Promise<AuthUserResponseDto[]> {
-    const normalizedRole = roleName.trim();
-    this.logger.log(`Fetching users with role ${normalizedRole}`, AuthController.name);
+  // @RequireSupervisorRole()
+  // @UseGuards(TazamaAuthGuard)
+  // @Get('user/:roleName')
+  // @ApiOperation({
+  //   summary: 'Fetch users by role',
+  //   description: 'Returns all users assigned to the provided role name.',
+  // })
+  // @ApiOkResponse({ description: 'List of users for the requested role returned successfully.', type: AuthUserResponseDto, isArray: true })
+  // @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token or insufficient claims.' })
+  // async getUsersByRole(@Param('roleName') roleName: string, @Req() req: AuthenticatedRequest): Promise<AuthUserResponseDto[]> {
+  //   const normalizedRole = roleName.trim();
+  //   this.logger.log(`Fetching users with role ${normalizedRole}`, AuthController.name);
 
-    // Extract token from request header to pass to auth-service
-    const authHeader = req.headers.authorization;
-    const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+  //   // Extract token from request header to pass to auth-service
+  //   const authHeader = req.headers.authorization;
+  //   const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
-    const users = await this.authHelperService.getAllUsersWithRole(normalizedRole, token);
+  //   const users = await this.authHelperService.getAllUsersWithRole(normalizedRole, token);
 
-    return users.map((userObj) => this.mapAuthUser(userObj));
-  }
+  //   return users.map((userObj) => this.mapAuthUser(userObj));
+  // }
 
   @UseGuards(TazamaAuthGuard)
   @Get('audit-logs')
@@ -177,14 +145,14 @@ export class AuthController {
     return this.auditLogService.getLogs(Number(limit), Number(offset));
   }
 
-  private mapAuthUser(user: AuthUser): AuthUserResponseDto {
-    return {
-      id: user.id,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      roles: [...user.roles],
-    };
-  }
+  // private mapAuthUser(user: AuthUser): AuthUserResponseDto {
+  //   return {
+  //     id: user.id,
+  //     username: user.username,
+  //     firstName: user.firstName,
+  //     lastName: user.lastName,
+  //     email: user.email,
+  //     roles: [...user.roles],
+  //   };
+  // }
 }
