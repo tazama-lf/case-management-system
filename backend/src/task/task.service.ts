@@ -658,30 +658,6 @@ export class TaskService {
 
     this.logger.log(`[AssignTask] Looking up user ${assignedUserId} in auth service`, TaskService.name);
 
-    // try {
-    // const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(assignedUserId);
-    // this.logger.log(`[AssignTask] Found roles for user ${assignedUserId}: ${investigatorRoles.join(', ')}`, TaskService.name);
-
-    // if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
-    //   this.logger.error(
-    //     `[AssignTask] User ${assignedUserId} does not have INVESTIGATOR role. Current roles: ${investigatorRoles.join(', ')}`,
-    //     null,
-    //     TaskService.name,
-    //   );
-    //   throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
-    // }
-
-    // this.logger.log(`[AssignTask] User ${assignedUserId} has CMS_INVESTIGATOR role`, TaskService.name);
-    // } catch (error) {
-    //   this.logger.error(`[AssignTask] Failed to get roles for user ${assignedUserId}: ${error.message}`, error.stack, TaskService.name);
-
-    //   if (error instanceof BadRequestException) {
-    //     throw error;
-    //   }
-
-    //   throw new BadRequestException(`User ${assignedUserId} not found`);
-    // }
-
     try {
       this.logger.log(`[AssignTask] Fetching task ${taskId} details`, TaskService.name);
 
