@@ -17,7 +17,9 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { Outcome } from 'src/audit/types/outcome';
-import type { AuthenticatedUser, AuthenticatedRequest } from './auth.types';
+import type { AuthenticatedUser, AuthenticatedRequest, ClaimValidationResult } from './auth.types';
+import { AuthMeResponseDto } from './dto/AuthMeResponse.dto';
+import { LoginRequestDto } from './dto/LoginRequest.dto';
 
 class AuthUserResponseDto {
   @ApiProperty({ example: 'c98db341-beb6-457c-98e0-406cc1c71662' })
@@ -39,19 +41,6 @@ class AuthUserResponseDto {
   roles!: string[];
 }
 
-class UserRolesResponseDto {
-  @ApiProperty({ type: [String], example: ['CMS_ADMIN', 'CMS_SUPERVISOR'] })
-  roles!: string[];
-}
-
-class LoginRequestDto {
-  @ApiProperty({ example: 'admin' })
-  username!: string;
-
-  @ApiProperty({ example: 'admin' })
-  password!: string;
-}
-
 class LoginResponseDto {
   @ApiProperty({ example: 'Login successful' })
   message!: string;
@@ -61,47 +50,6 @@ class LoginResponseDto {
 
   @ApiProperty({ example: 3600, required: false, nullable: true })
   expiresIn!: number | null | undefined;
-}
-
-class AuthMeResponseDto {
-  @ApiProperty({ example: '085b7a75-c39d-44f8-868f-6c419f578627' })
-  clientId!: string;
-
-  @ApiProperty({ example: 'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1', nullable: true })
-  tenantId!: string | null;
-
-  @ApiProperty({ example: 'admin', nullable: true })
-  username!: string | null;
-
-  @ApiProperty({ example: 'admin@example.com', nullable: true })
-  email!: string | null;
-
-  @ApiProperty({ example: 'Admin', nullable: true })
-  firstName!: string | null;
-
-  @ApiProperty({ example: 'Admin', nullable: true })
-  lastName!: string | null;
-
-  @ApiProperty({ example: 'Admin Admin', nullable: true })
-  fullName!: string | null;
-
-  @ApiProperty({ example: '085b7a75-c39d-44f8-868f-6c419f578627', nullable: true })
-  subject!: string | null;
-
-  @ApiProperty({ example: 'http://10.10.80.33:8080/realms/tazama-cms', nullable: true })
-  issuer!: string | null;
-
-  @ApiProperty({ type: [String], example: ['CMS_ADMIN', 'CMS_SUPERVISOR'] })
-  claims!: string[];
-
-  @ApiProperty({ type: [String], example: ['CMS_SUPERVISOR'] })
-  validClaims!: string[];
-
-  @ApiProperty({ example: 1762083870, nullable: true })
-  expiresAt!: number | null;
-
-  @ApiProperty({ example: 1762082970, nullable: true })
-  issuedAt!: number | null;
 }
 
 @ApiTags('Auth')
@@ -161,34 +109,30 @@ export class AuthController {
   @ApiOperation({ summary: 'Authenticated user details', description: 'Returns the authenticated user payload from the access token.' })
   @ApiOkResponse({ description: 'Authenticated user information returned successfully.', type: AuthMeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
+  @RequireSupervisorRole()
   getMe(@User() user: AuthenticatedUser): AuthMeResponseDto {
-    const { token, validClaims } = user;
+    const { token, validatedClaims } = user;
     return {
       clientId: token.clientId,
-      tenantId: token.tenantId ?? null,
-      username: token.preferredUsername ?? null,
-      email: token.email ?? null,
-      firstName: token.firstName ?? null,
-      lastName: token.lastName ?? null,
-      fullName: token.fullName ?? null,
-      subject: token.subject ?? null,
-      issuer: token.issuer ?? null,
-      claims: token.claims,
-      validClaims,
-      expiresAt: token.expiresAt ?? null,
-      issuedAt: token.issuedAt ?? null,
+      tenantId: token.tenantId,
+      email: token.email,
+      firstName: token.firstName,
+      lastName: token.lastName,
+      fullName: token.fullName,
+      tenantName: token.tenantName,
+      validatedClaims,
     };
   }
 
-  @UseGuards(TazamaAuthGuard)
-  @Get('user/userrole')
-  @ApiOperation({ summary: 'Fetch authenticated user roles', description: 'Returns the realm roles assigned to the authenticated user.' })
-  @ApiOkResponse({ description: 'Realm roles for the authenticated user.', type: UserRolesResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  getAuthenticatedUserRoles(@User() user: AuthenticatedUser): UserRolesResponseDto {
-    const roles = Array.from(new Set(user.token.realmRoles ?? []));
-    return { roles };
-  }
+  // @UseGuards(TazamaAuthGuard)
+  // @Get('user/userrole')
+  // @ApiOperation({ summary: 'Fetch authenticated user roles', description: 'Returns the realm roles assigned to the authenticated user.' })
+  // @ApiOkResponse({ description: 'Realm roles for the authenticated user.', type: UserRolesResponseDto })
+  // @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
+  // getAuthenticatedUserRoles(@User() user: AuthenticatedUser): UserRolesResponseDto {
+  //   const roles = Array.from(new Set(user.token.realmRoles ?? []));
+  //   return { roles };
+  // }
 
   @RequireSupervisorRole()
   @UseGuards(TazamaAuthGuard)
