@@ -33,7 +33,7 @@ export class AuthService {
     }
     try {
       const response: AxiosResponse<AuthLoginResponse | string | null> = await firstValueFrom(
-        this.httpService.post<AuthLoginResponse | string | null>(authUrl, { username, password }),
+        this.httpService.post<AuthLoginResponse | string | null>(`${authUrl}/login`, { username, password }),
       );
       const { data } = response;
 
