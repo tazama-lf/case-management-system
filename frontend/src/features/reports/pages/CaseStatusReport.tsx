@@ -15,11 +15,10 @@ const MultiBarChart = lazy(() => import('@/features/reports/components/MultiBarC
 
 
 const InvestigatorWorkloadReport = lazy(() => import('./InvestigatorWorkloadReport'));
-const TaskCompletionReport = lazy(() => import('./TaskCompletionReport'));
 const AuditLogsReport = lazy(() => import('./AuditLogsReport'));
 const CaseAgeingReport = lazy(() => import('./CaseAgeingReport'));
 
-type ReportType = 'CASE_STATUS' | 'TASK_COMPLETION' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
+type ReportType = 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
 
 const Reports: React.FC = () => {
   const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
@@ -73,8 +72,6 @@ const Reports: React.FC = () => {
     switch (reportType) {
       case 'CASE_STATUS':
         return statusDetails;
-      case 'TASK_COMPLETION':
-        return [];
       case 'AUDIT_LOGS':
         return [];
       case 'CASE_AGEING':
@@ -167,7 +164,6 @@ const Reports: React.FC = () => {
   const getPageTitle = () => {
     switch (reportType) {
       case 'CASE_STATUS': return 'Case Status Report';
-      case 'TASK_COMPLETION': return 'Task Completion Report';
       case 'AUDIT_LOGS': return 'Audit Logs';
       case 'CASE_AGEING': return 'Case Ageing Report';
       case 'INVESTIGATOR_WORKLOAD': return 'Investigator Workload Report';
@@ -178,7 +174,6 @@ const Reports: React.FC = () => {
   const getPageSubtitle = () => {
     switch (reportType) {
       case 'CASE_STATUS': return 'Overview of cases by status, type, and outcome';
-      case 'TASK_COMPLETION': return 'Analysis of task completion rates and time to completion';
       case 'AUDIT_LOGS': return 'Detailed log of all system activities for compliance and audit purposes';
       case 'CASE_AGEING': return 'Analysis of case duration from creation to closure';
       case 'INVESTIGATOR_WORKLOAD': return 'Overview of investigator workloads and performance metrics';
@@ -249,14 +244,6 @@ const Reports: React.FC = () => {
             onExportPDF={handleExportPDF}
           />
         </>
-      )}
-
-      {reportType === 'TASK_COMPLETION' && (
-        <Suspense fallback={<div>Loading Task Completion Report...</div>}>
-          <TaskCompletionReport
-            dateRange={dateRange}
-          />
-        </Suspense>
       )}
 
       {reportType === 'AUDIT_LOGS' && (

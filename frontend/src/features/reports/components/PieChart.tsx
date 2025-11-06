@@ -41,15 +41,15 @@ const PieChart: React.FC<PieChartProps> = ({ data, title, size = 350, isLoading 
     );
   }
 
-  const chartData = data.map((item) => ({
+  const chartData = validData.map((item) => ({
     name: item.label,
     value: item.value,
-    percentage: item.percentage.toFixed(1),
+    percentage: ((item.value / total) * 100).toFixed(1),
     color: item.color
   }));
 
-  const renderLabel = ({ name, percentage }: any) => {
-    return `${name}: ${percentage}%`;
+  const renderLabel = ({ percentage }: any) => {
+    return `${percentage}%`;
   };
 
   return (
@@ -61,7 +61,7 @@ const PieChart: React.FC<PieChartProps> = ({ data, title, size = 350, isLoading 
             data={chartData}
             cx="50%"
             cy="50%"
-            labelLine={true}
+            labelLine={false}
             label={renderLabel}
             outerRadius="70%"
             fill="#8884d8"
@@ -75,6 +75,15 @@ const PieChart: React.FC<PieChartProps> = ({ data, title, size = 350, isLoading 
           <Legend />
         </ReChart>
       </ResponsiveContainer>
+      <div className="mt-6 grid grid-cols-2 gap-2 text-sm">
+        {data.map((item, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+            <span className="text-gray-700">{item.label}:</span>
+            <span className="font-medium text-gray-900">{((total > 0 ? (item.value / total) * 100 : 0).toFixed(1))}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
