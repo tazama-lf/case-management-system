@@ -11,6 +11,7 @@ import { useToast } from '@/shared/providers/ToastProvider';
 import { taskService, TaskStatus, type TaskStatusType } from '@/features/cases/services/taskService';
 import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
+import { useAuth } from '@/features/auth';
 
 // Dynamic imports for modals
 const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
@@ -22,6 +23,7 @@ const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/mod
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
   const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
@@ -48,7 +50,9 @@ const WorkQueueDashboard: React.FC = () => {
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
-  const candidateGroups = flowableWorkQueueService.getCandidateGroups();
+  // Check if user is investigator only (no supervisor or admin role)
+  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly);
 
 
   useEffect(() => {
@@ -160,9 +164,9 @@ const WorkQueueDashboard: React.FC = () => {
 
   const handleTaskOperation = async (
     operation: TaskOperation,
-    params: TaskOperationParams
+    operationParams: TaskOperationParams
   ): Promise<void> => {
-    const { task, assignee, newStatus, reason } = params;
+    const { task, assignee, newStatus, reason } = operationParams;
 
     try {
       // Validation based on operation type
@@ -187,18 +191,20 @@ const WorkQueueDashboard: React.FC = () => {
       // Execute the appropriate operation
       switch (operation) {
         case 'assign':
-          await taskService.assignTaskToInvestigator(task.id, assignee!);
+        case 'reassign': {
+          await flowableWorkQueueService.assignTask(task.id, assignee!, {
+            currentUserId: user?.userId,
+            isInvestigator: hasInvestigatorRole()
+          });
           break;
-        case 'reassign':
-          await taskService.reassignTask(task.id, assignee!);
-          break;
+        }
         case 'unassign':
-          await taskService.unassignTask(task.id, { reason: reason! });
+          await flowableWorkQueueService.unassignTask(task.id);
           break;
         case 'complete':
-          await taskService.updateTaskForSupervisor(task.id, { status: TaskStatus.STATUS_30_COMPLETED });
+          await flowableWorkQueueService.completeTask(task.id, { notes: operationParams.notes || '' });
           break;
-        case 'updateStatus':
+        case 'updateStatus': {
           const statusMap: Record<string, TaskStatusType> = {
             'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
             'Assigned': TaskStatus.STATUS_10_ASSIGNED,
@@ -211,17 +217,23 @@ const WorkQueueDashboard: React.FC = () => {
             await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
           }
           break;
+        }
         default:
           throw new Error(`Unknown operation: ${operation}`);
       }
 
-      // Close modals and refresh tasks
+      // Close modals and clear URL params first (before refresh to prevent re-opening)
       setAssignModalOpen(false);
       setReassignModalOpen(false);
       setUnassignModalOpen(false);
       setUpdateStatusModalOpen(false);
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
+      
+      // Clear task ID from URL if present
+      if (params.taskId) {
+        navigate('/work-queue', { replace: true });
+      }
 
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
@@ -250,23 +262,27 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Simplified handler functions that use the unified handler
-  const handleModalAssign = (task: UnifiedWorkQueueTask, assignee: string, notes?: string) =>
-    handleTaskOperation('assign', { task, assignee, notes });
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+    await handleTaskOperation('assign', { task, assignee, notes });
+  };
 
-  const handleModalReassign = (task: UnifiedWorkQueueTask, assignee: string, justification: string) =>
-    handleTaskOperation('reassign', { task, assignee, justification });
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+    await handleTaskOperation('reassign', { task, assignee, justification });
+  };
 
-  const handleModalUnassign = (_taskId: string, reason: string) => {
+  const handleModalUnassign = async (_taskId: string, reason: string) => {
     if (selectedTask) {
-      return handleTaskOperation('unassign', { task: selectedTask, reason });
+      await handleTaskOperation('unassign', { task: selectedTask, reason });
     }
   };
 
-  const handleModalCloseTask = (task: UnifiedWorkQueueTask, _notes?: string) =>
-    handleTaskOperation('complete', { task });
+  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, _notes?: string) => {
+    await handleTaskOperation('complete', { task });
+  };
 
-  const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
-    handleTaskOperation('updateStatus', { task, newStatus, notes });
+  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
+    await handleTaskOperation('updateStatus', { task, newStatus, notes });
+  };
 
   return (
     <PageContainer

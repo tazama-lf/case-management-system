@@ -2137,28 +2137,38 @@ export class CaseService {
         sortOrder = 'desc',
       } = query;
       const whereClause: any = {};
-      if (status) whereClause.status = status;
-      if (priority) whereClause.priority = priority;
-      if (caseType) whereClause.case_type = caseType;
-      if (tenantId) whereClause.tenant_id = tenantId;
+      
+      // Build base filters
+      const baseFilters: any = {};
+      if (status) baseFilters.status = status;
+      if (priority) baseFilters.priority = priority;
+      if (caseType) baseFilters.case_type = caseType;
+      if (tenantId) baseFilters.tenant_id = tenantId;
 
-      // Handle investigator filtering (only unassigned or assigned to them)
+      if (createdAfter || createdBefore) {
+        baseFilters.created_at = {};
+        if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
+        if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
+      }
+
+      // Handle investigator filtering (only unassigned, ready for assignment, or assigned to them)
       if (investigatorUserId) {
-        // Investigator filter: show only unassigned OR assigned to them
-        whereClause.OR = [
-          { case_owner_user_id: null }, // Unassigned cases
-          { case_owner_user_id: investigatorUserId }, // Cases assigned to this investigator
+        // Investigator filter: show only unassigned, ready for assignment, OR assigned to them
+        whereClause.AND = [
+          baseFilters, // Apply all other filters
+          {
+            OR: [
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+              { case_owner_user_id: investigatorUserId }, // Cases assigned to this investigator
+            ],
+          },
         ];
       } else {
         // Supervisor/Admin can filter by ownerId or unassignedOnly
+        Object.assign(whereClause, baseFilters);
         if (ownerId) whereClause.case_owner_user_id = ownerId;
         if (unassignedOnly) whereClause.case_owner_user_id = null;
-      }
-
-      if (createdAfter || createdBefore) {
-        whereClause.created_at = {};
-        if (createdAfter) whereClause.created_at.gte = new Date(createdAfter);
-        if (createdBefore) whereClause.created_at.lte = new Date(createdBefore);
       }
 
       const skip = (page - 1) * limit;

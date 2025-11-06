@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -379,6 +380,69 @@ export class TaskController {
     };
   }
 
+  @Patch(':taskId/self-assign')
+  @RequireInvestigatorRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Self-assign a task (Investigator)',
+    description: 'Allows an investigator to assign an unassigned task to themselves. Only works on unassigned tasks.',
+  })
+  @ApiParam({
+    name: 'taskId',
+    type: 'string',
+    description: 'UUID of the task to self-assign',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task successfully self-assigned',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', format: 'uuid' },
+            assignedUserId: { type: 'string', format: 'uuid' },
+            status: { type: 'string' },
+            assignedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Task is already assigned',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - User lacks INVESTIGATOR role',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Task does not exist',
+  })
+  async selfAssignTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+
+    const result = await this.taskService.selfAssignTask(taskId, userId, tenantId);
+
+    return {
+      success: true,
+      message: `Task ${taskId} successfully self-assigned`,
+      data: {
+        taskId: result.task_id,
+        assignedUserId: result.assigned_user_id,
+        status: result.status,
+        assignedAt: new Date().toISOString(),
+      },
+    };
+  }
+
   @Patch(':taskId')
   @RequireInvestigatorRole()
   @HttpCode(HttpStatus.OK)
@@ -645,9 +709,20 @@ export class TaskController {
     try {
       const userId = req.user.token.clientId;
       const tenantId = req.user.token.tenantId;
+      const userClaims = req.user.token.backendClaims || [];
 
       if (!userId) {
         throw new BadRequestException('User not authenticated or missing client ID');
+      }
+
+      // Check if user is investigator (not supervisor or admin)
+      const isInvestigator =
+        userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+      // Restrict investigators to only see investigations and investigators queues
+      const allowedQueues = ['investigations', 'investigators'];
+      if (isInvestigator && !allowedQueues.includes(candidateGroup)) {
+        throw new ForbiddenException('Investigators can only access the investigations and investigators queues');
       }
 
       const pageNum = parseInt(page || '1');

@@ -25,6 +25,10 @@ export class TazamaAuthGuard implements CanActivate {
     const anyRequiredClaims = this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [context.getHandler(), context.getClass()]);
     const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(AUTHENTICATED_ONLY_KEY, [context.getHandler(), context.getClass()]);
 
+    // Debug logging
+    this.logger.debug(`Required claims (ALL): ${JSON.stringify(requiredClaims)}`, logContext);
+    this.logger.debug(`Any required claims (OR): ${JSON.stringify(anyRequiredClaims)}`, logContext);
+
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 
