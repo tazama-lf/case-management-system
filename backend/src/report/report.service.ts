@@ -53,7 +53,16 @@ export class ReportsService {
     return { startDate, endDate };
   }
 
-  async getCaseStatus(dateRange?: string, filters?: { caseType?: string; priority?: string; investigator?: string; tenantId: string }) {
+  async getCaseStatus(
+    dateRange?: string,
+    filters?: {
+      caseType?: string;
+      priority?: string;
+      investigator?: string;
+      tenantId: string;
+      requestingUserId?: string;
+    },
+  ) {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const whereClause: any = {
@@ -76,6 +85,14 @@ export class ReportsService {
       whereClause.alert = {
         tenant_id: filters.tenantId,
       };
+    }
+    
+    // If requestingUserId is provided (investigator), filter to show only unassigned or assigned to them
+    if (filters?.requestingUserId) {
+      whereClause.OR = [
+        { case_owner_user_id: null }, // Unassigned cases
+        { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
+      ];
     }
 
     const statusCounts = await this.prisma.case.groupBy({
