@@ -528,7 +528,8 @@ export class FlowableService implements OnModuleInit {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
+      // Use PUT to update existing variables or create new ones (upsert behavior)
+      const response = await this.flowableClient.put(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
 
       this.logger.log(`Variables set successfully for task ${taskId}`, FlowableService.name);
       return response.data;

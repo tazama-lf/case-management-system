@@ -24,12 +24,19 @@ export interface DashboardData {
 }
 
 export interface WorkQueue {
+  caseStatuses: any;
+  caseTypes: any;
   id: string;
   name: string;
   description: string;
   roles: string[];
   taskTypes: string[];
   status: 'Active' | 'Inactive';
+  taskCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  tenantId?: string;
+  createdByUserId?: string;
 }
 
 export interface WorkQueueRole {

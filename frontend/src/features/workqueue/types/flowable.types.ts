@@ -125,7 +125,7 @@ export interface WorkQueueResponse {
 
 
 export interface FlowableTaskAssignmentRequest {
-  assignee: string;
+  assignedUserId: string;
   owner?: string;
 }
 

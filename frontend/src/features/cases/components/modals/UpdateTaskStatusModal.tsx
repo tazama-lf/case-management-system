@@ -23,20 +23,12 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
   const canConfirm = Boolean(newStatus && newStatus !== task.status);
 
   const statusOptions = [
-    { value: 'Unassigned', label: 'Unassigned', color: 'text-blue-700' },
-    { value: 'Assigned', label: 'Assigned', color: 'text-gray-700' },
     { value: 'In Progress', label: 'In Progress', color: 'text-yellow-700' },
-    { value: 'Blocked', label: 'Blocked', color: 'text-red-700' },
-    { value: 'Complete', label: 'Complete', color: 'text-green-700' },
   ];
 
   const getStatusDescription = (status: string) => {
     const descriptions = {
-      'Unassigned': 'Task is available for assignment',
-      'Assigned': 'Task has been assigned but not started',
       'In Progress': 'Task is actively being worked on',
-      'Blocked': 'Task is blocked and cannot proceed',
-      'Complete': 'Task has been completed successfully',
     };
     return descriptions[status as keyof typeof descriptions] || '';
   };
@@ -91,22 +83,6 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({ open, onC
               </div>
             )}
           </div>
-
-          {newStatus === 'Blocked' && (
-            <div className="rounded-md bg-red-50 p-3">
-              <div className="text-sm text-red-800">
-                <strong>Note:</strong> Blocking this task will prevent further progress. Please provide detailed notes about the blocking issue.
-              </div>
-            </div>
-          )}
-
-          {newStatus === 'Complete' && (
-            <div className="rounded-md bg-green-50 p-3">
-              <div className="text-sm text-green-800">
-                <strong>Note:</strong> Marking this task as complete will close it. Consider using the "Close Task" action for more detailed completion tracking.
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>

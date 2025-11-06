@@ -10,6 +10,7 @@ const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
 const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal'));
+const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 interface TaskLogTabProps {
   caseId: string;
@@ -26,6 +27,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
+  const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
   useEffect(() => {
@@ -133,6 +135,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const handleUpdateStatus = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setUpdateStatusModalOpen(true);
+  };
+
+  const handleCompleteTask = (task: UnifiedWorkQueueTask) => {
+    setSelectedTask(task);
+    setCompleteTaskModalOpen(true);
   };
 
   // Unified handler for all task operations with type checking
@@ -248,6 +255,23 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
     handleTaskOperation('updateStatus', { task, newStatus, notes });
 
+  const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, _notes?: string) => {
+    try {
+      await taskService.updateTaskForSupervisor(task.id, { status: TaskStatus.STATUS_30_COMPLETED });
+
+      // Close modal and refresh tasks
+      setCompleteTaskModalOpen(false);
+      setSelectedTask(null);
+
+      const fetchedTasks = await taskService.getTasksByCaseId(caseId);
+      setTasks(fetchedTasks);
+
+      success('Task Completed Successfully', `Task ${task.id} has been completed successfully.`);
+    } catch (error) {
+      toastError('Complete Task Failed', error instanceof Error ? error.message : 'Failed to complete task');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -305,6 +329,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
           onReassign={handleReassign}
           onUnassign={handleUnassign}
           onUpdateStatus={handleUpdateStatus}
+          onComplete={handleCompleteTask}
         />
       )}
 
@@ -360,6 +385,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
               setSelectedTask(null);
             }}
             onUpdateStatus={handleModalUpdateStatus}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
+
+      {completeTaskModalOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <CompleteTaskModal
+            open={completeTaskModalOpen}
+            onClose={() => {
+              setCompleteTaskModalOpen(false);
+              setSelectedTask(null);
+            }}
+            onCompleteTask={handleModalCompleteTask}
             task={selectedTask}
           />
         </Suspense>

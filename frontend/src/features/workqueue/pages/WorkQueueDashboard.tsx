@@ -1,10 +1,14 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { MagnifyingGlassIcon, ChevronDownIcon, QueueListIcon } from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '@/shared/components/ui';
+import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import WorkQueueTable from '@/features/workqueue/components/WorkQueueTable';
 import WorkQueueTableSkeleton from '@/features/workqueue/components/WorkQueueTableSkeleton';
 import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '@/features/workqueue/components/WorkQueueErrorBoundary';
 import { flowableWorkQueueService } from '@/features/workqueue/services/flowableWorkQueueService';
+import { useWorkQueuePagination } from '@/features/workqueue/hooks/useWorkQueuePagination';
+import { useToast } from '@/shared/providers/ToastProvider';
+import { taskService, TaskStatus, type TaskStatusType } from '@/features/cases/services/taskService';
 import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useAuth } from '@/features/auth';
@@ -13,13 +17,14 @@ import { useAuth } from '@/features/auth';
 const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('@/features/cases/components/modals/ReassignTaskModal'));
 const UnassignTaskModal = lazy(() => import('@/features/cases/components/modals/UnassignTaskModal'));
-const CloseTaskModal = lazy(() => import('@/features/cases/components/modals/CloseTaskModal'));
+const CompleteTaskModal = lazy(() => import('@/features/cases/components/modals/CompleteTaskModal'));
 const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/modals/UpdateTaskStatusModal'));
 
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
-  const { user, hasInvestigatorRole } = useAuth();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
+  const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -45,7 +50,9 @@ const WorkQueueDashboard: React.FC = () => {
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
-  const candidateGroups = flowableWorkQueueService.getCandidateGroups();
+  // Check if user is investigator only (no supervisor or admin role)
+  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly);
 
 
   useEffect(() => {
@@ -105,6 +112,9 @@ const WorkQueueDashboard: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Use pagination hook with filtered tasks
+  const { pagination, paginatedTasks, setPageSize } = useWorkQueuePagination(filteredTasks);
+
   const handleAssignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setAssignModalOpen(true);
@@ -126,69 +136,6 @@ const WorkQueueDashboard: React.FC = () => {
     navigate(`/work-queue/${taskData.id}`);
   };
 
-
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, _notes?: string) => {
-
-    if (!task || !task.id) {
-      console.error('Cannot assign task: task or task ID is missing', { task });
-      handleError(new Error('Task ID is required for assignment'));
-      return;
-    }
-
-    if (!assignee) {
-      console.error('Cannot assign task: assignee is missing', { task, assignee });
-      handleError(new Error('Assignee is required for assignment'));
-      return;
-    }
-
-    try {
-      await flowableWorkQueueService.assignTask(task.id, assignee, {
-        currentUserId: user?.userId,
-        isInvestigator: hasInvestigatorRole()
-      });
-
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-      setTasks(updatedTasks);
-
-      setAssignModalOpen(false);
-      setSelectedTask(null);
-    } catch (error) {
-      handleError(error);
-    }
-  };
-
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, _justification: string) => {
-    try {
-      await flowableWorkQueueService.assignTask(task.id, assignee, {
-        currentUserId: user?.userId,
-        isInvestigator: hasInvestigatorRole()
-      });
-
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-      setTasks(updatedTasks);
-
-      setReassignModalOpen(false);
-      setSelectedTask(null);
-
-    } catch (error) {
-      handleError(error);
-    }
-  };
-
-  const handleModalUnassign = async (taskId: string) => {
-    try {
-      await flowableWorkQueueService.unassignTask(taskId);
-
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-      setTasks(updatedTasks);
-
-      setUnassignModalOpen(false);
-      setSelectedTask(null);
-    } catch (error) {
-      handleError(error);
-    }
-  };
-
   const handleCompleteTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
     setCloseTaskModalOpen(true);
@@ -203,44 +150,133 @@ const WorkQueueDashboard: React.FC = () => {
     navigate(`/work-queue/${taskData.id}`);
   };
 
-  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, notes: string) => {
+  // Unified handler for all task operations with type checking
+  type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus' | 'complete';
+  
+  interface TaskOperationParams {
+    task: UnifiedWorkQueueTask;
+    assignee?: string;
+    newStatus?: string;
+    reason?: string;
+    notes?: string;
+    justification?: string;
+  }
+
+  const handleTaskOperation = async (
+    operation: TaskOperation,
+    params: TaskOperationParams
+  ): Promise<void> => {
+    const { task, assignee, newStatus, reason } = params;
+
     try {
-      await flowableWorkQueueService.completeTask(task.id, { notes });
+      // Validation based on operation type
+      if ((operation === 'assign' || operation === 'reassign') && !assignee) {
+        console.warn(`Cannot ${operation} task: missing assignee`, { task, assignee });
+        toastError(`${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`, 'Missing assignee');
+        return;
+      }
+
+      if (operation === 'updateStatus' && !newStatus) {
+        console.warn('Cannot update task status: missing status', { task, newStatus });
+        toastError('Update Task Status Failed', 'Missing status');
+        return;
+      }
+
+      if (operation === 'unassign' && !reason) {
+        console.warn('Cannot unassign task: missing reason', { task, reason });
+        toastError('Unassign Task Failed', 'Missing reason');
+        return;
+      }
+
+      // Execute the appropriate operation
+      switch (operation) {
+        case 'assign':
+        case 'reassign': {
+          await flowableWorkQueueService.assignTask(task.id, assignee!, {
+            currentUserId: user?.userId,
+            isInvestigator: hasInvestigatorRole()
+          });
+          break;
+        }
+        case 'unassign':
+          await flowableWorkQueueService.unassignTask(task.id);
+          break;
+        case 'complete':
+          await flowableWorkQueueService.completeTask(task.id, { notes: params.notes || '' });
+          break;
+        case 'updateStatus': {
+          const statusMap: Record<string, TaskStatusType> = {
+            'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
+            'Assigned': TaskStatus.STATUS_10_ASSIGNED,
+            'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
+            'Blocked': TaskStatus.STATUS_21_BLOCKED,
+            'Complete': TaskStatus.STATUS_30_COMPLETED
+          };
+          const backendStatus = statusMap[newStatus!];
+          if (backendStatus) {
+            await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
+          }
+          break;
+        }
+        default:
+          throw new Error(`Unknown operation: ${operation}`);
+      }
+
+      // Close modals and refresh tasks
+      setAssignModalOpen(false);
+      setReassignModalOpen(false);
+      setUnassignModalOpen(false);
+      setUpdateStatusModalOpen(false);
+      setCloseTaskModalOpen(false);
+      setSelectedTask(null);
 
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
 
-      setCloseTaskModalOpen(false);
-      setSelectedTask(null);
+      // Success message
+      const operationMessages = {
+        assign: 'Task Assigned Successfully',
+        reassign: 'Task Reassigned Successfully',
+        unassign: 'Task Unassigned Successfully',
+        complete: 'Task Completed Successfully',
+        updateStatus: 'Task Status Updated Successfully'
+      };
+
+      success(operationMessages[operation], `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation === 'complete' ? 'completed' : operation + 'ed'} successfully.`);
     } catch (error) {
-      handleError(error);
+      console.error(`Failed to ${operation} task:`, error);
+      const operationLabels = {
+        assign: 'Assign Task Failed',
+        reassign: 'Reassign Task Failed',
+        unassign: 'Unassign Task Failed',
+        complete: 'Complete Task Failed',
+        updateStatus: 'Update Task Status Failed'
+      };
+      toastError(operationLabels[operation], error instanceof Error ? error.message : `Failed to ${operation} task`);
     }
   };
 
-  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
-    try {
-      const statusMapping = {
-        'Unassigned': 'UNASSIGNED',
-        'Assigned': 'ASSIGNED',
-        'In Progress': 'IN_PROGRESS',
-        'Blocked': 'SUSPENDED',
-        'Complete': 'COMPLETED'
-      };
+  // Simplified handler functions that use the unified handler
+  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+    await handleTaskOperation('assign', { task, assignee, notes });
+  };
 
-      const mappedStatus = statusMapping[newStatus as keyof typeof statusMapping];
+  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+    await handleTaskOperation('reassign', { task, assignee, justification });
+  };
 
-      if (mappedStatus === 'COMPLETED') {
-        await flowableWorkQueueService.completeTask(task.id, { notes });
-      }
-
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-      setTasks(updatedTasks);
-
-      setUpdateStatusModalOpen(false);
-      setSelectedTask(null);
-    } catch (error) {
-      handleError(error);
+  const handleModalUnassign = async (_taskId: string, reason: string) => {
+    if (selectedTask) {
+      await handleTaskOperation('unassign', { task: selectedTask, reason });
     }
+  };
+
+  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, _notes?: string) => {
+    await handleTaskOperation('complete', { task });
+  };
+
+  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
+    await handleTaskOperation('updateStatus', { task, newStatus, notes });
   };
 
   return (
@@ -366,14 +402,25 @@ const WorkQueueDashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-          <WorkQueueTable
-            tasks={filteredTasks}
-            onAssign={handleAssignTask}
-            onReassign={handleReassignTask}
-            onUnassign={handleUnassignTask}
-            onComplete={handleCompleteTask}
-            onUpdateStatus={handleUpdateTaskStatus}
-          />
+          <>
+            <ResultsSummary
+              pagination={pagination}
+              loading={isLoading}
+              lastUpdated={null}
+              onPageSizeChange={setPageSize}
+              sort={{ column: 'id', direction: 'asc' }}
+              itemType="work queue tasks"
+            />
+            <WorkQueueTable
+              tasks={paginatedTasks}
+              pagination={pagination}
+              onAssign={handleAssignTask}
+              onReassign={handleReassignTask}
+              onUnassign={handleUnassignTask}
+              onComplete={handleCompleteTask}
+              onUpdateStatus={handleUpdateTaskStatus}
+            />
+          </>
         )}
       </Card>
 
@@ -427,7 +474,7 @@ const WorkQueueDashboard: React.FC = () => {
       </Suspense>
 
       <Suspense fallback={<div>Loading modal...</div>}>
-        <CloseTaskModal
+        <CompleteTaskModal
           open={closeTaskModalOpen}
           onClose={() => {
             setCloseTaskModalOpen(false);
@@ -437,7 +484,7 @@ const WorkQueueDashboard: React.FC = () => {
               navigate('/work-queue');
             }
           }}
-          onCloseTask={handleModalCloseTask}
+          onCompleteTask={handleModalCloseTask}
           task={selectedTask}
         />
       </Suspense>

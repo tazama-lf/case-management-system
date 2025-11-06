@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -708,9 +709,20 @@ export class TaskController {
     try {
       const userId = req.user.token.clientId;
       const tenantId = req.user.token.tenantId;
+      const userClaims = req.user.token.backendClaims || [];
 
       if (!userId) {
         throw new BadRequestException('User not authenticated or missing client ID');
+      }
+
+      // Check if user is investigator (not supervisor or admin)
+      const isInvestigator =
+        userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+      // Restrict investigators to only see investigations and investigators queues
+      const allowedQueues = ['investigations', 'investigators'];
+      if (isInvestigator && !allowedQueues.includes(candidateGroup)) {
+        throw new ForbiddenException('Investigators can only access the investigations and investigators queues');
       }
 
       const pageNum = parseInt(page || '1');

@@ -20,7 +20,7 @@ export class FlowableWorkQueueService {
 
      
       const tasks = response.data?.tasks || [];
-      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task));
+      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task, candidateGroup));
 
       return unifiedTasks;
     } catch (error: any) {
@@ -62,7 +62,7 @@ export class FlowableWorkQueueService {
     }
   ): Promise<UnifiedWorkQueueTask> {
     try {
-      const assignmentRequest = {
+      const assignmentRequest: FlowableTaskAssignmentRequest = {
         assignedUserId: assigneeUserId
       };
 
@@ -94,13 +94,13 @@ export class FlowableWorkQueueService {
 
   async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
-      const unassignmentRequest = {
-        reason: 'Task unassigned from work queue'
+      const assignmentRequest: FlowableTaskAssignmentRequest = {
+        assignedUserId: ''
       };
 
       const response = await apiClient.patch<FlowableTask>(
         `${this.baseUrl}/${taskId}/unassign`,
-        unassignmentRequest
+        assignmentRequest
       );
 
       return this.transformFlowableTask(response);
@@ -135,7 +135,7 @@ export class FlowableWorkQueueService {
   }
 
 
-  private transformFlowableTask(flowableTask: any): UnifiedWorkQueueTask {
+  private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
     // Extract PostgreSQL task ID from variables, fallback to Flowable ID
     const postgresTaskId = flowableTask.variables?.postgres_task_id || 
                            flowableTask.processVariables?.postgresTaskId ||
@@ -150,7 +150,7 @@ export class FlowableWorkQueueService {
 
       assignee: flowableTask.assignee,
       assigneeName: flowableTask.assignee,
-      candidateGroup: flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
+      candidateGroup: candidateGroup || flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
 
       status: this.mapFlowableStatus(flowableTask),
       priority: this.mapFlowablePriority(flowableTask.priority),
@@ -198,12 +198,22 @@ export class FlowableWorkQueueService {
   }
 
 
-  getCandidateGroups(): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
-    return [
+  getCandidateGroups(isInvestigator?: boolean): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
+    const allGroups = [
       { value: WorkQueueCandidateGroup.INVESTIGATIONS, label: 'Investigations Queue' },
       { value: WorkQueueCandidateGroup.INVESTIGATORS, label: 'Investigators Queue' },
       { value: WorkQueueCandidateGroup.SUPERVISORS, label: 'Supervisors Queue' }
     ];
+    
+    // Filter to investigations and investigators queues for investigators
+    if (isInvestigator) {
+      return allGroups.filter(group => 
+        group.value === WorkQueueCandidateGroup.INVESTIGATIONS || 
+        group.value === WorkQueueCandidateGroup.INVESTIGATORS
+      );
+    }
+    
+    return allGroups;
   }
 }
 

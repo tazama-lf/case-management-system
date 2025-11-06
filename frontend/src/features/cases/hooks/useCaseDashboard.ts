@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { caseService } from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/CasesTable';
 import { transformBackendCaseToUI } from '@/features/cases/components/CasesTable';
@@ -15,11 +15,19 @@ export interface CaseDashboardFilters {
   priorityFilter: string;
 }
 
+export interface PaginationState {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface CaseDashboardState {
   cases: CaseRow[];
   loading: boolean;
   errorState: string | null;
   filters: CaseDashboardFilters;
+  pagination: PaginationState;
 }
 
 export const useCaseDashboard = () => {
@@ -31,6 +39,9 @@ export const useCaseDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
  
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
@@ -136,6 +147,31 @@ export const useCaseDashboard = () => {
       .toLowerCase()
       .includes(search.toLowerCase())
   );
+
+  // Calculate pagination
+  const totalItems = filteredCases.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  
+  // Reset to page 1 if current page exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  // Get paginated cases
+  const paginatedCases = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredCases.slice(start, end);
+  }, [filteredCases, currentPage, pageSize]);
+
+  const pagination: PaginationState = {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages
+  };
 
   
   const dashboardActions = {
@@ -275,7 +311,7 @@ export const useCaseDashboard = () => {
 
   
   const dashboardState: CaseDashboardState = {
-    cases: filteredCases,
+    cases: paginatedCases,
     loading,
     errorState,
     filters: {
@@ -283,7 +319,8 @@ export const useCaseDashboard = () => {
       sortBy,
       statusFilter,
       priorityFilter
-    }
+    },
+    pagination
   };
 
   return {
@@ -297,7 +334,9 @@ export const useCaseDashboard = () => {
     modalActions,
     caseActions,
     
- 
+    // Pagination actions
+    setCurrentPage,
+    setPageSize,
     refreshCases: fetchCases
   };
 };

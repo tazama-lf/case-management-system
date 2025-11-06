@@ -4,6 +4,7 @@ import { PageContainer, Card } from '@/shared/components/ui';
 import { CasesTable } from '..';
 import CaseFilters from '@/features/cases/components/CaseFilters';
 import CasesTableSkeleton from '@/features/cases/components/CasesTableSkeleton';
+import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import type { CaseRow } from '@/features/cases/components/CasesTable';
 import type { CaseDashboardState } from '../hooks/useCaseDashboard';
 
@@ -13,6 +14,8 @@ interface CaseDashboardContentProps {
   onSortChange: (sort: 'recent' | 'oldest') => void;
   onStatusFilterChange: (status: string) => void;
   onPriorityFilterChange: (priority: string) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
   onCreateNew: () => void;
   onView: (row: CaseRow) => void;
   onComplete: (row: CaseRow) => void;
@@ -36,6 +39,8 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onSortChange,
   onStatusFilterChange,
   onPriorityFilterChange,
+  onPageChange,
+  onPageSizeChange,
   onCreateNew,
   onView,
   onComplete,
@@ -52,7 +57,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onApproveCaseReopen,
   onRejectCaseReopen
 }) => {
-  const { cases, loading, errorState, filters } = dashboardState;
+  const { cases, loading, errorState, filters, pagination } = dashboardState;
 
   return (
     <PageContainer
@@ -87,25 +92,47 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
         )}
 
         {loading ? (
-          <CasesTableSkeleton rows={10} />
+          <CasesTableSkeleton rows={pagination.pageSize} />
         ) : (
-          <CasesTable
-            rows={cases}
-            onView={onView}
-            onComplete={onComplete}
-            onCloseCase={onCloseCase}
-            onReopenCase={onReopenCase}
-            onAbandonCase={onAbandonCase}
-            onSuspendCase={onSuspendCase}
-            onResumeCase={onResumeCase}
-            onRejectCase={onRejectCase}
-            onApproveCase={onApproveCase}
-            onApproveCaseCreation={onApproveCaseCreation}
-            onRejectCaseCreation={onRejectCaseCreation}
-            onReturnForReview={onReturnForReview}
-            onApproveCaseReopen={onApproveCaseReopen}
-            onRejectCaseReopen={onRejectCaseReopen}
-          />
+          <>
+            <ResultsSummary
+              pagination={{
+                currentPage: pagination.currentPage,
+                pageSize: pagination.pageSize,
+                totalItems: pagination.totalItems,
+              }}
+              loading={loading}
+              lastUpdated={null}
+              onPageSizeChange={onPageSizeChange}
+              sort={{ column: 'updated_at', direction: filters.sortBy === 'recent' ? 'desc' : 'asc' }}
+              itemType="cases"
+            />
+
+            <CasesTable
+              rows={cases}
+              onView={onView}
+              onComplete={onComplete}
+              onCloseCase={onCloseCase}
+              onReopenCase={onReopenCase}
+              onAbandonCase={onAbandonCase}
+              onSuspendCase={onSuspendCase}
+              onResumeCase={onResumeCase}
+              onRejectCase={onRejectCase}
+              onApproveCase={onApproveCase}
+              onApproveCaseCreation={onApproveCaseCreation}
+              onRejectCaseCreation={onRejectCaseCreation}
+              onReturnForReview={onReturnForReview}
+              onApproveCaseReopen={onApproveCaseReopen}
+              onRejectCaseReopen={onRejectCaseReopen}
+              pagination={{
+                currentPage: pagination.currentPage,
+                pageSize: pagination.pageSize,
+                totalItems: pagination.totalItems,
+                totalPages: pagination.totalPages,
+                onPageChange: onPageChange,
+              }}
+            />
+          </>
         )}
       </Card>
     </PageContainer>

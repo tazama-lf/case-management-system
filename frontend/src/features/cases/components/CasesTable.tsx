@@ -56,6 +56,14 @@ export const getPriorityColor = (priority: string): string => {
   return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
 };
 
+export const getScoreColor = (score: number): string => {
+  if (score >= 80) return 'text-red-600 bg-red-50';
+  if (score >= 60) return 'text-orange-600 bg-orange-50';
+  if (score >= 40) return 'text-yellow-600 bg-yellow-50';
+  if (score > 0) return 'text-green-600 bg-green-50';
+  return 'text-gray-600 bg-gray-50';
+};
+
 export const formatStatus = (status: string): string => {
   
   return status;
@@ -83,6 +91,14 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
   };
 };
 
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
 interface CasesTableProps {
   rows: CaseRow[];
   onView: (row: CaseRow) => void;
@@ -99,6 +115,7 @@ interface CasesTableProps {
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
   onReturnForReview?: (row: CaseRow) => void;
+  pagination?: PaginationInfo;
 }
 
 const CasesTable: React.FC<CasesTableProps> = ({ 
@@ -116,18 +133,19 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  onReturnForReview
+  onReturnForReview,
+  pagination
 }) => {
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case ID</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case Type</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Typology ID</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Typology Score</th>
+            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Confidence %</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created on</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Picked on</th>
             <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
@@ -145,8 +163,13 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   {c.status}
                 </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.typologyId}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.score}</td>
+              <td className="whitespace-nowrap px-4 py-3">
+                <div className="flex items-center">
+                  <span className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(c.score)}`}>
+                    {c.score}%
+                  </span>
+                </div>
+              </td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
               <td className="whitespace-nowrap px-4 py-3">
@@ -342,7 +365,107 @@ const CasesTable: React.FC<CasesTableProps> = ({
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
+
+      {pagination && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    (pagination.currentPage - 1) * pagination.pageSize + 1,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    pagination.currentPage * pagination.pageSize,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                of <span className="font-medium">{pagination.totalItems}</span>{' '}
+                results
+              </p>
+            </div>
+            <div>
+              <nav
+                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                aria-label="Pagination"
+              >
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
+                  }
+                  disabled={pagination.currentPage <= 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                {}
+                {(() => {
+                  const { currentPage, totalPages } = pagination;
+                  const pages: (number | 'ellipsis')[] = [];
+                  const windowSize = 5;
+                  const half = Math.floor(windowSize / 2);
+
+                  const addPage = (p: number) => pages.push(p);
+                  const addEllipsis = () => pages.push('ellipsis');
+
+                  if (totalPages <= windowSize + 2) {
+                    for (let p = 1; p <= totalPages; p++) addPage(p);
+                  } else {
+                    const start = Math.max(2, currentPage - half);
+                    const end = Math.min(totalPages - 1, currentPage + half);
+
+                    addPage(1);
+                    if (start > 2) addEllipsis();
+                    for (let p = start; p <= end; p++) addPage(p);
+                    if (end < totalPages - 1) addEllipsis();
+                    addPage(totalPages);
+                  }
+
+                  return pages.map((p, idx) =>
+                    p === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => pagination.onPageChange(p)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          pagination.currentPage === p
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        }`}
+                        aria-current={pagination.currentPage === p ? 'page' : undefined}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  );
+                })()}
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
+                  }
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
