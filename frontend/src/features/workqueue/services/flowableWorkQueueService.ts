@@ -84,7 +84,7 @@ export class FlowableWorkQueueService {
 
       const response = await apiClient.patch<FlowableTask>(
         `${this.baseUrl}/${taskId}/unassign`,
-        unassignmentRequest
+        assignmentRequest
       );
 
       return this.transformFlowableTask(response);
@@ -121,9 +121,9 @@ export class FlowableWorkQueueService {
 
   private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
     return {
-      id: postgresTaskId || flowableTask.id, // Use PostgreSQL task ID for operations
-      taskId: postgresTaskId || flowableTask.id,
-      flowableTaskId: flowableTask.id, // Keep Flowable ID for reference
+      id: flowableTask.id,
+      taskId: flowableTask.id,
+      flowableTaskId: flowableTask.id, 
       name: flowableTask.name,
       description: flowableTask.description,
 
