@@ -394,6 +394,7 @@ const AlertsDashboard: React.FC = () => {
           isOpen={showMessagePayload}
           onClose={handleCloseMessagePayload}
           message={selectedMessage}
+          transactionData={selectedAlertForTransaction?.transaction}
         />
       </Suspense>
     </PageContainer>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowDownTrayIcon, ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './CasesTable';
-import CollaborateButton from './view/CollaborateButton';
+// import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
 import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
@@ -35,7 +35,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
-            <CollaborateButton onClick={() => setShowCollaborate(true)} />
+            {/* <CollaborateButton onClick={() => setShowCollaborate(true)} />
             {showCollaborate && (
               <button
                 onClick={() => setShowCollaborate(false)}
@@ -45,11 +45,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back
               </button>
-            )}
-            <button className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
+            )} */}
+            {/* <button className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
               <ArrowDownTrayIcon className="h-4 w-4" />
               Download
-            </button>
+            </button> */}
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
             <XMarkIcon className="h-5 w-5" />
