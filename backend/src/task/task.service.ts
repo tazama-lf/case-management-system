@@ -8,7 +8,6 @@ import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { WorkQueueService } from '../work-queue/work-queue.service';
 import { RuleEngineService } from '../work-queue/rule-engine.service';
@@ -40,7 +39,6 @@ export class TaskService {
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: ConfigService,
-    private readonly authHelperService: AuthHelperService,
     private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => WorkQueueService))
     private readonly workQueueService: WorkQueueService,
@@ -311,47 +309,6 @@ export class TaskService {
 
       if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
         throw new BadRequestException(`Task ${taskId} is already completed`);
-      }
-
-      const userExists = await this.authHelperService.userExists(assignedUserId);
-      if (!userExists) {
-        const msg = `User ${assignedUserId} not found in Keycloak`;
-        await this.auditLogService.logAction({
-          userId,
-          actionPerformed: msg,
-          entityName: TaskService.name,
-          operation: 'reassignTask',
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-        this.logger.warn(msg, TaskService.name);
-        throw new BadRequestException(msg);
-      }
-
-      const GROUP_ROLE_MAP: Record<string, string> = {
-        supervisors: 'CMS_SUPERVISOR',
-        investigators: 'CMS_INVESTIGATOR',
-        investigations: 'CMS_INVESTIGATOR',
-      };
-
-      const group = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[group];
-
-      if (requiredRole) {
-        const hasRole = await this.authHelperService.userHasRole(assignedUserId, requiredRole);
-        if (!hasRole) {
-          const msg = `User ${assignedUserId} lacks required role (${requiredRole}) for group ${group}`;
-          await this.auditLogService.logAction({
-            userId,
-            actionPerformed: msg,
-            entityName: TaskService.name,
-            operation: 'reassignTask',
-            outcome: Outcome.FAILURE,
-            performedAt: new Date(),
-          });
-          this.logger.warn(msg, TaskService.name);
-          throw new ForbiddenException(msg);
-        }
       }
 
       const previousAssignedUserId = existingTask.assigned_user_id;
@@ -1029,32 +986,7 @@ export class TaskService {
         throw new BadRequestException(msg);
       }
 
-      const GROUP_ROLE_MAP: Record<string, string> = {
-        supervisors: 'CMS_SUPERVISOR',
-        investigators: 'CMS_INVESTIGATOR',
-        investigations: 'CMS_INVESTIGATOR',
-      };
-
       const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[candidateGroup];
-
-      if (requiredRole) {
-        const hasRole = await this.authHelperService.userHasRole(userId, requiredRole);
-        if (!hasRole) {
-          const msg = `User ${userId} lacks required role (${requiredRole}) to unassign tasks in group ${candidateGroup}`;
-          await this.auditLogService.logAction({
-            userId,
-            actionPerformed: msg,
-            entityName: TaskService.name,
-            operation: 'unassignTask',
-            outcome: Outcome.FAILURE,
-            performedAt: new Date(),
-          });
-          this.logger.warn(msg, TaskService.name);
-          throw new ForbiddenException(msg);
-        }
-      }
-
       const originalAssignee = existingTask.assigned_user_id;
 
       if (!reason || reason.trim().length === 0) {

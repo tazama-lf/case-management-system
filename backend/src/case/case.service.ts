@@ -710,12 +710,6 @@ export class CaseService {
   }
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
-      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
-      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
-    }
-
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
@@ -790,11 +784,6 @@ export class CaseService {
   }
 
   async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    const investigatorRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-    if (!investigatorRoles.includes('CMS_INVESTIGATOR')) {
-      this.logger.error(`User ${userId} does not have INVESTIGATOR role`, null, TaskService.name);
-      throw new BadRequestException('Assigned user does not have INVESTIGATOR role');
-    }
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.retrieveCase(caseId);
