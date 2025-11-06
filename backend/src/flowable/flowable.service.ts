@@ -240,14 +240,58 @@ export class FlowableService implements OnModuleInit {
 
   async getProcessTasks(processInstanceId: string) {
     try {
-      const response = await this.flowableClient.get('/service/runtime/tasks?includeTaskLocalVariables=true', {
+      const response = await this.flowableClient.get('/service/runtime/tasks', {
         params: {
           processInstanceId,
         },
       });
-      return response.data.data;
+
+      const tasks = response.data.data || [];
+
+      const tasksWithVariables = await Promise.all(
+          tasks.map(async (task: any) => {
+            try {
+              const variablesResponse = await this.flowableClient.get(
+                  `/service/runtime/tasks/${task.id}/variables`
+              );
+              const variablesArray = variablesResponse.data || [];
+              const variablesObject: Record<string, any> = {};
+
+              variablesArray.forEach((v: any) => {
+                variablesObject[v.name] = v.value;
+              });
+
+              return {
+                ...task,
+                variables: variablesArray,
+                variablesMap: variablesObject,
+              };
+            } catch (error) {
+              this.logger.warn(
+                  `Failed to fetch variables for task ${task.id}: ${error.message}`,
+                  FlowableService.name
+              );
+              return {
+                ...task,
+                variables: [],
+                variablesMap: {},
+              };
+            }
+          })
+      );
+
+      this.logger.log(
+          `Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`,
+          FlowableService.name
+      );
+
+      return tasksWithVariables;
     } catch (error) {
-      this.logger.error(`Failed to get process tasks: ${error.message}`, error.stack, FlowableService.name);
+      this.logger.error(
+          `Failed to get process tasks: ${error.message}`,
+          error.stack,
+          FlowableService.name
+      );
       throw new HttpException('Failed to get process tasks', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -528,16 +572,29 @@ export class FlowableService implements OnModuleInit {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      // Use PUT to update existing variables or create new ones (upsert behavior)
-      const response = await this.flowableClient.put(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
+      const response = await this.flowableClient.post(
+          `/service/runtime/tasks/${taskId}/variables`,
+          formattedVariables
+      );
 
-      this.logger.log(`Variables set successfully for task ${taskId}`, FlowableService.name);
+      this.logger.log(
+          `Variables set successfully for task ${taskId}: ${JSON.stringify(variables)}`,
+          FlowableService.name
+      );
+
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to set task variables: ${error.message}`, error.stack, FlowableService.name);
+      this.logger.error(
+          `Failed to set task variables for task ${taskId}: ${error.message}`,
+          error.stack,
+          FlowableService.name
+      );
 
       if (error.response) {
-        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
+        this.logger.error(
+            `Flowable API error response: ${JSON.stringify(error.response.data)}`,
+            FlowableService.name
+        );
         this.logger.error(`Status code: ${error.response.status}`, FlowableService.name);
       }
 

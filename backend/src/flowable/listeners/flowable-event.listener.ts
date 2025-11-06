@@ -147,48 +147,77 @@ export class FlowableEventListener {
       }
 
       if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId} after ${maxRetries} attempts`);
+        this.logger.warn(
+            `No Flowable process found for case ${event.caseId} after ${maxRetries} attempts. Task ${event.taskId} will not be synced to Flowable.`,
+            FlowableEventListener.name
+        );
+        return;
       }
 
       const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
 
-      const existingTask = flowableTasks.find((t: unknown) => {
+      this.logger.log(
+          `Found ${flowableTasks.length} Flowable tasks for process ${processInstance.id}`,
+          FlowableEventListener.name
+      );
+
+      // Check each task's variables explicitly
+      let existingTask: Record<string, unknown> | null = null;
+
+      for (const t of flowableTasks) {
         const task = t as Record<string, unknown>;
-        const taskVars = (task.variables as unknown[]) || [];
 
-        // First priority: Check if already synced via postgres_task_id
-        const hasMatchingPostgresId = taskVars.some((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id' && variable.value === event.taskId;
-        });
+        this.logger.log(
+            `Checking Flowable task: ${task.name} (${task.id})`,
+            FlowableEventListener.name
+        );
 
-        if (hasMatchingPostgresId) return true;
+        const taskVars = await this.flowableService.getTaskVariables(task.id as string);
+
+        this.logger.log(
+            `Task ${task.id} variables: ${JSON.stringify(taskVars)}`,
+            FlowableEventListener.name
+        );
+
+        if (taskVars.postgres_task_id === event.taskId) {
+          this.logger.log(
+              `Found already synced task: ${task.id} -> ${event.taskId}`,
+              FlowableEventListener.name
+          );
+          existingTask = task;
+          break;
+        }
 
         const hasMatchingName = task.name === event.taskName;
-        const hasNoCandidateGroup = !taskVars.some((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        });
+        const hasNoPostgresId = !taskVars.postgres_task_id;
 
         const taskCandidateGroups = (task.candidateGroups as string[]) || [];
         const matchesCandidateGroup = event.candidateGroup
             ? taskCandidateGroups.some(g => g.toLowerCase() === event.candidateGroup.toLowerCase())
-            : taskCandidateGroups.length === 0;
+            : true; // If no candidateGroup specified, consider it a match
 
-        return hasMatchingName && hasNoCandidateGroup && matchesCandidateGroup;
-      });
+        this.logger.log(
+            `Task ${task.id} matching check - Name: ${hasMatchingName}, NoPostgresId: ${hasNoPostgresId}, CandidateGroup: ${matchesCandidateGroup}`,
+            FlowableEventListener.name
+        );
+
+        if (hasMatchingName && hasNoPostgresId && matchesCandidateGroup) {
+          this.logger.log(
+              `Found unsynced BPMN task that matches: ${task.id}`,
+              FlowableEventListener.name
+          );
+          existingTask = task;
+          break;
+        }
+      }
 
       if (existingTask) {
         const taskObj = existingTask as Record<string, unknown>;
-        const taskVars = (taskObj.variables as unknown[]) || [];
-        const hasPostgresId = taskVars.some((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        });
+        const taskVars = await this.flowableService.getTaskVariables(taskObj.id as string);
 
-        if (!hasPostgresId) {
+        if (!taskVars.postgres_task_id) {
           this.logger.log(
-              `Found existing BPMN task "${event.taskName}" (${taskObj.id}) that needs syncing with database task ${event.taskId}`,
+              `Syncing existing BPMN task "${event.taskName}" (${taskObj.id}) with database task ${event.taskId}`,
               FlowableEventListener.name,
           );
 
@@ -197,6 +226,7 @@ export class FlowableEventListener {
             task_status: event.status,
             flowable_case_id: processInstance.id as string,
             task_name: event.taskName,
+            candidate_group: event.candidateGroup || '',
           });
 
           this.logger.log(
@@ -206,12 +236,27 @@ export class FlowableEventListener {
           return;
         } else {
           this.logger.warn(
-              `Task "${event.taskName}" already exists and is already synced. Skipping duplicate creation.`,
+              `Task "${event.taskName}" (${taskObj.id}) already synced with postgres_task_id: ${taskVars.postgres_task_id}. Current event task: ${event.taskId}`,
               FlowableEventListener.name,
           );
           return;
         }
       }
+
+      const bpmnTaskNames = ['Investigate Case', 'Approve Case Creation', 'Approve case closure'];
+
+      if (bpmnTaskNames.includes(event.taskName)) {
+        this.logger.warn(
+            `No matching BPMN task found for "${event.taskName}". This task should have been created by the BPMN process. Check if the process is running correctly.`,
+            FlowableEventListener.name
+        );
+        return;
+      }
+
+      this.logger.log(
+          `Creating new Flowable task for non-BPMN task "${event.taskName}"`,
+          FlowableEventListener.name
+      );
 
       const flowableTask = await this.flowableService.createTask({
         name: event.taskName,
@@ -223,6 +268,7 @@ export class FlowableEventListener {
           task_status: event.status,
           flowable_case_id: processInstance.id as string,
           task_name: event.taskName,
+          candidate_group: event.candidateGroup || '',
         },
       });
 
