@@ -367,18 +367,33 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             </>
           ) : (
             <>
-              {}
+              {/* Link Existing Alerts Section */}
               <LinkExistingAlertsTab
                 selectedAlerts={selectedAlert ? [selectedAlert] : []}
                 onAlertsChange={(alerts) => {
-
                   setSelectedAlert(alerts.length > 0 ? alerts[alerts.length - 1] : null);
                 }}
                 isVisible={true}
                 onAlertsSelected={(_hasAlerts) => {}}
               />
 
-              {}
+              {/* Transaction Data Display */}
+              {selectedAlert && selectedAlert.transaction && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Transaction Data
+                  </label>
+                  <div className="w-full p-4 border border-gray-300 rounded-md bg-gray-50 max-h-64 overflow-y-auto">
+                    <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-words">
+                      {typeof selectedAlert.transaction === 'string'
+                        ? selectedAlert.transaction
+                        : JSON.stringify(selectedAlert.transaction, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Alert Type */}
               <div className="space-y-2">
                 <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
                   Alert Type *
@@ -403,7 +418,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 )}
               </div>
 
-              {}
+              {/* Priority Score */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority Score *
@@ -454,7 +469,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 )}
               </div>
 
-              {}
+              {/* Priority */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority
@@ -470,20 +485,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 </div>
               </div>
 
-              {}
-              <div className="space-y-2">
-                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
-                  Assignee
-                </label>
-                <input
-                  id="assignee"
-                  type="text"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Leave empty for automatic assignment"
-                />
-              </div>
+              
             </>
           )}
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CaseRow } from '../CasesTable';
 
+
 interface CaseDetailsTabProps {
   row: CaseRow;
 }
@@ -32,7 +33,7 @@ const getScoreColor = (score: number): string => {
 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Case Information */}
         <div className="space-y-3">
@@ -107,6 +108,38 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
             </SectionCard>
           </div>
         )}
+      </div>
+
+      {/* Creditor Information */}
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
+        <SectionCard>
+          <div className="grid grid-cols-2 gap-y-3">
+            <div className="text-gray-500">Name</div>
+            <div className="text-gray-900">Alex Ross</div>
+            <div className="text-gray-500">Account ID</div>
+            <div className="text-gray-900">EA34280043165</div>
+            <div className="text-gray-500">FSP</div>
+            <div className="text-gray-900">Bank of America</div>
+          </div>
+        </SectionCard>
+      </div>
+
+      
+
+      {/* Debtor Information */}
+      <div className="space-y-3 md:col-span-2">
+        <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
+        <SectionCard>
+          <div className="grid grid-cols-2 gap-y-3">
+            <div className="text-gray-500">Name</div>
+            <div className="text-gray-900">Casey Howard</div>
+            <div className="text-gray-500">Account ID</div>
+            <div className="text-gray-900">EA34282929743</div>
+            <div className="text-gray-500">FSP</div>
+            <div className="text-gray-900">Bank of America</div>
+          </div>
+        </SectionCard>
       </div>
 
     </div>
