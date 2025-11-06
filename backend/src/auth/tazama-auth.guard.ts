@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logge
 import { Reflector } from '@nestjs/core';
 import { TazamaToken, validateTokenAndClaims } from '@tazama-lf/auth-lib';
 import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from './auth.types';
-import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
+import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } from './auth.decorator';
 import { decode } from 'punycode';
 
 @Injectable()
@@ -23,6 +23,7 @@ export class TazamaAuthGuard implements CanActivate {
 
     const requiredClaims = this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [context.getHandler(), context.getClass()]);
     const anyRequiredClaims = this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [context.getHandler(), context.getClass()]);
+    const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(AUTHENTICATED_ONLY_KEY, [context.getHandler(), context.getClass()]);
 
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
@@ -30,6 +31,33 @@ export class TazamaAuthGuard implements CanActivate {
     if (!authHeader?.startsWith('Bearer ')) {
       this.logger.warn('No Bearer token provided', logContext);
       throw new UnauthorizedException('No Bearer token provided');
+    }
+
+    // Handle authenticated-only case (no claims validation)
+    if (authenticatedOnly) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decodedToken = this.extractTokenPayload(token);
+        const claims = validateTokenAndClaims(token, decodedToken.claims);
+
+        const authenticatedUser: AuthenticatedUser = {
+          token: decodedToken,
+          validatedClaims: claims,
+        };
+
+        request.user = authenticatedUser;
+
+        this.logger.log(
+          `Authentication successful (no claims validation) for clientId: ${decodedToken.clientId}, tenantId: ${decodedToken.tenantId}`,
+          logContext,
+        );
+
+        return true;
+      } catch (error) {
+        const err = error as Error;
+        this.logger.error(`Authentication failed: ${err.name}: ${err.message}`, logContext);
+        throw new UnauthorizedException('Token validation failed');
+      }
     }
 
     if ((!requiredClaims || requiredClaims.length === 0) && (!anyRequiredClaims || anyRequiredClaims.length === 0)) {

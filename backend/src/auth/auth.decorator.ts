@@ -3,6 +3,7 @@ import { SetMetadata } from '@nestjs/common';
 export const CLAIMS_KEY = 'claims';
 export const IS_PUBLIC_KEY = 'isPublic';
 export const ANY_CLAIMS_KEY = 'anyClaims';
+export const AUTHENTICATED_ONLY_KEY = 'authenticatedOnly';
 
 /**
  * Decorator to specify required claims for a route
@@ -60,7 +61,7 @@ export const RequireInvestigatorOrSupervisorRole = () => RequireAnyClaims(Tazama
  * This is preferred over hardcoding specific roles.
  * If you need role-based access control, use specific role decorators instead.
  */
-export const RequireAuthenticated = () => SetMetadata(ANY_CLAIMS_KEY, []);
+export const RequireAuthenticated = () => SetMetadata(AUTHENTICATED_ONLY_KEY, []);
 
 /**
  * @deprecated Use RequireAuthenticated() instead for any authenticated user,

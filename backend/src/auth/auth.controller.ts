@@ -9,7 +9,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { RequireSupervisorRole } from './auth.decorator';
+import { RequireAuthenticated } from './auth.decorator';
 import { AuthHelperService, AuthUser } from './auth-helper.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
@@ -72,12 +72,12 @@ export class AuthController {
     }
   }
 
-  @UseGuards(TazamaAuthGuard)
   @Get('me')
+  @UseGuards(TazamaAuthGuard)
   @ApiOperation({ summary: 'Authenticated user details', description: 'Returns the authenticated user payload from the access token.' })
   @ApiOkResponse({ description: 'Authenticated user information returned successfully.', type: AuthMeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  @RequireSupervisorRole()
+  @RequireAuthenticated()
   getMe(@User() user: AuthenticatedUser): AuthMeResponseDto {
     const { token, validatedClaims } = user;
     return {
