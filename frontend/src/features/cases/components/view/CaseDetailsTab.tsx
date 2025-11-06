@@ -32,6 +32,37 @@ const getScoreColor = (score: number): string => {
 };
 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
+  // Extract transaction data
+  const getTransactionData = () => {
+    if (!row.transaction) return null;
+    
+    try {
+      const txData = row.transaction as Record<string, unknown>;
+      const fiToFIPmtSts = txData?.FIToFIPmtSts as Record<string, unknown>;
+      return fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | null;
+    } catch {
+      return null;
+    }
+  };
+
+  const transactionData = getTransactionData();
+  
+  const getNestedValue = (obj: Record<string, unknown> | null, path: string[]): string => {
+    if (!obj) return 'N/A';
+    let current: unknown = obj;
+    for (const key of path) {
+      if (current && typeof current === 'object' && key in current) {
+        current = (current as Record<string, unknown>)[key];
+      } else {
+        return 'N/A';
+      }
+    }
+    return typeof current === 'string' ? current : 'N/A';
+  };
+
+  const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
+  const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -115,12 +146,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">Name</div>
-            <div className="text-gray-900">Alex Ross</div>
-            <div className="text-gray-500">Account ID</div>
-            <div className="text-gray-900">EA34280043165</div>
-            <div className="text-gray-500">FSP</div>
-            <div className="text-gray-900">Bank of America</div>
+            <div className="text-gray-500">FSP ID</div>
+            <div className="text-gray-900 font-mono">{creditorFsp}</div>
           </div>
         </SectionCard>
       </div>
@@ -132,12 +159,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">Name</div>
-            <div className="text-gray-900">Casey Howard</div>
-            <div className="text-gray-500">Account ID</div>
-            <div className="text-gray-900">EA34282929743</div>
-            <div className="text-gray-500">FSP</div>
-            <div className="text-gray-900">Bank of America</div>
+            <div className="text-gray-500">FSP ID</div>
+            <div className="text-gray-900 font-mono">{debtorFsp}</div>
           </div>
         </SectionCard>
       </div>

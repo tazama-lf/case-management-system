@@ -2089,7 +2089,7 @@ export class CaseService {
         where: { OR: whereConditions },
         include: {
           tasks: { orderBy: { created_at: 'desc' } },
-          alert: { select: { alert_id: true, message: true, confidence_per: true, priority: true, alert_type: true } },
+          alert: { select: { alert_id: true, message: true, confidence_per: true, priority: true, alert_type: true, transaction: true } },
           comments: { select: { comment_id: true, created_at: true }, orderBy: { created_at: 'desc' }, take: 1 },
         },
         skip,
@@ -2119,7 +2119,12 @@ export class CaseService {
           })),
           total_tasks: caseItem.tasks.length,
           alert: caseItem.alert
-            ? { alert_id: caseItem.alert.alert_id, message: caseItem.alert.message, confidence_per: caseItem.alert.confidence_per }
+            ? {
+                alert_id: caseItem.alert.alert_id,
+                message: caseItem.alert.message,
+                confidence_per: caseItem.alert.confidence_per,
+                transaction: caseItem.alert.transaction,
+              }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -2219,7 +2224,7 @@ export class CaseService {
         where: whereClause,
         include: {
           tasks: { select: { task_id: true, status: true, assigned_user_id: true, name: true } },
-          alert: { select: { alert_id: true, message: true, confidence_per: true, alert_type: true } },
+          alert: { select: { alert_id: true, message: true, confidence_per: true, alert_type: true, transaction: true } },
         },
         skip,
         take: limit,

@@ -15,11 +15,12 @@ export type CaseRow = {
   action: 'View' | 'Complete';
   assignee?: string;
   priority: string;
-  userRole: 'owner' | 'task_assignee' | 'both';
+  userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
   alertId?: string;
   alertMessage?: string;
   confidencePercent?: number;
+  transaction?: unknown;
 };
 
 export const getStatusColor = (status: string): string => {
@@ -88,6 +89,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     alertId: backendCase.alert?.alert_id,
     alertMessage: backendCase.alert?.message,
     confidencePercent: backendCase.alert?.confidence_per,
+    transaction: backendCase.alert?.transaction,
   };
 };
 
