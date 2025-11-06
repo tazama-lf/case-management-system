@@ -325,18 +325,26 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     {}
                     <div className="flex items-center space-x-2 ml-4">
                       {}
-                      {canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && (
-                        <button
-                          onClick={() => onManualTriage(convertToLegacyAlert(alert))}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                          title={isManualMode
-                            ? "Perform manual triage - update alert and make case decision"
-                            : "Update alert details - direct investigation mode"
-                          }
-                        >
-                          {isManualMode ? "Update Alert" : "Update Alert"}
-                        </button>
-                      )}
+                      {(() => {
+                        const triageCompleted = actionHistory.some(
+                          (action) => action.operation === 'ALERT_UPDATED' && action.outcome === 'SUCCESS'
+                        );
+                        
+                        const showButton = canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && !triageCompleted;
+                        
+                        return showButton && onManualTriage ? (
+                          <button
+                            onClick={() => onManualTriage(convertToLegacyAlert(alert))}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                            title={isManualMode
+                              ? "Perform manual triage - update alert and make case decision"
+                              : "Update alert details - direct investigation mode"
+                            }
+                          >
+                            {isManualMode ? "Update Alert" : "Update Alert"}
+                          </button>
+                        ) : null;
+                      })()}
 
                       {}
                       {isAIMode && (

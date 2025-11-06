@@ -1783,8 +1783,17 @@ export class CaseService {
         throw new BadRequestException('Reason for reopening case is required and must be at least 10 characters');
       }
 
-      const userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-      const isSupervisor = userRoles.includes('CMS_SUPERVISOR');
+      let userRoles: string[] = [];
+      let isSupervisor = false;
+      
+      try {
+        userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
+        isSupervisor = userRoles.includes('CMS_SUPERVISOR');
+      } catch (error) {
+     
+        this.logger.warn(`Could not fetch user roles for ${userId}: ${error.message}. Proceeding with UNKNOWN role.`, CaseService.name);
+        userRoles = ['UNKNOWN'];
+      }
 
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
