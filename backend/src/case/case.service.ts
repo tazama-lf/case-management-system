@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
-import { CloseCaseDto } from './dto/close-case.dto';
+import { CloseCaseDto, CaseClosureOutcome } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
@@ -25,6 +25,7 @@ import {
   TaskCompletedEvent,
   CaseSuspendedEvent,
   CaseResumedEvent,
+  TaskStatusChangedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -500,8 +501,10 @@ export class CaseService {
         throw new NotFoundException(errorMsg);
       }
 
-      if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
-        const errorMsg = `Case closure failed: Case is not in progress. Current status: ${caseData.status}, Required status: STATUS_20_IN_PROGRESS`;
+      // Allow closure if case is IN_PROGRESS or already PENDING_FINAL_APPROVAL (idempotent operation from auto-close)
+      if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS && 
+          caseData.status !== CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
+        const errorMsg = `Case closure failed: Case is not in a closeable state. Current status: ${caseData.status}, Required status: STATUS_20_IN_PROGRESS or STATUS_22_PENDING_FINAL_APPROVAL`;
         await this.auditLogService.logAction({
           userId,
           operation: 'closeCase',
@@ -513,9 +516,23 @@ export class CaseService {
         throw new ConflictException({
           message: 'Case is not in a closeable state',
           currentStatus: caseData.status,
-          requiredStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+          requiredStatus: 'STATUS_20_IN_PROGRESS or STATUS_22_PENDING_FINAL_APPROVAL',
           caseId,
         });
+      }
+
+      // If case is already in pending approval, it means auto-close already triggered
+      // Return the existing state (idempotent operation)
+      if (caseData.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL) {
+        this.logger.log(
+          `[CloseCase] Case ${caseId} is already in PENDING_FINAL_APPROVAL. Case closure is idempotent - returning existing state.`,
+          CaseService.name,
+        );
+        return {
+          success: true,
+          case: caseData,
+          message: 'Case closure already processed (idempotent operation - auto-close already triggered)',
+        };
       }
 
       const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
@@ -553,8 +570,10 @@ export class CaseService {
         });
       }
 
-      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS) {
-        const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS`;
+      // Allow closure if task is IN_PROGRESS or already COMPLETED (idempotent operation)
+      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS && 
+          investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
+        const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS or STATUS_30_COMPLETED`;
         await this.auditLogService.logAction({
           userId,
           operation: 'closeCase',
@@ -563,11 +582,49 @@ export class CaseService {
           outcome: Outcome.FAILURE,
         });
         throw new ConflictException({
-          message: 'Investigation task is not in progress',
+          message: 'Investigation task is not in a valid state for closure',
           currentStatus: investigationTask.status,
-          requiredStatus: TaskStatus.STATUS_20_IN_PROGRESS,
+          requiredStatus: 'STATUS_20_IN_PROGRESS or STATUS_30_COMPLETED',
           taskId: investigationTask.task_id,
         });
+      }
+
+      // If task is already completed, skip the update and log that closure is idempotent
+      if (investigationTask.status === TaskStatus.STATUS_30_COMPLETED) {
+        this.logger.log(
+          `[CloseCase] Investigation task ${investigationTask.task_id} is already completed. Case closure is idempotent - returning existing state.`,
+          CaseService.name,
+        );
+        // Get current case state and existing approval task
+        const currentCase = await this.prismaService.case.findUnique({
+          where: { case_id: caseId },
+        });
+
+        if (!currentCase) {
+          throw new NotFoundException(`Case ${caseId} not found`);
+        }
+
+        const existingApprovalTask = await this.prismaService.task.findFirst({
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+          },
+        });
+
+        return {
+          message: 'Case closure already processed (idempotent operation)',
+          closed_case: {
+            case_id: currentCase.case_id,
+            status: currentCase.status,
+            updated_at: currentCase.updated_at.toISOString(),
+          },
+          approval_task: {
+            task_id: existingApprovalTask?.task_id || '',
+            name: existingApprovalTask?.name || 'Approve case closure',
+            status: existingApprovalTask?.status || TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_to: 'Supervisors',
+          },
+        };
       }
 
       const validationErrors = this.validateClosureData(dto);
@@ -683,7 +740,7 @@ export class CaseService {
         closed_case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
-          updated_at: result.updatedCase.updated_at,
+          updated_at: result.updatedCase.updated_at.toISOString(),
         },
         approval_task: {
           task_id: approvalTask.task_id,
@@ -2421,6 +2478,97 @@ export class CaseService {
     } catch (error) {
       this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseService.name);
       throw error;
+    }
+  }
+
+  @OnEvent('task.completed')
+  async handleInvestigationTaskCompleted(event: TaskStatusChangedEvent) {
+    try {
+      // Check if task status transitioning to COMPLETED
+      if (event.newStatus !== TaskStatus.STATUS_30_COMPLETED) {
+        return;
+      }
+
+      this.logger.log(
+        `[HandleTaskCompleted] Investigation task ${event.taskId} completed for case ${event.caseId}. Auto-triggering case closure.`,
+        CaseService.name,
+      );
+
+      // Get the task to verify it's an investigation task
+      const task = await this.taskService.getTaskById(event.taskId);
+      if (!task) {
+        this.logger.warn(`[HandleTaskCompleted] Task ${event.taskId} not found`, CaseService.name);
+        return;
+      }
+
+      // Only auto-close if this is an investigation task
+      if (task.name !== 'Investigate Case' && task.name !== 'Investigate case') {
+        this.logger.debug(
+          `[HandleTaskCompleted] Task ${event.taskId} is not an investigation task (${task.name}). Skipping auto-closure.`,
+          CaseService.name,
+        );
+        return;
+      }
+
+      // Get case to verify it's in the correct state
+      const caseData = await this.retrieveCase(event.caseId);
+      if (!caseData) {
+        this.logger.warn(`[HandleTaskCompleted] Case ${event.caseId} not found`, CaseService.name);
+        return;
+      }
+
+      // Only auto-close if case is in progress
+      if (caseData.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+        this.logger.debug(
+          `[HandleTaskCompleted] Case ${event.caseId} is not in progress (current status: ${caseData.status}). Skipping auto-closure.`,
+          CaseService.name,
+        );
+        return;
+      }
+
+      // Get investigator ID from task
+      const investigatorId = task.assigned_user_id;
+      if (!investigatorId) {
+        this.logger.warn(
+          `[HandleTaskCompleted] Investigation task ${event.taskId} has no assigned user. Skipping auto-closure.`,
+          CaseService.name,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `[HandleTaskCompleted] Auto-triggering case closure for case ${event.caseId} submitted by investigator ${investigatorId}`,
+        CaseService.name,
+      );
+
+      // Create CloseCaseDto for auto-closure
+      const closureDto = new CloseCaseDto();
+      closureDto.finalNotes = 'Investigation completed by investigator';
+      closureDto.recommendations = 'Pending supervisor review';
+      closureDto.recommendedOutcome = CaseClosureOutcome.CLOSED_CONFIRMED;
+
+      // Auto-trigger case closure with default closure data
+      // Use case's tenant_id for the operation
+      const tenantId = caseData.tenant_id || 'default';
+      await this.closeCase(
+        event.caseId,
+        closureDto,
+        investigatorId,
+        tenantId,
+      );
+
+      this.logger.log(
+        `[HandleTaskCompleted] Case ${event.caseId} automatically moved to PENDING_FINAL_APPROVAL for supervisor approval`,
+        CaseService.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[HandleTaskCompleted] Failed to auto-close case on investigation completion: ${error.message}`,
+        error.stack,
+        CaseService.name,
+      );
+      // Don't throw - allow system to continue even if auto-closure fails
+      // The case can still be manually closed via the API
     }
   }
 }

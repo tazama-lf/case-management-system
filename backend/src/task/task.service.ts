@@ -312,6 +312,12 @@ export class TaskService {
         throw new NotFoundException(`Task ${taskId} not found`);
       }
 
+      // Get current case status for cascade logic
+      const existingCase = await this.prisma.case.findUnique({
+        where: { case_id: existingTask.case_id },
+        select: { status: true },
+      });
+
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         name: updateData.name,
@@ -326,12 +332,53 @@ export class TaskService {
         }
       }
 
-      const updatedTask = await this.prisma.task.update({
-        where: { task_id: taskId },
-        data: updateInput,
-      });
+      // If task transitioning to IN_PROGRESS, also update case status
+      let updatedTask: any;
+      let updatedCase: any;
+      let previousCaseStatus: string | null = null;
 
-      if (updateData.status && updateData.status !== existingTask.status) {
+      if (updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && 
+          existingCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
+        
+        this.logger.log(
+          `[UpdateTask] Task ${taskId} transitioning to IN_PROGRESS. Will also update case ${existingTask.case_id} to IN_PROGRESS`,
+          TaskService.name
+        );
+
+        // Update both task and case in transaction for consistency
+        const result = await this.prisma.$transaction(async (tx) => {
+          const updatedTask = await tx.task.update({
+            where: { task_id: taskId },
+            data: updateInput,
+          });
+
+          previousCaseStatus = existingCase.status;
+          const updatedCase = await tx.case.update({
+            where: { case_id: existingTask.case_id },
+            data: {
+              status: CaseStatus.STATUS_20_IN_PROGRESS,
+              updated_at: new Date(),
+            },
+          });
+
+          return { updatedTask, updatedCase };
+        });
+
+        updatedTask = result.updatedTask;
+        updatedCase = result.updatedCase;
+
+        // Emit case status changed event
+        this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+            existingTask.case_id,
+            previousCaseStatus || '',
+            CaseStatus.STATUS_20_IN_PROGRESS,
+            'Investigation started',
+          ),
+        );
+
+        // Emit task status changed event
         this.eventEmitter.emit(
           'task.status.changed',
           new TaskStatusChangedEvent(
@@ -343,6 +390,31 @@ export class TaskService {
             updatedTask.assigned_user_id || undefined,
           ),
         );
+
+        this.logger.log(
+          `[UpdateTask] Task ${taskId} and case ${existingTask.case_id} successfully updated to IN_PROGRESS`,
+          TaskService.name
+        );
+      } else {
+        // Normal update without case status change
+        updatedTask = await this.prisma.task.update({
+          where: { task_id: taskId },
+          data: updateInput,
+        });
+
+        if (updateData.status && updateData.status !== existingTask.status) {
+          this.eventEmitter.emit(
+            'task.status.changed',
+            new TaskStatusChangedEvent(
+              taskId,
+              updatedTask.case_id,
+              updatedTask.name || '',
+              existingTask.status,
+              updateData.status,
+              updatedTask.assigned_user_id || undefined,
+            ),
+          );
+        }
       }
 
       if (updateData.assignedUserId !== undefined && updateData.assignedUserId !== existingTask.assigned_user_id) {
