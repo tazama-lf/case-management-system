@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TrashIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import type { CaseRow } from './CasesTable';
+import type { CaseRow } from './casesTable.utils';
 
 interface AbandonCaseModalProps {
   open: boolean;

@@ -8,7 +8,7 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { CaseStatus, TaskStatus, Priority, CaseCreationType, AlertType } from '@prisma/client';
+import { CaseStatus, TaskStatus, CaseCreationType, CaseType } from '@prisma/client';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';
@@ -19,7 +19,6 @@ import { CreateCommentDto } from 'src/comment/dto/create-comment.dto';
 import { CommentService } from 'src/comment/comment.service';
 import { CaseCreationService } from '../case-creation/case-creation.service';
 import {
-  CaseCreatedEvent,
   CaseAbandonedEvent,
   CaseStatusChangedEvent,
   TaskCompletedEvent,
@@ -92,17 +91,15 @@ export class CaseService {
 
     const priorityScore = dto.priorityScore;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
-    const caseType = dto.alertType;
+    const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
 
     const needsApproval = role !== 'SUPERVISOR';
-    const caseStatus = needsApproval
-        ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
-        : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+    const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
     this.logger.log(
-        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-        CaseService.name,
+      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
+      CaseService.name,
     );
 
     try {
@@ -119,10 +116,7 @@ export class CaseService {
 
         const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
 
-        this.logger.log(
-            `[ManualCase] Case ${createdCase.case_id} created via workflow service`,
-            CaseService.name
-        );
+        this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via workflow service`, CaseService.name);
 
         const updatedAlert = await prisma.alert.update({
           where: { alert_id: dto.alertId },
@@ -134,10 +128,7 @@ export class CaseService {
           },
         });
 
-        this.logger.log(
-            `[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`,
-            CaseService.name
-        );
+        this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseService.name);
 
         return { case: createdCase, alert: updatedAlert };
       });
@@ -146,47 +137,43 @@ export class CaseService {
       let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       if (needsApproval) {
         approvalTask = await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Approve Case Creation',
-              description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
-              candidateGroup: 'supervisors',
-            },
-            userId,
-            this.auditLogService,
-            this.logger,
+          {
+            caseId: result.case.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Approve Case Creation',
+            description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
+            candidateGroup: 'supervisors',
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
         );
 
         this.logger.log(
-            `[ManualCase] Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
-            CaseService.name,
+          `[ManualCase] Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
+          CaseService.name,
         );
-      }
-      else {
+      } else {
         investigateTask = await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate case',
-              description: `Investigation task for manually created case ${result.case.case_id}`,
-              candidateGroup: 'investigations', // ✓ Goes to investigations work queue
-            },
-            userId,
-            this.auditLogService,
-            this.logger,
+          {
+            caseId: result.case.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: `Investigation task for manually created case ${result.case.case_id}`,
+            candidateGroup: 'investigations', // ✓ Goes to investigations work queue
+          },
+          userId,
+          this.auditLogService,
+          this.logger,
         );
 
         this.logger.log(
-            `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${result.case.case_id} → INVESTIGATIONS queue (auto-approved by supervisor)`,
-            CaseService.name,
+          `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${result.case.case_id} → INVESTIGATIONS queue (auto-approved by supervisor)`,
+          CaseService.name,
         );
       }
 
-      this.logger.log(
-          `[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`,
-          CaseService.name
-      );
+      this.logger.log(`[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`, CaseService.name);
 
       await this.auditLogService.logAction({
         userId,
@@ -201,7 +188,7 @@ export class CaseService {
         case: result.case,
         alert: result.alert,
         approvalTask,
-        investigateTask
+        investigateTask,
       };
     } catch (err) {
       this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
@@ -267,10 +254,7 @@ export class CaseService {
 
   async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
     try {
-      this.logger.log(
-          `[ApproveCaseCreation] Supervisor ${supervisorId} approving case creation for case ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`[ApproveCaseCreation] Supervisor ${supervisorId} approving case creation for case ${caseId}`, CaseService.name);
 
       await this.validateCaseCreationApprovalPreconditions(caseId);
 
@@ -308,39 +292,39 @@ export class CaseService {
       });
 
       const investigateTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for approved case ${caseId}`,
-            candidateGroup: 'investigations', // ✓ Goes to investigations work queue after approval
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: `Investigation task for approved case ${caseId}`,
+          candidateGroup: 'investigations', // ✓ Goes to investigations work queue after approval
+        },
+        supervisorId,
+        this.auditLogService,
+        this.logger,
       );
 
       this.logger.log(
-          `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId} → INVESTIGATIONS queue (after approval)`,
-          CaseService.name,
+        `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId} → INVESTIGATIONS queue (after approval)`,
+        CaseService.name,
       );
 
       this.eventEmitter.emit(
-          'task.completed',
-          new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
-            creationApproval: 'approve',
-            creationComments: 'Case creation approved by supervisor',
-          }),
+        'task.completed',
+        new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
+          creationApproval: 'approve',
+          creationComments: 'Case creation approved by supervisor',
+        }),
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case creation approved by supervisor',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case creation approved by supervisor',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -351,10 +335,7 @@ export class CaseService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(
-          `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}`,
-          CaseService.name
-      );
+      this.logger.log(`[ApproveCaseCreation] Case creation approved successfully for case ${caseId}`, CaseService.name);
 
       return {
         success: true,
@@ -363,11 +344,7 @@ export class CaseService {
         investigateTask,
       };
     } catch (error) {
-      this.logger.error(
-          `[ApproveCaseCreation] Failed to approve case creation: ${error.message}`,
-          error.stack,
-          CaseService.name
-      );
+      this.logger.error(`[ApproveCaseCreation] Failed to approve case creation: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -1316,7 +1293,7 @@ export class CaseService {
       }
 
       try {
-        await this.validateApprovalPreconditions(caseId);
+        await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
       } catch (validationError) {
         await this.auditLogService.logAction({
           userId: supervisorId,
@@ -1375,7 +1352,10 @@ export class CaseService {
           where: {
             case_id: caseId,
             name: 'Approve case closure',
-            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: supervisorId,
+            status: {
+              in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            },
           },
         });
 
@@ -1533,7 +1513,7 @@ export class CaseService {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseService.name);
 
-      await this.validateApprovalPreconditions(caseId);
+  await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
 
       if (!comments || comments.trim().length < 20) {
         const errorMsg = 'Rejection comments must be at least 20 characters';
@@ -1575,7 +1555,7 @@ export class CaseService {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
-            status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+            status: CaseStatus.STATUS_20_IN_PROGRESS,
             updated_at: new Date(),
           },
         });
@@ -1584,7 +1564,10 @@ export class CaseService {
           where: {
             case_id: caseId,
             name: 'Approve case closure',
-            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: supervisorId,
+            status: {
+              in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            },
           },
         });
 
@@ -1639,8 +1622,8 @@ export class CaseService {
         new CaseStatusChangedEvent(
           caseId,
           CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-          CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-          `Case closure rejected: ${comments}`,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          `Case closure rejected and returned to investigation: ${comments}`,
         ),
       );
 
@@ -1708,7 +1691,8 @@ export class CaseService {
 
   async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
     try {
-      await this.validateApprovalPreconditions(caseId);
+  await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
@@ -1716,10 +1700,19 @@ export class CaseService {
         });
 
         const approvalTask = await tx.task.findFirst({
-          where: { case_id: caseId, name: 'Approve case closure', status: TaskStatus.STATUS_01_UNASSIGNED },
+          where: {
+            case_id: caseId,
+            name: 'Approve case closure',
+            assigned_user_id: supervisorId,
+            status: {
+              in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            },
+          },
         });
 
-        if (!approvalTask) throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        if (!approvalTask) {
+          throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+        }
 
         const completedTask = await tx.task.update({
           where: { task_id: approvalTask.task_id },
@@ -1785,12 +1778,11 @@ export class CaseService {
 
       let userRoles: string[] = [];
       let isSupervisor = false;
-      
+
       try {
         userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
         isSupervisor = userRoles.includes('CMS_SUPERVISOR');
       } catch (error) {
-     
         this.logger.warn(`Could not fetch user roles for ${userId}: ${error.message}. Proceeding with UNKNOWN role.`, CaseService.name);
         userRoles = ['UNKNOWN'];
       }
@@ -2001,7 +1993,11 @@ export class CaseService {
     if (!existingCase.case_type) missing.push('case_type');
     return missing;
   }
-  private async validateApprovalPreconditions(caseId: string) {
+  private async validateApprovalPreconditions(
+    caseId: string,
+    supervisorId?: string,
+    options: { autoClaimApprovalTask?: boolean } = {},
+  ) {
     const caseData = await this.prismaService.case.findUnique({
       where: { case_id: caseId },
       include: { tasks: true },
@@ -2020,10 +2016,39 @@ export class CaseService {
       });
     }
 
-    const approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks);
+    let approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
+      requireClaim: Boolean(supervisorId),
+      expectedAssignee: supervisorId,
+    });
+
+    const shouldAttemptAutoClaim =
+      options.autoClaimApprovalTask &&
+      Boolean(supervisorId) &&
+      approvalValidation.approvalTask &&
+      (approvalValidation.approvalTask.status === TaskStatus.STATUS_01_UNASSIGNED ||
+        !approvalValidation.approvalTask.assigned_user_id) &&
+      approvalValidation.errors.some((err) => err.toLowerCase().includes('must be claimed'));
+
+    if (shouldAttemptAutoClaim) {
+      const approvalTaskId = approvalValidation.approvalTask!.task_id;
+      this.logger.log(`Auto-claiming approval task ${approvalTaskId} for supervisor ${supervisorId}`, CaseService.name);
+      await this.taskService.claimTask(approvalTaskId, supervisorId!, this.auditLogService);
+
+      const taskIndex = caseData.tasks.findIndex((task) => task.task_id === approvalTaskId);
+      if (taskIndex >= 0) {
+        caseData.tasks[taskIndex].assigned_user_id = supervisorId!;
+        caseData.tasks[taskIndex].status = TaskStatus.STATUS_10_ASSIGNED;
+      }
+
+      approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
+        requireClaim: Boolean(supervisorId),
+        expectedAssignee: supervisorId,
+      });
+    }
+
     TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
 
-    const approvalTask = TaskValidationUtil.findApprovalTask(caseData.tasks);
+    const approvalTask = approvalValidation.approvalTask;
 
     if (!approvalTask) {
       throw new NotFoundException('Approval task not found');
@@ -2045,6 +2070,8 @@ export class CaseService {
         caseId,
       });
     }
+
+    return { caseData, approvalTask };
   }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto) {
@@ -2184,7 +2211,7 @@ export class CaseService {
         sortOrder = 'desc',
       } = query;
       const whereClause: any = {};
-      
+
       // Build base filters
       const baseFilters: any = {};
       if (status) baseFilters.status = status;

@@ -9,8 +9,8 @@ import {
   type ReturnCaseForReviewDto,
   type RejectCaseCreationDto,
 } from '../services/caseService';
-import type { CaseRow } from '../components/CasesTable';
-import { transformBackendCaseToUI } from '../components/CasesTable';
+import type { CaseRow } from '../components/casesTable.utils';
+import { transformBackendCaseToUI } from '../components/casesTable.utils';
 import type { Priority, AlertType } from '../components/CreateCaseModal';
 import { useAuth } from '../../auth/components/AuthContext';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -416,7 +416,7 @@ The case has been finalized with the selected outcome.`);
 This case may not meet the approval requirements:
 • Case must be in "PENDING FINAL APPROVAL" status
 • Case must have an "Approve case closure" task
-• Task must be assigned to supervisor
+• The "Approve case closure" task must be claimed by you
 
 Please check the case status and try again.`;
       } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
@@ -428,22 +428,16 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
-      } else if (errorString.includes('Approval task validation failed')) {
+  } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = `Approval Task Validation Failed.
 
-` +
-                      `The case may not have the required "Approve case closure" task,
-` +
-                      `or the task may not be in the correct state.
+The case may not have the required "Approve case closure" task,
+or the task may not be in the correct state.
 
-` +
-                      `Please verify that:
-` +
-                      `• The case is in "PENDING FINAL APPROVAL" status
-` +
-                      `• An "Approve case closure" task exists for this case
-` +
-                      `• The task is in "UNASSIGNED" state and assigned to you`;
+Please verify that:
+• The case is in "PENDING FINAL APPROVAL" status
+• An "Approve case closure" task exists for this case
+• The "Approve case closure" task is claimed by you`;
       }
 
       error('Approve Case Failed', errorMessage);
@@ -566,22 +560,16 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
-      } else if (errorString.includes('Approval task validation failed')) {
+  } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = `Approval Task Validation Failed.
 
-` +
-                      `The case may not have the required "Approve case closure" task,
-` +
-                      `or the task may not be in the correct state.
+The case may not have the required "Approve case closure" task,
+or the task may not be in the correct state.
 
-` +
-                      `Please verify that:
-` +
-                      `• The case is in "PENDING FINAL APPROVAL" status
-` +
-                      `• An "Approve case closure" task exists for this case
-` +
-                      `• The task is in "UNASSIGNED" state and assigned to you`;
+Please verify that:
+• The case is in "PENDING FINAL APPROVAL" status
+• An "Approve case closure" task exists for this case
+• The "Approve case closure" task is claimed by you`;
       }
 
       error('Return Case for Review Failed', errorMessage);

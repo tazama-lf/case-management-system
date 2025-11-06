@@ -1,6 +1,6 @@
 import React from 'react';
-import { ArrowDownTrayIcon, ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import type { CaseRow } from './CasesTable';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import type { CaseRow } from './casesTable.utils';
 // import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
 import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
@@ -9,6 +9,8 @@ import TaskLogTab from './view/TaskLogTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 
+type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes';
+
 interface ViewCaseModalProps {
   open: boolean;
   onClose: () => void;
@@ -16,7 +18,7 @@ interface ViewCaseModalProps {
 }
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => {
-  const [tab, setTab] = React.useState<'details' | 'evidence' | 'linked' | 'tasks' | 'notes'>('details');
+  const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
 
   React.useEffect(() => {
@@ -59,16 +61,18 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
         {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
-            {[
-              { key: 'details', label: 'Case Details' },
-              { key: 'evidence', label: 'Evidence & Documents' },
-              { key: 'linked', label: 'Linked Items' },
-              { key: 'tasks', label: 'Task Log' },
-              { key: 'notes', label: 'Investigation Notes' },
-            ].map((t) => (
+            {(
+              [
+                { key: 'details', label: 'Case Details' },
+                { key: 'evidence', label: 'Evidence & Documents' },
+                { key: 'linked', label: 'Linked Items' },
+                { key: 'tasks', label: 'Task Log' },
+                { key: 'notes', label: 'Investigation Notes' },
+              ] satisfies Array<{ key: ViewTabKey; label: string }>
+            ).map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key as any)}
+                onClick={() => setTab(t.key)}
                 className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
                   tab === t.key ? 'border-b-2 border-indigo-600 text-indigo-700' : 'text-gray-600 hover:text-gray-800'
                 }`}

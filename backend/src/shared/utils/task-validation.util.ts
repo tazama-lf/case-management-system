@@ -16,6 +16,11 @@ export interface TaskValidationResult {
   warnings?: string[];
 }
 
+export interface ApprovalTaskValidationOptions {
+  requireClaim?: boolean;
+  expectedAssignee?: string;
+}
+
 export interface TaskFilterOptions {
   excludeTaskIds?: string[];
   excludeStatuses?: TaskStatus[];
@@ -49,19 +54,43 @@ export class TaskValidationUtil {
     return tasks.filter((task) => task.assigned_user_id === userId);
   }
 
-  static validateApprovalTaskForClosure(tasks: Task[]): TaskValidationResult {
+  static validateApprovalTaskForClosure(
+    tasks: Task[],
+    options: ApprovalTaskValidationOptions = {},
+  ): TaskValidationResult & { approvalTask?: Task } {
     const errors: string[] = [];
     const approvalTask = TaskValidationUtil.findApprovalTask(tasks);
 
     if (!approvalTask) {
       errors.push('Approval task not found');
-    } else if (approvalTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
-      errors.push(`Approval task must be unassigned to proceed (current: ${approvalTask.status})`);
+    } else {
+      const allowedStatuses: TaskStatus[] = [
+        TaskStatus.STATUS_01_UNASSIGNED,
+        TaskStatus.STATUS_10_ASSIGNED,
+        TaskStatus.STATUS_20_IN_PROGRESS,
+      ];
+
+      if (!allowedStatuses.includes(approvalTask.status)) {
+        errors.push(`Approval task is in an invalid status (${approvalTask.status})`);
+      }
+
+      if (options.requireClaim && approvalTask.status === TaskStatus.STATUS_01_UNASSIGNED) {
+        errors.push('Approval task must be claimed before performing this action');
+      }
+
+      if (options.expectedAssignee) {
+        if (!approvalTask.assigned_user_id) {
+          errors.push('Approval task must be claimed by a supervisor before proceeding');
+        } else if (approvalTask.assigned_user_id !== options.expectedAssignee) {
+          errors.push('Approval task is claimed by a different supervisor');
+        }
+      }
     }
 
     return {
       isValid: errors.length === 0,
       errors,
+      approvalTask,
     };
   }
 

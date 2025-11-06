@@ -7,7 +7,7 @@ import {
   type RejectCaseCreationDto,
   type ReturnCaseForReviewDto
 } from '@/features/cases/services/caseService';
-import type { CaseRow } from '@/features/cases/components/CasesTable';
+import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import type { Priority, AlertType } from '@/features/cases/components/CreateCaseModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';

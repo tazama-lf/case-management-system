@@ -5,7 +5,7 @@ import { CasesTable } from '..';
 import CaseFilters from '@/features/cases/components/CaseFilters';
 import CasesTableSkeleton from '@/features/cases/components/CasesTableSkeleton';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
-import type { CaseRow } from '@/features/cases/components/CasesTable';
+import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import type { CaseDashboardState } from '../hooks/useCaseDashboard';
 
 interface CaseDashboardContentProps {
@@ -57,7 +57,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onApproveCaseReopen,
   onRejectCaseReopen
 }) => {
-  const { cases, loading, errorState, filters, pagination } = dashboardState;
+  const { cases, loading, errorState, filters, pagination, permissions } = dashboardState;
 
   return (
     <PageContainer
@@ -124,6 +124,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
               onReturnForReview={onReturnForReview}
               onApproveCaseReopen={onApproveCaseReopen}
               onRejectCaseReopen={onRejectCaseReopen}
+              canManageSupervisorActions={permissions.canManageSupervisorActions}
               pagination={{
                 currentPage: pagination.currentPage,
                 pageSize: pagination.pageSize,

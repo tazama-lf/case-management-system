@@ -1,9 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
+import { useAuth } from '@/features/auth/components/AuthContext';
 
 // Dynamic imports for better performance
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
@@ -17,6 +18,7 @@ interface TaskLogTabProps {
 }
 const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
   const { success, error: toastError } = useToast();
+  const { hasSupervisorRole, hasAdminRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +99,17 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     { value: TaskStatus.STATUS_30_COMPLETED, label: 'Completed' },
   ];
 
-  const filteredTasks = tasks.filter(task => {
+  const canViewSupervisorQueue = hasSupervisorRole() || hasAdminRole();
+
+  const visibleTasks = useMemo(() => {
+    if (canViewSupervisorQueue) {
+      return tasks;
+    }
+
+    return tasks.filter((task) => (task.candidateGroup || '').toLowerCase() !== 'supervisors');
+  }, [tasks, canViewSupervisorQueue]);
+
+  const filteredTasks = visibleTasks.filter(task => {
     const taskId = task.task_id || '';
     const taskName = task.name || '';
     const taskDescription = task.description || '';
@@ -191,7 +203,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
         case 'unassign':
           await taskService.unassignTask(task.id, { reason: reason! });
           break;
-        case 'updateStatus':
+        case 'updateStatus': {
           const statusMap: Record<string, TaskStatusType> = {
             'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
             'Assigned': TaskStatus.STATUS_10_ASSIGNED,
@@ -204,6 +216,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
             await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
           }
           break;
+        }
         default:
           throw new Error(`Unknown operation: ${operation}`);
       }
@@ -319,7 +332,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       {transformedTasks.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-sm text-gray-500">
-            {tasks.length === 0 ? 'No tasks found for this case.' : 'No tasks match your search criteria.'}
+            {visibleTasks.length === 0 ? 'No tasks found for this case.' : 'No tasks match your search criteria.'}
           </div>
         </div>
       ) : (

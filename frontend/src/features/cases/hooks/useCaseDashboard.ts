@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { caseService } from '@/features/cases/services/caseService';
-import type { CaseRow } from '@/features/cases/components/CasesTable';
-import { transformBackendCaseToUI } from '@/features/cases/components/CasesTable';
+import type { CaseRow } from '@/features/cases/components/casesTable.utils';
+import { transformBackendCaseToUI } from '@/features/cases/components/casesTable.utils';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
@@ -22,12 +22,18 @@ export interface PaginationState {
   totalPages: number;
 }
 
+export interface CaseDashboardPermissions {
+  canManageSupervisorActions: boolean;
+  isInvestigatorOnly: boolean;
+}
+
 export interface CaseDashboardState {
   cases: CaseRow[];
   loading: boolean;
   errorState: string | null;
   filters: CaseDashboardFilters;
   pagination: PaginationState;
+  permissions: CaseDashboardPermissions;
 }
 
 export const useCaseDashboard = () => {
@@ -69,19 +75,16 @@ export const useCaseDashboard = () => {
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
-  // Case actions hook
-  const caseActions = useCaseActions(() => fetchCases());
-
-  const fetchCases = async () => {
+  const fetchCases = useCallback(async () => {
     setLoading(true);
     setErrorState(null);
 
     try {
       let response;
+      const supervisorOrAdmin = hasSupervisorRole() || hasAdminRole();
+      const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
     
-      const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
-      
-      if (isInvestigatorOnly) {
+      if (investigatorOnly) {
        
         response = await caseService.getUserAssignedCases({
           status: statusFilter || undefined,
@@ -103,17 +106,20 @@ export const useCaseDashboard = () => {
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);
-    } catch (err) {
+  } catch {
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasAdminRole]);
+
+  // Case actions hook
+  const caseActions = useCaseActions(fetchCases);
 
   useEffect(() => {
     fetchCases();
-  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasAdminRole]);
+  }, [fetchCases]);
 
  
   useEffect(() => {
@@ -310,6 +316,9 @@ export const useCaseDashboard = () => {
   };
 
   
+  const supervisorOrAdmin = hasSupervisorRole() || hasAdminRole();
+  const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
+
   const dashboardState: CaseDashboardState = {
     cases: paginatedCases,
     loading,
@@ -320,7 +329,11 @@ export const useCaseDashboard = () => {
       statusFilter,
       priorityFilter
     },
-    pagination
+    pagination,
+    permissions: {
+      canManageSupervisorActions: supervisorOrAdmin,
+      isInvestigatorOnly: investigatorOnly
+    }
   };
 
   return {

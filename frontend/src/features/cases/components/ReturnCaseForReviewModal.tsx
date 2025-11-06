@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import type { ReturnCaseForReviewDto } from '../services/caseService';
-import type { CaseRow } from './CasesTable';
+import type { CaseRow } from './casesTable.utils';
 
 interface ReturnCaseForReviewModalProps {
   open: boolean;

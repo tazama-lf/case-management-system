@@ -6,7 +6,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
+import { TaskStatus, Task, Prisma, CaseStatus, WorkQueue } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';
@@ -67,9 +67,8 @@ export class TaskService {
         if (!caseData) {
           throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
         }
-
         let workQueueId: string | undefined;
-        let matchingQueue: any = null;
+        let matchingQueue: WorkQueue | null = null;
         let derivedFlowableGroupId: string | undefined;
 
         if (taskDTO.candidateGroup) {
@@ -94,18 +93,18 @@ export class TaskService {
             if (matchingQueue) {
               workQueueId = matchingQueue.work_queue_id;
 
-              // Derive Flowable group ID
-              const queueName = matchingQueue.name;
-              derivedFlowableGroupId = `tenant-${caseData.tenant_id}__queue-${queueName
-                  .trim()
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-+|-+$/g, '')
-                  .slice(0, 50)}`;
+              const normalizedQueueName = matchingQueue.name
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 50);
+
+              derivedFlowableGroupId = `tenant-${caseData.tenant_id}__queue-${normalizedQueueName}`;
 
               loggerService.log(
-                  `Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId}) with Flowable group: ${derivedFlowableGroupId}`,
-                  TaskService.name
+                `Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId}) with Flowable group: ${derivedFlowableGroupId}`,
+                TaskService.name,
               );
             }
           } catch (error) {
@@ -143,16 +142,16 @@ export class TaskService {
       let updatedTask = result.task;
 
       this.eventEmitter.emit(
-          'task.created',
-          new TaskCreatedEvent(
-              updatedTask.task_id,
-              taskDTO.caseId,
-              taskDTO.name,
-              taskDTO.description || '',
-              taskDTO.candidateGroup || 'Investigations',
-              updatedTask.status,
-              updatedTask.assigned_user_id ?? undefined,
-          ),
+        'task.created',
+        new TaskCreatedEvent(
+          updatedTask.task_id,
+          taskDTO.caseId,
+          taskDTO.name,
+          taskDTO.description || '',
+          taskDTO.candidateGroup || 'Investigations',
+          updatedTask.status,
+          updatedTask.assigned_user_id ?? undefined,
+        ),
       );
 
       if (result.workQueueId && result.matchingQueue) {
@@ -349,6 +348,15 @@ export class TaskService {
     try {
       const existingTask = await this.prisma.task.findUnique({
         where: { task_id: taskId },
+        include: {
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              case_owner_user_id: true,
+            },
+          },
+        },
       });
 
       if (!existingTask) {
@@ -369,12 +377,77 @@ export class TaskService {
         }
       }
 
-      const updatedTask = await this.prisma.task.update({
-        where: { task_id: taskId },
-        data: updateInput,
-      });
+      const newStatus = updateData.status;
+      const statusChanged = newStatus !== undefined && newStatus !== existingTask.status;
+      const shouldPromoteCaseToInProgress =
+        statusChanged && newStatus === TaskStatus.STATUS_20_IN_PROGRESS && this.isInvestigationTask(existingTask.name);
 
-      if (updateData.status && updateData.status !== existingTask.status) {
+      let updatedTask: Task;
+      let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;
+
+      if (shouldPromoteCaseToInProgress) {
+        const transactionResult = await this.prisma.$transaction(async (tx) => {
+          const taskRecord = await tx.task.update({
+            where: { task_id: taskId },
+            data: updateInput,
+          });
+
+          const caseRecord = await tx.case.findUnique({
+            where: { case_id: taskRecord.case_id },
+            select: { status: true, case_owner_user_id: true },
+          });
+
+          if (!caseRecord) {
+            throw new NotFoundException(`Case ${taskRecord.case_id} not found`);
+          }
+
+          if (this.isCaseEligibleForInProgress(caseRecord.status) && caseRecord.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+            const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
+
+            const caseUpdateData: Prisma.CaseUpdateInput = {
+              status: CaseStatus.STATUS_20_IN_PROGRESS,
+              updated_at: new Date(),
+            };
+
+            if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) {
+              caseUpdateData.case_owner_user_id = assigneeId;
+            }
+
+            await tx.case.update({
+              where: { case_id: taskRecord.case_id },
+              data: caseUpdateData,
+            });
+
+            return {
+              taskRecord,
+              previousCaseStatus: caseRecord.status,
+              updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+            };
+          }
+
+          return {
+            taskRecord,
+            previousCaseStatus: caseRecord.status,
+            updatedCaseStatus: caseRecord.status,
+          };
+        });
+
+        updatedTask = transactionResult.taskRecord;
+
+        if (transactionResult.updatedCaseStatus !== transactionResult.previousCaseStatus) {
+          caseStatusTransition = {
+            previous: transactionResult.previousCaseStatus,
+            next: transactionResult.updatedCaseStatus,
+          };
+        }
+      } else {
+        updatedTask = await this.prisma.task.update({
+          where: { task_id: taskId },
+          data: updateInput,
+        });
+      }
+
+      if (newStatus !== undefined && newStatus !== existingTask.status) {
         this.eventEmitter.emit(
           'task.status.changed',
           new TaskStatusChangedEvent(
@@ -382,7 +455,7 @@ export class TaskService {
             updatedTask.case_id,
             updatedTask.name || '',
             existingTask.status,
-            updateData.status,
+            newStatus,
             updatedTask.assigned_user_id || undefined,
           ),
         );
@@ -402,12 +475,26 @@ export class TaskService {
         }
       }
 
+      if (caseStatusTransition) {
+        this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+            updatedTask.case_id,
+            caseStatusTransition.previous,
+            caseStatusTransition.next,
+            `Investigation task ${updatedTask.task_id} moved to in-progress`,
+          ),
+        );
+      }
+
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
       const auditService = auditLogService || this.auditLogService;
       auditService.logAction({
         userId,
-        actionPerformed: `Updated task ${taskId}`,
+        actionPerformed: caseStatusTransition
+          ? `Updated task ${taskId} and moved case ${updatedTask.case_id} to STATUS_20_IN_PROGRESS`
+          : `Updated task ${taskId}`,
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.SUCCESS,
@@ -1457,5 +1544,19 @@ export class TaskService {
       this.logger.error(`Error reassigning task ${taskId}`, error, TaskService.name);
       throw error;
     }
+  }
+
+  private isInvestigationTask(taskName?: string | null): boolean {
+    return (taskName || '').trim().toLowerCase() === 'investigate case';
+  }
+
+  private isCaseEligibleForInProgress(status: CaseStatus): boolean {
+    const eligibleStatuses: CaseStatus[] = [
+      CaseStatus.STATUS_10_ASSIGNED,
+      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      CaseStatus.STATUS_03_RETURNED,
+    ];
+
+    return eligibleStatuses.includes(status);
   }
 }

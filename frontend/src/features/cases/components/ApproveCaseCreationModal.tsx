@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import type { CaseRow } from './CasesTable';
+import type { CaseRow } from './casesTable.utils';
 
 interface ApproveCaseCreationModalProps {
   open: boolean;
