@@ -147,7 +147,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Confidence %</th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created on</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Picked on</th>
             <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
           </tr>
         </thead>
@@ -171,7 +170,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
                 </div>
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
               <td className="whitespace-nowrap px-4 py-3">
                 <div className="flex justify-end gap-2">
                   <button

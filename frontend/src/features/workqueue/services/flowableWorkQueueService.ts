@@ -53,14 +53,30 @@ export class FlowableWorkQueueService {
   }
 
 
-  async assignTask(taskId: string, assigneeUserId: string): Promise<UnifiedWorkQueueTask> {
+  async assignTask(
+    taskId: string, 
+    assigneeUserId: string, 
+    options?: { 
+      currentUserId?: string; 
+      isInvestigator?: boolean;
+    }
+  ): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
         assignedUserId: assigneeUserId
       };
 
+      // Check if this is an investigator self-assigning
+      const isSelfAssignment = options?.currentUserId === assigneeUserId;
+      const isInvestigator = options?.isInvestigator || false;
+      
+      // Use self-assign endpoint for investigators assigning to themselves
+      const endpoint = isSelfAssignment && isInvestigator 
+        ? `${this.baseUrl}/${taskId}/self-assign`
+        : `${this.baseUrl}/${taskId}/assign`;
+
       const response = await apiClient.patch<FlowableTask>(
-        `${this.baseUrl}/${taskId}/assign`,
+        endpoint,
         assignmentRequest
       );
 
@@ -120,10 +136,15 @@ export class FlowableWorkQueueService {
 
 
   private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
+    // Extract PostgreSQL task ID from variables, fallback to Flowable ID
+    const postgresTaskId = flowableTask.variables?.postgres_task_id || 
+                           flowableTask.processVariables?.postgresTaskId ||
+                           flowableTask.variables?.taskId;
+    
     return {
-      id: flowableTask.id,
-      taskId: flowableTask.id,
-      flowableTaskId: flowableTask.id, 
+      id: postgresTaskId || flowableTask.id, // Use PostgreSQL task ID for operations
+      taskId: postgresTaskId || flowableTask.id,
+      flowableTaskId: flowableTask.id, // Keep Flowable ID for reference
       name: flowableTask.name,
       description: flowableTask.description,
 
@@ -177,12 +198,22 @@ export class FlowableWorkQueueService {
   }
 
 
-  getCandidateGroups(): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
-    return [
+  getCandidateGroups(isInvestigator?: boolean): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
+    const allGroups = [
       { value: WorkQueueCandidateGroup.INVESTIGATIONS, label: 'Investigations Queue' },
       { value: WorkQueueCandidateGroup.INVESTIGATORS, label: 'Investigators Queue' },
       { value: WorkQueueCandidateGroup.SUPERVISORS, label: 'Supervisors Queue' }
     ];
+    
+    // Filter to investigations and investigators queues for investigators
+    if (isInvestigator) {
+      return allGroups.filter(group => 
+        group.value === WorkQueueCandidateGroup.INVESTIGATIONS || 
+        group.value === WorkQueueCandidateGroup.INVESTIGATORS
+      );
+    }
+    
+    return allGroups;
   }
 }
 

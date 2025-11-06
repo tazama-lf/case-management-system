@@ -10,7 +10,7 @@ interface AssignTaskModalProps {
     task: UnifiedWorkQueueTask,
     assignee: string,
     notes?: string,
-  ) => void;
+  ) => Promise<void>;
   task?: UnifiedWorkQueueTask | null;
 }
 
@@ -24,6 +24,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const [notes, setNotes] = React.useState('');
   const [investigators, setInvestigators] = useState<Investigator[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
 
   useEffect(() => {
@@ -113,7 +114,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   //   setInvestigators(mockInvestigators);
   // };
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!canConfirm) {
       console.warn('Cannot assign task: assignee not selected');
       return;
@@ -134,7 +135,18 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       return;
     }
 
-    onAssign(task, assignee, notes);
+    setSubmitting(true);
+    try {
+      await onAssign(task, assignee, notes);
+      // If we reach here, the assignment succeeded
+      // The parent will close the modal via setAssignModalOpen(false)
+    } catch (error) {
+      // If assignment fails, the parent will show error toast
+      // Modal stays open so user can retry
+      console.error('Assignment failed:', error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!open || !task) return null;
@@ -224,15 +236,16 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
             <button
               onClick={onClose}
               className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               onClick={handleAssign}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-              disabled={!canConfirm}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canConfirm || submitting}
             >
-              Assign Task
+              {submitting ? 'Assigning...' : 'Assign Task'}
             </button>
           </div>
         </div>

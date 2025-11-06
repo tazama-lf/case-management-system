@@ -65,7 +65,7 @@ export class ReportsService {
   ) {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
-    const whereClause: any = {
+    const baseFilters: any = {
       created_at: {
         gte: startDate,
         lte: endDate,
@@ -73,26 +73,38 @@ export class ReportsService {
     };
 
     if (filters?.caseType) {
-      whereClause.case_type = filters.caseType;
+      baseFilters.case_type = filters.caseType;
     }
     if (filters?.priority) {
-      whereClause.priority = filters.priority;
+      baseFilters.priority = filters.priority;
     }
     if (filters?.investigator) {
-      whereClause.case_owner_user_id = filters.investigator;
+      baseFilters.case_owner_user_id = filters.investigator;
     }
     if (filters?.tenantId) {
-      whereClause.alert = {
+      baseFilters.alert = {
         tenant_id: filters.tenantId,
       };
     }
     
-    // If requestingUserId is provided (investigator), filter to show only unassigned or assigned to them
+    let whereClause: any;
+    
+    // If requestingUserId is provided (investigator), filter to show only unassigned, ready for assignment, or assigned to them
     if (filters?.requestingUserId) {
-      whereClause.OR = [
-        { case_owner_user_id: null }, // Unassigned cases
-        { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
-      ];
+      whereClause = {
+        AND: [
+          baseFilters,
+          {
+            OR: [
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+              { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
+            ],
+          },
+        ],
+      };
+    } else {
+      whereClause = baseFilters;
     }
 
     const statusCounts = await this.prisma.case.groupBy({
