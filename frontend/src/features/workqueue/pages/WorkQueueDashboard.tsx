@@ -164,9 +164,9 @@ const WorkQueueDashboard: React.FC = () => {
 
   const handleTaskOperation = async (
     operation: TaskOperation,
-    params: TaskOperationParams
+    operationParams: TaskOperationParams
   ): Promise<void> => {
-    const { task, assignee, newStatus, reason } = params;
+    const { task, assignee, newStatus, reason } = operationParams;
 
     try {
       // Validation based on operation type
@@ -202,7 +202,7 @@ const WorkQueueDashboard: React.FC = () => {
           await flowableWorkQueueService.unassignTask(task.id);
           break;
         case 'complete':
-          await flowableWorkQueueService.completeTask(task.id, { notes: params.notes || '' });
+          await flowableWorkQueueService.completeTask(task.id, { notes: operationParams.notes || '' });
           break;
         case 'updateStatus': {
           const statusMap: Record<string, TaskStatusType> = {
@@ -222,13 +222,18 @@ const WorkQueueDashboard: React.FC = () => {
           throw new Error(`Unknown operation: ${operation}`);
       }
 
-      // Close modals and refresh tasks
+      // Close modals and clear URL params first (before refresh to prevent re-opening)
       setAssignModalOpen(false);
       setReassignModalOpen(false);
       setUnassignModalOpen(false);
       setUpdateStatusModalOpen(false);
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
+      
+      // Clear task ID from URL if present
+      if (params.taskId) {
+        navigate('/work-queue', { replace: true });
+      }
 
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
