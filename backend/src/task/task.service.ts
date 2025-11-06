@@ -66,9 +66,10 @@ export class TaskService {
           throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
         }
 
-        // Auto-assign work queue based on candidateGroup
         let workQueueId: string | undefined;
         let matchingQueue: any = null;
+        let derivedFlowableGroupId: string | undefined;
+
         if (taskDTO.candidateGroup) {
           try {
             matchingQueue = await tx.workQueue.findFirst({
@@ -76,9 +77,7 @@ export class TaskService {
                 tenant_id: caseData.tenant_id,
                 is_active: true,
                 OR: [
-                  // Match by name (case-insensitive)
                   { name: { contains: taskDTO.candidateGroup, mode: 'insensitive' } },
-                  // Match by role assignments
                   {
                     roles: {
                       some: {
@@ -92,9 +91,20 @@ export class TaskService {
 
             if (matchingQueue) {
               workQueueId = matchingQueue.work_queue_id;
-              loggerService.log(`Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId})`, TaskService.name);
-            } else {
-              loggerService.warn(`No work queue found for candidateGroup: ${taskDTO.candidateGroup}`, TaskService.name);
+
+              // Derive Flowable group ID
+              const queueName = matchingQueue.name;
+              derivedFlowableGroupId = `tenant-${caseData.tenant_id}__queue-${queueName
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, '')
+                  .slice(0, 50)}`;
+
+              loggerService.log(
+                  `Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId}) with Flowable group: ${derivedFlowableGroupId}`,
+                  TaskService.name
+              );
             }
           } catch (error) {
             loggerService.warn(`Failed to auto-assign work queue: ${error.message}`, TaskService.name);
@@ -119,152 +129,37 @@ export class TaskService {
           taskData.workQueue = {
             connect: { work_queue_id: workQueueId },
           };
-
-          // Set candidateGroup to the derived Flowable group ID for this work queue
-          const queueName = matchingQueue?.name;
-          if (queueName) {
-            const flowableGroupId = `tenant-${caseData.tenant_id}__queue-${queueName
-              .trim()
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/^-+|-+$/g, '')
-              .slice(0, 50)}`;
-            taskData.candidateGroup = flowableGroupId;
-            loggerService.log(`Set candidateGroup to Flowable group ID: ${flowableGroupId}`, TaskService.name);
-          }
         }
 
         const task = await tx.task.create({
           data: taskData,
         });
 
-        return { task, tenantId: caseData.tenant_id, caseData, workQueueId, matchingQueue };
+        return { task, tenantId: caseData.tenant_id, caseData, workQueueId, matchingQueue, derivedFlowableGroupId };
       });
 
       let updatedTask = result.task;
 
-      // ⚠️ AUTO-ASSIGNMENT DISABLED - SHELVED FOR POST-MVP ⚠️
-      // Auto-assignment rules are not part of MVP and have no frontend implementation.
-      // This code is commented out but kept for future use.
-      // To re-enable: Uncomment this block and the assignment rule endpoints in work-queue.controller.ts
-
-      /*
-      try {
-        const rules = await this.workQueueService.getAllActiveAssignmentRules(result.tenantId);
-
-        if (rules.length > 0) {
-          const applicableRules = rules.filter((rule) => rule.trigger_type === RuleTrigger.TASK_CREATED);
-
-          if (applicableRules.length > 0) {
-            const taskWithCase = {
-              ...updatedTask,
-              case: {
-                case_id: result.task.case_id,
-                priority: result.caseData.priority,
-                status: result.caseData.status,
-                created_at: new Date(),
-                updated_at: new Date(),
-              },
-            };
-
-            const matchingRules = this.ruleEngineService.findMatchingRules(applicableRules, taskWithCase as any, {});
-
-            if (matchingRules.length > 0) {
-              const firstMatchingRule = matchingRules[0];
-              loggerService.log(
-                `Applying assignment rule ${firstMatchingRule.assignment_rule_id} to task ${updatedTask.task_id}`,
-                TaskService.name,
-              );
-
-              const ruleApplication = this.ruleEngineService.applyRule(firstMatchingRule, taskWithCase as any);
-
-              const updateData: any = {};
-              if (ruleApplication.workQueueId) {
-                updateData.work_queue_id = ruleApplication.workQueueId;
-              }
-              if (ruleApplication.assignedUserId) {
-                updateData.assigned_user_id = ruleApplication.assignedUserId;
-              }
-              if (ruleApplication.slaDurationHours) {
-                updateData.sla_duration_hours = ruleApplication.slaDurationHours;
-                const slaDeadline = new Date();
-                slaDeadline.setHours(slaDeadline.getHours() + ruleApplication.slaDurationHours);
-                updateData.sla_deadline = slaDeadline;
-              }
-
-              if (Object.keys(updateData).length > 0) {
-                updatedTask = await this.prisma.task.update({
-                  where: { task_id: updatedTask.task_id },
-                  data: updateData,
-                });
-
-                await this.prisma.workQueueAssignmentRule.update({
-                  where: { assignment_rule_id: firstMatchingRule.assignment_rule_id },
-                  data: {
-                    application_count: { increment: 1 },
-                    last_applied_at: new Date(),
-                  },
-                });
-
-                this.eventEmitter.emit('task.auto-assigned', {
-                  taskId: updatedTask.task_id,
-                  ruleId: firstMatchingRule.assignment_rule_id,
-                  ruleName: firstMatchingRule.rule_name,
-                  workQueueId: ruleApplication.workQueueId,
-                  assignedUserId: ruleApplication.assignedUserId,
-                });
-
-                await auditLogService.logAction({
-                  userId: this.systemUserId,
-                  actionPerformed: `Auto-assigned task ${updatedTask.task_id} using rule ${firstMatchingRule.rule_name} (${firstMatchingRule.assignment_rule_id})`,
-                  entityName: 'TaskAutoAssignment',
-                  operation: 'RULE_APPLIED',
-                  outcome: Outcome.SUCCESS,
-                  performedAt: new Date(),
-                });
-
-                loggerService.log(`Successfully applied assignment rule to task ${updatedTask.task_id}`, TaskService.name);
-              }
-            }
-          }
-        }
-      } catch (ruleError: any) {
-        loggerService.error(
-          `Error applying assignment rules to task ${updatedTask.task_id}: ${ruleError.message}`,
-          ruleError,
-          TaskService.name,
-        );
-        await auditLogService.logAction({
-          userId: this.systemUserId,
-          actionPerformed: `Failed to auto-assign task ${updatedTask.task_id}: ${ruleError.message}`,
-          entityName: 'TaskAutoAssignment',
-          operation: 'RULE_APPLIED',
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-      }
-      */
-
       this.eventEmitter.emit(
-        'task.created',
-        new TaskCreatedEvent(
-          updatedTask.task_id,
-          taskDTO.caseId,
-          taskDTO.name,
-          taskDTO.description || '',
-          updatedTask.candidateGroup || taskDTO.candidateGroup || 'Investigations',
-          updatedTask.status,
-          updatedTask.assigned_user_id ?? undefined,
-        ),
+          'task.created',
+          new TaskCreatedEvent(
+              updatedTask.task_id,
+              taskDTO.caseId,
+              taskDTO.name,
+              taskDTO.description || '',
+              taskDTO.candidateGroup || 'Investigations',
+              updatedTask.status,
+              updatedTask.assigned_user_id ?? undefined,
+          ),
       );
 
-      // Emit work queue assignment event if auto-assigned
       if (result.workQueueId && result.matchingQueue) {
         this.eventEmitter.emit('task.workQueueAssigned', {
           taskId: updatedTask.task_id,
           workQueueId: result.workQueueId,
           workQueueName: result.matchingQueue.name,
-          candidateGroup: updatedTask.candidateGroup,
+          candidateGroup: taskDTO.candidateGroup, // Original candidateGroup
+          flowableGroupId: result.derivedFlowableGroupId,
           autoAssigned: true,
           assignedBy: 'SYSTEM',
           tenantId: result.tenantId,
@@ -273,7 +168,7 @@ export class TaskService {
 
       auditLogService.logAction({
         userId,
-        actionPerformed: `Created task ${updatedTask.task_id}`,
+        actionPerformed: `Created task ${updatedTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.SUCCESS,
