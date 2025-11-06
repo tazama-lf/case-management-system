@@ -48,7 +48,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   existingCaseId,
   initial
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'case-details' | 'link-alerts'>('case-details');
 
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
@@ -56,8 +55,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [_isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
   const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
-
-  const [selectedAlerts, setSelectedAlerts] = React.useState<Alert[]>([]);
 
   const [priority, setPriority] = React.useState<Priority>('NEW');
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
@@ -170,8 +167,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const validateForm = (): Record<string, string> => {
     const errors: Record<string, string> = {};
 
-    if (mode === 'create' && !selectedAlert && selectedAlerts.length === 0) {
-      errors.alertId = 'Please select an alert in either the Case Details tab or link existing alerts in the Link Existing Alerts tab';
+    if (mode === 'create' && !selectedAlert) {
+      errors.alertId = 'Please select an alert to create a case';
     }
     if (!alertType) {
       errors.alertType = 'Alert Type is required';
@@ -188,7 +185,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const canSubmit = Boolean(
     priority &&
     alertType &&
-    (mode === 'edit' || selectedAlert || selectedAlerts.length > 0)
+    (mode === 'edit' || selectedAlert)
   );
 
   const submit = (draft = false) => {
@@ -208,7 +205,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         assignee: assignee || undefined,
       });
     } else {
-      const alertIdToUse = selectedAlert?.alert_id || (selectedAlerts.length > 0 ? selectedAlerts[0].alert_id : undefined);
+      const alertIdToUse = selectedAlert?.alert_id;
 
       onCreate({
         alertId: alertIdToUse,
@@ -237,44 +234,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           </button>
         </div>
 
-        {}
-        {mode === 'create' && (
-          <div className="border-b border-gray-200 px-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('case-details')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'case-details'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Case Details
-                {selectedAlert && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    1 selected
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('link-alerts')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'link-alerts'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Link Existing Alerts
-                {(selectedAlerts.length > 0) && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {selectedAlerts.length} selected
-                  </span>
-                )}
-              </button>
-            </nav>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {}
           {(error || Object.keys(validationErrors).length > 0) && (
@@ -297,10 +256,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           )}
 
           {}
-          {mode === 'edit' || activeTab === 'case-details' ? (
+          {mode === 'edit' ? (
             <>
-              {}
-
               {}
               <div className="space-y-2">
                 <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
@@ -409,14 +366,125 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               </div>
             </>
           ) : (
-            <LinkExistingAlertsTab
-              selectedAlerts={selectedAlerts}
-              onAlertsChange={setSelectedAlerts}
-              isVisible={activeTab === 'link-alerts'}
-              onAlertsSelected={(_hasAlerts) => {
+            <>
+              {}
+              <LinkExistingAlertsTab
+                selectedAlerts={selectedAlert ? [selectedAlert] : []}
+                onAlertsChange={(alerts) => {
 
-              }}
-            />
+                  setSelectedAlert(alerts.length > 0 ? alerts[alerts.length - 1] : null);
+                }}
+                isVisible={true}
+                onAlertsSelected={(_hasAlerts) => {}}
+              />
+
+              {}
+              <div className="space-y-2">
+                <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
+                  Alert Type *
+                </label>
+                <select
+                  id="alert-type"
+                  value={alertType}
+                  onChange={(e) => setAlertType(e.target.value as AlertType)}
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    validationErrors.alertType
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300'
+                  }`}
+                >
+                  <option value="FRAUD">Fraud</option>
+                  <option value="AML">AML</option>
+                  <option value="FRAUD_AND_AML">Fraud & AML</option>
+                  <option value="NONE">None</option>
+                </select>
+                {validationErrors.alertType && (
+                  <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
+                )}
+              </div>
+
+              {}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Priority Score *
+                  <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    value={priorityScore}
+                    onChange={(e) => setPriorityScore(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                  />
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>0.0 (NEW)</span>
+                    <span>0.33 (URGENT)</span>
+                    <span>0.66 (CRITICAL)</span>
+                    <span>1.0 (BREACH)</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <input
+                      type="number"
+                      value={priorityScore}
+                      onChange={(e) => setPriorityScore(Number(e.target.value))}
+                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        validationErrors.priorityScore
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-300'
+                      }`}
+                      min={0}
+                      max={1}
+                      step={0.01}
+                    />
+                    <span className={`text-sm font-medium px-2 py-1 rounded ${
+                      priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                      priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
+                      priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                      'text-blue-600 bg-blue-50'
+                    }`}>
+                      → {priority}
+                    </span>
+                  </div>
+                </div>
+                {validationErrors.priorityScore && (
+                  <p className="text-sm text-red-600 mt-1">{validationErrors.priorityScore}</p>
+                )}
+              </div>
+
+              {}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Priority
+                  <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+                </label>
+                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                  priority === 'BREACH' ? 'text-red-600 border-red-200' :
+                  priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
+                  priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
+                  'text-blue-600 border-blue-200'
+                }`}>
+                  {priority}
+                </div>
+              </div>
+
+              {}
+              <div className="space-y-2">
+                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+                  Assignee
+                </label>
+                <input
+                  id="assignee"
+                  type="text"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Leave empty for automatic assignment"
+                />
+              </div>
+            </>
           )}
         </div>
 
