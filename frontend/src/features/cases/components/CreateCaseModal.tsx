@@ -1,7 +1,9 @@
 import React from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import triageService from '@/features/alerts/services/triageservice';
+import userService from '@/features/cases/services/userService';
 import type { Alert } from '@/features/alerts/types/triage.types';
+import type { UserOption } from '@/features/cases/services/userService';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
@@ -61,6 +63,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
+  const [users, setUsers] = React.useState<UserOption[]>([]);
+  const [loadingUsers, setLoadingUsers] = React.useState(false);
 
   const calculatePriority = (score: number): Priority => {
     if (score >= 1.0) return 'BREACH';
@@ -91,7 +95,21 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       }
     };
 
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const fetchedUsers = await userService.getAllUsers();
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
     loadNALTAlerts();
+    loadUsers();
   }, [open]);
 
 
@@ -355,14 +373,20 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
                   Assignee
                 </label>
-                <input
+                <select
                   id="assignee"
-                  type="text"
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Leave empty for automatic assignment"
-                />
+                  disabled={loadingUsers}
+                >
+                  <option value="">{loadingUsers ? 'Loading users...' : 'Select an assignee (optional)'}</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} {user.role ? `(${user.role})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </>
           ) : (

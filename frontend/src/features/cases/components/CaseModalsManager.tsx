@@ -145,7 +145,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         status: 'STATUS_02_READY_FOR_ASSIGNMENT' as const,
         priority: payload.priority,
         caseType: payload.alertType,
-        caseOwnerUserId: payload.assignee || 'system-user-id',
+        ...(payload.assignee && { caseOwnerUserId: payload.assignee }),
       };
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
