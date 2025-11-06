@@ -57,7 +57,8 @@
                 <flowable:formProperty id="investigationNotes" name="Investigation Notes"
                                        type="string"/>
                 <flowable:formProperty id="investigationAction" name="Action"
-                                       type="enum" required="true">
+                                       type="enum" required="true"
+                                       default="complete">
                     <flowable:value id="complete" name="Complete Investigation"/>
                     <flowable:value id="suspend" name="Suspend Case"/>
                     <flowable:value id="requestClosure" name="Request Closure"/>
