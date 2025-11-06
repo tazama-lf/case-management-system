@@ -401,6 +401,9 @@ export class TriageService {
         path: ['status'],
         equals: reportStatus,
       };
+      if (reportStatus.toUpperCase() === 'NALT') {
+        whereClause.case_id = null;
+      }
     }
 
     if (priority) {
