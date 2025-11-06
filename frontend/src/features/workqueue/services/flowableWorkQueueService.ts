@@ -54,14 +54,6 @@ export class FlowableWorkQueueService {
 
 
   async assignTask(taskId: string, assigneeUserId: string): Promise<UnifiedWorkQueueTask> {
-    if (!taskId) {
-      throw new Error('Task ID is required for assignment');
-    }
-
-    if (!assigneeUserId) {
-      throw new Error('Assignee user ID is required for assignment');
-    }
-
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
         assignedUserId: assigneeUserId
@@ -74,6 +66,11 @@ export class FlowableWorkQueueService {
 
       return this.transformFlowableTask(response);
     } catch (error: any) {
+      // If task not found with PostgreSQL ID, it might be a data sync issue
+      if (error.response?.status === 404) {
+        const errorMessage = error.response?.data?.message || error.message;
+        throw new Error(`Task assignment failed: ${errorMessage}. This task may only exist in Flowable and needs to be synced to the database.`);
+      }
       throw this.handleFlowableError(error, `assign task ${taskId}`);
     }
   }
@@ -86,8 +83,8 @@ export class FlowableWorkQueueService {
       };
 
       const response = await apiClient.patch<FlowableTask>(
-        `${this.baseUrl}/${taskId}/assign`,
-        assignmentRequest
+        `${this.baseUrl}/${taskId}/unassign`,
+        unassignmentRequest
       );
 
       return this.transformFlowableTask(response);
@@ -124,8 +121,9 @@ export class FlowableWorkQueueService {
 
   private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
     return {
-      id: flowableTask.flowableTaskId || flowableTask.id,
-      taskId: flowableTask.flowableTaskId || flowableTask.id,
+      id: postgresTaskId || flowableTask.id, // Use PostgreSQL task ID for operations
+      taskId: postgresTaskId || flowableTask.id,
+      flowableTaskId: flowableTask.id, // Keep Flowable ID for reference
       name: flowableTask.name,
       description: flowableTask.description,
 

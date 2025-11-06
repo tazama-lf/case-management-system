@@ -249,7 +249,7 @@ export class CaseController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: "Case not found or you don't have permission to close it" },
+        message: { type: 'string', example: 'Case not found or you don\'t have permission to close it' },
       },
     },
   })
@@ -290,8 +290,8 @@ export class CaseController {
   @Get('all')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
-    summary: 'Get all cases (Supervisor only)',
-    description: 'Retrieves all cases in the system with filtering options. Requires supervisor permissions.',
+    summary: 'Get all cases',
+    description: 'Retrieves cases based on user role. Investigators see unassigned or assigned to them. Supervisors see all cases.',
   })
   @ApiQuery({ type: GetAllCasesQueryDto })
   @ApiResponse({
@@ -300,10 +300,17 @@ export class CaseController {
     type: GetAllCasesResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires supervisor role' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires investigator or supervisor role' })
   async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const tenantId = req.user.token.tenantId;
-    return this.caseService.getAllCases(query, tenantId);
+    const userId = req.user.token.clientId;
+    const userClaims = req.user.token.claims || [];
+
+    // Check if user is investigator (not supervisor/admin)
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
   }
 
   @Get('user/assigned')
@@ -351,6 +358,7 @@ export class CaseController {
   ) {
     const requestingUserId = req.user.token.clientId;
     if (requestingUserId !== targetUserId) {
+      /* empty */
     }
 
     return this.caseService.getUserCases(targetUserId, query);
@@ -360,7 +368,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: 'Get summary statistics of user\'s case workload',
   })
   @ApiResponse({
     status: 200,

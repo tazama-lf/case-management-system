@@ -2121,7 +2121,7 @@ export class CaseService {
     }
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string) {
+  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
     try {
       const {
         status,
@@ -2140,9 +2140,20 @@ export class CaseService {
       if (status) whereClause.status = status;
       if (priority) whereClause.priority = priority;
       if (caseType) whereClause.case_type = caseType;
-      if (ownerId) whereClause.case_owner_user_id = ownerId;
       if (tenantId) whereClause.tenant_id = tenantId;
-      if (unassignedOnly) whereClause.case_owner_user_id = null;
+
+      // Handle investigator filtering (only unassigned or assigned to them)
+      if (investigatorUserId) {
+        // Investigator filter: show only unassigned OR assigned to them
+        whereClause.OR = [
+          { case_owner_user_id: null }, // Unassigned cases
+          { case_owner_user_id: investigatorUserId }, // Cases assigned to this investigator
+        ];
+      } else {
+        // Supervisor/Admin can filter by ownerId or unassignedOnly
+        if (ownerId) whereClause.case_owner_user_id = ownerId;
+        if (unassignedOnly) whereClause.case_owner_user_id = null;
+      }
 
       if (createdAfter || createdBefore) {
         whereClause.created_at = {};

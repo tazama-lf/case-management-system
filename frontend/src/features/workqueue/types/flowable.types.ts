@@ -86,6 +86,7 @@ export interface FlowableWorkQueueFilters {
 export interface UnifiedWorkQueueTask {
   id: string;
   taskId: string;
+  flowableTaskId?: string; // Flowable engine task ID (different from PostgreSQL task ID)
   name: string;
   description?: string;
 
