@@ -23,6 +23,7 @@ export interface AlertInfoDto {
   alert_id: string;
   message: string;
   confidence_per: number;
+  transaction?: unknown;
 }
 
 export interface CaseWithTasksDto {
