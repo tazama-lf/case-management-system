@@ -20,7 +20,7 @@ export class FlowableWorkQueueService {
 
      
       const tasks = response.data?.tasks || [];
-      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task));
+      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task, candidateGroup));
 
       return unifiedTasks;
     } catch (error: any) {
@@ -64,7 +64,7 @@ export class FlowableWorkQueueService {
 
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
-        assignee: assigneeUserId
+        assignedUserId: assigneeUserId
       };
 
       const response = await apiClient.patch<FlowableTask>(
@@ -82,7 +82,7 @@ export class FlowableWorkQueueService {
   async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
-        assignee: ''
+        assignedUserId: ''
       };
 
       const response = await apiClient.patch<FlowableTask>(
@@ -122,7 +122,7 @@ export class FlowableWorkQueueService {
   }
 
 
-  private transformFlowableTask(flowableTask: any): UnifiedWorkQueueTask {
+  private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
     return {
       id: flowableTask.flowableTaskId || flowableTask.id,
       taskId: flowableTask.flowableTaskId || flowableTask.id,
@@ -131,7 +131,7 @@ export class FlowableWorkQueueService {
 
       assignee: flowableTask.assignee,
       assigneeName: flowableTask.assignee,
-      candidateGroup: flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
+      candidateGroup: candidateGroup || flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
 
       status: this.mapFlowableStatus(flowableTask),
       priority: this.mapFlowablePriority(flowableTask.priority),

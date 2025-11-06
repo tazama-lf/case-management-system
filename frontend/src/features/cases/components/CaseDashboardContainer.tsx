@@ -11,6 +11,8 @@ const CaseDashboardContainer: React.FC = () => {
     filterActions,
     modalActions,
     caseActions,
+    setCurrentPage,
+    setPageSize,
     refreshCases
   } = useCaseDashboard();
 
@@ -22,6 +24,8 @@ const CaseDashboardContainer: React.FC = () => {
         onSortChange={filterActions.setSortBy}
         onStatusFilterChange={filterActions.setStatusFilter}
         onPriorityFilterChange={filterActions.setPriorityFilter}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
         onCreateNew={dashboardActions.handleCreateNew}
         onView={dashboardActions.handleView}
         onComplete={dashboardActions.handleComplete}

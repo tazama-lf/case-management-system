@@ -24,6 +24,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const [notes, setNotes] = React.useState('');
   const [investigators, setInvestigators] = useState<Investigator[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
 
   useEffect(() => {
     setAssignee('');
@@ -33,8 +34,28 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   useEffect(() => {
     if (open) {
       fetchInvestigators();
+      fetchCurrentUserAsInvestigator();
     }
   }, [open]);
+
+  const fetchCurrentUserAsInvestigator = async () => {
+    try {
+      const user = authService.getUser();
+      if (user && user.userId) {
+        // Create an investigator object from the current user
+        const investigator: Investigator = {
+          id: user.userId,
+          username: user.fullName || 'You',
+          email: user.email || '',
+          firstName: user.fullName?.split(' ')[0] || 'Current',
+          lastName: user.fullName?.split(' ')[1] || 'User',
+        };
+        setCurrentUserInvestigator(investigator);
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
+  };
 
   const fetchInvestigators = async () => {
     setLoading(true);
@@ -169,6 +190,11 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Select Investigator</option>
+                {currentUserInvestigator && (
+                  <option key={`me-${currentUserInvestigator.id}`} value={currentUserInvestigator.id}>
+                    {currentUserInvestigator.firstName} {currentUserInvestigator.lastName} (Me)
+                  </option>
+                )}
                 {investigators.map((investigator) => {
                   return (
                     <option key={investigator.id} value={investigator.id}>
