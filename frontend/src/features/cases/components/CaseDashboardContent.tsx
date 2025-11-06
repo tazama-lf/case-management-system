@@ -31,6 +31,7 @@ interface CaseDashboardContentProps {
   onReturnForReview: (row: CaseRow) => void;
   onApproveCaseReopen: (row: CaseRow) => void;
   onRejectCaseReopen: (row: CaseRow) => void;
+  isSupervisor?: boolean;
 }
 
 const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
@@ -55,7 +56,8 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onRejectCaseCreation,
   onReturnForReview,
   onApproveCaseReopen,
-  onRejectCaseReopen
+  onRejectCaseReopen,
+  isSupervisor = false
 }) => {
   const { cases, loading, errorState, filters, pagination } = dashboardState;
 
@@ -124,6 +126,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
               onReturnForReview={onReturnForReview}
               onApproveCaseReopen={onApproveCaseReopen}
               onRejectCaseReopen={onRejectCaseReopen}
+              isSupervisor={isSupervisor}
               pagination={{
                 currentPage: pagination.currentPage,
                 pageSize: pagination.pageSize,

@@ -349,6 +349,11 @@ export class TaskService {
     try {
       const existingTask = await this.prisma.task.findUnique({
         where: { task_id: taskId },
+        include: {
+          case: {
+            select: { status: true, case_id: true },
+          },
+        },
       });
 
       if (!existingTask) {
@@ -369,9 +374,35 @@ export class TaskService {
         }
       }
 
-      const updatedTask = await this.prisma.task.update({
-        where: { task_id: taskId },
-        data: updateInput,
+      // Handle case status update when task status changes to IN_PROGRESS
+      let updatedCase: any = null;
+      const previousCaseStatus = existingTask.case?.status;
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        const updatedTask = await tx.task.update({
+          where: { task_id: taskId },
+          data: updateInput,
+        });
+
+        // If task is being moved to IN_PROGRESS, also update case to IN_PROGRESS
+        if (updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && existingTask.case) {
+          const caseUpdateData: Prisma.CaseUpdateInput = {
+            status: CaseStatus.STATUS_20_IN_PROGRESS,
+            updated_at: new Date(),
+          };
+
+          updatedCase = await tx.case.update({
+            where: { case_id: existingTask.case_id },
+            data: caseUpdateData,
+          });
+
+          this.logger.log(
+            `Updated case ${existingTask.case_id} to STATUS_20_IN_PROGRESS when task ${taskId} was moved to IN_PROGRESS`,
+            TaskService.name,
+          );
+        }
+
+        return updatedTask;
       });
 
       if (updateData.status && updateData.status !== existingTask.status) {
@@ -379,30 +410,43 @@ export class TaskService {
           'task.status.changed',
           new TaskStatusChangedEvent(
             taskId,
-            updatedTask.case_id,
-            updatedTask.name || '',
+            result.case_id,
+            result.name || '',
             existingTask.status,
             updateData.status,
-            updatedTask.assigned_user_id || undefined,
+            result.assigned_user_id || undefined,
           ),
         );
+
+        // Emit case status changed event if case was updated
+        if (updatedCase && previousCaseStatus && previousCaseStatus !== CaseStatus.STATUS_20_IN_PROGRESS) {
+          this.eventEmitter.emit(
+            'case.status.changed',
+            new CaseStatusChangedEvent(
+              existingTask.case_id,
+              previousCaseStatus,
+              CaseStatus.STATUS_20_IN_PROGRESS,
+              `Case moved to in progress when investigation task ${taskId} was started`,
+            ),
+          );
+        }
       }
 
       if (updateData.assignedUserId !== undefined && updateData.assignedUserId !== existingTask.assigned_user_id) {
         if (updateData.assignedUserId) {
           this.eventEmitter.emit(
             'task.assigned',
-            new TaskAssignedEvent(taskId, updatedTask.case_id, updateData.assignedUserId, existingTask.assigned_user_id || undefined),
+            new TaskAssignedEvent(taskId, result.case_id, updateData.assignedUserId, existingTask.assigned_user_id || undefined),
           );
         } else {
           this.eventEmitter.emit(
             'task.unassigned',
-            new TaskUnassignedEvent(taskId, updatedTask.case_id, existingTask.assigned_user_id || undefined),
+            new TaskUnassignedEvent(taskId, result.case_id, existingTask.assigned_user_id || undefined),
           );
         }
       }
 
-      this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
+      this.logger.log(`Task updated: ${result.task_id}`, TaskService.name);
 
       const auditService = auditLogService || this.auditLogService;
       auditService.logAction({
@@ -414,7 +458,7 @@ export class TaskService {
         performedAt: new Date(),
       });
 
-      return updatedTask;
+      return result;
     } catch (error) {
       this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
 

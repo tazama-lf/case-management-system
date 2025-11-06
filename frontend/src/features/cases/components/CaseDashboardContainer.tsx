@@ -2,6 +2,7 @@ import React from 'react';
 import CaseDashboardContent from './CaseDashboardContent';
 import CaseModalsManager from './CaseModalsManager';
 import { useCaseDashboard } from '../hooks/useCaseDashboard';
+import { useAuth } from '@/features/auth/components/AuthContext';
 
 const CaseDashboardContainer: React.FC = () => {
   const {
@@ -15,6 +16,8 @@ const CaseDashboardContainer: React.FC = () => {
     setPageSize,
     refreshCases
   } = useCaseDashboard();
+
+  const { hasSupervisorRole } = useAuth();
 
   return (
     <>
@@ -41,6 +44,7 @@ const CaseDashboardContainer: React.FC = () => {
         onReturnForReview={dashboardActions.handleReturnForReview}
         onApproveCaseReopen={dashboardActions.handleApproveCaseReopen}
         onRejectCaseReopen={dashboardActions.handleRejectCaseReopen}
+        isSupervisor={hasSupervisorRole()}
       />
       
       <CaseModalsManager

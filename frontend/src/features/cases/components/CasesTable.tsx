@@ -118,6 +118,7 @@ interface CasesTableProps {
   onRejectCaseCreation?: (row: CaseRow) => void;
   onReturnForReview?: (row: CaseRow) => void;
   pagination?: PaginationInfo;
+  isSupervisor?: boolean;
 }
 
 const CasesTable: React.FC<CasesTableProps> = ({ 
@@ -136,7 +137,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onReturnForReview,
-  pagination
+  pagination,
+  isSupervisor = false
 }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -206,8 +208,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Closure button - show for cases pending final approval */}
-                  {onApproveCase && (
+                  {/* Approve Case Closure button - show for supervisors only and cases pending final approval */}
+                  {onApproveCase && isSupervisor && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
                   ) && (
@@ -220,8 +222,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Return for Review button - show for cases pending final approval */}
-                  {onReturnForReview && (
+                  {/* Return for Review button - show for supervisors only and cases pending final approval */}
+                  {onReturnForReview && isSupervisor && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
                   ) && (
@@ -234,8 +236,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Creation button - show for cases pending creation approval */}
-                  {onApproveCaseCreation && (
+                  {/* Approve Case Creation button - show for supervisors only and cases pending creation approval */}
+                  {onApproveCaseCreation && isSupervisor && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
                   ) && (
@@ -248,8 +250,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Approve Case Reopening button - show for cases pending reopening approval */}
-                  {onApproveCaseReopen && (
+                  {/* Approve Case Reopening button - show for supervisors only and cases pending reopening approval */}
+                  {onApproveCaseReopen && isSupervisor && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
                   ) && (
@@ -262,8 +264,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
-                  {onRejectCaseReopen && (
+                  {/* Reject Case Reopening button - show for supervisors only and cases pending reopening approval */}
+                  {onRejectCaseReopen && isSupervisor && (
                     c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
                     c.status.includes('PENDING CASE REOPENING APPROVAL')
                   ) && (
@@ -276,8 +278,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case Creation button - show for cases pending creation approval */}
-                  {onRejectCaseCreation && (
+                  {/* Reject Case Creation button - show for supervisors only and cases pending creation approval */}
+                  {onRejectCaseCreation && isSupervisor && (
                     c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
                     c.status.includes('PENDING CASE CREATION APPROVAL')
                   ) && (
@@ -347,8 +349,8 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     </button>
                   )}
                   
-                  {/* Reject Case button - show for cases pending final approval */}
-                  {onRejectCase && (
+                  {/* Reject Case button - show for supervisors only and cases pending final approval */}
+                  {onRejectCase && isSupervisor && (
                     c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                     c.status.includes('PENDING FINAL APPROVAL')
                   ) && (

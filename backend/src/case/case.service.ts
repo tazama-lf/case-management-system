@@ -518,10 +518,12 @@ export class CaseService {
         });
       }
 
-      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
+      const investigationTask = caseData.tasks.find(
+        (task) => (task.name === 'Investigate Case' || task.name === 'Investigate case') && task.assigned_user_id === userId,
+      );
 
       if (!investigationTask) {
-        const errorMsg = `Case closure failed: Investigation task not found for case ${caseId}`;
+        const errorMsg = `Case closure failed: Investigation task not found for case ${caseId} assigned to user ${userId}`;
         await this.auditLogService.logAction({
           userId,
           operation: 'closeCase',
@@ -530,26 +532,9 @@ export class CaseService {
           outcome: Outcome.FAILURE,
         });
         throw new BadRequestException({
-          message: 'Investigation task not found for this case',
+          message: 'Investigation task not found or not assigned to you',
           caseId,
           missingTask: 'Investigate Case',
-        });
-      }
-
-      if (investigationTask.assigned_user_id !== userId) {
-        const errorMsg = `Case closure failed: Investigation task ${investigationTask.task_id} is not assigned to user ${userId}`;
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'closeCase',
-          entityName: CaseService.name,
-          actionPerformed: errorMsg,
-          outcome: Outcome.FAILURE,
-        });
-        throw new BadRequestException({
-          message: 'Investigation task is not assigned to you',
-          caseId,
-          taskId: investigationTask.task_id,
-          assignedTo: investigationTask.assigned_user_id,
         });
       }
 
