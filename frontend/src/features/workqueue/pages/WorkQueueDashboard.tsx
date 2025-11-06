@@ -7,6 +7,7 @@ import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '@/features/wor
 import { flowableWorkQueueService } from '@/features/workqueue/services/flowableWorkQueueService';
 import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
+import { useAuth } from '@/features/auth';
 
 // Dynamic imports for modals
 const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
@@ -18,6 +19,7 @@ const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/mod
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
+  const { user, hasInvestigatorRole } = useAuth();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -140,7 +142,10 @@ const WorkQueueDashboard: React.FC = () => {
     }
 
     try {
-      await flowableWorkQueueService.assignTask(task.id, assignee);
+      await flowableWorkQueueService.assignTask(task.id, assignee, {
+        currentUserId: user?.userId,
+        isInvestigator: hasInvestigatorRole()
+      });
 
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);
@@ -154,7 +159,10 @@ const WorkQueueDashboard: React.FC = () => {
 
   const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, _justification: string) => {
     try {
-      await flowableWorkQueueService.assignTask(task.id, assignee);
+      await flowableWorkQueueService.assignTask(task.id, assignee, {
+        currentUserId: user?.userId,
+        isInvestigator: hasInvestigatorRole()
+      });
 
       const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
       setTasks(updatedTasks);

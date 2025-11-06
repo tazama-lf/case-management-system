@@ -778,6 +778,129 @@ export class TaskService {
     }
   }
 
+  async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {
+    this.logger.log(`[SelfAssignTask] Investigator ${investigatorUserId} self-assigning task ${taskId}`, TaskService.name);
+
+    try {
+      this.logger.log(`[SelfAssignTask] Fetching task ${taskId} details`, TaskService.name);
+
+      const existingTask = await this.getTaskById(taskId);
+      if (!existingTask) {
+        this.logger.error(`[SelfAssignTask] Task ${taskId} not found`, null, TaskService.name);
+        throw new NotFoundException(`Task ${taskId} not found`);
+      }
+
+      this.logger.log(
+        `[SelfAssignTask] Task ${taskId} found. Current status: ${existingTask.status}, Current assignee: ${existingTask.assigned_user_id || 'None'}`,
+        TaskService.name,
+      );
+
+      // Validate task is unassigned
+      if (existingTask.assigned_user_id) {
+        this.logger.error(
+          `[SelfAssignTask] Task ${taskId} is already assigned to ${existingTask.assigned_user_id}`,
+          null,
+          TaskService.name,
+        );
+        throw new BadRequestException(`Task ${taskId} is already assigned. Only unassigned tasks can be self-assigned.`);
+      }
+
+      // Validate task is in unassigned status
+      if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
+        this.logger.error(`[SelfAssignTask] Task ${taskId} has invalid status: ${existingTask.status}`, null, TaskService.name);
+        throw new BadRequestException(`Task ${taskId} must be in STATUS_01_UNASSIGNED status to be self-assigned.`);
+      }
+
+      const existingCase = await this.prisma.case.findUnique({
+        where: { case_id: existingTask.case_id },
+        select: { status: true, case_id: true },
+      });
+
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${existingTask.case_id} not found`);
+      }
+
+      const previousCaseStatus = existingCase.status;
+
+      this.logger.log(`[SelfAssignTask] Current case status: ${previousCaseStatus}. Will update to STATUS_10_ASSIGNED`, TaskService.name);
+
+      this.logger.log(`[SelfAssignTask] Updating task ${taskId} and case ${existingTask.case_id} in transaction`, TaskService.name);
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Update the task
+        const updatedTask = await tx.task.update({
+          where: { task_id: taskId },
+          data: {
+            assigned_user_id: investigatorUserId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            updated_at: new Date(),
+          },
+        });
+
+        // Update the case
+        const updatedCase = await tx.case.update({
+          where: { case_id: existingTask.case_id },
+          data: {
+            status: CaseStatus.STATUS_10_ASSIGNED,
+            case_owner_user_id: investigatorUserId,
+            updated_at: new Date(),
+          },
+        });
+
+        return { updatedTask, updatedCase };
+      });
+
+      this.logger.log(
+        `[SelfAssignTask] Task ${taskId} successfully updated. New status: ${result.updatedTask.status}, New assignee: ${result.updatedTask.assigned_user_id}`,
+        TaskService.name,
+      );
+
+      this.logger.log(
+        `[SelfAssignTask] Case ${existingTask.case_id} successfully updated. New status: ${result.updatedCase.status}, New owner: ${result.updatedCase.case_owner_user_id}`,
+        TaskService.name,
+      );
+
+      this.logger.log(`[SelfAssignTask] Emitting task.assigned event for task ${taskId}`, TaskService.name);
+
+      this.eventEmitter.emit('task.assigned', new TaskAssignedEvent(taskId, result.updatedTask.case_id, investigatorUserId, undefined));
+
+      this.logger.log(`[SelfAssignTask] Emitting case.status.changed event for case ${existingTask.case_id}`, TaskService.name);
+
+      this.eventEmitter.emit(
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          existingTask.case_id,
+          previousCaseStatus,
+          CaseStatus.STATUS_10_ASSIGNED,
+          `Case self-assigned by investigator ${investigatorUserId}`,
+        ),
+      );
+
+      this.logger.log(`[SelfAssignTask] Logging audit action for task ${taskId} self-assignment`, TaskService.name);
+
+      await this.auditLogService.logAction({
+        userId: investigatorUserId,
+        actionPerformed: `Self-assigned task ${taskId} and updated case ${existingTask.case_id} to ASSIGNED`,
+        entityName: TaskService.name,
+        operation: 'selfAssignTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      this.logger.log(`[SelfAssignTask] Task ${taskId} successfully self-assigned by investigator ${investigatorUserId}`, TaskService.name);
+
+      return result.updatedTask;
+    } catch (error) {
+      this.logger.error(`[SelfAssignTask] Error self-assigning task ${taskId}: ${error.message}`, error.stack, TaskService.name);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`Failed to self-assign task: ${error.message}`);
+    }
+  }
+
   async getTasks(status?: string) {
     try {
       const where = status ? { status: status as TaskStatus } : {};

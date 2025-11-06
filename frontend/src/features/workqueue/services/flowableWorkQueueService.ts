@@ -53,14 +53,30 @@ export class FlowableWorkQueueService {
   }
 
 
-  async assignTask(taskId: string, assigneeUserId: string): Promise<UnifiedWorkQueueTask> {
+  async assignTask(
+    taskId: string, 
+    assigneeUserId: string, 
+    options?: { 
+      currentUserId?: string; 
+      isInvestigator?: boolean;
+    }
+  ): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest = {
         assignedUserId: assigneeUserId
       };
 
+      // Check if this is an investigator self-assigning
+      const isSelfAssignment = options?.currentUserId === assigneeUserId;
+      const isInvestigator = options?.isInvestigator || false;
+      
+      // Use self-assign endpoint for investigators assigning to themselves
+      const endpoint = isSelfAssignment && isInvestigator 
+        ? `${this.baseUrl}/${taskId}/self-assign`
+        : `${this.baseUrl}/${taskId}/assign`;
+
       const response = await apiClient.patch<FlowableTask>(
-        `${this.baseUrl}/${taskId}/assign`,
+        endpoint,
         assignmentRequest
       );
 
