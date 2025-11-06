@@ -73,46 +73,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   };
 
-  // const useMockData = () => {
-  //   const mockInvestigators: Investigator[] = [
-  //     {
-  //       id: '085b7a75-c39d-44f8-868f-6c419f578627',
-  //       username: 'cms_investigator_1',
-  //       email: 'investigator1@example.com',
-  //       firstName: 'John',
-  //       lastName: 'Smith',
-  //     },
-  //     {
-  //       id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5',
-  //       username: 'cms_investigator_2',
-  //       email: 'investigator2@example.com',
-  //       firstName: 'Jane',
-  //       lastName: 'Doe',
-  //     },
-  //     {
-  //       id: '875e1911-fe1b-451d-877f-4f771ef85f58',
-  //       username: 'cms_investigator_3',
-  //       email: 'investigator3@example.com',
-  //       firstName: 'Bob',
-  //       lastName: 'Wilson',
-  //     },
-  //     {
-  //       id: '36febe5b-49fe-4abd-b294-f7afc995574e',
-  //       username: 'cms_investigator_4',
-  //       email: 'investigator4@example.com',
-  //       firstName: 'Alice',
-  //       lastName: 'Johnson',
-  //     },
-  //     {
-  //       id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348',
-  //       username: 'cms_investigator_5',
-  //       email: 'investigator5@example.com',
-  //       firstName: 'Charlie',
-  //       lastName: 'Brown',
-  //     },
-  //   ];
-  //   setInvestigators(mockInvestigators);
-  // };
+  
 
   const handleAssign = async () => {
     if (!canConfirm) {
@@ -138,12 +99,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     setSubmitting(true);
     try {
       await onAssign(task, assignee, notes);
-      // If we reach here, the assignment succeeded
-      // The parent will close the modal via setAssignModalOpen(false)
+    
     } catch (error) {
-      // If assignment fails, the parent will show error toast
-      // Modal stays open so user can retry
-      console.error('Assignment failed:', error);
+      
     } finally {
       setSubmitting(false);
     }

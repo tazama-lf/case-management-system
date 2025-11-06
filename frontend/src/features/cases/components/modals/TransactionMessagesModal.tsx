@@ -15,13 +15,15 @@ interface TransactionMessagesModalProps {
   onClose: () => void;
   transactionId: string;
   messages: TransactionMessage[];
+  transactionData?: unknown; // The actual transaction payload
 }
 
 const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   isOpen,
   onClose,
   transactionId,
-  messages
+  messages,
+  transactionData
 }) => {
   const [payloadModalOpen, setPayloadModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
@@ -88,7 +90,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
           </div>
         )}
 
-        {}
+        {/* Payload Modal */}
         <MessagePayloadModal
           isOpen={payloadModalOpen}
           onClose={() => setPayloadModalOpen(false)}
@@ -97,6 +99,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
             timestamp: new Date().toISOString(),
             status: 'received' as const
           } : null}
+          transactionData={transactionData}
         />
       </div>
     </div>

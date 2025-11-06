@@ -1,0 +1,56 @@
+import apiClient from '@/shared/services/apiClient';
+
+export interface UserOption {
+  id: string;
+  name: string;
+  role?: string;
+}
+
+class UserService {
+  private baseUrl = '/v1/user';
+
+  async getUsersByRole(role: string): Promise<UserOption[]> {
+    try {
+      const response = await apiClient.get<any[]>(`${this.baseUrl}/list-by-role/${role}`);
+      
+      // Transform the response to match our UserOption interface
+      return response.map((user: any) => ({
+        id: user.userId || user.id || '',
+        name: user.displayName || user.username || user.name || 'Unknown',
+        role: user.role,
+      })).filter(user => user.id); // Filter out users without IDs
+    } catch (error) {
+      console.error(`Failed to fetch users with role ${role}:`, error);
+      return [];
+    }
+  }
+
+  async getInvestigators(): Promise<UserOption[]> {
+    return this.getUsersByRole('CMS_INVESTIGATOR');
+  }
+
+  async getSupervisors(): Promise<UserOption[]> {
+    return this.getUsersByRole('CMS_SUPERVISOR');
+  }
+
+  async getAllUsers(): Promise<UserOption[]> {
+    try {
+      // Fetch both investigators and supervisors
+      const [investigators, supervisors] = await Promise.all([
+        this.getInvestigators(),
+        this.getSupervisors(),
+      ]);
+      
+      // Combine and remove duplicates
+      const combined = [...investigators, ...supervisors];
+      const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
+      
+      return uniqueUsers.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error('Failed to fetch all users:', error);
+      return [];
+    }
+  }
+}
+
+export default new UserService();
