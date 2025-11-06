@@ -1,5 +1,4 @@
 import React from 'react';
-import { PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../CasesTable';
 
 interface CaseDetailsTabProps {
@@ -13,101 +12,103 @@ const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({ 
   </div>
 );
 
+const getPriorityColor = (priority: string): string => {
+  const priorityColors: Record<string, string> = {
+    'NEW': 'bg-blue-50 text-blue-700 ring-blue-200',
+    'URGENT': 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+    'CRITICAL': 'bg-orange-50 text-orange-700 ring-orange-200',
+    'BREACH': 'bg-red-50 text-red-700 ring-red-200',
+  };
+  return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
+};
+
+const getScoreColor = (score: number): string => {
+  if (score >= 80) return 'text-red-600 bg-red-50';
+  if (score >= 60) return 'text-orange-600 bg-orange-50';
+  if (score >= 40) return 'text-yellow-600 bg-yellow-50';
+  if (score > 0) return 'text-green-600 bg-green-50';
+  return 'text-gray-600 bg-gray-50';
+};
+
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-      {}
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-gray-700">Case Information</div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-            <div>
-              <div className="text-gray-500">Creation Date</div>
-              <div className="font-medium text-gray-900">2024-01-15 09:30:00</div>
-            </div>
-            <div>
-              <div className="text-gray-500">Assignment Date</div>
-              <div className="font-medium text-gray-900">2024-01-15 09:45:00</div>
-            </div>
-            <div>
-              <div className="text-gray-500">Status</div>
-              <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}>
-                {row.status}
-              </span>
-            </div>
-            <div>
-              <div className="text-gray-500">Priority</div>
-              <div className="inline-flex items-center gap-2">
-                <span className="inline-flex w-fit items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Medium</span>
-                <button className="rounded p-1 text-gray-500 hover:bg-gray-100" title="Edit Priority">
-                  <PencilIcon className="h-4 w-4" />
-                </button>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Case Information */}
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-gray-700">Case Information</div>
+          <SectionCard>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Case ID</div>
+                <div className="font-medium text-gray-900">{row.id}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Case Type</div>
+                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}>
+                  {row.type}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Status</div>
+                <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}>
+                  {row.status}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Priority</div>
+                <div className="inline-flex items-center gap-2">
+                  <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}>
+                    {row.priority}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Created On</div>
+                <div className="font-medium text-gray-900">{row.createdOn}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Picked On</div>
+                <div className="font-medium text-gray-900">{row.pickedOn}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Assignee</div>
+                <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">Total Tasks</div>
+                <div className="font-medium text-gray-900">{row.totalTasks}</div>
               </div>
             </div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {}
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">Name</div>
-            <div className="text-gray-900">Alex Ross</div>
-            <div className="text-gray-500">Account ID</div>
-            <div className="text-gray-900">EA34280043165</div>
-            <div className="text-gray-500">FSP</div>
-            <div className="text-gray-900">Bank of America</div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {}
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-gray-700">Block/Allow List Status</div>
-        <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-          <option>Not Listed</option>
-          <option>Allow Listed</option>
-          <option>Block Listed</option>
-        </select>
-      </div>
-
-      {}
-      <div className="space-y-3 md:col-span-2">
-        <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">Name</div>
-            <div className="text-gray-900">Casey Howard</div>
-            <div className="text-gray-500">Account ID</div>
-            <div className="text-gray-900">EA34282929743</div>
-            <div className="text-gray-500">FSP</div>
-            <div className="text-gray-900">Bank of America</div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {}
-      <div className="space-y-3 md:col-span-2">
-        <div className="text-sm font-semibold text-gray-700">Recent Activity</div>
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div className="flex items-start gap-2 text-sm text-gray-700">
-            <ClockIcon className="mt-0.5 h-4 w-4 text-gray-400" />
-            <div>
-              Alert Triage task completed by John Smith
-              <div className="text-xs text-gray-500">9/5/2025, 9:06:55 AM</div>
-            </div>
-          </div>
-          <div className="mt-3 flex items-start gap-2 text-sm text-gray-700">
-            <ClockIcon className="mt-0.5 h-4 w-4 text-gray-400" />
-            <div>
-              Investigation task started by Sarah Johnson
-              <div className="text-xs text-gray-500">9/5/2025, 9:06:55 AM</div>
-            </div>
-          </div>
+          </SectionCard>
         </div>
+
+        {/* Alert Information */}
+        {row.alertId && (
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-gray-700">Alert Information</div>
+            <SectionCard>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Alert ID</div>
+                  <div className="font-medium text-gray-900">{row.alertId}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Confidence Score</div>
+                  <div className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}>
+                    {row.confidencePercent || 0}%
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs text-gray-500 uppercase">Message</div>
+                  <div className="font-medium text-gray-900 mt-1">{row.alertMessage || 'N/A'}</div>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+        )}
       </div>
+
     </div>
   );
 };
