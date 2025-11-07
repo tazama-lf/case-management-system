@@ -960,9 +960,9 @@ export class TriageService {
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
-      alertType: AlertType.FRAUD,
+      alertType: AlertType.FRAUD_AND_AML,
       confidence_per: 97,
-      isTruePositive: false,
+      isTruePositive: true,
     };
   }
 }

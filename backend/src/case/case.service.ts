@@ -98,8 +98,8 @@ export class CaseService {
     const caseOwnerId = needsApproval ? undefined : userId;
 
     this.logger.log(
-      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-      CaseService.name,
+        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
+        CaseService.name,
     );
 
     try {
@@ -134,42 +134,29 @@ export class CaseService {
       });
 
       let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
-      let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
+
       if (needsApproval) {
         approvalTask = await this.taskService.createTask(
-          {
-            caseId: result.case.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Approve Case Creation',
-            description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
-            candidateGroup: 'supervisors',
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
+            {
+              caseId: result.case.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Approve Case Creation',
+              description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
+              candidateGroup: 'supervisors',
+            },
+            userId,
+            this.auditLogService,
+            this.logger,
         );
 
         this.logger.log(
-          `[ManualCase] Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
-          CaseService.name,
+            `[ManualCase] Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
+            CaseService.name,
         );
       } else {
-        investigateTask = await this.taskService.createTask(
-          {
-            caseId: result.case.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: `Investigation task for manually created case ${result.case.case_id}`,
-            candidateGroup: 'investigations', // ✓ Goes to investigations work queue
-          },
-          userId,
-          this.auditLogService,
-          this.logger,
-        );
-
         this.logger.log(
-          `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${result.case.case_id} → INVESTIGATIONS queue (auto-approved by supervisor)`,
-          CaseService.name,
+            `[ManualCase] Case ${result.case.case_id} auto-approved by supervisor. BPMN will create investigation task automatically.`,
+            CaseService.name,
         );
       }
 
@@ -179,7 +166,7 @@ export class CaseService {
         userId,
         operation: 'createManualCase',
         entityName: CaseService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
+        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved, BPMN will create investigation task)'}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -188,7 +175,7 @@ export class CaseService {
         case: result.case,
         alert: result.alert,
         approvalTask,
-        investigateTask,
+        investigateTask: null,
       };
     } catch (err) {
       this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
