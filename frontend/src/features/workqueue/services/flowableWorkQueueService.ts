@@ -4,30 +4,38 @@ import type {
   UnifiedWorkQueueTask,
   WorkQueueCandidateGroupType,
   FlowableTaskAssignmentRequest,
-  FlowableTaskCompletionRequest
+  FlowableTaskCompletionRequest,
 } from '../types/flowable.types';
 import { WorkQueueCandidateGroup } from '../types/flowable.types';
-import { FlowableErrorHandler, FlowableError } from '../utils/flowableErrorHandler';
-
+import {
+  FlowableErrorHandler,
+  FlowableError,
+} from '../utils/flowableErrorHandler';
 
 export class FlowableWorkQueueService {
   private baseUrl = '/api/v1/task';
 
-
-  async getWorkQueueByGroup(candidateGroup: WorkQueueCandidateGroupType): Promise<UnifiedWorkQueueTask[]> {
+  async getWorkQueueByGroup(
+    candidateGroup: WorkQueueCandidateGroupType,
+  ): Promise<UnifiedWorkQueueTask[]> {
     try {
-      const response = await apiClient.get<{data: {tasks: FlowableTask[]}}>(`${this.baseUrl}/work-queues/${candidateGroup}`);
+      const response = await apiClient.get<{ data: { tasks: FlowableTask[] } }>(
+        `${this.baseUrl}/work-queues/${candidateGroup}`,
+      );
 
-     
       const tasks = response.data?.tasks || [];
-      const unifiedTasks = tasks.map((task) => this.transformFlowableTask(task, candidateGroup));
+      const unifiedTasks = tasks.map((task) =>
+        this.transformFlowableTask(task, candidateGroup),
+      );
 
       return unifiedTasks;
     } catch (error: any) {
-      throw this.handleFlowableError(error, `get work queue for ${candidateGroup}`);
+      throw this.handleFlowableError(
+        error,
+        `get work queue for ${candidateGroup}`,
+      );
     }
   }
-
 
   async getAllWorkQueues(): Promise<Record<string, number>> {
     try {
@@ -43,7 +51,7 @@ export class FlowableWorkQueueService {
           } catch (error) {
             queueCounts[group] = 0;
           }
-        })
+        }),
       );
 
       return queueCounts;
@@ -52,32 +60,32 @@ export class FlowableWorkQueueService {
     }
   }
 
-
   async assignTask(
-    taskId: string, 
-    assigneeUserId: string, 
-    options?: { 
-      currentUserId?: string; 
+    taskId: string,
+    assigneeUserId: string,
+    options?: {
+      currentUserId?: string;
       isInvestigator?: boolean;
-    }
+    },
   ): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
-        assignedUserId: assigneeUserId
+        assignedUserId: assigneeUserId,
       };
 
       // Check if this is an investigator self-assigning
       const isSelfAssignment = options?.currentUserId === assigneeUserId;
       const isInvestigator = options?.isInvestigator || false;
-      
+
       // Use self-assign endpoint for investigators assigning to themselves
-      const endpoint = isSelfAssignment && isInvestigator 
-        ? `${this.baseUrl}/${taskId}/self-assign`
-        : `${this.baseUrl}/${taskId}/assign`;
+      const endpoint =
+        isSelfAssignment && isInvestigator
+          ? `${this.baseUrl}/${taskId}/self-assign`
+          : `${this.baseUrl}/${taskId}/assign`;
 
       const response = await apiClient.patch<FlowableTask>(
         endpoint,
-        assignmentRequest
+        assignmentRequest,
       );
 
       return this.transformFlowableTask(response);
@@ -85,22 +93,23 @@ export class FlowableWorkQueueService {
       // If task not found with PostgreSQL ID, it might be a data sync issue
       if (error.response?.status === 404) {
         const errorMessage = error.response?.data?.message || error.message;
-        throw new Error(`Task assignment failed: ${errorMessage}. This task may only exist in Flowable and needs to be synced to the database.`);
+        throw new Error(
+          `Task assignment failed: ${errorMessage}. This task may only exist in Flowable and needs to be synced to the database.`,
+        );
       }
       throw this.handleFlowableError(error, `assign task ${taskId}`);
     }
   }
 
-
   async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
-        assignedUserId: ''
+        assignedUserId: '',
       };
 
       const response = await apiClient.patch<FlowableTask>(
         `${this.baseUrl}/${taskId}/unassign`,
-        assignmentRequest
+        assignmentRequest,
       );
 
       return this.transformFlowableTask(response);
@@ -109,38 +118,49 @@ export class FlowableWorkQueueService {
     }
   }
 
-
   async completeTask(taskId: string, data: { notes?: string }): Promise<void> {
     try {
       const completionRequest: FlowableTaskCompletionRequest = {
         variables: {
-          notes: data.notes || ''
-        }
+          notes: data.notes || '',
+        },
       };
 
-      await apiClient.post(`${this.baseUrl}/${taskId}/complete`, completionRequest);
+      await apiClient.post(
+        `${this.baseUrl}/${taskId}/complete`,
+        completionRequest,
+      );
     } catch (error: any) {
       throw this.handleFlowableError(error, `complete task ${taskId}`);
     }
   }
 
-
   async getTaskDetails(taskId: string): Promise<UnifiedWorkQueueTask> {
     try {
-      const response = await apiClient.get<FlowableTask>(`${this.baseUrl}/${taskId}`);
+      const response = await apiClient.get<FlowableTask>(
+        `${this.baseUrl}/${taskId}`,
+      );
       return this.transformFlowableTask(response);
     } catch (error: any) {
       throw this.handleFlowableError(error, `get task details for ${taskId}`);
     }
   }
 
-
-  private transformFlowableTask(flowableTask: any, candidateGroup?: string): UnifiedWorkQueueTask {
+  private transformFlowableTask(
+    flowableTask: any,
+    candidateGroup?: string,
+  ): UnifiedWorkQueueTask {
     // Extract PostgreSQL task ID from variables, fallback to Flowable ID
-    const postgresTaskId = flowableTask.variables?.postgres_task_id || 
-                           flowableTask.processVariables?.postgresTaskId ||
-                           flowableTask.variables?.taskId;
-    
+    const postgresTaskId =
+      flowableTask.variables?.postgres_task_id ||
+      flowableTask.processVariables?.postgresTaskId ||
+      flowableTask.variables?.taskId;
+
+    const postgresCaseId =
+      flowableTask.variables?.postgres_case_id ||
+      flowableTask.processVariables?.caseId ||
+      flowableTask.variables?.caseId;
+
     return {
       id: postgresTaskId || flowableTask.id, // Use PostgreSQL task ID for operations
       taskId: postgresTaskId || flowableTask.id,
@@ -150,7 +170,10 @@ export class FlowableWorkQueueService {
 
       assignee: flowableTask.assignee,
       assigneeName: flowableTask.assignee,
-      candidateGroup: candidateGroup || flowableTask.candidateGroup || flowableTask.candidateGroups?.[0],
+      candidateGroup:
+        candidateGroup ||
+        flowableTask.candidateGroup ||
+        flowableTask.candidateGroups?.[0],
 
       status: this.mapFlowableStatus(flowableTask),
       priority: this.mapFlowablePriority(flowableTask.priority),
@@ -159,22 +182,28 @@ export class FlowableWorkQueueService {
       dueDate: flowableTask.dueDate,
 
       processInstanceId: flowableTask.processInstanceId || '',
-      caseId: flowableTask.variables?.postgres_case_id || flowableTask.processVariables?.caseId,
+      caseId: postgresCaseId,
 
-      flowableData: flowableTask
+      flowableData: flowableTask,
     };
   }
 
-
-  private mapFlowableStatus(task: any): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' {
+  private mapFlowableStatus(
+    task: any,
+  ): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' {
     const taskStatus = task.variables?.task_status;
     if (taskStatus) {
       switch (taskStatus) {
-        case 'STATUS_01_UNASSIGNED': return 'UNASSIGNED';
-        case 'STATUS_10_ASSIGNED': return 'ASSIGNED';
-        case 'STATUS_20_IN_PROGRESS': return 'IN_PROGRESS';
-        case 'STATUS_30_COMPLETED': return 'COMPLETED';
-        case 'STATUS_21_BLOCKED': return 'SUSPENDED';
+        case 'STATUS_01_UNASSIGNED':
+          return 'UNASSIGNED';
+        case 'STATUS_10_ASSIGNED':
+          return 'ASSIGNED';
+        case 'STATUS_20_IN_PROGRESS':
+          return 'IN_PROGRESS';
+        case 'STATUS_30_COMPLETED':
+          return 'COMPLETED';
+        case 'STATUS_21_BLOCKED':
+          return 'SUSPENDED';
       }
     }
 
@@ -184,35 +213,46 @@ export class FlowableWorkQueueService {
     return 'IN_PROGRESS';
   }
 
-
-  private mapFlowablePriority(priority: number): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
+  private mapFlowablePriority(
+    priority: number,
+  ): 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH' {
     if (priority >= 90) return 'BREACH';
     if (priority >= 70) return 'CRITICAL';
     if (priority >= 50) return 'URGENT';
     return 'NEW';
   }
 
-
   private handleFlowableError(error: any, operation: string): FlowableError {
     return FlowableErrorHandler.parseError(error, operation);
   }
 
-
-  getCandidateGroups(isInvestigator?: boolean): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
+  getCandidateGroups(
+    isInvestigator?: boolean,
+  ): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
     const allGroups = [
-      { value: WorkQueueCandidateGroup.INVESTIGATIONS, label: 'Investigations Queue' },
-      { value: WorkQueueCandidateGroup.INVESTIGATORS, label: 'Investigators Queue' },
-      { value: WorkQueueCandidateGroup.SUPERVISORS, label: 'Supervisors Queue' }
+      {
+        value: WorkQueueCandidateGroup.INVESTIGATIONS,
+        label: 'Investigations Queue',
+      },
+      {
+        value: WorkQueueCandidateGroup.INVESTIGATORS,
+        label: 'Investigators Queue',
+      },
+      {
+        value: WorkQueueCandidateGroup.SUPERVISORS,
+        label: 'Supervisors Queue',
+      },
     ];
-    
+
     // Filter to investigations and investigators queues for investigators
     if (isInvestigator) {
-      return allGroups.filter(group => 
-        group.value === WorkQueueCandidateGroup.INVESTIGATIONS || 
-        group.value === WorkQueueCandidateGroup.INVESTIGATORS
+      return allGroups.filter(
+        (group) =>
+          group.value === WorkQueueCandidateGroup.INVESTIGATIONS ||
+          group.value === WorkQueueCandidateGroup.INVESTIGATORS,
       );
     }
-    
+
     return allGroups;
   }
 }
