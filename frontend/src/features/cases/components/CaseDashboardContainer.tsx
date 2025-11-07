@@ -34,11 +34,9 @@ const CaseDashboardContainer: React.FC = () => {
         onAbandonCase={dashboardActions.handleAbandonCase}
         onSuspendCase={dashboardActions.handleSuspendCase}
         onResumeCase={dashboardActions.handleResumeCase}
-        onRejectCase={dashboardActions.handleRejectCase}
         onApproveCase={dashboardActions.handleApproveCase}
         onApproveCaseCreation={dashboardActions.handleApproveCaseCreation}
         onRejectCaseCreation={dashboardActions.handleRejectCaseCreation}
-        onReturnForReview={dashboardActions.handleReturnForReview}
         onApproveCaseReopen={dashboardActions.handleApproveCaseReopen}
         onRejectCaseReopen={dashboardActions.handleRejectCaseReopen}
       />
