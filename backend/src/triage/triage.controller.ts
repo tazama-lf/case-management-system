@@ -294,7 +294,7 @@ export class TriageController {
   }
 
   @Get(':alertId')
-  @RequireAlertTriageRole()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get alert details',
     description: 'Retrieve detailed information about a specific alert',

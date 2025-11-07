@@ -91,7 +91,7 @@ model AuditLog {
 
 model Alert {
   alert_id           String             @id @default(uuid()) @db.Uuid
-  tenant_id          String             @db.Uuid
+  tenant_id          String             
   priority           Priority?          @default(NEW)
   priority_score     Float?
   alert_type         AlertType?
@@ -114,7 +114,7 @@ model Case {
   case_id              String           @id @default(uuid()) @db.Uuid
   case_creator_user_id String           @db.Uuid
   case_owner_user_id   String?          @db.Uuid
-  tenant_id            String           @db.Uuid
+  tenant_id            String           
   status               CaseStatus
   priority             Priority         @default(NEW)
   created_at           DateTime         @default(now()) @db.Timestamp(6)
@@ -175,7 +175,7 @@ model Evidence {
   evidence_id      String   @id @default(uuid()) @db.Uuid
   task_id          String   @db.Uuid
   uploader_user_id String   @db.Uuid
-  tenant_id        String   @db.Uuid
+  tenant_id        String   
   name             String   @db.VarChar(30)
   description      String   @db.VarChar(100)
   type             String   @db.VarChar(30)
@@ -296,7 +296,7 @@ model WorkQueue {
   work_queue_id      String                    @id @default(uuid()) @db.Uuid
   name               String                    @db.VarChar(100)
   description        String?                   @db.Text
-  tenant_id          String                    @db.Uuid
+  tenant_id          String                    
   is_active          Boolean                   @default(true)
   created_by_user_id String                    @db.Uuid
   created_at         DateTime                  @default(now()) @db.Timestamp(6)
@@ -416,7 +416,7 @@ enum DeliveryStatus {
 model UserNotificationPreference {
   preference_id        String              @id @default(uuid()) @db.Uuid
   user_id              String              @unique @db.Uuid
-  tenant_id            String              @db.Uuid
+  tenant_id            String              
   email_enabled        Boolean             @default(true)
   in_app_enabled       Boolean             @default(true)
   sms_enabled          Boolean             @default(false)
@@ -435,7 +435,7 @@ model UserNotificationPreference {
 model NotificationLog {
   notification_log_id String              @id @default(uuid()) @db.Uuid
   user_id             String              @db.Uuid
-  tenant_id           String              @db.Uuid
+  tenant_id           String              
   task_id             String?             @db.Uuid
   case_id             String?             @db.Uuid
   notification_type   NotificationType
