@@ -37,7 +37,7 @@ export interface CaseDashboardState {
 }
 
 export const useCaseDashboard = () => {
-  const { hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
+  const { hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { error } = useToast();
   const { params, navigate } = useDynamicRoute();
 
@@ -62,11 +62,9 @@ export const useCaseDashboard = () => {
   const [isAbandonOpen, setIsAbandonOpen] = useState(false);
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
-  const [isRejectOpen, setIsRejectOpen] = useState(false);
-  const [isApproveOpen, setIsApproveOpen] = useState(false);
+  const [isCaseClosureDecisionOpen, setIsCaseClosureDecisionOpen] = useState(false);
   const [isApproveCreationOpen, setIsApproveCreationOpen] = useState(false);
   const [isRejectCreationOpen, setIsRejectCreationOpen] = useState(false);
-  const [isReturnForReviewOpen, setIsReturnForReviewOpen] = useState(false);
   const [isApproveReopenOpen, setIsApproveReopenOpen] = useState(false);
   const [isRejectReopenOpen, setIsRejectReopenOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
@@ -81,7 +79,7 @@ export const useCaseDashboard = () => {
 
     try {
       let response;
-      const supervisorOrAdmin = hasSupervisorRole() || hasAdminRole();
+      const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
       const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
     
       if (investigatorOnly) {
@@ -112,7 +110,7 @@ export const useCaseDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasAdminRole]);
+  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -222,12 +220,12 @@ export const useCaseDashboard = () => {
 
     handleRejectCase: (row: CaseRow) => {
       setSelectedRow(row);
-      setIsRejectOpen(true);
+      setIsCaseClosureDecisionOpen(true);
     },
 
     handleApproveCase: (row: CaseRow) => {
       setSelectedRow(row);
-      setIsApproveOpen(true);
+      setIsCaseClosureDecisionOpen(true);
     },
 
     handleApproveCaseCreation: (row: CaseRow) => {
@@ -238,11 +236,6 @@ export const useCaseDashboard = () => {
     handleRejectCaseCreation: (row: CaseRow) => {
       setSelectedRow(row);
       setIsRejectCreationOpen(true);
-    },
-
-    handleReturnForReview: (row: CaseRow) => {
-      setSelectedRow(row);
-      setIsReturnForReviewOpen(true);
     },
 
     handleApproveCaseReopen: (row: CaseRow) => {
@@ -279,11 +272,9 @@ export const useCaseDashboard = () => {
     isAbandonOpen,
     isSuspendOpen,
     isResumeOpen,
-    isRejectOpen,
-    isApproveOpen,
+    isCaseClosureDecisionOpen,
     isApproveCreationOpen,
     isRejectCreationOpen,
-    isReturnForReviewOpen,
     isApproveReopenOpen,
     isRejectReopenOpen,
     selectedRow,
@@ -301,11 +292,9 @@ export const useCaseDashboard = () => {
     setIsAbandonOpen,
     setIsSuspendOpen,
     setIsResumeOpen,
-    setIsRejectOpen,
-    setIsApproveOpen,
+    setIsCaseClosureDecisionOpen,
     setIsApproveCreationOpen,
     setIsRejectCreationOpen,
-    setIsReturnForReviewOpen,
     setIsApproveReopenOpen,
     setIsRejectReopenOpen,
     setSelectedRow,
@@ -316,7 +305,7 @@ export const useCaseDashboard = () => {
   };
 
   
-  const supervisorOrAdmin = hasSupervisorRole() || hasAdminRole();
+  const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
   const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
 
   const dashboardState: CaseDashboardState = {

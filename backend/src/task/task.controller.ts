@@ -297,11 +297,11 @@ export class TaskController {
   }
 
   @Patch(':taskId/assign')
-  @RequireSupervisorRole()
+  @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Assign a task to an investigator',
-    description: 'Assigns an unassigned or previously assigned task to an investigator. Only supervisors can use this endpoint.',
+    description: 'Assigns an unassigned or previously assigned task to an investigator. Supervisors and investigators can use this endpoint.',
   })
   @ApiParam({
     name: 'taskId',
@@ -356,7 +356,7 @@ export class TaskController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden - User lacks SUPERVISOR role',
+    description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
   })
   @ApiResponse({
     status: 404,
