@@ -775,57 +775,43 @@ export class TriageService {
   }
 
   async createCaseWithInvestigationTask(
-    alertType: AlertType,
-    userId: string,
-    tenantId: string,
-    parentCaseId: string,
-    priority: Priority,
+      alertType: AlertType,
+      userId: string,
+      tenantId: string,
+      parentCaseId: string,
+      priority: Priority,
   ): Promise<unknown> {
     try {
       const newCase = await this.caseCreationService.createCase(
-        {
-          caseCreatorUserId: userId,
-          caseOwnerUserId: userId,
-          tenantId,
-          priority: priority,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          parentId: parentCaseId,
-          caseType: alertType as CaseType,
-          caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-        },
-        userId,
-      );
-
-      const investigateTask = await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate case',
-          description: `Investigate child case ${newCase.case_id} (${alertType}) linked to ${parentCaseId}`,
-          candidateGroup: 'investigations',
-        },
-        userId,
-        this.audit,
-        this.logger,
+          {
+            caseCreatorUserId: userId,
+            caseOwnerUserId: userId,
+            tenantId,
+            priority: priority,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            parentId: parentCaseId,
+            caseType: alertType as CaseType,
+            caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          },
+          userId,
       );
 
       await this.audit.logAction({
         userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'Case',
-        actionPerformed: `Created ${alertType} case ${newCase.case_id} linked to parent ${parentCaseId} with investigation task ${investigateTask.task_id}`,
+        actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,
         outcome: 'SUCCESS',
       });
 
       this.logger.log(
-        `Child case ${newCase.case_id} (${alertType}) created and investigation task ${investigateTask.task_id} queued for investigations`,
-        TriageService.name,
+          `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
+          TriageService.name,
       );
 
       return {
         caseId: newCase.case_id,
-        investigationTaskId: investigateTask.task_id,
-        message: 'Case created and investigation task queued for investigations',
+        message: 'Child case created, BPMN will create investigation task',
       };
     } catch (error) {
       this.logger.error(`Failed to create ${alertType} case. Error: ${error.message}`, error.stack);
@@ -834,13 +820,13 @@ export class TriageService {
   }
 
   async createInvestigationTask(
-    caseId: string,
-    userId: string,
-    taskId: string,
-    investigateTaskDesc: string,
-    triageTaskDesc: string,
-    priority: Priority,
-    alertType?: AlertType,
+      caseId: string,
+      userId: string,
+      taskId: string,
+      investigateTaskDesc: string,
+      triageTaskDesc: string,
+      priority: Priority,
+      alertType?: AlertType,
   ): Promise<unknown> {
     try {
       const existingCase = await this.prisma.case.findUnique({
@@ -851,24 +837,25 @@ export class TriageService {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
 
+      // Complete the triage task
       await this.taskService.updateTask(
-        taskId,
-        { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
-        userId,
-        this.audit,
+          taskId,
+          { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
+          userId,
+          this.audit,
       );
 
       const createdTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate case',
-          description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
-          candidateGroup: 'investigations',
-        },
-        userId,
-        this.audit,
-        this.logger,
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate case',
+            description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
+            candidateGroup: 'investigations',
+          },
+          userId,
+          this.audit,
+          this.logger,
       );
 
       await this.caseCreationService.updateCaseStatus(caseId, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId, {
@@ -877,26 +864,31 @@ export class TriageService {
       });
 
       this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          existingCase.status,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'Triage completed, ready for investigation',
-        ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              existingCase.status,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              'Triage completed, ready for investigation',
+          ),
       );
 
       await this.audit.logAction({
         userId,
         operation: 'INVESTIGATION_TASK_CREATED',
         entityName: 'Task',
-        actionPerformed: `Created task ${createdTask.task_id} for case ${caseId}`,
+        actionPerformed: `Created investigation task ${createdTask.task_id} for case ${caseId} after AI triage`,
         outcome: 'SUCCESS',
       });
 
       const updatedCase = await this.prisma.case.findUnique({
         where: { case_id: caseId },
       });
+
+      this.logger.log(
+          `AI triage completed for case ${caseId}. Investigation task ${createdTask.task_id} created.`,
+          TriageService.name,
+      );
 
       return updatedCase;
     } catch (error) {
