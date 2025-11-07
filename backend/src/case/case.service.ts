@@ -133,32 +133,10 @@ export class CaseService {
         return { case: createdCase, alert: updatedAlert };
       });
 
-      let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
-
-      if (needsApproval) {
-        approvalTask = await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Approve Case Creation',
-              description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
-              candidateGroup: 'supervisors',
-            },
-            userId,
-            this.auditLogService,
-            this.logger,
-        );
-
-        this.logger.log(
-            `[ManualCase] Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
-            CaseService.name,
-        );
-      } else {
-        this.logger.log(
-            `[ManualCase] Case ${result.case.case_id} auto-approved by supervisor. BPMN will create investigation task automatically.`,
-            CaseService.name,
-        );
-      }
+      this.logger.log(
+          `[ManualCase] Case ${result.case.case_id} created. BPMN will create ${needsApproval ? 'approval task' : 'investigation task'} automatically.`,
+          CaseService.name,
+      );
 
       this.logger.log(`[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`, CaseService.name);
 
@@ -166,7 +144,7 @@ export class CaseService {
         userId,
         operation: 'createManualCase',
         entityName: CaseService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved, BPMN will create investigation task)'}`,
+        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval, BPMN will create approval task)' : ' (auto-approved, BPMN will create investigation task)'}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -174,8 +152,9 @@ export class CaseService {
         success: true,
         case: result.case,
         alert: result.alert,
-        approvalTask,
-        investigateTask: null,
+        message: needsApproval
+            ? 'Case created and pending approval. Approval task will be created by workflow engine.'
+            : 'Case created and ready for investigation. Investigation task will be created by workflow engine.',
       };
     } catch (err) {
       this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
@@ -278,57 +257,42 @@ export class CaseService {
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      const investigateTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate case',
-          description: `Investigation task for approved case ${caseId}`,
-          candidateGroup: 'investigations', // ✓ Goes to investigations work queue after approval
-        },
-        supervisorId,
-        this.auditLogService,
-        this.logger,
-      );
-
-      this.logger.log(
-        `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId} → INVESTIGATIONS queue (after approval)`,
-        CaseService.name,
+      this.eventEmitter.emit(
+          'task.completed',
+          new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
+            creationApproval: 'approve',
+            creationComments: 'Case creation approved by supervisor',
+          }),
       );
 
       this.eventEmitter.emit(
-        'task.completed',
-        new TaskCompletedEvent(result.approvedTask.task_id, caseId, supervisorId, {
-          creationApproval: 'approve',
-          creationComments: 'Case creation approved by supervisor',
-        }),
-      );
-
-      this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'Case creation approved by supervisor',
-        ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              'Case creation approved by supervisor',
+          ),
       );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseService.name,
-        actionPerformed: `Approved case creation for case ${caseId}, created investigation task ${investigateTask.task_id}`,
+        actionPerformed: `Approved case creation for case ${caseId}. BPMN will create investigation task.`,
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`[ApproveCaseCreation] Case creation approved successfully for case ${caseId}`, CaseService.name);
+      this.logger.log(
+          `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. BPMN will create investigation task automatically.`,
+          CaseService.name,
+      );
 
       return {
         success: true,
         case: result.case,
         approvedTask: result.approvedTask,
-        investigateTask,
+        message: 'Case creation approved. Investigation task will be created by workflow engine.',
       };
     } catch (error) {
       this.logger.error(`[ApproveCaseCreation] Failed to approve case creation: ${error.message}`, error.stack, CaseService.name);
@@ -432,7 +396,6 @@ export class CaseService {
     }
   }
 
-  //close case needs testing
   async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string) {
     try {
       this.logger.log(`User ${userId} attempting to close case ${caseId}`, CaseService.name);
@@ -581,80 +544,97 @@ export class CaseService {
         return { updatedCase };
       });
 
-      const approvalTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Approve case closure',
-          description: `Review and approve case closure with recommended outcome: ${dto.recommendedOutcome}`,
-          candidateGroup: 'supervisors',
-        },
-        userId,
-        this.auditLogService,
-        this.logger,
-      );
-
-      await this.prismaService.comment.create({
-        data: {
-          user_id: userId,
-          task_id: approvalTask.task_id,
-          note: JSON.stringify({
+      this.eventEmitter.emit(
+          'task.completed',
+          new TaskCompletedEvent(investigationTask.task_id, caseId, userId, {
+            investigationAction: 'requestClosure',
             recommendedOutcome: dto.recommendedOutcome,
             finalNotes: dto.finalNotes,
             recommendations: dto.recommendations,
-            submittedBy: userId,
-            submittedAt: new Date(),
           }),
-        },
-      });
-
-      this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_20_IN_PROGRESS,
-          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-          `Case closure requested with outcome: ${dto.recommendedOutcome}`,
-        ),
       );
 
-      try {
-        await this.notificationService.sendGroupNotification({
-          candidateGroup: 'supervisors',
-          type: 'CASE_CLOSURE_PENDING',
-          message: `Case ${caseId} submitted for closure approval`,
-          metadata: {
-            caseId,
-            recommendedOutcome: dto.recommendedOutcome,
-            submittedBy: userId,
-            approvalTaskId: approvalTask.task_id,
-          },
-        });
-      } catch (notificationError) {
-        this.logger.warn(`Failed to send supervisor notification: ${notificationError.message}`, CaseService.name);
-      }
+      this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_20_IN_PROGRESS,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+          ),
+      );
+
+      setTimeout(async () => {
+        try {
+          const tasks = await this.taskService.getTasksByCaseId(caseId);
+          const approvalTask = tasks.find(
+              (t) => (t.name === 'Approve Case Closure' || t.name === 'Approve case closure') &&
+                  t.status === TaskStatus.STATUS_01_UNASSIGNED
+          );
+
+          if (approvalTask) {
+            await this.prismaService.comment.create({
+              data: {
+                user_id: userId,
+                task_id: approvalTask.task_id,
+                note: JSON.stringify({
+                  recommendedOutcome: dto.recommendedOutcome,
+                  finalNotes: dto.finalNotes,
+                  recommendations: dto.recommendations,
+                  submittedBy: userId,
+                  submittedAt: new Date(),
+                }),
+              },
+            });
+
+            this.logger.log(
+                `[CloseCase] Added closure metadata to BPMN-created approval task ${approvalTask.task_id}`,
+                CaseService.name,
+            );
+
+            // Send notification to supervisors
+            try {
+              await this.notificationService.sendGroupNotification({
+                candidateGroup: 'supervisors',
+                type: 'CASE_CLOSURE_PENDING',
+                message: `Case ${caseId} submitted for closure approval`,
+                metadata: {
+                  caseId,
+                  recommendedOutcome: dto.recommendedOutcome,
+                  submittedBy: userId,
+                  approvalTaskId: approvalTask.task_id,
+                },
+              });
+            } catch (notificationError) {
+              this.logger.warn(`Failed to send supervisor notification: ${notificationError.message}`, CaseService.name);
+            }
+          } else {
+            this.logger.warn(
+                `[CloseCase] Approval task not found after 3 seconds. It may still be created by BPMN.`,
+                CaseService.name,
+            );
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to add closure metadata to approval task: ${error.message}`, CaseService.name);
+        }
+      }, 3000);
 
       await this.auditLogService.logAction({
         userId,
         operation: 'closeCase',
         entityName: CaseService.name,
-        actionPerformed: `Case ${caseId} closed and submitted for approval with outcome: ${dto.recommendedOutcome}`,
+        actionPerformed: `Case ${caseId} closed and submitted for approval with outcome: ${dto.recommendedOutcome}. BPMN will create approval task.`,
         outcome: Outcome.SUCCESS,
       });
 
       return {
-        message: 'Case closed successfully and submitted for approval',
+        message: 'Case closed successfully and submitted for approval. Approval task will be created by workflow engine.',
         closed_case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
           updated_at: result.updatedCase.updated_at,
         },
-        approval_task: {
-          task_id: approvalTask.task_id,
-          name: approvalTask.name,
-          status: approvalTask.status,
-          assigned_to: 'Supervisors',
-        },
+        approval_task_note: 'Approval task will be created automatically by the workflow engine',
       };
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
@@ -1486,12 +1466,12 @@ export class CaseService {
     return missing;
   }
 
-  //reject case closure needs testing
+
   async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseService.name);
 
-  await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+      await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
 
       if (!comments || comments.trim().length < 20) {
         const errorMsg = 'Rejection comments must be at least 20 characters';
@@ -1541,7 +1521,7 @@ export class CaseService {
         const approvalTask = await tx.task.findFirst({
           where: {
             case_id: caseId,
-            name: 'Approve case closure',
+            name: { in: ['Approve Case Closure', 'Approve case closure'] },
             assigned_user_id: supervisorId,
             status: {
               in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
@@ -1573,18 +1553,26 @@ export class CaseService {
         return { updatedCase, completedTask };
       });
 
+      this.eventEmitter.emit(
+          'task.completed',
+          new TaskCompletedEvent(result.completedTask.task_id, caseId, supervisorId, {
+            approvalDecision: 'reject',
+            supervisorComments: comments,
+          }),
+      );
+
       const newInvestigationTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: TaskStatus.STATUS_10_ASSIGNED,
-          assignedUserId: originalInvestigatorId,
-          name: 'Investigate Case',
-          description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
-          candidateGroup: 'investigations',
-        },
-        supervisorId,
-        this.auditLogService,
-        this.logger,
+          {
+            caseId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assignedUserId: originalInvestigatorId,
+            name: 'Investigate Case',
+            description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
+            candidateGroup: 'investigations',
+          },
+          supervisorId,
+          this.auditLogService,
+          this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -1596,13 +1584,13 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(
-          caseId,
-          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-          CaseStatus.STATUS_20_IN_PROGRESS,
-          `Case closure rejected and returned to investigation: ${comments}`,
-        ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+              caseId,
+              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+              CaseStatus.STATUS_20_IN_PROGRESS,
+              `Case closure rejected and returned to investigation: ${comments}`,
+          ),
       );
 
       try {
@@ -1630,8 +1618,8 @@ export class CaseService {
       });
 
       this.logger.log(
-        `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
-        CaseService.name,
+          `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
+          CaseService.name,
       );
 
       return {
