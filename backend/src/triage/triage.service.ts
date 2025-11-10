@@ -837,25 +837,11 @@ export class TriageService {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
 
-      // Complete the triage task
       await this.taskService.updateTask(
           taskId,
           { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
           userId,
           this.audit,
-      );
-
-      const createdTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
-            candidateGroup: 'investigations',
-          },
-          userId,
-          this.audit,
-          this.logger,
       );
 
       await this.caseCreationService.updateCaseStatus(caseId, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId, {
@@ -869,15 +855,15 @@ export class TriageService {
               caseId,
               existingCase.status,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Triage completed, ready for investigation',
+              'Triage completed, ready for investigation. BPMN will create investigation task.',
           ),
       );
 
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_CREATED',
+        operation: 'INVESTIGATION_TASK_TRIGGERED',
         entityName: 'Task',
-        actionPerformed: `Created investigation task ${createdTask.task_id} for case ${caseId} after AI triage`,
+        actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
         outcome: 'SUCCESS',
       });
 
@@ -886,21 +872,24 @@ export class TriageService {
       });
 
       this.logger.log(
-          `AI triage completed for case ${caseId}. Investigation task ${createdTask.task_id} created.`,
+          `AI triage completed for case ${caseId}. BPMN will create investigation task automatically.`,
           TriageService.name,
       );
 
-      return updatedCase;
+      return {
+        case: updatedCase,
+        message: 'Triage completed. Investigation task will be created by workflow engine.',
+      };
     } catch (error) {
-      this.logger.error(`Failed to create investigation task for case ${caseId}. Error: ${error.message}`, error.stack);
+      this.logger.error(`Failed to complete triage for case ${caseId}. Error: ${error.message}`, error.stack);
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_CREATION_FAILED',
+        operation: 'INVESTIGATION_TASK_TRIGGER_FAILED',
         entityName: 'Task',
-        actionPerformed: `Failed to create investigation task for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to complete triage for case ${caseId}: ${error.message}`,
         outcome: 'FAILURE',
       });
-      throw new InternalServerErrorException('Failed to create investigation task');
+      throw new InternalServerErrorException('Failed to complete triage');
     }
   }
 
@@ -960,7 +949,7 @@ export class TriageService {
     this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
     return {
       priorityScore: 0.37,
-      alertType: AlertType.FRAUD_AND_AML,
+      alertType: AlertType.AML,
       confidence_per: 97,
       isTruePositive: true,
     };
