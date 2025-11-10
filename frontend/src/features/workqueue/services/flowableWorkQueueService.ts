@@ -257,7 +257,8 @@ export class FlowableWorkQueueService {
           group.value === WorkQueueCandidateGroup.INVESTIGATORS,
       );
     }
-    return allGroups.slice(0, 2);
+    // return allGroups.slice(0, 2);
+    return allGroups;
   }
 }
 

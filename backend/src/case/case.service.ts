@@ -405,7 +405,7 @@ export class CaseService {
           case_id: caseId,
           OR: [
             { case_owner_user_id: userId },
-            { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case'] } } } },
+            { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case', 'investigate case'] } } } },
           ],
         },
         include: {
@@ -445,7 +445,7 @@ export class CaseService {
         });
       }
 
-      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case');
+      const investigationTask = caseData.tasks.find((task) => task.name === 'Investigate Case' || task.name === 'Investigate case' || task.name === 'investigate case');
 
       if (!investigationTask) {
         const errorMsg = `Case closure failed: Investigation task not found for case ${caseId}`;
@@ -481,7 +481,7 @@ export class CaseService {
       }
 
       if (investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-        const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS`;
+        const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_30_COMPLETED`;
         await this.auditLogService.logAction({
           userId,
           operation: 'closeCase',
@@ -490,7 +490,7 @@ export class CaseService {
           outcome: Outcome.FAILURE,
         });
         throw new ConflictException({
-          message: 'Investigation task is not in progress',
+          message: 'Investigation task is not completed',
           currentStatus: investigationTask.status,
           requiredStatus: TaskStatus.STATUS_30_COMPLETED,
           taskId: investigationTask.task_id,
