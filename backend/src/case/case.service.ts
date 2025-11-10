@@ -531,12 +531,12 @@ export class CaseService {
           },
         });
 
-        if (dto.finalNotes || dto.recommendations) {
+        if (dto.finalNotes) {
           await tx.comment.create({
             data: {
               user_id: userId,
               case_id: caseId,
-              note: `Final Investigation Summary:\n${dto.finalNotes || ''}\n\nRecommendations:\n${dto.recommendations || ''}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              note: `Final Investigation Summary:\n${dto.finalNotes || ''}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
             },
           });
         }
@@ -549,8 +549,7 @@ export class CaseService {
           new TaskCompletedEvent(investigationTask.task_id, caseId, userId, {
             investigationAction: 'requestClosure',
             recommendedOutcome: dto.recommendedOutcome,
-            finalNotes: dto.finalNotes,
-            recommendations: dto.recommendations,
+            finalNotes: dto.finalNotes
           }),
       );
 
@@ -580,7 +579,6 @@ export class CaseService {
                 note: JSON.stringify({
                   recommendedOutcome: dto.recommendedOutcome,
                   finalNotes: dto.finalNotes,
-                  recommendations: dto.recommendations,
                   submittedBy: userId,
                   submittedAt: new Date(),
                 }),
@@ -675,12 +673,8 @@ export class CaseService {
       errors.push(`Invalid recommended outcome. Must be one of: ${validOutcomes.join(', ')}`);
     }
 
-    if (!dto.finalNotes || dto.finalNotes.trim().length < 20) {
+    if (!dto.finalNotes || dto.finalNotes.trim().length < 5) {
       errors.push('Final notes are required and must be at least 20 characters');
-    }
-
-    if (dto.recommendations && dto.recommendations.trim().length < 10) {
-      errors.push('Recommendations must be at least 10 characters if provided');
     }
 
     return errors;

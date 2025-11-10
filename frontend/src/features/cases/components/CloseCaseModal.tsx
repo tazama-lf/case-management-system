@@ -19,8 +19,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<CloseCaseDto>({
     recommendedOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
-    finalNotes: '',
-    recommendations: ''
+    finalNotes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -28,12 +27,12 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.finalNotes?.trim()) {
-      newErrors.finalNotes = 'Final investigation notes are required';
-    }
+    const trimmed = formData.finalNotes?.trim() ?? '';
 
-    if (!formData.recommendations?.trim()) {
-      newErrors.recommendations = 'Recommendations are required';
+    if (!trimmed) {
+      newErrors.finalNotes = 'Final investigation notes are required';
+    } else if (trimmed.length < 5) {
+      newErrors.finalNotes = 'Final notes must be at least 5 characters';
     }
 
     setErrors(newErrors);
@@ -77,7 +76,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Complete Case Investigation</h3>
@@ -97,9 +96,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         <form onSubmit={handleSubmit} className="p-6">
-          {}
+          { }
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Case Closure Workflow</h4>
             <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
@@ -111,7 +110,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             </ul>
           </div>
 
-          {}
+          { }
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Recommended Outcome <span className="text-red-500">*</span>
@@ -134,7 +133,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             </p>
           </div>
 
-          {}
+          { }
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Final Investigation Notes <span className="text-red-500">*</span>
@@ -150,13 +149,18 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               placeholder="Provide detailed notes about your investigation findings..."
               disabled={isSubmitting}
             />
+            <div className="mt-1 flex justify-between">
+              <p className="text-xs text-gray-500">
+                {formData.finalNotes?.length}/5 characters minimum
+              </p>
+            </div>
             {errors.finalNotes && (
               <p className="mt-1 text-sm text-red-600">{errors.finalNotes}</p>
             )}
           </div>
 
-          {}
-          <div className="mb-6">
+          { }
+          {/* <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Recommendations <span className="text-red-500">*</span>
             </label>
@@ -174,16 +178,16 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             {errors.recommendations && (
               <p className="mt-1 text-sm text-red-600">{errors.recommendations}</p>
             )}
-          </div>
+          </div> */}
 
-          {}
+          { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
 
-          {}
+          { }
           <div className="flex justify-end gap-3">
             <button
               type="button"
