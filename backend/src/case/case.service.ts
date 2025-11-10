@@ -530,7 +530,7 @@ export class CaseService {
         });
       }
 
-      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS) {
+      if (investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
         const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS`;
         await this.auditLogService.logAction({
           userId,
@@ -542,7 +542,7 @@ export class CaseService {
         throw new ConflictException({
           message: 'Investigation task is not in progress',
           currentStatus: investigationTask.status,
-          requiredStatus: TaskStatus.STATUS_20_IN_PROGRESS,
+          requiredStatus: TaskStatus.STATUS_30_COMPLETED,
           taskId: investigationTask.task_id,
         });
       }
@@ -1513,7 +1513,7 @@ export class CaseService {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseService.name);
 
-  await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+      await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
 
       if (!comments || comments.trim().length < 20) {
         const errorMsg = 'Rejection comments must be at least 20 characters';
@@ -1691,7 +1691,7 @@ export class CaseService {
 
   async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
     try {
-  await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+      await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
 
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
@@ -1993,11 +1993,7 @@ export class CaseService {
     if (!existingCase.case_type) missing.push('case_type');
     return missing;
   }
-  private async validateApprovalPreconditions(
-    caseId: string,
-    supervisorId?: string,
-    options: { autoClaimApprovalTask?: boolean } = {},
-  ) {
+  private async validateApprovalPreconditions(caseId: string, supervisorId?: string, options: { autoClaimApprovalTask?: boolean } = {}) {
     const caseData = await this.prismaService.case.findUnique({
       where: { case_id: caseId },
       include: { tasks: true },
@@ -2025,8 +2021,7 @@ export class CaseService {
       options.autoClaimApprovalTask &&
       Boolean(supervisorId) &&
       approvalValidation.approvalTask &&
-      (approvalValidation.approvalTask.status === TaskStatus.STATUS_01_UNASSIGNED ||
-        !approvalValidation.approvalTask.assigned_user_id) &&
+      (approvalValidation.approvalTask.status === TaskStatus.STATUS_01_UNASSIGNED || !approvalValidation.approvalTask.assigned_user_id) &&
       approvalValidation.errors.some((err) => err.toLowerCase().includes('must be claimed'));
 
     if (shouldAttemptAutoClaim) {

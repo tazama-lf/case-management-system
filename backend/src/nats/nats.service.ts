@@ -30,7 +30,7 @@ export class NatsStartupService implements OnModuleInit {
   }
 
   async handleMessage(req: AlertMessageDto) {
-    const tenantId = req.transaction.TenantId ?? 'a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1';
+    const tenantId = req.transaction.TenantId ?? 'DEFAULT';
     const systemId = this.configService.get<string>('SYSTEM_UUID') || 'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9';
     this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
 
