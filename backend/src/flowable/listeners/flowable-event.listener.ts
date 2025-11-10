@@ -62,7 +62,12 @@ export class FlowableEventListener {
           FlowableEventListener.name,
       );
 
-      const creatorRole = event.creationType === 'MANUAL' ? 'SUPERVISOR' : 'SYSTEM';
+      const creatorRole = event.creatorRole || (event.creationType === 'MANUAL' ? 'ANALYST' : 'SYSTEM');
+
+      this.logger.log(
+          `[Flowable-CaseCreated] Case ${event.caseId} - creationType: ${event.creationType}, creatorRole: ${creatorRole}, autocloseEligible: ${event.autocloseEligible}`,
+          FlowableEventListener.name,
+      );
 
       const processInstance = await this.flowableService.startProcessInstance(
           'caseManagementProcess',
@@ -78,7 +83,7 @@ export class FlowableEventListener {
       );
 
       this.logger.log(
-          `[Flowable-CaseCreated] Successfully started process ${processInstance.id} for case ${event.caseId}`,
+          `[Flowable-CaseCreated] Successfully started process ${processInstance.id} for case ${event.caseId} with creatorRole: ${creatorRole}`,
           FlowableEventListener.name,
       );
 
@@ -298,38 +303,111 @@ export class FlowableEventListener {
     }
 
     try {
+      this.logger.log(
+          `[TaskStatusChanged] Processing status change for task ${event.taskId} (${event.taskName}): ${event.oldStatus} → ${event.newStatus}`,
+          FlowableEventListener.name
+      );
+
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
+        this.logger.warn(
+            `[TaskStatusChanged] No Flowable process found for case ${event.caseId}`,
+            FlowableEventListener.name
+        );
+        return;
       }
 
       const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
 
-      const flowableTask = flowableTasks.find((t: unknown) => {
+      let flowableTask: any = null;
+
+      for (const t of flowableTasks) {
         const task = t as Record<string, unknown>;
-        const taskVars = (task.variables as unknown[]) || [];
-        const postgresIdVar = taskVars.find((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        }) as Record<string, unknown> | undefined;
-        return postgresIdVar?.value === event.taskId;
-      });
+        const taskVars = await this.flowableService.getTaskVariables(task.id as string);
+
+        if (taskVars.postgres_task_id === event.taskId) {
+          flowableTask = task;
+          break;
+        }
+      }
 
       if (!flowableTask) {
-        throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
+        this.logger.warn(
+            `[TaskStatusChanged] Flowable task not found for PostgreSQL task ${event.taskId}`,
+            FlowableEventListener.name
+        );
+        return;
       }
 
       const taskObj = flowableTask as Record<string, unknown>;
-      await this.flowableService.updateTaskVariable(taskObj.id as string, 'task_status', event.newStatus);
 
-      this.logger.log(
-          `Updated Flowable task ${taskObj.id} status to ${event.newStatus}`,
-          FlowableEventListener.name
-      );
+      // If task is being completed (STATUS_30_COMPLETED), complete it in Flowable
+      if (event.newStatus === TaskStatus.STATUS_30_COMPLETED) {
+        this.logger.log(
+            `[TaskStatusChanged] Task ${event.taskId} is being completed. Completing Flowable task ${taskObj.id}`,
+            FlowableEventListener.name
+        );
+
+        const completionVars: Record<string, string> = {
+          task_completed: 'true',
+          completed_at: new Date().toISOString(),
+          completed_by: event.assignedUserId || 'SYSTEM',
+        };
+
+        // Add completion variables if provided
+        if (event.completionVariables) {
+          Object.entries(event.completionVariables).forEach(([key, value]) => {
+            completionVars[key] = String(value);
+          });
+
+          this.logger.log(
+              `[TaskStatusChanged] Completion variables: ${JSON.stringify(event.completionVariables)}`,
+              FlowableEventListener.name
+          );
+        }
+
+        // Complete the Flowable task
+        await this.flowableService.completeTask(taskObj.id as string, completionVars);
+
+        this.logger.log(
+            `[TaskStatusChanged] ✓ Completed Flowable task ${taskObj.id}. BPMN will now progress to next step.`,
+            FlowableEventListener.name
+        );
+
+        setTimeout(async () => {
+          try {
+            this.logger.log(
+                `[TaskStatusChanged] Syncing BPMN-created tasks for case ${event.caseId}`,
+                FlowableEventListener.name
+            );
+
+            await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id as string);
+
+            this.logger.log(
+                `[TaskStatusChanged] ✓ BPMN task sync completed for case ${event.caseId}`,
+                FlowableEventListener.name
+            );
+          } catch (syncError) {
+            this.logger.error(
+                `[TaskStatusChanged] Failed to sync BPMN tasks: ${syncError.message}`,
+                syncError.stack,
+                FlowableEventListener.name
+            );
+          }
+        }, 2000);
+
+      } else {
+        await this.flowableService.updateTaskVariable(taskObj.id as string, 'task_status', event.newStatus);
+
+        this.logger.log(
+            `[TaskStatusChanged] Updated Flowable task ${taskObj.id} status to ${event.newStatus}`,
+            FlowableEventListener.name
+        );
+      }
     } catch (error) {
       this.logger.error(
-          `Failed to update Flowable task status: ${error.message}`,
+          `[TaskStatusChanged] Failed to update Flowable task status: ${error.message}`,
           error.stack,
           FlowableEventListener.name
       );
@@ -753,4 +831,6 @@ export class FlowableEventListener {
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+
+
 }
