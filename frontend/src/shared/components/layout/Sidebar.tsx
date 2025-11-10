@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
 
     return item.roles.some((role) => {
       switch (role) {
-        case 'alert-triage':
+        case 'CMS_ADMIN':
           return hasAdminRole();
         case 'CMS_INVESTIGATOR':
           return hasInvestigatorRole();

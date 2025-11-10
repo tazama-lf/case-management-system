@@ -52,7 +52,8 @@ const WorkQueueDashboard: React.FC = () => {
 
   // Check if user is investigator only (no supervisor or admin role)
   const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
-  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly);
+  const isSupervisor = hasSupervisorRole() && !hasAdminRole();
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly, isSupervisor);
 
 
   useEffect(() => {

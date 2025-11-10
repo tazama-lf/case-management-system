@@ -228,6 +228,7 @@ export class FlowableWorkQueueService {
 
   getCandidateGroups(
     isInvestigator?: boolean,
+    isSupervisor?: boolean,
   ): Array<{ value: WorkQueueCandidateGroupType; label: string }> {
     const allGroups = [
       {
@@ -244,6 +245,10 @@ export class FlowableWorkQueueService {
       },
     ];
 
+    if (isSupervisor) {
+      return allGroups;
+    }
+
     // Filter to investigations and investigators queues for investigators
     if (isInvestigator) {
       return allGroups.filter(
@@ -252,8 +257,7 @@ export class FlowableWorkQueueService {
           group.value === WorkQueueCandidateGroup.INVESTIGATORS,
       );
     }
-
-    return allGroups;
+    return allGroups.slice(0, 2);
   }
 }
 
