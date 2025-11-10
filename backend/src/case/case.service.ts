@@ -1544,7 +1544,17 @@ export class CaseService {
           },
         });
 
-        return { updatedCase, completedTask };
+        const updatedInvestigationTask = await tx.task.update({
+          where: { task_id: originalInvestigationTask.task_id },
+          data: {
+            status: TaskStatus.STATUS_20_IN_PROGRESS,
+            assigned_user_id: originalInvestigatorId,
+            updated_at: new Date(),
+          },
+        });
+
+
+        return { updatedCase, completedTask, updatedInvestigationTask };
       });
 
       this.eventEmitter.emit(
@@ -1555,27 +1565,27 @@ export class CaseService {
           }),
       );
 
-      const newInvestigationTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId: originalInvestigatorId,
-            name: 'Investigate Case',
-            description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
-            candidateGroup: 'investigations',
-          },
-          supervisorId,
-          this.auditLogService,
-          this.logger,
-      );
+      // const newInvestigationTask = await this.taskService.createTask(
+      //     {
+      //       caseId,
+      //       status: TaskStatus.STATUS_10_ASSIGNED,
+      //       assignedUserId: originalInvestigatorId,
+      //       name: 'Investigate Case',
+      //       description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
+      //       candidateGroup: 'investigations',
+      //     },
+      //     supervisorId,
+      //     this.auditLogService,
+      //     this.logger,
+      // );
 
-      await this.prismaService.comment.create({
-        data: {
-          user_id: supervisorId,
-          task_id: newInvestigationTask.task_id,
-          note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
-        },
-      });
+      // await this.prismaService.comment.create({
+      //   data: {
+      //     user_id: supervisorId,
+      //     task_id: newInvestigationTask.task_id,
+      //     note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
+      //   },
+      // });
 
       this.eventEmitter.emit(
           'case.status.changed',
@@ -1594,7 +1604,7 @@ export class CaseService {
           message: `Your case closure for case ${caseId} was rejected by supervisor`,
           metadata: {
             caseId,
-            taskId: newInvestigationTask.task_id,
+            taskId: originalInvestigationTask.task_id,
             supervisorComments: comments,
             rejectedBy: supervisorId,
           },
@@ -1612,7 +1622,7 @@ export class CaseService {
       });
 
       this.logger.log(
-          `Case ${caseId} closure rejected successfully. New investigation task ${newInvestigationTask.task_id} created`,
+          `Case ${caseId} closure rejected successfully. Investigation task ${originalInvestigationTask.task_id} updated back to in progress`,
           CaseService.name,
       );
 
@@ -1627,11 +1637,11 @@ export class CaseService {
           task_id: result.completedTask.task_id,
           status: result.completedTask.status,
         },
-        new_investigation_task: {
-          task_id: newInvestigationTask.task_id,
-          name: newInvestigationTask.name,
+        investigation_task: {
+          task_id: originalInvestigationTask.task_id,
+          name: originalInvestigationTask.name,
           assigned_to: originalInvestigatorId,
-          status: newInvestigationTask.status,
+          status: originalInvestigationTask.status,
         },
       };
     } catch (error) {
