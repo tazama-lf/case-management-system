@@ -24,11 +24,9 @@ interface CaseDashboardContentProps {
   onAbandonCase: (row: CaseRow) => void;
   onSuspendCase: (row: CaseRow) => void;
   onResumeCase: (row: CaseRow) => void;
-  onRejectCase: (row: CaseRow) => void;
   onApproveCase: (row: CaseRow) => void;
   onApproveCaseCreation: (row: CaseRow) => void;
   onRejectCaseCreation: (row: CaseRow) => void;
-  onReturnForReview: (row: CaseRow) => void;
   onApproveCaseReopen: (row: CaseRow) => void;
   onRejectCaseReopen: (row: CaseRow) => void;
 }
@@ -49,11 +47,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onAbandonCase,
   onSuspendCase,
   onResumeCase,
-  onRejectCase,
   onApproveCase,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  onReturnForReview,
   onApproveCaseReopen,
   onRejectCaseReopen
 }) => {
@@ -117,11 +113,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
               onAbandonCase={onAbandonCase}
               onSuspendCase={onSuspendCase}
               onResumeCase={onResumeCase}
-              onRejectCase={onRejectCase}
               onApproveCase={onApproveCase}
               onApproveCaseCreation={onApproveCaseCreation}
               onRejectCaseCreation={onRejectCaseCreation}
-              onReturnForReview={onReturnForReview}
               onApproveCaseReopen={onApproveCaseReopen}
               onRejectCaseReopen={onRejectCaseReopen}
               canManageSupervisorActions={permissions.canManageSupervisorActions}

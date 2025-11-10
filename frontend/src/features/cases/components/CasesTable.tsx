@@ -1,5 +1,5 @@
 import React from 'react';
-import { EyeIcon, CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import { getScoreColor } from './casesTable.utils';
 
@@ -20,13 +20,11 @@ interface CasesTableProps {
   onAbandonCase?: (row: CaseRow) => void;
   onSuspendCase?: (row: CaseRow) => void;
   onResumeCase?: (row: CaseRow) => void;
-  onRejectCase?: (row: CaseRow) => void;
   onApproveCase?: (row: CaseRow) => void;
   onApproveCaseReopen?: (row: CaseRow) => void;
   onRejectCaseReopen?: (row: CaseRow) => void;
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
-  onReturnForReview?: (row: CaseRow) => void;
   pagination?: PaginationInfo;
   canManageSupervisorActions: boolean;
 }
@@ -40,13 +38,11 @@ const CasesTable: React.FC<CasesTableProps> = ({
   onAbandonCase,
   onSuspendCase,
   onResumeCase,
-  onRejectCase,
   onApproveCase,
   onApproveCaseReopen,
   onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  onReturnForReview,
   pagination,
   canManageSupervisorActions
 }) => {
@@ -116,35 +112,21 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                     >
                       <XCircleIcon className="h-3 w-3" />
-                      Complete Case
+                      Close Case
                     </button>
                   )}
                   
-                  {/* Approve Case Closure button - show for cases pending final approval */}
+                  {/* Case Closure Decision button - show for cases pending final approval */}
                   {showSupervisorControls &&
                     onApproveCase &&
                     (c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
                       c.status.includes('PENDING FINAL APPROVAL')) && (
                     <button
                       onClick={() => onApproveCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <CheckIcon className="h-3 w-3" />
-                      Approve
-                    </button>
-                  )}
-                  
-                  {/* Return for Review button - show for cases pending final approval */}
-                  {showSupervisorControls &&
-                    onReturnForReview &&
-                    (c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-                      c.status.includes('PENDING FINAL APPROVAL')) && (
-                    <button
-                      onClick={() => onReturnForReview(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <ArrowPathIcon className="h-3 w-3" />
-                      Return
+                      Review Closure
                     </button>
                   )}
                   
@@ -159,6 +141,20 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <CheckIcon className="h-3 w-3" />
                       Approve
+                    </button>
+                  )}
+                  
+                  {/* Reject Case Creation button - show for cases pending creation approval */}
+                  {showSupervisorControls &&
+                    onRejectCaseCreation &&
+                    (c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
+                      c.status.includes('PENDING CASE CREATION APPROVAL')) && (
+                    <button
+                      onClick={() => onRejectCaseCreation(c)}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <XCircleIcon className="h-3 w-3" />
+                      Reject
                     </button>
                   )}
                   
@@ -187,20 +183,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <XCircleIcon className="h-3 w-3" />
                       Reject Reopen
-                    </button>
-                  )}
-                  
-                  {/* Reject Case Creation button - show for cases pending creation approval */}
-                  {showSupervisorControls &&
-                    onRejectCaseCreation &&
-                    (c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-                      c.status.includes('PENDING CASE CREATION APPROVAL')) && (
-                    <button
-                      onClick={() => onRejectCaseCreation(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <XCircleIcon className="h-3 w-3" />
-                      Reject
                     </button>
                   )}
                   
@@ -258,20 +240,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     >
                       <PlayIcon className="h-3 w-3" />
                       Resume
-                    </button>
-                  )}
-                  
-                  {/* Reject Case button - show for cases pending final approval */}
-                  {showSupervisorControls &&
-                    onRejectCase &&
-                    (c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-                      c.status.includes('PENDING FINAL APPROVAL')) && (
-                    <button
-                      onClick={() => onRejectCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <XCircleIcon className="h-3 w-3" />
-                      Reject
                     </button>
                   )}
                 </div>

@@ -1134,31 +1134,7 @@ export class TaskService {
         throw new BadRequestException(msg);
       }
 
-      const GROUP_ROLE_MAP: Record<string, string> = {
-        supervisors: 'CMS_SUPERVISOR',
-        investigators: 'CMS_INVESTIGATOR',
-        investigations: 'CMS_INVESTIGATOR',
-      };
-
       const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[candidateGroup];
-
-      if (requiredRole) {
-        const hasRole = await this.authHelperService.userHasRole(userId, requiredRole);
-        if (!hasRole) {
-          const msg = `User ${userId} lacks required role (${requiredRole}) to unassign tasks in group ${candidateGroup}`;
-          await this.auditLogService.logAction({
-            userId,
-            actionPerformed: msg,
-            entityName: TaskService.name,
-            operation: 'unassignTask',
-            outcome: Outcome.FAILURE,
-            performedAt: new Date(),
-          });
-          this.logger.warn(msg, TaskService.name);
-          throw new ForbiddenException(msg);
-        }
-      }
 
       const originalAssignee = existingTask.assigned_user_id;
 

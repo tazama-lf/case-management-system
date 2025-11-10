@@ -4,8 +4,7 @@ import {
   caseService,
   type CloseCaseDto,
   type ApproveCaseClosureDto,
-  type RejectCaseCreationDto,
-  type ReturnCaseForReviewDto
+  type RejectCaseCreationDto
 } from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import type { Priority, AlertType } from '@/features/cases/components/CreateCaseModal';
@@ -20,11 +19,10 @@ const ReopenCaseModal = lazy(() => import('@/features/cases/components/ReopenCas
 const AbandonCaseModal = lazy(() => import('@/features/cases/components/AbandonCaseModal'));
 const SuspendCaseModal = lazy(() => import('@/features/cases/components/SuspendCaseModal'));
 const ResumeCaseModal = lazy(() => import('@/features/cases/components/ResumeCaseModal'));
-const RejectCaseModal = lazy(() => import('@/features/cases/components/RejectCaseModal'));
-const ApproveCaseModal = lazy(() => import('@/features/cases/components/ApproveCaseModal'));
 const ApproveCaseCreationModal = lazy(() => import('@/features/cases/components/ApproveCaseCreationModal'));
 const RejectCaseCreationModal = lazy(() => import('@/features/cases/components/RejectCaseCreationModal'));
-const ReturnCaseForReviewModal = lazy(() => import('@/features/cases/components/ReturnCaseForReviewModal'));
+const CaseClosureDecisionModal = lazy(() => import('@/features/cases/components/CaseClosureDecisionModal'));
+
 
 export interface CaseModalState {
   isCreateOpen: boolean;
@@ -34,11 +32,9 @@ export interface CaseModalState {
   isAbandonOpen: boolean;
   isSuspendOpen: boolean;
   isResumeOpen: boolean;
-  isRejectOpen: boolean;
-  isApproveOpen: boolean;
+  isCaseClosureDecisionOpen: boolean;
   isApproveCreationOpen: boolean;
   isRejectCreationOpen: boolean;
-  isReturnForReviewOpen: boolean;
   isApproveReopenOpen: boolean;
   isRejectReopenOpen: boolean;
   selectedRow: CaseRow | null;
@@ -56,11 +52,9 @@ export interface CaseModalActions {
   setIsAbandonOpen: (open: boolean) => void;
   setIsSuspendOpen: (open: boolean) => void;
   setIsResumeOpen: (open: boolean) => void;
-  setIsRejectOpen: (open: boolean) => void;
-  setIsApproveOpen: (open: boolean) => void;
+  setIsCaseClosureDecisionOpen: (open: boolean) => void;
   setIsApproveCreationOpen: (open: boolean) => void;
   setIsRejectCreationOpen: (open: boolean) => void;
-  setIsReturnForReviewOpen: (open: boolean) => void;
   setIsApproveReopenOpen: (open: boolean) => void;
   setIsRejectReopenOpen: (open: boolean) => void;
   setSelectedRow: (row: CaseRow | null) => void;
@@ -83,7 +77,6 @@ interface CaseModalsManagerProps {
     handleApproveCreation: (caseId: string) => Promise<void>;
     handleRejectCaseCreation: (caseId: string, reason: string) => Promise<void>;
     handleRejectCase: (caseId: string, reason: string) => Promise<void>;
-    handleReturnForReview: (caseId: string, reviewComments: string) => Promise<void>;
     handleReopenSubmit: (caseId: string, reason: string) => Promise<void>;
   };
 }
@@ -200,7 +193,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleRejectSubmit = async (rejectionReason: string) => {
     if (!modalState.selectedRow) return;
     await caseActions.handleRejectCase(modalState.selectedRow.id, rejectionReason);
-    modalActions.setIsRejectOpen(false);
+    modalActions.setIsCaseClosureDecisionOpen(false);
     modalActions.setSelectedRow(null);
   };
 
@@ -213,7 +206,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       finalOutcome,
       data.supervisorComments
     );
-    modalActions.setIsApproveOpen(false);
+    modalActions.setIsCaseClosureDecisionOpen(false);
     modalActions.setSelectedRow(null);
   };
 
@@ -226,13 +219,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleRejectCreationSubmit = async (caseId: string, data: RejectCaseCreationDto) => {
     await caseActions.handleRejectCaseCreation(caseId, data.reason);
     modalActions.setIsRejectCreationOpen(false);
-    modalActions.setSelectedRow(null);
-  };
-
-  const handleReturnForReviewSubmit = async (caseId: string, data: ReturnCaseForReviewDto) => {
-    if (!modalState.selectedRow) return;
-    await caseActions.handleReturnForReview(caseId, data.reviewComments);
-    modalActions.setIsReturnForReviewOpen(false);
     modalActions.setSelectedRow(null);
   };
 
@@ -375,23 +361,14 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       </Suspense>
 
       <Suspense fallback={<div>Loading modal...</div>}>
-        <RejectCaseModal
-          open={modalState.isRejectOpen}
-          onClose={() => modalActions.setIsRejectOpen(false)}
-          caseId={modalState.selectedRow?.id || ''}
-          caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
-          onSubmit={handleRejectSubmit}
-        />
-      </Suspense>
-
-      <Suspense fallback={<div>Loading modal...</div>}>
-        <ApproveCaseModal
-          open={modalState.isApproveOpen}
-          onClose={() => modalActions.setIsApproveOpen(false)}
+        <CaseClosureDecisionModal
+          open={modalState.isCaseClosureDecisionOpen}
+          onClose={() => modalActions.setIsCaseClosureDecisionOpen(false)}
           caseId={modalState.selectedRow?.id || ''}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           recommendedOutcome={modalState.selectedRow?.status || ''}
-          onSubmit={handleApproveSubmit}
+          onApprove={handleApproveSubmit}
+          onReject={handleRejectSubmit}
         />
       </Suspense>
 
@@ -410,15 +387,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => modalActions.setIsRejectCreationOpen(false)}
           caseData={modalState.selectedRow}
           onSubmit={(caseId, data) => handleRejectCreationSubmit(caseId, data)}
-        />
-      </Suspense>
-
-      <Suspense fallback={<div>Loading modal...</div>}>
-        <ReturnCaseForReviewModal
-          open={modalState.isReturnForReviewOpen}
-          onClose={() => modalActions.setIsReturnForReviewOpen(false)}
-          caseData={modalState.selectedRow}
-          onSubmit={(caseId, data) => handleReturnForReviewSubmit(caseId, data)}
         />
       </Suspense>
 
