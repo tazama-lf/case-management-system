@@ -841,7 +841,6 @@ export class TriageService {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
 
-      // Complete the triage task
       await this.taskService.updateTask(
         taskId,
         { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
@@ -873,15 +872,15 @@ export class TriageService {
           caseId,
           existingCase.status,
           CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'Triage completed, ready for investigation',
+          'Triage completed, ready for investigation. BPMN will create investigation task.',
         ),
       );
 
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_CREATED',
+        operation: 'INVESTIGATION_TASK_TRIGGERED',
         entityName: 'Task',
-        actionPerformed: `Created investigation task ${createdTask.task_id} for case ${caseId} after AI triage`,
+        actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
         outcome: 'SUCCESS',
       });
 
@@ -889,19 +888,22 @@ export class TriageService {
         where: { case_id: caseId },
       });
 
-      this.logger.log(`AI triage completed for case ${caseId}. Investigation task ${createdTask.task_id} created.`, TriageService.name);
+      this.logger.log(`AI triage completed for case ${caseId}. BPMN will create investigation task automatically.`, TriageService.name);
 
-      return updatedCase;
+      return {
+        case: updatedCase,
+        message: 'Triage completed. Investigation task will be created by workflow engine.',
+      };
     } catch (error) {
-      this.logger.error(`Failed to create investigation task for case ${caseId}. Error: ${error.message}`, error.stack);
+      this.logger.error(`Failed to complete triage for case ${caseId}. Error: ${error.message}`, error.stack);
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_CREATION_FAILED',
+        operation: 'INVESTIGATION_TASK_TRIGGER_FAILED',
         entityName: 'Task',
-        actionPerformed: `Failed to create investigation task for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to complete triage for case ${caseId}: ${error.message}`,
         outcome: 'FAILURE',
       });
-      throw new InternalServerErrorException('Failed to create investigation task');
+      throw new InternalServerErrorException('Failed to complete triage');
     }
   }
 

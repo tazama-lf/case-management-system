@@ -11,15 +11,15 @@ import { CaseStatus, CaseType, Priority } from '@prisma/client';
 @Injectable()
 export class CaseCreationService {
   constructor(
-    private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
-    private readonly prismaService: PrismaService,
-    private readonly eventEmitter: EventEmitter2,
+      private readonly logger: LoggerService,
+      private readonly auditLogService: AuditLogService,
+      private readonly prismaService: PrismaService,
+      private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string) {
     try {
-      this.logger.log(`[CaseWorkflow] Creating case for user ${userId}`, CaseCreationService.name);
+      this.logger.log(`[CaseWorkflow] Creating case for user ${userId} with role ${creatorRole || 'UNKNOWN'}`, CaseCreationService.name);
 
       const createdCase = await this.prismaService.case.create({
         data: {
@@ -34,18 +34,32 @@ export class CaseCreationService {
         },
       });
 
-      this.logger.log(`[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event`, CaseCreationService.name);
+      // Determine autoclose eligibility
+      const autocloseEligible = false; // Set based on your business logic
+
+      this.logger.log(
+          `[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event with creatorRole: ${creatorRole || 'SYSTEM'}`,
+          CaseCreationService.name
+      );
 
       this.eventEmitter.emit(
-        'case.created',
-        new CaseCreatedEvent(createdCase.case_id, createdCase.tenant_id, createCaseDTO.caseCreationType, createdCase.status, false),
+          'case.created',
+          new CaseCreatedEvent(
+              createdCase.case_id,
+              createdCase.tenant_id,
+              createdCase.case_creator_user_id,
+              createdCase.status,
+              createCaseDTO.caseCreationType,
+              autocloseEligible,
+              creatorRole || 'SYSTEM', // Pass the actual creator role
+          ),
       );
 
       await this.auditLogService.logAction({
         userId,
         operation: 'createCase',
         entityName: 'Case',
-        actionPerformed: `Case ${createdCase.case_id} created`,
+        actionPerformed: `Case ${createdCase.case_id} created by ${creatorRole || 'SYSTEM'}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -59,10 +73,10 @@ export class CaseCreationService {
   }
 
   async updateCaseStatus(
-    caseId: string,
-    status: CaseStatus,
-    userId: string,
-    additionalUpdates?: { priority?: Priority; caseType?: CaseType },
+      caseId: string,
+      status: CaseStatus,
+      userId: string,
+      additionalUpdates?: { priority?: Priority; caseType?: CaseType },
   ): Promise<void> {
     try {
       const existingCase = await this.prismaService.case.findUnique({

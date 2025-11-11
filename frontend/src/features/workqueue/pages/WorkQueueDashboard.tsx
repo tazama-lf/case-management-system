@@ -23,7 +23,7 @@ const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/mod
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
-  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole, hasCMSAdminRole } = useAuth();
   const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
@@ -51,8 +51,9 @@ const WorkQueueDashboard: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
 
   // Check if user is investigator only (no supervisor or admin role)
-  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
-  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly);
+  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
+  const isSupervisor = hasSupervisorRole() && !hasCMSAdminRole();
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly, isSupervisor);
 
 
   useEffect(() => {

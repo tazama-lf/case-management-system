@@ -2,9 +2,11 @@ export class CaseCreatedEvent {
   constructor(
       public readonly caseId: string,
       public readonly tenantId: string,
-      public readonly creationType: string,
+      public readonly creatorUserId: string,
       public readonly caseStatus: string,
-      public readonly autocloseEligible: boolean = false,
+      public readonly creationType: string,
+      public readonly autocloseEligible: boolean,
+      public readonly creatorRole?: string,
   ) {}
 }
 
@@ -85,8 +87,8 @@ export class TaskCompletedEvent {
   constructor(
       public readonly taskId: string,
       public readonly caseId: string,
-      public readonly completedBy: string,
-      public readonly variables?: Record<string, unknown>,
+      public readonly completedByUserId: string,
+      public readonly completionVariables?: Record<string, any>,
   ) {}
 }
 
@@ -99,6 +101,8 @@ export class BpmnTaskCreatedEvent {
       public readonly candidateGroup: string,
   ) {}
 }
+
+
 
 export class TaskReassignedEvent {
   constructor(

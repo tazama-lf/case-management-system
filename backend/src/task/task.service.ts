@@ -1359,10 +1359,6 @@ export class TaskService {
     }
   }
 
-  /**
-   * Reassign a task to a different work queue
-   * Validates permissions, updates task, emits events, and logs audit trail
-   */
   async reassignTaskToWorkQueue(
     taskId: string,
     targetWorkQueueId: string,

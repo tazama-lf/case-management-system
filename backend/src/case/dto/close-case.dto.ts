@@ -25,15 +25,6 @@ export class CloseCaseDto {
   @IsString()
   @IsOptional()
   finalNotes?: string;
-
-  @ApiProperty({
-    description: 'Any final recommendations for the case',
-    example: 'Recommend account suspension and legal action.',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  recommendations?: string;
 }
 
 export class ApproveCaseClosureTaskDto {
