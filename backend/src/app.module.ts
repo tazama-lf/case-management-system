@@ -23,6 +23,7 @@ import { ReportsModule } from './report/report.module';
 import { validate } from './config/env.validation';
 import {ConfigManagementModule} from "./config-management/config-management.module";
 import { UserModule } from './user/user.module';
+import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { UserModule } from './user/user.module';
     NotificationPreferencesModule,
     ReportsModule,
     UserModule,
+    FeatureExtractionModule,
   ],
   providers: [
     PrismaService,

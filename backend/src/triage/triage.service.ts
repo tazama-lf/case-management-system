@@ -14,8 +14,11 @@ import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client';
 import { Outcome } from 'src/audit/types/outcome';
-import { Prediction } from './types/Prediction';
+import { AIPrediction, Prediction } from './interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
+import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
+import { FeatureExtractionService } from 'src/feature-extraction/feature-extraction.service';
+import axios from 'axios';
 
 @Injectable()
 export class TriageService {
@@ -29,6 +32,7 @@ export class TriageService {
     private configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly featureExtractionService: FeatureExtractionService,
   ) {}
 
   @OnEvent('alert.incoming')
@@ -591,7 +595,7 @@ export class TriageService {
         }
       }
 
-      const prediction: Prediction = await this.predictAlert(alertId);
+      const prediction: Prediction = await this.predictAlert(dto);
       const {
         confidence_per: predictedConfidence,
         alertType: predictedAlertType,
@@ -775,25 +779,25 @@ export class TriageService {
   }
 
   async createCaseWithInvestigationTask(
-      alertType: AlertType,
-      userId: string,
-      tenantId: string,
-      parentCaseId: string,
-      priority: Priority,
+    alertType: AlertType,
+    userId: string,
+    tenantId: string,
+    parentCaseId: string,
+    priority: Priority,
   ): Promise<unknown> {
     try {
       const newCase = await this.caseCreationService.createCase(
-          {
-            caseCreatorUserId: userId,
-            caseOwnerUserId: userId,
-            tenantId,
-            priority: priority,
-            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            parentId: parentCaseId,
-            caseType: alertType as CaseType,
-            caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-          },
-          userId,
+        {
+          caseCreatorUserId: userId,
+          caseOwnerUserId: userId,
+          tenantId,
+          priority: priority,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          parentId: parentCaseId,
+          caseType: alertType as CaseType,
+          caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+        },
+        userId,
       );
 
       await this.audit.logAction({
@@ -805,8 +809,8 @@ export class TriageService {
       });
 
       this.logger.log(
-          `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
-          TriageService.name,
+        `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
+        TriageService.name,
       );
 
       return {
@@ -820,13 +824,13 @@ export class TriageService {
   }
 
   async createInvestigationTask(
-      caseId: string,
-      userId: string,
-      taskId: string,
-      investigateTaskDesc: string,
-      triageTaskDesc: string,
-      priority: Priority,
-      alertType?: AlertType,
+    caseId: string,
+    userId: string,
+    taskId: string,
+    investigateTaskDesc: string,
+    triageTaskDesc: string,
+    priority: Priority,
+    alertType?: AlertType,
   ): Promise<unknown> {
     try {
       const existingCase = await this.prisma.case.findUnique({
@@ -839,23 +843,23 @@ export class TriageService {
 
       // Complete the triage task
       await this.taskService.updateTask(
-          taskId,
-          { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
-          userId,
-          this.audit,
+        taskId,
+        { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc },
+        userId,
+        this.audit,
       );
 
       const createdTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
-            description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
-            candidateGroup: 'investigations',
-          },
-          userId,
-          this.audit,
-          this.logger,
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate case',
+          description: investigateTaskDesc ?? `Task to investigate: ${caseId}`,
+          candidateGroup: 'investigations',
+        },
+        userId,
+        this.audit,
+        this.logger,
       );
 
       await this.caseCreationService.updateCaseStatus(caseId, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId, {
@@ -864,13 +868,13 @@ export class TriageService {
       });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              existingCase.status,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Triage completed, ready for investigation',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          existingCase.status,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Triage completed, ready for investigation',
+        ),
       );
 
       await this.audit.logAction({
@@ -885,10 +889,7 @@ export class TriageService {
         where: { case_id: caseId },
       });
 
-      this.logger.log(
-          `AI triage completed for case ${caseId}. Investigation task ${createdTask.task_id} created.`,
-          TriageService.name,
-      );
+      this.logger.log(`AI triage completed for case ${caseId}. Investigation task ${createdTask.task_id} created.`, TriageService.name);
 
       return updatedCase;
     } catch (error) {
@@ -951,18 +952,19 @@ export class TriageService {
     }
   }
 
-  public async predictAlert(alertId: string): Promise<{
-    priorityScore: number;
-    alertType: AlertType;
-    confidence_per: number;
-    isTruePositive: boolean;
-  }> {
-    this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
-    return {
-      priorityScore: 0.37,
-      alertType: AlertType.FRAUD_AND_AML,
-      confidence_per: 97,
-      isTruePositive: true,
-    };
+  public async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
+    {
+      const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
+      const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);
+      const confidence = predictedResult.data.confidence * 100;
+      this.logger.log(`Prediction for alert ${alert.report.evaluationID}: ${JSON.stringify(predictedResult.data)}`, TriageService.name);
+
+      return {
+        priorityScore: predictedResult.data.priority,
+        alertType: AlertType.FRAUD_AND_AML,
+        confidence_per: confidence,
+        isTruePositive: true,
+      };
+    }
   }
 }

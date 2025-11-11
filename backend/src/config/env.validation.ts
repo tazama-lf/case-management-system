@@ -27,6 +27,10 @@ class EnvironmentVariables {
   @IsString()
   TAZAMA_AUTH_URL: string;
 
+  @IsString()
+  @IsOptional()
+  AI_MODEL_ENDPOINT: string;
+
   @IsOptional()
   @IsString()
   KEYCLOAK_GROUP_NAME?: string;
