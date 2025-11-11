@@ -23,7 +23,8 @@ import {
   CaseStatusChangedEvent,
   TaskCompletedEvent,
   CaseSuspendedEvent,
-  CaseResumedEvent, TaskStatusChangedEvent,
+  CaseResumedEvent,
+  TaskStatusChangedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -93,40 +94,15 @@ export class CaseService {
     const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
 
     // Check if user is a supervisor
-    let isSupervisor = false;
-    let actualRole = role;
-    try {
-      const userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-      isSupervisor = userRoles.includes('CMS_SUPERVISOR');
-
-      if (isSupervisor) {
-        actualRole = 'SUPERVISOR';
-      } else if (userRoles.length > 0) {
-        // Map CMS_ prefixed roles to BPMN role names
-        const firstRole = userRoles[0];
-        if (firstRole === 'CMS_INVESTIGATOR') {
-          actualRole = 'INVESTIGATOR';
-        } else if (firstRole === 'CMS_ANALYST') {
-          actualRole = 'ANALYST';
-        } else {
-          actualRole = firstRole.replace('CMS_', ''); // Remove CMS_ prefix
-        }
-      } else {
-        actualRole = role;
-      }
-    } catch (error) {
-      this.logger.warn(`Could not fetch user roles for ${userId}: ${error.message}. Using provided role.`, CaseService.name);
-      isSupervisor = role === 'SUPERVISOR' || role === 'CMS_SUPERVISOR';
-      actualRole = role.replace('CMS_', ''); // Remove CMS_ prefix if present
-    }
+    const isSupervisor = role === 'CMS_SUPERVISOR';
 
     const needsApproval = !isSupervisor;
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
     this.logger.log(
-        `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}, actualRole: ${actualRole}`,
-        CaseService.name,
+      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}, role: ${role}`,
+      CaseService.name,
     );
 
     try {
@@ -141,7 +117,7 @@ export class CaseService {
           caseCreationType: CaseCreationType.MANUAL,
         };
 
-        const createdCase = await this.caseCreationService.createCase(caseDetail, userId, actualRole);
+        const createdCase = await this.caseCreationService.createCase(caseDetail, userId, role);
 
         this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via workflow service`, CaseService.name);
 
@@ -161,8 +137,8 @@ export class CaseService {
       });
 
       this.logger.log(
-          `[ManualCase] Case ${result.case.case_id} created. BPMN will create ${needsApproval ? 'approval task' : 'investigation task'} automatically.`,
-          CaseService.name,
+        `[ManualCase] Case ${result.case.case_id} created. BPMN will create ${needsApproval ? 'approval task' : 'investigation task'} automatically.`,
+        CaseService.name,
       );
 
       this.logger.log(`[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`, CaseService.name);
@@ -171,7 +147,7 @@ export class CaseService {
         userId,
         operation: 'createManualCase',
         entityName: CaseService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${actualRole}${needsApproval ? ' (pending supervisor approval, BPMN will create approval task)' : ' (auto-approved, BPMN will create investigation task)'}`,
+        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval, BPMN will create approval task)' : ' (auto-approved, BPMN will create investigation task)'}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -180,10 +156,10 @@ export class CaseService {
         case: result.case,
         alert: result.alert,
         message: needsApproval
-            ? 'Case created and pending approval. Approval task will be created by workflow engine.'
-            : 'Case created and ready for investigation. Investigation task will be created by workflow engine.',
+          ? 'Case created and pending approval. Approval task will be created by workflow engine.'
+          : 'Case created and ready for investigation. Investigation task will be created by workflow engine.',
         requiresApproval: needsApproval,
-        creatorRole: actualRole,
+        creatorRole: role,
       };
     } catch (err) {
       this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
@@ -329,7 +305,7 @@ export class CaseService {
         });
 
         throw new NotFoundException(
-            `${errorMsg}. The case may have been created by a supervisor and doesn't require approval, or the BPMN workflow has not yet created the task.`
+          `${errorMsg}. The case may have been created by a supervisor and doesn't require approval, or the BPMN workflow has not yet created the task.`,
         );
       }
 
@@ -363,30 +339,30 @@ export class CaseService {
       });
 
       this.eventEmitter.emit(
-          'task.status.changed',
-          new TaskStatusChangedEvent(
-              result.approvedTask.task_id,
-              caseId,
-              'Approve Case Creation',
-              TaskStatus.STATUS_01_UNASSIGNED,
-              TaskStatus.STATUS_30_COMPLETED,
-              supervisorId,
-              {
-                creationApproval: 'approve',
-                creationComments: 'Case creation approved by supervisor',
-              },
-          ),
+        'task.status.changed',
+        new TaskStatusChangedEvent(
+          result.approvedTask.task_id,
+          caseId,
+          'Approve Case Creation',
+          TaskStatus.STATUS_01_UNASSIGNED,
+          TaskStatus.STATUS_30_COMPLETED,
+          supervisorId,
+          {
+            creationApproval: 'approve',
+            creationComments: 'Case creation approved by supervisor',
+          },
+        ),
       );
 
       // Emit case status changed
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              'Case creation approved by supervisor',
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          'Case creation approved by supervisor',
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -398,8 +374,8 @@ export class CaseService {
       });
 
       this.logger.log(
-          `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. BPMN will create investigation task automatically.`,
-          CaseService.name,
+        `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. BPMN will create investigation task automatically.`,
+        CaseService.name,
       );
 
       setTimeout(async () => {
@@ -414,20 +390,17 @@ export class CaseService {
 
           if (investigationTask) {
             this.logger.log(
-                `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created successfully for case ${caseId}`,
-                CaseService.name,
+              `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created successfully for case ${caseId}`,
+              CaseService.name,
             );
           } else {
             this.logger.warn(
-                `[ApproveCaseCreation] Investigation task not found after 3 seconds for case ${caseId}. BPMN may still be processing.`,
-                CaseService.name,
+              `[ApproveCaseCreation] Investigation task not found after 3 seconds for case ${caseId}. BPMN may still be processing.`,
+              CaseService.name,
             );
           }
         } catch (error) {
-          this.logger.warn(
-              `[ApproveCaseCreation] Failed to verify investigation task creation: ${error.message}`,
-              CaseService.name,
-          );
+          this.logger.warn(`[ApproveCaseCreation] Failed to verify investigation task creation: ${error.message}`, CaseService.name);
         }
       }, 3000);
 
@@ -539,7 +512,7 @@ export class CaseService {
     }
   }
 
-  async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string) {
+  async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     try {
       this.logger.log(`User ${userId} attempting to close case ${caseId}`, CaseService.name);
 
@@ -589,7 +562,7 @@ export class CaseService {
       }
 
       const investigationTask = caseData.tasks.find(
-          (task) => task.name === 'Investigate Case' || task.name === 'Investigate case' || task.name === 'investigate case'
+        (task) => task.name === 'Investigate Case' || task.name === 'Investigate case' || task.name === 'investigate case',
       );
 
       if (!investigationTask) {
@@ -625,10 +598,7 @@ export class CaseService {
         });
       }
 
-      if (
-          investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS &&
-          investigationTask.status !== TaskStatus.STATUS_30_COMPLETED
-      ) {
+      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS && investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
         const errorMsg = `Case closure failed: Investigation task status is ${investigationTask.status}, required: STATUS_20_IN_PROGRESS or STATUS_30_COMPLETED`;
         await this.auditLogService.logAction({
           userId,
@@ -662,13 +632,7 @@ export class CaseService {
         });
       }
 
-      let isSupervisor = false;
-      try {
-        const userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-        isSupervisor = userRoles.includes('CMS_SUPERVISOR');
-      } catch (error) {
-        this.logger.warn(`Could not fetch user roles for ${userId}: ${error.message}. Proceeding as non-supervisor.`, CaseService.name);
-      }
+      const isSupervisor = role === 'CMS_SUPERVISOR';
 
       // **SUPERVISOR DIRECT CLOSURE PATH**
       if (isSupervisor) {
@@ -678,8 +642,8 @@ export class CaseService {
         const oldTaskStatus = investigationTask.status;
 
         this.logger.log(
-            `[CloseCase-Supervisor] Investigation task ${investigationTask.task_id} current status: ${oldTaskStatus}`,
-            CaseService.name
+          `[CloseCase-Supervisor] Investigation task ${investigationTask.task_id} current status: ${oldTaskStatus}`,
+          CaseService.name,
         );
 
         const result = await this.prismaService.$transaction(async (tx) => {
@@ -714,37 +678,37 @@ export class CaseService {
 
         if (oldTaskStatus !== TaskStatus.STATUS_30_COMPLETED) {
           this.logger.log(
-              `[CloseCase-Supervisor] Emitting task.status.changed event for task ${investigationTask.task_id}: ${oldTaskStatus} -> STATUS_30_COMPLETED`,
-              CaseService.name
+            `[CloseCase-Supervisor] Emitting task.status.changed event for task ${investigationTask.task_id}: ${oldTaskStatus} -> STATUS_30_COMPLETED`,
+            CaseService.name,
           );
 
           this.eventEmitter.emit(
-              'task.status.changed',
-              new TaskStatusChangedEvent(
-                  investigationTask.task_id,
-                  caseId,
-                  investigationTask.name || 'Investigate Case',
-                  oldTaskStatus,
-                  TaskStatus.STATUS_30_COMPLETED,
-                  userId,
-                  {
-                    investigationAction: 'directClose',
-                    finalOutcome: dto.recommendedOutcome,
-                    finalNotes: dto.finalNotes,
-                    supervisorClosure: true,
-                  },
-              ),
+            'task.status.changed',
+            new TaskStatusChangedEvent(
+              investigationTask.task_id,
+              caseId,
+              investigationTask.name || 'Investigate Case',
+              oldTaskStatus,
+              TaskStatus.STATUS_30_COMPLETED,
+              userId,
+              {
+                investigationAction: 'directClose',
+                finalOutcome: dto.recommendedOutcome,
+                finalNotes: dto.finalNotes,
+                supervisorClosure: true,
+              },
+            ),
           );
         }
 
         this.eventEmitter.emit(
-            'case.status.changed',
-            new CaseStatusChangedEvent(
-                caseId,
-                CaseStatus.STATUS_20_IN_PROGRESS,
-                finalStatus,
-                `Case closed directly by supervisor with outcome: ${dto.recommendedOutcome}`,
-            ),
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+            caseId,
+            CaseStatus.STATUS_20_IN_PROGRESS,
+            finalStatus,
+            `Case closed directly by supervisor with outcome: ${dto.recommendedOutcome}`,
+          ),
         );
 
         await this.auditLogService.logAction({
@@ -768,10 +732,7 @@ export class CaseService {
 
       const oldTaskStatus = investigationTask.status;
 
-      this.logger.log(
-          `[CloseCase] Investigation task ${investigationTask.task_id} current status: ${oldTaskStatus}`,
-          CaseService.name
-      );
+      this.logger.log(`[CloseCase] Investigation task ${investigationTask.task_id} current status: ${oldTaskStatus}`, CaseService.name);
 
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
@@ -804,50 +765,46 @@ export class CaseService {
       });
 
       this.logger.log(
-          `[CloseCase] Emitting task.status.changed event for task ${investigationTask.task_id}: ${oldTaskStatus} -> STATUS_30_COMPLETED`,
-          CaseService.name
+        `[CloseCase] Emitting task.status.changed event for task ${investigationTask.task_id}: ${oldTaskStatus} -> STATUS_30_COMPLETED`,
+        CaseService.name,
       );
 
       this.eventEmitter.emit(
-          'task.status.changed',
-          new TaskStatusChangedEvent(
-              investigationTask.task_id,
-              caseId,
-              investigationTask.name || 'Investigate Case',
-              oldTaskStatus,
-              TaskStatus.STATUS_30_COMPLETED,
-              userId,
-              {
-                investigationAction: 'requestClosure',
-                recommendedOutcome: dto.recommendedOutcome,
-                finalNotes: dto.finalNotes,
-              },
-          ),
+        'task.status.changed',
+        new TaskStatusChangedEvent(
+          investigationTask.task_id,
+          caseId,
+          investigationTask.name || 'Investigate Case',
+          oldTaskStatus,
+          TaskStatus.STATUS_30_COMPLETED,
+          userId,
+          {
+            investigationAction: 'requestClosure',
+            recommendedOutcome: dto.recommendedOutcome,
+            finalNotes: dto.finalNotes,
+          },
+        ),
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              `Case closure requested with outcome: ${dto.recommendedOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+        ),
       );
 
       setTimeout(async () => {
         try {
           const tasks = await this.taskService.getTasksByCaseId(caseId);
           const approvalTask = tasks.find(
-              (t) =>
-                  (t.name === 'Approve Case Closure' || t.name === 'Approve case closure') && t.status === TaskStatus.STATUS_01_UNASSIGNED
+            (t) => (t.name === 'Approve Case Closure' || t.name === 'Approve case closure') && t.status === TaskStatus.STATUS_01_UNASSIGNED,
           );
 
           if (approvalTask) {
-            this.logger.log(
-                `[CloseCase] Found BPMN-created approval task ${approvalTask.task_id}`,
-                CaseService.name
-            );
+            this.logger.log(`[CloseCase] Found BPMN-created approval task ${approvalTask.task_id}`, CaseService.name);
 
             await this.prismaService.comment.create({
               data: {
@@ -862,10 +819,7 @@ export class CaseService {
               },
             });
 
-            this.logger.log(
-                `[CloseCase] Added closure metadata to approval task ${approvalTask.task_id}`,
-                CaseService.name
-            );
+            this.logger.log(`[CloseCase] Added closure metadata to approval task ${approvalTask.task_id}`, CaseService.name);
 
             try {
               await this.notificationService.sendGroupNotification({
@@ -884,21 +838,17 @@ export class CaseService {
             }
           } else {
             this.logger.warn(
-                `[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...`,
-                CaseService.name
+              `[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...`,
+              CaseService.name,
             );
 
             this.logger.log(
-                `[CloseCase] Current tasks in case ${caseId}: ${tasks.map(t => `${t.name}(${t.status})`).join(', ')}`,
-                CaseService.name
+              `[CloseCase] Current tasks in case ${caseId}: ${tasks.map((t) => `${t.name}(${t.status})`).join(', ')}`,
+              CaseService.name,
             );
           }
         } catch (error) {
-          this.logger.error(
-              `[CloseCase] Failed to add closure metadata: ${error.message}`,
-              error.stack,
-              CaseService.name
-          );
+          this.logger.error(`[CloseCase] Failed to add closure metadata: ${error.message}`, error.stack, CaseService.name);
         }
       }, 4000);
 
@@ -966,7 +916,6 @@ export class CaseService {
   }
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
-
     const existingCase = await this.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
@@ -1041,7 +990,6 @@ export class CaseService {
   }
 
   async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
-
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.retrieveCase(caseId);
@@ -1545,15 +1493,15 @@ export class CaseService {
       }
 
       this.logger.log(
-          `[ApproveCaseClosure] Case status: ${caseDetails.status}, Tasks count: ${caseDetails.tasks.length}`,
-          CaseService.name
+        `[ApproveCaseClosure] Case status: ${caseDetails.status}, Tasks count: ${caseDetails.tasks.length}`,
+        CaseService.name,
       );
 
       // Log all tasks for debugging
-      caseDetails.tasks.forEach(task => {
+      caseDetails.tasks.forEach((task) => {
         this.logger.log(
-            `[ApproveCaseClosure] Task: ${task.name} (${task.task_id}), Status: ${task.status}, Assigned: ${task.assigned_user_id}`,
-            CaseService.name
+          `[ApproveCaseClosure] Task: ${task.name} (${task.task_id}), Status: ${task.status}, Assigned: ${task.assigned_user_id}`,
+          CaseService.name,
         );
       });
 
@@ -1578,19 +1526,17 @@ export class CaseService {
       }
 
       const approvalTask = caseDetails.tasks.find(
-          (t) =>
-              (t.name === 'Approve Case Closure' ||
-                  t.name === 'Approve case closure' ||
-                  t.name === 'approve case closure') &&
-              t.status === TaskStatus.STATUS_01_UNASSIGNED
+        (t) =>
+          (t.name === 'Approve Case Closure' || t.name === 'Approve case closure' || t.name === 'approve case closure') &&
+          t.status === TaskStatus.STATUS_01_UNASSIGNED,
       );
 
       if (!approvalTask) {
         const errorMsg = `Approve Case Closure task not found or not in correct state`;
         this.logger.error(
-            `[ApproveCaseClosure] ${errorMsg}. Available tasks: ${caseDetails.tasks.map(t => `${t.name}(${t.status})`).join(', ')}`,
-            null,
-            CaseService.name
+          `[ApproveCaseClosure] ${errorMsg}. Available tasks: ${caseDetails.tasks.map((t) => `${t.name}(${t.status})`).join(', ')}`,
+          null,
+          CaseService.name,
         );
 
         await this.auditLogService.logAction({
@@ -1603,14 +1549,14 @@ export class CaseService {
 
         throw new NotFoundException({
           message: `${errorMsg}. The BPMN workflow may not have created the task yet.`,
-          availableTasks: caseDetails.tasks.map(t => ({ name: t.name, status: t.status })),
+          availableTasks: caseDetails.tasks.map((t) => ({ name: t.name, status: t.status })),
           caseId,
         });
       }
 
       this.logger.log(
-          `[ApproveCaseClosure] Found approval task ${approvalTask.task_id} with status ${approvalTask.status}`,
-          CaseService.name
+        `[ApproveCaseClosure] Found approval task ${approvalTask.task_id} with status ${approvalTask.status}`,
+        CaseService.name,
       );
 
       const missingInfo = this.validateCaseCompleteness(caseDetails);
@@ -1673,34 +1619,34 @@ export class CaseService {
 
       // Emit events
       this.eventEmitter.emit(
-          'task.status.changed',
-          new TaskStatusChangedEvent(
-              result.completedTask.task_id,
-              caseId,
-              approvalTask.name || 'Approve Case Closure',
-              TaskStatus.STATUS_01_UNASSIGNED,
-              TaskStatus.STATUS_30_COMPLETED,
-              supervisorId,
-              {
-                approvalDecision: 'approve',
-                finalOutcome: finalOutcome,
-                supervisorComments: comments,
-              },
-          ),
+        'task.status.changed',
+        new TaskStatusChangedEvent(
+          result.completedTask.task_id,
+          caseId,
+          approvalTask.name || 'Approve Case Closure',
+          TaskStatus.STATUS_01_UNASSIGNED,
+          TaskStatus.STATUS_30_COMPLETED,
+          supervisorId,
+          {
+            approvalDecision: 'approve',
+            finalOutcome: finalOutcome,
+            supervisorComments: comments,
+          },
+        ),
       );
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              finalOutcome as CaseStatus,
-              `Case closure approved with outcome: ${finalOutcome}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          finalOutcome as CaseStatus,
+          `Case closure approved with outcome: ${finalOutcome}`,
+        ),
       );
 
       const investigationTask = caseDetails.tasks.find(
-          (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.assigned_user_id,
+        (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.assigned_user_id,
       );
 
       if (investigationTask?.assigned_user_id) {
@@ -1746,7 +1692,11 @@ export class CaseService {
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
 
-      this.logger.error(`[ApproveCaseClosure] Case closure approval failed for case ${caseId}: ${errorMessage}`, error.stack, CaseService.name);
+      this.logger.error(
+        `[ApproveCaseClosure] Case closure approval failed for case ${caseId}: ${errorMessage}`,
+        error.stack,
+        CaseService.name,
+      );
 
       await this.auditLogService.logAction({
         userId: supervisorId,
@@ -1803,7 +1753,6 @@ export class CaseService {
 
     return missing;
   }
-
 
   async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
     try {
@@ -1897,16 +1846,15 @@ export class CaseService {
           },
         });
 
-
         return { updatedCase, completedTask, updatedInvestigationTask };
       });
 
       this.eventEmitter.emit(
-          'task.completed',
-          new TaskCompletedEvent(result.completedTask.task_id, caseId, supervisorId, {
-            approvalDecision: 'reject',
-            supervisorComments: comments,
-          }),
+        'task.completed',
+        new TaskCompletedEvent(result.completedTask.task_id, caseId, supervisorId, {
+          approvalDecision: 'reject',
+          supervisorComments: comments,
+        }),
       );
 
       // const newInvestigationTask = await this.taskService.createTask(
@@ -1932,13 +1880,13 @@ export class CaseService {
       // });
 
       this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-              caseId,
-              CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-              CaseStatus.STATUS_20_IN_PROGRESS,
-              `Case closure rejected and returned to investigation: ${comments}`,
-          ),
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          caseId,
+          CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          CaseStatus.STATUS_20_IN_PROGRESS,
+          `Case closure rejected and returned to investigation: ${comments}`,
+        ),
       );
 
       try {
@@ -1966,8 +1914,8 @@ export class CaseService {
       });
 
       this.logger.log(
-          `Case ${caseId} closure rejected successfully. Investigation task ${originalInvestigationTask.task_id} updated back to in progress`,
-          CaseService.name,
+        `Case ${caseId} closure rejected successfully. Investigation task ${originalInvestigationTask.task_id} updated back to in progress`,
+        CaseService.name,
       );
 
       return {
@@ -2068,7 +2016,7 @@ export class CaseService {
     }
   }
 
-  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string) {
+  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseService.name);
 
@@ -2090,15 +2038,44 @@ export class CaseService {
         throw new BadRequestException('Reason for reopening case is required and must be at least 10 characters');
       }
 
-      let userRoles: string[] = [];
-      let isSupervisor = false;
+      const isSupervisor = role === 'CMS_SUPERVISOR';
 
-      try {
-        userRoles = await this.authHelperService.getUserRolesFromAuthService(userId);
-        isSupervisor = userRoles.includes('CMS_SUPERVISOR');
-      } catch (error) {
-        this.logger.warn(`Could not fetch user roles for ${userId}: ${error.message}. Proceeding with UNKNOWN role.`, CaseService.name);
-        userRoles = ['UNKNOWN'];
+      if (isSupervisor) {
+        const result = await this.prismaService.$transaction(async (tx) => {
+          const updatedCase = await tx.case.update({
+            where: { case_id: caseId },
+            data: {
+              status: CaseStatus.STATUS_10_ASSIGNED,
+              updated_at: new Date(),
+            },
+          });
+
+          return { case: updatedCase };
+        });
+
+        this.eventEmitter.emit(
+          'case.status.changed',
+          new CaseStatusChangedEvent(
+            caseId,
+            existingCase.status,
+            CaseStatus.STATUS_10_ASSIGNED,
+            `Case reopening requested: ${reason}`,
+          ),
+        );
+
+        await this.auditLogService.logAction({
+          userId,
+          operation: 'reopenCase',
+          entityName: CaseService.name,
+          actionPerformed: `Reopened case ${caseId} Reason: ${reason}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        return {
+          success: true,
+          message: 'Case reopened ',
+          case: result.case,
+        };
       }
 
       const result = await this.prismaService.$transaction(async (tx) => {
@@ -2129,7 +2106,7 @@ export class CaseService {
             task_id: approvalTask.task_id,
             note: JSON.stringify({
               requestedBy: userId,
-              requesterRole: userRoles[0] || 'UNKNOWN',
+              requesterRole: role || 'UNKNOWN',
               reason,
               previousStatus: existingCase.status,
               requestedAt: new Date().toISOString(),

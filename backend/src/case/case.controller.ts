@@ -62,7 +62,9 @@ export class CaseController {
   async reopenCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    return this.caseService.reopenCase(caseId, body.reason, clientId, tenantId);
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.caseService.reopenCase(caseId, body.reason, clientId, tenantId, role);
   }
 
   @Put(':caseId/suspend')
@@ -193,7 +195,7 @@ export class CaseController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
 
     return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
   }
@@ -249,7 +251,7 @@ export class CaseController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Case not found or you don\'t have permission to close it' },
+        message: { type: 'string', example: "Case not found or you don't have permission to close it" },
       },
     },
   })
@@ -280,11 +282,11 @@ export class CaseController {
     },
   })
   async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId } = req.user.token;
-    if (!clientId || !tenantId) {
-      throw new BadRequestException('Missing clientId or tenantId in auth token');
-    }
-    return this.caseService.closeCase(caseId, dto, clientId, tenantId);
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.caseService.closeCase(caseId, dto, clientId, tenantId, role);
   }
 
   @Get('all')
@@ -368,7 +370,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: 'Get summary statistics of user\'s case workload',
+    description: "Get summary statistics of user's case workload",
   })
   @ApiResponse({
     status: 200,
