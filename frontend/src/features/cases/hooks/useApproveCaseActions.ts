@@ -28,18 +28,35 @@ The case is now officially closed and removed from pending approvals.`);
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while approving the case closure. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to approve case closure right now.
 
-      if (errorString.includes('not in an approvable state')) {
-        errorMessage = `This case can't be approved for closure right now.
+This usually means:
+• The case isn't ready for final approval yet
+• The approval task may have already been completed
+• There might be missing required information
 
-The case might not be ready for approval yet. Please check if there's a pending closure task waiting for your review.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to approve case closures.
+Please refresh the page and check if the case status has changed.
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to approve case closures. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Approve Case Closure Failed', errorMessage);
@@ -60,14 +77,35 @@ The case is now active and has been assigned to an investigator.`);
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while approving the case creation. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to approve case creation right now.
 
-      if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to approve case creation.
+This usually means:
+• The case creation approval task isn't available
+• The case may have already been approved or rejected
+• There might be missing required information
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Please refresh the page and check the current case status.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to approve case creation. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Approve Case Creation Failed', errorMessage);
@@ -88,14 +126,35 @@ The case is now back in the investigation queue.`);
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while approving the case reopening. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to approve case reopening right now.
 
-      if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to approve case reopening.
+This usually means:
+• The reopening approval task isn't available
+• The case may have already been approved for reopening or rejected
+• There might be missing required information
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Please refresh the page and check the current case status.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to approve case reopening. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Approve Case Reopening Failed', errorMessage);

@@ -9,7 +9,6 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const {
-    user,
     hasAdminRole,
     hasInvestigatorRole,
     hasSupervisorRole,

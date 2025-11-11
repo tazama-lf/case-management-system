@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { PageContainer, Card } from '@/shared/components/ui';
+import { Card } from '@/shared/components/ui';
 import { CasesTable } from '..';
 import CaseFilters from '@/features/cases/components/CaseFilters';
 import CasesTableSkeleton from '@/features/cases/components/CasesTableSkeleton';
@@ -56,19 +56,24 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   const { cases, loading, errorState, filters, pagination, permissions } = dashboardState;
 
   return (
-    <PageContainer
-      title="Cases Dashboard"
-      subtitle="Manage and track investigation cases"
-      actions={
-        <button 
-          onClick={onCreateNew}
-          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Create Manually
-        </button>
-      }
-    >
+    <div className="min-h-screen bg-gray-50">
+      <div className="px-2 sm:px-4 lg:px-6 py-6">
+        {/* Header Section */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Cases Dashboard</h1>
+            <p className="mt-2 text-gray-600">Manage and track investigation cases</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={onCreateNew}
+              className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Create Manually
+            </button>
+          </div>
+        </div>
       <CaseFilters
         search={filters.search}
         onSearchChange={onSearchChange}
@@ -80,7 +85,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
         onPriorityFilterChange={onPriorityFilterChange}
       />
 
-      <Card className="mt-4">
+      <Card className="mt-4 w-full">
         {errorState && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
             <p className="text-red-600 text-sm">{errorState}</p>
@@ -130,7 +135,8 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
           </>
         )}
       </Card>
-    </PageContainer>
+      </div>
+    </div>
   );
 };
 

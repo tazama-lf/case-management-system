@@ -301,15 +301,6 @@ class AuthService {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-  private buildFullName(firstName?: string, lastName?: string): string {
-    const first = firstName?.trim() || '';
-    const last = lastName?.trim() || '';
-
-    if (first && last) {
-      return `${first} ${last}`;
-    }
-    return first || last || '';
-  }
 
   /**
    * Fetches all users with the CMS_INVESTIGATOR role from the backend.

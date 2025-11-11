@@ -71,7 +71,8 @@ const AlertsDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
-      showError('Triage Failed', 'Failed to perform triage. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
+      showError('Triage Failed', errorMessage);
       throw error;
     }
   };

@@ -29,7 +29,8 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to approve case creation:', error);
-      setErrors({ submit: 'Failed to approve case creation. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case creation. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -46,7 +47,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
         {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
@@ -88,13 +89,13 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Case Type</label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.type}</span>
+                  <span className="text-sm break-words">{caseData.type}</span>
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.status}</span>
+                  <span className="text-sm break-words">{caseData.status}</span>
                 </div>
               </div>
               <div>
@@ -120,7 +121,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                 <div className="flex justify-between">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Alert ID</label>
-                    <span className="text-sm">{caseData.alertId}</span>
+                    <span className="text-sm break-words">{caseData.alertId}</span>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Confidence Score</label>
@@ -130,7 +131,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                 {caseData.alertMessage && (
                   <div className="mt-2">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Alert Message</label>
-                    <p className="text-sm text-gray-700">{caseData.alertMessage}</p>
+                    <p className="text-sm text-gray-700 break-words">{caseData.alertMessage}</p>
                   </div>
                 )}
               </div>

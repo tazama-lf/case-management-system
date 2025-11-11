@@ -22,18 +22,35 @@ The case creator will be notified of your decision and the reasoning provided.`)
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while rejecting the case creation. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to reject case creation right now.
 
-      if (errorString.includes('not in a rejectable state')) {
-        errorMessage = `This case creation can't be rejected right now.
+This usually means:
+• The case creation approval task isn't available
+• The case may have already been approved or rejected
+• There might be missing required information
 
-The case might not be waiting for approval. Please check if there's a pending creation task for your review.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to reject case creation.
+Please refresh the page and check the current case status.
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to reject case creation. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Reject Case Creation Failed', errorMessage);
@@ -59,18 +76,35 @@ The case has been declined and moved out of the active queue.`);
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while rejecting the case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to reject case right now.
 
-      if (errorString.includes('not in a rejectable state')) {
-        errorMessage = `This case can't be rejected right now.
+This usually means:
+• The case approval task isn't available
+• The case may have already been approved or rejected
+• There might be missing required information
 
-Please check the case status and ensure it's in a state that allows rejection.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to reject this case.
+Please refresh the page and check the current case status.
 
-Please check that you have the right access level.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to reject this case. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Reject Case Failed', errorMessage);
@@ -92,14 +126,35 @@ The requester will be notified of your decision.`);
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while rejecting the case reopening. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('Approval task validation failed')) {
+        errorMessage = `Unable to reject case reopening right now.
 
-      if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to reject case reopening.
+This usually means:
+• The reopening approval task isn't available
+• The case may have already been approved for reopening or rejected
+• There might be missing required information
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+Please refresh the page and check the current case status.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
+
+You don't have permission to reject case reopening. Please check with your supervisor.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Reject Case Reopening Failed', errorMessage);

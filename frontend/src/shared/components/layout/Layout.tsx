@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
       {}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          user={user ?? undefined}
+          user={user as any}
           breadcrumbs={breadcrumbs}
           title={title}
           sidebarOpen={sidebarOpen}

@@ -312,6 +312,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           }
         }}
         row={modalState.selectedRow}
+        onRefreshCases={onRefreshCases}
       />
 
       <Suspense fallback={<div>Loading modal...</div>}>

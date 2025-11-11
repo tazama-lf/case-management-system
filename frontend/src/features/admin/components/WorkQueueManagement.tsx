@@ -14,9 +14,8 @@ interface WorkQueueManagementProps {
   onNavigateBack?: () => void;
 }
 
-const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({ 
-  className = '', 
-  onNavigateBack 
+const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
+  className = ''
 }) => {
   const { workQueues, loading, error, refetch } = useWorkQueues();
   const {

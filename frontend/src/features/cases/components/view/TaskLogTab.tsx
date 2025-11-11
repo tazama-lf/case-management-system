@@ -15,10 +15,11 @@ const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 interface TaskLogTabProps {
   caseId: string;
+  onRefreshCases?: () => Promise<void>;
 }
-const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
+const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   const { success, error: toastError } = useToast();
-  const { hasSupervisorRole, hasAdminRole } = useAuth();
+  const { hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,14 +100,50 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
     { value: TaskStatus.STATUS_30_COMPLETED, label: 'Completed' },
   ];
 
-  const canViewSupervisorQueue = hasSupervisorRole() || hasAdminRole();
+  const canViewSupervisorQueue = hasSupervisorRole() || hasCMSAdminRole();
 
   const visibleTasks = useMemo(() => {
     if (canViewSupervisorQueue) {
       return tasks;
     }
 
-    return tasks.filter((task) => (task.candidateGroup || '').toLowerCase() !== 'supervisors');
+    // Filter out supervisor tasks for investigators
+    // Investigators should not see tasks that are meant for supervisors
+    const filtered = tasks.filter((task) => {
+      const candidateGroup = (task.candidateGroup || '').toLowerCase();
+      const taskName = (task.name || '').toLowerCase();
+      const taskDescription = (task.description || '').toLowerCase();
+      
+      // Define patterns that identify supervisor-only tasks
+      const supervisorTaskPatterns = [
+        // Candidate group patterns
+        candidateGroup === 'supervisors',
+        candidateGroup === 'supervisor',
+        
+        // Task name patterns
+        taskName.includes('approve case creation'),
+        taskName.includes('approve case reopening'),
+        taskName.includes('reject case creation'),
+        taskName.includes('reject case reopening'),
+        taskName.includes('review case closure'),
+        taskName.includes('supervisor review'),
+        taskName.includes('final approval'),
+        
+        // Task description patterns
+        taskDescription.includes('supervisor'),
+        taskDescription.includes('approval required'),
+        
+        // Legacy patterns
+        taskName === 'approve case creation',
+        taskName === 'review case closure'
+      ];
+      
+      const isSupervisorTask = supervisorTaskPatterns.some(pattern => pattern === true);
+      
+      return !isSupervisorTask;
+    });
+
+    return filtered;
   }, [tasks, canViewSupervisorQueue]);
 
   const filteredTasks = visibleTasks.filter(task => {
@@ -231,6 +268,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
 
+      // Refresh the cases list to show updated case status/assignments
+      if (onRefreshCases) {
+        await onRefreshCases();
+      }
+
       // Success message
       const operationMessages = {
         assign: 'Task Assigned Successfully',
@@ -278,6 +320,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId }) => {
 
       const fetchedTasks = await taskService.getTasksByCaseId(caseId);
       setTasks(fetchedTasks);
+
+      // Refresh the cases list to show updated case status
+      if (onRefreshCases) {
+        await onRefreshCases();
+      }
 
       success('Task Completed Successfully', `Task ${task.id} has been completed successfully.`);
     } catch (error) {

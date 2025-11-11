@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CaseRow } from '../CasesTable';
+import type { CaseRow } from '../casesTable.utils';
 
 
 interface CaseDetailsTabProps {

@@ -15,9 +15,10 @@ interface ViewCaseModalProps {
   open: boolean;
   onClose: () => void;
   row?: CaseRow | null;
+  onRefreshCases?: () => Promise<void>;
 }
 
-const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => {
+const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row, onRefreshCases }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
 
@@ -92,7 +93,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
               {tab === 'details' && <CaseDetailsTab row={row} />}
               {tab === 'evidence' && <EvidenceDocumentsTab />}
               {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'tasks' && <TaskLogTab caseId={row.id} />}
+              {tab === 'tasks' && <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />}
               {tab === 'notes' && <InvestigationNotesTab />}
             </>
           )}
