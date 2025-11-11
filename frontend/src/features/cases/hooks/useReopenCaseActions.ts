@@ -21,18 +21,30 @@ Your request will be reviewed by a supervisor and you'll be notified of the deci
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while submitting the reopening request. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('not in a reopenable state')) {
+        errorMessage = `Unable to request reopening for this case.
 
-      if (errorString.includes('not in a reopenable state')) {
-        errorMessage = `This case can't be reopened right now.
+This case needs to be in closed status and not already pending reopening. Please check the case status.
 
-The case needs to be in closed status and not already pending reopening. Please check the case status.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to request case reopening.
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
 
-Please check that you have the right access level.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+You don't have permission to request case reopening. Please check that you have the right access level.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Reopen Case Failed', errorMessage);

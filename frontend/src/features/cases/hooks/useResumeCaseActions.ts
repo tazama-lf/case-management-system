@@ -22,18 +22,30 @@ The case has been moved back to your active queue and you can continue your inve
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while resuming the case. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('not in a resumable state')) {
+        errorMessage = `Unable to resume this case right now.
 
-      if (errorString.includes('not in a resumable state')) {
-        errorMessage = `This case can't be resumed right now.
+This case needs to be in suspended status to be resumed. Please check the case status and try again.
 
-The case needs to be in suspended status to be resumed. Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to resume this case.
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
 
-Please check that you have the right access level.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+You don't have permission to resume this case. Please check that you have the right access level.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Resume Case Failed', errorMessage);

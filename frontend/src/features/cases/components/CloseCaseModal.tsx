@@ -58,7 +58,8 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
       setErrors({});
     } catch (error) {
       console.error('Failed to close case:', error);
-      setErrors({ submit: 'Failed to close case. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to close case. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }

@@ -51,54 +51,71 @@ const CasesTable: React.FC<CasesTableProps> = ({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="table-auto w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case ID</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case Type</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Confidence %</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created on</th>
-            <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+            <th scope="col" className="px-3 py-2 text-left text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <span className="hidden sm:inline">Case ID</span>
+              <span className="sm:hidden">ID</span>
+            </th>
+            <th scope="col" className="px-3 py-2 text-left text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <span className="hidden lg:inline">Case Type</span>
+              <span className="lg:hidden">Type</span>
+            </th>
+            <th scope="col" className="px-3 py-2 text-left text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">Status</th>
+            <th scope="col" className="px-3 py-2 text-left text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <span className="hidden sm:inline">Score</span>
+              <span className="sm:hidden">%</span>
+            </th>
+            <th scope="col" className="hidden md:table-cell px-3 py-2 text-left text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">Created</th>
+            <th scope="col" className="px-3 py-2 text-right text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 bg-white">
           {rows.map((c) => (
             <tr key={c.id} className="hover:bg-gray-50/50">
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.id}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                {c.type}
+              <td className="px-3 py-2 whitespace-nowrap">
+                <div className="text-xs text-gray-900 font-mono" title={c.id}>
+                  {c.id}
+                </div>
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${c.statusColor}`}>
+              <td className="px-3 py-2">
+                <div className="text-xs sm:text-sm text-gray-900" title={c.type}>
+                  {c.type}
+                </div>
+              </td>
+              <td className="px-3 py-2">
+                <span className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ring-1 ring-gray-200 whitespace-nowrap ${c.statusColor}`}>
                   {c.status}
                 </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <div className="flex items-center">
-                  <span className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(c.score)}`}>
-                    {c.score}%
-                  </span>
+              <td className="px-3 py-2">
+                <span className={`inline-flex px-2 py-1 text-xs sm:text-sm font-bold rounded-full whitespace-nowrap ${getScoreColor(c.score)}`}>
+                  {c.score}%
+                </span>
+              </td>
+              <td className="hidden md:table-cell px-3 py-2 text-xs sm:text-sm text-gray-700 whitespace-nowrap">
+                <div title={c.createdOn}>
+                  {c.createdOn}
                 </div>
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <div className="flex justify-end gap-2">
+              <td className="px-3 py-2">
+                <div className="flex justify-end gap-1 flex-wrap">
                   <button
                     onClick={() => onView(c)}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inline-flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 whitespace-nowrap"
                   >
                     <EyeIcon className="h-3 w-3" />
-                    View
+                    <span className="hidden sm:inline">View</span>
                   </button>
                   
                   {c.action === 'Complete' && (
                     <button
                       onClick={() => onComplete(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="inline-flex items-center gap-1 rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
                     >
                       <CheckIcon className="h-3 w-3" />
-                      Complete
+                      <span className="hidden sm:inline">Complete</span>
                     </button>
                   )}
                   
@@ -109,10 +126,11 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   ) && (
                     <button
                       onClick={() => onCloseCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
                     >
                       <XCircleIcon className="h-3 w-3" />
-                      Close Case
+                      <span className="hidden lg:inline">Close Case</span>
+                      <span className="lg:hidden">Close</span>
                     </button>
                   )}
                   
@@ -123,10 +141,11 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       c.status.includes('PENDING FINAL APPROVAL')) && (
                     <button
                       onClick={() => onApproveCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="inline-flex items-center gap-1 rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
                     >
                       <CheckIcon className="h-3 w-3" />
-                      Review Closure
+                      <span className="hidden xl:inline">Review Case Closure</span>
+                      <span className="xl:hidden">Review</span>
                     </button>
                   )}
                   
@@ -137,10 +156,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       c.status.includes('PENDING CASE CREATION APPROVAL')) && (
                     <button
                       onClick={() => onApproveCaseCreation(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
                     >
                       <CheckIcon className="h-3 w-3" />
-                      Approve
+                      <span className="hidden sm:inline">Approve</span>
                     </button>
                   )}
                   
@@ -151,10 +170,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       c.status.includes('PENDING CASE CREATION APPROVAL')) && (
                     <button
                       onClick={() => onRejectCaseCreation(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
                     >
                       <XCircleIcon className="h-3 w-3" />
-                      Reject
+                      <span className="hidden sm:inline">Reject</span>
                     </button>
                   )}
                   
@@ -165,10 +184,11 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       c.status.includes('PENDING CASE REOPENING APPROVAL')) && (
                     <button
                       onClick={() => onApproveCaseReopen(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
                     >
                       <CheckIcon className="h-3 w-3" />
-                      Approve Reopen
+                      <span className="hidden lg:inline">Approve Reopen</span>
+                      <span className="lg:hidden">Approve</span>
                     </button>
                   )}
                   
@@ -179,10 +199,11 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       c.status.includes('PENDING CASE REOPENING APPROVAL')) && (
                     <button
                       onClick={() => onRejectCaseReopen(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
                     >
                       <XCircleIcon className="h-3 w-3" />
-                      Reject Reopen
+                      <span className="hidden lg:inline">Reject Reopen</span>
+                      <span className="lg:hidden">Reject</span>
                     </button>
                   )}
                   
@@ -195,10 +216,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   ) && (
                     <button
                       onClick={() => onReopenCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
                     >
                       <PlayIcon className="h-3 w-3" />
-                      Reopen
+                      <span className="hidden sm:inline">Reopen</span>
                     </button>
                   )}
                   
@@ -208,10 +229,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   ) && (
                     <button
                       onClick={() => onAbandonCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
                     >
                       <TrashIcon className="h-3 w-3" />
-                      Abandon
+                      <span className="hidden sm:inline">Abandon</span>
                     </button>
                   )}
                   
@@ -222,10 +243,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   ) && (
                     <button
                       onClick={() => onSuspendCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      className="inline-flex items-center gap-1 rounded bg-yellow-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-1 focus:ring-yellow-500 whitespace-nowrap"
                     >
                       <PauseIcon className="h-3 w-3" />
-                      Suspend
+                      <span className="hidden sm:inline">Suspend</span>
                     </button>
                   )}
                   
@@ -236,10 +257,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   ) && (
                     <button
                       onClick={() => onResumeCase(c)}
-                      className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
                     >
                       <PlayIcon className="h-3 w-3" />
-                      Resume
+                      <span className="hidden sm:inline">Resume</span>
                     </button>
                   )}
                 </div>

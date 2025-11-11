@@ -23,7 +23,7 @@ const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/mod
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
-  const { user, hasInvestigatorRole, hasSupervisorRole, hasAdminRole, hasCMSAdminRole } = useAuth();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');

@@ -140,7 +140,7 @@ export const useCaseActions = (refreshCases: (statusFilter?: string, priorityFil
         status: 'STATUS_02_READY_FOR_ASSIGNMENT',
         priority: payload.priority,
         caseType: payload.alertType,
-        caseOwnerUserId: payload.assignee || user?.user_id || 'system-user-id',
+        caseOwnerUserId: payload.assignee || user?.userId || 'system-user-id',
       };
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);

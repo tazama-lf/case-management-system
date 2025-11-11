@@ -69,7 +69,8 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       handleClose();
     } catch (error) {
       console.error('Failed to approve case:', error);
-      setErrors({ submit: 'Failed to approve case closure. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case closure. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +89,8 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       handleClose();
     } catch (error) {
       console.error('Failed to reject case:', error);
-      setErrors({ submit: 'Failed to reject case closure. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to reject case closure. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }

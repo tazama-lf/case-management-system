@@ -2,15 +2,6 @@ import React from 'react';
 import { PageContainer } from '../../../shared/components/ui';
 import { WorkQueueManagement } from '..';
 
-const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-lg border border-gray-200 bg-white p-4">
-    <div className="text-sm text-gray-500">{label}</div>
-    <div className="mt-2 flex items-baseline justify-between">
-      <div className="text-2xl font-semibold text-gray-900">{value}</div>
-    </div>
-  </div>
-);
-
 const AdminDashboard: React.FC = () => {
   // const stats = [
   //   { label: 'Active Work Queues', value: '1,254' },
