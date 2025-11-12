@@ -72,7 +72,7 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
 
           {error && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-red-600">{error || 'An error occurred'}</p>
             </div>
           )}
 

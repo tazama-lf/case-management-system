@@ -156,6 +156,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   alertId,
   isOpen,
   onClose,
+  onAlertUpdated,
   onManualTriage,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
@@ -243,7 +244,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             <h3 className="mt-4 text-lg font-medium text-gray-900">
               Error Loading Alert
             </h3>
-            <p className="mt-2 text-sm text-gray-600">{error}</p>
+            <p className="mt-2 text-sm text-gray-600">{error || 'An error occurred while loading the alert'}</p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
                 onClick={() => window.location.reload()}
@@ -289,7 +290,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         {}
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
-          onClick={onClose}
+          onClick={() => {
+            onAlertUpdated?.();
+            onClose();
+          }}
           aria-hidden="true"
         ></div>
 
@@ -298,7 +302,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           {}
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
-              onClick={onClose}
+              onClick={() => {
+                onAlertUpdated?.();
+                onClose();
+              }}
               className="bg-white rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <span className="sr-only">Close</span>
@@ -354,7 +361,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-lg text-gray-600 mb-1">{alert.message}</p>
+                  <p className="text-lg text-gray-600 mb-1">{alert.message || 'No message available'}</p>
                   <p className="text-sm text-gray-500">
                     Alert ID: {alert.alert_id} • Source: {alert.source || 'N/A'}
                   </p>
@@ -428,22 +435,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
                   {}
-                  <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                      Related Items
-                    </h4>
-                    <div className="space-y-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        Related Item 1
-                      </p>
-                      <p className="text-sm font-medium text-gray-900">
-                        Related Item 2
-                      </p>
-                    </div>
-                  </div>
-
-                  {}
-                  <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
+                  <div className="w-full bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
                     </h4>

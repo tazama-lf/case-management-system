@@ -78,7 +78,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
               <div>
                 <div className="text-xs text-gray-500 uppercase">Case Type</div>
                 <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}>
-                  {row.type}
+                  {row.type || 'N/A'}
                 </span>
               </div>
               <div>

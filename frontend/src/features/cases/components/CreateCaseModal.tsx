@@ -263,7 +263,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     {error ? 'Error' : 'Please fix the following errors'}
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
-                    {error && <p>{error}</p>}
+                    {error && <p>{error || 'An error occurred'}</p>}
                     {Object.entries(validationErrors).map(([field, message]) => (
                       <p key={field}>• {message}</p>
                     ))}

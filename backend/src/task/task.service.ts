@@ -12,8 +12,7 @@ import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { WorkQueueService } from '../work-queue/work-queue.service';
 import { RuleEngineService } from '../work-queue/rule-engine.service';
-// RuleTrigger import disabled
-// import { RuleTrigger } from '../work-queue/dto/assignment-rule.dto';
+
 import {
   TaskCreatedEvent,
   TaskStatusChangedEvent,
@@ -159,7 +158,7 @@ export class TaskService {
           taskId: updatedTask.task_id,
           workQueueId: result.workQueueId,
           workQueueName: result.matchingQueue.name,
-          candidateGroup: taskDTO.candidateGroup, // Original candidateGroup
+          candidateGroup: taskDTO.candidateGroup, 
           flowableGroupId: result.derivedFlowableGroupId,
           autoAssigned: true,
           assignedBy: 'SYSTEM',
@@ -195,150 +194,130 @@ export class TaskService {
   }
 
   async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
-    this.logger.log(`Reassigning task ${taskId} to user ${assignedUserId}`, TaskService.name);
+    this.logger.log(`[ReassignTask] User ${userId} reassigning task ${taskId} to investigator ${assignedUserId}`, TaskService.name);
+
+    if (!assignedUserId) {
+      this.logger.error('[ReassignTask] Assigned user ID is null or undefined', null, TaskService.name);
+      throw new BadRequestException('Assigned user ID cannot be null or undefined');
+    }
 
     try {
+      this.logger.log(`[ReassignTask] Fetching task ${taskId} details`, TaskService.name);
+
       const existingTask = await this.getTaskById(taskId);
       if (!existingTask) {
-        throw new BadRequestException(`Task ${taskId} not found`);
+        this.logger.error(`[ReassignTask] Task ${taskId} not found`, null, TaskService.name);
+        throw new NotFoundException(`Task ${taskId} not found`);
       }
 
-      if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
-        throw new BadRequestException(`Task ${taskId} is already completed`);
-      }
-
-      const userExists = await this.authHelperService.userExists(assignedUserId);
-      if (!userExists) {
-        const msg = `User ${assignedUserId} not found in Keycloak`;
-        await this.auditLogService.logAction({
-          userId,
-          actionPerformed: msg,
-          entityName: TaskService.name,
-          operation: 'reassignTask',
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-        this.logger.warn(msg, TaskService.name);
-        throw new BadRequestException(msg);
-      }
-
-      const GROUP_ROLE_MAP: Record<string, string> = {
-        supervisors: 'CMS_SUPERVISOR',
-        investigators: 'CMS_INVESTIGATOR',
-        investigations: 'CMS_INVESTIGATOR',
-      };
-
-      const group = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[group];
-
-      if (requiredRole) {
-        const hasRole = await this.authHelperService.userHasRole(assignedUserId, requiredRole);
-        if (!hasRole) {
-          const msg = `User ${assignedUserId} lacks required role (${requiredRole}) for group ${group}`;
-          await this.auditLogService.logAction({
-            userId,
-            actionPerformed: msg,
-            entityName: TaskService.name,
-            operation: 'reassignTask',
-            outcome: Outcome.FAILURE,
-            performedAt: new Date(),
-          });
-          this.logger.warn(msg, TaskService.name);
-          throw new ForbiddenException(msg);
-        }
-      }
-
-      const previousAssignedUserId = existingTask.assigned_user_id;
-      const wasUnassigned = !previousAssignedUserId;
-      const updatedTask = await this.prisma.task.update({
-        where: { task_id: taskId },
-        data: {
-          assigned_user_id: assignedUserId,
-          status: TaskStatus.STATUS_10_ASSIGNED,
-          updated_at: new Date(),
-        },
-      });
-
-      this.eventEmitter.emit(
-        'task.assigned',
-        new TaskAssignedEvent(taskId, updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined),
+      this.logger.log(
+        `[ReassignTask] Task ${taskId} found. Current status: ${existingTask.status}, Current assignee: ${existingTask.assigned_user_id || 'None'}, Case: ${existingTask.case_id}`,
+        TaskService.name,
       );
 
-      if (existingTask.status !== TaskStatus.STATUS_10_ASSIGNED) {
-        this.eventEmitter.emit(
-          'task.status.changed',
-          new TaskStatusChangedEvent(
-            taskId,
-            updatedTask.case_id,
-            existingTask.name || '',
-            existingTask.status,
-            TaskStatus.STATUS_10_ASSIGNED,
-            assignedUserId,
-          ),
-        );
+      const previousAssignedUserId = existingTask.assigned_user_id;
+
+      const existingCase = await this.prisma.case.findUnique({
+        where: { case_id: existingTask.case_id },
+        select: { status: true, case_id: true },
+      });
+
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${existingTask.case_id} not found`);
       }
 
-      try {
-        await this.notificationService.sendNotification({
-          userId: assignedUserId,
-          type: 'TASK_ASSIGNED',
-          message: `Task "${existingTask.name || taskId}" has been assigned to you`,
-          metadata: {
-            taskId,
-            caseId: updatedTask.case_id,
-            taskName: existingTask.name,
-            assignedBy: userId,
-            candidateGroup: existingTask.candidateGroup,
+      const previousCaseStatus = existingCase.status;
+
+      this.logger.log(`[ReassignTask] Current case status: ${previousCaseStatus}. Will update to STATUS_10_ASSIGNED`, TaskService.name);
+
+      this.logger.log(`[ReassignTask] Updating task ${taskId} and case ${existingTask.case_id} in transaction`, TaskService.name);
+
+      const result = await this.prisma.$transaction(async (tx) => {
+      
+        const updatedTask = await tx.task.update({
+          where: { task_id: taskId },
+          data: {
+            assigned_user_id: assignedUserId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            updated_at: new Date(),
           },
         });
 
-        if (previousAssignedUserId) {
-          await this.notificationService.sendNotification({
-            userId: previousAssignedUserId,
-            type: 'TASK_REASSIGNED',
-            message: `Task "${existingTask.name || taskId}" has been reassigned to another user`,
-            metadata: {
-              taskId,
-              caseId: updatedTask.case_id,
-              taskName: existingTask.name,
-              reassignedTo: assignedUserId,
-              reassignedBy: userId,
-            },
-          });
-        }
-      } catch (notificationError) {
-        this.logger.warn(`Failed to send reassignment notifications: ${notificationError.message}`, TaskService.name);
-      }
+        const updatedCase = await tx.case.update({
+          where: { case_id: existingTask.case_id },
+          data: {
+            status: CaseStatus.STATUS_10_ASSIGNED,
+            case_owner_user_id: assignedUserId,
+            updated_at: new Date(),
+          },
+        });
+
+        return { updatedTask, updatedCase };
+      });
+
+      this.logger.log(
+        `[ReassignTask] Task ${taskId} successfully updated. New status: ${result.updatedTask.status}, New assignee: ${result.updatedTask.assigned_user_id}`,
+        TaskService.name,
+      );
+
+      this.logger.log(
+        `[ReassignTask] Case ${existingTask.case_id} successfully updated. New status: ${result.updatedCase.status}, New owner: ${result.updatedCase.case_owner_user_id}`,
+        TaskService.name,
+      );
+
+      this.logger.log(`[ReassignTask] Emitting task.assigned event for task ${taskId}`, TaskService.name);
+
+      this.eventEmitter.emit(
+        'task.assigned',
+        new TaskAssignedEvent(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined),
+      );
+
+      this.logger.log(`[ReassignTask] Emitting case.status.changed event for case ${existingTask.case_id}`, TaskService.name);
+
+      this.eventEmitter.emit(
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          existingTask.case_id,
+          previousCaseStatus,
+          CaseStatus.STATUS_10_ASSIGNED,
+          `Case reassigned to investigator ${assignedUserId} by ${userId}`,
+        ),
+      );
+
+      this.logger.log(`[ReassignTask] Logging audit actions for task ${taskId} reassignment`, TaskService.name);
 
       await this.auditLogService.logAction({
         userId,
-        actionPerformed: wasUnassigned
-          ? `Assigned unassigned task ${taskId} to ${assignedUserId}`
-          : `Reassigned task ${taskId} from ${previousAssignedUserId} to ${assignedUserId}`,
+        actionPerformed: `Reassigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`,
         entityName: TaskService.name,
         operation: 'reassignTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
       });
 
+      await this.auditLogService.logAction({
+        userId: assignedUserId,
+        actionPerformed: `Task ${taskId} reassigned to investigator ${assignedUserId}`,
+        entityName: TaskService.name,
+        operation: 'retrieveTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
       this.logger.log(
-        wasUnassigned
-          ? `Task ${taskId} successfully assigned to ${assignedUserId}`
-          : `Task ${taskId} successfully reassigned from ${previousAssignedUserId} to ${assignedUserId}`,
+        `[ReassignTask] Task ${taskId} successfully reassigned to investigator ${assignedUserId} by ${userId}`,
         TaskService.name,
       );
 
-      return {
-        ...updatedTask,
-        message: wasUnassigned
-          ? `Task successfully assigned to user ${assignedUserId}`
-          : `Task successfully reassigned from user ${previousAssignedUserId} to ${assignedUserId}`,
-        previousAssignee: previousAssignedUserId,
-        newAssignee: assignedUserId,
-      };
+      return result.updatedTask;
     } catch (error) {
-      this.logger.error(`Error reassigning task ${taskId}: ${error.message}`, error, TaskService.name);
-      throw error;
+      this.logger.error(`[ReassignTask] Error reassigning task ${taskId}: ${error.message}`, error.stack, TaskService.name);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`Failed to reassign task: ${error.message}`);
     }
   }
 
@@ -1151,21 +1130,59 @@ export class TaskService {
         throw new BadRequestException(msg);
       }
 
-      const updatedTask = await this.prisma.task.update({
-        where: { task_id: taskId },
-        data: {
-          assigned_user_id: null,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-        },
+      const existingCase = await this.prisma.case.findUnique({
+        where: { case_id: existingTask.case_id },
+        select: { status: true, case_id: true },
+      });
+
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${existingTask.case_id} not found`);
+      }
+
+      const previousCaseStatus = existingCase.status;
+
+      this.logger.log(`[UnassignTask] Current case status: ${previousCaseStatus}. Will update to STATUS_02_READY_FOR_ASSIGNMENT`, TaskService.name);
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        
+        const updatedTask = await tx.task.update({
+          where: { task_id: taskId },
+          data: {
+            assigned_user_id: null,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+          },
+        });
+
+       
+        const updatedCase = await tx.case.update({
+          where: { case_id: existingTask.case_id },
+          data: {
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            case_owner_user_id: null,
+            updated_at: new Date(),
+          },
+        });
+
+        return { updatedTask, updatedCase };
       });
 
       this.eventEmitter.emit(
         'task.unassigned',
-        new TaskUnassignedEvent(taskId, updatedTask.case_id, originalAssignee || undefined, candidateGroup, reason),
+        new TaskUnassignedEvent(taskId, result.updatedTask.case_id, originalAssignee || undefined, candidateGroup, reason),
+      );
+
+      this.eventEmitter.emit(
+        'case.status.changed',
+        new CaseStatusChangedEvent(
+          existingTask.case_id,
+          previousCaseStatus,
+          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          `Task unassigned. Reason: ${reason}`,
+        ),
       );
 
       try {
-        // Notify the original assignee
+     
         if (originalAssignee) {
           await this.notificationService.sendNotification({
             userId: originalAssignee,
@@ -1209,7 +1226,7 @@ export class TaskService {
       this.logger.log(`Task ${taskId} successfully unassigned and returned to ${candidateGroup} work queue`, TaskService.name);
 
       return {
-        ...updatedTask,
+        ...result.updatedTask,
         message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
         candidateGroup,
         unassignmentReason: reason,

@@ -6,7 +6,6 @@ import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.typ
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
 
-// Dynamic imports for better performance
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));

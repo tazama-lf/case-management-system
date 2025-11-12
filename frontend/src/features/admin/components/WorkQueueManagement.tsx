@@ -54,7 +54,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
       >
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           <p className="font-semibold">Error loading work queues</p>
-          <p className="text-sm mt-1">{error}</p>
+          <p className="text-sm mt-1">{error || 'An error occurred'}</p>
           <button
             onClick={() => refetch()}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
