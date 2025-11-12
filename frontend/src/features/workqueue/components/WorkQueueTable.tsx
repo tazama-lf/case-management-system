@@ -63,6 +63,23 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       return actions;
     }
 
+    if (task.status === 'IN_PROGRESS') {
+      if (task.assignee && onComplete) {
+        actions.push(
+          <button
+            key="complete"
+            onClick={() => onComplete(task)}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            title="Mark complete"
+          >
+            <CheckIcon className="h-3 w-3 mr-1" />
+            Complete
+          </button>
+        );
+      }
+      return actions;
+    }
+
     if (!task.assignee) {
       actions.push(
         <button
@@ -101,20 +118,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         >
           <UserMinusIcon className="h-3 w-3 mr-1" />
           Unassign
-        </button>
-      );
-    }
-
-    if (task.assignee && onComplete && task.status === 'IN_PROGRESS') {
-      actions.push(
-        <button
-          key="complete"
-          onClick={() => onComplete(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          title="Mark complete"
-        >
-          <CheckIcon className="h-3 w-3 mr-1" />
-          Complete
         </button>
       );
     }

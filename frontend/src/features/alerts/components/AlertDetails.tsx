@@ -230,7 +230,7 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div>
           <h4 className="text-sm font-medium text-gray-900 mb-2">Message</h4>
           <div className="bg-gray-50 p-4 rounded border">
-            <p className="text-sm text-gray-700">{alert.message}</p>
+            <p className="text-sm text-gray-700">{alert.message || 'No message available'}</p>
           </div>
         </div>
       )}

@@ -87,7 +87,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
             {}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-                <p className="text-sm">{error}</p>
+                <p className="text-sm">{error || 'An error occurred'}</p>
               </div>
             )}
 
