@@ -207,46 +207,46 @@ export class TaskService {
         throw new BadRequestException(`Task ${taskId} is already completed`);
       }
 
-      const userExists = await this.authHelperService.userExists(assignedUserId);
-      if (!userExists) {
-        const msg = `User ${assignedUserId} not found in Keycloak`;
-        await this.auditLogService.logAction({
-          userId,
-          actionPerformed: msg,
-          entityName: TaskService.name,
-          operation: 'reassignTask',
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-        this.logger.warn(msg, TaskService.name);
-        throw new BadRequestException(msg);
-      }
+      // const userExists = await this.authHelperService.userExists(assignedUserId);
+      // if (!userExists) {
+      //   const msg = `User ${assignedUserId} not found in Keycloak`;
+      //   await this.auditLogService.logAction({
+      //     userId,
+      //     actionPerformed: msg,
+      //     entityName: TaskService.name,
+      //     operation: 'reassignTask',
+      //     outcome: Outcome.FAILURE,
+      //     performedAt: new Date(),
+      //   });
+      //   this.logger.warn(msg, TaskService.name);
+      //   throw new BadRequestException(msg);
+      // }
 
-      const GROUP_ROLE_MAP: Record<string, string> = {
-        supervisors: 'CMS_SUPERVISOR',
-        investigators: 'CMS_INVESTIGATOR',
-        investigations: 'CMS_INVESTIGATOR',
-      };
+      // const GROUP_ROLE_MAP: Record<string, string> = {
+      //   supervisors: 'CMS_SUPERVISOR',
+      //   investigators: 'CMS_INVESTIGATOR',
+      //   investigations: 'CMS_INVESTIGATOR',
+      // };
 
-      const group = existingTask.candidateGroup?.toLowerCase() || '';
-      const requiredRole = GROUP_ROLE_MAP[group];
+      // const group = existingTask.candidateGroup?.toLowerCase() || '';
+      // const requiredRole = GROUP_ROLE_MAP[group];
 
-      if (requiredRole) {
-        const hasRole = await this.authHelperService.userHasRole(assignedUserId, requiredRole);
-        if (!hasRole) {
-          const msg = `User ${assignedUserId} lacks required role (${requiredRole}) for group ${group}`;
-          await this.auditLogService.logAction({
-            userId,
-            actionPerformed: msg,
-            entityName: TaskService.name,
-            operation: 'reassignTask',
-            outcome: Outcome.FAILURE,
-            performedAt: new Date(),
-          });
-          this.logger.warn(msg, TaskService.name);
-          throw new ForbiddenException(msg);
-        }
-      }
+      // if (requiredRole) {
+      //   const hasRole = await this.authHelperService.userHasRole(assignedUserId, requiredRole);
+      //   if (!hasRole) {
+      //     const msg = `User ${assignedUserId} lacks required role (${requiredRole}) for group ${group}`;
+      //     await this.auditLogService.logAction({
+      //       userId,
+      //       actionPerformed: msg,
+      //       entityName: TaskService.name,
+      //       operation: 'reassignTask',
+      //       outcome: Outcome.FAILURE,
+      //       performedAt: new Date(),
+      //     });
+      //     this.logger.warn(msg, TaskService.name);
+      //     throw new ForbiddenException(msg);
+      //   }
+      // }
 
       const previousAssignedUserId = existingTask.assigned_user_id;
       const wasUnassigned = !previousAssignedUserId;
