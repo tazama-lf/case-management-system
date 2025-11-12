@@ -304,9 +304,16 @@ export class FlowableEventListener {
 
     try {
       this.logger.log(
-          `[TaskStatusChanged] Processing status change for task ${event.taskId} (${event.taskName}): ${event.oldStatus} → ${event.newStatus}`,
+          `[TaskStatusChanged] EVENT RECEIVED - Task: ${event.taskId}, Name: "${event.taskName}", Status: ${event.oldStatus} -> ${event.newStatus}`,
           FlowableEventListener.name
       );
+
+      if (event.completionVariables) {
+        this.logger.log(
+            `[TaskStatusChanged] Completion variables: ${JSON.stringify(event.completionVariables)}`,
+            FlowableEventListener.name
+        );
+      }
 
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
@@ -318,7 +325,17 @@ export class FlowableEventListener {
         return;
       }
 
+      this.logger.log(
+          `[TaskStatusChanged] Found process instance: ${processInstance.id}`,
+          FlowableEventListener.name
+      );
+
       const flowableTasks = await this.flowableService.getProcessTasks(processInstance.id);
+
+      this.logger.log(
+          `[TaskStatusChanged] Found ${flowableTasks.length} Flowable tasks in process`,
+          FlowableEventListener.name
+      );
 
       let flowableTask: any = null;
 
@@ -326,8 +343,17 @@ export class FlowableEventListener {
         const task = t as Record<string, unknown>;
         const taskVars = await this.flowableService.getTaskVariables(task.id as string);
 
+        this.logger.log(
+            `[TaskStatusChanged] Checking Flowable task ${task.id} (${task.name}) - postgres_task_id: ${taskVars.postgres_task_id}`,
+            FlowableEventListener.name
+        );
+
         if (taskVars.postgres_task_id === event.taskId) {
           flowableTask = task;
+          this.logger.log(
+              `[TaskStatusChanged] Found matching Flowable task ${task.id}`,
+              FlowableEventListener.name
+          );
           break;
         }
       }
@@ -342,10 +368,10 @@ export class FlowableEventListener {
 
       const taskObj = flowableTask as Record<string, unknown>;
 
-      // If task is being completed (STATUS_30_COMPLETED), complete it in Flowable
-      if (event.newStatus === TaskStatus.STATUS_30_COMPLETED) {
+      // If task is being completed OR has completion variables, complete it in Flowable
+      if (event.newStatus === TaskStatus.STATUS_30_COMPLETED || event.completionVariables) {
         this.logger.log(
-            `[TaskStatusChanged] Task ${event.taskId} is being completed. Completing Flowable task ${taskObj.id}`,
+            `[TaskStatusChanged] Task completion requested for Flowable task ${taskObj.id}`,
             FlowableEventListener.name
         );
 
@@ -360,54 +386,100 @@ export class FlowableEventListener {
           Object.entries(event.completionVariables).forEach(([key, value]) => {
             completionVars[key] = String(value);
           });
-
-          this.logger.log(
-              `[TaskStatusChanged] Completion variables: ${JSON.stringify(event.completionVariables)}`,
-              FlowableEventListener.name
-          );
         }
 
-        // Complete the Flowable task
-        await this.flowableService.completeTask(taskObj.id as string, completionVars);
-
         this.logger.log(
-            `[TaskStatusChanged] ✓ Completed Flowable task ${taskObj.id}. BPMN will now progress to next step.`,
+            `[TaskStatusChanged] Completing Flowable task ${taskObj.id} with variables: ${JSON.stringify(completionVars)}`,
             FlowableEventListener.name
         );
 
-        setTimeout(async () => {
-          try {
-            this.logger.log(
-                `[TaskStatusChanged] Syncing BPMN-created tasks for case ${event.caseId}`,
+        try {
+          await this.flowableService.completeTask(taskObj.id as string, completionVars);
+
+          this.logger.log(
+              `[TaskStatusChanged] Successfully completed Flowable task ${taskObj.id}. BPMN should now progress.`,
+              FlowableEventListener.name
+          );
+
+          setTimeout(async () => {
+            try {
+              this.logger.log(
+                  `[TaskStatusChanged] Starting BPMN task sync for case ${event.caseId}...`,
+                  FlowableEventListener.name
+              );
+
+              const updatedProcessInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+
+              if (!updatedProcessInstance) {
+                this.logger.warn(
+                    `[TaskStatusChanged] Process instance no longer exists for case ${event.caseId}. It may have ended.`,
+                    FlowableEventListener.name
+                );
+                return;
+              }
+
+              this.logger.log(
+                  `[TaskStatusChanged] Process instance still active: ${updatedProcessInstance.id}`,
+                  FlowableEventListener.name
+              );
+
+              await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id as string);
+
+              this.logger.log(
+                  `[TaskStatusChanged] BPMN task sync completed for case ${event.caseId}`,
+                  FlowableEventListener.name
+              );
+            } catch (syncError) {
+              this.logger.error(
+                  `[TaskStatusChanged] Failed to sync BPMN tasks: ${syncError.message}`,
+                  syncError.stack,
+                  FlowableEventListener.name
+              );
+            }
+          }, 3000);
+
+        } catch (completeError) {
+          if (completeError.response?.status === 404) {
+            this.logger.warn(
+                `[TaskStatusChanged] Flowable task ${taskObj.id} not found (404) - may be already completed`,
                 FlowableEventListener.name
             );
-
-            await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id as string);
-
-            this.logger.log(
-                `[TaskStatusChanged] ✓ BPMN task sync completed for case ${event.caseId}`,
+          } else if (completeError.response?.status === 409) {
+            this.logger.warn(
+                `[TaskStatusChanged] Flowable task ${taskObj.id} conflict (409) - may be already completed`,
                 FlowableEventListener.name
             );
-          } catch (syncError) {
+          } else {
             this.logger.error(
-                `[TaskStatusChanged] Failed to sync BPMN tasks: ${syncError.message}`,
-                syncError.stack,
+                `[TaskStatusChanged] Failed to complete Flowable task ${taskObj.id}: ${completeError.message}`,
+                completeError.stack,
                 FlowableEventListener.name
             );
-          }
-        }, 2000);
 
+            if (completeError.response) {
+              this.logger.error(
+                  `[TaskStatusChanged] Error response: ${JSON.stringify(completeError.response.data)}`,
+                  FlowableEventListener.name
+              );
+            }
+          }
+        }
       } else {
+        this.logger.log(
+            `[TaskStatusChanged] Updating Flowable task ${taskObj.id} status variable to ${event.newStatus}`,
+            FlowableEventListener.name
+        );
+
         await this.flowableService.updateTaskVariable(taskObj.id as string, 'task_status', event.newStatus);
 
         this.logger.log(
-            `[TaskStatusChanged] Updated Flowable task ${taskObj.id} status to ${event.newStatus}`,
+            `[TaskStatusChanged] Updated Flowable task ${taskObj.id} status variable`,
             FlowableEventListener.name
         );
       }
     } catch (error) {
       this.logger.error(
-          `[TaskStatusChanged] Failed to update Flowable task status: ${error.message}`,
+          `[TaskStatusChanged] CRITICAL ERROR: ${error.message}`,
           error.stack,
           FlowableEventListener.name
       );
@@ -625,28 +697,59 @@ export class FlowableEventListener {
     }
 
     try {
+      this.logger.log(
+          `[CaseStatusChanged] Processing status change for case ${event.caseId}: ${event.oldStatus} → ${event.newStatus}`,
+          FlowableEventListener.name
+      );
+
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
+        this.logger.warn(
+            `[CaseStatusChanged] No Flowable process found for case ${event.caseId}`,
+            FlowableEventListener.name
+        );
+        return;
       }
 
-      const processVariables = {
-        case_status: event.newStatus,
-        status_change_reason: event.reason || 'Status updated',
-        status_changed_at: new Date().toISOString(),
-        previous_status: event.oldStatus,
-      };
+      try {
+        await this.flowableService.updateProcessVariable(
+            processInstance.id as string,
+            'case_status',
+            event.newStatus
+        );
 
-      await this.flowableService.setProcessVariables(processInstance.id as string, processVariables);
+        await this.flowableService.updateProcessVariable(
+            processInstance.id as string,
+            'status_change_reason',
+            event.reason || 'Status updated'
+        );
 
-      this.logger.log(
-          `Updated Flowable process ${processInstance.id} status for case ${event.caseId}`,
-          FlowableEventListener.name
-      );
+        await this.flowableService.updateProcessVariable(
+            processInstance.id as string,
+            'status_changed_at',
+            new Date().toISOString()
+        );
+
+        await this.flowableService.updateProcessVariable(
+            processInstance.id as string,
+            'previous_status',
+            event.oldStatus
+        );
+
+        this.logger.log(
+            `[CaseStatusChanged] ✓ Updated Flowable process ${processInstance.id} status for case ${event.caseId}: ${event.oldStatus} → ${event.newStatus}`,
+            FlowableEventListener.name
+        );
+      } catch (updateError) {
+        this.logger.warn(
+            `[CaseStatusChanged] Failed to update some process variables, but continuing: ${updateError.message}`,
+            FlowableEventListener.name
+        );
+      }
     } catch (error) {
       this.logger.error(
-          `Failed to update Flowable process status: ${error.message}`,
+          `[CaseStatusChanged] Failed to update Flowable process status: ${error.message}`,
           error.stack,
           FlowableEventListener.name
       );

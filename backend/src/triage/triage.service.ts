@@ -647,6 +647,7 @@ export class TriageService {
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
           userId,
           triageTaskId,
+          predictedAlertType,
           'Triage complete - false positive (case auto-closed refuted)',
         );
       }
@@ -663,6 +664,13 @@ export class TriageService {
             userId,
             this.audit,
           );
+          await this.prisma.case.update({
+            where: { case_id: caseId },
+            data: {
+              case_type: predictedAlertType,
+              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            },
+          });
           await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, caseId, priority);
           await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, caseId, priority);
           return;
@@ -691,6 +699,7 @@ export class TriageService {
               CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               userId,
               triageTaskId,
+              predictedAlertType,
               'Triage complete - true positive (case auto-closed confirmed)',
             );
           }
@@ -720,7 +729,14 @@ export class TriageService {
     }
   }
 
-  private async autoCloseCase(caseId: string, status: CaseStatus, userId: string, taskId: string, customDescription?: string) {
+  private async autoCloseCase(
+    caseId: string,
+    status: CaseStatus,
+    userId: string,
+    taskId: string,
+    caseType?: CaseType,
+    customDescription?: string,
+  ) {
     try {
       const existingCase = await this.prisma.case.findUnique({
         where: { case_id: caseId },
@@ -740,7 +756,10 @@ export class TriageService {
         this.audit,
       );
 
-      await this.caseCreationService.updateCaseStatus(caseId, status, userId);
+      // await this.caseCreationService.updateCaseStatus(caseId, status, userId);
+      await this.caseCreationService.updateCaseStatus(caseId, status, userId, {
+        caseType: caseType,
+      });
 
       const updatedCase = await this.prisma.case.findUnique({
         where: { case_id: caseId },

@@ -7,6 +7,8 @@ export const INITIAL_WORK_QUEUES: WorkQueue[] = [
     description: 'For cases that have not been assigned to an analyst',
     roles: ['Supervisor', 'Manager'],
     taskTypes: ['New Case', 'Reopened Case'],
+    caseStatuses: [],
+    caseTypes: [],
     status: 'Active'
   },
   {
@@ -15,6 +17,8 @@ export const INITIAL_WORK_QUEUES: WorkQueue[] = [
       description: 'For active investigations in progress',
       roles: ['Fraud Analyst', 'Investigator', 'AML Specialist'],
       taskTypes: ['Fraud Alert', 'AML Alert', 'Customer Complaint'],
+      caseStatuses: [],
+      caseTypes: [],
       status: 'Active'
     },
     {
@@ -23,6 +27,8 @@ export const INITIAL_WORK_QUEUES: WorkQueue[] = [
       description: 'For cases requiring supervisor approval',
       roles: ['Supervisor', 'Manager'],
       taskTypes: ['Case Approval', 'Reopening Request'],
+      caseStatuses: [],
+      caseTypes: [],
       status: 'Active'
     },
     {
@@ -31,6 +37,8 @@ export const INITIAL_WORK_QUEUES: WorkQueue[] = [
       description: 'For closed and completed cases',
       roles: ['Fraud Analyst', 'Investigator', 'Supervisor'],
       taskTypes: ['Closed Case', 'Archived Case'],
+      caseStatuses: [],
+      caseTypes: [],
       status: 'Active'
     }
 ];

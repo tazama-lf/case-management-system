@@ -502,13 +502,41 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
+  async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
+    try {
+      await this.flowableClient.put(
+          `/service/runtime/process-instances/${processInstanceId}/variables/${variableName}`,
+          {
+            name: variableName,
+            value: String(value),
+            type: typeof value === 'boolean' ? 'boolean' : 'string',
+          }
+      );
+
+      this.logger.log(
+          `Successfully updated variable '${variableName}' for process ${processInstanceId}`,
+          FlowableService.name
+      );
+    } catch (error) {
+      this.logger.error(
+          `Failed to update variable '${variableName}': ${error.message}`,
+          error.stack,
+          FlowableService.name
+      );
+      throw new HttpException(`Failed to update process variable: ${variableName}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(`/service/runtime/process-instances/${processInstanceId}/variables`, formattedVariables);
+      const response = await this.flowableClient.put(
+          `/service/runtime/process-instances/${processInstanceId}/variables`,
+          formattedVariables
+      );
 
-      this.logger.log(`Variables set successfully for process ${processInstanceId}`, FlowableService.name);
+      this.logger.log(`Variables updated successfully for process ${processInstanceId}`, FlowableService.name);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to set process variables: ${error.message}`, error.stack, FlowableService.name);
@@ -516,6 +544,21 @@ export class FlowableService implements OnModuleInit {
       if (error.response) {
         this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
         this.logger.error(`Status code: ${error.response.status}`, FlowableService.name);
+      }
+
+      if (error.response?.status === 409) {
+        this.logger.warn(`Conflict detected, attempting to update variables individually`, FlowableService.name);
+
+        try {
+          for (const [name, value] of Object.entries(variables)) {
+            await this.updateProcessVariable(processInstanceId, name, value);
+          }
+          this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableService.name);
+          return;
+        } catch (retryError) {
+          this.logger.error(`Failed to update variables individually: ${retryError.message}`, retryError.stack, FlowableService.name);
+          throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
       }
 
       throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);

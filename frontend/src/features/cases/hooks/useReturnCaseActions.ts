@@ -22,18 +22,30 @@ The investigator will receive your feedback and can make the necessary adjustmen
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Something went wrong while returning the case for review. Please try again.';
-      const errorString = err instanceof Error ? err.message : '';
+      const backendError = err instanceof Error ? err.message : '';
+      
+      if (backendError.includes('not in a returnable state')) {
+        errorMessage = `Unable to return this case for review right now.
 
-      if (errorString.includes('not in a returnable state')) {
-        errorMessage = `This case can't be returned for review right now.
+Please check the case status and ensure it's ready for review feedback.
 
-Please check the case status and ensure it's ready for review feedback.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Sorry, you don't have permission to return this case for review.
+Technical details: ${backendError}`;
+      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+        errorMessage = `Access denied.
 
-Please check that you have supervisor privileges.`;
-      } else if (errorString.includes('404')) {
-        errorMessage = `We can't find this case. It might have been moved or deleted.`;
+You don't have permission to return this case for review. Please check that you have supervisor privileges.
+
+Technical details: ${backendError}`;
+      } else if (backendError.includes('not found') || backendError.includes('404')) {
+        errorMessage = `Case not found.
+
+This case may have been moved, deleted, or you may not have access to it.
+
+Technical details: ${backendError}`;
+      } else if (backendError) {
+        errorMessage = `${backendError}
+
+If this problem persists, please contact support.`;
       }
 
       error('Return Case for Review Failed', errorMessage);

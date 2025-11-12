@@ -34,7 +34,8 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to abandon case:', error);
-      setErrors({ submit: 'Failed to abandon case. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to abandon case. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
