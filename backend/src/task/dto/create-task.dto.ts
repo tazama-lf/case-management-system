@@ -55,4 +55,3 @@ export class CreateTaskDto {
   @IsOptional()
   candidateGroup?: string;
 }
-

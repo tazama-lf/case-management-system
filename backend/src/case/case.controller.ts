@@ -251,7 +251,7 @@ export class CaseController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: "Case not found or you don't have permission to close it" },
+        message: { type: 'string', example: 'Case not found or you don\'t have permission to close it' },
       },
     },
   })
@@ -370,7 +370,7 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: 'Get summary statistics of user\'s case workload',
   })
   @ApiResponse({
     status: 200,

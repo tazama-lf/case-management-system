@@ -837,7 +837,7 @@ export class CaseService {
             }
           } else {
             this.logger.warn(
-              `[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...`,
+              '[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...',
               CaseService.name,
             );
 
@@ -1531,7 +1531,7 @@ export class CaseService {
       );
 
       if (!approvalTask) {
-        const errorMsg = `Approve Case Closure task not found or not in correct state`;
+        const errorMsg = 'Approve Case Closure task not found or not in correct state';
         this.logger.error(
           `[ApproveCaseClosure] ${errorMsg}. Available tasks: ${caseDetails.tasks.map((t) => `${t.name}(${t.status})`).join(', ')}`,
           null,
@@ -2054,12 +2054,7 @@ export class CaseService {
 
         this.eventEmitter.emit(
           'case.status.changed',
-          new CaseStatusChangedEvent(
-            caseId,
-            existingCase.status,
-            CaseStatus.STATUS_10_ASSIGNED,
-            `Case reopening requested: ${reason}`,
-          ),
+          new CaseStatusChangedEvent(caseId, existingCase.status, CaseStatus.STATUS_10_ASSIGNED, `Case reopening requested: ${reason}`),
         );
 
         await this.auditLogService.logAction({

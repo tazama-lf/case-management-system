@@ -272,7 +272,7 @@ export class SlaMonitoringService implements OnModuleInit {
               slaDeadline: task.sla_deadline,
               timeUntilDeadlineMinutes: timeUntilDeadline,
               status: task.status,
-              tenantId: task.case?.tenant_id!,
+              tenantId: task.case?.tenant_id,
               timestamp: now,
             };
           });
@@ -377,7 +377,7 @@ export class SlaMonitoringService implements OnModuleInit {
               slaDeadline: task.sla_deadline!,
               breachDurationMinutes: breachDuration,
               status: task.status,
-              tenantId: task.case?.tenant_id!,
+              tenantId: task.case?.tenant_id,
               timestamp: now,
               severity: this.calculateBreachSeverity(breachDuration, task.case?.priority),
             };
@@ -489,7 +489,7 @@ export class SlaMonitoringService implements OnModuleInit {
               createdAt: task.created_at,
               daysOverdue: daysOverdue,
               status: task.status,
-              tenantId: task.case?.tenant_id!,
+              tenantId: task.case?.tenant_id,
               timestamp: now,
             };
           });

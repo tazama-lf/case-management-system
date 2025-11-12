@@ -7,14 +7,9 @@ import { LoggerModule } from '../logger/logger.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-    imports: [
-        PrismaModule,
-        AuditLogModule,
-        LoggerModule,
-        AuthModule,
-    ],
-    controllers: [ConfigManagementController],
-    providers: [ConfigManagementService],
-    exports: [ConfigManagementService],
+  imports: [PrismaModule, AuditLogModule, LoggerModule, AuthModule],
+  controllers: [ConfigManagementController],
+  providers: [ConfigManagementService],
+  exports: [ConfigManagementService],
 })
 export class ConfigManagementModule {}

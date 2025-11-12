@@ -86,9 +86,9 @@ export class ReportsService {
         tenant_id: filters.tenantId,
       };
     }
-    
+
     let whereClause: any;
-    
+
     // If requestingUserId is provided (investigator), filter to show only unassigned, ready for assignment, or assigned to them
     if (filters?.requestingUserId) {
       whereClause = {

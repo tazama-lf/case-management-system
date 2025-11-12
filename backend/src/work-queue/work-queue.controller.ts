@@ -87,7 +87,7 @@ export class WorkQueueController {
   })
   async getWorkQueuesByRole(@Param('roleName') roleName: string, @Req() req: AuthenticatedRequest): Promise<WorkQueueResponseDto[]> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getWorkQueuesByRole(roleName, tenantId!);
+    return this.workQueueService.getWorkQueuesByRole(roleName, tenantId);
   }
 
   @Post()
@@ -116,7 +116,7 @@ export class WorkQueueController {
   })
   async createWorkQueue(@Body() createDto: CreateWorkQueueDto, @Req() req: AuthenticatedRequest): Promise<WorkQueueDetailResponseDto> {
     const { tenantId, clientId } = req.user.token;
-    return this.workQueueService.createWorkQueue(createDto, tenantId!, clientId);
+    return this.workQueueService.createWorkQueue(createDto, tenantId, clientId);
   }
 
   @Put(':workQueueId')
@@ -153,7 +153,7 @@ export class WorkQueueController {
     @Req() req: AuthenticatedRequest,
   ): Promise<WorkQueueDetailResponseDto> {
     const { tenantId, clientId } = req.user.token;
-    return this.workQueueService.updateWorkQueue(workQueueId, updateDto, tenantId!, clientId);
+    return this.workQueueService.updateWorkQueue(workQueueId, updateDto, tenantId, clientId);
   }
 
   @Put(':workQueueId/deactivate')
@@ -177,7 +177,7 @@ export class WorkQueueController {
   })
   async deactivateWorkQueue(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<void> {
     const { tenantId, clientId } = req.user.token;
-    await this.workQueueService.deactivateWorkQueue(workQueueId, tenantId!, clientId);
+    await this.workQueueService.deactivateWorkQueue(workQueueId, tenantId, clientId);
   }
 
   @Delete(':workQueueId')
@@ -209,7 +209,7 @@ export class WorkQueueController {
     @Req() req: AuthenticatedRequest,
   ): Promise<void> {
     const { tenantId, clientId } = req.user.token;
-    await this.workQueueService.deleteWorkQueue(workQueueId, tenantId!, clientId, reassignQueueId);
+    await this.workQueueService.deleteWorkQueue(workQueueId, tenantId, clientId, reassignQueueId);
   }
 
   @Post(':workQueueId/members')
@@ -235,7 +235,7 @@ export class WorkQueueController {
     @Req() req: AuthenticatedRequest,
   ): Promise<UserAssignmentResponseDto[]> {
     const { tenantId, clientId } = req.user.token;
-    return this.workQueueService.assignUsers(workQueueId, dto.userIds, tenantId!, clientId, dto.assignmentType);
+    return this.workQueueService.assignUsers(workQueueId, dto.userIds, tenantId, clientId, dto.assignmentType);
   }
 
   @Delete(':workQueueId/members')
@@ -266,7 +266,7 @@ export class WorkQueueController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string; removedCount: number }> {
     const { tenantId, clientId } = req.user.token;
-    const removedCount = await this.workQueueService.removeUsers(workQueueId, dto.userIds, tenantId!, clientId);
+    const removedCount = await this.workQueueService.removeUsers(workQueueId, dto.userIds, tenantId, clientId);
     return {
       message: `Successfully removed ${removedCount} user(s) from work queue`,
       removedCount,
@@ -287,7 +287,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async getWorkQueueMembers(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<WorkQueueMemberDto[]> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getWorkQueueMembers(workQueueId, tenantId!);
+    return this.workQueueService.getWorkQueueMembers(workQueueId, tenantId);
   }
 
   @Get('users/:userId/assignments')
@@ -297,7 +297,7 @@ export class WorkQueueController {
   })
   @ApiResponse({
     status: 200,
-    description: "User's work queue assignments retrieved successfully.",
+    description: 'User\'s work queue assignments retrieved successfully.',
     schema: {
       type: 'array',
       items: {
@@ -316,7 +316,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 404, description: 'User not found or no assignments.' })
   async getUserWorkQueueAssignments(@Param('userId') userId: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getUserWorkQueueAssignments(userId, tenantId!);
+    return this.workQueueService.getUserWorkQueueAssignments(userId, tenantId);
   }
 
   @Get('dashboard/supervisor')
@@ -372,7 +372,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 403, description: 'Forbidden - User does not have CMS_SUPERVISOR role.' })
   async getSupervisorDashboard(@Req() req: AuthenticatedRequest): Promise<any> {
     const { clientId: userId, tenantId } = req.user.token;
-    return this.workQueueService.getSupervisorDashboard(userId, tenantId!);
+    return this.workQueueService.getSupervisorDashboard(userId, tenantId);
   }
 
   @Get(':workQueueId/metrics')
@@ -405,7 +405,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async getWorkQueueMetrics(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getWorkQueueMetrics(workQueueId, tenantId!);
+    return this.workQueueService.getWorkQueueMetrics(workQueueId, tenantId);
   }
 
   @Get(':workQueueId/tasks')
@@ -440,7 +440,7 @@ export class WorkQueueController {
     @Req() req: AuthenticatedRequest,
   ): Promise<any> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getTasksByWorkQueue(workQueueId, filters, tenantId!);
+    return this.workQueueService.getTasksByWorkQueue(workQueueId, filters, tenantId);
   }
 
   @Get(':workQueueId/overdue')
@@ -460,7 +460,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async getOverdueTasks(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getOverdueTasks(workQueueId, tenantId!);
+    return this.workQueueService.getOverdueTasks(workQueueId, tenantId);
   }
 
   @Get(':workQueueId/sla-breaches')
@@ -480,7 +480,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async getSLABreachTasks(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
     const { tenantId } = req.user.token;
-    return this.workQueueService.getSLABreachTasks(workQueueId, tenantId!);
+    return this.workQueueService.getSLABreachTasks(workQueueId, tenantId);
   }
 
   // ========== Assignment Rule Management Endpoints ==========

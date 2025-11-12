@@ -21,7 +21,7 @@ export class EventDeduplicator {
     const now = Date.now();
     const lastEmitted = this.recentEvents.get(eventKey);
 
-    if (lastEmitted && (now - lastEmitted) < this.dedupWindowMs) {
+    if (lastEmitted && now - lastEmitted < this.dedupWindowMs) {
       return false; // Event was recently emitted, skip
     }
 
@@ -40,10 +40,12 @@ export class EventDeduplicator {
   private generateEventKey<T>(eventName: string, payload: T): string {
     const payloadString = JSON.stringify(payload, (key, value) => {
       if (typeof value === 'object' && value !== null) {
-        return Object.keys(value).sort().reduce((sorted, k) => {
-          sorted[k] = value[k];
-          return sorted;
-        }, {} as any);
+        return Object.keys(value)
+          .sort()
+          .reduce((sorted, k) => {
+            sorted[k] = value[k];
+            return sorted;
+          }, {} as any);
       }
       return value;
     });
@@ -55,9 +57,10 @@ export class EventDeduplicator {
    * Clean up old entries to prevent memory leaks
    */
   private cleanupOldEntries(now: number): void {
-    if (this.recentEvents.size > 1000) { // Only clean up if map gets large
+    if (this.recentEvents.size > 1000) {
+      // Only clean up if map gets large
       for (const [key, timestamp] of this.recentEvents.entries()) {
-        if ((now - timestamp) > this.dedupWindowMs * 2) {
+        if (now - timestamp > this.dedupWindowMs * 2) {
           this.recentEvents.delete(key);
         }
       }

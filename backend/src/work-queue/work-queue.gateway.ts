@@ -479,7 +479,7 @@ export class WorkQueueGateway implements OnGatewayConnection, OnGatewayDisconnec
         message: 'Notification marked as read',
       };
     } catch (error) {
-      this.logger.error(`Error marking notification as read:`, error);
+      this.logger.error('Error marking notification as read:', error);
       return {
         success: false,
         message: 'Failed to mark notification as read',
@@ -513,7 +513,7 @@ export class WorkQueueGateway implements OnGatewayConnection, OnGatewayDisconnec
         count: 0,
       };
     } catch (error) {
-      this.logger.error(`Error fetching unread notifications:`, error);
+      this.logger.error('Error fetching unread notifications:', error);
       return {
         success: false,
         message: 'Failed to fetch unread notifications',

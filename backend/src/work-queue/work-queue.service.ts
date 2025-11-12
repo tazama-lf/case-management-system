@@ -1,4 +1,13 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -27,7 +36,7 @@ import { RuleEngineService } from './rule-engine.service';
 @Injectable()
 export class WorkQueueService implements OnModuleInit {
   private readonly logger = new Logger(WorkQueueService.name);
-  
+
   // Predefined candidate groups managed by Work Queue module
   private readonly predefinedCandidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
 
@@ -44,7 +53,7 @@ export class WorkQueueService implements OnModuleInit {
   async onModuleInit() {
     // Initialize predefined candidate groups in Flowable
     await this.initializePredefinedCandidateGroups();
-    
+
     // Emit a bootstrap sync event for all active work queues so Flowable can reconcile identity.
     try {
       const queues = await this.prisma.workQueue.findMany({
@@ -69,7 +78,7 @@ export class WorkQueueService implements OnModuleInit {
             flowableGroupId,
             members: members.map((m) => m.user_id),
           };
-        })
+        }),
       );
 
       // Emit all events asynchronously using setImmediate to avoid blocking
@@ -87,15 +96,15 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Initialize predefined candidate groups in Flowable
    **/
- 
+
   private async initializePredefinedCandidateGroups() {
     this.logger.log('Initializing predefined candidate groups via WorkQueue module', WorkQueueService.name);
-    
+
     for (const groupName of this.predefinedCandidateGroups) {
       try {
         // Use FlowableService to create the group in Flowable engine
         const existingGroup = await this.flowableService.getGroup(groupName.toLowerCase());
-        
+
         if (!existingGroup) {
           await this.flowableService.createGroup({
             id: groupName.toLowerCase(),
@@ -956,7 +965,7 @@ export class WorkQueueService implements OnModuleInit {
    */
   async getWorkQueueMetrics(workQueueId: string, tenantId: string, userId?: string): Promise<WorkQueueMetricsDto> {
     const startTime = Date.now();
-    
+
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1248,7 +1257,7 @@ export class WorkQueueService implements OnModuleInit {
    */
   async getSupervisorDashboard(userId: string, tenantId: string): Promise<SupervisorDashboardDto> {
     const startTime = Date.now();
-    
+
     const workQueueAssignments = await this.prisma.workQueueMember.findMany({
       where: {
         user_id: userId,

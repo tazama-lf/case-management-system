@@ -21,7 +21,7 @@ import { NotificationModule } from './notification/notification.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { ReportsModule } from './report/report.module';
 import { validate } from './config/env.validation';
-import {ConfigManagementModule} from "./config-management/config-management.module";
+import { ConfigManagementModule } from './config-management/config-management.module';
 import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 
@@ -33,7 +33,7 @@ import { FeatureExtractionModule } from './feature-extraction/feature-extraction
       validate,
     }),
     EventEmitterModule.forRoot(),
-    SharedModule, 
+    SharedModule,
     PrismaModule,
     CaseCreationModule,
     FlowableModule,

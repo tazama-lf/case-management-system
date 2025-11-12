@@ -23,7 +23,10 @@ interface TaskForAssignment {
 export class AssignmentRuleService {
   private readonly logger = new Logger(AssignmentRuleService.name);
 
-  constructor(private readonly prisma: PrismaService, private readonly configService: ConfigService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Automatically assigns a task to the most appropriate work queue
