@@ -14,8 +14,11 @@ import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client';
 import { Outcome } from 'src/audit/types/outcome';
-import { Prediction } from './types/Prediction';
+import { AIPrediction, Prediction } from './interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
+import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
+import { FeatureExtractionService } from 'src/feature-extraction/feature-extraction.service';
+import axios from 'axios';
 
 @Injectable()
 export class TriageService {
@@ -29,6 +32,7 @@ export class TriageService {
     private configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly featureExtractionService: FeatureExtractionService,
   ) {}
 
   @OnEvent('alert.incoming')
@@ -591,7 +595,7 @@ export class TriageService {
         }
       }
 
-      const prediction: Prediction = await this.predictAlert(alertId);
+      const prediction: Prediction = await this.predictAlert(dto);
       const {
         confidence_per: predictedConfidence,
         alertType: predictedAlertType,
@@ -725,7 +729,14 @@ export class TriageService {
     }
   }
 
-  private async autoCloseCase(caseId: string, status: CaseStatus, userId: string, taskId: string, caseType?: CaseType,  customDescription?: string) {
+  private async autoCloseCase(
+    caseId: string,
+    status: CaseStatus,
+    userId: string,
+    taskId: string,
+    caseType?: CaseType,
+    customDescription?: string,
+  ) {
     try {
       const existingCase = await this.prisma.case.findUnique({
         where: { case_id: caseId },
@@ -949,18 +960,19 @@ export class TriageService {
     }
   }
 
-  public async predictAlert(alertId: string): Promise<{
-    priorityScore: number;
-    alertType: AlertType;
-    confidence_per: number;
-    isTruePositive: boolean;
-  }> {
-    this.logger.log(`Prediction for alert ${alertId} completed`, TriageService.name);
-    return {
-      priorityScore: 0.37,
-      alertType: AlertType.FRAUD_AND_AML,
-      confidence_per: 97,
-      isTruePositive: true,
-    };
+  public async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
+    {
+      const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
+      const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);
+      const confidence = predictedResult.data.confidence * 100;
+      this.logger.log(`Prediction for alert ${alert.report.evaluationID}: ${JSON.stringify(predictedResult.data)}`, TriageService.name);
+
+      return {
+        priorityScore: predictedResult.data.priority,
+        alertType: AlertType.FRAUD_AND_AML,
+        confidence_per: confidence,
+        isTruePositive: true,
+      };
+    }
   }
 }

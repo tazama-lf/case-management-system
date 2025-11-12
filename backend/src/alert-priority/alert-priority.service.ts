@@ -42,9 +42,8 @@ export class AlertPriorityService implements OnModuleInit {
         const now = new Date();
         const elapsedHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
         const slaProgress = elapsedHours / slaHours;
-        // Get priority_score from alert (provided by AI model) or use SLA progress as fallback
-        const priorityScore = (await this.triageService.predictAlert(alert.alert_id)).priorityScore ?? slaProgress;
         // Determine priority based on priority_score thresholds
+        const priorityScore = slaProgress;
         let priority: Priority = Priority.NEW;
         if (priorityScore >= this.urgencyThresholds[2]) {
           priority = Priority.BREACH;
