@@ -93,8 +93,7 @@ export class CaseService {
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
 
-    // Check if user is a supervisor
-    const isSupervisor = role === 'CMS_SUPERVISOR';
+    const isSupervisor = role === 'SUPERVISOR';
 
     const needsApproval = !isSupervisor;
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;

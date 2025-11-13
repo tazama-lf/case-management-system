@@ -195,7 +195,7 @@ export class CaseController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
 
     return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
   }

@@ -125,6 +125,7 @@ model Case {
   alert                Alert?
   comments             Comment[]
   tasks                Task[]
+  evidence             Evidence[]
 
   @@map("cases")
 }
@@ -174,16 +175,23 @@ model Comment {
 model Evidence {
   evidence_id      String   @id @default(uuid()) @db.Uuid
   task_id          String   @db.Uuid
+  case_id          String?  @db.Uuid
   uploader_user_id String   @db.Uuid
   tenant_id        String   
-  name             String   @db.VarChar(30)
-  description      String   @db.VarChar(100)
-  type             String   @db.VarChar(30)
+  name             String   @db.VarChar(255)
+  description      String   @db.VarChar(1000)
+  type             String   @db.VarChar(50)
   file_path        String
+  file_size        BigInt?
+  file_type        String?  @db.VarChar(255)
   evidence_hash    String
+  metadata         Json?
   uploaded_at      DateTime @default(now()) @db.Timestamp(6)
   task             Task     @relation(fields: [task_id], references: [task_id])
+  case             Case?    @relation(fields: [case_id], references: [case_id])
 
+  @@index([case_id])
+  @@index([evidence_hash])
   @@map("evidence")
 }
 

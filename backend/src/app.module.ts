@@ -24,6 +24,8 @@ import { validate } from './config/env.validation';
 import { ConfigManagementModule } from './config-management/config-management.module';
 import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
+import { CouchdbModule } from './couchdb/couchdb.module';
+import { EvidenceModule } from './evidence/evidence.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { FeatureExtractionModule } from './feature-extraction/feature-extraction
     ReportsModule,
     UserModule,
     FeatureExtractionModule,
+    CouchdbModule,
+    EvidenceModule,
   ],
   providers: [
     PrismaService,
