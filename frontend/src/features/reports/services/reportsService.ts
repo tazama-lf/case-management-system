@@ -4,8 +4,10 @@ import type {
   InvestigatorWorkloadData,
   TaskCompletionData,
   AuditLogsData,
-  CaseAgeingData
+  CaseAgeingData,
+  EvidenceFindingsData
 } from '../types/reports.types';
+import { evidenceFindingsMockData } from '../mocks/evidenceFindingsMockData';
 
 class ReportsService {
   async getReportsData(dateRange?: string, filters?: { caseType: string; priority: string; investigator: string }): Promise<ReportsData> {
@@ -230,6 +232,51 @@ class ReportsService {
         ageingDistribution: [],
         caseTypeResolution: [],
         caseDetails: []
+      };
+    }
+  }
+
+  async getEvidenceFindingsData(dateRange?: string): Promise<EvidenceFindingsData> {
+    try {
+      // For now, return mock data
+      // In production, this will call the actual API
+      // const response = await apiClient.get<EvidenceFindingsData>(`/api/v1/reports/evidence-findings?dateRange=${dateRange || 'last30'}`);
+      
+      const processedResponse: EvidenceFindingsData = {
+        ...evidenceFindingsMockData,
+        stats: {
+          totalFindings: this.safeFallback(evidenceFindingsMockData.stats?.totalFindings, 0),
+          evidenceItems: this.safeFallback(evidenceFindingsMockData.stats?.evidenceItems, 0),
+          confirmedFindings: this.safeFallback(evidenceFindingsMockData.stats?.confirmedFindings, 0),
+          refutedFindings: this.safeFallback(evidenceFindingsMockData.stats?.refutedFindings, 0),
+        },
+        statusDistribution: evidenceFindingsMockData.statusDistribution || {
+          confirmed: 0,
+          refuted: 0,
+          inconclusive: 0,
+        },
+        evidenceItems: evidenceFindingsMockData.evidenceItems || [],
+        findings: evidenceFindingsMockData.findings || []
+      };
+
+      return processedResponse;
+    } catch (error) {
+      console.error('Failed to fetch evidence findings data:', error);
+
+      return {
+        stats: {
+          totalFindings: 0,
+          evidenceItems: 0,
+          confirmedFindings: 0,
+          refutedFindings: 0,
+        },
+        statusDistribution: {
+          confirmed: 0,
+          refuted: 0,
+          inconclusive: 0,
+        },
+        evidenceItems: [],
+        findings: []
       };
     }
   }

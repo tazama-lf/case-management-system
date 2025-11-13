@@ -3,7 +3,7 @@ import { FunnelIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
-  reportType: 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
+  reportType: 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD' | 'EVIDENCE_FINDINGS';
   dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
@@ -26,6 +26,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     AUDIT_LOGS: 'Audit Logs Report',
     CASE_AGEING: 'Case Ageing Report',
     INVESTIGATOR_WORKLOAD: 'Investigator Workload Report',
+    EVIDENCE_FINDINGS: 'Evidence Findings Report',
   };
 
   const dateRangeLabels: Record<ReportFiltersProps['dateRange'], string> = {

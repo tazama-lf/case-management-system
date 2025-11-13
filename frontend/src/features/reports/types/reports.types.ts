@@ -233,3 +233,41 @@ export interface CaseAgeingData {
   caseTypeResolution: CaseTypeResolution[];
   caseDetails: CaseAgeingDetail[];
 }
+
+// Evidence Findings Report Types
+export interface EvidenceFindingsStats {
+  totalFindings: number;
+  evidenceItems: number;
+  confirmedFindings: number;
+  refutedFindings: number;
+}
+
+export interface FindingStatusDistribution {
+  confirmed: number;
+  refuted: number;
+  inconclusive: number;
+}
+
+export interface EvidenceItem {
+  id: string;
+  type: string;
+  count: number;
+  percentage: number;
+  status: 'Confirmed' | 'Refuted' | 'Inconclusive';
+}
+
+export interface FindingDetail {
+  caseId: string;
+  finding: string;
+  conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive';
+  evidenceCount: number;
+  supportingEvidence: string[];
+  dateIdentified: string;
+}
+
+export interface EvidenceFindingsData {
+  stats: EvidenceFindingsStats;
+  statusDistribution: FindingStatusDistribution;
+  evidenceItems: EvidenceItem[];
+  findings: FindingDetail[];
+}
