@@ -77,10 +77,28 @@ services:
     networks:
       - tazama-network
 
+  # CouchDB for evidence storage
+  couchdb:
+    image: couchdb:3.3
+    container_name: tazama-cms-couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: simon
+      COUCHDB_PASSWORD: "1234"
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+    networks:
+      - tazama-network
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  couchdb_data:
     driver: local
 
 networks:

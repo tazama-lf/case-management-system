@@ -50,7 +50,126 @@ npx prisma migrate dev
 npx prisma generate
 ```
 
-### 5. Start Development Servers
+### 5. CouchDB Setup (Evidence Storage)
+
+CouchDB is used for storing evidence files with tamper-proof integrity validation.
+
+#### Using Docker (Recommended)
+```bash
+# Start CouchDB container
+docker-compose up couchdb -d
+
+# Verify CouchDB is running
+docker ps | grep couchdb
+```
+
+CouchDB will be available at:
+- **URL**: `http://localhost:5984`
+- **Admin UI**: `http://localhost:5984/_utils`
+- **Default Credentials**: `simon:1234` (configurable in `.env`)
+
+#### Manual CouchDB Configuration
+
+**First-time setup:**
+1. Copy the template configuration:
+   ```bash
+   cp docker/couchdb/local.ini.example docker/couchdb/local.ini
+   ```
+
+2. Edit `docker/couchdb/local.ini` with your settings:
+   ```ini
+   [couchdb]
+   single_node=true
+   uuid = c4cec7872572187d7f74056c179e5309  # Generate unique UUID
+
+   [httpd]
+   enable_cors = true
+   max_http_request_size = 4294967296  # 4GB max file size
+
+   [chttpd]
+   bind_address = 0.0.0.0
+   port = 5984
+
+   [admins]
+   # Add your admin credentials (CouchDB auto-hashes on first start)
+   your_username = your_password
+
+   [chttpd_auth]
+   secret = your-random-secret-here  # Generate secure random string
+   ```
+
+3. **Important:** The `local.ini` file contains sensitive credentials and is gitignored. Never commit it to version control.
+
+#### Setting Up Custom Credentials
+
+To change the default CouchDB credentials:
+
+1. **Update `docker-compose.yml`:**
+   ```yaml
+   couchdb:
+     environment:
+       COUCHDB_USER: your_username
+       COUCHDB_PASSWORD: "your_password"
+   ```
+
+2. **Update `backend/.env`:**
+   ```env
+   COUCHDB_URL=http://localhost:5984
+   COUCHDB_USERNAME=your_username
+   COUCHDB_PASSWORD=your_password
+   COUCHDB_DATABASE=evidence_store
+   ```
+
+3. **Restart CouchDB:**
+   ```bash
+   docker-compose down couchdb
+   docker-compose up couchdb -d
+   ```
+
+#### Verifying CouchDB Setup
+
+1. **Access Admin UI:**
+   - Open `http://localhost:5984/_utils` in your browser
+   - Login with your credentials (default: `simon:1234`)
+   - You should see the CouchDB Fauxton interface
+
+2. **Check Database Creation:**
+   - The `evidence_store` database is created automatically
+   - You can view it in the Fauxton interface under "Databases"
+
+3. **Test Connection from Backend:**
+   ```bash
+   # Check backend logs for CouchDB connection
+   docker-compose logs backend | grep -i couchdb
+   
+   # Should see: "Connected to CouchDB database: evidence_store"
+   ```
+
+#### Troubleshooting CouchDB
+
+**Connection refused errors:**
+```bash
+# Check if CouchDB container is running
+docker ps | grep couchdb
+
+# View CouchDB logs
+docker logs tazama-cms-couchdb
+
+# Restart CouchDB
+docker-compose restart couchdb
+```
+
+**Authentication errors:**
+- Verify credentials match in `docker-compose.yml` and `.env`
+- Check `docker/couchdb/local.ini` admin section
+- Ensure password is properly escaped in environment variables
+
+**Port conflicts:**
+If port 5984 is already in use:
+1. Update `docker-compose.yml`: `"5985:5984"`
+2. Update `backend/.env`: `COUCHDB_URL=http://localhost:5985`
+
+### 6. Start Development Servers
 ```bash
 # From root directory - starts both frontend and backend
 npm run dev
@@ -215,6 +334,12 @@ npm run lint              # Check linting issues
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/database"
 
+# CouchDB (Evidence Storage)
+COUCHDB_URL=http://localhost:5984
+COUCHDB_USERNAME=simon
+COUCHDB_PASSWORD=1234
+COUCHDB_DATABASE=evidence_store
+
 # Authentication
 TAZAMA_AUTH_URL=http://localhost:3020/v1/auth/login
 AUTH_PUBLIC_KEY_PATH=public-key.pem
@@ -336,7 +461,8 @@ The backend API provides RESTful endpoints for:
 - **NestJS** - Node.js framework
 - **TypeScript** - Type safety
 - **Prisma** - Database ORM
-- **PostgreSQL** - Primary database
+- **PostgreSQL** - Primary database (metadata storage)
+- **CouchDB** - Document database (evidence file storage)
 - **JWT** - Authentication tokens
 - **Jest** - Testing framework
 
