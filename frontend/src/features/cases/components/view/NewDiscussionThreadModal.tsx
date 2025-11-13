@@ -20,7 +20,12 @@ interface NewDiscussionThreadModalProps {
   onCreate: (payload: NewDiscussionThreadPayload) => void;
 }
 
-const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ open, onClose, collaborators, onCreate }) => {
+const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({
+  open,
+  onClose,
+  collaborators,
+  onCreate,
+}) => {
   const [title, setTitle] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
@@ -35,7 +40,8 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
 
   if (!open) return null;
 
-  const toggle = (id: string) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggle = (id: string) =>
+    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const canCreate = title.trim().length > 0 && message.trim().length > 0;
 
@@ -50,8 +56,14 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
       <div className="w-full max-w-lg rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
         {}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">Create New Discussion Thread</h3>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Close">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Create New Discussion Thread
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
+            aria-label="Close"
+          >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
@@ -60,7 +72,9 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
         <div className="px-6 py-4 overflow-y-auto flex-1">
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Thread Title</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Thread Title
+              </label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -70,7 +84,9 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Initial Message</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Initial Message
+              </label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -81,10 +97,15 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
             </div>
 
             <div>
-              <div className="mb-2 text-sm font-medium text-gray-700">Add Collaborators</div>
+              <div className="mb-2 text-sm font-medium text-gray-700">
+                Add Collaborators
+              </div>
               <div className="space-y-2">
                 {collaborators.map((c) => (
-                  <label key={c.id} className="flex cursor-pointer items-start gap-3">
+                  <label
+                    key={c.id}
+                    className="flex cursor-pointer items-start gap-3"
+                  >
                     <input
                       type="checkbox"
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -104,7 +125,12 @@ const NewDiscussionThreadModal: React.FC<NewDiscussionThreadModalProps> = ({ ope
 
         {}
         <div className="flex items-center justify-end gap-2 border-t px-6 py-3">
-          <button onClick={onClose} className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Cancel</button>
+          <button
+            onClick={onClose}
+            className="rounded-md border bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            Cancel
+          </button>
           <button
             onClick={submit}
             disabled={!canCreate}

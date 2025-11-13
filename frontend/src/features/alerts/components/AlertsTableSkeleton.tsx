@@ -4,7 +4,9 @@ interface AlertsTableSkeletonProps {
   rows?: number;
 }
 
-const AlertsTableSkeleton: React.FC<AlertsTableSkeletonProps> = ({ rows = 5 }) => {
+const AlertsTableSkeleton: React.FC<AlertsTableSkeletonProps> = ({
+  rows = 5,
+}) => {
   return (
     <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
       {}

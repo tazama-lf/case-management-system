@@ -1,24 +1,28 @@
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 
-
 interface CaseDetailsTabProps {
   row: CaseRow;
 }
 
-const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({ title, children }) => (
+const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-    {title ? <div className="mb-2 text-sm font-semibold text-gray-700">{title}</div> : null}
+    {title ? (
+      <div className="mb-2 text-sm font-semibold text-gray-700">{title}</div>
+    ) : null}
     <div className="text-sm text-gray-900">{children}</div>
   </div>
 );
 
 const getPriorityColor = (priority: string): string => {
   const priorityColors: Record<string, string> = {
-    'NEW': 'bg-blue-50 text-blue-700 ring-blue-200',
-    'URGENT': 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    'CRITICAL': 'bg-orange-50 text-orange-700 ring-orange-200',
-    'BREACH': 'bg-red-50 text-red-700 ring-red-200',
+    NEW: 'bg-blue-50 text-blue-700 ring-blue-200',
+    URGENT: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+    CRITICAL: 'bg-orange-50 text-orange-700 ring-orange-200',
+    BREACH: 'bg-red-50 text-red-700 ring-red-200',
   };
   return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
 };
@@ -35,7 +39,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
   // Extract transaction data
   const getTransactionData = () => {
     if (!row.transaction) return null;
-    
+
     try {
       const txData = row.transaction as Record<string, unknown>;
       const fiToFIPmtSts = txData?.FIToFIPmtSts as Record<string, unknown>;
@@ -46,8 +50,11 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
   };
 
   const transactionData = getTransactionData();
-  
-  const getNestedValue = (obj: Record<string, unknown> | null, path: string[]): string => {
+
+  const getNestedValue = (
+    obj: Record<string, unknown> | null,
+    path: string[],
+  ): string => {
     if (!obj) return 'N/A';
     let current: unknown = obj;
     for (const key of path) {
@@ -60,15 +67,27 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
     return typeof current === 'string' ? current : 'N/A';
   };
 
-  const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
-  const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
+  const creditorFsp = getNestedValue(transactionData, [
+    'InstdAgt',
+    'FinInstnId',
+    'ClrSysMmbId',
+    'MmbId',
+  ]);
+  const debtorFsp = getNestedValue(transactionData, [
+    'InstgAgt',
+    'FinInstnId',
+    'ClrSysMmbId',
+    'MmbId',
+  ]);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Case Information */}
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700">Case Information</div>
+          <div className="text-sm font-semibold text-gray-700">
+            Case Information
+          </div>
           <SectionCard>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <div>
@@ -77,26 +96,34 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Case Type</div>
-                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}>
+                <span
+                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}
+                >
                   {row.type || 'N/A'}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Status</div>
-                <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}>
+                <span
+                  className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}
+                >
                   {row.status}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Priority</div>
                 <div className="inline-flex items-center gap-2">
-                  <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}
+                  >
                     {row.priority}
                   </span>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 uppercase">Created On</div>
+                <div className="text-xs text-gray-500 uppercase">
+                  Created On
+                </div>
                 <div className="font-medium text-gray-900">{row.createdOn}</div>
               </div>
               <div>
@@ -105,11 +132,17 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Assignee</div>
-                <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
+                <div className="font-medium text-gray-900">
+                  {row.assignee || 'N/A'}
+                </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 uppercase">Total Tasks</div>
-                <div className="font-medium text-gray-900">{row.totalTasks}</div>
+                <div className="text-xs text-gray-500 uppercase">
+                  Total Tasks
+                </div>
+                <div className="font-medium text-gray-900">
+                  {row.totalTasks}
+                </div>
               </div>
             </div>
           </SectionCard>
@@ -118,22 +151,32 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         {/* Alert Information */}
         {row.alertId && (
           <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">Alert Information</div>
+            <div className="text-sm font-semibold text-gray-700">
+              Alert Information
+            </div>
             <SectionCard>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Alert ID</div>
+                  <div className="text-xs text-gray-500 uppercase">
+                    Alert ID
+                  </div>
                   <div className="font-medium text-gray-900">{row.alertId}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Confidence Score</div>
-                  <div className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}>
+                  <div className="text-xs text-gray-500 uppercase">
+                    Confidence Score
+                  </div>
+                  <div
+                    className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}
+                  >
                     {row.confidencePercent || 0}%
                   </div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs text-gray-500 uppercase">Message</div>
-                  <div className="font-medium text-gray-900 mt-1">{row.alertMessage || 'N/A'}</div>
+                  <div className="font-medium text-gray-900 mt-1">
+                    {row.alertMessage || 'N/A'}
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -143,7 +186,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
 
       {/* Creditor Information */}
       <div className="space-y-3">
-        <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
+        <div className="text-sm font-semibold text-gray-700">
+          Creditor Information
+        </div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
             <div className="text-gray-500">FSP ID</div>
@@ -152,11 +197,11 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </SectionCard>
       </div>
 
-      
-
       {/* Debtor Information */}
       <div className="space-y-3 md:col-span-2">
-        <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
+        <div className="text-sm font-semibold text-gray-700">
+          Debtor Information
+        </div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
             <div className="text-gray-500">FSP ID</div>
@@ -164,7 +209,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
           </div>
         </SectionCard>
       </div>
-
     </div>
   );
 };

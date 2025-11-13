@@ -6,7 +6,10 @@ interface EvidenceItemsTableProps {
   isLoading?: boolean;
 }
 
-const EvidenceItemsTable: React.FC<EvidenceItemsTableProps> = ({ data, isLoading = false }) => {
+const EvidenceItemsTable: React.FC<EvidenceItemsTableProps> = ({
+  data,
+  isLoading = false,
+}) => {
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'Confirmed':
@@ -38,16 +41,28 @@ const EvidenceItemsTable: React.FC<EvidenceItemsTableProps> = ({ data, isLoading
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Evidence Type
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Count
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Percentage
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Status
               </th>
             </tr>
@@ -76,7 +91,9 @@ const EvidenceItemsTable: React.FC<EvidenceItemsTableProps> = ({ data, isLoading
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeColor(item.status)}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeColor(item.status)}`}
+                    >
                       {item.status}
                     </span>
                   </td>
@@ -84,7 +101,10 @@ const EvidenceItemsTable: React.FC<EvidenceItemsTableProps> = ({ data, isLoading
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td
+                  colSpan={4}
+                  className="px-6 py-8 text-center text-sm text-gray-500"
+                >
                   No evidence items found
                 </td>
               </tr>

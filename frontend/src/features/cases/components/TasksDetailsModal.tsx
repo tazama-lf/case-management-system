@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
@@ -18,7 +17,12 @@ interface TaskDetailsModalProps {
   onRefreshCases?: () => Promise<void>;
 }
 
-const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row, onRefreshCases }) => {
+const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
+  open,
+  onClose,
+  row,
+  onRefreshCases,
+}) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
 
@@ -38,7 +42,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row,
         {}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Task Details'}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {showCollaborate ? 'Case Collaboration' : 'Task Details'}
+            </h3>
             {/* <CollaborateButton onClick={() => setShowCollaborate(true)} />
             {showCollaborate && (
               <button
@@ -55,7 +61,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row,
               Download
             </button> */}
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close"
+          >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
@@ -75,7 +85,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row,
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
-                  tab === t.key ? 'border-b-2 border-indigo-600 text-indigo-700' : 'text-gray-600 hover:text-gray-800'
+                  tab === t.key
+                    ? 'border-b-2 border-indigo-600 text-indigo-700'
+                    : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
                 {t.label}

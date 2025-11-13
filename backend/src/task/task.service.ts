@@ -158,7 +158,7 @@ export class TaskService {
           taskId: updatedTask.task_id,
           workQueueId: result.workQueueId,
           workQueueName: result.matchingQueue.name,
-          candidateGroup: taskDTO.candidateGroup, 
+          candidateGroup: taskDTO.candidateGroup,
           flowableGroupId: result.derivedFlowableGroupId,
           autoAssigned: true,
           assignedBy: 'SYSTEM',
@@ -233,7 +233,6 @@ export class TaskService {
       this.logger.log(`[ReassignTask] Updating task ${taskId} and case ${existingTask.case_id} in transaction`, TaskService.name);
 
       const result = await this.prisma.$transaction(async (tx) => {
-      
         const updatedTask = await tx.task.update({
           where: { task_id: taskId },
           data: {
@@ -1141,10 +1140,12 @@ export class TaskService {
 
       const previousCaseStatus = existingCase.status;
 
-      this.logger.log(`[UnassignTask] Current case status: ${previousCaseStatus}. Will update to STATUS_02_READY_FOR_ASSIGNMENT`, TaskService.name);
+      this.logger.log(
+        `[UnassignTask] Current case status: ${previousCaseStatus}. Will update to STATUS_02_READY_FOR_ASSIGNMENT`,
+        TaskService.name,
+      );
 
       const result = await this.prisma.$transaction(async (tx) => {
-        
         const updatedTask = await tx.task.update({
           where: { task_id: taskId },
           data: {
@@ -1153,7 +1154,6 @@ export class TaskService {
           },
         });
 
-       
         const updatedCase = await tx.case.update({
           where: { case_id: existingTask.case_id },
           data: {
@@ -1182,7 +1182,6 @@ export class TaskService {
       );
 
       try {
-     
         if (originalAssignee) {
           await this.notificationService.sendNotification({
             userId: originalAssignee,

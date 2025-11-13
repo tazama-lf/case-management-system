@@ -13,7 +13,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   open,
   onClose,
   onSuspend,
-  caseData
+  caseData,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,9 +57,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Suspend Case
               </h3>
-              <p className="text-sm text-gray-600">
-                Case ID: {caseData?.id}
-              </p>
+              <p className="text-sm text-gray-600">Case ID: {caseData?.id}</p>
             </div>
           </div>
           <button
@@ -73,22 +71,35 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Temporarily pause a case due to blocked progress or pending information.
+            Temporarily pause a case due to blocked progress or pending
+            information.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Suspension Workflow</h4>
+            <h4 className="text-sm font-medium text-blue-800 mb-2">
+              Suspension Workflow
+            </h4>
             <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-              <li>Task status becomes "BLOCKED", case status becomes "SUSPENDED"</li>
-              <li>User must provide a reason for suspension (minimum 10 characters)</li>
+              <li>
+                Task status becomes "BLOCKED", case status becomes "SUSPENDED"
+              </li>
+              <li>
+                User must provide a reason for suspension (minimum 10
+                characters)
+              </li>
               <li>Notifications will be sent to the supervisor</li>
-              <li>Suspension will be recorded in event, system, and audit logs</li>
+              <li>
+                Suspension will be recorded in event, system, and audit logs
+              </li>
             </ul>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Reason for suspension <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -106,7 +117,9 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                 </p>
               </div>
               {!isReasonValid && reason.length > 0 && (
-                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+                <p className="mt-1 text-sm text-red-600">
+                  Reason must be at least 10 characters
+                </p>
               )}
             </div>
 

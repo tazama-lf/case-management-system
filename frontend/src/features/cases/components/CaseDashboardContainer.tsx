@@ -13,7 +13,7 @@ const CaseDashboardContainer: React.FC = () => {
     caseActions,
     setCurrentPage,
     setPageSize,
-    refreshCases
+    refreshCases,
   } = useCaseDashboard();
 
   return (
@@ -40,7 +40,7 @@ const CaseDashboardContainer: React.FC = () => {
         onApproveCaseReopen={dashboardActions.handleApproveCaseReopen}
         onRejectCaseReopen={dashboardActions.handleRejectCaseReopen}
       />
-      
+
       <CaseModalsManager
         modalState={modalState}
         modalActions={modalActions}

@@ -1,21 +1,9 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
-import {
-  UploadEvidenceDto,
-  EvidenceResponseDto,
-  EvidenceListResponseDto,
-  VerifyEvidenceDto,
-  EvidenceType,
-} from './dto';
+import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
 
 @Injectable()
 export class EvidenceService {
@@ -37,15 +25,10 @@ export class EvidenceService {
   /**
    * Upload evidence file with integrity validation
    */
-  async uploadEvidence(
-    file: any,
-    dto: UploadEvidenceDto,
-    userId: string,
-  ): Promise<EvidenceResponseDto> {
+  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string): Promise<EvidenceResponseDto> {
     this.logger.log(`Uploading evidence for case ${dto.caseId} by user ${userId}`);
 
     try {
-      
       const caseExists = await this.prisma.case.findUnique({
         where: { case_id: dto.caseId },
       });
@@ -54,7 +37,6 @@ export class EvidenceService {
         throw new NotFoundException(`Case ${dto.caseId} not found`);
       }
 
-      
       const fileHash = this.calculateHash(file.buffer);
       this.logger.log(`File hash calculated: ${fileHash}`);
 
@@ -77,40 +59,29 @@ export class EvidenceService {
         comments: dto.comments,
       };
 
-      
-      await this.couchdb.insertWithAttachment(
-        docId,
-        couchMetadata,
-        file.originalname,
-        file.buffer,
-        file.mimetype,
-      );
+      await this.couchdb.insertWithAttachment(docId, couchMetadata, file.originalname, file.buffer, file.mimetype);
 
       this.logger.log(`Evidence stored in CouchDB: ${docId}`);
 
-      
       const task = await this.prisma.task.findFirst({
         where: { case_id: dto.caseId },
         orderBy: { created_at: 'desc' },
       });
 
       if (!task) {
-        throw new BadRequestException(
-          `No task found for case ${dto.caseId}. Evidence must be linked to a task.`,
-        );
+        throw new BadRequestException(`No task found for case ${dto.caseId}. Evidence must be linked to a task.`);
       }
 
-      
       const evidence = await this.prisma.evidence.create({
         data: {
           case_id: dto.caseId,
           task_id: task.task_id,
           uploader_user_id: userId,
-          tenant_id: 'default', 
+          tenant_id: 'default',
           name: file.originalname,
           description: dto.description || '',
           type: dto.type,
-          file_path: docId, 
+          file_path: docId,
           file_size: BigInt(file.size),
           file_type: file.mimetype,
           evidence_hash: fileHash,
@@ -124,7 +95,6 @@ export class EvidenceService {
 
       this.logger.log(`Evidence metadata stored in PostgreSQL: ${evidence.evidence_id}`);
 
-      
       await this.auditLog.logAction({
         userId,
         operation: 'upload',
@@ -133,7 +103,6 @@ export class EvidenceService {
         outcome: 'SUCCESS',
       });
 
-      
       return {
         id: evidence.evidence_id,
         caseId: evidence.case_id || dto.caseId,
@@ -154,8 +123,7 @@ export class EvidenceService {
       };
     } catch (error) {
       this.logger.error(`Failed to upload evidence: ${error.message}`, error.stack);
-      
-    
+
       await this.auditLog.logAction({
         userId,
         operation: 'upload',
@@ -185,7 +153,7 @@ export class EvidenceService {
         caseId: item.case_id || caseId,
         fileName: item.name,
         originalName: item.name,
-        type: item.type as EvidenceType || EvidenceType.OTHER,
+        type: (item.type as EvidenceType) || EvidenceType.OTHER,
         fileSize: Number(item.file_size),
         mimeType: item.file_type || 'application/octet-stream',
         hash: item.evidence_hash,
@@ -246,7 +214,7 @@ export class EvidenceService {
       caseId: evidence.case_id || 'unknown',
       fileName: evidence.name,
       originalName: evidence.name,
-      type: evidence.type as EvidenceType || EvidenceType.OTHER,
+      type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
       fileSize: Number(evidence.file_size),
       mimeType: evidence.file_type || 'application/octet-stream',
       hash: evidence.evidence_hash,
@@ -263,10 +231,7 @@ export class EvidenceService {
   /**
    * Download evidence file
    */
-  async downloadEvidence(
-    evidenceId: string,
-    userId: string,
-  ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
+  async downloadEvidence(evidenceId: string, userId: string): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
     // Get metadata from PostgreSQL
@@ -286,9 +251,7 @@ export class EvidenceService {
       // Verify hash integrity
       const currentHash = this.calculateHash(file);
       if (currentHash !== evidence.evidence_hash) {
-        this.logger.error(
-          `Hash mismatch for evidence ${evidenceId}. Expected: ${evidence.evidence_hash}, Got: ${currentHash}`,
-        );
+        this.logger.error(`Hash mismatch for evidence ${evidenceId}. Expected: ${evidence.evidence_hash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
       }
 
@@ -306,7 +269,7 @@ export class EvidenceService {
         caseId: evidence.case_id || 'unknown',
         fileName: evidence.name,
         originalName: evidence.name,
-        type: evidence.type as EvidenceType || EvidenceType.OTHER,
+        type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
         fileSize: Number(evidence.file_size),
         mimeType: evidence.file_type || 'application/octet-stream',
         hash: evidence.evidence_hash,
@@ -327,7 +290,6 @@ export class EvidenceService {
     }
   }
 
-  
   async verifyEvidence(evidenceId: string, userId: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
@@ -340,14 +302,11 @@ export class EvidenceService {
     }
 
     try {
-      
       const file = await this.couchdb.getAttachment(evidence.file_path, evidence.name);
 
-      
       const currentHash = this.calculateHash(file);
       const verified = currentHash === evidence.evidence_hash;
 
-      
       await this.auditLog.logAction({
         userId,
         operation: 'verify',
@@ -372,7 +331,6 @@ export class EvidenceService {
     }
   }
 
-  
   async searchByHash(hash: string, userId: string): Promise<EvidenceResponseDto[]> {
     this.logger.log(`Searching evidence by hash: ${hash}`);
 
@@ -380,7 +338,6 @@ export class EvidenceService {
       where: { evidence_hash: hash },
     });
 
-    
     await this.auditLog.logAction({
       userId,
       operation: 'search',
@@ -394,7 +351,7 @@ export class EvidenceService {
       caseId: evidence.case_id || 'unknown',
       fileName: evidence.name,
       originalName: evidence.name,
-      type: evidence.type as EvidenceType || EvidenceType.OTHER,
+      type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
       fileSize: Number(evidence.file_size),
       mimeType: evidence.file_type || 'application/octet-stream',
       hash: evidence.evidence_hash,

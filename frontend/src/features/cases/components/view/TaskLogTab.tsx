@@ -1,7 +1,11 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 //import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
 import TaskLogTable from '../modals/components/TaskLogTable';
-import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
+import {
+  taskService,
+  TaskStatus,
+  type TaskStatusType,
+} from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
@@ -12,10 +16,10 @@ import type { CaseRow } from '../casesTable.utils';
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
-const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal'));
+const UpdateTaskStatusModal = lazy(
+  () => import('../modals/UpdateTaskStatusModal'),
+);
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
-
-
 
 interface TaskLogTabProps {
   caseId: string;
@@ -35,7 +39,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
+  const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(
+    null,
+  );
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -57,11 +63,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
     fetchTasks();
   }, [caseId]);
 
-
-  const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
-
+  const transformBackendTaskToWorkQueue = (
+    backendTask: TaskForSupervisor,
+  ): UnifiedWorkQueueTask => {
     let effectiveStatus = backendTask.status;
-    if (backendTask.status === 'STATUS_10_ASSIGNED' && !backendTask.assigned_user_id) {
+    if (
+      backendTask.status === 'STATUS_10_ASSIGNED' &&
+      !backendTask.assigned_user_id
+    ) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
 
@@ -71,7 +80,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       name: backendTask.name || 'Unnamed Task',
       description: backendTask.description,
       assignee: backendTask.assigned_user_id,
-      assigneeName: backendTask.assignedUser?.username || backendTask.assigned_user_id,
+      assigneeName:
+        backendTask.assignedUser?.username || backendTask.assigned_user_id,
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
       priority: 'NEW',
@@ -79,18 +89,26 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       dueDate: undefined,
       processInstanceId: '',
       caseId: backendTask.case_id || '',
-      flowableData: undefined
+      flowableData: undefined,
     };
   };
 
-  const mapTaskStatus = (status: string): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' => {
+  const mapTaskStatus = (
+    status: string,
+  ): 'UNASSIGNED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' => {
     switch (status) {
-      case 'STATUS_01_UNASSIGNED': return 'UNASSIGNED';
-      case 'STATUS_10_ASSIGNED': return 'ASSIGNED';
-      case 'STATUS_20_IN_PROGRESS': return 'IN_PROGRESS';
-      case 'STATUS_30_COMPLETED': return 'COMPLETED';
-      case 'STATUS_21_BLOCKED': return 'SUSPENDED';
-      default: return 'UNASSIGNED';
+      case 'STATUS_01_UNASSIGNED':
+        return 'UNASSIGNED';
+      case 'STATUS_10_ASSIGNED':
+        return 'ASSIGNED';
+      case 'STATUS_20_IN_PROGRESS':
+        return 'IN_PROGRESS';
+      case 'STATUS_30_COMPLETED':
+        return 'COMPLETED';
+      case 'STATUS_21_BLOCKED':
+        return 'SUSPENDED';
+      default:
+        return 'UNASSIGNED';
     }
   };
 
@@ -117,13 +135,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       const candidateGroup = (task.candidateGroup || '').toLowerCase();
       const taskName = (task.name || '').toLowerCase();
       const taskDescription = (task.description || '').toLowerCase();
-      
+
       // Define patterns that identify supervisor-only tasks
       const supervisorTaskPatterns = [
         // Candidate group patterns
         candidateGroup === 'supervisors',
         candidateGroup === 'supervisor',
-        
+
         // Task name patterns
         taskName.includes('approve case creation'),
         taskName.includes('approve case reopening'),
@@ -132,48 +150,49 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
         taskName.includes('review case closure'),
         taskName.includes('supervisor review'),
         taskName.includes('final approval'),
-        
+
         // Task description patterns
         taskDescription.includes('supervisor'),
         taskDescription.includes('approval required'),
-        
+
         // Legacy patterns
         taskName === 'approve case creation',
-        taskName === 'review case closure'
+        taskName === 'review case closure',
       ];
-      
-      const isSupervisorTask = supervisorTaskPatterns.some(pattern => pattern === true);
-      
+
+      const isSupervisorTask = supervisorTaskPatterns.some(
+        (pattern) => pattern === true,
+      );
+
       return !isSupervisorTask;
     });
 
     return filtered;
   }, [tasks, canViewSupervisorQueue]);
 
-  const filteredTasks = visibleTasks.filter(task => {
+  const filteredTasks = visibleTasks.filter((task) => {
     const taskId = task.task_id || '';
     const taskName = task.name || '';
     const taskDescription = task.description || '';
 
-    const matchesSearch = !searchTerm ||
+    const matchesSearch =
+      !searchTerm ||
       taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskId.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'all' || task.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
 
-
   const handleAssign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
     setAssignModalOpen(true);
   };
-
-
 
   const handleUnassign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
@@ -197,7 +216,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
 
   // Unified handler for all task operations with type checking
   type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus';
-  
+
   interface TaskOperationParams {
     task: UnifiedWorkQueueTask;
     assignee?: string;
@@ -209,20 +228,29 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
 
   const handleTaskOperation = async (
     operation: TaskOperation,
-    params: TaskOperationParams
+    params: TaskOperationParams,
   ): Promise<void> => {
     const { task, assignee, newStatus, reason } = params;
 
     try {
       // Validation based on operation type
       if ((operation === 'assign' || operation === 'reassign') && !assignee) {
-        console.warn(`Cannot ${operation} task: missing assignee`, { task, assignee });
-        toastError(`${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`, 'Missing assignee');
+        console.warn(`Cannot ${operation} task: missing assignee`, {
+          task,
+          assignee,
+        });
+        toastError(
+          `${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`,
+          'Missing assignee',
+        );
         return;
       }
 
       if (operation === 'updateStatus' && !newStatus) {
-        console.warn('Cannot update task status: missing status', { task, newStatus });
+        console.warn('Cannot update task status: missing status', {
+          task,
+          newStatus,
+        });
         toastError('Update Task Status Failed', 'Missing status');
         return;
       }
@@ -246,15 +274,17 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
           break;
         case 'updateStatus': {
           const statusMap: Record<string, TaskStatusType> = {
-            'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
-            'Assigned': TaskStatus.STATUS_10_ASSIGNED,
+            Unassigned: TaskStatus.STATUS_01_UNASSIGNED,
+            Assigned: TaskStatus.STATUS_10_ASSIGNED,
             'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
-            'Blocked': TaskStatus.STATUS_21_BLOCKED,
-            'Complete': TaskStatus.STATUS_30_COMPLETED
+            Blocked: TaskStatus.STATUS_21_BLOCKED,
+            Complete: TaskStatus.STATUS_30_COMPLETED,
           };
           const backendStatus = statusMap[newStatus!];
           if (backendStatus) {
-            await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
+            await taskService.updateTaskForSupervisor(task.id, {
+              status: backendStatus,
+            });
           }
           break;
         }
@@ -282,28 +312,40 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
         assign: 'Task Assigned Successfully',
         reassign: 'Task Reassigned Successfully',
         unassign: 'Task Unassigned Successfully',
-        updateStatus: 'Task Status Updated Successfully'
+        updateStatus: 'Task Status Updated Successfully',
       };
 
-      success(operationMessages[operation], `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation + 'ed'} successfully.`);
+      success(
+        operationMessages[operation],
+        `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation + 'ed'} successfully.`,
+      );
     } catch (error) {
       console.error(`Failed to ${operation} task:`, error);
       const operationLabels = {
         assign: 'Assign Task Failed',
         reassign: 'Reassign Task Failed',
         unassign: 'Unassign Task Failed',
-        updateStatus: 'Update Task Status Failed'
+        updateStatus: 'Update Task Status Failed',
       };
-      toastError(operationLabels[operation], error instanceof Error ? error.message : `Failed to ${operation} task`);
+      toastError(
+        operationLabels[operation],
+        error instanceof Error ? error.message : `Failed to ${operation} task`,
+      );
     }
   };
 
   // Simplified handler functions that use the unified handler
-  const handleModalAssign = (task: UnifiedWorkQueueTask, assignee: string, notes?: string) =>
-    handleTaskOperation('assign', { task, assignee, notes });
+  const handleModalAssign = (
+    task: UnifiedWorkQueueTask,
+    assignee: string,
+    notes?: string,
+  ) => handleTaskOperation('assign', { task, assignee, notes });
 
-  const handleModalReassign = (task: UnifiedWorkQueueTask, assignee: string, justification: string) =>
-    handleTaskOperation('reassign', { task, assignee, justification });
+  const handleModalReassign = (
+    task: UnifiedWorkQueueTask,
+    assignee: string,
+    justification: string,
+  ) => handleTaskOperation('reassign', { task, assignee, justification });
 
   const handleUnassignTask = (_taskId: string, reason: string) => {
     if (selectedTask) {
@@ -311,12 +353,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
     }
   };
 
-  const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
-    handleTaskOperation('updateStatus', { task, newStatus, notes });
+  const handleModalUpdateStatus = (
+    task: UnifiedWorkQueueTask,
+    newStatus: string,
+    notes?: string,
+  ) => handleTaskOperation('updateStatus', { task, newStatus, notes });
 
-  const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, _notes?: string) => {
+  const handleModalCompleteTask = async (
+    task: UnifiedWorkQueueTask,
+    _notes?: string,
+  ) => {
     try {
-      await taskService.updateTaskForSupervisor(task.id, { status: TaskStatus.STATUS_30_COMPLETED });
+      await taskService.updateTaskForSupervisor(task.id, {
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
 
       // Close modal and refresh tasks
       setCompleteTaskModalOpen(false);
@@ -330,9 +380,15 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
         await onRefreshCases();
       }
 
-      success('Task Completed Successfully', `Task ${task.id} has been completed successfully.`);
+      success(
+        'Task Completed Successfully',
+        `Task ${task.id} has been completed successfully.`,
+      );
     } catch (error) {
-      toastError('Complete Task Failed', error instanceof Error ? error.message : 'Failed to complete task');
+      toastError(
+        'Complete Task Failed',
+        error instanceof Error ? error.message : 'Failed to complete task',
+      );
     }
   };
 
@@ -340,7 +396,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
     setSelectedTask(task);
     setTaskDetailsModalOpen(true);
   };
-
 
   if (loading) {
     return (
@@ -353,9 +408,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   if (error) {
     return (
       <div className="rounded-md bg-red-50 p-4">
-        <div className="text-sm text-red-700">
-          Error loading tasks: {error}
-        </div>
+        <div className="text-sm text-red-700">Error loading tasks: {error}</div>
       </div>
     );
   }
@@ -389,7 +442,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       {transformedTasks.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-sm text-gray-500">
-            {visibleTasks.length === 0 ? 'No tasks found for this case.' : 'No tasks match your search criteria.'}
+            {visibleTasks.length === 0
+              ? 'No tasks found for this case.'
+              : 'No tasks match your search criteria.'}
           </div>
         </div>
       ) : (
@@ -476,28 +531,31 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       )}
 
       {taskDetailsModalOpen && selectedTask && (
-  <Suspense fallback={<div>Loading...</div>}>
-    <TaskDetailsModal
-      open={taskDetailsModalOpen}
-      onClose={() => {
-        setTaskDetailsModalOpen(false);
-        setSelectedTask(null);
-      }}
-      row={{
-        id: selectedTask.caseId,
-        caseName: selectedTask.name || 'Untitled Task',
-        status: selectedTask.status || 'Unknown',
-        assignee: selectedTask.assigneeName || selectedTask.assignee || 'Unassigned',
-        priority: selectedTask.priority || 'Normal',
-        dueDate: selectedTask.dueDate || null,
-        description: selectedTask.description || '',
-      } as unknown as CaseRow}
-      onRefreshCases={onRefreshCases}
-    />
-  </Suspense>
-)}
-
-
+        <Suspense fallback={<div>Loading...</div>}>
+          <TaskDetailsModal
+            open={taskDetailsModalOpen}
+            onClose={() => {
+              setTaskDetailsModalOpen(false);
+              setSelectedTask(null);
+            }}
+            row={
+              {
+                id: selectedTask.caseId,
+                caseName: selectedTask.name || 'Untitled Task',
+                status: selectedTask.status || 'Unknown',
+                assignee:
+                  selectedTask.assigneeName ||
+                  selectedTask.assignee ||
+                  'Unassigned',
+                priority: selectedTask.priority || 'Normal',
+                dueDate: selectedTask.dueDate || null,
+                description: selectedTask.description || '',
+              } as unknown as CaseRow
+            }
+            onRefreshCases={onRefreshCases}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

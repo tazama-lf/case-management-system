@@ -1,12 +1,11 @@
-
 export { mockCaseData } from './mockCaseData';
 export { mockAlertData } from './mockAlertData';
 export { mockTransactionMessages } from './mockTransactionMessages';
-export { 
+export {
   relatedCasesData,
   relatedAlertsData,
   transactionLinksData,
-  messagePayloadLinksData
+  messagePayloadLinksData,
 } from './mockLinkedItemsData';
 
 export type { MockCaseData } from './mockCaseData';

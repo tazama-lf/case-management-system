@@ -1,5 +1,8 @@
 import React from 'react';
-import { MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline';
 
 interface CaseFiltersProps {
   search: string;
@@ -25,7 +28,10 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'DRAFT', label: 'Draft' },
-    { value: 'PENDING_CASE_CREATION_APPROVAL', label: 'Pending Creation Approval' },
+    {
+      value: 'PENDING_CASE_CREATION_APPROVAL',
+      label: 'Pending Creation Approval',
+    },
     { value: 'IN_PROGRESS', label: 'In Progress' },
     { value: 'SUSPENDED', label: 'Suspended' },
     { value: 'PENDING_FINAL_APPROVAL', label: 'Pending Final Approval' },
@@ -64,7 +70,9 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         <div className="relative">
           <select
             value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as 'recent' | 'oldest')}
+            onChange={(e) =>
+              onSortChange(e.target.value as 'recent' | 'oldest')
+            }
             className="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 text-sm leading-5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="recent">Most Recent</option>

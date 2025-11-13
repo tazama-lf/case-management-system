@@ -10,18 +10,18 @@ export const mockTransactionMessages: MockTransactionMessage[] = [
     id: 'ADPSPKR28392',
     type: 'pacs.008',
     description: 'Increased Debtor Activity',
-    isHighlighted: true
+    isHighlighted: true,
   },
   {
     id: 'ADPSPKR28393',
     type: 'pacs.002',
     description: 'Multiple Same-Amount Transfers',
-    isHighlighted: false
+    isHighlighted: false,
   },
   {
     id: 'ADPSPKR28394',
     type: 'camt.056',
     description: 'Unusual Geographic Pattern',
-    isHighlighted: true
-  }
+    isHighlighted: true,
+  },
 ];

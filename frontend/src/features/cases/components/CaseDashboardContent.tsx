@@ -51,9 +51,10 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onApproveCaseReopen,
-  onRejectCaseReopen
+  onRejectCaseReopen,
 }) => {
-  const { cases, loading, errorState, filters, pagination, permissions } = dashboardState;
+  const { cases, loading, errorState, filters, pagination, permissions } =
+    dashboardState;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -61,11 +62,15 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
         {/* Header Section */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Cases Dashboard</h1>
-            <p className="mt-2 text-gray-600">Manage and track investigation cases</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Cases Dashboard
+            </h1>
+            <p className="mt-2 text-gray-600">
+              Manage and track investigation cases
+            </p>
           </div>
           <div className="flex items-center space-x-3">
-            <button 
+            <button
               onClick={onCreateNew}
               className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
@@ -74,67 +79,72 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
             </button>
           </div>
         </div>
-      <CaseFilters
-        search={filters.search}
-        onSearchChange={onSearchChange}
-        sortBy={filters.sortBy}
-        onSortChange={onSortChange}
-        statusFilter={filters.statusFilter}
-        onStatusFilterChange={onStatusFilterChange}
-        priorityFilter={filters.priorityFilter}
-        onPriorityFilterChange={onPriorityFilterChange}
-      />
+        <CaseFilters
+          search={filters.search}
+          onSearchChange={onSearchChange}
+          sortBy={filters.sortBy}
+          onSortChange={onSortChange}
+          statusFilter={filters.statusFilter}
+          onStatusFilterChange={onStatusFilterChange}
+          priorityFilter={filters.priorityFilter}
+          onPriorityFilterChange={onPriorityFilterChange}
+        />
 
-      <Card className="mt-4 w-full">
-        {errorState && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
-            <p className="text-red-600 text-sm">{errorState}</p>
-          </div>
-        )}
+        <Card className="mt-4 w-full">
+          {errorState && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
+              <p className="text-red-600 text-sm">{errorState}</p>
+            </div>
+          )}
 
-        {loading ? (
-          <CasesTableSkeleton rows={pagination.pageSize} />
-        ) : (
-          <>
-            <ResultsSummary
-              pagination={{
-                currentPage: pagination.currentPage,
-                pageSize: pagination.pageSize,
-                totalItems: pagination.totalItems,
-              }}
-              loading={loading}
-              lastUpdated={null}
-              onPageSizeChange={onPageSizeChange}
-              sort={{ column: 'updated_at', direction: filters.sortBy === 'recent' ? 'desc' : 'asc' }}
-              itemType="cases"
-            />
+          {loading ? (
+            <CasesTableSkeleton rows={pagination.pageSize} />
+          ) : (
+            <>
+              <ResultsSummary
+                pagination={{
+                  currentPage: pagination.currentPage,
+                  pageSize: pagination.pageSize,
+                  totalItems: pagination.totalItems,
+                }}
+                loading={loading}
+                lastUpdated={null}
+                onPageSizeChange={onPageSizeChange}
+                sort={{
+                  column: 'updated_at',
+                  direction: filters.sortBy === 'recent' ? 'desc' : 'asc',
+                }}
+                itemType="cases"
+              />
 
-            <CasesTable
-              rows={cases}
-              onView={onView}
-              onComplete={onComplete}
-              onCloseCase={onCloseCase}
-              onReopenCase={onReopenCase}
-              onAbandonCase={onAbandonCase}
-              onSuspendCase={onSuspendCase}
-              onResumeCase={onResumeCase}
-              onApproveCase={onApproveCase}
-              onApproveCaseCreation={onApproveCaseCreation}
-              onRejectCaseCreation={onRejectCaseCreation}
-              onApproveCaseReopen={onApproveCaseReopen}
-              onRejectCaseReopen={onRejectCaseReopen}
-              canManageSupervisorActions={permissions.canManageSupervisorActions}
-              pagination={{
-                currentPage: pagination.currentPage,
-                pageSize: pagination.pageSize,
-                totalItems: pagination.totalItems,
-                totalPages: pagination.totalPages,
-                onPageChange: onPageChange,
-              }}
-            />
-          </>
-        )}
-      </Card>
+              <CasesTable
+                rows={cases}
+                onView={onView}
+                onComplete={onComplete}
+                onCloseCase={onCloseCase}
+                onReopenCase={onReopenCase}
+                onAbandonCase={onAbandonCase}
+                onSuspendCase={onSuspendCase}
+                onResumeCase={onResumeCase}
+                onApproveCase={onApproveCase}
+                onApproveCaseCreation={onApproveCaseCreation}
+                onRejectCaseCreation={onRejectCaseCreation}
+                onApproveCaseReopen={onApproveCaseReopen}
+                onRejectCaseReopen={onRejectCaseReopen}
+                canManageSupervisorActions={
+                  permissions.canManageSupervisorActions
+                }
+                pagination={{
+                  currentPage: pagination.currentPage,
+                  pageSize: pagination.pageSize,
+                  totalItems: pagination.totalItems,
+                  totalPages: pagination.totalPages,
+                  onPageChange: onPageChange,
+                }}
+              />
+            </>
+          )}
+        </Card>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ export interface Evidence {
   access_level: 'PUBLIC' | 'CONFIDENTIAL' | 'RESTRICTED';
 }
 
-export type EvidenceType = 
+export type EvidenceType =
   | 'DOCUMENT'
   | 'SCREENSHOT'
   | 'LOG_FILE'

@@ -15,7 +15,7 @@ describe('UpdateAlertDto', () => {
       priority: Priority.URGENT,
       note: 'Test note for the alert update',
       alertType: AlertType.FRAUD,
-      predictionOutcome: PredictionOutcome.TRUE_POSITIVE
+      predictionOutcome: PredictionOutcome.TRUE_POSITIVE,
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);
@@ -173,7 +173,7 @@ describe('UpdateAlertDto', () => {
       const validData = {
         confidence_per: 50,
         priority: priority,
-        note: `Test with priority ${priority}`
+        note: `Test with priority ${priority}`,
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -190,7 +190,7 @@ describe('UpdateAlertDto', () => {
     for (const alertType of alertTypes) {
       const validData = {
         alertType: alertType,
-        note: `Test with alert type ${alertType}`
+        note: `Test with alert type ${alertType}`,
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -206,13 +206,13 @@ describe('UpdateAlertDto', () => {
       PredictionOutcome.FALSE_POSITIVE,
       PredictionOutcome.TRUE_POSITIVE,
       PredictionOutcome.FALSE_NEGATIVE,
-      PredictionOutcome.TRUE_NEGATIVE
+      PredictionOutcome.TRUE_NEGATIVE,
     ];
 
     for (const outcome of predictionOutcomes) {
       const validData = {
         predictionOutcome: outcome,
-        note: `Test with prediction outcome ${outcome}`
+        note: `Test with prediction outcome ${outcome}`,
       };
 
       const dto = plainToClass(UpdateAlertDto, validData);
@@ -317,7 +317,7 @@ describe('UpdateAlertDto', () => {
       'Note with @#$%^&*()_+ symbols',
       'Note with\nnewlines\tand\ttabs',
       'Note with "quotes" and \'apostrophes\'',
-      'Very long note that contains many words and should still be valid as long as it is not empty'
+      'Very long note that contains many words and should still be valid as long as it is not empty',
     ];
 
     for (const note of specialNotes) {
@@ -339,7 +339,7 @@ describe('UpdateAlertDto', () => {
       priority: null,
       note: null,
       alertType: null,
-      predictionOutcome: null
+      predictionOutcome: null,
     };
 
     const dto = plainToClass(UpdateAlertDto, plainObject);
@@ -355,7 +355,7 @@ describe('UpdateAlertDto', () => {
     const invalidData = {
       priority: 'urgent', // lowercase
       alertType: 'fraud', // lowercase
-      predictionOutcome: 'true_positive' // lowercase
+      predictionOutcome: 'true_positive', // lowercase
     };
 
     const dto = plainToClass(UpdateAlertDto, invalidData);
@@ -373,7 +373,7 @@ describe('UpdateAlertDto', () => {
       priority: Priority.BREACH,
       alertType: AlertType.FRAUD_AND_AML,
       predictionOutcome: PredictionOutcome.TRUE_POSITIVE,
-      note: 'Complete DTO with all fields filled correctly'
+      note: 'Complete DTO with all fields filled correctly',
     };
 
     const dto = plainToClass(UpdateAlertDto, validData);

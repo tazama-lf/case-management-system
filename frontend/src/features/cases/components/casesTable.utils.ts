@@ -67,7 +67,9 @@ export const formatStatus = (status: string): string => {
   return status;
 };
 
-export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow => {
+export const transformBackendCaseToUI = (
+  backendCase: CaseWithTasksDto,
+): CaseRow => {
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
@@ -77,9 +79,13 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
-    pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
+    pickedOn:
+      backendCase.user_role === 'owner'
+        ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
+        : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
+    assignee:
+      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
     userRole: backendCase.user_role,
     totalTasks: backendCase.total_tasks,

@@ -11,9 +11,7 @@ const AdminDashboard: React.FC = () => {
   // ];
 
   return (
-    <PageContainer
-      title="Admin Dashboard"
-    >
+    <PageContainer title="Admin Dashboard">
       {/* <div className="grid grid-cols-1 gap-4 md:grid-cols-4 mb-6">
         {stats.map((s) => (
           <StatCard key={s.label} label={s.label} value={s.value} />

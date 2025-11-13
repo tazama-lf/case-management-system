@@ -14,12 +14,14 @@ const DropdownMenu = <T extends string>({
   isOpen,
   options,
   onSelect,
-  className = ''
+  className = '',
 }: DropdownMenuProps<T>) => {
   if (!isOpen) return null;
 
   return (
-    <div className={`absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg ${className}`}>
+    <div
+      className={`absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg ${className}`}
+    >
       <ul className="py-1 text-sm text-gray-700">
         {options.map(({ value, label }) => (
           <li key={value}>

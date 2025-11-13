@@ -1,10 +1,16 @@
-
 import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
+import type {
+  Alert,
+  AlertsSearchFilters as UIAlertsSearchFilters,
+} from '../types/alertsdashboard.types';
 
-const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
+const isDateInRange = (
+  dateString: string,
+  timeRange: string,
+  customDateRange?: { startDate: string; endDate: string },
+) => {
   const date = new Date(dateString);
   const now = new Date();
 
@@ -57,7 +63,7 @@ const isDateInRange = (dateString: string, timeRange: string, customDateRange?: 
 };
 
 interface AlertsSearchFilters extends UIAlertsSearchFilters {
-    customDateRange?: { startDate: string; endDate: string };
+  customDateRange?: { startDate: string; endDate: string };
 }
 
 interface AlertsState {
@@ -81,10 +87,16 @@ interface AlertsState {
 
 type Action =
   | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; payload: { alerts: Alert[]; totalItems: number; totalPages: number; } }
+  | {
+      type: 'FETCH_SUCCESS';
+      payload: { alerts: Alert[]; totalItems: number; totalPages: number };
+    }
   | { type: 'FETCH_FAILURE'; payload: string }
   | { type: 'SET_FILTERS'; payload: Partial<AlertsSearchFilters> }
-  | { type: 'SET_SORT'; payload: { column: keyof Alert | string; direction: 'asc' | 'desc' } }
+  | {
+      type: 'SET_SORT';
+      payload: { column: keyof Alert | string; direction: 'asc' | 'desc' };
+    }
   | { type: 'SET_PAGE'; payload: number }
   | { type: 'SET_PAGE_SIZE'; payload: number }
   | { type: 'APPLY_FILTERS_AND_SORT' };
@@ -133,13 +145,31 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
     case 'FETCH_FAILURE':
       return { ...state, loading: false, error: action.payload };
     case 'SET_FILTERS':
-      return { ...state, filters: { ...state.filters, ...action.payload }, pagination: { ...state.pagination, currentPage: 1 } };
+      return {
+        ...state,
+        filters: { ...state.filters, ...action.payload },
+        pagination: { ...state.pagination, currentPage: 1 },
+      };
     case 'SET_SORT':
-      return { ...state, sort: action.payload, pagination: { ...state.pagination, currentPage: 1 } };
+      return {
+        ...state,
+        sort: action.payload,
+        pagination: { ...state.pagination, currentPage: 1 },
+      };
     case 'SET_PAGE':
-      return { ...state, pagination: { ...state.pagination, currentPage: action.payload } };
+      return {
+        ...state,
+        pagination: { ...state.pagination, currentPage: action.payload },
+      };
     case 'SET_PAGE_SIZE':
-        return { ...state, pagination: { ...state.pagination, pageSize: action.payload, currentPage: 1 } };
+      return {
+        ...state,
+        pagination: {
+          ...state.pagination,
+          pageSize: action.payload,
+          currentPage: 1,
+        },
+      };
     case 'APPLY_FILTERS_AND_SORT': {
       let filtered = [...state.allAlerts];
 
@@ -151,8 +181,12 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
           const txId = String(a.txtp || '').toLowerCase();
           const source = String(a.source || '').toLowerCase();
           const type = String(a.alert_type || '').toLowerCase();
-          const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
-          const networkMap = a.network_map ? JSON.stringify(a.network_map).toLowerCase() : '';
+          const transactionJson = a.transaction
+            ? JSON.stringify(a.transaction).toLowerCase()
+            : '';
+          const networkMap = a.network_map
+            ? JSON.stringify(a.network_map).toLowerCase()
+            : '';
 
           return (
             alertId.includes(q) ||
@@ -167,23 +201,45 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
       }
 
       if (state.filters.source) {
-        filtered = filtered.filter(a => (a.source || '').toLowerCase() === state.filters.source.toLowerCase());
+        filtered = filtered.filter(
+          (a) =>
+            (a.source || '').toLowerCase() ===
+            state.filters.source.toLowerCase(),
+        );
       }
 
       if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
+        filtered = filtered.filter(
+          (a) =>
+            (a.alert_type || '').toLowerCase() ===
+            state.filters.type.toLowerCase(),
+        );
       }
 
       if (state.filters.priority) {
-        filtered = filtered.filter(a => (a.priority || '').toLowerCase() === state.filters.priority.toLowerCase());
+        filtered = filtered.filter(
+          (a) =>
+            (a.priority || '').toLowerCase() ===
+            state.filters.priority.toLowerCase(),
+        );
       }
 
       if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
+        filtered = filtered.filter(
+          (a) =>
+            (a.alert_type || '').toLowerCase() ===
+            state.filters.type.toLowerCase(),
+        );
       }
 
       if (state.filters.timeRange) {
-        filtered = filtered.filter((alert: Alert) => isDateInRange(alert.created_at as string, state.filters.timeRange, state.filters.customDateRange));
+        filtered = filtered.filter((alert: Alert) =>
+          isDateInRange(
+            alert.created_at as string,
+            state.filters.timeRange,
+            state.filters.customDateRange,
+          ),
+        );
       }
 
       const getValue = (item: Alert, key: string) => {
@@ -204,7 +260,18 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         return 0;
       });
 
-      return { ...state, filteredAlerts: filtered, pagination: { ...state.pagination, totalItems: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / state.pagination.pageSize)) } };
+      return {
+        ...state,
+        filteredAlerts: filtered,
+        pagination: {
+          ...state.pagination,
+          totalItems: filtered.length,
+          totalPages: Math.max(
+            1,
+            Math.ceil(filtered.length / state.pagination.pageSize),
+          ),
+        },
+      };
     }
     default:
       return state;
@@ -228,8 +295,9 @@ export const useAlerts = () => {
         },
       });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred';
+      dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
   }, []);
 
@@ -263,7 +331,6 @@ export const useAlerts = () => {
     const end = start + pageSize;
     return state.filteredAlerts.slice(start, end);
   }, [state.filteredAlerts, state.pagination]);
-
 
   return {
     ...state,

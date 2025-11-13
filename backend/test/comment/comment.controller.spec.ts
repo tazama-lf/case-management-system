@@ -172,9 +172,7 @@ describe('CommentController', () => {
     });
 
     it('should throw BadRequestException when neither caseId nor taskId provided', async () => {
-      mockCommentService.getCommentsByCaseOrTask.mockRejectedValue(
-        new BadRequestException('Either caseId or taskId must be provided')
-      );
+      mockCommentService.getCommentsByCaseOrTask.mockRejectedValue(new BadRequestException('Either caseId or taskId must be provided'));
 
       await expect(controller.getCommentsByCaseOrTask(mockAuthenticatedRequest)).rejects.toThrow(BadRequestException);
       expect(commentService.getCommentsByCaseOrTask).toHaveBeenCalledWith(undefined, undefined, 'test-user-id');
@@ -183,10 +181,8 @@ describe('CommentController', () => {
     it('should throw BadRequestException when both caseId and taskId provided', async () => {
       const caseId = '123e4567-e89b-12d3-a456-426614174001';
       const taskId = '123e4567-e89b-12d3-a456-426614174002';
-      
-      mockCommentService.getCommentsByCaseOrTask.mockRejectedValue(
-        new BadRequestException('Cannot provide both caseId and taskId')
-      );
+
+      mockCommentService.getCommentsByCaseOrTask.mockRejectedValue(new BadRequestException('Cannot provide both caseId and taskId'));
 
       await expect(controller.getCommentsByCaseOrTask(mockAuthenticatedRequest, caseId, taskId)).rejects.toThrow(BadRequestException);
       expect(commentService.getCommentsByCaseOrTask).toHaveBeenCalledWith(caseId, taskId, 'test-user-id');

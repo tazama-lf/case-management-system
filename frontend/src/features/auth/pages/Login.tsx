@@ -79,7 +79,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{error || 'An error occurred during login'}</p>
+                <p className="text-red-600 text-sm">
+                  {error || 'An error occurred during login'}
+                </p>
               </div>
             )}
 
@@ -195,12 +197,22 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <div className="flex items-center justify-between">
                     <p className="text-yellow-700 text-xs">
                       <span className="font-medium">Test User:</span>{' '}
-                      <code className="bg-yellow-100 px-1 rounded">test-user</code>{' '}
-                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                      <code className="bg-yellow-100 px-1 rounded">
+                        test-user
+                      </code>{' '}
+                      /{' '}
+                      <code className="bg-yellow-100 px-1 rounded">
+                        abc.123
+                      </code>
                     </p>
                     <button
                       type="button"
-                      onClick={() => setCredentials({ username: 'test-user', password: 'abc.123' })}
+                      onClick={() =>
+                        setCredentials({
+                          username: 'test-user',
+                          password: 'abc.123',
+                        })
+                      }
                       className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
                     >
                       Fill
@@ -209,12 +221,22 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <div className="flex items-center justify-between">
                     <p className="text-yellow-700 text-xs">
                       <span className="font-medium">Supervisor:</span>{' '}
-                      <code className="bg-yellow-100 px-1 rounded">supervisor</code>{' '}
-                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                      <code className="bg-yellow-100 px-1 rounded">
+                        supervisor
+                      </code>{' '}
+                      /{' '}
+                      <code className="bg-yellow-100 px-1 rounded">
+                        abc.123
+                      </code>
                     </p>
                     <button
                       type="button"
-                      onClick={() => setCredentials({ username: 'supervisor', password: 'abc.123' })}
+                      onClick={() =>
+                        setCredentials({
+                          username: 'supervisor',
+                          password: 'abc.123',
+                        })
+                      }
                       className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
                     >
                       Fill
@@ -223,12 +245,22 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <div className="flex items-center justify-between">
                     <p className="text-yellow-700 text-xs">
                       <span className="font-medium">Investigator:</span>{' '}
-                      <code className="bg-yellow-100 px-1 rounded">investigator</code>{' '}
-                      / <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                      <code className="bg-yellow-100 px-1 rounded">
+                        investigator
+                      </code>{' '}
+                      /{' '}
+                      <code className="bg-yellow-100 px-1 rounded">
+                        abc.123
+                      </code>
                     </p>
                     <button
                       type="button"
-                      onClick={() => setCredentials({ username: 'investigator', password: 'abc.123' })}
+                      onClick={() =>
+                        setCredentials({
+                          username: 'investigator',
+                          password: 'abc.123',
+                        })
+                      }
                       className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
                     >
                       Fill
@@ -237,12 +269,20 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <div className="flex items-center justify-between">
                     <p className="text-yellow-700 text-xs">
                       <span className="font-medium">Investigator1:aiden</span>{' '}
-                      <code className="bg-yellow-100 px-1 rounded">investigator1</code>{' '}
-                      / <code className="bg-yellow-100 px-1 rounded">admin</code>
+                      <code className="bg-yellow-100 px-1 rounded">
+                        investigator1
+                      </code>{' '}
+                      /{' '}
+                      <code className="bg-yellow-100 px-1 rounded">admin</code>
                     </p>
                     <button
                       type="button"
-                      onClick={() => setCredentials({ username: 'investigator1', password: 'admin' })}
+                      onClick={() =>
+                        setCredentials({
+                          username: 'investigator1',
+                          password: 'admin',
+                        })
+                      }
                       className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
                     >
                       Fill

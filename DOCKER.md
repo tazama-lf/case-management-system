@@ -63,24 +63,24 @@ make prod-up
 
 ### Development Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Frontend | 5173 | React development server |
-| Backend | 3000 | NestJS API server |
-| Database | 5432 | PostgreSQL database |
-| Redis | 6379 | Redis cache |
-| NATS | 4222, 8222 | Message broker |
+| Service  | Port       | Description              |
+| -------- | ---------- | ------------------------ |
+| Frontend | 5173       | React development server |
+| Backend  | 3000       | NestJS API server        |
+| Database | 5432       | PostgreSQL database      |
+| Redis    | 6379       | Redis cache              |
+| NATS     | 4222, 8222 | Message broker           |
 
 ### Production Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Frontend | 80, 443 | Nginx web server |
-| Backend | Internal | NestJS API (load balanced) |
-| Load Balancer | 8080, 9000 | HAProxy load balancer |
-| Database | Internal | PostgreSQL database |
-| Redis | Internal | Redis cache |
-| NATS | Internal | Message broker |
+| Service       | Port       | Description                |
+| ------------- | ---------- | -------------------------- |
+| Frontend      | 80, 443    | Nginx web server           |
+| Backend       | Internal   | NestJS API (load balanced) |
+| Load Balancer | 8080, 9000 | HAProxy load balancer      |
+| Database      | Internal   | PostgreSQL database        |
+| Redis         | Internal   | Redis cache                |
+| NATS          | Internal   | Message broker             |
 
 ## 📝 Management Commands
 
@@ -152,6 +152,7 @@ make setup                  # Full setup (install + build + start + migrate)
 ### Environment Variables
 
 #### Development (.env.development)
+
 ```bash
 DB_NAME=tazama_cms
 DB_USER=tazama_user
@@ -161,6 +162,7 @@ VITE_API_BASE_URL=http://localhost:3000
 ```
 
 #### Production (.env.production)
+
 ```bash
 DB_NAME=tazama_cms
 DB_USER=tazama_user
@@ -172,6 +174,7 @@ FRONTEND_URL=https://your-domain.com
 ### Database Configuration
 
 The system uses PostgreSQL with automatic initialization:
+
 - Automatic extension installation (uuid-ossp, pg_trgm)
 - Performance indexes creation
 - User permissions setup
@@ -180,6 +183,7 @@ The system uses PostgreSQL with automatic initialization:
 ### Frontend Configuration
 
 Nginx serves the React application with:
+
 - SPA routing support
 - Static asset caching
 - Security headers
@@ -213,6 +217,7 @@ Nginx serves the React application with:
 ### Common Issues
 
 #### Port Conflicts
+
 ```bash
 # Check what's using ports
 lsof -i :5173  # Frontend
@@ -223,6 +228,7 @@ lsof -i :5432  # Database
 ```
 
 #### Database Connection Issues
+
 ```bash
 # Check database status
 docker-compose exec database pg_isready -U tazama_user -d tazama_cms
@@ -232,6 +238,7 @@ docker-compose exec database pg_isready -U tazama_user -d tazama_cms
 ```
 
 #### Build Issues
+
 ```bash
 # Clean build cache
 docker builder prune
@@ -241,6 +248,7 @@ docker builder prune
 ```
 
 #### Permission Issues
+
 ```bash
 # Fix Docker script permissions
 chmod +x docker.sh
@@ -252,6 +260,7 @@ sudo chown -R $USER:$USER .
 ### Debugging
 
 #### Container Logs
+
 ```bash
 # View all logs
 docker-compose logs -f
@@ -263,6 +272,7 @@ docker-compose logs -f database
 ```
 
 #### Container Shell Access
+
 ```bash
 # Access backend container
 docker-compose exec backend sh
@@ -275,6 +285,7 @@ docker-compose exec frontend sh
 ```
 
 #### Database Debugging
+
 ```bash
 # Connect to database
 docker-compose exec database psql -U tazama_user -d tazama_cms
@@ -291,6 +302,7 @@ docker-compose exec database psql -U tazama_user -d tazama_cms -c "SELECT * FROM
 ### Pre-deployment Checklist
 
 1. **Update Environment Variables**
+
    ```bash
    cp .env.production .env
    # Edit .env with production values
@@ -303,6 +315,7 @@ docker-compose exec database psql -U tazama_user -d tazama_cms -c "SELECT * FROM
    - Set appropriate CORS origins
 
 3. **SSL Setup** (if using HTTPS)
+
    ```bash
    mkdir ssl
    # Copy your SSL certificates to ssl/
@@ -335,11 +348,13 @@ docker-compose -f docker-compose.prod.yml up -d --scale backend=3
 ## 📊 Performance Optimization
 
 ### Development Performance
+
 - Use volume mounts for live code reloading
 - Enable caching for npm modules
 - Use multi-stage builds to reduce image size
 
 ### Production Performance
+
 - Enable Nginx gzip compression
 - Use Redis for session storage
 - Scale backend horizontally with load balancer
@@ -348,12 +363,14 @@ docker-compose -f docker-compose.prod.yml up -d --scale backend=3
 ## 🔐 Security
 
 ### Container Security
+
 - Run containers as non-root users
 - Use Alpine Linux base images
 - Regular security updates
 - Limit container resources
 
 ### Network Security
+
 - Internal networks for service communication
 - Expose only necessary ports
 - Use environment variables for secrets
@@ -369,6 +386,7 @@ docker-compose -f docker-compose.prod.yml up -d --scale backend=3
 ## 🆘 Support
 
 For issues related to containerization:
+
 1. Check the troubleshooting section above
 2. Review container logs: `./docker.sh dev:logs`
 3. Check service health: `./docker.sh health`

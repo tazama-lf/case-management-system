@@ -11,14 +11,18 @@ class UserService {
 
   async getUsersByRole(role: string): Promise<UserOption[]> {
     try {
-      const response = await apiClient.get<any[]>(`${this.baseUrl}/list-by-role/${role}`);
-      
+      const response = await apiClient.get<any[]>(
+        `${this.baseUrl}/list-by-role/${role}`,
+      );
+
       // Transform the response to match our UserOption interface
-      return response.map((user: any) => ({
-        id: user.userId || user.id || '',
-        name: user.displayName || user.username || user.name || 'Unknown',
-        role: user.role,
-      })).filter(user => user.id); // Filter out users without IDs
+      return response
+        .map((user: any) => ({
+          id: user.userId || user.id || '',
+          name: user.displayName || user.username || user.name || 'Unknown',
+          role: user.role,
+        }))
+        .filter((user) => user.id); // Filter out users without IDs
     } catch (error) {
       console.error(`Failed to fetch users with role ${role}:`, error);
       return [];
@@ -40,11 +44,13 @@ class UserService {
         this.getInvestigators(),
         this.getSupervisors(),
       ]);
-      
+
       // Combine and remove duplicates
       const combined = [...investigators, ...supervisors];
-      const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
-      
+      const uniqueUsers = Array.from(
+        new Map(combined.map((u) => [u.id, u])).values(),
+      );
+
       return uniqueUsers.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error('Failed to fetch all users:', error);

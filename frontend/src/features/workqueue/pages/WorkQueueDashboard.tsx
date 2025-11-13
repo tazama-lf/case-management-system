@@ -1,32 +1,56 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { MagnifyingGlassIcon, ChevronDownIcon, QueueListIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+  QueueListIcon,
+} from '@heroicons/react/24/outline';
 import { PageContainer, Card } from '@/shared/components/ui';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import WorkQueueTable from '@/features/workqueue/components/WorkQueueTable';
 import WorkQueueTableSkeleton from '@/features/workqueue/components/WorkQueueTableSkeleton';
-import WorkQueueErrorBoundary, { useWorkQueueErrorHandler } from '@/features/workqueue/components/WorkQueueErrorBoundary';
+import WorkQueueErrorBoundary, {
+  useWorkQueueErrorHandler,
+} from '@/features/workqueue/components/WorkQueueErrorBoundary';
 import { flowableWorkQueueService } from '@/features/workqueue/services/flowableWorkQueueService';
 import { useWorkQueuePagination } from '@/features/workqueue/hooks/useWorkQueuePagination';
 import { useToast } from '@/shared/providers/ToastProvider';
-import { taskService, TaskStatus, type TaskStatusType } from '@/features/cases/services/taskService';
-import type { UnifiedWorkQueueTask, WorkQueueCandidateGroupType } from '@/features/workqueue/types/flowable.types';
+import {
+  taskService,
+  TaskStatus,
+  type TaskStatusType,
+} from '@/features/cases/services/taskService';
+import type {
+  UnifiedWorkQueueTask,
+  WorkQueueCandidateGroupType,
+} from '@/features/workqueue/types/flowable.types';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useAuth } from '@/features/auth';
 
 // Dynamic imports for modals
-const AssignTaskModal = lazy(() => import('@/features/cases/components/modals/AssignTaskModal'));
-const ReassignTaskModal = lazy(() => import('@/features/cases/components/modals/ReassignTaskModal'));
-const UnassignTaskModal = lazy(() => import('@/features/cases/components/modals/UnassignTaskModal'));
-const CompleteTaskModal = lazy(() => import('@/features/cases/components/modals/CompleteTaskModal'));
-const UpdateTaskStatusModal = lazy(() => import('@/features/cases/components/modals/UpdateTaskStatusModal'));
-
+const AssignTaskModal = lazy(
+  () => import('@/features/cases/components/modals/AssignTaskModal'),
+);
+const ReassignTaskModal = lazy(
+  () => import('@/features/cases/components/modals/ReassignTaskModal'),
+);
+const UnassignTaskModal = lazy(
+  () => import('@/features/cases/components/modals/UnassignTaskModal'),
+);
+const CompleteTaskModal = lazy(
+  () => import('@/features/cases/components/modals/CompleteTaskModal'),
+);
+const UpdateTaskStatusModal = lazy(
+  () => import('@/features/cases/components/modals/UpdateTaskStatusModal'),
+);
 
 const WorkQueueDashboard: React.FC = () => {
   const { params, navigate } = useDynamicRoute();
-  const { user, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
+  const { user, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } =
+    useAuth();
   const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
-  const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
+  const [candidateGroupFilter, setCandidateGroupFilter] =
+    useState<WorkQueueCandidateGroupType>('investigations');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   const [tasks, setTasks] = useState<UnifiedWorkQueueTask[]>([]);
@@ -41,20 +65,26 @@ const WorkQueueDashboard: React.FC = () => {
   ];
   const [isLoading, setIsLoading] = useState(true);
 
-  const { error, handleError, clearError, getErrorDisplay } = useWorkQueueErrorHandler();
+  const { error, handleError, clearError, getErrorDisplay } =
+    useWorkQueueErrorHandler();
 
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
   const [closeTaskModalOpen, setCloseTaskModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
+  const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(
+    null,
+  );
 
   // Check if user is investigator only (no supervisor or admin role)
-  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
+  const isInvestigatorOnly =
+    hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const isSupervisor = hasSupervisorRole() && !hasCMSAdminRole();
-  const candidateGroups = flowableWorkQueueService.getCandidateGroups(isInvestigatorOnly, isSupervisor);
-
+  const candidateGroups = flowableWorkQueueService.getCandidateGroups(
+    isInvestigatorOnly,
+    isSupervisor,
+  );
 
   useEffect(() => {
     const loadWorkQueue = async () => {
@@ -62,7 +92,10 @@ const WorkQueueDashboard: React.FC = () => {
       clearError();
 
       try {
-        const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+        const workQueueTasks =
+          await flowableWorkQueueService.getWorkQueueByGroup(
+            candidateGroupFilter,
+          );
         setTasks(workQueueTasks);
       } catch (err) {
         handleError(err);
@@ -79,13 +112,16 @@ const WorkQueueDashboard: React.FC = () => {
   useEffect(() => {
     const taskId = params.taskId;
     if (taskId && tasks.length > 0) {
-      const taskToView = tasks.find(t => t.id === taskId);
+      const taskToView = tasks.find((t) => t.id === taskId);
       if (taskToView) {
         setSelectedTask(taskToView);
         // Auto-open the most relevant modal based on task status
         if (taskToView.status === 'UNASSIGNED') {
           setAssignModalOpen(true);
-        } else if (taskToView.status === 'ASSIGNED' || taskToView.status === 'IN_PROGRESS') {
+        } else if (
+          taskToView.status === 'ASSIGNED' ||
+          taskToView.status === 'IN_PROGRESS'
+        ) {
           setUpdateStatusModalOpen(true);
         }
       } else {
@@ -95,18 +131,19 @@ const WorkQueueDashboard: React.FC = () => {
     }
   }, [tasks, params.taskId, navigate]);
 
-
   const filteredTasks = tasks.filter((task: UnifiedWorkQueueTask) => {
-    const matchesSearch = search === '' || [
-      task.id,
-      task.name || '',
-      task.description || '',
-      task.candidateGroup || '',
-      task.caseId || '',
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const matchesSearch =
+      search === '' ||
+      [
+        task.id,
+        task.name || '',
+        task.description || '',
+        task.candidateGroup || '',
+        task.caseId || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
     const matchesStatus = statusFilter === '' || task.status === statusFilter;
 
@@ -114,7 +151,8 @@ const WorkQueueDashboard: React.FC = () => {
   });
 
   // Use pagination hook with filtered tasks
-  const { pagination, paginatedTasks, setPageSize } = useWorkQueuePagination(filteredTasks);
+  const { pagination, paginatedTasks, setPageSize } =
+    useWorkQueuePagination(filteredTasks);
 
   const handleAssignTask = (taskData: UnifiedWorkQueueTask) => {
     setSelectedTask(taskData);
@@ -152,8 +190,13 @@ const WorkQueueDashboard: React.FC = () => {
   };
 
   // Unified handler for all task operations with type checking
-  type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus' | 'complete';
-  
+  type TaskOperation =
+    | 'assign'
+    | 'reassign'
+    | 'unassign'
+    | 'updateStatus'
+    | 'complete';
+
   interface TaskOperationParams {
     task: UnifiedWorkQueueTask;
     assignee?: string;
@@ -165,20 +208,29 @@ const WorkQueueDashboard: React.FC = () => {
 
   const handleTaskOperation = async (
     operation: TaskOperation,
-    operationParams: TaskOperationParams
+    operationParams: TaskOperationParams,
   ): Promise<void> => {
     const { task, assignee, newStatus, reason } = operationParams;
 
     try {
       // Validation based on operation type
       if ((operation === 'assign' || operation === 'reassign') && !assignee) {
-        console.warn(`Cannot ${operation} task: missing assignee`, { task, assignee });
-        toastError(`${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`, 'Missing assignee');
+        console.warn(`Cannot ${operation} task: missing assignee`, {
+          task,
+          assignee,
+        });
+        toastError(
+          `${operation === 'assign' ? 'Assign' : 'Reassign'} Task Failed`,
+          'Missing assignee',
+        );
         return;
       }
 
       if (operation === 'updateStatus' && !newStatus) {
-        console.warn('Cannot update task status: missing status', { task, newStatus });
+        console.warn('Cannot update task status: missing status', {
+          task,
+          newStatus,
+        });
         toastError('Update Task Status Failed', 'Missing status');
         return;
       }
@@ -195,7 +247,7 @@ const WorkQueueDashboard: React.FC = () => {
         case 'reassign': {
           await flowableWorkQueueService.assignTask(task.id, assignee!, {
             currentUserId: user?.userId,
-            isInvestigator: hasInvestigatorRole()
+            isInvestigator: hasInvestigatorRole(),
           });
           break;
         }
@@ -203,19 +255,23 @@ const WorkQueueDashboard: React.FC = () => {
           await flowableWorkQueueService.unassignTask(task.id);
           break;
         case 'complete':
-          await flowableWorkQueueService.completeTask(task.id, { notes: operationParams.notes || '' });
+          await flowableWorkQueueService.completeTask(task.id, {
+            notes: operationParams.notes || '',
+          });
           break;
         case 'updateStatus': {
           const statusMap: Record<string, TaskStatusType> = {
-            'Unassigned': TaskStatus.STATUS_01_UNASSIGNED,
-            'Assigned': TaskStatus.STATUS_10_ASSIGNED,
+            Unassigned: TaskStatus.STATUS_01_UNASSIGNED,
+            Assigned: TaskStatus.STATUS_10_ASSIGNED,
             'In Progress': TaskStatus.STATUS_20_IN_PROGRESS,
-            'Blocked': TaskStatus.STATUS_21_BLOCKED,
-            'Complete': TaskStatus.STATUS_30_COMPLETED
+            Blocked: TaskStatus.STATUS_21_BLOCKED,
+            Complete: TaskStatus.STATUS_30_COMPLETED,
           };
           const backendStatus = statusMap[newStatus!];
           if (backendStatus) {
-            await taskService.updateTaskForSupervisor(task.id, { status: backendStatus });
+            await taskService.updateTaskForSupervisor(task.id, {
+              status: backendStatus,
+            });
           }
           break;
         }
@@ -230,13 +286,16 @@ const WorkQueueDashboard: React.FC = () => {
       setUpdateStatusModalOpen(false);
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
-      
+
       // Clear task ID from URL if present
       if (params.taskId) {
         navigate('/work-queue', { replace: true });
       }
 
-      const updatedTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+      const updatedTasks =
+        await flowableWorkQueueService.getWorkQueueByGroup(
+          candidateGroupFilter,
+        );
       setTasks(updatedTasks);
 
       // Success message
@@ -245,10 +304,13 @@ const WorkQueueDashboard: React.FC = () => {
         reassign: 'Task Reassigned Successfully',
         unassign: 'Task Unassigned Successfully',
         complete: 'Task Completed Successfully',
-        updateStatus: 'Task Status Updated Successfully'
+        updateStatus: 'Task Status Updated Successfully',
       };
 
-      success(operationMessages[operation], `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation === 'complete' ? 'completed' : operation + 'ed'} successfully.`);
+      success(
+        operationMessages[operation],
+        `Task ${task.id} has been ${operation === 'updateStatus' ? 'updated' : operation === 'complete' ? 'completed' : operation + 'ed'} successfully.`,
+      );
     } catch (error) {
       console.error(`Failed to ${operation} task:`, error);
       const operationLabels = {
@@ -256,18 +318,29 @@ const WorkQueueDashboard: React.FC = () => {
         reassign: 'Reassign Task Failed',
         unassign: 'Unassign Task Failed',
         complete: 'Complete Task Failed',
-        updateStatus: 'Update Task Status Failed'
+        updateStatus: 'Update Task Status Failed',
       };
-      toastError(operationLabels[operation], error instanceof Error ? error.message : `Failed to ${operation} task`);
+      toastError(
+        operationLabels[operation],
+        error instanceof Error ? error.message : `Failed to ${operation} task`,
+      );
     }
   };
 
   // Simplified handler functions that use the unified handler
-  const handleModalAssign = async (task: UnifiedWorkQueueTask, assignee: string, notes?: string) => {
+  const handleModalAssign = async (
+    task: UnifiedWorkQueueTask,
+    assignee: string,
+    notes?: string,
+  ) => {
     await handleTaskOperation('assign', { task, assignee, notes });
   };
 
-  const handleModalReassign = async (task: UnifiedWorkQueueTask, assignee: string, justification: string) => {
+  const handleModalReassign = async (
+    task: UnifiedWorkQueueTask,
+    assignee: string,
+    justification: string,
+  ) => {
     await handleTaskOperation('reassign', { task, assignee, justification });
   };
 
@@ -277,11 +350,18 @@ const WorkQueueDashboard: React.FC = () => {
     }
   };
 
-  const handleModalCloseTask = async (task: UnifiedWorkQueueTask, _notes?: string) => {
+  const handleModalCloseTask = async (
+    task: UnifiedWorkQueueTask,
+    _notes?: string,
+  ) => {
     await handleTaskOperation('complete', { task });
   };
 
-  const handleModalUpdateStatus = async (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) => {
+  const handleModalUpdateStatus = async (
+    task: UnifiedWorkQueueTask,
+    newStatus: string,
+    notes?: string,
+  ) => {
     await handleTaskOperation('updateStatus', { task, newStatus, notes });
   };
 
@@ -303,7 +383,11 @@ const WorkQueueDashboard: React.FC = () => {
               <select
                 aria-label="Select queue"
                 value={candidateGroupFilter}
-                onChange={(e) => setCandidateGroupFilter(e.target.value as WorkQueueCandidateGroupType)}
+                onChange={(e) =>
+                  setCandidateGroupFilter(
+                    e.target.value as WorkQueueCandidateGroupType,
+                  )
+                }
                 className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 {candidateGroups.map((group) => (
@@ -353,8 +437,6 @@ const WorkQueueDashboard: React.FC = () => {
         </div>
       </Card>
 
-
-
       {}
       <Card>
         {error && (
@@ -377,7 +459,10 @@ const WorkQueueDashboard: React.FC = () => {
                     const loadWorkQueue = async () => {
                       setIsLoading(true);
                       try {
-                        const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+                        const workQueueTasks =
+                          await flowableWorkQueueService.getWorkQueueByGroup(
+                            candidateGroupFilter,
+                          );
                         setTasks(workQueueTasks);
                       } catch (err) {
                         handleError(err);
@@ -403,7 +488,11 @@ const WorkQueueDashboard: React.FC = () => {
             <div className="text-center">
               <QueueListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <div className="text-sm text-gray-500">
-                No tasks found in {candidateGroups.find(g => g.value === candidateGroupFilter)?.label}
+                No tasks found in{' '}
+                {
+                  candidateGroups.find((g) => g.value === candidateGroupFilter)
+                    ?.label
+                }
               </div>
             </div>
           </div>

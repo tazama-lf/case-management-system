@@ -4,7 +4,11 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
-import type { Alert as TriageAlert, ActionHistory, AlertStatus } from '../types/triage.types';
+import type {
+  Alert as TriageAlert,
+  ActionHistory,
+  AlertStatus,
+} from '../types/triage.types';
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
@@ -14,7 +18,11 @@ interface AlertsDetailModalProps {
   alertId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onCloseAlert?: (alert: LegacyAlert, status: AlertStatus, notes: string) => void;
+  onCloseAlert?: (
+    alert: LegacyAlert,
+    status: AlertStatus,
+    notes: string,
+  ) => void;
   onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
 }
@@ -55,25 +63,39 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     if (maybe && typeof maybe === 'object') {
       const tadp = (maybe as Record<string, unknown>)['tadpResult'];
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
-        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)[
+          'typologyResult'
+        ];
+        if (
+          Array.isArray(typologyResult) &&
+          typologyResult.length > 0 &&
+          typeof typologyResult[0] === 'object'
+        ) {
           const typ = typologyResult[0] as Record<string, unknown>;
           const maybeRules = typ['ruleResults'];
           if (Array.isArray(maybeRules)) {
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
-              const id = (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
-              const name = (rec['label'] as string) || (rec['name'] as string) || id;
-              const type = (rec['subRuleRef'] as string) || (rec['type'] as string) || (rec['category'] as string) || 'Unknown';
-              const wght = typeof rec['wght'] === 'number' ? (rec['wght'] as number) : Number(rec['weight'] || 0);
+              const id =
+                (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
+              const name =
+                (rec['label'] as string) || (rec['name'] as string) || id;
+              const type =
+                (rec['subRuleRef'] as string) ||
+                (rec['type'] as string) ||
+                (rec['category'] as string) ||
+                'Unknown';
+              const wght =
+                typeof rec['wght'] === 'number'
+                  ? (rec['wght'] as number)
+                  : Number(rec['weight'] || 0);
               return { name, type, score: wght };
             });
           }
         }
       }
     }
-  } catch {
-  }
+  } catch {}
 
   const totalScore = getRiskScore(alert);
   const components = [
@@ -98,7 +120,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
     components.push({
       name: 'Aggregated Transaction Mirroring',
       type: 'Pattern',
-      score: Math.round(totalScore * 0.33)
+      score: Math.round(totalScore * 0.33),
     });
     components[0].score = Math.round(totalScore * 0.22);
     components[1].score = Math.round(totalScore * 0.22);
@@ -114,18 +136,27 @@ const extractTypologyInfo = (alert: TriageAlert) => {
     if (maybe && typeof maybe === 'object') {
       const tadp = (maybe as Record<string, unknown>)['tadpResult'];
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)['typologyResult'];
-        if (Array.isArray(typologyResult) && typologyResult.length > 0 && typeof typologyResult[0] === 'object') {
+        const typologyResult = (tadp as Record<string, unknown>)[
+          'typologyResult'
+        ];
+        if (
+          Array.isArray(typologyResult) &&
+          typologyResult.length > 0 &&
+          typeof typologyResult[0] === 'object'
+        ) {
           const typ = typologyResult[0] as Record<string, unknown>;
           const id = typ['id'] as string | undefined;
-          const label = (typ['label'] as string) || (typ['name'] as string) || id;
-          const result = typeof typ['result'] === 'number' ? (typ['result'] as number) : undefined;
+          const label =
+            (typ['label'] as string) || (typ['name'] as string) || id;
+          const result =
+            typeof typ['result'] === 'number'
+              ? (typ['result'] as number)
+              : undefined;
           return { id, label, result };
         }
       }
     }
-  } catch {
-  }
+  } catch {}
   return { id: undefined, label: undefined, result: undefined };
 };
 
@@ -143,10 +174,19 @@ const syntaxHighlightJson = (obj: unknown) => {
   const escaped = escapeHtml(String(json));
 
   const highlighted = escaped
-    .replace(/("(.*?)")(?=\s*:)/g, '<span class="text-indigo-700 font-medium">$1</span>')
+    .replace(
+      /("(.*?)")(?=\s*:)/g,
+      '<span class="text-indigo-700 font-medium">$1</span>',
+    )
     .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
-    .replace(/(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi, '$1<span class="text-red-600">$2</span>')
-    .replace(/(:\s*)(true|false)/gi, '$1<span class="text-yellow-600">$2</span>')
+    .replace(
+      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi,
+      '$1<span class="text-red-600">$2</span>',
+    )
+    .replace(
+      /(:\s*)(true|false)/gi,
+      '$1<span class="text-yellow-600">$2</span>',
+    )
     .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
 
   return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
@@ -244,7 +284,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             <h3 className="mt-4 text-lg font-medium text-gray-900">
               Error Loading Alert
             </h3>
-            <p className="mt-2 text-sm text-gray-600">{error || 'An error occurred while loading the alert'}</p>
+            <p className="mt-2 text-sm text-gray-600">
+              {error || 'An error occurred while loading the alert'}
+            </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
                 onClick={() => window.location.reload()}
@@ -334,21 +376,31 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {}
                       {(() => {
                         const triageCompleted = actionHistory.some(
-                          (action) => action.operation === 'ALERT_UPDATED' && action.outcome === 'SUCCESS'
+                          (action) =>
+                            action.operation === 'ALERT_UPDATED' &&
+                            action.outcome === 'SUCCESS',
                         );
-                        
-                        const showButton = canPerformActions && onManualTriage && (isManualMode || isDisabledMode) && !isAIMode && !triageCompleted;
-                        
+
+                        const showButton =
+                          canPerformActions &&
+                          onManualTriage &&
+                          (isManualMode || isDisabledMode) &&
+                          !isAIMode &&
+                          !triageCompleted;
+
                         return showButton && onManualTriage ? (
                           <button
-                            onClick={() => onManualTriage(convertToLegacyAlert(alert))}
+                            onClick={() =>
+                              onManualTriage(convertToLegacyAlert(alert))
+                            }
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                            title={isManualMode
-                              ? "Perform manual triage - update alert and make case decision"
-                              : "Update alert details - direct investigation mode"
+                            title={
+                              isManualMode
+                                ? 'Perform manual triage - update alert and make case decision'
+                                : 'Update alert details - direct investigation mode'
                             }
                           >
-                            {isManualMode ? "Update Alert" : "Update Alert"}
+                            {isManualMode ? 'Update Alert' : 'Update Alert'}
                           </button>
                         ) : null;
                       })()}
@@ -361,7 +413,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-lg text-gray-600 mb-1">{alert.message || 'No message available'}</p>
+                  <p className="text-lg text-gray-600 mb-1">
+                    {alert.message || 'No message available'}
+                  </p>
                   <p className="text-sm text-gray-500">
                     Alert ID: {alert.alert_id} • Source: {alert.source || 'N/A'}
                   </p>
@@ -418,14 +472,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       Transaction Data
                     </h4>
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                          {alert.transaction ? (
-                            <pre
-                              className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
-                              dangerouslySetInnerHTML={{ __html: syntaxHighlightJson(alert.transaction) }}
-                            />
-                          ) : (
-                            <div className="text-sm text-gray-600">No transaction data</div>
-                          )}
+                      {alert.transaction ? (
+                        <pre
+                          className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                          dangerouslySetInnerHTML={{
+                            __html: syntaxHighlightJson(alert.transaction),
+                          }}
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          No transaction data
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -531,10 +589,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       return (
                         <>
                           <span className="text-gray-500">Risk Category:</span>
-                          <span className="font-medium text-gray-900">{typ.label || typ.id || 'Unknown'}</span>
+                          <span className="font-medium text-gray-900">
+                            {typ.label || typ.id || 'Unknown'}
+                          </span>
                           <span className="text-gray-500">•</span>
                           <span className="text-gray-500">Risk Score:</span>
-                          <span className="font-medium text-red-600 text-base">{typ.result ?? getRiskScore(alert)}</span>
+                          <span className="font-medium text-red-600 text-base">
+                            {typ.result ?? getRiskScore(alert)}
+                          </span>
                         </>
                       );
                     })()}

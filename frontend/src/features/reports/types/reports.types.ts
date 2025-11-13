@@ -57,7 +57,6 @@ export interface ReportFilters {
   assignee: string;
 }
 
-
 export interface InvestigatorStats {
   totalInvestigators: number;
   avgCasesPerInvestigator: number;
@@ -108,7 +107,6 @@ export interface InvestigatorWorkloadData {
   performanceData: InvestigatorPerformance[];
 }
 
-
 export interface TaskStats {
   totalTasks: number;
   completionRate: number;
@@ -158,7 +156,6 @@ export interface TaskCompletionData {
   taskDetails: TaskDetail[];
 }
 
-
 export interface AuditLogsStats {
   totalLogs: number;
   caseActions: number;
@@ -181,7 +178,6 @@ export interface AuditLogsData {
   stats: AuditLogsStats;
   auditLogs: AuditLog[];
 }
-
 
 export interface CaseAgeingStats {
   avgCaseAge: number;

@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
-  ExclamationTriangleIcon, 
-  FolderOpenIcon, 
+import {
+  ExclamationTriangleIcon,
+  FolderOpenIcon,
   ChartBarIcon,
-  ExclamationCircleIcon 
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 import StatsCard from './StatsCard.tsx';
 import type { AdminDashboardStats } from '../types/admindashboard.types';

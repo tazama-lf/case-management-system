@@ -7,7 +7,10 @@ export { default as LayoutWithProvider } from './components/layout/LayoutWithPro
 export { default as NavigationContext } from './contexts/NavigationContext';
 export { default as NavigationProvider } from './contexts/NavigationContext';
 
-export { NotificationProvider, useNotifications } from './providers/NotificationProvider';
+export {
+  NotificationProvider,
+  useNotifications,
+} from './providers/NotificationProvider';
 export { QueryProvider } from './providers/QueryProvider';
 
 export { default as useDebounce } from './hooks/useDebounce';

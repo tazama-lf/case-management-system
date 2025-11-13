@@ -13,9 +13,9 @@ import { AuditLogModule } from '../audit/auditLog.module';
     AuditLogModule,
     MulterModule.register({
       limits: {
-        fileSize: 100 * 1024 * 1024, 
+        fileSize: 100 * 1024 * 1024,
       },
-      storage: require('multer').memoryStorage(), 
+      storage: require('multer').memoryStorage(),
     }),
   ],
   controllers: [EvidenceController],

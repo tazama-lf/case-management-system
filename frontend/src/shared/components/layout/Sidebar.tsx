@@ -12,7 +12,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
     hasAdminRole,
     hasInvestigatorRole,
     hasSupervisorRole,
-    hasBackendClaim
+    hasBackendClaim,
   } = useAuth();
 
   const hasAccess = (item: NavItem): boolean => {
@@ -138,8 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
       {}
       <div className="flex h-16 shrink-0 items-center">
         <div className="flex items-center">
-          {
-}
+          {}
           <span className="ml-3 text-xl font-semibold text-gray-900">
             Investigation Platform
           </span>

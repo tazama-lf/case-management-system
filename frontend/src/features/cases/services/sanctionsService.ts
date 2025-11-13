@@ -23,26 +23,29 @@ const BASE_URL = '/api/v1/sanctions-screenings';
  */
 export const getCaseSanctionsScreenings = async (
   caseId: string,
-  filters?: SanctionsScreeningFilters
+  filters?: SanctionsScreeningFilters,
 ): Promise<SanctionsScreeningListResponse> => {
   const params = new URLSearchParams();
   if (filters?.disposition) params.append('disposition', filters.disposition);
   if (filters?.tool_source) params.append('tool_source', filters.tool_source);
   if (filters?.date_from) params.append('date_from', filters.date_from);
   if (filters?.date_to) params.append('date_to', filters.date_to);
-  if (filters?.investigator_id) params.append('investigator_id', filters.investigator_id);
+  if (filters?.investigator_id)
+    params.append('investigator_id', filters.investigator_id);
   if (filters?.search) params.append('search', filters.search);
 
   const queryString = params.toString();
   const url = `${BASE_URL}/case/${caseId}${queryString ? `?${queryString}` : ''}`;
-  
+
   return await apiClient.get<SanctionsScreeningListResponse>(url);
 };
 
 /**
  * Get a specific sanctions screening by ID
  */
-export const getSanctionsScreening = async (screeningId: string): Promise<SanctionsScreening> => {
+export const getSanctionsScreening = async (
+  screeningId: string,
+): Promise<SanctionsScreening> => {
   return await apiClient.get<SanctionsScreening>(`${BASE_URL}/${screeningId}`);
 };
 
@@ -50,15 +53,15 @@ export const getSanctionsScreening = async (screeningId: string): Promise<Sancti
  * Create a new sanctions screening with optional file upload
  */
 export const createSanctionsScreening = async (
-  dto: CreateSanctionsScreeningDto
+  dto: CreateSanctionsScreeningDto,
 ): Promise<SanctionsScreeningResponse> => {
   const formData = new FormData();
-  
+
   // Add file if present
   if (dto.file) {
     formData.append('file', dto.file);
   }
-  
+
   // Add all other fields as JSON
   formData.append('case_id', dto.case_id);
   if (dto.task_id) formData.append('task_id', dto.task_id);
@@ -66,11 +69,12 @@ export const createSanctionsScreening = async (
   formData.append('tool_source', dto.tool_source);
   formData.append('disposition', dto.disposition);
   formData.append('summary', dto.summary);
-  
+
   if (dto.reference_id) formData.append('reference_id', dto.reference_id);
-  if (dto.match_count !== undefined) formData.append('match_count', dto.match_count.toString());
+  if (dto.match_count !== undefined)
+    formData.append('match_count', dto.match_count.toString());
   if (dto.metadata) formData.append('metadata', JSON.stringify(dto.metadata));
-  
+
   return await apiClient.post<SanctionsScreeningResponse>(BASE_URL, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -82,13 +86,13 @@ export const createSanctionsScreening = async (
  * Update an existing sanctions screening
  */
 export const updateSanctionsScreening = async (
-  dto: UpdateSanctionsScreeningDto
+  dto: UpdateSanctionsScreeningDto,
 ): Promise<SanctionsScreeningResponse> => {
   const { screening_id, ...updateData } = dto;
-  
+
   return await apiClient.patch<SanctionsScreeningResponse>(
     `${BASE_URL}/${screening_id}`,
-    updateData
+    updateData,
   );
 };
 
@@ -96,10 +100,10 @@ export const updateSanctionsScreening = async (
  * Delete a sanctions screening
  */
 export const deleteSanctionsScreening = async (
-  screeningId: string
+  screeningId: string,
 ): Promise<DeleteSanctionsScreeningResponse> => {
   return await apiClient.delete<DeleteSanctionsScreeningResponse>(
-    `${BASE_URL}/${screeningId}`
+    `${BASE_URL}/${screeningId}`,
   );
 };
 
@@ -107,12 +111,12 @@ export const deleteSanctionsScreening = async (
  * Download the sanctions screening report file
  */
 export const downloadSanctionsReport = async (
-  screeningId: string
+  screeningId: string,
 ): Promise<{ url: string; file_name: string }> => {
   const response = await apiClient.get<{ url: string; file_name: string }>(
-    `${BASE_URL}/${screeningId}/download`
+    `${BASE_URL}/${screeningId}/download`,
   );
-  
+
   // Trigger download
   const link = document.createElement('a');
   link.href = response.url;
@@ -120,7 +124,7 @@ export const downloadSanctionsReport = async (
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
+
   return response;
 };
 
@@ -128,10 +132,10 @@ export const downloadSanctionsReport = async (
  * Get audit logs for a sanctions screening
  */
 export const getSanctionsScreeningAuditLogs = async (
-  screeningId: string
+  screeningId: string,
 ): Promise<SanctionsScreeningAuditLog[]> => {
   return await apiClient.get<SanctionsScreeningAuditLog[]>(
-    `${BASE_URL}/${screeningId}/audit-logs`
+    `${BASE_URL}/${screeningId}/audit-logs`,
   );
 };
 
@@ -139,10 +143,10 @@ export const getSanctionsScreeningAuditLogs = async (
  * Get sanctions screening statistics for a case
  */
 export const getCaseSanctionsStatistics = async (
-  caseId: string
+  caseId: string,
 ): Promise<SanctionsScreeningStatistics> => {
   return await apiClient.get<SanctionsScreeningStatistics>(
-    `${BASE_URL}/case/${caseId}/statistics`
+    `${BASE_URL}/case/${caseId}/statistics`,
   );
 };
 
@@ -152,30 +156,33 @@ export const getCaseSanctionsStatistics = async (
 export const searchSanctionsScreenings = async (
   filters: SanctionsScreeningFilters,
   page = 1,
-  limit = 20
+  limit = 20,
 ): Promise<SanctionsScreeningListResponse> => {
   const params = new URLSearchParams();
   params.append('page', page.toString());
   params.append('limit', limit.toString());
-  
+
   if (filters.case_id) params.append('case_id', filters.case_id);
   if (filters.task_id) params.append('task_id', filters.task_id);
   if (filters.disposition) params.append('disposition', filters.disposition);
   if (filters.tool_source) params.append('tool_source', filters.tool_source);
   if (filters.date_from) params.append('date_from', filters.date_from);
   if (filters.date_to) params.append('date_to', filters.date_to);
-  if (filters.investigator_id) params.append('investigator_id', filters.investigator_id);
+  if (filters.investigator_id)
+    params.append('investigator_id', filters.investigator_id);
   if (filters.search) params.append('search', filters.search);
-  
+
   return await apiClient.get<SanctionsScreeningListResponse>(
-    `${BASE_URL}/search?${params.toString()}`
+    `${BASE_URL}/search?${params.toString()}`,
   );
 };
 
 /**
  * Validate file before upload
  */
-export const validateScreeningFile = (file: File): { valid: boolean; error?: string } => {
+export const validateScreeningFile = (
+  file: File,
+): { valid: boolean; error?: string } => {
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
   const ALLOWED_TYPES = [
     'application/pdf',
@@ -185,21 +192,21 @@ export const validateScreeningFile = (file: File): { valid: boolean; error?: str
     'application/json',
     'text/plain',
   ];
-  
+
   if (file.size > MAX_FILE_SIZE) {
     return {
       valid: false,
       error: `File size exceeds 50MB limit. Current size: ${formatFileSize(file.size)}`,
     };
   }
-  
+
   if (!ALLOWED_TYPES.includes(file.type)) {
     return {
       valid: false,
       error: `Invalid file type. Allowed types: PDF, Excel, CSV, JSON, TXT`,
     };
   }
-  
+
   return { valid: true };
 };
 
@@ -208,11 +215,11 @@ export const validateScreeningFile = (file: File): { valid: boolean; error?: str
  */
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
@@ -228,7 +235,7 @@ export const getDispositionColor = (disposition: string): string => {
     PENDING_REVIEW: 'blue',
     REQUIRES_INVESTIGATION: 'purple',
   };
-  
+
   return colorMap[disposition] || 'gray';
 };
 
@@ -242,6 +249,6 @@ export const getRiskLevelColor = (riskLevel: string): string => {
     HIGH: 'orange',
     CRITICAL: 'red',
   };
-  
+
   return colorMap[riskLevel] || 'gray';
 };

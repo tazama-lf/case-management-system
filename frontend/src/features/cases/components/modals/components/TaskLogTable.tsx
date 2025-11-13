@@ -1,5 +1,12 @@
 import React from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import {
+  UserPlusIcon,
+  UserMinusIcon,
+  CheckIcon,
+  ClockIcon,
+  ArrowPathIcon,
+  Cog6ToothIcon,
+} from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.types';
@@ -31,7 +38,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
   onUpdateStatus,
   onCaseIdClick,
   onTaskClick,
-  
+
   pagination,
 }) => {
   const tableColumns = [
@@ -42,20 +49,27 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     { key: 'status', label: 'Status', width: 'w-32' },
     { key: 'created', label: 'Created', width: 'w-40' },
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
-    { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' }
+    { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' },
   ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
       ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
-      IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
+      IN_PROGRESS: {
+        color: 'bg-yellow-100 text-yellow-800',
+        label: 'In Progress',
+      },
       COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
       SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig.UNASSIGNED;
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.label}
       </span>
     );
@@ -83,7 +97,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
           >
             <CheckIcon className="h-3 w-3 mr-1" />
             Complete
-          </button>
+          </button>,
         );
       }
       return actions;
@@ -102,7 +116,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
         >
           <UserPlusIcon className="h-3 w-3 mr-1" />
           Assign
-        </button>
+        </button>,
       );
     }
 
@@ -119,7 +133,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
         >
           <ArrowPathIcon className="h-3 w-3 mr-1" />
           Reassign
-        </button>
+        </button>,
       );
     }
 
@@ -136,7 +150,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
         >
           <UserMinusIcon className="h-3 w-3 mr-1" />
           Unassign
-        </button>
+        </button>,
       );
     }
 
@@ -153,7 +167,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
         >
           <Cog6ToothIcon className="h-3 w-3 mr-1" />
           Status
-        </button>
+        </button>,
       );
     }
 
@@ -184,7 +198,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
           <thead className="bg-gray-50">
             <tr>
               {tableColumns.map((col) => (
-                <th 
+                <th
                   key={col.key}
                   className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
                     col.align === 'right' ? 'text-right' : 'text-left'
@@ -236,9 +250,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                     {task.candidateGroup || '-'}
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  {getStatusBadge(task.status)}
-                </td>
+                <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
                     <ClockIcon className="h-4 w-4 mr-1" />
@@ -309,7 +321,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
               >
                 <button
                   onClick={() =>
-                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
+                    pagination.onPageChange(
+                      Math.max(1, pagination.currentPage - 1),
+                    )
                   }
                   disabled={pagination.currentPage <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -356,7 +370,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                             ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         }`}
-                        aria-current={pagination.currentPage === p ? 'page' : undefined}
+                        aria-current={
+                          pagination.currentPage === p ? 'page' : undefined
+                        }
                       >
                         {p}
                       </button>
@@ -365,7 +381,12 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 })()}
                 <button
                   onClick={() =>
-                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
+                    pagination.onPageChange(
+                      Math.min(
+                        pagination.totalPages,
+                        pagination.currentPage + 1,
+                      ),
+                    )
                   }
                   disabled={pagination.currentPage >= pagination.totalPages}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

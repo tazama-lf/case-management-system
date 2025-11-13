@@ -20,7 +20,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const tenantIdErrors = errors.filter(error => error.property === 'tenantId');
+      const tenantIdErrors = errors.filter((error) => error.property === 'tenantId');
       expect(tenantIdErrors).toHaveLength(0);
     });
 
@@ -34,7 +34,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const tenantIdErrors = errors.filter(error => error.property === 'tenantId');
+      const tenantIdErrors = errors.filter((error) => error.property === 'tenantId');
       // tenantId only validates as string, not UUID, so no errors expected
       expect(tenantIdErrors.length).toBe(0);
     });
@@ -48,7 +48,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const tenantIdErrors = errors.filter(error => error.property === 'tenantId');
+      const tenantIdErrors = errors.filter((error) => error.property === 'tenantId');
       expect(tenantIdErrors.length).toBeGreaterThan(0);
     });
   });
@@ -64,7 +64,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const creatorIdErrors = errors.filter(error => error.property === 'caseCreatorUserId');
+      const creatorIdErrors = errors.filter((error) => error.property === 'caseCreatorUserId');
       expect(creatorIdErrors).toHaveLength(0);
     });
 
@@ -78,7 +78,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const creatorIdErrors = errors.filter(error => error.property === 'caseCreatorUserId');
+      const creatorIdErrors = errors.filter((error) => error.property === 'caseCreatorUserId');
       expect(creatorIdErrors.length).toBeGreaterThan(0);
     });
 
@@ -91,7 +91,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const creatorIdErrors = errors.filter(error => error.property === 'caseCreatorUserId');
+      const creatorIdErrors = errors.filter((error) => error.property === 'caseCreatorUserId');
       expect(creatorIdErrors.length).toBeGreaterThan(0);
     });
   });
@@ -107,7 +107,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
+      const ownerIdErrors = errors.filter((error) => error.property === 'caseOwnerUserId');
       expect(ownerIdErrors).toHaveLength(0);
     });
 
@@ -121,7 +121,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
+      const ownerIdErrors = errors.filter((error) => error.property === 'caseOwnerUserId');
       expect(ownerIdErrors.length).toBeGreaterThan(0);
     });
 
@@ -134,7 +134,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const ownerIdErrors = errors.filter(error => error.property === 'caseOwnerUserId');
+      const ownerIdErrors = errors.filter((error) => error.property === 'caseOwnerUserId');
       expect(ownerIdErrors.length).toBeGreaterThan(0);
     });
   });
@@ -150,7 +150,7 @@ describe('CreateCaseDto', () => {
         CaseStatus.STATUS_20_IN_PROGRESS,
         CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-        CaseStatus.STATUS_99_ABANDONED
+        CaseStatus.STATUS_99_ABANDONED,
       ];
 
       for (const status of validStatuses) {
@@ -163,7 +163,7 @@ describe('CreateCaseDto', () => {
         dto.caseCreationType = CaseCreationType.MANUAL;
 
         const errors = await validate(dto);
-        const statusErrors = errors.filter(error => error.property === 'status');
+        const statusErrors = errors.filter((error) => error.property === 'status');
         expect(statusErrors).toHaveLength(0);
       }
     });
@@ -177,7 +177,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const statusErrors = errors.filter(error => error.property === 'status');
+      const statusErrors = errors.filter((error) => error.property === 'status');
       expect(statusErrors.length).toBeGreaterThan(0);
     });
   });
@@ -196,7 +196,7 @@ describe('CreateCaseDto', () => {
         dto.caseCreationType = CaseCreationType.MANUAL;
 
         const errors = await validate(dto);
-        const priorityErrors = errors.filter(error => error.property === 'priority');
+        const priorityErrors = errors.filter((error) => error.property === 'priority');
         expect(priorityErrors).toHaveLength(0);
       }
     });
@@ -210,7 +210,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const priorityErrors = errors.filter(error => error.property === 'priority');
+      const priorityErrors = errors.filter((error) => error.property === 'priority');
       expect(priorityErrors.length).toBeGreaterThan(0);
     });
   });
@@ -229,7 +229,7 @@ describe('CreateCaseDto', () => {
         dto.caseCreationType = CaseCreationType.MANUAL;
 
         const errors = await validate(dto);
-        const caseTypeErrors = errors.filter(error => error.property === 'caseType');
+        const caseTypeErrors = errors.filter((error) => error.property === 'caseType');
         expect(caseTypeErrors).toHaveLength(0);
       }
     });
@@ -243,7 +243,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const caseTypeErrors = errors.filter(error => error.property === 'caseType');
+      const caseTypeErrors = errors.filter((error) => error.property === 'caseType');
       // caseType is optional, so no errors expected when missing
       expect(caseTypeErrors.length).toBe(0);
     });
@@ -263,7 +263,7 @@ describe('CreateCaseDto', () => {
         dto.caseCreationType = creationType;
 
         const errors = await validate(dto);
-        const creationTypeErrors = errors.filter(error => error.property === 'caseCreationType');
+        const creationTypeErrors = errors.filter((error) => error.property === 'caseCreationType');
         expect(creationTypeErrors).toHaveLength(0);
       }
     });
@@ -277,7 +277,7 @@ describe('CreateCaseDto', () => {
       dto.caseType = CaseType.FRAUD;
 
       const errors = await validate(dto);
-      const creationTypeErrors = errors.filter(error => error.property === 'caseCreationType');
+      const creationTypeErrors = errors.filter((error) => error.property === 'caseCreationType');
       expect(creationTypeErrors.length).toBeGreaterThan(0);
     });
   });
@@ -294,7 +294,7 @@ describe('CreateCaseDto', () => {
       dto.parentId = '123e4567-e89b-12d3-a456-426614174003';
 
       const errors = await validate(dto);
-      const parentIdErrors = errors.filter(error => error.property === 'parentId');
+      const parentIdErrors = errors.filter((error) => error.property === 'parentId');
       expect(parentIdErrors).toHaveLength(0);
     });
 
@@ -308,7 +308,7 @@ describe('CreateCaseDto', () => {
       dto.caseCreationType = CaseCreationType.MANUAL;
 
       const errors = await validate(dto);
-      const parentIdErrors = errors.filter(error => error.property === 'parentId');
+      const parentIdErrors = errors.filter((error) => error.property === 'parentId');
       expect(parentIdErrors).toHaveLength(0);
     });
 
@@ -323,7 +323,7 @@ describe('CreateCaseDto', () => {
       dto.parentId = 'invalid-uuid';
 
       const errors = await validate(dto);
-      const parentIdErrors = errors.filter(error => error.property === 'parentId');
+      const parentIdErrors = errors.filter((error) => error.property === 'parentId');
       expect(parentIdErrors.length).toBeGreaterThan(0);
     });
   });

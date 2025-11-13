@@ -12,10 +12,12 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   title = 'Something went wrong',
   message = 'We encountered an error while loading this content. Please try again.',
   onRetry,
-  className = ''
+  className = '',
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}>
+    <div
+      className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}
+    >
       <div className="flex flex-col items-center text-center max-w-md">
         <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4">
           <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />

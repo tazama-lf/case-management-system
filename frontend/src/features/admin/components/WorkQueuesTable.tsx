@@ -71,10 +71,14 @@ const WorkQueuesTable: React.FC<WorkQueuesTableProps> = ({
           {queues.map((queue) => (
             <tr key={queue.id} className="hover:bg-gray-50">
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{queue.name}</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {queue.name}
+                </div>
               </td>
               <td className="px-6 py-4">
-                <div className="text-sm text-gray-600 max-w-xs">{queue.description}</div>
+                <div className="text-sm text-gray-600 max-w-xs">
+                  {queue.description}
+                </div>
               </td>
               <td className="px-6 py-4">
                 <div className="flex flex-wrap gap-1">
@@ -110,24 +114,28 @@ const WorkQueuesTable: React.FC<WorkQueuesTableProps> = ({
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                  queue.status === 'Active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    queue.status === 'Active'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
                   {queue.status}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div className="flex items-center space-x-2">
-                  <button 
+                  <button
                     className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                    onClick={() => handleEdit(queue)}>
+                    onClick={() => handleEdit(queue)}
+                  >
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  <button 
+                  <button
                     className="text-red-600 hover:text-red-900 p-1 rounded"
-                    onClick={() => handleDelete(queue)}>
+                    onClick={() => handleDelete(queue)}
+                  >
                     <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
@@ -156,10 +164,13 @@ const WorkQueuesTable: React.FC<WorkQueuesTableProps> = ({
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Delete Work Queue</h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Delete Work Queue
+              </h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete this work queue? This action cannot be undone.
+                  Are you sure you want to delete this work queue? This action
+                  cannot be undone.
                 </p>
               </div>
               <div className="items-center px-4 py-3">
@@ -180,7 +191,7 @@ const WorkQueuesTable: React.FC<WorkQueuesTableProps> = ({
           </div>
         </div>
       )}
-      
+
       {queues.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No work queues found matching your search criteria.

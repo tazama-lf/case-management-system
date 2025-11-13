@@ -27,7 +27,7 @@ describe('UpdateCaseDto', () => {
         CaseStatus.STATUS_81_CLOSED_REFUTED,
         CaseStatus.STATUS_82_CLOSED_CONFIRMED,
         CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-        CaseStatus.STATUS_99_ABANDONED
+        CaseStatus.STATUS_99_ABANDONED,
       ];
 
       for (const status of validStatuses) {
@@ -43,7 +43,7 @@ describe('UpdateCaseDto', () => {
       });
 
       const errors = await validate(dto);
-      expect(errors.some(e => e.property === 'status')).toBe(true);
+      expect(errors.some((e) => e.property === 'status')).toBe(true);
     });
 
     it('should accept undefined status (optional)', async () => {
@@ -74,7 +74,7 @@ describe('UpdateCaseDto', () => {
       });
 
       const errors = await validate(dto);
-      expect(errors.some(e => e.property === 'priority')).toBe(true);
+      expect(errors.some((e) => e.property === 'priority')).toBe(true);
     });
 
     it('should pass when priority is not set (optional field)', async () => {
@@ -103,7 +103,7 @@ describe('UpdateCaseDto', () => {
       });
 
       const errors = await validate(dto);
-      expect(errors.some(e => e.property === 'caseType')).toBe(true);
+      expect(errors.some((e) => e.property === 'caseType')).toBe(true);
     });
 
     it('should pass when caseType is not set (optional field)', async () => {
@@ -190,7 +190,7 @@ describe('UpdateCaseDto', () => {
 
       expect(errors.length).toBeGreaterThan(0);
 
-      const errorProperties = errors.map(error => error.property);
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('caseOwnerUserId');
     });
 
@@ -205,7 +205,7 @@ describe('UpdateCaseDto', () => {
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
 
-      const errorProperties = errors.map(error => error.property);
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('caseOwnerUserId');
     });
   });
@@ -216,7 +216,7 @@ describe('UpdateCaseDto', () => {
         status: CaseStatus.IN_PROGRESS_20,
         priority: Priority.URGENT,
         caseType: CaseType.FRAUD,
-        caseOwnerUserId: '123e4567-e89b-12d3-a456-426614174000'
+        caseOwnerUserId: '123e4567-e89b-12d3-a456-426614174000',
       };
 
       const dto = plainToInstance(UpdateCaseDto, testData);
@@ -239,7 +239,7 @@ describe('UpdateCaseDto', () => {
         status: CaseStatus.ASSIGNED_10,
         priority: Priority.CRITICAL,
         caseType: CaseType.AML,
-        caseOwnerUserId: '123e4567-e89b-12d3-a456-426614174000'
+        caseOwnerUserId: '123e4567-e89b-12d3-a456-426614174000',
       });
 
       // Safely convert to JSON

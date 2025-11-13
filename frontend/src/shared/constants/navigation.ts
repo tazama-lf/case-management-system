@@ -18,7 +18,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Alerts',
     href: '/alerts',
     icon: ExclamationTriangleIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'], 
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'],
   },
   {
     name: 'Cases',
@@ -36,16 +36,15 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Reports',
     href: '/reports',
     icon: ChartBarIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'], 
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'],
   },
-  
+
   {
     name: 'Admin',
     href: '/admin',
     icon: Cog6ToothIcon,
-    roles: ['CMS_ADMIN'], 
+    roles: ['CMS_ADMIN'],
   },
-
 ];
 
 export { ROLE_HIERARCHY } from '../config/roles.config';

@@ -1,5 +1,8 @@
 import React from 'react';
-import { MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline';
 import { Card } from '../../../../shared/components/ui';
 
 interface CaseFiltersProps {

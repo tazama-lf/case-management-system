@@ -12,7 +12,7 @@ const options = {
   port: process.env.PORT || 3000,
   path: '/health',
   timeout: 2000,
-  method: 'GET'
+  method: 'GET',
 };
 
 const request = http.request(options, (res) => {

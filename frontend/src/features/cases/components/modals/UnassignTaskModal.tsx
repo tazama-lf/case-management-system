@@ -13,7 +13,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
   open,
   onClose,
   onUnassign,
-  task
+  task,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,9 +57,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Unassign Task
               </h3>
-              <p className="text-sm text-gray-600">
-                Task ID: {task.id}
-              </p>
+              <p className="text-sm text-gray-600">Task ID: {task.id}</p>
             </div>
           </div>
           <button
@@ -75,18 +73,28 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
           <div className="mb-4">
             <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
               <div className="text-sm">
-                <div className="font-medium text-gray-900 mb-1">Task Details:</div>
+                <div className="font-medium text-gray-900 mb-1">
+                  Task Details:
+                </div>
                 <div className="text-gray-700">
-                  <div><strong>Name:</strong> {task.name}</div>
-                  <div><strong>Current Assignee:</strong> {task.assigneeName || task.assignee || 'Unassigned'}</div>
-                  <div><strong>Status:</strong> {task.status}</div>
+                  <div>
+                    <strong>Name:</strong> {task.name}
+                  </div>
+                  <div>
+                    <strong>Current Assignee:</strong>{' '}
+                    {task.assigneeName || task.assignee || 'Unassigned'}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {task.status}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <p className="text-sm text-gray-700 mb-4">
-            This task will be unassigned and returned to the work queue. The current assignee will be notified of the unassignment.
+            This task will be unassigned and returned to the work queue. The
+            current assignee will be notified of the unassignment.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -96,14 +104,19 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
             <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-blue-800">
               <li>Task status will change to "UNASSIGNED"</li>
               <li>Ownership will be removed from the task</li>
-              <li>Task will remain available in the candidate group/work queue</li>
+              <li>
+                Task will remain available in the candidate group/work queue
+              </li>
               <li>Action will be logged in the audit trail</li>
             </ul>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Reason for unassignment <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -117,7 +130,8 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
               />
               {reason.trim().length === 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  A reason is required for audit logging and notification purposes.
+                  A reason is required for audit logging and notification
+                  purposes.
                 </p>
               )}
             </div>

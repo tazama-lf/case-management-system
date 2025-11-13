@@ -14,7 +14,10 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
-  onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
+  onCustomDateRangeChange: (range: {
+    startDate: string;
+    endDate: string;
+  }) => void;
   alertTypes?: string[];
   priorities?: string[];
   sources?: string[];
@@ -33,8 +36,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   customDateRange,
   onCustomDateRangeChange,
 
-  alertTypes
-  ,priorities, sources
+  alertTypes,
+  priorities,
+  sources,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
@@ -47,12 +51,20 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   useEffect(() => {
     setFilterOptions({
-      priorities: (priorities && priorities.length > 0) ? priorities : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
-      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AND_AML'],
-      sources: (sources && sources.length > 0) ? sources : ['System A', 'System B', 'External']
+      priorities:
+        priorities && priorities.length > 0
+          ? priorities
+          : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+      alertTypes:
+        alertTypes && alertTypes.length > 0
+          ? alertTypes
+          : ['FRAUD', 'AML', 'FRAUD_AND_AML'],
+      sources:
+        sources && sources.length > 0
+          ? sources
+          : ['System A', 'System B', 'External'],
     });
   }, [alertTypes, priorities, sources]);
-
 
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
@@ -160,11 +172,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Types</option>
-                    {(alertTypes && alertTypes.length > 0 ? alertTypes : filterOptions.alertTypes).map((type: string) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
+                  {(alertTypes && alertTypes.length > 0
+                    ? alertTypes
+                    : filterOptions.alertTypes
+                  ).map((type: string) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
                 </select>
               </div>
 

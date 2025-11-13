@@ -21,9 +21,12 @@ export const sanctionsKeys = {
     [...sanctionsKeys.lists(), caseId, filters] as const,
   details: () => [...sanctionsKeys.all, 'detail'] as const,
   detail: (id: string) => [...sanctionsKeys.details(), id] as const,
-  statistics: (caseId: string) => [...sanctionsKeys.all, 'statistics', caseId] as const,
-  auditLogs: (screeningId: string) => [...sanctionsKeys.all, 'audit', screeningId] as const,
-  search: (filters: SanctionsScreeningFilters) => [...sanctionsKeys.all, 'search', filters] as const,
+  statistics: (caseId: string) =>
+    [...sanctionsKeys.all, 'statistics', caseId] as const,
+  auditLogs: (screeningId: string) =>
+    [...sanctionsKeys.all, 'audit', screeningId] as const,
+  search: (filters: SanctionsScreeningFilters) =>
+    [...sanctionsKeys.all, 'search', filters] as const,
 };
 
 /**
@@ -31,7 +34,7 @@ export const sanctionsKeys = {
  */
 export const useCaseSanctionsScreenings = (
   caseId: string,
-  filters?: SanctionsScreeningFilters
+  filters?: SanctionsScreeningFilters,
 ) => {
   return useQuery({
     queryKey: sanctionsKeys.list(caseId, filters),
@@ -67,7 +70,7 @@ export const useCreateSanctionsScreening = () => {
       queryClient.invalidateQueries({
         queryKey: sanctionsKeys.list(variables.case_id),
       });
-      
+
       // Invalidate statistics
       queryClient.invalidateQueries({
         queryKey: sanctionsKeys.statistics(variables.case_id),
@@ -92,11 +95,11 @@ export const useUpdateSanctionsScreening = () => {
       sanctionsService.updateSanctionsScreening(data),
     onSuccess: (response) => {
       const screening = response.screening;
-      
+
       // Update the specific screening in cache
       queryClient.setQueryData<SanctionsScreening>(
         sanctionsKeys.detail(screening.screening_id),
-        screening
+        screening,
       );
 
       // Invalidate the list
@@ -186,11 +189,12 @@ export const useCaseSanctionsStatistics = (caseId: string) => {
 export const useSearchSanctionsScreenings = (
   filters: SanctionsScreeningFilters,
   page = 1,
-  limit = 20
+  limit = 20,
 ) => {
   return useQuery({
     queryKey: sanctionsKeys.search(filters),
-    queryFn: () => sanctionsService.searchSanctionsScreenings(filters, page, limit),
+    queryFn: () =>
+      sanctionsService.searchSanctionsScreenings(filters, page, limit),
     staleTime: 2 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });

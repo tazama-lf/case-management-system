@@ -67,10 +67,7 @@ export const evidenceFindingsMockData: EvidenceFindingsData = {
       finding: 'Multiple duplicate payments to same account',
       conclusion: 'Confirmed',
       evidenceCount: 3,
-      supportingEvidence: [
-        'payment_records.csv',
-        'reconciliation_report.xlsx',
-      ],
+      supportingEvidence: ['payment_records.csv', 'reconciliation_report.xlsx'],
       dateIdentified: '2024-01-18',
     },
     {
@@ -160,7 +157,10 @@ export const evidenceFindingsMockData: EvidenceFindingsData = {
       finding: 'Sanctions screening match (false positive)',
       conclusion: 'Refuted',
       evidenceCount: 2,
-      supportingEvidence: ['sanctions_list_match.log', 'clarification_document.pdf'],
+      supportingEvidence: [
+        'sanctions_list_match.log',
+        'clarification_document.pdf',
+      ],
       dateIdentified: '2024-02-10',
     },
     {

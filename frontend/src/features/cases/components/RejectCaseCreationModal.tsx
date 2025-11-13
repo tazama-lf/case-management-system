@@ -14,7 +14,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
   open,
   onClose,
   caseData,
-  onSubmit
+  onSubmit,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +41,10 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
       setReason('');
     } catch (error) {
       console.error('Failed to reject case creation:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to reject case creation. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to reject case creation. Please try again.';
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -64,12 +67,15 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Reject Case Creation</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Reject Case Creation
+            </h3>
             <p className="text-sm text-gray-500">
               Case ID: {caseData.id} • {caseData.type}
             </p>
             <p className="text-xs text-red-600 mt-1">
-              This will reject the manual case creation request and return it to draft status
+              This will reject the manual case creation request and return it to
+              draft status
             </p>
           </div>
           <button
@@ -85,36 +91,49 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           {/* Workflow Information */}
           <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-red-800 mb-2">Case Creation Rejection</h4>
+            <h4 className="text-sm font-medium text-red-800 mb-2">
+              Case Creation Rejection
+            </h4>
             <p className="text-xs text-red-700">
-              Rejecting this case will return it to draft status for the creator to revise with your feedback.
+              Rejecting this case will return it to draft status for the creator
+              to revise with your feedback.
             </p>
           </div>
 
           {/* Case Details */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Case Details</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">
+              Case Details
+            </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Case Type</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Case Type
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm break-words">{caseData.type}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Current Status
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm break-words">{caseData.status}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Priority
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm">{caseData.priority}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Created On</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Created On
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm">{caseData.createdOn}</span>
                 </div>
@@ -125,22 +144,36 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
           {/* Alert Information */}
           {caseData.alertId && (
             <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Associated Alert</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                Associated Alert
+              </h4>
               <div className="rounded-md border border-gray-300 p-3 bg-gray-50">
                 <div className="flex justify-between">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Alert ID</label>
-                    <span className="text-sm break-words">{caseData.alertId}</span>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Alert ID
+                    </label>
+                    <span className="text-sm break-words">
+                      {caseData.alertId}
+                    </span>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Confidence Score</label>
-                    <span className="text-sm">{caseData.confidencePercent}%</span>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Confidence Score
+                    </label>
+                    <span className="text-sm">
+                      {caseData.confidencePercent}%
+                    </span>
                   </div>
                 </div>
                 {caseData.alertMessage && (
                   <div className="mt-2">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Alert Message</label>
-                    <p className="text-sm text-gray-700 break-words">{caseData.alertMessage}</p>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Alert Message
+                    </label>
+                    <p className="text-sm text-gray-700 break-words">
+                      {caseData.alertMessage}
+                    </p>
                   </div>
                 )}
               </div>
@@ -177,7 +210,9 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.reason}</p>
             )}
             {!isReasonValid && reason.length > 0 && (
-              <p className="mt-1 text-sm text-red-600">Rejection reason must be at least 10 characters</p>
+              <p className="mt-1 text-sm text-red-600">
+                Rejection reason must be at least 10 characters
+              </p>
             )}
           </div>
 

@@ -1,5 +1,9 @@
 import React, { createContext, useContext } from 'react';
-import { XMarkIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 import type { Alert } from '../types/triage.types';
 import type { ActionHistory } from '../types/triage.types';
 
@@ -17,7 +21,9 @@ const AlertDetailsContext = createContext<AlertDetailsContextType | null>(null);
 const useAlertDetailsContext = () => {
   const context = useContext(AlertDetailsContext);
   if (!context) {
-    throw new Error('Alert details components must be used within AlertDetails.Root');
+    throw new Error(
+      'Alert details components must be used within AlertDetails.Root',
+    );
   }
   return context;
 };
@@ -114,7 +120,9 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
               Alert Details
             </h2>
           </div>
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(alert.priority)}`}>
+          <span
+            className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(alert.priority)}`}
+          >
             {alert.priority}
           </span>
         </div>
@@ -130,7 +138,8 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
       </div>
       <div className="mt-2">
         <p className="text-sm text-gray-600">
-          Alert ID: <span className="font-mono font-medium">{alert.alert_id}</span>
+          Alert ID:{' '}
+          <span className="font-mono font-medium">{alert.alert_id}</span>
         </p>
       </div>
     </div>
@@ -193,33 +202,49 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Alert Type</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Alert Type
+              </label>
               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                 {alert.alert_type || 'N/A'}
               </span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Source</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Source
+              </label>
               <p className="text-sm text-gray-900">{alert.source || 'N/A'}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Type</label>
-              <p className="text-sm text-gray-900">{alert.alert_type || 'N/A'}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Type
+              </label>
+              <p className="text-sm text-gray-900">
+                {alert.alert_type || 'N/A'}
+              </p>
             </div>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Confidence</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Confidence
+              </label>
               <p className="text-sm text-gray-900">
                 {alert.confidence_per ? `${alert.confidence_per}%` : 'N/A'}
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Created</label>
-              <p className="text-sm text-gray-900">{formatDate(alert.created_at)}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Created
+              </label>
+              <p className="text-sm text-gray-900">
+                {formatDate(alert.created_at)}
+              </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Case ID</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Case ID
+              </label>
               <p className="text-sm text-gray-900">{alert.case_id || 'N/A'}</p>
             </div>
           </div>
@@ -230,14 +255,19 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div>
           <h4 className="text-sm font-medium text-gray-900 mb-2">Message</h4>
           <div className="bg-gray-50 p-4 rounded border">
-            <p className="text-sm text-gray-700">{alert.message || 'No message available'}</p>
+            <p className="text-sm text-gray-700">
+              {alert.message || 'No message available'}
+            </p>
           </div>
         </div>
       )}
 
-      {sections.includes('data') && renderJSONData(alert.alert_data, 'Alert Data')}
-      {sections.includes('transaction') && renderJSONData(alert.transaction, 'Transaction Data')}
-      {sections.includes('network') && renderJSONData(alert.network_map, 'Network Map')}
+      {sections.includes('data') &&
+        renderJSONData(alert.alert_data, 'Alert Data')}
+      {sections.includes('transaction') &&
+        renderJSONData(alert.transaction, 'Transaction Data')}
+      {sections.includes('network') &&
+        renderJSONData(alert.network_map, 'Network Map')}
     </div>
   );
 };
@@ -273,7 +303,7 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
             Update Alert
           </button>
         )}
-  {}
+        {}
         {canClose && (
           <button
             onClick={() => onCloseAlert(alert)}
@@ -301,7 +331,9 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   if (isLoading) {
     return (
       <div className={`p-6 border-t border-gray-200 ${className}`}>
-        <h4 className="text-sm font-medium text-gray-900 mb-4">Action History</h4>
+        <h4 className="text-sm font-medium text-gray-900 mb-4">
+          Action History
+        </h4>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse flex space-x-3">
@@ -320,7 +352,9 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   if (!actionHistory || actionHistory.length === 0) {
     return (
       <div className={`p-6 border-t border-gray-200 ${className}`}>
-        <h4 className="text-sm font-medium text-gray-900 mb-4">Action History</h4>
+        <h4 className="text-sm font-medium text-gray-900 mb-4">
+          Action History
+        </h4>
         <p className="text-sm text-gray-500">No action history available</p>
       </div>
     );
@@ -345,15 +379,11 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
                 {action.action_performed && ` - ${action.action_performed}`}
               </p>
               <div className="flex items-center space-x-2 text-xs text-gray-500">
-                <span>
-                  {new Date(action.performed_at).toLocaleString()}
-                </span>
+                <span>{new Date(action.performed_at).toLocaleString()}</span>
                 {action.user_id && (
                   <>
                     <span>•</span>
-                    <span className="font-medium">
-                      User: {action.user_id}
-                    </span>
+                    <span className="font-medium">User: {action.user_id}</span>
                   </>
                 )}
               </div>

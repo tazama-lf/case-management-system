@@ -83,12 +83,10 @@ describe('AlertPriorityService', () => {
   describe('onModuleInit', () => {
     it('should log initialization message', () => {
       const loggerSpy = jest.spyOn(service['logger'], 'log');
-      
+
       service.onModuleInit();
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        'Alert priority service initialized. Recalculation will run via scheduled task every hour.'
-      );
+      expect(loggerSpy).toHaveBeenCalledWith('Alert priority service initialized. Recalculation will run via scheduled task every hour.');
     });
   });
 
@@ -107,7 +105,7 @@ describe('AlertPriorityService', () => {
     it('should process alerts and update priority correctly for NEW priority (SLA fallback when AI undefined)', async () => {
       const loggerSpy = jest.spyOn(service['logger'], 'log');
       const debugSpy = jest.spyOn(service['logger'], 'debug');
-      
+
       const mockAlert = {
         alert_id: 'alert-123',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
@@ -318,10 +316,10 @@ describe('AlertPriorityService', () => {
       const mockAlert = {
         alert_id: 'alert-preserve-data',
         created_at: new Date('2023-01-01T11:00:00.000Z'), // 1 hour ago
-        alert_data: { 
+        alert_data: {
           sla_hours: 48,
           existing_field: 'preserve_me',
-          another_field: 12345
+          another_field: 12345,
         },
         priority_score: 0.25,
         case_id: null, // No associated case
@@ -357,10 +355,7 @@ describe('AlertPriorityService', () => {
 
       await service.runRecalculation();
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to process alert alert-error: Error: Database error',
-        expect.any(String)
-      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to process alert alert-error: Error: Database error', expect.any(String));
     });
 
     it('should handle multiple alerts correctly (SLA fallback for missing AI, AI for the other)', async () => {
@@ -384,14 +379,12 @@ describe('AlertPriorityService', () => {
       prismaService.alert.findMany.mockResolvedValue(mockAlerts);
       prismaService.alert.update.mockResolvedValue({} as any);
 
-      triageService.predictAlert
-        .mockResolvedValueOnce({ priorityScore: undefined })
-        .mockResolvedValueOnce({ priorityScore: 0.5 });
+      triageService.predictAlert.mockResolvedValueOnce({ priorityScore: undefined }).mockResolvedValueOnce({ priorityScore: 0.5 });
 
       await service.runRecalculation();
 
       expect(prismaService.alert.update).toHaveBeenCalledTimes(2);
-      
+
       // First alert - NEW priority via SLA fallback
       expect(prismaService.alert.update).toHaveBeenNthCalledWith(1, {
         where: { alert_id: 'alert-1' },

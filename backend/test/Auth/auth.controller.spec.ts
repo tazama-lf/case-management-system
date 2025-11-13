@@ -4,7 +4,7 @@ import { AuthService } from '../../src/auth/auth.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../src/audit/types/outcome'; 
+import { Outcome } from '../../src/audit/types/outcome';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -85,10 +85,10 @@ describe('AuthController', () => {
     const loginDto = { username: 'test@user.com', password: 'p@ssw0rd!' };
     const mockToken = 'jwt-token-special';
 
-    (authService.login as jest.Mock).mockResolvedValue({ 
+    (authService.login as jest.Mock).mockResolvedValue({
       message: 'Login successful',
       token: mockToken,
-      expiresIn: null 
+      expiresIn: null,
     });
 
     const result = await controller.login(loginDto);
@@ -157,85 +157,77 @@ describe('AuthController', () => {
       expect(auditLogService.getLogs).toHaveBeenCalledWith(10, 20);
       expect(result).toEqual(mockLogs);
     });
-    
-      it('should login and not include expiresIn if not present', async () => {
-        const loginDto = { username: 'user', password: 'pass' };
-        const mockResult = { message: 'Login successful', token: 'jwt-token', expiresIn: null };
-        (authService.login as jest.Mock).mockResolvedValue(mockResult);
-        const result = await controller.login(loginDto);
-        expect(result).toEqual({
-          message: 'Login successful',
-          token: 'jwt-token',
-        });
-        expect(authService.login).toHaveBeenCalledWith('user', 'pass');
-        expect(auditLogService.logAction).toHaveBeenCalledWith({
-          userId: 'unknown',
-          operation: 'login',
-          entityName: 'user',
-          actionPerformed: 'login',
-          outcome: Outcome.SUCCESS,
-        });
+
+    it('should login and not include expiresIn if not present', async () => {
+      const loginDto = { username: 'user', password: 'pass' };
+      const mockResult = { message: 'Login successful', token: 'jwt-token', expiresIn: null };
+      (authService.login as jest.Mock).mockResolvedValue(mockResult);
+      const result = await controller.login(loginDto);
+      expect(result).toEqual({
+        message: 'Login successful',
+        token: 'jwt-token',
       });
-    
-      it('should log and throw UnauthorizedException with error message', async () => {
-        const loginDto = { username: 'baduser', password: 'badpass' };
-        const errorMsg = 'Invalid credentials';
-        (authService.login as jest.Mock).mockRejectedValue(new Error(errorMsg));
-        await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
-        expect(loggerService.warn).toHaveBeenCalledWith(
-          `Login failed for user baduser: ${errorMsg}`,
-          AuthController.name
-        );
+      expect(authService.login).toHaveBeenCalledWith('user', 'pass');
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId: 'unknown',
+        operation: 'login',
+        entityName: 'user',
+        actionPerformed: 'login',
+        outcome: Outcome.SUCCESS,
       });
-    
-      it('should call auditLogService.logAction with FAILURE on login error', async () => {
-        const loginDto = { username: 'fail', password: 'fail' };
-        (authService.login as jest.Mock).mockRejectedValue(new Error('fail'));
-        try {
-          await controller.login(loginDto);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e) {
-          // ignore
-        }
-        expect(auditLogService.logAction).toHaveBeenCalledWith({
-          userId: 'unknown',
-          operation: 'login',
-          entityName: 'user',
-          actionPerformed: 'login',
-          outcome: Outcome.FAILURE,
-        });
-      });
-    
-      it('should call logger.log on successful login', async () => {
-        const loginDto = { username: 'success', password: 'success' };
-        const mockResult = { message: 'Login successful', token: 'jwt-token', expiresIn: 1234 };
-        (authService.login as jest.Mock).mockResolvedValue(mockResult);
+    });
+
+    it('should log and throw UnauthorizedException with error message', async () => {
+      const loginDto = { username: 'baduser', password: 'badpass' };
+      const errorMsg = 'Invalid credentials';
+      (authService.login as jest.Mock).mockRejectedValue(new Error(errorMsg));
+      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(loggerService.warn).toHaveBeenCalledWith(`Login failed for user baduser: ${errorMsg}`, AuthController.name);
+    });
+
+    it('should call auditLogService.logAction with FAILURE on login error', async () => {
+      const loginDto = { username: 'fail', password: 'fail' };
+      (authService.login as jest.Mock).mockRejectedValue(new Error('fail'));
+      try {
         await controller.login(loginDto);
-        expect(loggerService.log).toHaveBeenCalledWith(
-          'Attempting login for user success'
-        );
-        expect(loggerService.log).toHaveBeenCalledWith(
-          `User ${JSON.stringify(mockResult)} logged in successfully`
-        );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // ignore
+      }
+      expect(auditLogService.logAction).toHaveBeenCalledWith({
+        userId: 'unknown',
+        operation: 'login',
+        entityName: 'user',
+        actionPerformed: 'login',
+        outcome: Outcome.FAILURE,
       });
-    
-      it('should call auditLogService.getLogs with string numbers', async () => {
-        const mockLogs = [
-          {
-            audit_log_id: 'log-1',
-            user_id: 'user-1',
-            operation: 'test',
-            entity_name: 'test',
-            action_performed: 'test',
-            outcome: Outcome.SUCCESS,
-            performed_at: new Date(),
-          }
-        ];
-        (auditLogService.getLogs as jest.Mock).mockResolvedValue(mockLogs);
-        const result = await controller.getAuditLogs(15, 5);
-        expect(auditLogService.getLogs).toHaveBeenCalledWith(15, 5);
-        expect(result).toEqual(mockLogs);
-      });
-    
+    });
+
+    it('should call logger.log on successful login', async () => {
+      const loginDto = { username: 'success', password: 'success' };
+      const mockResult = { message: 'Login successful', token: 'jwt-token', expiresIn: 1234 };
+      (authService.login as jest.Mock).mockResolvedValue(mockResult);
+      await controller.login(loginDto);
+      expect(loggerService.log).toHaveBeenCalledWith('Attempting login for user success');
+      expect(loggerService.log).toHaveBeenCalledWith(`User ${JSON.stringify(mockResult)} logged in successfully`);
+    });
+
+    it('should call auditLogService.getLogs with string numbers', async () => {
+      const mockLogs = [
+        {
+          audit_log_id: 'log-1',
+          user_id: 'user-1',
+          operation: 'test',
+          entity_name: 'test',
+          action_performed: 'test',
+          outcome: Outcome.SUCCESS,
+          performed_at: new Date(),
+        },
+      ];
+      (auditLogService.getLogs as jest.Mock).mockResolvedValue(mockLogs);
+      const result = await controller.getAuditLogs(15, 5);
+      expect(auditLogService.getLogs).toHaveBeenCalledWith(15, 5);
+      expect(result).toEqual(mockLogs);
+    });
   });
 });

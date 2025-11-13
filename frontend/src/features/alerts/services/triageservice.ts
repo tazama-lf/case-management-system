@@ -6,7 +6,7 @@ import type {
   CloseAlertDto,
   AlertStatus,
   AlertsFilter,
-  ActionHistory
+  ActionHistory,
 } from '../types/triage.types';
 
 class TriageService {
@@ -15,7 +15,9 @@ class TriageService {
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
-    const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
+    const err = error as
+      | { response?: { data?: { message?: string } }; message?: string }
+      | undefined;
     if (err?.response?.data) {
       const apiError = err.response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
@@ -38,7 +40,6 @@ class TriageService {
       throw new Error('Alert ID is missing from response');
     }
 
-
     return data as Alert;
   }
 
@@ -58,7 +59,8 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
-    if (filters.reportStatus) params.append('reportStatus', filters.reportStatus);
+    if (filters.reportStatus)
+      params.append('reportStatus', filters.reportStatus);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -88,10 +90,13 @@ class TriageService {
             alert_type: detailedAlert.alert_type || alert.alert_type,
           };
         } catch (error) {
-          console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
+          console.warn(
+            `Failed to fetch details for alert ${alert.alert_id}:`,
+            error,
+          );
           return alert;
         }
-      })
+      }),
     );
 
     return {
@@ -144,7 +149,10 @@ class TriageService {
     }
   }
 
-  async performManualTriage(alertId: string, data: ManualTriageDto): Promise<Alert> {
+  async performManualTriage(
+    alertId: string,
+    data: ManualTriageDto,
+  ): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
         `${this.baseUrl}/${alertId}`,
@@ -168,10 +176,17 @@ class TriageService {
     }
   }
 
-  async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
+  async closeAlert(
+    alertId: string,
+    status: AlertStatus,
+    notes: string,
+  ): Promise<Alert> {
     try {
       const data: CloseAlertDto = { status, reason: notes };
-      const response = await apiClient.patch<Alert>(`${this.baseUrl}/${alertId}/close`, data);
+      const response = await apiClient.patch<Alert>(
+        `${this.baseUrl}/${alertId}/close`,
+        data,
+      );
       return this.validateAlertResponse(response);
     } catch (error) {
       throw this.handleError(error, 'close alert');
@@ -196,7 +211,6 @@ class TriageService {
       throw this.handleError(error, 'fetch NALT alerts');
     }
   }
-
 }
 
 export default new TriageService();

@@ -6,7 +6,6 @@ import type {
 } from '../types/triage.types';
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
-
 function extractAlertType(backendAlert: unknown): AlertType | null {
   const alert = backendAlert as any;
   if (alert.alert_type) {
@@ -43,7 +42,6 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
   return 'FRAUD';
 }
 
-
 function extractRiskScore(alertData: unknown): number {
   try {
     const data = alertData as any;
@@ -58,7 +56,6 @@ function extractRiskScore(alertData: unknown): number {
     return 0;
   }
 }
-
 
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   const transformedAlert: UIAlert = {
@@ -82,7 +79,10 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     description: backendAlert.message,
     type: extractAlertType(backendAlert) || 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
-    riskScore: extractRiskScore(backendAlert.alert_data) || backendAlert.confidence_per || 0,
+    riskScore:
+      extractRiskScore(backendAlert.alert_data) ||
+      backendAlert.confidence_per ||
+      0,
     confidence: backendAlert.confidence_per,
     createdAt: backendAlert.created_at,
     updatedAt: backendAlert.created_at,
@@ -95,7 +95,6 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
 
   return transformedAlert;
 }
-
 
 function mapPriorityToSeverity(
   priority: Priority,
@@ -114,7 +113,6 @@ function mapPriorityToSeverity(
   }
 }
 
-
 export function mapSeverityToPriority(
   severity: 'low' | 'medium' | 'high' | 'critical',
 ): Priority {
@@ -131,7 +129,6 @@ export function mapSeverityToPriority(
       return 'NEW';
   }
 }
-
 
 export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
   return {
@@ -150,7 +147,6 @@ export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
     case_id: uiAlert.case_id,
   };
 }
-
 
 export function mapUIStatusToAlertStatus(
   status:
@@ -182,48 +178,28 @@ export function mapUIStatusToAlertStatus(
   }
 }
 
-
 function extractTransactionId(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  return (
-    txn.transactionId ||
-    txn.txnId ||
-    txn.id ||
-    txn.TxId ||
-    undefined
-  );
+  return txn.transactionId || txn.txnId || txn.id || txn.TxId || undefined;
 }
-
 
 function extractAmount(transaction: unknown): number | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  const amount =
-    txn.amount ||
-    txn.AmtRaw ||
-    txn.TxAmt ||
-    txn.value;
+  const amount = txn.amount || txn.AmtRaw || txn.TxAmt || txn.value;
 
   return typeof amount === 'number' ? amount : parseFloat(amount) || undefined;
 }
-
 
 function extractCurrency(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  return (
-    txn.currency ||
-    txn.ccy ||
-    txn.CcyCode ||
-    txn.currencyCode ||
-    'USD'
-  );
+  return txn.currency || txn.ccy || txn.CcyCode || txn.currencyCode || 'USD';
 }
-
 
 export function transformBackendAlertsToUI(
   backendAlerts: TriageAlert[],

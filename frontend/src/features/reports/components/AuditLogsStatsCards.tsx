@@ -3,7 +3,7 @@ import {
   DocumentTextIcon,
   FolderIcon,
   UserIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import StatsCard from '../../dashboard/components/StatsCard';
 import type { AuditLogsStats } from '../types/reports.types';

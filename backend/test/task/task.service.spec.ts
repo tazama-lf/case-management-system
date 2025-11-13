@@ -133,15 +133,11 @@ describe('TaskService', () => {
       const dbError = new Error('Database connection failed');
       mockPrismaService.task.create.mockRejectedValue(dbError);
 
-      await expect(
-        service.createTask(createTaskDto, createdByUserId, mockAuditLogService, mockLoggerService)
-      ).rejects.toThrow('Database connection failed');
-
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Error creating task',
-        dbError,
-        TaskService.name,
+      await expect(service.createTask(createTaskDto, createdByUserId, mockAuditLogService, mockLoggerService)).rejects.toThrow(
+        'Database connection failed',
       );
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith('Error creating task', dbError, TaskService.name);
     });
 
     it('should handle database errors properly', async () => {
@@ -149,9 +145,9 @@ describe('TaskService', () => {
       mockPrismaService.task.create.mockRejectedValue(dbError);
       mockAuditLogService.logAction.mockResolvedValue(undefined);
 
-        await expect(
-          service.createTask(createTaskDto, createdByUserId, mockAuditLogService, mockLoggerService)
-        ).rejects.toThrow('Database connection failed');
+      await expect(service.createTask(createTaskDto, createdByUserId, mockAuditLogService, mockLoggerService)).rejects.toThrow(
+        'Database connection failed',
+      );
 
       expect(mockPrismaService.task.create).toHaveBeenCalled();
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
@@ -197,15 +193,11 @@ describe('TaskService', () => {
       const dbError = new Error('Database update failed');
       mockPrismaService.task.update.mockRejectedValue(dbError);
 
-      await expect(
-        service.reassignTask(taskId, reassignedByUserId, newAssigneeId, mockAuditLogService)
-      ).rejects.toThrow('Database update failed');
-
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        `Error reassigning task ${taskId}`,
-        dbError,
-        TaskService.name,
+      await expect(service.reassignTask(taskId, reassignedByUserId, newAssigneeId, mockAuditLogService)).rejects.toThrow(
+        'Database update failed',
       );
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error reassigning task ${taskId}`, dbError, TaskService.name);
     });
   });
 
@@ -271,20 +263,16 @@ describe('TaskService', () => {
       const dbError = new Error('Database update failed');
       mockPrismaService.task.update.mockRejectedValue(dbError);
 
-      await expect(
-        service.updateTask(taskId, updateTaskDto, updatedByUserId, mockAuditLogService)
-      ).rejects.toThrow('Database update failed');
-
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        `Error updating task ${taskId}`,
-        dbError,
-        TaskService.name,
+      await expect(service.updateTask(taskId, updateTaskDto, updatedByUserId, mockAuditLogService)).rejects.toThrow(
+        'Database update failed',
       );
+
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error updating task ${taskId}`, dbError, TaskService.name);
     });
 
     it('should handle empty update object', async () => {
       const emptyUpdate: UpdateTaskDto = {};
-      
+
       mockPrismaService.task.update.mockResolvedValue(mockTask);
       mockAuditLogService.logAction.mockResolvedValue(undefined);
 
@@ -339,15 +327,9 @@ describe('TaskService', () => {
       const dbError = new Error('Database query failed');
       mockPrismaService.task.findMany.mockRejectedValue(dbError);
 
-      await expect(service.getTasksByCaseId(caseId)).rejects.toThrow(
-        'Database query failed',
-      );
+      await expect(service.getTasksByCaseId(caseId)).rejects.toThrow('Database query failed');
 
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Error retrieving tasks',
-        dbError,
-        TaskService.name,
-      );
+      expect(mockLoggerService.error).toHaveBeenCalledWith('Error retrieving tasks', dbError, TaskService.name);
     });
 
     it('should return tasks with audit logging when userId is provided', async () => {
@@ -375,9 +357,7 @@ describe('TaskService', () => {
       mockPrismaService.task.findMany.mockRejectedValue(dbError);
       mockAuditLogService.logAction.mockResolvedValue(undefined);
 
-      await expect(service.getTasksByCaseId(caseId, userId)).rejects.toThrow(
-        'Database query failed',
-      );
+      await expect(service.getTasksByCaseId(caseId, userId)).rejects.toThrow('Database query failed');
 
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
         userId,
@@ -420,11 +400,7 @@ describe('TaskService', () => {
       mockPrismaService.task.findUnique.mockRejectedValue(dbError);
 
       await expect(service.getTaskById(taskId)).rejects.toThrow('Database error');
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        `Error retrieving task ${taskId}`,
-        dbError,
-        TaskService.name,
-      );
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error retrieving task ${taskId}`, dbError, TaskService.name);
     });
   });
 
@@ -461,11 +437,7 @@ describe('TaskService', () => {
       mockPrismaService.task.findMany.mockRejectedValue(dbError);
 
       await expect(service.getTasks()).rejects.toThrow('Database error');
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Error retrieving tasks',
-        dbError,
-        TaskService.name,
-      );
+      expect(mockLoggerService.error).toHaveBeenCalledWith('Error retrieving tasks', dbError, TaskService.name);
     });
   });
 
@@ -506,28 +478,16 @@ describe('TaskService', () => {
       // Only mock resolved value for this test
       (axios.get as jest.Mock).mockResolvedValue({ data: { roles: ['INVESTIGATOR'] } });
 
-      await expect(
-        service.assignTaskToInvestigator(taskId, investigatorId, assignedByUserId)
-      ).rejects.toThrow('Database error');
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        `Error assigning task ${taskId}`,
-        dbError,
-        TaskService.name,
-      );
+      await expect(service.assignTaskToInvestigator(taskId, investigatorId, assignedByUserId)).rejects.toThrow('Database error');
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error assigning task ${taskId}`, dbError, TaskService.name);
     });
 
     it('should handle errors when fetching user roles', async () => {
       const dbError = new Error('Database error');
       (axios.get as jest.Mock).mockRejectedValue(dbError);
 
-      await expect(
-        service.assignTaskToInvestigator(taskId, investigatorId, assignedByUserId)
-      ).rejects.toThrow('Database error');
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Error fetching user roles',
-        dbError,
-        TaskService.name,
-      );
+      await expect(service.assignTaskToInvestigator(taskId, investigatorId, assignedByUserId)).rejects.toThrow('Database error');
+      expect(mockLoggerService.error).toHaveBeenCalledWith('Error fetching user roles', dbError, TaskService.name);
     });
   });
 });

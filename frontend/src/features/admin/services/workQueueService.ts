@@ -34,12 +34,15 @@ export interface GetWorkQueuesParams {
 class WorkQueueService {
   private readonly baseEndpoint = '/api/v1/work-queues';
 
-  async getAllWorkQueues(params?: GetWorkQueuesParams): Promise<WorkQueueListResponseDto> {
+  async getAllWorkQueues(
+    params?: GetWorkQueuesParams,
+  ): Promise<WorkQueueListResponseDto> {
     const queryParams = new URLSearchParams();
-    
+
     if (params) {
       if (params.role) queryParams.append('role', params.role);
-      if (params.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
+      if (params.isActive !== undefined)
+        queryParams.append('isActive', String(params.isActive));
       if (params.page) queryParams.append('page', String(params.page));
       if (params.limit) queryParams.append('limit', String(params.limit));
       if (params.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -47,23 +50,33 @@ class WorkQueueService {
     }
 
     const queryString = queryParams.toString();
-    const endpoint = queryString ? `${this.baseEndpoint}?${queryString}` : this.baseEndpoint;
+    const endpoint = queryString
+      ? `${this.baseEndpoint}?${queryString}`
+      : this.baseEndpoint;
 
     return apiClient.get<WorkQueueListResponseDto>(endpoint);
   }
 
-
   async getWorkQueueById(workQueueId: string): Promise<WorkQueueResponseDto> {
-    return apiClient.get<WorkQueueResponseDto>(`${this.baseEndpoint}/${workQueueId}`);
+    return apiClient.get<WorkQueueResponseDto>(
+      `${this.baseEndpoint}/${workQueueId}`,
+    );
   }
 
-
-  async createWorkQueue(data: Partial<WorkQueueResponseDto>): Promise<WorkQueueResponseDto> {
+  async createWorkQueue(
+    data: Partial<WorkQueueResponseDto>,
+  ): Promise<WorkQueueResponseDto> {
     return apiClient.post<WorkQueueResponseDto>(this.baseEndpoint, data);
   }
 
-  async updateWorkQueue(workQueueId: string, data: Partial<WorkQueueResponseDto>): Promise<WorkQueueResponseDto> {
-    return apiClient.put<WorkQueueResponseDto>(`${this.baseEndpoint}/${workQueueId}`, data);
+  async updateWorkQueue(
+    workQueueId: string,
+    data: Partial<WorkQueueResponseDto>,
+  ): Promise<WorkQueueResponseDto> {
+    return apiClient.put<WorkQueueResponseDto>(
+      `${this.baseEndpoint}/${workQueueId}`,
+      data,
+    );
   }
 
   async deleteWorkQueue(workQueueId: string): Promise<void> {

@@ -238,7 +238,7 @@ describe('AuthService', () => {
       httpService.post.mockReturnValue(of({ data: null }));
 
       await expect(service.login(username, password)).rejects.toThrow(
-        new ServiceUnavailableException('Authentication service unavailable')
+        new ServiceUnavailableException('Authentication service unavailable'),
       );
     });
 
@@ -250,12 +250,14 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(of({ 
-        data: { 
-          token: mockToken, 
-          expires_in: expiresIn 
-        } 
-      }));
+      httpService.post.mockReturnValue(
+        of({
+          data: {
+            token: mockToken,
+            expires_in: expiresIn,
+          },
+        }),
+      );
 
       const result = await service.login(username, password);
 
@@ -274,12 +276,14 @@ describe('AuthService', () => {
       const password = 'testpass';
 
       configService.get.mockReturnValue(mockAuthUrl);
-      httpService.post.mockReturnValue(of({ 
-        data: { 
-          token: mockToken, 
-          expiresIn: expiresIn 
-        } 
-      }));
+      httpService.post.mockReturnValue(
+        of({
+          data: {
+            token: mockToken,
+            expiresIn: expiresIn,
+          },
+        }),
+      );
 
       const result = await service.login(username, password);
 
@@ -344,7 +348,7 @@ describe('AuthService', () => {
         debug: jest.fn(),
         verbose: jest.fn(),
       };
-      
+
       // Mock jwt.decode to throw an error
       const originalDecode = require('jsonwebtoken').decode;
       require('jsonwebtoken').decode = jest.fn(() => {
@@ -352,14 +356,10 @@ describe('AuthService', () => {
       });
 
       // Create a new service instance with the mock logger to verify the warning
-      const serviceWithMockLogger = new AuthService(
-        httpService,
-        configService,
-        mockLoggerService as any
-      );
+      const serviceWithMockLogger = new AuthService(httpService, configService, mockLoggerService as any);
 
       const result = serviceWithMockLogger.isTokenExpired('some.token.here');
-      
+
       expect(result).toBe(true);
       expect(mockLoggerService.warn).toHaveBeenCalledWith('Failed to check token expiry: JWT decode error');
 
@@ -405,7 +405,7 @@ describe('AuthService', () => {
         debug: jest.fn(),
         verbose: jest.fn(),
       };
-      
+
       // Mock jwt.decode to throw an error
       const originalDecode = require('jsonwebtoken').decode;
       require('jsonwebtoken').decode = jest.fn(() => {
@@ -413,14 +413,10 @@ describe('AuthService', () => {
       });
 
       // Create a new service instance with the mock logger to verify the warning
-      const serviceWithMockLogger = new AuthService(
-        httpService,
-        configService,
-        mockLoggerService as any
-      );
+      const serviceWithMockLogger = new AuthService(httpService, configService, mockLoggerService as any);
 
       const result = serviceWithMockLogger.getTokenTimeToExpiry('some.token.here');
-      
+
       expect(result).toBe(0);
       expect(mockLoggerService.warn).toHaveBeenCalledWith('Failed to get time to expiry: JWT decode error for time to expiry');
 

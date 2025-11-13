@@ -17,5 +17,5 @@ export type {
   WorkQueueTaskType,
   User,
   UserRole,
-  Permission
+  Permission,
 } from './types/admindashboard.types';

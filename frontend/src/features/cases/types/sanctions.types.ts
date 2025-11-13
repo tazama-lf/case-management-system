@@ -8,36 +8,36 @@ export interface SanctionsScreening {
   case_id: string;
   task_id?: string; // Link to Investigation task
   evidence_id?: string; // Link to uploaded evidence file
-  
+
   // Screening details
   screening_date: string;
   tool_source: string; // e.g., "WorldCheck", "Dow Jones", "ComplyAdvantage"
   reference_id?: string; // External tool reference ID
-  
+
   // Screening result
   disposition: SanctionsDisposition;
   match_count: number;
   summary: string;
-  
+
   // Uploader info
   investigator_id: string;
   investigator_name?: string;
   uploaded_at: string;
-  
+
   // File details
   file_name?: string;
   file_type?: string;
   file_size?: number;
-  
+
   // Metadata
   metadata?: SanctionsMetadata;
-  
+
   // Audit
   last_updated_at?: string;
   last_updated_by?: string;
 }
 
-export type SanctionsDisposition = 
+export type SanctionsDisposition =
   | 'CLEARED'
   | 'POSITIVE_MATCH'
   | 'FALSE_POSITIVE'
@@ -50,17 +50,23 @@ export interface SanctionsMetadata {
   entities_screened?: number;
   watchlists_checked?: string[];
   confidence_score?: number;
-  
+
   // Match details
   matched_names?: string[];
   matched_entities?: MatchedEntity[];
   risk_level?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Processing info
   screening_duration_ms?: number;
   api_version?: string;
-  
-  [key: string]: string | number | boolean | string[] | MatchedEntity[] | undefined;
+
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | string[]
+    | MatchedEntity[]
+    | undefined;
 }
 
 export interface MatchedEntity {
@@ -75,27 +81,27 @@ export interface MatchedEntity {
 export interface CreateSanctionsScreeningDto {
   case_id: string;
   task_id?: string;
-  
+
   // Required screening details
   screening_date: string;
   tool_source: string;
   disposition: SanctionsDisposition;
   summary: string;
-  
+
   // Optional details
   reference_id?: string;
   match_count?: number;
-  
+
   // File upload
   file?: File;
-  
+
   // Metadata
   metadata?: Partial<SanctionsMetadata>;
 }
 
 export interface UpdateSanctionsScreeningDto {
   screening_id: string;
-  
+
   // Updatable fields
   screening_date?: string;
   tool_source?: string;
@@ -169,7 +175,7 @@ export interface SanctionsScreeningFormData {
   match_count: number;
   summary: string;
   file?: File;
-  
+
   // Advanced metadata
   entities_screened?: number;
   watchlists_checked?: string;
@@ -196,8 +202,23 @@ export const DISPOSITION_OPTIONS: Array<{
 }> = [
   { value: 'CLEARED', label: 'Cleared', color: 'green', icon: '✓' },
   { value: 'POSITIVE_MATCH', label: 'Positive Match', color: 'red', icon: '!' },
-  { value: 'FALSE_POSITIVE', label: 'False Positive', color: 'yellow', icon: '?' },
+  {
+    value: 'FALSE_POSITIVE',
+    label: 'False Positive',
+    color: 'yellow',
+    icon: '?',
+  },
   { value: 'ESCALATED', label: 'Escalated', color: 'orange', icon: '↑' },
-  { value: 'PENDING_REVIEW', label: 'Pending Review', color: 'blue', icon: '○' },
-  { value: 'REQUIRES_INVESTIGATION', label: 'Requires Investigation', color: 'purple', icon: '◉' },
+  {
+    value: 'PENDING_REVIEW',
+    label: 'Pending Review',
+    color: 'blue',
+    icon: '○',
+  },
+  {
+    value: 'REQUIRES_INVESTIGATION',
+    label: 'Requires Investigation',
+    color: 'purple',
+    icon: '◉',
+  },
 ];

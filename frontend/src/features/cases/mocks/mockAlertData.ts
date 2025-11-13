@@ -27,15 +27,15 @@ export const mockAlertData: MockAlertData = {
       id: '1',
       type: 'case',
       title: 'Case A-10023',
-      description: 'Related investigation case'
-    }
+      description: 'Related investigation case',
+    },
   ],
   typologyRules: [
     {
       id: '1',
       title: 'Suspicious Transaction Pattern',
       riskScore: 85,
-      isExpanded: false
-    }
-  ]
+      isExpanded: false,
+    },
+  ],
 };

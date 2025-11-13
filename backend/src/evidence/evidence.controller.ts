@@ -16,25 +16,13 @@ import {
   FileTypeValidator,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiConsumes,
-  ApiBody,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
-import {
-  UploadEvidenceDto,
-  EvidenceResponseDto,
-  EvidenceListResponseDto,
-  VerifyEvidenceDto,
-} from './dto';
+import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto } from './dto';
 
 @ApiTags('Evidence')
 @Controller('api/v1/evidence')
@@ -90,9 +78,7 @@ export class EvidenceController {
   async uploadEvidence(
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 }), 
-        ],
+        validators: [new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 })],
         fileIsRequired: true,
       }),
     )
@@ -116,10 +102,7 @@ export class EvidenceController {
     description: 'List of evidence retrieved successfully',
     type: EvidenceListResponseDto,
   })
-  async getEvidenceByCase(
-    @Param('caseId') caseId: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceListResponseDto> {
+  async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const userId = req.user?.token?.clientId || 'system';
     return this.evidenceService.getEvidenceByCase(caseId, userId);
   }
@@ -132,10 +115,7 @@ export class EvidenceController {
     description: 'Evidence metadata retrieved successfully',
     type: EvidenceResponseDto,
   })
-  async getEvidenceById(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceResponseDto> {
+  async getEvidenceById(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<EvidenceResponseDto> {
     const userId = req.user?.token?.clientId || 'system';
     return this.evidenceService.getEvidenceById(id, userId);
   }
@@ -147,11 +127,7 @@ export class EvidenceController {
     status: 200,
     description: 'Evidence file downloaded successfully',
   })
-  async downloadEvidence(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
-    @Res() res: Response,
-  ): Promise<void> {
+  async downloadEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response): Promise<void> {
     const userId = req.user?.token?.clientId || 'system';
     const { file, metadata } = await this.evidenceService.downloadEvidence(id, userId);
 
@@ -171,10 +147,7 @@ export class EvidenceController {
     description: 'Evidence integrity verified',
     type: VerifyEvidenceDto,
   })
-  async verifyEvidence(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<VerifyEvidenceDto> {
+  async verifyEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<VerifyEvidenceDto> {
     const userId = req.user?.token?.clientId || 'system';
     return this.evidenceService.verifyEvidence(id, userId);
   }
@@ -187,10 +160,7 @@ export class EvidenceController {
     description: 'Evidence found by hash',
     type: [EvidenceResponseDto],
   })
-  async searchByHash(
-    @Query('hash') hash: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceResponseDto[]> {
+  async searchByHash(@Query('hash') hash: string, @Req() req: AuthenticatedRequest): Promise<EvidenceResponseDto[]> {
     if (!hash) {
       throw new BadRequestException('Hash parameter is required');
     }

@@ -301,7 +301,6 @@ class AuthService {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-
   /**
    * Fetches all users with the CMS_INVESTIGATOR role from the backend.
    * Uses the backend's /v1/auth/user/:roleName endpoint.

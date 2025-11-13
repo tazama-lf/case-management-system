@@ -9,6 +9,7 @@ The Work Queue feature provides a comprehensive task management system integrate
 ### Backend Components
 
 #### 1. Flowable BPM Integration
+
 - **Location**: `backend/src/flowable/`
 - **Purpose**: Integrates with Flowable workflow engine for task management
 - **Key Files**:
@@ -17,6 +18,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - `flowable.controller.ts` - REST endpoints for Flowable operations
 
 #### 2. Task Controller Enhancement
+
 - **Location**: `backend/src/task/task.controller.ts`
 - **Key Endpoint**: `GET /api/v1/task/work-queues/{candidateGroup}`
 - **Purpose**: Provides Flowable-integrated work queue data
@@ -27,6 +29,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - Error handling with proper HTTP status codes
 
 #### 3. Task Service Enhancement
+
 - **Location**: `backend/src/task/task.service.ts`
 - **Purpose**: Business logic for task operations
 - **Integration**: Bridges database models with Flowable BPM data
@@ -34,6 +37,7 @@ The Work Queue feature provides a comprehensive task management system integrate
 ### Frontend Components
 
 #### 1. Type Definitions
+
 - **Location**: `frontend/src/features/workqueue/types/flowable.types.ts`
 - **Purpose**: TypeScript interfaces for Flowable integration
 - **Key Types**:
@@ -43,6 +47,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - `FlowableErrorResponse` - Error handling types
 
 #### 2. Service Layer
+
 - **Location**: `frontend/src/features/workqueue/services/flowableWorkQueueService.ts`
 - **Purpose**: API client for work queue operations
 - **Features**:
@@ -52,6 +57,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - Comprehensive error handling
 
 #### 3. Error Handling System
+
 - **Location**: `frontend/src/features/workqueue/utils/flowableErrorHandler.ts`
 - **Purpose**: Centralized error handling for Flowable operations
 - **Features**:
@@ -63,6 +69,7 @@ The Work Queue feature provides a comprehensive task management system integrate
 #### 4. UI Components
 
 ##### WorkQueueDashboard
+
 - **Location**: `frontend/src/features/workqueue/pages/WorkQueueDashboard.tsx`
 - **Purpose**: Main work queue interface
 - **Features**:
@@ -72,6 +79,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - Error boundary integration
 
 ##### WorkQueueTable
+
 - **Location**: `frontend/src/features/workqueue/components/WorkQueueTable.tsx`
 - **Purpose**: Task list display with actions
 - **Features**:
@@ -81,6 +89,7 @@ The Work Queue feature provides a comprehensive task management system integrate
   - Responsive design
 
 ##### WorkQueueErrorBoundary
+
 - **Location**: `frontend/src/features/workqueue/components/WorkQueueErrorBoundary.tsx`
 - **Purpose**: Error boundary for work queue components
 - **Features**:
@@ -92,6 +101,7 @@ The Work Queue feature provides a comprehensive task management system integrate
 ## Work Queue Types
 
 ### Candidate Groups
+
 The system supports the following work queues:
 
 1. **Investigations** - For investigation tasks
@@ -106,6 +116,7 @@ Each queue has specific access controls based on user roles.
 ## Task States and Workflow
 
 ### Task Status Mapping
+
 - **UNASSIGNED** - Task available for assignment
 - **ASSIGNED** - Task assigned to a user
 - **IN_PROGRESS** - Task currently being worked on
@@ -113,6 +124,7 @@ Each queue has specific access controls based on user roles.
 - **SUSPENDED** - Task temporarily suspended
 
 ### Priority Levels
+
 - **LOW** (0-39) - Low priority tasks
 - **MEDIUM** (40-59) - Standard priority
 - **HIGH** (60-79) - High priority tasks
@@ -123,15 +135,18 @@ Each queue has specific access controls based on user roles.
 ### Work Queue Endpoints
 
 #### Get Work Queue by Candidate Group
+
 ```http
 GET /api/v1/task/work-queues/{candidateGroup}
 ```
+
 **Purpose**: Retrieve tasks for a specific work queue
 **Authentication**: Required (Bearer token)
 **Authorization**: Role-based access control
 **Response**: Array of `UnifiedWorkQueueTask` objects
 
 #### Assign Task
+
 ```http
 POST /api/v1/task/{taskId}/assign
 Content-Type: application/json
@@ -142,6 +157,7 @@ Content-Type: application/json
 ```
 
 #### Complete Task
+
 ```http
 POST /api/v1/task/{taskId}/complete
 Content-Type: application/json
@@ -157,12 +173,14 @@ Content-Type: application/json
 ## Error Handling
 
 ### Error Types
+
 1. **FLOWABLE_ERROR** - Errors from Flowable BPM engine
 2. **API_ERROR** - General API errors
 3. **NETWORK_ERROR** - Network connectivity issues
 4. **UNKNOWN_ERROR** - Unexpected errors
 
 ### Error Recovery
+
 - Automatic retry for network errors
 - User-friendly error messages
 - Detailed error logging for debugging
@@ -171,20 +189,23 @@ Content-Type: application/json
 ## Usage Examples
 
 ### Basic Work Queue Query
+
 ```typescript
 import { flowableWorkQueueService } from '../services/flowableWorkQueueService';
 
 // Get tasks for investigations queue
-const tasks = await flowableWorkQueueService.getWorkQueueByGroup('Investigations');
+const tasks =
+  await flowableWorkQueueService.getWorkQueueByGroup('Investigations');
 ```
 
 ### Error Handling in Components
+
 ```typescript
 import { useWorkQueueErrorHandler } from '../components/WorkQueueErrorBoundary';
 
 const MyComponent = () => {
   const { error, handleError, clearError } = useWorkQueueErrorHandler();
-  
+
   const loadData = async () => {
     try {
       const data = await someAsyncOperation();
@@ -197,6 +218,7 @@ const MyComponent = () => {
 ```
 
 ### Task Assignment
+
 ```typescript
 // Assign task to user
 await flowableWorkQueueService.assignTask('task-123', 'user-456');
@@ -204,13 +226,14 @@ await flowableWorkQueueService.assignTask('task-123', 'user-456');
 // Complete task
 await flowableWorkQueueService.completeTask('task-123', {
   outcome: 'approved',
-  comments: 'Review completed'
+  comments: 'Review completed',
 });
 ```
 
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # Flowable BPM Configuration
 FLOWABLE_API_URL=http://localhost:8080/flowable-rest
@@ -222,20 +245,23 @@ DATABASE_URL=postgresql://username:password@localhost:5432/tazama_cms
 ```
 
 ### Role-based Access Control
+
 Configure role mappings in `backend/src/auth/auth.types.ts`:
+
 ```typescript
 export const RoleWorkQueueMapping = {
   investigator: ['Investigations', 'Triage'],
   supervisor: ['Supervisors', 'Investigations', 'Triage'],
   analyst: ['Analysts', 'Triage'],
   compliance: ['Compliance'],
-  admin: ['*'] // Access to all queues
+  admin: ['*'], // Access to all queues
 };
 ```
 
 ## Testing
 
 ### Unit Tests
+
 ```bash
 # Backend tests
 cd backend
@@ -247,12 +273,14 @@ npm run test
 ```
 
 ### Integration Tests
+
 ```bash
 # Run E2E tests
 npm run test:e2e
 ```
 
 ### Manual Testing Checklist
+
 - [ ] Queue selection changes task list
 - [ ] Task filtering works correctly
 - [ ] Task assignment functions
@@ -264,6 +292,7 @@ npm run test:e2e
 ## Deployment
 
 ### Docker Configuration
+
 The work queue feature is included in the main application Docker configuration:
 
 ```dockerfile
@@ -277,6 +306,7 @@ FROM nginx:alpine
 ```
 
 ### Production Considerations
+
 1. **Flowable BPM Setup**: Ensure Flowable is properly configured and accessible
 2. **Database Migrations**: Run Prisma migrations for task-related schema
 3. **Environment Variables**: Configure all required environment variables
@@ -286,16 +316,19 @@ FROM nginx:alpine
 ## Performance Optimization
 
 ### Caching Strategy
+
 - Work queue data cached for 30 seconds
 - Task counts cached for 60 seconds
 - User assignments cached for 5 minutes
 
 ### Database Optimization
+
 - Indexes on frequently queried columns
 - Connection pooling for database connections
 - Query optimization for large task datasets
 
 ### Frontend Optimization
+
 - Component memoization for task lists
 - Virtual scrolling for large datasets
 - Debounced search and filtering
@@ -306,34 +339,44 @@ FROM nginx:alpine
 ### Common Issues
 
 #### 1. Flowable Connection Errors
+
 **Symptoms**: "Failed to connect to Flowable BPM"
 **Solutions**:
+
 - Verify Flowable service is running
 - Check network connectivity
 - Validate authentication credentials
 
 #### 2. Task Loading Failures
+
 **Symptoms**: Empty task lists or loading errors
 **Solutions**:
+
 - Check candidate group permissions
 - Verify database connectivity
 - Review server logs for detailed errors
 
 #### 3. Assignment Failures
+
 **Symptoms**: "Failed to assign task" errors
 **Solutions**:
+
 - Verify user exists and is active
 - Check task state (must be unassigned)
 - Validate user permissions for the task
 
 ### Debug Mode
+
 Enable debug logging:
+
 ```bash
 DEBUG=flowable:*,workqueue:* npm start
 ```
 
 ### Health Checks
+
 Monitor these endpoints:
+
 - `/health` - Application health
 - `/api/v1/flowable/health` - Flowable connectivity
 - `/api/v1/task/work-queues/health` - Work queue service health
@@ -341,6 +384,7 @@ Monitor these endpoints:
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Real-time Updates**: WebSocket integration for live task updates
 2. **Advanced Filtering**: Date ranges, custom field filters
 3. **Bulk Operations**: Multi-task assignment and completion
@@ -351,6 +395,7 @@ Monitor these endpoints:
 8. **Integration**: Additional BPM engine support
 
 ### Technical Debt
+
 1. Implement comprehensive user picker for task assignment
 2. Add task viewing modal with full details
 3. Enhance error message localization
@@ -359,6 +404,7 @@ Monitor these endpoints:
 6. Implement task delegation features
 
 ## Documentation References
+
 - [Flowable BPM Documentation](https://www.flowable.org/docs/)
 - [NestJS Documentation](https://docs.nestjs.com/)
 - [React Error Boundaries](https://reactjs.org/docs/error-boundaries.html)

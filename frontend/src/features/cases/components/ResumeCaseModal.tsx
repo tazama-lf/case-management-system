@@ -13,7 +13,7 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
   open,
   onClose,
   onResume,
-  caseData
+  caseData,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,9 +57,7 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Resume Case
               </h3>
-              <p className="text-sm text-gray-600">
-                Case ID: {caseData?.id}
-              </p>
+              <p className="text-sm text-gray-600">Case ID: {caseData?.id}</p>
             </div>
           </div>
           <button
@@ -73,19 +71,24 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Resuming this case will move it back to "In Progress" status.
-            The investigation task will be unblocked and assigned to the investigator.
+            Resuming this case will move it back to "In Progress" status. The
+            investigation task will be unblocked and assigned to the
+            investigator.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> All team members will be notified of the case resumption.
+              <strong>Note:</strong> All team members will be notified of the
+              case resumption.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Reason for resumption <span className="text-red-500">*</span>
               </label>
               <textarea

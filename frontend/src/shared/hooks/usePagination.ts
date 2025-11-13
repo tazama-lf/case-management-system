@@ -24,7 +24,7 @@ interface UsePaginationReturn<T> {
 
 export const usePagination = <T>({
   data,
-  defaultItemsPerPage = 10
+  defaultItemsPerPage = 10,
 }: UsePaginationProps<T>): UsePaginationReturn<T> => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPageState] = useState(defaultItemsPerPage);
@@ -56,12 +56,13 @@ export const usePagination = <T>({
 
   const setItemsPerPage = (items: number) => {
     setItemsPerPageState(items);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const goToFirstPage = () => setCurrentPage(1);
   const goToLastPage = () => setCurrentPage(totalPages);
-  const goToNextPage = () => setCurrentPage(Math.min(currentPage + 1, totalPages));
+  const goToNextPage = () =>
+    setCurrentPage(Math.min(currentPage + 1, totalPages));
   const goToPreviousPage = () => setCurrentPage(Math.max(currentPage - 1, 1));
 
   const canGoNext = currentPage < totalPages;

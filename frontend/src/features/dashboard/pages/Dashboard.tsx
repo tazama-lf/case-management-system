@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { PageContainer, LoadingState, ErrorState } from '@/shared/components/ui';
+import {
+  PageContainer,
+  LoadingState,
+  ErrorState,
+} from '@/shared/components/ui';
 import StatsCards from '@/features/dashboard/components/StatsCards';
 import DashboardSection from '@/features/dashboard/components/DashboardSection';
 import AlertSummaryItem from '@/features/dashboard/components/AlertSummaryItem';
@@ -63,9 +67,14 @@ const Dashboard: React.FC = () => {
   }
 
   const { stats, recentAlerts, activeCases } = dashboardData || {
-    stats: { totalAlerts: 0, highPriorityAlerts: 0, openCases: 0, casesResolvedThisWeek: 0 },
+    stats: {
+      totalAlerts: 0,
+      highPriorityAlerts: 0,
+      openCases: 0,
+      casesResolvedThisWeek: 0,
+    },
     recentAlerts: [],
-    activeCases: []
+    activeCases: [],
   };
 
   return (
@@ -73,11 +82,15 @@ const Dashboard: React.FC = () => {
       title="Dashboard"
       subtitle="Welcome to the Fraud Case Management System"
     >
-      <div className={`transition-all duration-700 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
+      <div
+        className={`transition-all duration-700 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}
+      >
         <StatsCards stats={stats} />
 
         <div className="grid grid-cols-2 gap-8">
-          <div className={`transition-all duration-500 delay-300 ${isAnimated ? 'opacity-100 transform translate-x-0' : 'opacity-0 transform -translate-x-4'}`}>
+          <div
+            className={`transition-all duration-500 delay-300 ${isAnimated ? 'opacity-100 transform translate-x-0' : 'opacity-0 transform -translate-x-4'}`}
+          >
             <DashboardSection
               title="Recent Alerts"
               subtitle="Latest alerts requiring your attention"
@@ -99,7 +112,9 @@ const Dashboard: React.FC = () => {
             </DashboardSection>
           </div>
 
-          <div className={`transition-all duration-500 delay-500 ${isAnimated ? 'opacity-100 transform translate-x-0' : 'opacity-0 transform translate-x-4'}`}>
+          <div
+            className={`transition-all duration-500 delay-500 ${isAnimated ? 'opacity-100 transform translate-x-0' : 'opacity-0 transform translate-x-4'}`}
+          >
             <DashboardSection
               title="Active Cases"
               subtitle="Cases currently in progress"

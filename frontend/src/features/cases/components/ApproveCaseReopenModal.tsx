@@ -14,7 +14,7 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
   onClose,
   caseId,
   requesterRole,
-  onApprove
+  onApprove,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comments, setComments] = useState('');
@@ -31,7 +31,9 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
       onClose();
       setComments('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to approve case reopening');
+      setError(
+        err instanceof Error ? err.message : 'Failed to approve case reopening',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -42,10 +44,15 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Approve Case Reopening</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Approve Case Reopening
+            </h3>
             <p className="text-sm text-gray-500">Case ID: {caseId}</p>
             {requesterRole && (
-              <p className="text-xs text-blue-600 mt-1">Requested by: {requesterRole === 'ANALYST' ? 'Analyst' : 'Supervisor'}</p>
+              <p className="text-xs text-blue-600 mt-1">
+                Requested by:{' '}
+                {requesterRole === 'ANALYST' ? 'Analyst' : 'Supervisor'}
+              </p>
             )}
           </div>
           <button
@@ -59,17 +66,24 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Reopening Workflow</h4>
+            <h4 className="text-sm font-medium text-blue-800 mb-2">
+              Reopening Workflow
+            </h4>
             <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
               <li>Case must be in "PENDING CASE REOPENING APPROVAL" status</li>
               <li>On approval, an "Investigate Case" task will be created</li>
-              <li>Assignment depends on requester: Analyst → assigned to analyst; Supervisor → investigations group</li>
+              <li>
+                Assignment depends on requester: Analyst → assigned to analyst;
+                Supervisor → investigations group
+              </li>
               <li>All actions are audit logged and notifications sent</li>
             </ul>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Supervisor Comments (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Supervisor Comments (optional)
+            </label>
             <textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
@@ -81,7 +95,9 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
 
           {error && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
-              <p className="text-sm text-red-600">{error || 'An error occurred'}</p>
+              <p className="text-sm text-red-600">
+                {error || 'An error occurred'}
+              </p>
             </div>
           )}
 
@@ -119,5 +135,3 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
 };
 
 export default ApproveCaseReopenModal;
-
-

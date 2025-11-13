@@ -4,7 +4,7 @@ import {
   PersonInformationCard,
   BlockAllowListStatus,
   RecentActivitySection,
-  ModalHeader
+  ModalHeader,
 } from './components';
 
 interface CaseInformation {
@@ -45,7 +45,7 @@ interface RelatedCaseModalProps {
 const RelatedCaseModal: React.FC<RelatedCaseModalProps> = ({
   isOpen,
   onClose,
-  caseData
+  caseData,
 }) => {
   if (!isOpen || !caseData) return null;
 
@@ -58,16 +58,16 @@ const RelatedCaseModal: React.FC<RelatedCaseModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               <CaseInformationCard caseInformation={caseData.caseInformation} />
-              <PersonInformationCard 
-                title="Debtor Information" 
-                personInformation={caseData.debtorInformation} 
+              <PersonInformationCard
+                title="Debtor Information"
+                personInformation={caseData.debtorInformation}
               />
             </div>
 
             <div className="space-y-6">
-              <PersonInformationCard 
-                title="Creditor Information" 
-                personInformation={caseData.creditorInformation} 
+              <PersonInformationCard
+                title="Creditor Information"
+                personInformation={caseData.creditorInformation}
               />
               <BlockAllowListStatus status={caseData.blockAllowListStatus} />
             </div>

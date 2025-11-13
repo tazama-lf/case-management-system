@@ -34,9 +34,9 @@ describe('CaseController', () => {
         },
       ],
     })
-        .overrideGuard(TazamaAuthGuard)
-        .useValue(mockAuthGuard)
-        .compile();
+      .overrideGuard(TazamaAuthGuard)
+      .useValue(mockAuthGuard)
+      .compile();
 
     controller = module.get<CaseController>(CaseController);
     caseService = module.get(CaseService);

@@ -11,21 +11,31 @@ import {
   UserIcon,
   FolderIcon,
 } from '@heroicons/react/24/outline';
-import { useSearchEvidence, useDownloadEvidence, useVerifyEvidence } from '../../hooks/useEvidence';
+import {
+  useSearchEvidence,
+  useDownloadEvidence,
+  useVerifyEvidence,
+} from '../../hooks/useEvidence';
 import { evidenceService } from '../../services/evidenceService';
-import type { Evidence, EvidenceType, EvidenceSearchFilters } from '../../types/evidence.types';
+import type {
+  Evidence,
+  EvidenceType,
+  EvidenceSearchFilters,
+} from '../../types/evidence.types';
 
 const EvidenceRegistryPage: React.FC = () => {
   const [filters, setFilters] = useState<EvidenceSearchFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
-  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(
+    null,
+  );
 
   const { data: evidenceData, isLoading } = useSearchEvidence(
     { ...filters, search: searchQuery || undefined },
     page,
-    20
+    20,
   );
   const downloadMutation = useDownloadEvidence();
   const verifyMutation = useVerifyEvidence(''); // No specific case ID for registry
@@ -69,8 +79,12 @@ const EvidenceRegistryPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Evidence Registry</h1>
-          <p className="text-gray-600 mt-1">Search and verify evidence across all cases</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Evidence Registry
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Search and verify evidence across all cases
+          </p>
         </div>
       </div>
 
@@ -99,12 +113,18 @@ const EvidenceRegistryPage: React.FC = () => {
         {showFilters && (
           <div className="grid grid-cols-4 gap-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Evidence Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Evidence Type
+              </label>
               <select
                 className="input"
                 value={filters.evidence_type || ''}
                 onChange={(e) =>
-                  setFilters({ ...filters, evidence_type: (e.target.value as EvidenceType) || undefined })
+                  setFilters({
+                    ...filters,
+                    evidence_type:
+                      (e.target.value as EvidenceType) || undefined,
+                  })
                 }
               >
                 <option value="">All Types</option>
@@ -118,14 +138,23 @@ const EvidenceRegistryPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Verification Status
+              </label>
               <select
                 className="input"
-                value={filters.verified === undefined ? '' : filters.verified.toString()}
+                value={
+                  filters.verified === undefined
+                    ? ''
+                    : filters.verified.toString()
+                }
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    verified: e.target.value === '' ? undefined : e.target.value === 'true',
+                    verified:
+                      e.target.value === ''
+                        ? undefined
+                        : e.target.value === 'true',
                   })
                 }
               >
@@ -135,21 +164,29 @@ const EvidenceRegistryPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date From
+              </label>
               <input
                 type="date"
                 className="input"
                 value={filters.date_from || ''}
-                onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, date_from: e.target.value })
+                }
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date To
+              </label>
               <input
                 type="date"
                 className="input"
                 value={filters.date_to || ''}
-                onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, date_to: e.target.value })
+                }
               />
             </div>
           </div>
@@ -165,7 +202,9 @@ const EvidenceRegistryPage: React.FC = () => {
         <div className="card text-center py-12">
           <DocumentIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 font-medium">No evidence found</p>
-          <p className="text-sm text-gray-500 mt-2">Try adjusting your search or filters</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Try adjusting your search or filters
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -176,17 +215,25 @@ const EvidenceRegistryPage: React.FC = () => {
               onClick={() => setSelectedEvidence(item)}
             >
               <div className="flex items-start gap-4">
-                <div className="text-4xl">{getEvidenceIcon(item.evidence_type)}</div>
+                <div className="text-4xl">
+                  {getEvidenceIcon(item.evidence_type)}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                         {item.file_name}
                         {item.verified && (
-                          <CheckCircleIcon className="h-5 w-5 text-green-600" title="Verified" />
+                          <CheckCircleIcon
+                            className="h-5 w-5 text-green-600"
+                            title="Verified"
+                          />
                         )}
                         {!item.verified && (
-                          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" title="Unverified" />
+                          <ExclamationTriangleIcon
+                            className="h-5 w-5 text-yellow-600"
+                            title="Unverified"
+                          />
                         )}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">
@@ -232,15 +279,24 @@ const EvidenceRegistryPage: React.FC = () => {
                       <ClockIcon className="h-4 w-4" />
                       {formatDate(item.uploaded_at)}
                     </span>
-                    <span>{evidenceService.formatFileSize(item.file_size)}</span>
-                    <span className="badge-priority-low">{item.evidence_type}</span>
+                    <span>
+                      {evidenceService.formatFileSize(item.file_size)}
+                    </span>
+                    <span className="badge-priority-low">
+                      {item.evidence_type}
+                    </span>
                     {item.tags.slice(0, 3).map((tag: string) => (
-                      <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                      >
                         {tag}
                       </span>
                     ))}
                     {item.tags.length > 3 && (
-                      <span className="text-xs text-gray-500">+{item.tags.length - 3} more</span>
+                      <span className="text-xs text-gray-500">
+                        +{item.tags.length - 3} more
+                      </span>
                     )}
                   </div>
 
@@ -314,8 +370,13 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-4">
           <div className="flex items-start justify-between">
-            <h3 className="text-xl font-semibold text-gray-900">Evidence Details</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Evidence Details
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+            >
               ×
             </button>
           </div>
@@ -331,23 +392,33 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
                 <p className="text-gray-900 font-mono">{evidence.case_id}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Evidence Type</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Evidence Type
+                </p>
                 <p className="text-gray-900">{evidence.evidence_type}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">File Size</p>
-                <p className="text-gray-900">{evidenceService.formatFileSize(evidence.file_size)}</p>
+                <p className="text-gray-900">
+                  {evidenceService.formatFileSize(evidence.file_size)}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Uploaded By</p>
-                <p className="text-gray-900">{evidence.uploader_name || evidence.uploader_id}</p>
+                <p className="text-gray-900">
+                  {evidence.uploader_name || evidence.uploader_id}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Upload Date</p>
-                <p className="text-gray-900">{new Date(evidence.uploaded_at).toLocaleString()}</p>
+                <p className="text-gray-900">
+                  {new Date(evidence.uploaded_at).toLocaleString()}
+                </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Access Level</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Access Level
+                </p>
                 <span
                   className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                     evidence.access_level === 'PUBLIC'
@@ -363,8 +434,12 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
-              <p className="text-gray-900">{evidence.description || 'No description provided'}</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Description
+              </p>
+              <p className="text-gray-900">
+                {evidence.description || 'No description provided'}
+              </p>
             </div>
 
             <div>
@@ -372,7 +447,10 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
               <div className="flex flex-wrap gap-2">
                 {evidence.tags.length > 0 ? (
                   evidence.tags.map((tag: string) => (
-                    <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    >
                       {tag}
                     </span>
                   ))
@@ -401,8 +479,11 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
                       <div>
                         <p className="font-medium">Verified</p>
                         <p className="text-xs text-gray-600">
-                          {new Date(evidence.verification_date!).toLocaleString()}
-                          {evidence.verified_by && ` by ${evidence.verified_by}`}
+                          {new Date(
+                            evidence.verification_date!,
+                          ).toLocaleString()}
+                          {evidence.verified_by &&
+                            ` by ${evidence.verified_by}`}
                         </p>
                       </div>
                     </div>
@@ -418,7 +499,9 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
 
             {evidence.metadata && (
               <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm font-medium text-blue-900 mb-2">Metadata</p>
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  Metadata
+                </p>
                 <dl className="grid grid-cols-2 gap-2 text-sm">
                   {Object.entries(evidence.metadata).map(([key, value]) => (
                     <div key={key}>
@@ -432,11 +515,17 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button onClick={onVerify} className="btn-outline flex items-center gap-2">
+            <button
+              onClick={onVerify}
+              className="btn-outline flex items-center gap-2"
+            >
               <ShieldCheckIcon className="h-4 w-4" />
               Verify Integrity
             </button>
-            <button onClick={onDownload} className="btn-primary flex items-center gap-2">
+            <button
+              onClick={onDownload}
+              className="btn-primary flex items-center gap-2"
+            >
               <ArrowDownTrayIcon className="h-4 w-4" />
               Download
             </button>

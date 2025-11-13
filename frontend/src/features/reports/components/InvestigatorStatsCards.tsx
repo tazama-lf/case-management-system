@@ -3,7 +3,7 @@ import {
   UserGroupIcon,
   ChartBarIcon,
   ClockIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import StatsCard from '../../dashboard/components/StatsCard';
 import type { InvestigatorStats } from '../types/reports.types';
@@ -12,14 +12,29 @@ interface InvestigatorStatsCardsProps {
   stats: InvestigatorStats;
 }
 
-const safeFormatNumber = (value: number | string | undefined, unit = '', decimals = 0): string => {
+const safeFormatNumber = (
+  value: number | string | undefined,
+  unit = '',
+  decimals = 0,
+): string => {
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
-  const safeValue = numValue === null || numValue === undefined || isNaN(numValue) || !isFinite(numValue) ? 0 : numValue;
-  const formatted = decimals > 0 ? safeValue.toFixed(decimals) : Math.round(safeValue).toString();
+  const safeValue =
+    numValue === null ||
+    numValue === undefined ||
+    isNaN(numValue) ||
+    !isFinite(numValue)
+      ? 0
+      : numValue;
+  const formatted =
+    decimals > 0
+      ? safeValue.toFixed(decimals)
+      : Math.round(safeValue).toString();
   return unit ? `${formatted}${unit}` : formatted;
 };
 
-const InvestigatorStatsCards: React.FC<InvestigatorStatsCardsProps> = ({ stats }) => {
+const InvestigatorStatsCards: React.FC<InvestigatorStatsCardsProps> = ({
+  stats,
+}) => {
   return (
     <div className="grid grid-cols-4 gap-6 mb-8">
       <StatsCard

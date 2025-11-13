@@ -1,6 +1,12 @@
 import React from 'react';
-import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { FlowableError, createErrorMessage } from '../utils/flowableErrorHandler';
+import {
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
+import {
+  FlowableError,
+  createErrorMessage,
+} from '../utils/flowableErrorHandler';
 
 interface WorkQueueErrorBoundaryProps {
   children: React.ReactNode;
@@ -18,7 +24,6 @@ interface WorkQueueErrorBoundaryState {
   error: Error | null;
 }
 
-
 export class WorkQueueErrorBoundary extends React.Component<
   WorkQueueErrorBoundaryProps,
   WorkQueueErrorBoundaryState
@@ -33,7 +38,11 @@ export class WorkQueueErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Work Queue Error Boundary caught an error:', error, errorInfo);
+    console.error(
+      'Work Queue Error Boundary caught an error:',
+      error,
+      errorInfo,
+    );
   }
 
   resetError = () => {
@@ -42,7 +51,8 @@ export class WorkQueueErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError && this.state.error) {
-      const FallbackComponent = this.props.fallback || DefaultWorkQueueErrorFallback;
+      const FallbackComponent =
+        this.props.fallback || DefaultWorkQueueErrorFallback;
       return (
         <FallbackComponent
           error={this.state.error}
@@ -55,12 +65,9 @@ export class WorkQueueErrorBoundary extends React.Component<
   }
 }
 
-
-export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps> = ({
-  error,
-  resetError,
-  retry
-}) => {
+export const DefaultWorkQueueErrorFallback: React.FC<
+  WorkQueueErrorFallbackProps
+> = ({ error, resetError, retry }) => {
   const errorInfo = createErrorMessage(error, 'Failed to load work queue');
 
   return (
@@ -72,9 +79,7 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
           Work Queue Error
         </h3>
 
-        <p className="text-sm text-gray-600 mb-4">
-          {errorInfo.message}
-        </p>
+        <p className="text-sm text-gray-600 mb-4">{errorInfo.message}</p>
 
         {errorInfo.actionSuggestion && (
           <p className="text-xs text-gray-500 mb-6 italic">
@@ -107,9 +112,18 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
               Technical Details
             </summary>
             <div className="mt-2 p-3 bg-gray-100 rounded text-xs text-gray-600 font-mono">
-              <div><strong>Type:</strong> {error.type}</div>
-              {error.statusCode && <div><strong>Status:</strong> {error.statusCode}</div>}
-              <div><strong>Timestamp:</strong> {new Date(error.timestamp).toLocaleString()}</div>
+              <div>
+                <strong>Type:</strong> {error.type}
+              </div>
+              {error.statusCode && (
+                <div>
+                  <strong>Status:</strong> {error.statusCode}
+                </div>
+              )}
+              <div>
+                <strong>Timestamp:</strong>{' '}
+                {new Date(error.timestamp).toLocaleString()}
+              </div>
               {error.originalError && (
                 <div className="mt-2">
                   <strong>Details:</strong>
@@ -126,7 +140,6 @@ export const DefaultWorkQueueErrorFallback: React.FC<WorkQueueErrorFallbackProps
   );
 };
 
-
 export const useWorkQueueErrorHandler = () => {
   const [error, setError] = React.useState<FlowableError | null>(null);
 
@@ -136,7 +149,9 @@ export const useWorkQueueErrorHandler = () => {
     } else if (error instanceof Error) {
       setError(new FlowableError(error.message, 'UNKNOWN_ERROR'));
     } else {
-      setError(new FlowableError('An unexpected error occurred', 'UNKNOWN_ERROR'));
+      setError(
+        new FlowableError('An unexpected error occurred', 'UNKNOWN_ERROR'),
+      );
     }
   }, []);
 
@@ -154,14 +169,13 @@ export const useWorkQueueErrorHandler = () => {
     hasError: error !== null,
     handleError,
     clearError,
-    getErrorDisplay
+    getErrorDisplay,
   };
 };
 
-
 export function withWorkQueueErrorHandling<P extends object>(
   Component: React.ComponentType<P>,
-  customFallback?: React.ComponentType<WorkQueueErrorFallbackProps>
+  customFallback?: React.ComponentType<WorkQueueErrorFallbackProps>,
 ) {
   const WithErrorHandling = (props: P) => (
     <WorkQueueErrorBoundary fallback={customFallback}>

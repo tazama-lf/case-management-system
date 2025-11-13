@@ -1,5 +1,11 @@
 import React from 'react';
-import { ChevronDownIcon, EyeIcon, ArrowDownTrayIcon, XMarkIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import {
+  ChevronDownIcon,
+  EyeIcon,
+  ArrowDownTrayIcon,
+  XMarkIcon,
+  DocumentIcon,
+} from '@heroicons/react/24/outline';
 import type { FindingDetail } from '../types/reports.types';
 
 interface FindingsDetailsTableProps {
@@ -14,9 +20,19 @@ interface ModalState {
   description: string;
 }
 
-const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoading = false, className = '' }) => {
-  const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
-  const [modalState, setModalState] = React.useState<ModalState>({ isOpen: false, filename: '', description: '' });
+const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({
+  data,
+  isLoading = false,
+  className = '',
+}) => {
+  const [expandedRows, setExpandedRows] = React.useState<Set<number>>(
+    new Set(),
+  );
+  const [modalState, setModalState] = React.useState<ModalState>({
+    isOpen: false,
+    filename: '',
+    description: '',
+  });
 
   const toggleExpanded = (index: number) => {
     const newExpanded = new Set(expandedRows);
@@ -35,7 +51,9 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
   const handleDownloadEvidence = (filename: string) => {
     try {
       const mockFileContent = `Evidence Document: ${filename}\n\nThis is a mock download of the evidence file.\n\nIn production, this would download the actual file from your document storage system.`;
-      const blob = new Blob([mockFileContent], { type: 'application/octet-stream' });
+      const blob = new Blob([mockFileContent], {
+        type: 'application/octet-stream',
+      });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -80,27 +98,47 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${className}`}>
+    <div
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${className}`}
+    >
       <div className="overflow-x-auto">
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Case ID
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Finding
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Conclusion
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Evidence
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+              >
                 Date
               </th>
-              <th scope="col" className="relative px-6 py-3 text-left text-xs font-semibold text-gray-700">
+              <th
+                scope="col"
+                className="relative px-6 py-3 text-left text-xs font-semibold text-gray-700"
+              >
                 <span className="sr-only">Expand</span>
               </th>
             </tr>
@@ -109,7 +147,10 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
             {data.length > 0 ? (
               data.map((finding, index) => (
                 <React.Fragment key={index}>
-                  <tr className="hover:bg-gray-50/50 cursor-pointer" onClick={() => toggleExpanded(index)}>
+                  <tr
+                    className="hover:bg-gray-50/50 cursor-pointer"
+                    onClick={() => toggleExpanded(index)}
+                  >
                     <td className="px-6 py-4 text-sm font-mono text-gray-600">
                       {finding.caseId}
                     </td>
@@ -117,7 +158,9 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
                       <p className="truncate">{finding.finding}</p>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${getStatusColor(finding.conclusion)}`}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${getStatusColor(finding.conclusion)}`}
+                      >
                         {finding.conclusion}
                       </span>
                     </td>
@@ -127,7 +170,9 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(finding.dateIdentified).toLocaleDateString('en-GB')}
+                      {new Date(finding.dateIdentified).toLocaleDateString(
+                        'en-GB',
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-right">
                       <ChevronDownIcon
@@ -146,39 +191,46 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
                               Supporting Evidence
                             </h4>
                             <div className="space-y-2">
-                              {finding.supportingEvidence.map((evidence, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center justify-between gap-2 text-sm text-gray-700 bg-white rounded px-3 py-2 border border-gray-200 hover:border-gray-300 transition-colors"
-                                >
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <DocumentIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                    <span className="truncate">{evidence}</span>
+                              {finding.supportingEvidence.map(
+                                (evidence, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-2 text-sm text-gray-700 bg-white rounded px-3 py-2 border border-gray-200 hover:border-gray-300 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <DocumentIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                      <span className="truncate">
+                                        {evidence}
+                                      </span>
+                                    </div>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewEvidence(
+                                            evidence,
+                                            'Transaction logs showing duplicate payments',
+                                          );
+                                        }}
+                                        className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                        title="View evidence"
+                                      >
+                                        <EyeIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownloadEvidence(evidence);
+                                        }}
+                                        className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                        title="Download evidence"
+                                      >
+                                        <ArrowDownTrayIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
                                   </div>
-                                  <div className="flex gap-1 flex-shrink-0">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleViewEvidence(evidence, 'Transaction logs showing duplicate payments');
-                                      }}
-                                      className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                      title="View evidence"
-                                    >
-                                      <EyeIcon className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDownloadEvidence(evidence);
-                                      }}
-                                      className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                      title="Download evidence"
-                                    >
-                                      <ArrowDownTrayIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+                                ),
+                              )}
                             </div>
                           </div>
                           <div>
@@ -197,7 +249,10 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td
+                  colSpan={6}
+                  className="px-6 py-8 text-center text-sm text-gray-500"
+                >
                   No findings found
                 </td>
               </tr>
@@ -210,22 +265,26 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
       {modalState.isOpen && (
         <>
           {/* Modal Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40"
             onClick={closeModal}
           />
-          
+
           {/* Modal Dialog */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div 
+            <div
               className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
                 <div className="flex-1 pr-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{modalState.filename}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{modalState.description}</p>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {modalState.filename}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {modalState.description}
+                  </p>
                 </div>
                 <button
                   onClick={closeModal}
@@ -253,12 +312,15 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({ data, isLoa
                 <div className="bg-gray-50 rounded-lg border border-gray-300 p-8 min-h-[350px] flex items-center justify-center">
                   <div className="text-center">
                     <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium mb-2">Document Preview</p>
+                    <p className="text-gray-600 font-medium mb-2">
+                      Document Preview
+                    </p>
                     <p className="text-sm text-gray-500">
                       This is a mock preview of the evidence document.
                     </p>
                     <p className="text-sm text-gray-500 mt-2">
-                      In production, this would display the actual document content.
+                      In production, this would display the actual document
+                      content.
                     </p>
                   </div>
                 </div>

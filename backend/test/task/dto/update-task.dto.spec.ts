@@ -31,7 +31,7 @@ describe('UpdateTaskDto', () => {
     dto.assignedUserId = '123e4567-e89b-12d3-a456-426614174000';
     dto.name = 'Test Task';
     dto.description = 'Test Description';
-    
+
     expect(dto.status).toBe(TaskStatus.STATUS_10_ASSIGNED);
     expect(dto.assignedUserId).toBe('123e4567-e89b-12d3-a456-426614174000');
     expect(dto.name).toBe('Test Task');
@@ -72,9 +72,9 @@ describe('UpdateTaskDto', () => {
       ];
 
       for (const value of stringValues) {
-        const dto = plainToInstance(UpdateTaskDto, { 
+        const dto = plainToInstance(UpdateTaskDto, {
           name: value,
-          description: value 
+          description: value,
         });
         const errors = await validate(dto);
         expect(errors).toHaveLength(0);
@@ -83,12 +83,7 @@ describe('UpdateTaskDto', () => {
 
     it('should execute IsOptional decorator paths by testing undefined/null', async () => {
       // Test each field as undefined
-      const undefinedTests = [
-        { status: undefined },
-        { assignedUserId: undefined },
-        { name: undefined },
-        { description: undefined },
-      ];
+      const undefinedTests = [{ status: undefined }, { assignedUserId: undefined }, { name: undefined }, { description: undefined }];
 
       for (const testData of undefinedTests) {
         const dto = plainToInstance(UpdateTaskDto, testData);
@@ -97,12 +92,7 @@ describe('UpdateTaskDto', () => {
       }
 
       // Test each field as null
-      const nullTests = [
-        { status: null },
-        { assignedUserId: null },
-        { name: null },
-        { description: null },
-      ];
+      const nullTests = [{ status: null }, { assignedUserId: null }, { name: null }, { description: null }];
 
       for (const testData of nullTests) {
         const dto = plainToInstance(UpdateTaskDto, testData);
@@ -115,16 +105,16 @@ describe('UpdateTaskDto', () => {
   describe('decorator metadata verification', () => {
     it('should have proper class-validator metadata applied', () => {
       const dto = new UpdateTaskDto();
-      
+
       // Verify that the decorators have been applied by checking the class structure
       expect(dto.constructor.name).toBe('UpdateTaskDto');
-      
+
       // These tests ensure that the property assignments work properly
       dto.status = TaskStatus.STATUS_10_ASSIGNED;
       dto.assignedUserId = '123e4567-e89b-12d3-a456-426614174000';
       dto.name = 'Test';
       dto.description = 'Test Description';
-      
+
       expect(dto.status).toBeDefined();
       expect(dto.assignedUserId).toBeDefined();
       expect(dto.name).toBeDefined();
@@ -136,7 +126,7 @@ describe('UpdateTaskDto', () => {
         status: TaskStatus.STATUS_20_IN_PROGRESS,
         assignedUserId: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Task',
-        description: 'Test Description'
+        description: 'Test Description',
       });
 
       const keys = Object.keys(dto);
@@ -431,8 +421,8 @@ describe('UpdateTaskDto', () => {
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(4);
-      
-      const errorProperties = errors.map(error => error.property);
+
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('status');
       expect(errorProperties).toContain('assignedUserId');
       expect(errorProperties).toContain('name');
@@ -449,8 +439,8 @@ describe('UpdateTaskDto', () => {
 
       const errors = await validate(dto);
       expect(errors).toHaveLength(2);
-      
-      const errorProperties = errors.map(error => error.property);
+
+      const errorProperties = errors.map((error) => error.property);
       expect(errorProperties).toContain('assignedUserId');
       expect(errorProperties).toContain('description');
       expect(errorProperties).not.toContain('status');

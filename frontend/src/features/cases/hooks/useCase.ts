@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { caseService } from '../services/caseService';
 import type { Case } from '../../alerts/types/triage.types';
-import type { GetUserCasesQueryDto, GetUserCasesResponseDto, UserWorkloadStatsDto } from '../services/caseService';
+import type {
+  GetUserCasesQueryDto,
+  GetUserCasesResponseDto,
+  UserWorkloadStatsDto,
+} from '../services/caseService';
 
 export const useCase = (caseId: string | undefined) => {
   return useQuery<Case, Error>({
@@ -42,7 +46,7 @@ export const canActOnCase = (caseStatus: string | undefined): boolean => {
   const closedStatuses = [
     'STATUS_82_CLOSED_CONFIRMED',
     'STATUS_81_CLOSED_REFUTED',
-    'STATUS_83_CLOSED_INCONCLUSIVE'
+    'STATUS_83_CLOSED_INCONCLUSIVE',
   ];
 
   return !closedStatuses.includes(caseStatus);

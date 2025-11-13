@@ -27,7 +27,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     loading,
     hasInvestigatorRole,
     hasSupervisorRole,
-    hasAdminRole
+    hasAdminRole,
   } = useAuth();
   const location = useLocation();
 
@@ -52,29 +52,44 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             Backend Access Required
           </h2>
           <p className="text-gray-600 mb-4">
-            Your account doesn't have the required claims to access the backend services.
+            Your account doesn't have the required claims to access the backend
+            services.
           </p>
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
             <div className="text-sm text-yellow-800">
               <p className="font-medium mb-2">Required Claims Status:</p>
               <ul className="list-disc list-inside space-y-1">
-                <li className={hasAlertTriage ? 'text-green-600' : 'text-red-600'}>
-                  alert-triage (Admin): {hasAlertTriage ? '✓ Available' : '✗ Missing'}
+                <li
+                  className={hasAlertTriage ? 'text-green-600' : 'text-red-600'}
+                >
+                  alert-triage (Admin):{' '}
+                  {hasAlertTriage ? '✓ Available' : '✗ Missing'}
                 </li>
-                <li className={hasCMSTestRole ? 'text-green-600' : 'text-red-600'}>
-                  CMS-TEST-ROLE (Legacy): {hasCMSTestRole ? '✓ Available' : '✗ Missing'}
+                <li
+                  className={hasCMSTestRole ? 'text-green-600' : 'text-red-600'}
+                >
+                  CMS-TEST-ROLE (Legacy):{' '}
+                  {hasCMSTestRole ? '✓ Available' : '✗ Missing'}
                 </li>
-                <li className={hasInvestigator ? 'text-green-600' : 'text-red-600'}>
-                  CMS_INVESTIGATOR: {hasInvestigator ? '✓ Available' : '✗ Missing'}
+                <li
+                  className={
+                    hasInvestigator ? 'text-green-600' : 'text-red-600'
+                  }
+                >
+                  CMS_INVESTIGATOR:{' '}
+                  {hasInvestigator ? '✓ Available' : '✗ Missing'}
                 </li>
-                <li className={hasSupervisor ? 'text-green-600' : 'text-red-600'}>
+                <li
+                  className={hasSupervisor ? 'text-green-600' : 'text-red-600'}
+                >
                   CMS_SUPERVISOR: {hasSupervisor ? '✓ Available' : '✗ Missing'}
                 </li>
               </ul>
             </div>
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            Please contact your administrator to get the required claims added to your account.
+            Please contact your administrator to get the required claims added
+            to your account.
           </p>
           <button
             onClick={() => window.history.back()}
@@ -152,7 +167,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (requiredRoles.length > 0 && user) {
     // Check if user has any of the required roles using backend claims
-    const hasRequiredRole = requiredRoles.some(role => authService.hasBackendClaim(role));
+    const hasRequiredRole = requiredRoles.some((role) =>
+      authService.hasBackendClaim(role),
+    );
 
     if (!hasRequiredRole) {
       return (
@@ -168,16 +185,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <div className="text-sm text-red-800">
                 <p className="font-medium mb-2">Required Roles:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  {requiredRoles.map(role => (
+                  {requiredRoles.map((role) => (
                     <li key={role}>
-                      {role}: {authService.hasBackendClaim(role) ? '✓ Available' : '✗ Missing'}
+                      {role}:{' '}
+                      {authService.hasBackendClaim(role)
+                        ? '✓ Available'
+                        : '✗ Missing'}
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
             <p className="text-sm text-gray-500 mb-4">
-              Please contact your administrator to get the required roles added to your account.
+              Please contact your administrator to get the required roles added
+              to your account.
             </p>
             <button
               onClick={() => window.history.back()}

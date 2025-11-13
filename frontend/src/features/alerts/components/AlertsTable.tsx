@@ -242,7 +242,9 @@ const AlertsTable = <T extends Record<string, unknown>>({
               >
                 <button
                   onClick={() =>
-                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
+                    pagination.onPageChange(
+                      Math.max(1, pagination.currentPage - 1),
+                    )
                   }
                   disabled={pagination.currentPage <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -272,10 +274,10 @@ const AlertsTable = <T extends Record<string, unknown>>({
                     addPage(totalPages);
                   }
 
-      return pages.map((p, idx) =>
+                  return pages.map((p, idx) =>
                     p === 'ellipsis' ? (
                       <span
-        key={`ellipsis-${idx}`}
+                        key={`ellipsis-${idx}`}
                         className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
                       >
                         …
@@ -289,7 +291,9 @@ const AlertsTable = <T extends Record<string, unknown>>({
                             ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         }`}
-                        aria-current={pagination.currentPage === p ? 'page' : undefined}
+                        aria-current={
+                          pagination.currentPage === p ? 'page' : undefined
+                        }
                       >
                         {p}
                       </button>
@@ -298,7 +302,12 @@ const AlertsTable = <T extends Record<string, unknown>>({
                 })()}
                 <button
                   onClick={() =>
-                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
+                    pagination.onPageChange(
+                      Math.min(
+                        pagination.totalPages,
+                        pagination.currentPage + 1,
+                      ),
+                    )
                   }
                   disabled={pagination.currentPage >= pagination.totalPages}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

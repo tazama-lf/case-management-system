@@ -9,7 +9,9 @@ export const useCloseCaseActions = (refreshCases: () => Promise<void>) => {
     try {
       const response = await caseService.closeCase(caseId, data);
 
-      success('Investigation Complete', `Great work! Case ${caseId} has been submitted for supervisor review.
+      success(
+        'Investigation Complete',
+        `Great work! Case ${caseId} has been submitted for supervisor review.
 
 Your investigation findings have been forwarded and the supervisor will review your work shortly.
 
@@ -18,14 +20,15 @@ What happens next:
 • Final outcome decision will be made
 • You'll be notified of the result
 
-Status: ${response.closed_case.status}`);
+Status: ${response.closed_case.status}`,
+      );
 
       await refreshCases();
-
     } catch (err) {
-      let errorMessage = 'Something went wrong while closing the case. Please try again.';
+      let errorMessage =
+        'Something went wrong while closing the case. Please try again.';
       const backendError = err instanceof Error ? err.message : '';
-      
+
       if (backendError.includes('Investigation task is not completed')) {
         errorMessage = `Investigation task must be completed first.
 
@@ -48,13 +51,19 @@ This usually means:
 Please double-check the case status and try again.
 
 Technical details: ${backendError}`;
-      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+      } else if (
+        backendError.includes('Unauthorized') ||
+        backendError.includes('403')
+      ) {
         errorMessage = `Access denied.
 
 You don't have permission to close this case. Make sure you're the assigned investigator.
 
 Technical details: ${backendError}`;
-      } else if (backendError.includes('not found') || backendError.includes('404')) {
+      } else if (
+        backendError.includes('not found') ||
+        backendError.includes('404')
+      ) {
         errorMessage = `Case not found.
 
 This case may have been moved, deleted, or you may not have access to it.

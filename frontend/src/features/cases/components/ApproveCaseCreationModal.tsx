@@ -13,7 +13,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   open,
   onClose,
   caseData,
-  onSubmit
+  onSubmit,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,7 +29,10 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to approve case creation:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case creation. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve case creation. Please try again.';
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -51,7 +54,9 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Approve Case Creation</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Approve Case Creation
+            </h3>
             <p className="text-sm text-gray-500">
               Case ID: {caseData.id} • {caseData.type}
             </p>
@@ -72,40 +77,57 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           {}
           <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-green-800 mb-2">Supervisor Case Creation Approval Workflow</h4>
+            <h4 className="text-sm font-medium text-green-800 mb-2">
+              Supervisor Case Creation Approval Workflow
+            </h4>
             <ul className="text-xs text-green-700 list-disc list-inside space-y-1">
-              <li>Only cases in "PENDING CASE CREATION APPROVAL" can be acted on</li>
+              <li>
+                Only cases in "PENDING CASE CREATION APPROVAL" can be acted on
+              </li>
               <li>Supervisor may approve or reject with a detailed reason</li>
               <li>Approval transitions case to "READY FOR ASSIGNMENT"</li>
-              <li>"Investigate Case" task will be created in Flowable investigations queue</li>
+              <li>
+                "Investigate Case" task will be created in Flowable
+                investigations queue
+              </li>
               <li>All approval actions must be logged</li>
             </ul>
           </div>
 
           {}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Case Details</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">
+              Case Details
+            </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Case Type</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Case Type
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm break-words">{caseData.type}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Current Status
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm break-words">{caseData.status}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Priority
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm">{caseData.priority}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Created On</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Created On
+                </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="text-sm">{caseData.createdOn}</span>
                 </div>
@@ -116,22 +138,36 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           {}
           {caseData.alertId && (
             <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Associated Alert</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                Associated Alert
+              </h4>
               <div className="rounded-md border border-gray-300 p-3 bg-gray-50">
                 <div className="flex justify-between">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Alert ID</label>
-                    <span className="text-sm break-words">{caseData.alertId}</span>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Alert ID
+                    </label>
+                    <span className="text-sm break-words">
+                      {caseData.alertId}
+                    </span>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Confidence Score</label>
-                    <span className="text-sm">{caseData.confidencePercent}%</span>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Confidence Score
+                    </label>
+                    <span className="text-sm">
+                      {caseData.confidencePercent}%
+                    </span>
                   </div>
                 </div>
                 {caseData.alertMessage && (
                   <div className="mt-2">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Alert Message</label>
-                    <p className="text-sm text-gray-700 break-words">{caseData.alertMessage}</p>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Alert Message
+                    </label>
+                    <p className="text-sm text-gray-700 break-words">
+                      {caseData.alertMessage}
+                    </p>
                   </div>
                 )}
               </div>
@@ -140,7 +176,9 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
           {}
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Approval Confirmation</h4>
+            <h4 className="text-sm font-medium text-blue-800 mb-2">
+              Approval Confirmation
+            </h4>
             <p className="text-xs text-blue-700">
               By approving this case creation request, you confirm that:
             </p>

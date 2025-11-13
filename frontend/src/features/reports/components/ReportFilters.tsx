@@ -3,11 +3,27 @@ import { FunnelIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
-  reportType: 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD' | 'EVIDENCE_FINDINGS';
-  dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
+  reportType:
+    | 'CASE_STATUS'
+    | 'AUDIT_LOGS'
+    | 'CASE_AGEING'
+    | 'INVESTIGATOR_WORKLOAD'
+    | 'EVIDENCE_FINDINGS';
+  dateRange:
+    | 'today'
+    | 'yesterday'
+    | 'last7'
+    | 'last30'
+    | 'last90'
+    | 'thisMonth'
+    | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
-  onApplyFilters: (filters: { caseType: string; priority: string; investigator: string }) => void;
+  onApplyFilters: (filters: {
+    caseType: string;
+    priority: string;
+    investigator: string;
+  }) => void;
 }
 
 const ReportFilters: React.FC<ReportFiltersProps> = ({
@@ -15,10 +31,14 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   dateRange,
   onChangeReportType,
   onChangeDateRange,
-  onApplyFilters
+  onApplyFilters,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
+  const [filters, setFilters] = useState({
+    caseType: '',
+    priority: '',
+    investigator: '',
+  });
   const [openMenu, setOpenMenu] = useState<null | 'report' | 'date'>(null);
 
   const reportTypeLabels: Record<ReportFiltersProps['reportType'], string> = {
@@ -58,10 +78,13 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   };
 
   const handleToggleFilters = () => {
-    setShowFilters(prev => !prev);
+    setShowFilters((prev) => !prev);
   };
 
-  const handleChange = (key: 'caseType' | 'priority' | 'investigator', value: string) => {
+  const handleChange = (
+    key: 'caseType' | 'priority' | 'investigator',
+    value: string,
+  ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -93,7 +116,11 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                   {Object.entries(reportTypeLabels).map(([type, label]) => (
                     <li key={type}>
                       <button
-                        onClick={() => handleSelectReportType(type as ReportFiltersProps['reportType'])}
+                        onClick={() =>
+                          handleSelectReportType(
+                            type as ReportFiltersProps['reportType'],
+                          )
+                        }
                         className="w-full text-left px-4 py-2 hover:bg-gray-50"
                       >
                         {label}
@@ -119,8 +146,12 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                 <ul className="py-1 text-sm text-gray-700">
                   {Object.entries(dateRangeLabels).map(([range, label]) => (
                     <li key={range}>
-                      <button 
-                        onClick={() => handleSelectDateRange(range as ReportFiltersProps['dateRange'])} 
+                      <button
+                        onClick={() =>
+                          handleSelectDateRange(
+                            range as ReportFiltersProps['dateRange'],
+                          )
+                        }
                         className="w-full text-left px-4 py-2 hover:bg-gray-50"
                       >
                         {label}

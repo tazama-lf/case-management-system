@@ -6,7 +6,10 @@ import { useAuth } from '@/features/auth/components/AuthContext';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useCaseActions } from '@/features/cases/hooks';
-import type { CaseModalState, CaseModalActions } from '../components/CaseModalsManager';
+import type {
+  CaseModalState,
+  CaseModalActions,
+} from '../components/CaseModalsManager';
 
 export interface CaseDashboardFilters {
   search: string;
@@ -44,16 +47,15 @@ export const useCaseDashboard = () => {
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
- 
+
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
-
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -62,13 +64,16 @@ export const useCaseDashboard = () => {
   const [isAbandonOpen, setIsAbandonOpen] = useState(false);
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
-  const [isCaseClosureDecisionOpen, setIsCaseClosureDecisionOpen] = useState(false);
+  const [isCaseClosureDecisionOpen, setIsCaseClosureDecisionOpen] =
+    useState(false);
   const [isApproveCreationOpen, setIsApproveCreationOpen] = useState(false);
   const [isRejectCreationOpen, setIsRejectCreationOpen] = useState(false);
   const [isApproveReopenOpen, setIsApproveReopenOpen] = useState(false);
   const [isRejectReopenOpen, setIsRejectReopenOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
-  const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
+  const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>(
+    'create',
+  );
   const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
@@ -81,16 +86,15 @@ export const useCaseDashboard = () => {
       let response;
       const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
       const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
-    
+
       if (investigatorOnly) {
-       
         response = await caseService.getUserAssignedCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           includeTaskAssignments: true,
           includeOwnedCases: true,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         });
       } else {
         // Fetch all cases for supervisors and admins
@@ -98,19 +102,26 @@ export const useCaseDashboard = () => {
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         });
       }
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);
-  } catch {
+    } catch {
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
+  }, [
+    statusFilter,
+    priorityFilter,
+    sortBy,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasCMSAdminRole,
+  ]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -119,43 +130,45 @@ export const useCaseDashboard = () => {
     fetchCases();
   }, [fetchCases]);
 
- 
   useEffect(() => {
     const caseId = params.caseId;
     if (caseId && cases.length > 0) {
-      const caseToView = cases.find(c => c.id === caseId);
+      const caseToView = cases.find((c) => c.id === caseId);
       if (caseToView) {
         setSelectedRow(caseToView);
         setIsViewOpen(true);
       } else {
-       
         navigate('/cases');
-        error('Case Not Found', `Case with ID ${caseId} was not found or you don't have permission to view it.`);
+        error(
+          'Case Not Found',
+          `Case with ID ${caseId} was not found or you don't have permission to view it.`,
+        );
       }
     }
   }, [cases, params.caseId, navigate, error]);
 
-
-  const filteredCases = cases.filter((c) =>
-    search === '' || [
-      c.id,
-      c.type,
-      c.status,
-      c.typologyId,
-      String(c.score),
-      c.createdOn,
-      c.pickedOn,
-      c.assignee || '',
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  const filteredCases = cases.filter(
+    (c) =>
+      search === '' ||
+      [
+        c.id,
+        c.type,
+        c.status,
+        c.typologyId,
+        String(c.score),
+        c.createdOn,
+        c.pickedOn,
+        c.assignee || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
 
   // Calculate pagination
   const totalItems = filteredCases.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  
+
   // Reset to page 1 if current page exceeds total pages
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -174,15 +187,14 @@ export const useCaseDashboard = () => {
     currentPage,
     pageSize,
     totalItems,
-    totalPages
+    totalPages,
   };
 
-  
   const dashboardActions = {
     handleView: (row: CaseRow) => {
       setSelectedRow(row);
       setIsViewOpen(true);
-     
+
       navigate(`/cases/${row.id}`);
     },
 
@@ -253,16 +265,15 @@ export const useCaseDashboard = () => {
       setEditingCaseId(null);
       setSelectedRow(null);
       setIsCreateOpen(true);
-    }
+    },
   };
 
   const filterActions = {
     setSearch,
     setSortBy,
     setStatusFilter,
-    setPriorityFilter
+    setPriorityFilter,
   };
-
 
   const modalState: CaseModalState = {
     isCreateOpen,
@@ -281,7 +292,7 @@ export const useCaseDashboard = () => {
     createModalMode,
     editingCaseId,
     createCaseLoading,
-    createCaseError
+    createCaseError,
   };
 
   const modalActions: CaseModalActions = {
@@ -301,10 +312,9 @@ export const useCaseDashboard = () => {
     setCreateModalMode,
     setEditingCaseId,
     setCreateCaseLoading,
-    setCreateCaseError
+    setCreateCaseError,
   };
 
-  
   const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
   const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
 
@@ -316,30 +326,28 @@ export const useCaseDashboard = () => {
       search,
       sortBy,
       statusFilter,
-      priorityFilter
+      priorityFilter,
     },
     pagination,
     permissions: {
       canManageSupervisorActions: supervisorOrAdmin,
-      isInvestigatorOnly: investigatorOnly
-    }
+      isInvestigatorOnly: investigatorOnly,
+    },
   };
 
   return {
-   
     dashboardState,
     modalState,
-    
-  
+
     dashboardActions,
     filterActions,
     modalActions,
     caseActions,
-    
+
     // Pagination actions
     setCurrentPage,
     setPageSize,
-    refreshCases: fetchCases
+    refreshCases: fetchCases,
   };
 };
 

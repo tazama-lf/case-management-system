@@ -20,7 +20,7 @@ const TestComponent = () => {
     <div>
       <div data-testid="alerts-count">{alerts.length}</div>
       <button onClick={() => refetch()}>Refetch</button>
-  {alerts.map((alert) => (
+      {alerts.map((alert) => (
         <div key={alert.alert_id} data-testid={`alert-${alert.alert_id}`}>
           {alert.message}
         </div>
@@ -67,10 +67,8 @@ const renderWithProviders = (component: React.ReactElement) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <NotificationProvider>
-        {component}
-      </NotificationProvider>
-    </QueryClientProvider>
+      <NotificationProvider>{component}</NotificationProvider>
+    </QueryClientProvider>,
   );
 };
 
@@ -100,9 +98,12 @@ describe('useAlerts', () => {
 
     await user.type(searchInput, 'ALERT-001');
 
-    await waitFor(() => {
-      expect(screen.getByTestId('alerts-count')).toHaveTextContent('1');
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('alerts-count')).toHaveTextContent('1');
+      },
+      { timeout: 1000 },
+    );
   });
 
   it('should handle refetch', async () => {
@@ -129,9 +130,9 @@ describe('useAlerts', () => {
       http.get('/api/v1/triage/alerts', () => {
         return HttpResponse.json(
           { error: 'Internal server error' },
-          { status: 500 }
+          { status: 500 },
         );
-      })
+      }),
     );
 
     renderWithProviders(<TestComponent />);
@@ -144,26 +145,21 @@ describe('useAlerts', () => {
 
 describe('useAlertOperations', () => {
   const TestAlertOperations = () => {
-    const {
-      updateAlert,
-      closeAlert,
-      isUpdatingAlert,
-      isClosingAlert
-    } = useAlertOperations();
+    const { updateAlert, closeAlert, isUpdatingAlert, isClosingAlert } =
+      useAlertOperations();
 
     const handleUpdate = () => {
       updateAlert({
         alertId: 'ALERT-001',
-        data: { priority: 'CRITICAL' }
+        data: { priority: 'CRITICAL' },
       });
     };
-
 
     const handleClose = () => {
       closeAlert({
         alertId: 'ALERT-001',
         status: 'CLOSED',
-        notes: 'Test closure'
+        notes: 'Test closure',
       });
     };
 

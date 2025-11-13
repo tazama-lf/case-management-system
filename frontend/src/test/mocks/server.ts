@@ -1,6 +1,9 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import type { Alert, ActionHistory } from '../../features/alerts/types/triage.types';
+import type {
+  Alert,
+  ActionHistory,
+} from '../../features/alerts/types/triage.types';
 
 const mockAlerts: Alert[] = [
   {
@@ -30,9 +33,7 @@ const mockAlerts: Alert[] = [
         { id: 'ACC-001', type: 'account' },
         { id: 'ACC-002', type: 'account' },
       ],
-      edges: [
-        { from: 'ACC-001', to: 'ACC-002', weight: 50000 },
-      ],
+      edges: [{ from: 'ACC-001', to: 'ACC-002', weight: 50000 }],
     },
   },
   {
@@ -90,12 +91,14 @@ export const handlers = [
       filteredAlerts = filteredAlerts.filter(
         (alert) =>
           alert.alert_id.toLowerCase().includes(search.toLowerCase()) ||
-          alert.message.toLowerCase().includes(search.toLowerCase())
+          alert.message.toLowerCase().includes(search.toLowerCase()),
       );
     }
 
     if (priority) {
-      filteredAlerts = filteredAlerts.filter((alert) => alert.priority === priority);
+      filteredAlerts = filteredAlerts.filter(
+        (alert) => alert.priority === priority,
+      );
     }
 
     const start = (page - 1) * limit;
@@ -118,10 +121,7 @@ export const handlers = [
     const alert = mockAlerts.find((a) => a.alert_id === alertId);
 
     if (!alert) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
 
     return HttpResponse.json(alert);
@@ -136,34 +136,38 @@ export const handlers = [
 
   http.patch('/api/v1/triage/alerts/:alertId', async ({ params, request }) => {
     const { alertId } = params;
-    const updates = await request.json() as any;
+    const updates = (await request.json()) as any;
 
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
 
-    if (updates.priorityScore !== undefined || updates.predictionOutcome !== undefined) {
-      if (updates.alertType && !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)) {
+    if (
+      updates.priorityScore !== undefined ||
+      updates.predictionOutcome !== undefined
+    ) {
+      if (
+        updates.alertType &&
+        !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)
+      ) {
         return HttpResponse.json(
           {
             message: [
-              "alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML, NONE"
+              'alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML, NONE',
             ],
-            error: "Bad Request",
-            statusCode: 400
+            error: 'Bad Request',
+            statusCode: 400,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       const updatedAlert = {
         ...mockAlerts[alertIndex],
         priority: updates.priority || mockAlerts[alertIndex].priority,
-        confidence_per: updates.confidence_per || mockAlerts[alertIndex].confidence_per,
+        confidence_per:
+          updates.confidence_per || mockAlerts[alertIndex].confidence_per,
         alert_type: updates.alertType || mockAlerts[alertIndex].alert_type,
         prediction_outcome: updates.predictionOutcome,
       };
@@ -191,40 +195,36 @@ export const handlers = [
     }
   }),
 
-  http.post('/api/v1/triage/alerts/:alertId/convert-to-case', async ({ params }) => {
-    const { alertId } = params;
+  http.post(
+    '/api/v1/triage/alerts/:alertId/convert-to-case',
+    async ({ params }) => {
+      const { alertId } = params;
 
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
-    if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
-    }
+      const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
+      if (alertIndex === -1) {
+        return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
+      }
 
-    const caseId = `CASE-${Date.now()}`;
-    mockAlerts[alertIndex] = {
-      ...mockAlerts[alertIndex],
-      case_id: caseId,
-    };
+      const caseId = `CASE-${Date.now()}`;
+      mockAlerts[alertIndex] = {
+        ...mockAlerts[alertIndex],
+        case_id: caseId,
+      };
 
-    return HttpResponse.json({
-      case_id: caseId,
-      alert: mockAlerts[alertIndex],
-    });
-  }),
+      return HttpResponse.json({
+        case_id: caseId,
+        alert: mockAlerts[alertIndex],
+      });
+    },
+  ),
 
   http.patch('/api/v1/triage/alerts/:alertId/close', async ({ params }) => {
     const { alertId } = params;
 
     const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
     if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
-
 
     return HttpResponse.json(mockAlerts[alertIndex]);
   }),
@@ -232,13 +232,12 @@ export const handlers = [
   http.get('/api/v1/triage/alerts/error-test', () => {
     return HttpResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }),
 
   http.get('/api/v1/triage/alerts/timeout-test', () => {
-    return new Promise(() => {
-    });
+    return new Promise(() => {});
   }),
 ];
 

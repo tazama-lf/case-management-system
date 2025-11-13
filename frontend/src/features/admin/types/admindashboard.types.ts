@@ -6,7 +6,7 @@ export interface AdminDashboardStats {
 }
 
 export interface SystemStatus {
-  priority: 'operational' | 'non-operational' ;
+  priority: 'operational' | 'non-operational';
   count: number;
   description: string;
 }

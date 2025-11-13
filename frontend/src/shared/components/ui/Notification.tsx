@@ -82,7 +82,10 @@ export const Notification: React.FC<NotificationProps> = ({
     <div className={`rounded-md border p-4 ${styles.container}`}>
       <div className="flex">
         <div className="flex-shrink-0">
-          <IconComponent className={`h-5 w-5 ${styles.icon}`} aria-hidden="true" />
+          <IconComponent
+            className={`h-5 w-5 ${styles.icon}`}
+            aria-hidden="true"
+          />
         </div>
         <div className="ml-3 flex-1">
           <h3 className={`text-sm font-medium ${styles.title}`}>{title}</h3>
@@ -131,7 +134,13 @@ export interface ToastNotification extends NotificationProps {
 interface NotificationContainerProps {
   notifications: ToastNotification[];
   onRemove: (id: string) => void;
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
+  position?:
+    | 'top-right'
+    | 'top-left'
+    | 'bottom-right'
+    | 'bottom-left'
+    | 'top-center'
+    | 'bottom-center';
 }
 
 const getPositionStyles = (position: string) => {
@@ -143,7 +152,9 @@ const getPositionStyles = (position: string) => {
     'top-center': 'top-0 left-1/2 transform -translate-x-1/2',
     'bottom-center': 'bottom-0 left-1/2 transform -translate-x-1/2',
   };
-  return positions[position as keyof typeof positions] || positions['top-right'];
+  return (
+    positions[position as keyof typeof positions] || positions['top-right']
+  );
 };
 
 export const NotificationContainer: React.FC<NotificationContainerProps> = ({

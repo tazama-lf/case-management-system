@@ -30,28 +30,43 @@ import type {
   SanctionsScreeningFormData,
   SanctionsDisposition,
 } from '../../types/sanctions.types';
-import { SANCTIONS_TOOLS, DISPOSITION_OPTIONS } from '../../types/sanctions.types';
-import { validateScreeningFile, formatFileSize, getDispositionColor } from '../../services/sanctionsService';
+import {
+  SANCTIONS_TOOLS,
+  DISPOSITION_OPTIONS,
+} from '../../types/sanctions.types';
+import {
+  validateScreeningFile,
+  formatFileSize,
+  getDispositionColor,
+} from '../../services/sanctionsService';
 
 interface SanctionsScreeningTabProps {
   caseId: string;
 }
 
-const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({ caseId }) => {
+const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
+  caseId,
+}) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedScreening, setSelectedScreening] = useState<SanctionsScreening | null>(null);
+  const [selectedScreening, setSelectedScreening] =
+    useState<SanctionsScreening | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dispositionFilter, setDispositionFilter] = useState<SanctionsDisposition | ''>('');
+  const [dispositionFilter, setDispositionFilter] = useState<
+    SanctionsDisposition | ''
+  >('');
   const [toolFilter, setToolFilter] = useState<string>('');
 
   // Fetch data
-  const { data: screeningsData, isLoading } = useCaseSanctionsScreenings(caseId, {
-    disposition: dispositionFilter || undefined,
-    tool_source: toolFilter || undefined,
-    search: searchQuery || undefined,
-  });
+  const { data: screeningsData, isLoading } = useCaseSanctionsScreenings(
+    caseId,
+    {
+      disposition: dispositionFilter || undefined,
+      tool_source: toolFilter || undefined,
+      search: searchQuery || undefined,
+    },
+  );
 
   const { data: statistics } = useCaseSanctionsStatistics(caseId);
 
@@ -77,23 +92,34 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({ caseId })
       {/* Header with Statistics */}
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Sanctions Screening</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Sanctions Screening
+          </h3>
           <p className="text-sm text-gray-500 mt-1">
             Manage and track sanctions screening reports from external tools
           </p>
           {statistics && (
             <div className="flex items-center gap-4 mt-2 text-sm">
               <span className="text-gray-600">
-                Total: <span className="font-medium">{statistics.total_screenings}</span>
+                Total:{' '}
+                <span className="font-medium">
+                  {statistics.total_screenings}
+                </span>
               </span>
               {statistics.high_risk_count > 0 && (
                 <span className="text-red-600">
-                  High Risk: <span className="font-medium">{statistics.high_risk_count}</span>
+                  High Risk:{' '}
+                  <span className="font-medium">
+                    {statistics.high_risk_count}
+                  </span>
                 </span>
               )}
               {statistics.pending_review_count > 0 && (
                 <span className="text-blue-600">
-                  Pending: <span className="font-medium">{statistics.pending_review_count}</span>
+                  Pending:{' '}
+                  <span className="font-medium">
+                    {statistics.pending_review_count}
+                  </span>
                 </span>
               )}
             </div>
@@ -151,7 +177,11 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({ caseId })
               </label>
               <select
                 value={dispositionFilter}
-                onChange={(e) => setDispositionFilter(e.target.value as SanctionsDisposition | '')}
+                onChange={(e) =>
+                  setDispositionFilter(
+                    e.target.value as SanctionsDisposition | '',
+                  )
+                }
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Dispositions</option>
@@ -193,7 +223,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({ caseId })
         ) : screenings.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
             <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No Sanctions Screenings</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              No Sanctions Screenings
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
               Get started by uploading your first sanctions screening report.
             </p>
@@ -244,8 +276,13 @@ interface ScreeningCardProps {
   onViewDetails: (screening: SanctionsScreening) => void;
 }
 
-const ScreeningCard: React.FC<ScreeningCardProps> = ({ screening, onViewDetails }) => {
-  const dispositionConfig = DISPOSITION_OPTIONS.find((d) => d.value === screening.disposition);
+const ScreeningCard: React.FC<ScreeningCardProps> = ({
+  screening,
+  onViewDetails,
+}) => {
+  const dispositionConfig = DISPOSITION_OPTIONS.find(
+    (d) => d.value === screening.disposition,
+  );
   const colorClass = getDispositionColor(screening.disposition);
 
   return (
@@ -253,7 +290,9 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({ screening, onViewDetails 
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-${colorClass}-100 text-${colorClass}-800`}>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-${colorClass}-100 text-${colorClass}-800`}
+            >
               <span className="text-base">{dispositionConfig?.icon}</span>
               {dispositionConfig?.label || screening.disposition}
             </span>
@@ -262,7 +301,7 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({ screening, onViewDetails 
               {format(new Date(screening.screening_date), 'MMM d, yyyy')}
             </span>
           </div>
-          
+
           <h4 className="text-sm font-medium text-gray-900 mb-1">
             {screening.tool_source}
             {screening.reference_id && (
@@ -271,14 +310,17 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({ screening, onViewDetails 
               </span>
             )}
           </h4>
-          
+
           <p className="text-sm text-gray-600 line-clamp-2 mb-3">
             {screening.summary}
           </p>
 
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span>
-              Matches: <span className="font-medium text-gray-900">{screening.match_count || 0}</span>
+              Matches:{' '}
+              <span className="font-medium text-gray-900">
+                {screening.match_count || 0}
+              </span>
             </span>
             {screening.file_name && (
               <span className="flex items-center gap-1">
@@ -309,7 +351,10 @@ interface UploadScreeningModalProps {
   onClose: () => void;
 }
 
-const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onClose }) => {
+const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
+  caseId,
+  onClose,
+}) => {
   const [formData, setFormData] = useState<SanctionsScreeningFormData>({
     screening_date: format(new Date(), 'yyyy-MM-dd'),
     tool_source: '',
@@ -356,12 +401,19 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
         reference_id: formData.reference_id || undefined,
         match_count: formData.match_count,
         file: file || undefined,
-        metadata: formData.entities_screened || formData.confidence_score || formData.risk_level ? {
-          entities_screened: formData.entities_screened,
-          confidence_score: formData.confidence_score,
-          risk_level: formData.risk_level,
-          watchlists_checked: formData.watchlists_checked ? formData.watchlists_checked.split(',').map(w => w.trim()) : undefined,
-        } : undefined,
+        metadata:
+          formData.entities_screened ||
+          formData.confidence_score ||
+          formData.risk_level
+            ? {
+                entities_screened: formData.entities_screened,
+                confidence_score: formData.confidence_score,
+                risk_level: formData.risk_level,
+                watchlists_checked: formData.watchlists_checked
+                  ? formData.watchlists_checked.split(',').map((w) => w.trim())
+                  : undefined,
+              }
+            : undefined,
       });
       onClose();
     } catch (error) {
@@ -370,13 +422,18 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      onClick={onClose}
+    >
+      <div
         className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Upload Sanctions Screening</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Upload Sanctions Screening
+          </h3>
           <button
             onClick={onClose}
             className="rounded-md p-1 text-gray-400 hover:text-gray-500"
@@ -406,7 +463,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
                   </label>
                   <p className="pl-1">or drag and drop</p>
                 </div>
-                <p className="text-xs text-gray-500">PDF, Excel, CSV, JSON up to 50MB</p>
+                <p className="text-xs text-gray-500">
+                  PDF, Excel, CSV, JSON up to 50MB
+                </p>
                 {file && (
                   <p className="text-sm font-medium text-green-600 mt-2">
                     ✓ {file.name} ({formatFileSize(file.size)})
@@ -428,7 +487,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
               type="date"
               required
               value={formData.screening_date}
-              onChange={(e) => setFormData({ ...formData, screening_date: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, screening_date: e.target.value })
+              }
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -441,7 +502,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
             <select
               required
               value={formData.tool_source}
-              onChange={(e) => setFormData({ ...formData, tool_source: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, tool_source: e.target.value })
+              }
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Select a tool...</option>
@@ -461,7 +524,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
             <input
               type="text"
               value={formData.reference_id}
-              onChange={(e) => setFormData({ ...formData, reference_id: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, reference_id: e.target.value })
+              }
               placeholder="External system reference"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -475,7 +540,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
             <select
               required
               value={formData.disposition}
-              onChange={(e) => setFormData({ ...formData, disposition: e.target.value as SanctionsDisposition })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  disposition: e.target.value as SanctionsDisposition,
+                })
+              }
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               {DISPOSITION_OPTIONS.map((opt) => (
@@ -495,7 +565,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
               type="number"
               min="0"
               value={formData.match_count}
-              onChange={(e) => setFormData({ ...formData, match_count: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  match_count: parseInt(e.target.value) || 0,
+                })
+              }
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -509,7 +584,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
               required
               rows={4}
               value={formData.summary}
-              onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, summary: e.target.value })
+              }
               placeholder="Summarize the screening results and findings..."
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -530,7 +607,13 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
                     type="number"
                     min="0"
                     value={formData.entities_screened || ''}
-                    onChange={(e) => setFormData({ ...formData, entities_screened: parseInt(e.target.value) || undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        entities_screened:
+                          parseInt(e.target.value) || undefined,
+                      })
+                    }
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -543,7 +626,13 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
                     min="0"
                     max="100"
                     value={formData.confidence_score || ''}
-                    onChange={(e) => setFormData({ ...formData, confidence_score: parseFloat(e.target.value) || undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confidence_score:
+                          parseFloat(e.target.value) || undefined,
+                      })
+                    }
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -554,7 +643,17 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
                 </label>
                 <select
                   value={formData.risk_level || ''}
-                  onChange={(e) => setFormData({ ...formData, risk_level: (e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL') || undefined })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      risk_level:
+                        (e.target.value as
+                          | 'LOW'
+                          | 'MEDIUM'
+                          | 'HIGH'
+                          | 'CRITICAL') || undefined,
+                    })
+                  }
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Not specified</option>
@@ -571,7 +670,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({ caseId, onC
                 <input
                   type="text"
                   value={formData.watchlists_checked || ''}
-                  onChange={(e) => setFormData({ ...formData, watchlists_checked: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      watchlists_checked: e.target.value,
+                    })
+                  }
                   placeholder="OFAC, EU, UN, etc."
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -618,11 +722,16 @@ interface ScreeningDetailsModalProps {
   onClose: () => void;
 }
 
-const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening, onClose }) => {
+const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
+  screening,
+  onClose,
+}) => {
   const downloadMutation = useDownloadSanctionsReport();
   const deleteMutation = useDeleteSanctionsScreening();
 
-  const dispositionConfig = DISPOSITION_OPTIONS.find((d) => d.value === screening.disposition);
+  const dispositionConfig = DISPOSITION_OPTIONS.find(
+    (d) => d.value === screening.disposition,
+  );
   const colorClass = getDispositionColor(screening.disposition);
 
   const handleDownload = async () => {
@@ -632,20 +741,29 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this sanctions screening? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete this sanctions screening? This action cannot be undone.',
+      )
+    ) {
       await deleteMutation.mutateAsync(screening.screening_id);
       onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      onClick={onClose}
+    >
+      <div
         className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Sanctions Screening Details</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Sanctions Screening Details
+          </h3>
           <button
             onClick={onClose}
             className="rounded-md p-1 text-gray-400 hover:text-gray-500"
@@ -657,7 +775,9 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening
         <div className="p-6 space-y-6">
           {/* Disposition Badge */}
           <div className="flex items-center justify-between">
-            <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-${colorClass}-100 text-${colorClass}-800`}>
+            <span
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-${colorClass}-100 text-${colorClass}-800`}
+            >
               <span className="text-xl">{dispositionConfig?.icon}</span>
               {dispositionConfig?.label || screening.disposition}
             </span>
@@ -670,34 +790,50 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening
           {/* Main Details */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Screening Date</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Screening Date
+              </p>
               <p className="text-base text-gray-900">
                 {format(new Date(screening.screening_date), 'MMMM d, yyyy')}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Tool/Source</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Tool/Source
+              </p>
               <p className="text-base text-gray-900">{screening.tool_source}</p>
             </div>
             {screening.reference_id && (
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Reference ID</p>
-                <p className="text-base text-gray-900 font-mono">{screening.reference_id}</p>
+                <p className="text-sm font-medium text-gray-500 mb-1">
+                  Reference ID
+                </p>
+                <p className="text-base text-gray-900 font-mono">
+                  {screening.reference_id}
+                </p>
               </div>
             )}
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Number of Matches</p>
-              <p className="text-base text-gray-900">{screening.match_count || 0}</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Number of Matches
+              </p>
+              <p className="text-base text-gray-900">
+                {screening.match_count || 0}
+              </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Investigator</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Investigator
+              </p>
               <p className="text-base text-gray-900">
                 {screening.investigator_name || screening.investigator_id}
               </p>
             </div>
             {screening.file_name && (
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Report File</p>
+                <p className="text-sm font-medium text-gray-500 mb-1">
+                  Report File
+                </p>
                 <p className="text-base text-gray-900 flex items-center gap-2">
                   <DocumentTextIcon className="h-5 w-5 text-gray-400" />
                   {screening.file_name}
@@ -730,33 +866,47 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening
                 {screening.metadata.entities_screened && (
                   <div>
                     <dt className="text-xs text-gray-500">Entities Screened</dt>
-                    <dd className="text-sm font-medium text-gray-900">{screening.metadata.entities_screened}</dd>
+                    <dd className="text-sm font-medium text-gray-900">
+                      {screening.metadata.entities_screened}
+                    </dd>
                   </div>
                 )}
                 {screening.metadata.confidence_score && (
                   <div>
                     <dt className="text-xs text-gray-500">Confidence Score</dt>
-                    <dd className="text-sm font-medium text-gray-900">{screening.metadata.confidence_score}%</dd>
+                    <dd className="text-sm font-medium text-gray-900">
+                      {screening.metadata.confidence_score}%
+                    </dd>
                   </div>
                 )}
                 {screening.metadata.risk_level && (
                   <div>
                     <dt className="text-xs text-gray-500">Risk Level</dt>
-                    <dd className="text-sm font-medium text-gray-900">{screening.metadata.risk_level}</dd>
-                  </div>
-                )}
-                {screening.metadata.watchlists_checked && Array.isArray(screening.metadata.watchlists_checked) && (
-                  <div className="col-span-2">
-                    <dt className="text-xs text-gray-500 mb-2">Watchlists Checked</dt>
-                    <dd className="flex flex-wrap gap-2">
-                      {screening.metadata.watchlists_checked.map((list: string) => (
-                        <span key={list} className="px-2 py-1 bg-white text-xs font-medium text-gray-700 rounded border border-gray-200">
-                          {list}
-                        </span>
-                      ))}
+                    <dd className="text-sm font-medium text-gray-900">
+                      {screening.metadata.risk_level}
                     </dd>
                   </div>
                 )}
+                {screening.metadata.watchlists_checked &&
+                  Array.isArray(screening.metadata.watchlists_checked) && (
+                    <div className="col-span-2">
+                      <dt className="text-xs text-gray-500 mb-2">
+                        Watchlists Checked
+                      </dt>
+                      <dd className="flex flex-wrap gap-2">
+                        {screening.metadata.watchlists_checked.map(
+                          (list: string) => (
+                            <span
+                              key={list}
+                              className="px-2 py-1 bg-white text-xs font-medium text-gray-700 rounded border border-gray-200"
+                            >
+                              {list}
+                            </span>
+                          ),
+                        )}
+                      </dd>
+                    </div>
+                  )}
               </dl>
             </div>
           )}
@@ -778,7 +928,9 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({ screening
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
-                  {downloadMutation.isPending ? 'Downloading...' : 'Download Report'}
+                  {downloadMutation.isPending
+                    ? 'Downloading...'
+                    : 'Download Report'}
                 </button>
               )}
             </div>

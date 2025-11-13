@@ -6,10 +6,13 @@ import type {
   TaskCompletionData,
   AuditLogsData,
   CaseAgeingData,
-  EvidenceFindingsData
+  EvidenceFindingsData,
 } from '../types/reports.types';
 
-export const useReports = (dateRange?: string, filters?: { caseType: string; priority: string; investigator: string }) => {
+export const useReports = (
+  dateRange?: string,
+  filters?: { caseType: string; priority: string; investigator: string },
+) => {
   return useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
     queryFn: () => reportsService.getReportsData(dateRange, filters),

@@ -7,7 +7,7 @@ import {
   Public,
   RequireClaim,
   TazamaClaims,
- RequireAlertTriageRole,
+  RequireAlertTriageRole,
   RequireAccountManagement,
 } from '../../src/auth/auth.decorator';
 
@@ -36,32 +36,32 @@ describe('Auth Decorators', () => {
   describe('RequireClaims decorator', () => {
     it('should call SetMetadata with CLAIMS_KEY and claims array', () => {
       const claims = ['claim1', 'claim2', 'claim3'];
-      
+
       RequireClaims(...claims);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, claims);
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
 
     it('should work with single claim', () => {
       const claim = 'single-claim';
-      
+
       RequireClaims(claim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [claim]);
     });
 
     it('should work with empty claims array', () => {
       RequireClaims();
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, []);
     });
 
     it('should work with multiple identical claims', () => {
       const claims = ['same-claim', 'same-claim', 'same-claim'];
-      
+
       RequireClaims(...claims);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, claims);
     });
   });
@@ -69,7 +69,7 @@ describe('Auth Decorators', () => {
   describe('Public decorator', () => {
     it('should call SetMetadata with IS_PUBLIC_KEY and true', () => {
       Public();
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(IS_PUBLIC_KEY, true);
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
@@ -78,24 +78,24 @@ describe('Auth Decorators', () => {
   describe('RequireClaim decorator', () => {
     it('should call SetMetadata with CLAIMS_KEY and single claim in array', () => {
       const claim = 'test-claim';
-      
+
       RequireClaim(claim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [claim]);
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
 
     it('should work with empty string claim', () => {
       RequireClaim('');
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, ['']);
     });
 
     it('should work with special characters in claim', () => {
       const claim = 'claim-with-special-chars!@#$%^&*()';
-      
+
       RequireClaim(claim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [claim]);
     });
   });
@@ -114,21 +114,21 @@ describe('Auth Decorators', () => {
     it('should have all expected properties', () => {
       const expectedClaims = [
         'ALERT_TRIAGE',
-        'MANAGE_ACCOUNT', 
+        'MANAGE_ACCOUNT',
         'MANAGE_ACCOUNT_LINKS',
         'VIEW_PROFILE',
         'DEFAULT_ROLES_TAZAMA_CMS',
         'OFFLINE_ACCESS',
-        'UMA_AUTHORIZATION'
+        'UMA_AUTHORIZATION',
       ];
-      
-      expectedClaims.forEach(claim => {
+
+      expectedClaims.forEach((claim) => {
         expect(TazamaClaims).toHaveProperty(claim);
       });
     });
 
     it('should have string values for all claims', () => {
-      Object.values(TazamaClaims).forEach(claim => {
+      Object.values(TazamaClaims).forEach((claim) => {
         expect(typeof claim).toBe('string');
         expect(claim.length).toBeGreaterThan(0);
       });
@@ -137,9 +137,9 @@ describe('Auth Decorators', () => {
 
   describe('RequireCMSTestRole decorator', () => {
     it('should call SetMetadata with CMS_TEST_ROLE claim', () => {
-     RequireAlertTriageRole();
-      
-  expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', expect.arrayContaining(['alert-triage', 'CMS-TEST-ROLE']));
+      RequireAlertTriageRole();
+
+      expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', expect.arrayContaining(['alert-triage', 'CMS-TEST-ROLE']));
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -147,11 +147,8 @@ describe('Auth Decorators', () => {
   describe('RequireAccountManagement decorator', () => {
     it('should call SetMetadata with both account management claims', () => {
       RequireAccountManagement();
-      
-      expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [
-        TazamaClaims.MANAGE_ACCOUNT,
-        TazamaClaims.MANAGE_ACCOUNT_LINKS,
-      ]);
+
+      expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS]);
       expect(mockedSetMetadata).toHaveBeenCalledTimes(1);
     });
   });
@@ -161,7 +158,7 @@ describe('Auth Decorators', () => {
       RequireClaims('claim1', 'claim2');
       Public();
       RequireClaim('single-claim');
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledTimes(3);
       expect(mockedSetMetadata).toHaveBeenNthCalledWith(1, CLAIMS_KEY, ['claim1', 'claim2']);
       expect(mockedSetMetadata).toHaveBeenNthCalledWith(2, IS_PUBLIC_KEY, true);
@@ -172,33 +169,33 @@ describe('Auth Decorators', () => {
   describe('Edge cases', () => {
     it('should handle Unicode characters in claims', () => {
       const unicodeClaim = 'claim-with-unicode-🚀-characters';
-      
+
       RequireClaim(unicodeClaim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [unicodeClaim]);
     });
 
     it('should handle very long claim names', () => {
       const longClaim = 'a'.repeat(1000);
-      
+
       RequireClaim(longClaim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [longClaim]);
     });
 
     it('should handle claims with spaces', () => {
       const claimWithSpaces = 'claim with multiple spaces';
-      
+
       RequireClaim(claimWithSpaces);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [claimWithSpaces]);
     });
 
     it('should handle numeric-like strings as claims', () => {
       const numericClaim = '12345';
-      
+
       RequireClaim(numericClaim);
-      
+
       expect(mockedSetMetadata).toHaveBeenCalledWith(CLAIMS_KEY, [numericClaim]);
     });
   });
@@ -207,45 +204,45 @@ describe('Auth Decorators', () => {
     it('should return the result of SetMetadata for RequireClaims', () => {
       const mockReturnValue = 'mocked-return-value';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
-      
+
       const result = RequireClaims('test');
-      
+
       expect(result).toBe(mockReturnValue);
     });
 
     it('should return the result of SetMetadata for Public', () => {
       const mockReturnValue = 'mocked-public-return';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
-      
+
       const result = Public();
-      
+
       expect(result).toBe(mockReturnValue);
     });
 
     it('should return the result of SetMetadata for RequireClaim', () => {
       const mockReturnValue = 'mocked-claim-return';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
-      
+
       const result = RequireClaim('test');
-      
+
       expect(result).toBe(mockReturnValue);
     });
 
     it('should return the result of SetMetadata forRequireAlertTriageRole', () => {
       const mockReturnValue = 'mocked-cms-return';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
-      
-      const result =RequireAlertTriageRole();
-      
+
+      const result = RequireAlertTriageRole();
+
       expect(result).toBe(mockReturnValue);
     });
 
     it('should return the result of SetMetadata for RequireAccountManagement', () => {
       const mockReturnValue = 'mocked-account-return';
       mockedSetMetadata.mockReturnValue(mockReturnValue as any);
-      
+
       const result = RequireAccountManagement();
-      
+
       expect(result).toBe(mockReturnValue);
     });
   });
@@ -253,7 +250,7 @@ describe('Auth Decorators', () => {
   it('should call SetMetadata with combined claims for RequireClaims and RequireCMSTestRole', () => {
     RequireClaims('claim1', 'claim2');
     RequireAlertTriageRole();
-    
+
     expect(mockedSetMetadata).toHaveBeenCalledWith('anyClaims', expect.arrayContaining(['alert-triage', 'CMS-TEST-ROLE']));
   });
 });

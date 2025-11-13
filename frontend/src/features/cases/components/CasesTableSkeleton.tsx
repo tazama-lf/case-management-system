@@ -4,7 +4,9 @@ interface CasesTableSkeletonProps {
   rows?: number;
 }
 
-const CasesTableSkeleton: React.FC<CasesTableSkeletonProps> = ({ rows = 5 }) => {
+const CasesTableSkeleton: React.FC<CasesTableSkeletonProps> = ({
+  rows = 5,
+}) => {
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="overflow-x-auto">

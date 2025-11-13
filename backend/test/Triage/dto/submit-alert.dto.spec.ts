@@ -37,19 +37,19 @@ describe('SubmitAlertDto', () => {
 
   it('should validate class-validator decorators are applied', async () => {
     const dto = new IngestAlertDto();
-    
+
     // Test that validation actually works (which proves decorators are applied)
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    
+
     // Test specific decorator behavior
     dto.message = 'valid string';
     dto.report = 'invalid object' as any;
     dto.transaction = {} as any;
     dto.networkMap = {} as any;
-    
+
     const validationErrors = await validate(dto);
-    const reportError = validationErrors.find(error => error.property === 'report');
+    const reportError = validationErrors.find((error) => error.property === 'report');
     expect(reportError?.constraints).toHaveProperty('isObject');
   });
 
@@ -85,15 +85,15 @@ describe('SubmitAlertDto', () => {
   it('should handle undefined values during validation', async () => {
     const dto = new IngestAlertDto();
     // Properties are undefined by default
-    
+
     const errors = await validate(dto);
-    
+
     // Should have validation errors for all required fields
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some(error => error.property === 'message')).toBe(true);
-    expect(errors.some(error => error.property === 'report')).toBe(true);
-    expect(errors.some(error => error.property === 'transaction')).toBe(true);
-    expect(errors.some(error => error.property === 'networkMap')).toBe(true);
+    expect(errors.some((error) => error.property === 'message')).toBe(true);
+    expect(errors.some((error) => error.property === 'report')).toBe(true);
+    expect(errors.some((error) => error.property === 'transaction')).toBe(true);
+    expect(errors.some((error) => error.property === 'networkMap')).toBe(true);
   });
 
   it('should fail validation when message is missing', async () => {
@@ -117,17 +117,17 @@ describe('SubmitAlertDto', () => {
       message: 'Test message',
       report: { evaluationID: 'test-123' },
       transaction: { TenantId: 'tenant-123', TxTp: 'payment' },
-      networkMap: { nodes: ['node1'], edges: [] }
+      networkMap: { nodes: ['node1'], edges: [] },
     };
 
     const dto = plainToClass(IngestAlertDto, data);
-    
+
     // Verify transformation worked correctly
     expect(typeof dto.message).toBe('string');
     expect(typeof dto.report).toBe('object');
     expect(typeof dto.transaction).toBe('object');
     expect(typeof dto.networkMap).toBe('object');
-    
+
     // Verify specific property values
     expect(dto.message).toBe('Test message');
     expect(dto.report).toHaveProperty('evaluationID');
@@ -295,24 +295,22 @@ describe('SubmitAlertDto', () => {
             {
               ruleId: 'RULE_001',
               result: true,
-              score: 0.95
-            }
-          ]
-        }
+              score: 0.95,
+            },
+          ],
+        },
       },
       transaction: {
         TenantId: 'tenant-123',
-        TxTp: 'PAYMENT'
+        TxTp: 'PAYMENT',
       },
       networkMap: {
         nodes: [
           { id: 'account1', label: 'Source Account' },
-          { id: 'account2', label: 'Destination Account' }
+          { id: 'account2', label: 'Destination Account' },
         ],
-        edges: [
-          { source: 'account1', target: 'account2', amount: 1000 }
-        ]
-      }
+        edges: [{ source: 'account1', target: 'account2', amount: 1000 }],
+      },
     };
 
     const dto = plainToClass(IngestAlertDto, alertData);
@@ -491,7 +489,7 @@ describe('SubmitAlertDto', () => {
     // Test JSON serialization
     const serialized = JSON.stringify(dto);
     const parsed = JSON.parse(serialized);
-    
+
     expect(parsed.message).toBe('Test message');
     expect(parsed.report).toEqual({ evaluationID: 'test' });
     expect(parsed.transaction).toEqual({ TenantId: 'tenant' });
@@ -512,42 +510,42 @@ describe('SubmitAlertDto', () => {
       message: 'test',
       report: {},
       transaction: {},
-      networkMap: {}
+      networkMap: {},
     });
     expect(dto3).toBeInstanceOf(IngestAlertDto);
   });
 
   it('should validate decorator behavior on each property', async () => {
     const dto = new IngestAlertDto();
-    
+
     // Test @IsString on message
     dto.message = 123 as any;
     dto.report = {} as any;
     dto.transaction = {} as any;
     dto.networkMap = {} as any;
-    
+
     let errors = await validate(dto);
-    expect(errors.some(error => error.property === 'message' && error.constraints?.isString)).toBe(true);
-    
+    expect(errors.some((error) => error.property === 'message' && error.constraints?.isString)).toBe(true);
+
     // Test @IsObject on report
     dto.message = 'valid string';
     dto.report = 'not an object' as any;
-    
+
     errors = await validate(dto);
-    expect(errors.some(error => error.property === 'report' && error.constraints?.isObject)).toBe(true);
-    
+    expect(errors.some((error) => error.property === 'report' && error.constraints?.isObject)).toBe(true);
+
     // Test @IsObject on transaction
     dto.report = {} as any;
     dto.transaction = 'not an object' as any;
-    
+
     errors = await validate(dto);
-    expect(errors.some(error => error.property === 'transaction' && error.constraints?.isObject)).toBe(true);
-    
+    expect(errors.some((error) => error.property === 'transaction' && error.constraints?.isObject)).toBe(true);
+
     // Test @IsObject on networkMap
     dto.transaction = {} as any;
     dto.networkMap = 'not an object' as any;
-    
+
     errors = await validate(dto);
-    expect(errors.some(error => error.property === 'networkMap' && error.constraints?.isObject)).toBe(true);
+    expect(errors.some((error) => error.property === 'networkMap' && error.constraints?.isObject)).toBe(true);
   });
 });

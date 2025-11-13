@@ -16,8 +16,8 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
     ...queue,
     caseStatuses: queue.caseStatuses || [],
     caseTypes: queue.caseTypes || [],
-    roles: queue.roles || [], 
-    taskTypes: queue.taskTypes || [], 
+    roles: queue.roles || [],
+    taskTypes: queue.taskTypes || [],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,9 +33,12 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
 
   const handleTaskTypeAdd = (taskType: string) => {
     if (!formData.taskTypes.includes(taskType)) {
-      setFormData({ ...formData, taskTypes: [...formData.taskTypes, taskType] });
+      setFormData({
+        ...formData,
+        taskTypes: [...formData.taskTypes, taskType],
+      });
     }
-};
+  };
 
   // const handleCaseTypeAdd = (caseType: string) => {
   //   if (!formData.caseTypes.includes(caseType)) {
@@ -67,36 +70,53 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
         <h3 className="text-md font-medium mb-4">Basic Information</h3>
         <div className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700"
+            >
               Queue Name
             </label>
             <input
               type="text"
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700"
+            >
               Description
             </label>
             <textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={2}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Status
+            </label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  status: e.target.value as 'Active' | 'Inactive',
+                })
+              }
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="Active">Active</option>
@@ -122,10 +142,12 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
                 {role}
                 <button
                   type="button"
-                  onClick={() => setFormData({
-                    ...formData,
-                    roles: formData.roles.filter(r => r !== role)
-                  })}
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      roles: formData.roles.filter((r) => r !== role),
+                    })
+                  }
                   className="ml-1 text-blue-600 hover:text-blue-800"
                 >
                   ×
@@ -169,10 +191,12 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
                 {type}
                 <button
                   type="button"
-                  onClick={() => setFormData({
-                    ...formData,
-                    taskTypes: formData.taskTypes.filter(t => t !== type)
-                  })}
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      taskTypes: formData.taskTypes.filter((t) => t !== type),
+                    })
+                  }
                   className="ml-1 text-purple-600 hover:text-purple-800"
                 >
                   ×

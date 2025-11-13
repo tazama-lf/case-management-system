@@ -14,23 +14,41 @@ import {
   ClockIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
-import { useCaseEvidence, useUploadEvidence, useVerifyEvidence, useDeleteEvidence, useDownloadEvidence } from '../../hooks/useEvidence';
+import {
+  useCaseEvidence,
+  useUploadEvidence,
+  useVerifyEvidence,
+  useDeleteEvidence,
+  useDownloadEvidence,
+} from '../../hooks/useEvidence';
 import { evidenceService } from '../../services/evidenceService';
-import type { Evidence, EvidenceType, EvidenceSearchFilters } from '../../types/evidence.types';
+import type {
+  Evidence,
+  EvidenceType,
+  EvidenceSearchFilters,
+} from '../../types/evidence.types';
 import toast from 'react-hot-toast';
 
 interface EvidenceDocumentsTabProps {
   caseId: string;
 }
 
-const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) => {
+const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({
+  caseId,
+}) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<EvidenceSearchFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(
+    null,
+  );
 
-  const { data: evidenceData, isLoading, refetch } = useCaseEvidence(caseId, filters);
+  const {
+    data: evidenceData,
+    isLoading,
+    refetch,
+  } = useCaseEvidence(caseId, filters);
   const uploadMutation = useUploadEvidence(caseId);
   const verifyMutation = useVerifyEvidence(caseId);
   const deleteMutation = useDeleteEvidence(caseId);
@@ -56,7 +74,11 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
   };
 
   const handleDelete = (evidenceId: string) => {
-    if (window.confirm('Are you sure you want to delete this evidence? This action will be logged.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete this evidence? This action will be logged.',
+      )
+    ) {
       deleteMutation.mutate({ evidenceId, reason: 'User requested deletion' });
     }
   };
@@ -126,11 +148,19 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
         <div className="card bg-gray-50 p-4 space-y-3">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Evidence Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Evidence Type
+              </label>
               <select
                 className="input"
                 value={filters.evidence_type || ''}
-                onChange={(e) => setFilters({ ...filters, evidence_type: e.target.value as EvidenceType || undefined })}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    evidence_type:
+                      (e.target.value as EvidenceType) || undefined,
+                  })
+                }
               >
                 <option value="">All Types</option>
                 <option value="DOCUMENT">Document</option>
@@ -143,11 +173,25 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Verification Status
+              </label>
               <select
                 className="input"
-                value={filters.verified === undefined ? '' : filters.verified.toString()}
-                onChange={(e) => setFilters({ ...filters, verified: e.target.value === '' ? undefined : e.target.value === 'true' })}
+                value={
+                  filters.verified === undefined
+                    ? ''
+                    : filters.verified.toString()
+                }
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    verified:
+                      e.target.value === ''
+                        ? undefined
+                        : e.target.value === 'true',
+                  })
+                }
               >
                 <option value="">All</option>
                 <option value="true">Verified</option>
@@ -155,12 +199,16 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date Range
+              </label>
               <input
                 type="date"
                 className="input"
                 value={filters.date_from || ''}
-                onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, date_from: e.target.value })
+                }
               />
             </div>
           </div>
@@ -172,8 +220,13 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
         <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center">
           <div className="mx-auto flex max-w-md flex-col items-center gap-3">
             <DocumentIcon className="h-12 w-12 text-gray-400" />
-            <p className="text-gray-600 font-medium">No evidence uploaded yet</p>
-            <p className="text-sm text-gray-500">Upload documents, screenshots, logs, or other evidence to get started</p>
+            <p className="text-gray-600 font-medium">
+              No evidence uploaded yet
+            </p>
+            <p className="text-sm text-gray-500">
+              Upload documents, screenshots, logs, or other evidence to get
+              started
+            </p>
             <button
               onClick={() => setShowUploadModal(true)}
               className="mt-2 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -203,10 +256,15 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
                         <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                           {item.file_name}
                           {item.verified && (
-                            <CheckCircleIcon className="h-5 w-5 text-green-600" title="Verified" />
+                            <CheckCircleIcon
+                              className="h-5 w-5 text-green-600"
+                              title="Verified"
+                            />
                           )}
                         </h4>
-                        <p className="text-sm text-gray-600 mt-1">{item.description || 'No description'}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {item.description || 'No description'}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -253,10 +311,17 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
                         <ClockIcon className="h-4 w-4" />
                         {formatDate(item.uploaded_at)}
                       </span>
-                      <span>{evidenceService.formatFileSize(item.file_size)}</span>
-                      <span className="badge-priority-low">{item.evidence_type}</span>
+                      <span>
+                        {evidenceService.formatFileSize(item.file_size)}
+                      </span>
+                      <span className="badge-priority-low">
+                        {item.evidence_type}
+                      </span>
                       {item.tags.map((tag) => (
-                        <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -282,7 +347,10 @@ const EvidenceDocumentsTab: React.FC<EvidenceDocumentsTabProps> = ({ caseId }) =
             <button className="btn-outline" disabled={pagination.page === 1}>
               Previous
             </button>
-            <button className="btn-outline" disabled={pagination.page === pagination.totalPages}>
+            <button
+              className="btn-outline"
+              disabled={pagination.page === pagination.totalPages}
+            >
               Next
             </button>
           </div>
@@ -332,7 +400,9 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [description, setDescription] = useState('');
-  const [accessLevel, setAccessLevel] = useState<'PUBLIC' | 'CONFIDENTIAL' | 'RESTRICTED'>('CONFIDENTIAL');
+  const [accessLevel, setAccessLevel] = useState<
+    'PUBLIC' | 'CONFIDENTIAL' | 'RESTRICTED'
+  >('CONFIDENTIAL');
   const [calculatingHash, setCalculatingHash] = useState(false);
   const [fileHash, setFileHash] = useState<string>('');
 
@@ -347,7 +417,7 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
     }
 
     setSelectedFile(file);
-    
+
     // Calculate hash
     setCalculatingHash(true);
     try {
@@ -401,11 +471,15 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-4">
-          <h3 className="text-xl font-semibold text-gray-900">Upload Evidence</h3>
+          <h3 className="text-xl font-semibold text-gray-900">
+            Upload Evidence
+          </h3>
 
           {/* File Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select File</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select File
+            </label>
             <div
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -413,20 +487,32 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
               {selectedFile ? (
                 <div className="space-y-2">
                   <DocumentIcon className="h-12 w-12 text-blue-600 mx-auto" />
-                  <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                  <p className="text-sm text-gray-500">{evidenceService.formatFileSize(selectedFile.size)}</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {evidenceService.formatFileSize(selectedFile.size)}
+                  </p>
                   {calculatingHash && (
-                    <p className="text-xs text-blue-600">Calculating integrity hash...</p>
+                    <p className="text-xs text-blue-600">
+                      Calculating integrity hash...
+                    </p>
                   )}
                   {fileHash && (
-                    <p className="text-xs text-green-600 font-mono">Hash: {fileHash.substring(0, 16)}...</p>
+                    <p className="text-xs text-green-600 font-mono">
+                      Hash: {fileHash.substring(0, 16)}...
+                    </p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <ArrowUpTrayIcon className="h-12 w-12 text-gray-400 mx-auto" />
-                  <p className="text-gray-600">Click to select or drag and drop</p>
-                  <p className="text-xs text-gray-500">Max 50MB • PDF, Images, Documents, Logs</p>
+                  <p className="text-gray-600">
+                    Click to select or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Max 50MB • PDF, Images, Documents, Logs
+                  </p>
                 </div>
               )}
             </div>
@@ -440,8 +526,14 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
           {/* Evidence Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Evidence Type</label>
-            <select className="input" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as EvidenceType)}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Evidence Type
+            </label>
+            <select
+              className="input"
+              value={evidenceType}
+              onChange={(e) => setEvidenceType(e.target.value as EvidenceType)}
+            >
               <option value="DOCUMENT">Document</option>
               <option value="SCREENSHOT">Screenshot</option>
               <option value="LOG_FILE">Log File</option>
@@ -454,7 +546,9 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
             <textarea
               className="input min-h-[80px]"
               placeholder="Describe the evidence and its relevance to the case..."
@@ -465,7 +559,9 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags
+            </label>
             <div className="flex gap-2 mb-2">
               <input
                 type="text"
@@ -484,9 +580,17 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
             </div>
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
-                <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1">
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1"
+                >
                   {tag}
-                  <button onClick={() => handleRemoveTag(tag)} className="hover:text-blue-900">×</button>
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:text-blue-900"
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>
@@ -494,8 +598,16 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
           {/* Access Level */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Access Level</label>
-            <select className="input" value={accessLevel} onChange={(e) => setAccessLevel(e.target.value as typeof accessLevel)}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Access Level
+            </label>
+            <select
+              className="input"
+              value={accessLevel}
+              onChange={(e) =>
+                setAccessLevel(e.target.value as typeof accessLevel)
+              }
+            >
               <option value="PUBLIC">Public</option>
               <option value="CONFIDENTIAL">Confidential</option>
               <option value="RESTRICTED">Restricted</option>
@@ -514,7 +626,9 @@ const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
             <button
               onClick={handleSubmit}
               className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!selectedFile || uploadMutation.isPending || calculatingHash}
+              disabled={
+                !selectedFile || uploadMutation.isPending || calculatingHash
+              }
             >
               {uploadMutation.isPending ? (
                 <>
@@ -554,8 +668,15 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-4">
           <div className="flex items-start justify-between">
-            <h3 className="text-xl font-semibold text-gray-900">Evidence Details</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+            <h3 className="text-xl font-semibold text-gray-900">
+              Evidence Details
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -565,37 +686,54 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
                 <p className="text-gray-900">{evidence.file_name}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Evidence Type</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Evidence Type
+                </p>
                 <p className="text-gray-900">{evidence.evidence_type}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">File Size</p>
-                <p className="text-gray-900">{evidenceService.formatFileSize(evidence.file_size)}</p>
+                <p className="text-gray-900">
+                  {evidenceService.formatFileSize(evidence.file_size)}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Uploaded By</p>
-                <p className="text-gray-900">{evidence.uploader_name || evidence.uploader_id}</p>
+                <p className="text-gray-900">
+                  {evidence.uploader_name || evidence.uploader_id}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Upload Date</p>
-                <p className="text-gray-900">{new Date(evidence.uploaded_at).toLocaleString()}</p>
+                <p className="text-gray-900">
+                  {new Date(evidence.uploaded_at).toLocaleString()}
+                </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Access Level</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Access Level
+                </p>
                 <p className="text-gray-900">{evidence.access_level}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
-              <p className="text-gray-900">{evidence.description || 'No description provided'}</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Description
+              </p>
+              <p className="text-gray-900">
+                {evidence.description || 'No description provided'}
+              </p>
             </div>
 
             <div>
               <p className="text-sm font-medium text-gray-500 mb-2">Tags</p>
               <div className="flex flex-wrap gap-2">
                 {evidence.tags.map((tag) => (
-                  <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  <span
+                    key={tag}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  >
                     {tag}
                   </span>
                 ))}
@@ -610,13 +748,16 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-gray-500">SHA-256 Hash</p>
-                  <p className="text-xs font-mono text-gray-900 break-all">{evidence.file_hash}</p>
+                  <p className="text-xs font-mono text-gray-900 break-all">
+                    {evidence.file_hash}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {evidence.verified ? (
                     <span className="flex items-center gap-1 text-green-600 text-sm">
                       <CheckCircleIcon className="h-5 w-5" />
-                      Verified on {new Date(evidence.verification_date!).toLocaleString()}
+                      Verified on{' '}
+                      {new Date(evidence.verification_date!).toLocaleString()}
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-yellow-600 text-sm">
@@ -630,15 +771,15 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button 
-              onClick={onVerify} 
+            <button
+              onClick={onVerify}
               className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <ShieldCheckIcon className="h-4 w-4" />
               Verify Integrity
             </button>
-            <button 
-              onClick={onDownload} 
+            <button
+              onClick={onDownload}
               className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <ArrowDownTrayIcon className="h-4 w-4" />

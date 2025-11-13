@@ -8,7 +8,13 @@ interface StatsCardProps {
   subtitle?: string;
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtitle }) => {
+const StatsCard: React.FC<StatsCardProps> = ({
+  title,
+  value,
+  icon,
+  color,
+  subtitle,
+}) => {
   const [animatedValue, setAnimatedValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -33,7 +39,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   useEffect(() => {
     setIsVisible(true);
 
-        if (isNumeric) {
+    if (isNumeric) {
       const duration = 1000;
       const steps = 60;
       const increment = value / steps;
@@ -59,7 +65,12 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
     if (typeof value === 'string') {
       return value;
     }
-    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+    if (
+      value === null ||
+      value === undefined ||
+      isNaN(value) ||
+      !isFinite(value)
+    ) {
       return '0';
     }
     return animatedValue.toLocaleString();
@@ -68,11 +79,13 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-500 hover:shadow-md hover:scale-105 cursor-pointer ${bgColorClasses[color]} ${
-        isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+        isVisible
+          ? 'opacity-100 transform translate-y-0'
+          : 'opacity-0 transform translate-y-4'
       }`}
       style={{
         animationDelay: '0.1s',
-        animationFillMode: 'forwards'
+        animationFillMode: 'forwards',
       }}
     >
       <div className="flex items-center justify-between">
@@ -81,11 +94,11 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
           <p className="text-3xl font-bold text-gray-900 transition-all duration-300">
             {getDisplayValue()}
           </p>
-          {subtitle && (
-            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]} shadow-lg transition-transform duration-300 hover:scale-110`}>
+        <div
+          className={`p-3 rounded-lg ${colorClasses[color]} shadow-lg transition-transform duration-300 hover:scale-110`}
+        >
           {icon}
         </div>
       </div>
@@ -96,7 +109,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
           className={`h-full bg-${color}-500 transition-all duration-1000 ease-out`}
           style={{
             width: isVisible ? '100%' : '0%',
-            transitionDelay: '0.5s'
+            transitionDelay: '0.5s',
           }}
         />
       </div>

@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { XMarkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@heroicons/react/24/outline';
 import type { ApproveCaseClosureDto } from '../services/caseService';
 
 interface CaseClosureDecisionModalProps {
@@ -25,7 +29,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   finalNotes,
   recommendations,
   onApprove,
-  onReject
+  onReject,
 }) => {
   const [decision, setDecision] = useState<DecisionType | null>(null);
   const [formData, setFormData] = useState<{
@@ -33,9 +37,11 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     supervisorComments: string;
     rejectionReason: string;
   }>({
-    finalOutcome: (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) || 'STATUS_83_CLOSED_INCONCLUSIVE',
+    finalOutcome:
+      (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ||
+      'STATUS_83_CLOSED_INCONCLUSIVE',
     supervisorComments: '',
-    rejectionReason: ''
+    rejectionReason: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,7 +51,8 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
     if (decision === 'reject') {
       if (formData.rejectionReason.trim().length < 15) {
-        newErrors.rejectionReason = 'Rejection reason must be at least 15 characters';
+        newErrors.rejectionReason =
+          'Rejection reason must be at least 15 characters';
       }
     }
 
@@ -64,12 +71,15 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     try {
       await onApprove({
         finalOutcome: formData.finalOutcome,
-        supervisorComments: formData.supervisorComments
+        supervisorComments: formData.supervisorComments,
       });
       handleClose();
     } catch (error) {
       console.error('Failed to approve case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case closure. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve case closure. Please try again.';
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -89,7 +99,10 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       handleClose();
     } catch (error) {
       console.error('Failed to reject case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to reject case closure. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to reject case closure. Please try again.';
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -101,9 +114,11 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       onClose();
       setDecision(null);
       setFormData({
-        finalOutcome: (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) || 'STATUS_83_CLOSED_INCONCLUSIVE',
+        finalOutcome:
+          (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ||
+          'STATUS_83_CLOSED_INCONCLUSIVE',
         supervisorComments: '',
-        rejectionReason: ''
+        rejectionReason: '',
       });
       setErrors({});
     }
@@ -113,7 +128,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     return outcome
       .replace('STATUS_', '')
       .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   if (!open) return null;
@@ -159,9 +174,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 <div className="flex items-start gap-3">
                   <CheckCircleIcon className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-gray-900">Approve Case Closure</h4>
+                    <h4 className="font-medium text-gray-900">
+                      Approve Case Closure
+                    </h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      Finalize the case with the investigator's recommended or modified outcome. Case will be moved to CLOSED status.
+                      Finalize the case with the investigator's recommended or
+                      modified outcome. Case will be moved to CLOSED status.
                     </p>
                   </div>
                 </div>
@@ -175,9 +193,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 <div className="flex items-start gap-3">
                   <XCircleIcon className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-gray-900">Reject Case Closure</h4>
+                    <h4 className="font-medium text-gray-900">
+                      Reject Case Closure
+                    </h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      Send the case back for additional investigation. The investigator will need to provide more information.
+                      Send the case back for additional investigation. The
+                      investigator will need to provide more information.
                     </p>
                   </div>
                 </div>
@@ -185,12 +206,22 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
               {/* Workflow Info */}
               <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">Supervisor Case Closure Approval Workflow</h4>
+                <h4 className="text-sm font-medium text-blue-800 mb-2">
+                  Supervisor Case Closure Approval Workflow
+                </h4>
                 <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                  <li>Only cases in "PENDING FINAL APPROVAL" can be acted on</li>
+                  <li>
+                    Only cases in "PENDING FINAL APPROVAL" can be acted on
+                  </li>
                   <li>Supervisor may approve or reject with comments/reason</li>
-                  <li>Approval transitions case to "CLOSED [Confirmed/Refuted/Inconclusive]"</li>
-                  <li>Rejection reopens the "Investigate Case" task for further work</li>
+                  <li>
+                    Approval transitions case to "CLOSED
+                    [Confirmed/Refuted/Inconclusive]"
+                  </li>
+                  <li>
+                    Rejection reopens the "Investigate Case" task for further
+                    work
+                  </li>
                   <li>All approval actions are logged for audit trails</li>
                 </ul>
               </div>
@@ -203,7 +234,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               {/* Info Box */}
               <div className="bg-green-50 border border-green-200 rounded-md p-4">
                 <p className="text-sm text-green-800">
-                  <strong>Approval:</strong> You are about to finalize this case with the selected outcome. This action cannot be easily reversed.
+                  <strong>Approval:</strong> You are about to finalize this case
+                  with the selected outcome. This action cannot be easily
+                  reversed.
                 </p>
               </div>
 
@@ -214,7 +247,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
                   <span className="font-medium">
-                    {recommendedOutcome ? formatOutcome(recommendedOutcome) : 'Not provided'}
+                    {recommendedOutcome
+                      ? formatOutcome(recommendedOutcome)
+                      : 'Not provided'}
                   </span>
                 </div>
               </div>
@@ -226,19 +261,29 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 <select
                   value={formData.finalOutcome}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    finalOutcome: e.target.value as ApproveCaseClosureDto['finalOutcome']
-                  }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      finalOutcome: e.target
+                        .value as ApproveCaseClosureDto['finalOutcome'],
+                    }))
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                   disabled={isSubmitting}
                 >
-                  <option value="STATUS_83_CLOSED_INCONCLUSIVE">83 - Closed Inconclusive</option>
-                  <option value="STATUS_81_CLOSED_REFUTED">81 - Closed Refuted</option>
-                  <option value="STATUS_82_CLOSED_CONFIRMED">82 - Closed Confirmed</option>
+                  <option value="STATUS_83_CLOSED_INCONCLUSIVE">
+                    83 - Closed Inconclusive
+                  </option>
+                  <option value="STATUS_81_CLOSED_REFUTED">
+                    81 - Closed Refuted
+                  </option>
+                  <option value="STATUS_82_CLOSED_CONFIRMED">
+                    82 - Closed Confirmed
+                  </option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  You may change the outcome from the investigator's recommendation
+                  You may change the outcome from the investigator's
+                  recommendation
                 </p>
               </div>
 
@@ -249,7 +294,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     Investigator's Final Notes
                   </label>
                   <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{finalNotes}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {finalNotes}
+                    </p>
                   </div>
                 </div>
               )}
@@ -261,7 +308,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     Investigator's Recommendations
                   </label>
                   <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{recommendations}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {recommendations}
+                    </p>
                   </div>
                 </div>
               )}
@@ -273,10 +322,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 <textarea
                   value={formData.supervisorComments || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    supervisorComments: e.target.value
-                  }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      supervisorComments: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                   placeholder="Provide any additional comments about your approval decision..."
@@ -336,7 +387,10 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               {/* Info Box */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Important:</strong> When rejecting a case closure, provide detailed feedback explaining what additional investigation or information is required. The case will be returned to the investigator for further work.
+                  <strong>Important:</strong> When rejecting a case closure,
+                  provide detailed feedback explaining what additional
+                  investigation or information is required. The case will be
+                  returned to the investigator for further work.
                 </p>
               </div>
 
@@ -347,10 +401,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 <textarea
                   value={formData.rejectionReason}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    rejectionReason: e.target.value
-                  }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      rejectionReason: e.target.value,
+                    }))
+                  }
                   rows={6}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                   placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required (minimum 15 characters)..."
@@ -365,7 +421,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   </p>
                 </div>
                 {errors.rejectionReason && (
-                  <p className="mt-1 text-sm text-red-600">{errors.rejectionReason}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.rejectionReason}
+                  </p>
                 )}
               </div>
 
@@ -396,7 +454,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || formData.rejectionReason.trim().length < 15}
+                  disabled={
+                    isSubmitting || formData.rejectionReason.trim().length < 15
+                  }
                   className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isSubmitting ? (

@@ -10,22 +10,21 @@ export const useDynamicRoute = () => {
     params,
     navigate,
     location,
-   
+
     goToCaseDetail: (caseId: string) => navigate(`/cases/${caseId}`),
     goToAlertDetail: (alertId: string) => navigate(`/alerts/${alertId}`),
     goToWorkQueueTask: (taskId: string) => navigate(`/work-queue/${taskId}`),
     goToReport: (reportType: string) => navigate(`/reports/${reportType}`),
     goBack: () => navigate(-1),
-    
+
     getCurrentRoute: () => ({
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
-      state: location.state
-    })
+      state: location.state,
+    }),
   };
 };
-
 
 export const useUrlParams = () => {
   const location = useLocation();
@@ -37,7 +36,7 @@ export const useUrlParams = () => {
 
   const updateParams = (newParams: Record<string, string | null>) => {
     const updatedParams = new URLSearchParams(searchParams);
-    
+
     Object.entries(newParams).forEach(([key, value]) => {
       if (value === null) {
         updatedParams.delete(key);
@@ -46,10 +45,13 @@ export const useUrlParams = () => {
       }
     });
 
-    navigate({
-      pathname: location.pathname,
-      search: updatedParams.toString()
-    }, { replace: true });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: updatedParams.toString(),
+      },
+      { replace: true },
+    );
   };
 
   const getParam = (key: string): string | null => {
@@ -70,8 +72,8 @@ export const useUrlParams = () => {
     setParam,
     removeParam,
     updateParams,
-   
-    getAllParams: () => Object.fromEntries(searchParams.entries())
+
+    getAllParams: () => Object.fromEntries(searchParams.entries()),
   };
 };
 
@@ -87,20 +89,22 @@ export const ROUTES = {
   WORK_QUEUE_TASK: '/work-queue/:taskId',
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
-  ADMIN: '/admin'
+  ADMIN: '/admin',
 } as const;
 
 /**
  * Helper function to build dynamic routes with parameters
  */
-export const buildRoute = (route: string, params: Record<string, string>): string => {
+export const buildRoute = (
+  route: string,
+  params: Record<string, string>,
+): string => {
   let builtRoute = route;
   Object.entries(params).forEach(([key, value]) => {
     builtRoute = builtRoute.replace(`:${key}`, value);
   });
   return builtRoute;
 };
-
 
 export const matchesRoute = (pathname: string, route: string): boolean => {
   const routePattern = route.replace(/:[^/]+/g, '[^/]+');
@@ -113,5 +117,5 @@ export default {
   useUrlParams,
   ROUTES,
   buildRoute,
-  matchesRoute
+  matchesRoute,
 };

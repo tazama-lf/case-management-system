@@ -17,15 +17,14 @@ export class CouchdbService implements OnModuleInit {
 
     // Construct URL with authentication
     const urlWithAuth = url.replace('://', `://${username}:${password}@`);
-    
+
     this.nanoInstance = nano(urlWithAuth);
   }
 
   async onModuleInit() {
     try {
-      
       const dbList = await this.nanoInstance.db.list();
-      
+
       if (!dbList.includes(this.dbName)) {
         this.logger.log(`Creating database: ${this.dbName}`);
         await this.nanoInstance.db.create(this.dbName);
@@ -39,12 +38,10 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   getDatabase(): nano.DocumentScope<any> {
     return this.db;
   }
 
-  
   async insertWithAttachment(
     docId: string,
     metadata: any,
@@ -53,17 +50,9 @@ export class CouchdbService implements OnModuleInit {
     contentType: string,
   ): Promise<nano.DocumentInsertResponse> {
     try {
-      
       const response = await this.db.insert(metadata, docId);
 
-      
-      await this.db.attachment.insert(
-        docId,
-        attachmentName,
-        attachmentData,
-        contentType,
-        { rev: response.rev },
-      );
+      await this.db.attachment.insert(docId, attachmentName, attachmentData, contentType, { rev: response.rev });
 
       this.logger.log(`Document inserted with attachment: ${docId}`);
       return response;
@@ -73,7 +62,6 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async getDocument(docId: string): Promise<any> {
     try {
       return await this.db.get(docId);
@@ -86,7 +74,6 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async getAttachment(docId: string, attachmentName: string): Promise<Buffer> {
     try {
       const attachment = await this.db.attachment.get(docId, attachmentName);
@@ -97,7 +84,6 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async listDocuments(params?: nano.DocumentListParams): Promise<nano.DocumentListResponse<any>> {
     try {
       return await this.db.list(params || {});
@@ -107,10 +93,8 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async queryByCaseId(caseId: string): Promise<any[]> {
     try {
-      
       const result = await this.db.find({
         selector: {
           caseId: caseId,
@@ -125,7 +109,6 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async deleteDocument(docId: string, rev: string): Promise<nano.DocumentDestroyResponse> {
     try {
       return await this.db.destroy(docId, rev);
@@ -135,7 +118,6 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  
   async createIndex(fields: string[]): Promise<any> {
     try {
       return await this.db.createIndex({

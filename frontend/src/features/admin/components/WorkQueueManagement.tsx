@@ -15,7 +15,7 @@ interface WorkQueueManagementProps {
 }
 
 const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
-  className = ''
+  className = '',
 }) => {
   const { workQueues, loading, error, refetch } = useWorkQueues();
   const {
@@ -23,7 +23,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
     setSearchTerm,
     statusFilter,
     setStatusFilter,
-    filteredQueues
+    filteredQueues,
   } = useWorkQueueFilter(workQueues);
 
   const handleEdit = async (queue: WorkQueue) => {
@@ -78,19 +78,16 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             onChange={setSearchTerm}
             placeholder="Search work queues..."
           />
-          <StatusFilter 
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
+          <StatusFilter value={statusFilter} onChange={setStatusFilter} />
         </div>
       </div>
-      
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <WorkQueuesTable 
+        <WorkQueuesTable
           queues={filteredQueues}
           roleColors={ROLE_COLORS}
           taskTypeColors={TASK_TYPE_COLORS}

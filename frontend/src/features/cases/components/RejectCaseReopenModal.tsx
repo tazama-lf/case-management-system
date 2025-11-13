@@ -12,7 +12,7 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
   open,
   onClose,
   caseId,
-  onReject
+  onReject,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reason, setReason] = useState('');
@@ -33,7 +33,9 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
       onClose();
       setReason('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reject case reopening');
+      setError(
+        err instanceof Error ? err.message : 'Failed to reject case reopening',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -44,7 +46,9 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
       <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Reject Case Reopening</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Reject Case Reopening
+            </h3>
             <p className="text-sm text-gray-500">Case ID: {caseId}</p>
           </div>
           <button
@@ -58,7 +62,9 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for rejection</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Reason for rejection
+            </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -67,12 +73,16 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
               placeholder="Provide a clear reason for rejecting the reopening (minimum 10 characters)"
             />
-            <p className="mt-1 text-xs text-gray-500">{reason.length}/10 characters minimum</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {reason.length}/10 characters minimum
+            </p>
           </div>
 
           {error && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
-              <p className="text-sm text-red-600">{error || 'An error occurred'}</p>
+              <p className="text-sm text-red-600">
+                {error || 'An error occurred'}
+              </p>
             </div>
           )}
 
@@ -110,5 +120,3 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
 };
 
 export default RejectCaseReopenModal;
-
-

@@ -103,8 +103,6 @@ Application settings are configured primarily via environment variables. See `.e
 
 ### Project setup
 
-
-
 ## **_3. Configuration_**
 
 Application settings are configured primarily via environment variables. See `.env.template` for required values. Key areas:
@@ -144,7 +142,6 @@ $ npm install
 ```
 
 ### Compile and run the project
-
 
 ```bash
 # development

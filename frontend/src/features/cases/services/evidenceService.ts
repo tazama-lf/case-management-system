@@ -19,31 +19,33 @@ export class EvidenceService {
   /**
    * Upload evidence file with metadata
    */
-  async uploadEvidence(data: UploadEvidenceDto): Promise<UploadEvidenceResponse> {
+  async uploadEvidence(
+    data: UploadEvidenceDto,
+  ): Promise<UploadEvidenceResponse> {
     try {
       const formData = new FormData();
       formData.append('file', data.file);
       formData.append('case_id', data.case_id);
       formData.append('tags', JSON.stringify(data.tags));
       formData.append('evidence_type', data.evidence_type);
-      
+
       if (data.description) {
         formData.append('description', data.description);
       }
-      
+
       if (data.access_level) {
         formData.append('access_level', data.access_level);
       }
-      
+
       if (data.metadata) {
         formData.append('metadata', JSON.stringify(data.metadata));
       }
 
       const response = await apiClient.upload<UploadEvidenceResponse>(
         this.baseUrl,
-        formData
+        formData,
       );
-      
+
       return response;
     } catch (error) {
       throw this.handleError(error, 'upload evidence');
@@ -57,7 +59,7 @@ export class EvidenceService {
     caseId: string,
     filters?: EvidenceSearchFilters,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<EvidenceListResponse> {
     try {
       const params = new URLSearchParams();
@@ -101,7 +103,9 @@ export class EvidenceService {
    */
   async getEvidenceById(evidenceId: string): Promise<Evidence> {
     try {
-      const response = await apiClient.get<Evidence>(`${this.baseUrl}/${evidenceId}`);
+      const response = await apiClient.get<Evidence>(
+        `${this.baseUrl}/${evidenceId}`,
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'get evidence details');
@@ -111,11 +115,13 @@ export class EvidenceService {
   /**
    * Verify evidence integrity using SHA-256 hash
    */
-  async verifyEvidence(data: VerifyEvidenceDto): Promise<VerifyEvidenceResponse> {
+  async verifyEvidence(
+    data: VerifyEvidenceDto,
+  ): Promise<VerifyEvidenceResponse> {
     try {
       const response = await apiClient.post<VerifyEvidenceResponse>(
         `${this.baseUrl}/${data.evidence_id}/verify`,
-        { expected_hash: data.expected_hash }
+        { expected_hash: data.expected_hash },
       );
       return response;
     } catch (error) {
@@ -126,10 +132,12 @@ export class EvidenceService {
   /**
    * Download evidence file
    */
-  async downloadEvidence(evidenceId: string): Promise<DownloadEvidenceResponse> {
+  async downloadEvidence(
+    evidenceId: string,
+  ): Promise<DownloadEvidenceResponse> {
     try {
       const response = await apiClient.get<DownloadEvidenceResponse>(
-        `${this.baseUrl}/${evidenceId}/download`
+        `${this.baseUrl}/${evidenceId}/download`,
       );
       return response;
     } catch (error) {
@@ -140,10 +148,13 @@ export class EvidenceService {
   /**
    * Delete evidence (soft delete with audit trail)
    */
-  async deleteEvidence(evidenceId: string, reason?: string): Promise<DeleteEvidenceResponse> {
+  async deleteEvidence(
+    evidenceId: string,
+    reason?: string,
+  ): Promise<DeleteEvidenceResponse> {
     try {
       const response = await apiClient.delete<DeleteEvidenceResponse>(
-        `${this.baseUrl}/${evidenceId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`
+        `${this.baseUrl}/${evidenceId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`,
       );
       return response;
     } catch (error) {
@@ -156,12 +167,14 @@ export class EvidenceService {
    */
   async updateEvidenceMetadata(
     evidenceId: string,
-    updates: Partial<Pick<Evidence, 'tags' | 'description' | 'evidence_type' | 'access_level'>>
+    updates: Partial<
+      Pick<Evidence, 'tags' | 'description' | 'evidence_type' | 'access_level'>
+    >,
   ): Promise<Evidence> {
     try {
       const response = await apiClient.patch<Evidence>(
         `${this.baseUrl}/${evidenceId}`,
-        updates
+        updates,
       );
       return response;
     } catch (error) {
@@ -175,7 +188,7 @@ export class EvidenceService {
   async getEvidenceAuditLog(evidenceId: string): Promise<EvidenceAuditLog[]> {
     try {
       const response = await apiClient.get<{ logs: EvidenceAuditLog[] }>(
-        `${this.baseUrl}/${evidenceId}/audit-log`
+        `${this.baseUrl}/${evidenceId}/audit-log`,
       );
       return response.logs;
     } catch (error) {
@@ -189,7 +202,7 @@ export class EvidenceService {
   async getCaseEvidenceStatistics(caseId: string): Promise<EvidenceStatistics> {
     try {
       const response = await apiClient.get<EvidenceStatistics>(
-        `${this.baseUrl}/case/${caseId}/statistics`
+        `${this.baseUrl}/case/${caseId}/statistics`,
       );
       return response;
     } catch (error) {
@@ -203,7 +216,7 @@ export class EvidenceService {
   async searchEvidence(
     filters: EvidenceSearchFilters,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<EvidenceListResponse> {
     try {
       const params = new URLSearchParams();
@@ -250,7 +263,9 @@ export class EvidenceService {
       const buffer = await file.arrayBuffer();
       const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
       return hashHex;
     } catch (error) {
       console.error('Error calculating file hash:', error);
@@ -261,13 +276,16 @@ export class EvidenceService {
   /**
    * Validate file before upload
    */
-  validateFile(file: File, maxSizeMB: number = 50): { valid: boolean; error?: string } {
+  validateFile(
+    file: File,
+    maxSizeMB: number = 50,
+  ): { valid: boolean; error?: string } {
     // Check file size
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
         valid: false,
-        error: `File size exceeds ${maxSizeMB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+        error: `File size exceeds ${maxSizeMB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
       };
     }
 
@@ -291,7 +309,7 @@ export class EvidenceService {
     if (!allowedTypes.includes(file.type) && file.type !== '') {
       return {
         valid: false,
-        error: `File type not allowed: ${file.type}. Please upload documents, images, or common file formats.`
+        error: `File type not allowed: ${file.type}. Please upload documents, images, or common file formats.`,
       };
     }
 
@@ -306,7 +324,7 @@ export class EvidenceService {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 
   private handleError(error: unknown, operation: string): Error {
@@ -316,7 +334,10 @@ export class EvidenceService {
       return error;
     }
 
-    const err = error as { response?: { data?: { message?: string } }; message?: string };
+    const err = error as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
     if (err?.response?.data) {
       return new Error(err.response.data.message || `Failed to ${operation}`);
     }

@@ -31,17 +31,17 @@ export const mockCaseData: MockCaseData = {
     creationDate: '2024-01-15',
     assignmentDate: '2024-01-16',
     status: 'Investigation',
-    priority: 'High'
+    priority: 'High',
   },
   debtorInformation: {
     name: 'John Doe',
     accountId: 'ACC-12345',
-    fsp: 'Bank ABC'
+    fsp: 'Bank ABC',
   },
   creditorInformation: {
     name: 'Jane Smith',
     accountId: 'ACC-67890',
-    fsp: 'Bank XYZ'
+    fsp: 'Bank XYZ',
   },
   blockAllowListStatus: 'Not Listed',
   recentActivity: [
@@ -49,13 +49,13 @@ export const mockCaseData: MockCaseData = {
       id: '1',
       description: 'Case assigned to investigator',
       timestamp: '2024-01-16 09:00:00',
-      user: 'System'
+      user: 'System',
     },
     {
       id: '2',
       description: 'Investigation started',
       timestamp: '2024-01-16 10:30:00',
-      user: 'John Investigator'
-    }
-  ]
+      user: 'John Investigator',
+    },
+  ],
 };

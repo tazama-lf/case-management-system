@@ -1,5 +1,8 @@
 import React from 'react';
-import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline';
 import triageService from '@/features/alerts/services/triageservice';
 import userService from '@/features/cases/services/userService';
 import type { Alert } from '@/features/alerts/types/triage.types';
@@ -20,12 +23,15 @@ interface CreateCaseModalProps {
     assignee?: string;
     draft?: boolean;
   }) => void;
-  onUpdate?: (caseId: string, payload: {
-    priority: Priority;
-    priorityScore: number;
-    alertType: AlertType;
-    assignee?: string;
-  }) => void;
+  onUpdate?: (
+    caseId: string,
+    payload: {
+      priority: Priority;
+      priorityScore: number;
+      alertType: AlertType;
+      assignee?: string;
+    },
+  ) => void;
   loading?: boolean;
   error?: string;
   mode?: 'create' | 'edit';
@@ -48,9 +54,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   error,
   mode = 'create',
   existingCaseId,
-  initial
+  initial,
 }) => {
-
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
@@ -62,7 +67,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
-  const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = React.useState<
+    Record<string, string>
+  >({});
   const [users, setUsers] = React.useState<UserOption[]>([]);
   const [loadingUsers, setLoadingUsers] = React.useState(false);
 
@@ -112,7 +119,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     loadUsers();
   }, [open]);
 
-
   React.useEffect(() => {
     if (!open) return;
 
@@ -125,8 +131,13 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   }, [open, initial]);
 
   React.useEffect(() => {
-    if (initial?.alertId && availableAlerts.length > 0 && !selectedAlert && open) {
-      const alert = availableAlerts.find(a => a.alert_id === initial.alertId);
+    if (
+      initial?.alertId &&
+      availableAlerts.length > 0 &&
+      !selectedAlert &&
+      open
+    ) {
+      const alert = availableAlerts.find((a) => a.alert_id === initial.alertId);
       if (alert) {
         setSelectedAlert(alert);
         setAlertSearchTerm(alert.alert_id);
@@ -179,7 +190,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-
   if (!open) return null;
 
   const validateForm = (): Record<string, string> => {
@@ -201,9 +211,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   };
 
   const canSubmit = Boolean(
-    priority &&
-    alertType &&
-    (mode === 'edit' || selectedAlert)
+    priority && alertType && (mode === 'edit' || selectedAlert),
   );
 
   const submit = (draft = false) => {
@@ -264,9 +272,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
                     {error && <p>{error || 'An error occurred'}</p>}
-                    {Object.entries(validationErrors).map(([field, message]) => (
-                      <p key={field}>• {message}</p>
-                    ))}
+                    {Object.entries(validationErrors).map(
+                      ([field, message]) => (
+                        <p key={field}>• {message}</p>
+                      ),
+                    )}
                   </div>
                 </div>
               </div>
@@ -278,7 +288,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             <>
               {}
               <div className="space-y-2">
-                <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="alert-type"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Alert Type *
                 </label>
                 <select
@@ -297,7 +310,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   <option value="NONE">None</option>
                 </select>
                 {validationErrors.alertType && (
-                  <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {validationErrors.alertType}
+                  </p>
                 )}
               </div>
 
@@ -305,7 +320,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority Score *
-                  <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    (Auto-calculates Priority)
+                  </span>
                 </label>
                 <div className="space-y-2">
                   <input
@@ -337,18 +354,25 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       max={1}
                       step={0.01}
                     />
-                    <span className={`text-sm font-medium px-2 py-1 rounded ${
-                      priority === 'BREACH' ? 'text-red-600 bg-red-50' :
-                      priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
-                      priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
-                      'text-blue-600 bg-blue-50'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium px-2 py-1 rounded ${
+                        priority === 'BREACH'
+                          ? 'text-red-600 bg-red-50'
+                          : priority === 'CRITICAL'
+                            ? 'text-orange-600 bg-orange-50'
+                            : priority === 'URGENT'
+                              ? 'text-yellow-600 bg-yellow-50'
+                              : 'text-blue-600 bg-blue-50'
+                      }`}
+                    >
                       → {priority}
                     </span>
                   </div>
                 </div>
                 {validationErrors.priorityScore && (
-                  <p className="text-sm text-red-600 mt-1">{validationErrors.priorityScore}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {validationErrors.priorityScore}
+                  </p>
                 )}
               </div>
 
@@ -356,21 +380,31 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority
-                  <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    (Auto-calculated)
+                  </span>
                 </label>
-                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-                  priority === 'BREACH' ? 'text-red-600 border-red-200' :
-                  priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
-                  priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
-                  'text-blue-600 border-blue-200'
-                }`}>
+                <div
+                  className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                    priority === 'BREACH'
+                      ? 'text-red-600 border-red-200'
+                      : priority === 'CRITICAL'
+                        ? 'text-orange-600 border-orange-200'
+                        : priority === 'URGENT'
+                          ? 'text-yellow-600 border-yellow-200'
+                          : 'text-blue-600 border-blue-200'
+                  }`}
+                >
                   {priority}
                 </div>
               </div>
 
               {}
               <div className="space-y-2">
-                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="assignee"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Assignee
                 </label>
                 <select
@@ -380,8 +414,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   disabled={loadingUsers}
                 >
-                  <option value="">{loadingUsers ? 'Loading users...' : 'Select an assignee (optional)'}</option>
-                  {users.map(user => (
+                  <option value="">
+                    {loadingUsers
+                      ? 'Loading users...'
+                      : 'Select an assignee (optional)'}
+                  </option>
+                  {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name} {user.role ? `(${user.role})` : ''}
                     </option>
@@ -395,7 +433,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               <LinkExistingAlertsTab
                 selectedAlerts={selectedAlert ? [selectedAlert] : []}
                 onAlertsChange={(alerts) => {
-                  setSelectedAlert(alerts.length > 0 ? alerts[alerts.length - 1] : null);
+                  setSelectedAlert(
+                    alerts.length > 0 ? alerts[alerts.length - 1] : null,
+                  );
                 }}
                 isVisible={true}
                 onAlertsSelected={(_hasAlerts) => {}}
@@ -419,7 +459,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
               {/* Alert Type */}
               <div className="space-y-2">
-                <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="alert-type"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Alert Type *
                 </label>
                 <select
@@ -438,7 +481,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   <option value="NONE">None</option>
                 </select>
                 {validationErrors.alertType && (
-                  <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {validationErrors.alertType}
+                  </p>
                 )}
               </div>
 
@@ -446,7 +491,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority Score *
-                  <span className="text-xs text-gray-500 ml-1">(Auto-calculates Priority)</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    (Auto-calculates Priority)
+                  </span>
                 </label>
                 <div className="space-y-2">
                   <input
@@ -478,18 +525,25 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       max={1}
                       step={0.01}
                     />
-                    <span className={`text-sm font-medium px-2 py-1 rounded ${
-                      priority === 'BREACH' ? 'text-red-600 bg-red-50' :
-                      priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
-                      priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
-                      'text-blue-600 bg-blue-50'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium px-2 py-1 rounded ${
+                        priority === 'BREACH'
+                          ? 'text-red-600 bg-red-50'
+                          : priority === 'CRITICAL'
+                            ? 'text-orange-600 bg-orange-50'
+                            : priority === 'URGENT'
+                              ? 'text-yellow-600 bg-yellow-50'
+                              : 'text-blue-600 bg-blue-50'
+                      }`}
+                    >
                       → {priority}
                     </span>
                   </div>
                 </div>
                 {validationErrors.priorityScore && (
-                  <p className="text-sm text-red-600 mt-1">{validationErrors.priorityScore}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {validationErrors.priorityScore}
+                  </p>
                 )}
               </div>
 
@@ -497,19 +551,24 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority
-                  <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    (Auto-calculated)
+                  </span>
                 </label>
-                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-                  priority === 'BREACH' ? 'text-red-600 border-red-200' :
-                  priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
-                  priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
-                  'text-blue-600 border-blue-200'
-                }`}>
+                <div
+                  className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                    priority === 'BREACH'
+                      ? 'text-red-600 border-red-200'
+                      : priority === 'CRITICAL'
+                        ? 'text-orange-600 border-orange-200'
+                        : priority === 'URGENT'
+                          ? 'text-yellow-600 border-yellow-200'
+                          : 'text-blue-600 border-blue-200'
+                  }`}
+                >
                   {priority}
                 </div>
               </div>
-
-              
             </>
           )}
         </div>
@@ -539,7 +598,13 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               disabled={loading || !canSubmit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (mode === 'edit' ? 'Updating...' : 'Creating...') : (mode === 'edit' ? 'Complete Case' : 'Create Case')}
+              {loading
+                ? mode === 'edit'
+                  ? 'Updating...'
+                  : 'Creating...'
+                : mode === 'edit'
+                  ? 'Complete Case'
+                  : 'Create Case'}
             </button>
           </div>
         </div>

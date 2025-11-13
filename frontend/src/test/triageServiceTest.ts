@@ -7,12 +7,7 @@ export const testTriageService = () => {
   const hasUpdateAlert = typeof triageService.updateAlert === 'function';
   const hasCloseAlert = typeof triageService.closeAlert === 'function';
 
-  return (
-    hasGetAlerts &&
-    hasGetAlertById &&
-    hasUpdateAlert &&
-  hasCloseAlert
-  );
+  return hasGetAlerts && hasGetAlertById && hasUpdateAlert && hasCloseAlert;
 };
 
 export const exampleUsage = {
@@ -45,5 +40,4 @@ export const exampleUsage = {
   async closeAlert(id: string) {
     return triageService.closeAlert(id, 'CLOSED', 'Resolved - false positive');
   },
-
 };
