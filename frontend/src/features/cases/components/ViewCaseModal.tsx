@@ -9,7 +9,7 @@ import TaskLogTab from './view/TaskLogTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes';
+type ViewTabKey = 'details' | 'tasks';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -65,10 +65,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row, onRef
             {(
               [
                 { key: 'details', label: 'Case Details' },
-                { key: 'evidence', label: 'Evidence & Documents' },
-                { key: 'linked', label: 'Linked Items' },
                 { key: 'tasks', label: 'Task Log' },
-                { key: 'notes', label: 'Investigation Notes' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -91,10 +88,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row, onRef
           ) : (
             <>
               {tab === 'details' && <CaseDetailsTab row={row} />}
-              {tab === 'evidence' && <EvidenceDocumentsTab caseId={row.id} />}
-              {tab === 'linked' && <LinkedItemsTab />}
               {tab === 'tasks' && <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />}
-              {tab === 'notes' && <InvestigationNotesTab />}
             </>
           )}
         </div>

@@ -6,7 +6,6 @@ import type { CaseRow } from './casesTable.utils';
 import CollaboratePanel from './view/CollaboratePanel';
 import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
-import TaskLogTab from './view/TaskLogTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 
@@ -66,10 +65,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row,
           <div className="flex items-center gap-2 px-6 pt-3">
             {(
               [
-                { key: 'details', label: 'Case Details' },
+                { key: 'details', label: 'Task Details' },
                 { key: 'evidence', label: 'Evidence & Documents' },
                 { key: 'linked', label: 'Linked Items' },
-                { key: 'tasks', label: 'Task Log' },
                 { key: 'notes', label: 'Investigation Notes' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
@@ -95,7 +93,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ open, onClose, row,
               {tab === 'details' && <CaseDetailsTab row={row} />}
               {tab === 'evidence' && <EvidenceDocumentsTab />}
               {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'tasks' && <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />}
               {tab === 'notes' && <InvestigationNotesTab />}
             </>
           )}

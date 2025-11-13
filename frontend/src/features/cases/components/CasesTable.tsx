@@ -50,7 +50,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto px-4 sm:px-6">
         <table className="w-full divide-y divide-gray-200 border-collapse">
         <thead className="bg-gray-50">
           <tr>

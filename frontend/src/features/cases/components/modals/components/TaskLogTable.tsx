@@ -74,7 +74,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
         actions.push(
           <button
             key="complete"
-            onClick={() => onComplete(task)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onComplete(task);
+            }}
             className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             title="Mark complete"
           >
@@ -90,7 +93,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
       actions.push(
         <button
           key="assign"
-          onClick={() => onAssign(task)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAssign(task);
+          }}
           className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           title="Assign task"
         >
@@ -104,7 +110,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
       actions.push(
         <button
           key="reassign"
-          onClick={() => onReassign(task)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onReassign(task);
+          }}
           className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
           title="Reassign task"
         >
@@ -118,7 +127,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
       actions.push(
         <button
           key="unassign"
-          onClick={() => onUnassign(task)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onUnassign(task);
+          }}
           className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           title="Unassign task"
         >
@@ -132,7 +144,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
       actions.push(
         <button
           key="update-status"
-          onClick={() => onUpdateStatus(task)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onUpdateStatus(task);
+          }}
           className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           title="Update status"
         >
@@ -143,6 +158,18 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     }
 
     return actions;
+  };
+
+  const handleRowKeyDown = (
+    event: React.KeyboardEvent<HTMLTableRowElement>,
+    task: UnifiedWorkQueueTask,
+  ) => {
+    if (!onTaskClick) return;
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onTaskClick(task);
+    }
   };
 
   return (
@@ -170,28 +197,37 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks.map((task, index) => (
-              <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
+              <tr
+                key={task.id || `task-${index}`}
+                className={`hover:bg-gray-50 ${onTaskClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
+                onClick={() => onTaskClick?.(task)}
+                onKeyDown={(event) => handleRowKeyDown(event, task)}
+                role={onTaskClick ? 'button' : undefined}
+                tabIndex={onTaskClick ? 0 : undefined}
+              >
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id || 'No ID'}>
+                    <div
+                      className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]"
+                      title={task.id || 'No ID'}
+                    >
                       {task.id || 'No ID'}
                     </div>
-                    
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  {task.name && (
-                    <button
-                      onClick={() => onTaskClick?.(task)}
-                      className="text-xs text-blue-600 break-words mt-1 hover:underline focus:outline-none"
-                      title={`Click to view details for ${task.name}`}
-                    >
-                      {task.name}
-                    </button>
-                  )}
+                  <div
+                    className={`text-xs break-words mt-1 ${onTaskClick ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
+                    title={task.name || 'View task details'}
+                  >
+                    {task.name || 'Unnamed Task'}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId || ''}>
+                  <div
+                    className="text-xs text-gray-900 font-mono truncate max-w-[10rem]"
+                    title={task.caseId || ''}
+                  >
                     {task.caseId || ''}
                   </div>
                 </td>
@@ -212,7 +248,12 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900">
                     {task.assignee ? (
-                      <span className="text-blue-600 break-words">{task.assigneeName || task.assignee}</span>
+                      <span
+                        className="text-blue-600 truncate max-w-[10rem] inline-block align-middle"
+                        title={task.assigneeName || task.assignee}
+                      >
+                        {task.assigneeName || task.assignee}
+                      </span>
                     ) : (
                       <span className="text-gray-400">Unassigned</span>
                     )}

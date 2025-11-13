@@ -337,9 +337,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   };
 
   const handleViewTaskDetails = (task: UnifiedWorkQueueTask) => {
-  setSelectedTask(task);
-  setTaskDetailsModalOpen(true);
-};
+    setSelectedTask(task);
+    setTaskDetailsModalOpen(true);
+  };
 
 
   if (loading) {
