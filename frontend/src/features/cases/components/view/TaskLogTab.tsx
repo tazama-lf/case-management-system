@@ -1,16 +1,21 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
-import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
+//import WorkQueueTable from '../../../workqueue/components/WorkQueueTable';
+import TaskLogTable from '../modals/components/TaskLogTable';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
+import TaskDetailsModal from '../TasksDetailsModal';
+import type { CaseRow } from '../casesTable.utils';
 
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
 const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal'));
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
+
+
 
 interface TaskLogTabProps {
   caseId: string;
@@ -24,7 +29,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
+  const [taskDetailsModalOpen, setTaskDetailsModalOpen] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
@@ -331,6 +336,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
     }
   };
 
+  const handleViewTaskDetails = (task: UnifiedWorkQueueTask) => {
+  setSelectedTask(task);
+  setTaskDetailsModalOpen(true);
+};
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -382,13 +393,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
           </div>
         </div>
       ) : (
-        <WorkQueueTable
+        <TaskLogTable
           tasks={transformedTasks}
           onAssign={handleAssign}
           onReassign={handleReassign}
           onUnassign={handleUnassign}
           onUpdateStatus={handleUpdateStatus}
           onComplete={handleCompleteTask}
+          onTaskClick={handleViewTaskDetails}
         />
       )}
 
@@ -462,6 +474,30 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
           />
         </Suspense>
       )}
+
+      {taskDetailsModalOpen && selectedTask && (
+  <Suspense fallback={<div>Loading...</div>}>
+    <TaskDetailsModal
+      open={taskDetailsModalOpen}
+      onClose={() => {
+        setTaskDetailsModalOpen(false);
+        setSelectedTask(null);
+      }}
+      row={{
+        id: selectedTask.caseId,
+        caseName: selectedTask.name || 'Untitled Task',
+        status: selectedTask.status || 'Unknown',
+        assignee: selectedTask.assigneeName || selectedTask.assignee || 'Unassigned',
+        priority: selectedTask.priority || 'Normal',
+        dueDate: selectedTask.dueDate || null,
+        description: selectedTask.description || '',
+      } as unknown as CaseRow}
+      onRefreshCases={onRefreshCases}
+    />
+  </Suspense>
+)}
+
+
     </div>
   );
 };
