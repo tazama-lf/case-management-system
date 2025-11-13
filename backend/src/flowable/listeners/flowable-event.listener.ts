@@ -87,18 +87,18 @@ export class FlowableEventListener {
         FlowableEventListener.name,
       );
 
-      setTimeout(async () => {
-        try {
-          await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id);
-          this.logger.log(`[Flowable-CaseCreated] BPMN task sync completed for case ${event.caseId}`, FlowableEventListener.name);
-        } catch (syncError) {
-          this.logger.error(
-            `[Flowable-CaseCreated] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
-            syncError.stack,
-            FlowableEventListener.name,
-          );
-        }
-      }, 2000);
+      // setTimeout(async () => {
+      // try {
+      //   await this.syncBpmnCreatedTasksForCase(event.caseId, processInstance.id);
+      //   this.logger.log(`[Flowable-CaseCreated] BPMN task sync completed for case ${event.caseId}`, FlowableEventListener.name);
+      // } catch (syncError) {
+      //   this.logger.error(
+      //     `[Flowable-CaseCreated] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
+      //     syncError.stack,
+      //     FlowableEventListener.name,
+      //   );
+      // }
+      // }, 2000);
     } catch (error) {
       this.logger.error(
         `[Flowable-CaseCreated] Failed to start process for case ${event.caseId}: ${error.message}`,
