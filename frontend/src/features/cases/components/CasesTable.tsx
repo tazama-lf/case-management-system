@@ -57,97 +57,99 @@ const CasesTable: React.FC<CasesTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto px-4 sm:px-6">
-        <table className="w-full divide-y divide-gray-200 border-collapse">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th
                 scope="col"
-                className="w-32 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 <span className="hidden sm:inline">Case ID</span>
                 <span className="sm:hidden">ID</span>
               </th>
               <th
                 scope="col"
-                className="w-24 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 <span className="hidden lg:inline">Case Type</span>
                 <span className="lg:hidden">Type</span>
               </th>
               <th
                 scope="col"
-                className="w-20 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Status
               </th>
               <th
                 scope="col"
-                className="w-16 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 <span className="hidden sm:inline">Score</span>
                 <span className="sm:hidden">%</span>
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-24 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Created
               </th>
               <th
                 scope="col"
-                className="w-32 px-0.5 py-1 text-right text-xs font-semibold text-gray-700 whitespace-nowrap"
+                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="bg-white divide-y divide-gray-200">
             {rows.map((c) => (
-              <tr key={c.id} className="hover:bg-gray-50/50">
-                <td className="w-32 px-0.5 py-1 whitespace-nowrap">
-                  <div className="text-xs text-gray-900 font-mono" title={c.id}>
+              <tr key={c.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 font-mono" title={c.id}>
                     {c.id}
                   </div>
                 </td>
-                <td className="w-24 px-0.5 py-1">
-                  <div className="text-xs text-gray-900" title={c.type}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900" title={c.type}>
                     {c.type || 'N/A'}
                   </div>
                 </td>
-                <td className="w-20 px-0.5 py-1">
+                <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ring-1 ring-gray-200 whitespace-nowrap ${c.statusColor}`}
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${c.statusColor}`}
                   >
                     {c.status}
                   </span>
                 </td>
-                <td className="w-16 px-0.5 py-1">
+                <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`inline-flex px-1.5 py-0.5 text-xs font-bold rounded-full whitespace-nowrap ${getScoreColor(c.score)}`}
+                    className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${getScoreColor(c.score)}`}
                   >
                     {c.score}%
                   </span>
                 </td>
-                <td className="hidden md:table-cell w-24 px-0.5 py-1 text-xs text-gray-700 whitespace-nowrap">
+                <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   <div title={c.createdOn}>{c.createdOn}</div>
                 </td>
-                <td className="w-32 px-0.5 py-1">
-                  <div className="flex justify-end gap-0.5 flex-wrap">
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-2 flex-wrap">
                     <button
                       onClick={() => onView(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-blue-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 whitespace-nowrap"
+                      className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                      title="View case details"
                     >
-                      <EyeIcon className="h-2.5 w-2.5" />
+                      <EyeIcon className="h-4 w-4" />
                       <span className="hidden sm:inline">View</span>
                     </button>
 
                     {c.action === 'Complete' && (
                       <button
                         onClick={() => onComplete(c)}
-                        className="inline-flex items-center gap-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
+                        className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap"
+                        title="Complete case"
                       >
-                        <CheckIcon className="h-2.5 w-2.5" />
+                        <CheckIcon className="h-4 w-4" />
                         <span className="hidden sm:inline">Complete</span>
                       </button>
                     )}
@@ -158,9 +160,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         c.status.includes('IN PROGRESS')) && (
                         <button
                           onClick={() => onCloseCase(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Close case"
                         >
-                          <XCircleIcon className="h-2.5 w-2.5" />
+                          <XCircleIcon className="h-4 w-4" />
                           <span className="hidden lg:inline">Close Case</span>
                           <span className="lg:hidden">Close</span>
                         </button>
@@ -173,9 +176,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         c.status.includes('PENDING FINAL APPROVAL')) && (
                         <button
                           onClick={() => onApproveCase(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Review case closure"
                         >
-                          <CheckIcon className="h-2.5 w-2.5" />
+                          <CheckIcon className="h-4 w-4" />
                           <span className="hidden xl:inline">
                             Review Case Closure
                           </span>
@@ -210,9 +214,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         )) && (
                         <button
                           onClick={() => onRejectCaseCreation(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Reject case creation"
                         >
-                          <XCircleIcon className="h-2.5 w-2.5" />
+                          <XCircleIcon className="h-4 w-4" />
                           <span className="hidden sm:inline">Reject</span>
                         </button>
                       )}
@@ -227,9 +232,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         )) && (
                         <button
                           onClick={() => onApproveCaseReopen(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Approve case reopening"
                         >
-                          <CheckIcon className="h-2.5 w-2.5" />
+                          <CheckIcon className="h-4 w-4" />
                           <span className="hidden lg:inline">
                             Approve Reopen
                           </span>
@@ -247,9 +253,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         )) && (
                         <button
                           onClick={() => onRejectCaseReopen(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Reject case reopening"
                         >
-                          <XCircleIcon className="h-2.5 w-2.5" />
+                          <XCircleIcon className="h-4 w-4" />
                           <span className="hidden lg:inline">
                             Reject Reopen
                           </span>
@@ -265,9 +272,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         c.status.includes('CLOSED')) && (
                         <button
                           onClick={() => onReopenCase(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Reopen case"
                         >
-                          <PlayIcon className="h-2.5 w-2.5" />
+                          <PlayIcon className="h-4 w-4" />
                           <span className="hidden sm:inline">Reopen</span>
                         </button>
                       )}
@@ -276,9 +284,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     {onAbandonCase && c.status === 'STATUS_00_DRAFT' && (
                       <button
                         onClick={() => onAbandonCase(c)}
-                        className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
+                        className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap"
+                        title="Abandon case"
                       >
-                        <TrashIcon className="h-2.5 w-2.5" />
+                        <TrashIcon className="h-4 w-4" />
                         <span className="hidden sm:inline">Abandon</span>
                       </button>
                     )}
@@ -289,9 +298,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         c.status.includes('IN PROGRESS')) && (
                         <button
                           onClick={() => onSuspendCase(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-yellow-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-1 focus:ring-yellow-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-yellow-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Suspend case"
                         >
-                          <PauseIcon className="h-2.5 w-2.5" />
+                          <PauseIcon className="h-4 w-4" />
                           <span className="hidden sm:inline">Suspend</span>
                         </button>
                       )}
@@ -302,9 +312,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                         c.status.includes('SUSPENDED')) && (
                         <button
                           onClick={() => onResumeCase(c)}
-                          className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
+                          className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap"
+                          title="Resume case"
                         >
-                          <PlayIcon className="h-2.5 w-2.5" />
+                          <PlayIcon className="h-4 w-4" />
                           <span className="hidden sm:inline">Resume</span>
                         </button>
                       )}
