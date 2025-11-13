@@ -2055,12 +2055,7 @@ export class CaseService {
 
         this.eventEmitter.emit(
           'case.status.changed',
-          new CaseStatusChangedEvent(
-            caseId,
-            existingCase.status,
-            CaseStatus.STATUS_10_ASSIGNED,
-            `Case reopening requested: ${reason}`,
-          ),
+          new CaseStatusChangedEvent(caseId, existingCase.status, CaseStatus.STATUS_10_ASSIGNED, `Case reopening requested: ${reason}`),
         );
 
         await this.auditLogService.logAction({

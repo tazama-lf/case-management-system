@@ -23,5 +23,4 @@ export class CasePriorityUtil {
       return Priority.NEW;
     }
   }
-
 }

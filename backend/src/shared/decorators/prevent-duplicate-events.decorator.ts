@@ -14,16 +14,16 @@ export function PreventDuplicateEvents(debounceMs: number = DEFAULT_DEBOUNCE_MS)
       const now = Date.now();
       const lastEmitted = eventHistory.get(eventKey);
 
-      if (lastEmitted && (now - lastEmitted) < debounceMs) {
+      if (lastEmitted && now - lastEmitted < debounceMs) {
         // Skip duplicate event within debounce window
         return;
       }
 
       eventHistory.set(eventKey, now);
-      
+
       // Clean up old entries periodically
       if (eventHistory.size > 1000) {
-        const cutoff = now - (debounceMs * 10);
+        const cutoff = now - debounceMs * 10;
         for (const [key, timestamp] of eventHistory.entries()) {
           if (timestamp < cutoff) {
             eventHistory.delete(key);
@@ -59,7 +59,7 @@ export class EventDeduplicator {
     const now = Date.now();
     const lastEmitted = this.eventCache.get(eventKey);
 
-    if (lastEmitted && (now - lastEmitted) < ttlMs) {
+    if (lastEmitted && now - lastEmitted < ttlMs) {
       return false; // Duplicate within TTL window
     }
 

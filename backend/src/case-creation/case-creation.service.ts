@@ -11,10 +11,10 @@ import { CaseStatus, CaseType, Priority } from '@prisma/client';
 @Injectable()
 export class CaseCreationService {
   constructor(
-      private readonly logger: LoggerService,
-      private readonly auditLogService: AuditLogService,
-      private readonly prismaService: PrismaService,
-      private readonly eventEmitter: EventEmitter2,
+    private readonly logger: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly prismaService: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string) {
@@ -38,21 +38,21 @@ export class CaseCreationService {
       const autocloseEligible = false; // Set based on your business logic
 
       this.logger.log(
-          `[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event with creatorRole: ${creatorRole || 'SYSTEM'}`,
-          CaseCreationService.name
+        `[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event with creatorRole: ${creatorRole || 'SYSTEM'}`,
+        CaseCreationService.name,
       );
 
       this.eventEmitter.emit(
-          'case.created',
-          new CaseCreatedEvent(
-              createdCase.case_id,
-              createdCase.tenant_id,
-              createdCase.case_creator_user_id,
-              createdCase.status,
-              createCaseDTO.caseCreationType,
-              autocloseEligible,
-              creatorRole || 'SYSTEM', // Pass the actual creator role
-          ),
+        'case.created',
+        new CaseCreatedEvent(
+          createdCase.case_id,
+          createdCase.tenant_id,
+          createdCase.case_creator_user_id,
+          createdCase.status,
+          createCaseDTO.caseCreationType,
+          autocloseEligible,
+          creatorRole || 'SYSTEM', // Pass the actual creator role
+        ),
       );
 
       await this.auditLogService.logAction({
@@ -73,10 +73,10 @@ export class CaseCreationService {
   }
 
   async updateCaseStatus(
-      caseId: string,
-      status: CaseStatus,
-      userId: string,
-      additionalUpdates?: { priority?: Priority; caseType?: CaseType },
+    caseId: string,
+    status: CaseStatus,
+    userId: string,
+    additionalUpdates?: { priority?: Priority; caseType?: CaseType },
   ): Promise<void> {
     try {
       const existingCase = await this.prismaService.case.findUnique({

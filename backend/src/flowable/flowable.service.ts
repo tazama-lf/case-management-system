@@ -22,8 +22,8 @@ export class FlowableService implements OnModuleInit {
   private readonly retryDelayMs = 5000;
 
   constructor(
-      private readonly configService: ConfigService,
-      private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {
     this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');
 
@@ -56,9 +56,9 @@ export class FlowableService implements OnModuleInit {
         return;
       } catch (error) {
         this.logger.error(
-            `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${error.message}`,
-            error.stack,
-            FlowableService.name,
+          `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${error.message}`,
+          error.stack,
+          FlowableService.name,
         );
 
         if (attempt === this.maxRetries) {
@@ -100,7 +100,11 @@ export class FlowableService implements OnModuleInit {
       return response.data;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        this.logger.error(`BPMN file not found at ${bpmnFilePath}. Cannot start CMS without BPMN process.`, error.stack, FlowableService.name);
+        this.logger.error(
+          `BPMN file not found at ${bpmnFilePath}. Cannot start CMS without BPMN process.`,
+          error.stack,
+          FlowableService.name,
+        );
         throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`);
       }
 
@@ -108,8 +112,6 @@ export class FlowableService implements OnModuleInit {
       throw new HttpException('Failed to deploy BPMN process', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-
 
   /**
    * Ensure a user is a member of a Flowable identity group
@@ -177,7 +179,9 @@ export class FlowableService implements OnModuleInit {
       // First, verify the process definition exists
       const processDefinitions = await this.getProcessDefinitions(processDefinitionKey);
       if (!processDefinitions || processDefinitions.length === 0) {
-        throw new Error(`Process definition '${processDefinitionKey}' not found. Available definitions: ${await this.listProcessDefinitions()}`);
+        throw new Error(
+          `Process definition '${processDefinitionKey}' not found. Available definitions: ${await this.listProcessDefinitions()}`,
+        );
       }
 
       const formattedVariables = this.formatVariables(variables);
@@ -188,13 +192,16 @@ export class FlowableService implements OnModuleInit {
         tenantId: this.tenantId, // Add tenant ID to payload
       };
 
-      this.logger.log(`Starting process instance with payload: ${JSON.stringify({
-        processDefinitionKey,
-        businessKey,
-        tenantId: this.tenantId,
-        variableCount: formattedVariables.length,
-        variables: formattedVariables.map(v => `${v.name}=${v.value}`).join(', ')
-      })}`, FlowableService.name);
+      this.logger.log(
+        `Starting process instance with payload: ${JSON.stringify({
+          processDefinitionKey,
+          businessKey,
+          tenantId: this.tenantId,
+          variableCount: formattedVariables.length,
+          variables: formattedVariables.map((v) => `${v.name}=${v.value}`).join(', '),
+        })}`,
+        FlowableService.name,
+      );
 
       const response = await this.flowableClient.post('/service/runtime/process-instances', payload);
 
@@ -249,49 +256,37 @@ export class FlowableService implements OnModuleInit {
       const tasks = response.data.data || [];
 
       const tasksWithVariables = await Promise.all(
-          tasks.map(async (task: any) => {
-            try {
-              const variablesResponse = await this.flowableClient.get(
-                  `/service/runtime/tasks/${task.id}/variables`
-              );
-              const variablesArray = variablesResponse.data || [];
-              const variablesObject: Record<string, any> = {};
+        tasks.map(async (task: any) => {
+          try {
+            const variablesResponse = await this.flowableClient.get(`/service/runtime/tasks/${task.id}/variables`);
+            const variablesArray = variablesResponse.data || [];
+            const variablesObject: Record<string, any> = {};
 
-              variablesArray.forEach((v: any) => {
-                variablesObject[v.name] = v.value;
-              });
+            variablesArray.forEach((v: any) => {
+              variablesObject[v.name] = v.value;
+            });
 
-              return {
-                ...task,
-                variables: variablesArray,
-                variablesMap: variablesObject,
-              };
-            } catch (error) {
-              this.logger.warn(
-                  `Failed to fetch variables for task ${task.id}: ${error.message}`,
-                  FlowableService.name
-              );
-              return {
-                ...task,
-                variables: [],
-                variablesMap: {},
-              };
-            }
-          })
+            return {
+              ...task,
+              variables: variablesArray,
+              variablesMap: variablesObject,
+            };
+          } catch (error) {
+            this.logger.warn(`Failed to fetch variables for task ${task.id}: ${error.message}`, FlowableService.name);
+            return {
+              ...task,
+              variables: [],
+              variablesMap: {},
+            };
+          }
+        }),
       );
 
-      this.logger.log(
-          `Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`,
-          FlowableService.name
-      );
+      this.logger.log(`Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`, FlowableService.name);
 
       return tasksWithVariables;
     } catch (error) {
-      this.logger.error(
-          `Failed to get process tasks: ${error.message}`,
-          error.stack,
-          FlowableService.name
-      );
+      this.logger.error(`Failed to get process tasks: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to get process tasks', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -413,11 +408,7 @@ export class FlowableService implements OnModuleInit {
       this.logger.log(`Task ${taskId} assigned to candidate group ${group}`, FlowableService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(
-          `Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`,
-          error.stack,
-          FlowableService.name,
-      );
+      this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException('Failed to assign task to candidate group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -446,16 +437,16 @@ export class FlowableService implements OnModuleInit {
 
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-            tasks.map(async (task: unknown) => {
-              const taskObj = task as Record<string, unknown>;
-              try {
-                const variables = await this.getTaskVariables(taskObj.id as string);
-                return { ...taskObj, variables };
-              } catch (error) {
-                this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
-                return taskObj;
-              }
-            }),
+          tasks.map(async (task: unknown) => {
+            const taskObj = task as Record<string, unknown>;
+            try {
+              const variables = await this.getTaskVariables(taskObj.id as string);
+              return { ...taskObj, variables };
+            } catch (error) {
+              this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
+              return taskObj;
+            }
+          }),
         );
         return enhancedTasks;
       }
@@ -481,16 +472,16 @@ export class FlowableService implements OnModuleInit {
 
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
-            tasks.map(async (task: unknown) => {
-              const taskObj = task as Record<string, unknown>;
-              try {
-                const variables = await this.getTaskVariables(taskObj.id as string);
-                return { ...taskObj, variables };
-              } catch (error) {
-                this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
-                return taskObj;
-              }
-            }),
+          tasks.map(async (task: unknown) => {
+            const taskObj = task as Record<string, unknown>;
+            try {
+              const variables = await this.getTaskVariables(taskObj.id as string);
+              return { ...taskObj, variables };
+            } catch (error) {
+              this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableService.name);
+              return taskObj;
+            }
+          }),
         );
         return enhancedTasks;
       }
@@ -504,25 +495,15 @@ export class FlowableService implements OnModuleInit {
 
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
     try {
-      await this.flowableClient.put(
-          `/service/runtime/process-instances/${processInstanceId}/variables/${variableName}`,
-          {
-            name: variableName,
-            value: String(value),
-            type: typeof value === 'boolean' ? 'boolean' : 'string',
-          }
-      );
+      await this.flowableClient.put(`/service/runtime/process-instances/${processInstanceId}/variables/${variableName}`, {
+        name: variableName,
+        value: String(value),
+        type: typeof value === 'boolean' ? 'boolean' : 'string',
+      });
 
-      this.logger.log(
-          `Successfully updated variable '${variableName}' for process ${processInstanceId}`,
-          FlowableService.name
-      );
+      this.logger.log(`Successfully updated variable '${variableName}' for process ${processInstanceId}`, FlowableService.name);
     } catch (error) {
-      this.logger.error(
-          `Failed to update variable '${variableName}': ${error.message}`,
-          error.stack,
-          FlowableService.name
-      );
+      this.logger.error(`Failed to update variable '${variableName}': ${error.message}`, error.stack, FlowableService.name);
       throw new HttpException(`Failed to update process variable: ${variableName}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -532,8 +513,8 @@ export class FlowableService implements OnModuleInit {
       const formattedVariables = this.formatVariables(variables);
 
       const response = await this.flowableClient.put(
-          `/service/runtime/process-instances/${processInstanceId}/variables`,
-          formattedVariables
+        `/service/runtime/process-instances/${processInstanceId}/variables`,
+        formattedVariables,
       );
 
       this.logger.log(`Variables updated successfully for process ${processInstanceId}`, FlowableService.name);
@@ -566,12 +547,12 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getTenantTasks(
-      tenantId: string,
-      filters?: {
-        candidateGroup?: string;
-        assignee?: string;
-        unassigned?: boolean;
-      },
+    tenantId: string,
+    filters?: {
+      candidateGroup?: string;
+      assignee?: string;
+      unassigned?: boolean;
+    },
   ) {
     try {
       const params: Record<string, unknown> = {
@@ -615,29 +596,16 @@ export class FlowableService implements OnModuleInit {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await this.flowableClient.post(
-          `/service/runtime/tasks/${taskId}/variables`,
-          formattedVariables
-      );
+      const response = await this.flowableClient.post(`/service/runtime/tasks/${taskId}/variables`, formattedVariables);
 
-      this.logger.log(
-          `Variables set successfully for task ${taskId}: ${JSON.stringify(variables)}`,
-          FlowableService.name
-      );
+      this.logger.log(`Variables set successfully for task ${taskId}: ${JSON.stringify(variables)}`, FlowableService.name);
 
       return response.data;
     } catch (error) {
-      this.logger.error(
-          `Failed to set task variables for task ${taskId}: ${error.message}`,
-          error.stack,
-          FlowableService.name
-      );
+      this.logger.error(`Failed to set task variables for task ${taskId}: ${error.message}`, error.stack, FlowableService.name);
 
       if (error.response) {
-        this.logger.error(
-            `Flowable API error response: ${JSON.stringify(error.response.data)}`,
-            FlowableService.name
-        );
+        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableService.name);
         this.logger.error(`Status code: ${error.response.status}`, FlowableService.name);
       }
 
@@ -743,7 +711,6 @@ export class FlowableService implements OnModuleInit {
 
   async getWorkQueueStatistics(candidateGroup?: string) {
     try {
-      
       const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups();
       const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);
       const statistics: Record<string, unknown> = {};

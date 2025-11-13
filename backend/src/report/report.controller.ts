@@ -95,22 +95,18 @@ export class ReportsController {
     const tenantId = req.user.token.tenantId;
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims;
-    
+
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator = userClaims.includes('CMS_INVESTIGATOR') && 
-                          !userClaims.includes('CMS_SUPERVISOR') && 
-                          !userClaims.includes('CMS_ADMIN');
-    
-    return this.reportsService.getCaseStatus(
-      dateRange, 
-      { 
-        caseType, 
-        priority, 
-        investigator, 
-        tenantId,
-        requestingUserId: isInvestigator ? userId : undefined 
-      }
-    );
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+    return this.reportsService.getCaseStatus(dateRange, {
+      caseType,
+      priority,
+      investigator,
+      tenantId,
+      requestingUserId: isInvestigator ? userId : undefined,
+    });
   }
 
   @Get('investigator-workload')

@@ -11,13 +11,13 @@ import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
   imports: [
-    PrismaModule, 
-    AuditLogModule, 
-    LoggerModule, 
-    AuthModule, 
-    NotificationModule, 
+    PrismaModule,
+    AuditLogModule,
+    LoggerModule,
+    AuthModule,
+    NotificationModule,
     forwardRef(() => FlowableModule),
-    forwardRef(() => WorkQueueModule)
+    forwardRef(() => WorkQueueModule),
   ],
   providers: [TaskService],
   exports: [TaskService],
