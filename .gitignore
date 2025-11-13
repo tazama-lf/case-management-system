@@ -141,3 +141,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 /generated/prisma
+
+# CouchDB configuration with sensitive credentials
+docker/couchdb/local.ini
