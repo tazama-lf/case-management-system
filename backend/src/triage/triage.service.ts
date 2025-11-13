@@ -290,18 +290,18 @@ export class TriageService {
           await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, alert.case_id, priority);
           await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, alert.case_id, priority);
         } else {
-          await this.taskService.createTask(
-            {
-              caseId: alert.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Case',
-              description: `Investigate case: ${alert.case_id}`,
-              candidateGroup: 'Investigations',
-            },
-            userId,
-            this.audit,
-            this.logger,
-          );
+          // await this.taskService.createTask(
+          //   {
+          //     caseId: alert.case_id,
+          //     status: TaskStatus.STATUS_01_UNASSIGNED,
+          //     name: 'Investigate Case',
+          //     description: `Investigate case: ${alert.case_id}`,
+          //     candidateGroup: 'Investigations',
+          //   },
+          //   userId,
+          //   this.audit,
+          //   this.logger,
+          // );
         }
 
         this.logger.log(
