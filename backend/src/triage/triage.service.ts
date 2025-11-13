@@ -74,18 +74,18 @@ export class TriageService {
 
       case 'MANUAL': {
         this.logger.log(`Manual Triage enabled for alert: ${alert.alert_id}`, TriageService.name);
-        // await this.taskService.createTask(
-        //   {
-        //     caseId: alert.case_id,
-        //     status: TaskStatus.STATUS_01_UNASSIGNED,
-        //     name: 'Triage Alert',
-        //     description: `Manual triage required for alert: ${alert.alert_id}`,
-        //     candidateGroup: 'Investigator',
-        //   },
-        //   userId,
-        //   this.audit,
-        //   this.logger,
-        // );
+        await this.taskService.createTask(
+          {
+            caseId: alert.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Triage Alert',
+            description: `Manual triage required for alert: ${alert.alert_id}`,
+            candidateGroup: 'Investigator',
+          },
+          userId,
+          this.audit,
+          this.logger,
+        );
         break;
       }
 
