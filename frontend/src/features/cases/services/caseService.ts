@@ -72,6 +72,16 @@ export interface UserWorkloadStatsDto {
   averageCaseAge: number;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  user_id: string;
+  operation: string;
+  entity_name: string;
+  action_performed: string;
+  outcome: string;
+  performed_at: Date;
+}
+
 export interface CloseCaseDto {
   recommendedOutcome:
     | 'STATUS_81_CLOSED_REFUTED'
@@ -517,6 +527,46 @@ export class CaseService {
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'get all cases');
+    }
+  }
+
+  async getCaseHistory(caseId: string): Promise<AuditLogEntry[]> {
+    try {
+      const response = await apiClient.get<AuditLogEntry[]>(
+        `/api/v1/report/audit-logs`
+      );
+
+      // Get all tasks for this case to filter task-related audit logs
+      const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
+      const taskIds = new Set(tasks.map(task => task.task_id));
+
+      // Filter audit logs for this specific case
+      return response.filter((log) => {
+        const actionLower = log.action_performed?.toLowerCase() || '';
+
+        // Check if log mentions the case ID
+        if (actionLower.includes(caseId.toLowerCase())) {
+          return true;
+        }
+
+        // Check if log mentions any task IDs associated with this case
+        for (const taskId of taskIds) {
+          if (actionLower.includes(taskId.toLowerCase())) {
+            return true;
+          }
+        }
+
+        // Check if operation is related to case or task management
+        const operationLower = log.operation.toLowerCase();
+        if (operationLower.includes('case') && actionLower.includes(caseId)) {
+          return true;
+        }
+
+        return false;
+      });
+    } catch (error) {
+      console.error('Failed to fetch case history:', error);
+      return [];
     }
   }
 

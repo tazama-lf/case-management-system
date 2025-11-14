@@ -2,6 +2,7 @@ import React from 'react';
 import type { InvestigatorPerformance } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import PaginationControls from '../../../shared/components/PaginationControls';
+import authService from '@/features/auth/services/authService';
 
 interface InvestigatorPerformanceTableProps {
   data: InvestigatorPerformance[];
@@ -14,6 +15,26 @@ interface InvestigatorPerformanceTableProps {
 const InvestigatorPerformanceTable: React.FC<
   InvestigatorPerformanceTableProps
 > = ({ data, title, onExportExcel, onExportCSV, onExportPDF }) => {
+  const [investigators, setInvestigators] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    const fetchInvestigators = async () => {
+      try {
+        const investigatorList = await authService.fetchAllInvestigators();
+        const investigatorMap: Record<string, string> = {};
+        investigatorList.forEach((inv) => {
+          const fullName = inv.firstName && inv.lastName ? `${inv.firstName} ${inv.lastName}` : inv.username;
+          investigatorMap[inv.id] = fullName;
+        });
+        setInvestigators(investigatorMap);
+      } catch (err) {
+        console.warn('Failed to fetch investigators:', err);
+      }
+    };
+
+    fetchInvestigators();
+  }, []);
+
   const {
     currentPage,
     itemsPerPage,
@@ -88,7 +109,6 @@ const InvestigatorPerformanceTable: React.FC<
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <colgroup>
-            <col className="w-72" />
             <col className="w-48" />
             <col className="w-32" />
             <col className="w-28" />
@@ -99,9 +119,6 @@ const InvestigatorPerformanceTable: React.FC<
           </colgroup>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Investigator ID
-              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Investigator
               </th>
@@ -140,27 +157,11 @@ const InvestigatorPerformanceTable: React.FC<
             ) : (
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-900 font-mono">
-                    <div
-                      className="break-all"
-                      title={
-                        (row as any).investigatorId ||
-                        (row as any).investigator_id ||
-                        (row as any).userId ||
-                        (row as any).user_id ||
-                        ''
-                      }
-                    >
-                      {(row as any).investigatorId ||
-                        (row as any).investigator_id ||
-                        (row as any).userId ||
-                        (row as any).user_id ||
-                        'N/A'}
-                    </div>
-                  </td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     <div className="break-words">
-                      {row.investigator || 'Unknown'}
+                      {row.investigatorId && investigators[row.investigatorId]
+                        ? investigators[row.investigatorId]
+                        : row.investigator || 'Unknown'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
