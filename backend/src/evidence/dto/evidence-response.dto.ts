@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EvidenceType } from './upload-evidence.dto';
 
-export class EvidenceMetadataDto {
+export class EvidenceResponseDto {
   @ApiProperty()
   id: string;
 
@@ -43,14 +43,6 @@ export class EvidenceMetadataDto {
 
   @ApiProperty()
   couchdbRev?: string;
-}
-
-export class EvidenceResponseDto extends EvidenceMetadataDto {
-  @ApiProperty({ description: 'URL to download the evidence' })
-  downloadUrl: string;
-
-  @ApiProperty({ description: 'Verification status of the hash' })
-  verified?: boolean;
 }
 
 export class EvidenceListResponseDto {
