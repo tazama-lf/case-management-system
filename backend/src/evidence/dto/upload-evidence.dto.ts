@@ -2,12 +2,8 @@ import { IsString, IsNotEmpty, IsOptional, IsEnum, MaxLength } from 'class-valid
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum EvidenceType {
-  DOCUMENT = 'DOCUMENT',
-  SCREENSHOT = 'SCREENSHOT',
-  LOG = 'LOG',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO',
-  IMAGE = 'IMAGE',
+  SANCTIONS = 'SANCTIONS',
+  ADVERSE_MEDIA = 'ADVERSE_MEDIA',
   OTHER = 'OTHER',
 }
 
@@ -20,7 +16,7 @@ export class UploadEvidenceDto {
   @ApiProperty({ description: 'Type of evidence', enum: EvidenceType })
   @IsEnum(EvidenceType)
   @IsNotEmpty()
-  type: EvidenceType;
+  evidenceType: EvidenceType;
 
   @ApiProperty({ description: 'Tags for categorization', required: false })
   @IsOptional()

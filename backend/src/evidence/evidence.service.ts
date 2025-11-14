@@ -12,7 +12,6 @@ import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
-import { Evidence } from '@prisma/client';
 
 @Injectable()
 export class EvidenceService {
@@ -24,11 +23,11 @@ export class EvidenceService {
     private auditLog: AuditLogService,
   ) {}
 
-  private calculateHash(buffer: Buffer): string {
+  private sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
   }
 
-  private encryptBuffer(buffer: Buffer): { encrypted: Buffer; key: string; iv: string; authTag: string } {
+  private encrypt(buffer: Buffer) {
     const key = crypto.randomBytes(32);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -44,155 +43,68 @@ export class EvidenceService {
     };
   }
 
-  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-    this.logger.log(`Uploading evidence for task ${dto.taskId} by user ${userId}`);
+  private decrypt(enc: Buffer, key: string, iv: string, tag: string) {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key, 'base64'), Buffer.from(iv, 'base64'));
 
-    try {
-      const taskExists = await this.prisma.task.findUnique({
-        where: { task_id: dto.taskId },
-      });
-
-      if (!taskExists) {
-        throw new NotFoundException(`Task ${dto.taskId} not found`);
-      }
-
-      const fileHash = this.calculateHash(file.buffer);
-      this.logger.log(`File hash calculated: ${fileHash}`);
-
-      const evidenceId = `evidence_${dto.taskId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const { encrypted, key, iv, authTag } = this.encryptBuffer(file.buffer);
-
-      const evidenceDoc = {
-        _id: evidenceId,
-        evidenceId: evidenceId,
-        taskId: dto.taskId,
-        tenantId: tenantId,
-        userId: userId,
-        fileName: file.originalname,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        type: dto.type,
-        tags: dto.tags,
-        hash: fileHash,
-        description: dto.description,
-        comments: dto.comments,
-        uploadedBy: userId,
-        uploadedAt: new Date(),
-        encryption_meta: {
-          iv,
-          authTag,
-        },
-      };
-
-      console.log('EvidenceDoc: ', evidenceDoc);
-
-      const insertedEvidenceDoc = await this.couchdb.insertWithAttachment(
-        evidenceId,
-        evidenceDoc,
-        file.originalname,
-        file.buffer,
-        file.mimetype,
-      );
-
-      this.logger.log(`Evidence stored in CouchDB: ${evidenceId}`);
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'upload',
-        entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_UPLOADED',
-        outcome: 'SUCCESS',
-      });
-
-      return {
-        id: evidenceDoc.evidenceId,
-        taskId: evidenceDoc.taskId,
-        fileName: evidenceDoc.fileName,
-        type: evidenceDoc.type,
-        fileSize: Number(evidenceDoc.fileSize),
-        mimeType: evidenceDoc.mimeType || file.mimetype,
-        hash: evidenceDoc.hash,
-        uploadedBy: evidenceDoc.uploadedBy,
-        uploadedAt: evidenceDoc.uploadedAt,
-        tags: evidenceDoc.tags,
-        description: dto.description,
-        comments: dto.comments,
-        filePath: insertedEvidenceDoc,
-        downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
-        verified: true,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to upload evidence: ${error.message}`, error.stack);
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'upload',
-        entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_UPLOAD_FAILED',
-        outcome: 'FAILURE',
-      });
-
-      throw new InternalServerErrorException('Failed to upload evidence');
-    }
+    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    return Buffer.concat([decipher.update(enc), decipher.final()]);
   }
 
-  async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    this.logger.log(`Fetching evidence list for task ${taskId}`);
+  async uploadEvidence(file, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+    const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
+    if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
-    try {
-      const query: any = {
-        tenantId,
-        taskId,
-        page: 1,
-        limit: 100,
-      };
+    const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
 
-      if (role === 'CMS_INVESTIGATOR') {
-        query.uploadedBy = userId;
-      } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
-      } else {
-        throw new UnauthorizedException('Invalid role');
-      }
+    const hash = this.sha256(encrypted);
 
-      const result = await this.couchdb.queryDocuments(query);
-      const docs = result.data || [];
+    const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
-      const evidence: EvidenceResponseDto[] = docs.map((item) => ({
-        id: item.evidenceId,
-        taskId: item.taskId,
-        fileName: item.fileName,
-        originalName: item.originalName,
-        type: item.type,
-        fileSize: Number(item.fileSize),
-        mimeType: item.mimeType,
-        hash: item.hash,
-        uploadedBy: item.uploadedBy,
-        uploadedAt: item.uploadedAt,
-        tags: item.tags,
-        description: item.description,
-        comments: item.comments,
-        filePath: '',
-        downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-        verified: true,
-      }));
+    const metadata = {
+      _id: evidenceId,
+      evidenceId,
+      tenantId,
+      taskId: dto.taskId,
+      uploadedBy: userId,
+      uploadedAt: new Date(),
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      evidenceType: dto.evidenceType,
+      hash,
+      encryption: { key, iv, authTag },
+      tags: dto.tags,
+      description: dto.description,
+      comments: dto.comments,
+    };
 
-      await this.auditLog.logAction({
-        userId,
-        operation: 'view',
-        entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_LIST_VIEWED',
-        outcome: 'SUCCESS',
-      });
+    await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
 
-      return {
-        evidence,
-        total: evidence.length,
-        taskId,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to fetch evidence: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to fetch evidence');
-    }
+    await this.auditLog.logAction({
+      userId,
+      operation: 'upload',
+      entityName: 'Evidence',
+      actionPerformed: 'EVIDENCE_UPLOADED',
+      outcome: 'SUCCESS',
+    });
+
+    return {
+      id: evidenceId,
+      taskId: dto.taskId,
+      fileName: file.originalname,
+      evidenceType: dto.evidenceType,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      hash,
+      uploadedBy: userId,
+      uploadedAt: metadata.uploadedAt,
+      tags: dto.tags,
+      description: dto.description,
+      comments: dto.comments,
+      filePath: '',
+      downloadUrl: `/api/evidenceDoc/${evidenceId}/download`,
+      verified: true,
+    };
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
@@ -231,7 +143,7 @@ export class EvidenceService {
       id: evidenceDoc.evidenceId,
       taskId: evidenceDoc.taskId,
       fileName: evidenceDoc.fileName,
-      type: evidenceDoc.type,
+      evidenceType: evidenceDoc.evidenceType,
       fileSize: Number(evidenceDoc.fileSize),
       mimeType: evidenceDoc.mimeType,
       hash: evidenceDoc.hash,
@@ -254,31 +166,32 @@ export class EvidenceService {
   ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
-    const query: any = {
-      tenantId,
-      evidenceId,
-      page: 1,
-      limit: 1,
-    };
-
-    if (role === 'CMS_INVESTIGATOR') {
-      query.uploadedBy = userId;
-    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
-    } else {
+    const query: any = { tenantId, evidenceId, page: 1, limit: 1 };
+    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
-
-    if (!evidenceDoc) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
-    }
+    if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     try {
-      const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
+      const encryptedFile = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
+      if (!encryptedFile) {
+        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${evidenceDoc.fileName}`);
+        throw new NotFoundException('Encrypted file not found');
+      }
+      const encryptedBuffer = Buffer.isBuffer(encryptedFile) ? encryptedFile : Buffer.from(encryptedFile);
 
-      const currentHash = this.calculateHash(file);
+      const file = this.decrypt(
+        encryptedBuffer,
+        evidenceDoc.encryption_key,
+        evidenceDoc.encryption_meta.iv,
+        evidenceDoc.encryption_meta.authTag,
+      );
+
+      const currentHash = this.sha256(file);
       if (currentHash !== evidenceDoc.hash) {
         this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
@@ -292,25 +205,26 @@ export class EvidenceService {
         outcome: 'SUCCESS',
       });
 
-      const metadata: EvidenceResponseDto = {
-        id: evidenceDoc.evidenceId,
-        taskId: evidenceDoc.taskId,
-        fileName: evidenceDoc.fileName,
-        type: evidenceDoc.type,
-        fileSize: Number(evidenceDoc.fileSize),
-        mimeType: evidenceDoc.mimeType,
-        hash: evidenceDoc.hash,
-        uploadedBy: evidenceDoc.uploadedBy,
-        uploadedAt: evidenceDoc.uploadedAt,
-        tags: evidenceDoc.tags,
-        description: evidenceDoc.description,
-        comments: evidenceDoc.comments,
-        filePath: '',
-        downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
-        verified: true,
+      return {
+        file,
+        metadata: {
+          id: evidenceDoc.evidenceId,
+          taskId: evidenceDoc.taskId,
+          fileName: evidenceDoc.fileName,
+          evidenceType: evidenceDoc.evidenceType,
+          fileSize: Number(evidenceDoc.fileSize),
+          mimeType: evidenceDoc.mimeType,
+          hash: evidenceDoc.hash,
+          uploadedBy: evidenceDoc.uploadedBy,
+          uploadedAt: evidenceDoc.uploadedAt,
+          tags: evidenceDoc.tags,
+          description: evidenceDoc.description,
+          comments: evidenceDoc.comments,
+          filePath: '',
+          downloadUrl: `/api/evidenceDoc/${evidenceId}/download`,
+          verified: true,
+        },
       };
-
-      return { file, metadata };
     } catch (error) {
       this.logger.error(`Failed to download evidence: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to download evidence');
@@ -320,35 +234,23 @@ export class EvidenceService {
   async verifyEvidence(evidenceId: string, userId: string, tenantId: string, role: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
-    const query: any = {
-      tenantId,
-      evidenceId,
-      page: 1,
-      limit: 1,
-    };
-
-    if (role === 'CMS_INVESTIGATOR') {
-      query.uploadedBy = userId;
-    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
-    } else {
-      throw new UnauthorizedException('Invalid role');
-    }
+    const query: any = { tenantId, evidenceId, page: 1, limit: 1 };
+    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
-
-    if (!evidenceDoc) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
-    }
+    if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     try {
-      const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
-
-      const currentHash = this.calculateHash(file);
-      const verified = currentHash === evidenceDoc.hash;
-
-      console.log("currentHash: ", currentHash);
-      console.log("evidenceDoc.hash: ", evidenceDoc.hash);
+      const encryptedFile = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
+      const file = this.decrypt(
+        encryptedFile,
+        evidenceDoc.encryption_key,
+        evidenceDoc.encryption_meta.iv,
+        evidenceDoc.encryption_meta.authTag,
+      );
+      const verified = this.sha256(file) === evidenceDoc.hash;
 
       await this.auditLog.logAction({
         userId,
@@ -359,7 +261,7 @@ export class EvidenceService {
       });
 
       return {
-        evidenceId: evidenceDoc.evidenceId,
+        evidenceId,
         expectedHash: evidenceDoc.hash,
         verified,
         message: verified
@@ -372,5 +274,136 @@ export class EvidenceService {
       this.logger.error(`Failed to verify evidence: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to verify evidence');
     }
+  }
+
+  async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    const query: any = { tenantId, taskId, page: 1, limit: 100 };
+    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+
+    const result = await this.couchdb.queryDocuments(query);
+    const docs = result.data || [];
+
+    const evidence = docs.map((item) => ({
+      id: item.evidenceId,
+      taskId: item.taskId,
+      fileName: item.fileName,
+      originalName: item.originalName,
+      evidenceType: item.evidenceType,
+      fileSize: Number(item.fileSize),
+      mimeType: item.mimeType,
+      hash: item.hash,
+      uploadedBy: item.uploadedBy,
+      uploadedAt: item.uploadedAt,
+      tags: item.tags,
+      description: item.description,
+      comments: item.comments,
+      filePath: '',
+      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
+      verified: true,
+    }));
+
+    await this.auditLog.logAction({
+      userId,
+      operation: 'view',
+      entityName: 'Evidence',
+      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      outcome: 'SUCCESS',
+    });
+
+    return { evidence, total: evidence.length, taskId };
+  }
+
+  async getEvidenceByCaseId(caseId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    const tasks = await this.prisma.task.findMany({
+      where: { case_id: caseId },
+      select: { task_id: true },
+    });
+
+    const taskIds = tasks.map((t) => t.task_id).filter(Boolean);
+    if (!taskIds.length) {
+      return { evidence: [], total: 0 };
+    }
+
+    const allDocs: any[] = [];
+
+    for (const taskId of taskIds) {
+      const query: any = { tenantId, taskId, page: 1, limit: 100 };
+      if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+      else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
+        throw new UnauthorizedException('Invalid role');
+      }
+
+      const result = await this.couchdb.queryDocuments(query);
+      const docs = result.data || [];
+      allDocs.push(...docs);
+    }
+
+    const evidence = allDocs.map((item) => ({
+      id: item.evidenceId,
+      taskId: item.taskId,
+      fileName: item.fileName,
+      originalName: item.originalName,
+      evidenceType: item.evidenceType,
+      fileSize: Number(item.fileSize),
+      mimeType: item.mimeType,
+      hash: item.hash,
+      uploadedBy: item.uploadedBy,
+      uploadedAt: item.uploadedAt,
+      tags: item.tags,
+      description: item.description,
+      comments: item.comments,
+      filePath: '',
+      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
+      verified: true,
+    }));
+
+    await this.auditLog.logAction({
+      userId,
+      operation: 'view',
+      entityName: 'Evidence',
+      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      outcome: 'SUCCESS',
+    });
+
+    return { evidence, total: evidence.length };
+  }
+
+  async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    const query: any = { tenantId, evidenceType, page: 1, limit: 100 };
+    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+
+    const result = await this.couchdb.queryDocuments(query);
+    const docs = result.data || [];
+
+    const evidence = docs.map((item) => ({
+      id: item.evidenceId,
+      taskId: item.taskId,
+      fileName: item.fileName,
+      originalName: item.originalName,
+      evidenceType: item.evidenceType,
+      fileSize: Number(item.fileSize),
+      mimeType: item.mimeType,
+      hash: item.hash,
+      uploadedBy: item.uploadedBy,
+      uploadedAt: item.uploadedAt,
+      tags: item.tags,
+      description: item.description,
+      comments: item.comments,
+      filePath: '',
+      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
+      verified: true,
+    }));
+
+    await this.auditLog.logAction({
+      userId,
+      operation: 'view',
+      entityName: 'Evidence',
+      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      outcome: 'SUCCESS',
+    });
+
+    return { evidence, total: evidence.length, evidenceType };
   }
 }

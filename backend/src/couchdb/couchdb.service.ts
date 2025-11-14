@@ -41,13 +41,25 @@ export class CouchdbService implements OnModuleInit {
     return this.db;
   }
 
+  // CouchdbService method
   async insertWithAttachment(docId: string, metadata: any, attachmentName: string, attachmentData: Buffer, contentType: string) {
     try {
+      // Insert document metadata
       const response = await this.db.insert(metadata, docId);
 
-      await this.db.attachment.insert(docId, attachmentName, attachmentData, contentType, { rev: response.rev });
+      // Store attachment as Uint8Array
+      await this.db.attachment.insert(docId, attachmentName, new Uint8Array(attachmentData), contentType, { rev: response.rev });
 
       this.logger.log(`Document inserted with attachment: ${docId}`);
+
+      // Verify attachment length
+      // const downloaded = await this.db.attachment.get(docId, attachmentName);
+      // const downloadedBuffer = Buffer.isBuffer(downloaded) ? downloaded : Buffer.from(downloaded);
+      // if (downloadedBuffer.length !== attachmentData.length) {
+      //   this.logger.error(`Attachment size mismatch: original=${attachmentData.length}, stored=${downloadedBuffer.length}`);
+      //   throw new Error('Attachment verification failed: size mismatch');
+      // }
+
       return `${this.db.config.url}/${this.db.config.db}/${docId}/${encodeURIComponent(metadata.fileName)}`;
     } catch (error) {
       this.logger.error(`Failed to insert document with attachment: ${error.message}`, error.stack);
@@ -68,17 +80,18 @@ export class CouchdbService implements OnModuleInit {
   }
 
   async queryDocuments(params: {
-    evidenceId?: string,
+    id?: string;
+    evidenceId?: string;
     tenantId?: string;
     uploadedBy?: string;
     taskId?: string;
-    id?: string;
+    evidenceType?: string;
     verified?: boolean;
     search?: string;
     page: number;
     limit: number;
   }) {
-    const { evidenceId, tenantId, uploadedBy, taskId, id, verified, search, page, limit} = params;
+    const { id, evidenceId, tenantId, uploadedBy, taskId, evidenceType, verified, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -89,11 +102,12 @@ export class CouchdbService implements OnModuleInit {
 
     const selector: any = {};
 
+    if (id) selector.id = id;
     if (tenantId) selector.tenantId = tenantId;
     if (uploadedBy) selector.uploadedBy = uploadedBy;
     if (taskId) selector.taskId = taskId;
     if (evidenceId) selector.evidenceId = evidenceId;
-    if (id) selector.id = id;
+    if (evidenceType) selector.evidenceType = evidenceType;
     if (verified !== undefined) selector.verified = verified;
 
     if (search) {

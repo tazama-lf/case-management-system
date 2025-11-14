@@ -22,7 +22,7 @@ import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole, TazamaClaims } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
-import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto } from './dto';
+import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
 
 @ApiTags('Evidence')
 @Controller('api/v1/evidence')
@@ -48,7 +48,7 @@ export class EvidenceController {
           type: 'string',
           description: 'Task ID',
         },
-        type: {
+        evidenceType: {
           type: 'string',
           enum: ['DOCUMENT', 'SCREENSHOT', 'LOG', 'VIDEO', 'AUDIO', 'IMAGE', 'OTHER'],
           description: 'Type of evidence',
@@ -112,18 +112,41 @@ export class EvidenceController {
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
     return this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
   }
-  // @Get('case/:caseId')
-  // @RequireInvestigatorOrSupervisorRole()
-  // @ApiOperation({ summary: 'Get all evidence for a case' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'List of evidence retrieved successfully',
-  //   type: EvidenceListResponseDto,
-  // })
-  // async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
-  //   const userId = req.user?.token?.clientId || 'system';
-  //   return this.evidenceService.getEvidenceByCase(caseId, userId);
-  // }
+
+  @Get('evidenceType/:evidenceType')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get all evidence for a evidencetype' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of evidence retrieved successfully',
+    type: EvidenceListResponseDto,
+  })
+  async getEvidenceByType(
+    @Param('evidenceType') evidenceType: EvidenceType,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<EvidenceListResponseDto> {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.getEvidenceByType(evidenceType, clientId, tenantId, role);
+  }
+
+  @Get('case/:caseId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get all evidence for a case' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of evidence retrieved successfully',
+    type: EvidenceListResponseDto,
+  })
+  async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.getEvidenceByCaseId(caseId, clientId, tenantId, role);
+  }
 
   @Get(':id')
   @RequireInvestigatorOrSupervisorRole()
