@@ -42,9 +42,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
   pagination,
 }) => {
   const tableColumns = [
-    { key: 'task', label: 'Task', width: 'w-80' },
+    { key: 'task', label: 'Task ID', width: 'w-80' },
     { key: 'title', label: 'Title', width: 'w-80' },
-    { key: 'case', label: 'Case', width: 'w-72' },
+    { key: 'case', label: 'Case ID', width: 'w-72' },
     { key: 'queue', label: 'Queue', width: 'w-32' },
     { key: 'status', label: 'Status', width: 'w-32' },
     { key: 'created', label: 'Created', width: 'w-40' },

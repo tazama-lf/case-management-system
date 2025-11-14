@@ -1,8 +1,11 @@
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
+import type { TaskForSupervisor } from '../../services/taskService';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
+  tasks?: TaskForSupervisor[];
+  loadingTasks?: boolean;
 }
 
 const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({
@@ -27,187 +30,205 @@ const getPriorityColor = (priority: string): string => {
   return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
 };
 
-const getScoreColor = (score: number): string => {
-  if (score >= 80) return 'text-red-600 bg-red-50';
-  if (score >= 60) return 'text-orange-600 bg-orange-50';
-  if (score >= 40) return 'text-yellow-600 bg-yellow-50';
-  if (score > 0) return 'text-green-600 bg-green-50';
-  return 'text-gray-600 bg-gray-50';
-};
-
-const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
-  // Extract transaction data
-  const getTransactionData = () => {
-    if (!row.transaction) return null;
-
-    try {
-      const txData = row.transaction as Record<string, unknown>;
-      const fiToFIPmtSts = txData?.FIToFIPmtSts as Record<string, unknown>;
-      return fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | null;
-    } catch {
-      return null;
-    }
+const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row, tasks = [], loadingTasks = false }) => {
+  const getTaskStatusColor = (status: string): string => {
+    const statusColors: Record<string, string> = {
+      STATUS_01_UNASSIGNED: 'bg-gray-50 text-gray-700 ring-gray-200',
+      STATUS_10_ASSIGNED: 'bg-blue-50 text-blue-700 ring-blue-200',
+      STATUS_20_IN_PROGRESS: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+      STATUS_21_BLOCKED: 'bg-orange-50 text-orange-700 ring-orange-200',
+      STATUS_30_COMPLETED: 'bg-green-50 text-green-700 ring-green-200',
+    };
+    return statusColors[status] || 'bg-gray-50 text-gray-700 ring-gray-200';
   };
 
-  const transactionData = getTransactionData();
-
-  const getNestedValue = (
-    obj: Record<string, unknown> | null,
-    path: string[],
-  ): string => {
-    if (!obj) return 'N/A';
-    let current: unknown = obj;
-    for (const key of path) {
-      if (current && typeof current === 'object' && key in current) {
-        current = (current as Record<string, unknown>)[key];
-      } else {
-        return 'N/A';
-      }
-    }
-    return typeof current === 'string' ? current : 'N/A';
+  const formatTaskStatus = (status: string): string => {
+    const statusLabels: Record<string, string> = {
+      STATUS_01_UNASSIGNED: 'Unassigned',
+      STATUS_10_ASSIGNED: 'Assigned',
+      STATUS_20_IN_PROGRESS: 'In Progress',
+      STATUS_21_BLOCKED: 'Blocked',
+      STATUS_30_COMPLETED: 'Completed',
+    };
+    return statusLabels[status] || status;
   };
 
-  const creditorFsp = getNestedValue(transactionData, [
-    'InstdAgt',
-    'FinInstnId',
-    'ClrSysMmbId',
-    'MmbId',
-  ]);
-  const debtorFsp = getNestedValue(transactionData, [
-    'InstgAgt',
-    'FinInstnId',
-    'ClrSysMmbId',
-    'MmbId',
-  ]);
+  const getTaskPriority = (task: TaskForSupervisor): string => {
+    // Try to get priority from task's case, fallback to case priority, then default to 'Medium'
+    if (task.case?.priority) {
+      return task.case.priority;
+    }
+    return row.priority || 'Medium';
+  };
+
+  const formatTaskId = (taskId: string): string => {
+    // Format as TASK-INV-XXX where XXX is first 3 chars of UUID
+    const shortId = taskId.substring(0, 8).replace(/-/g, '').substring(0, 3).toUpperCase();
+    return `TASK-INV-${shortId}`;
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* Case Information */}
-        <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700">
-            Case Information
-          </div>
-          <SectionCard>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Case ID</div>
-                <div className="font-medium text-gray-900">{row.id}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Case Type</div>
-                <span
-                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}
-                >
-                  {row.type || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Status</div>
-                <span
-                  className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}
-                >
-                  {row.status}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Priority</div>
-                <div className="inline-flex items-center gap-2">
-                  <span
-                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}
-                  >
-                    {row.priority}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">
-                  Created On
-                </div>
-                <div className="font-medium text-gray-900">{row.createdOn}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Picked On</div>
-                <div className="font-medium text-gray-900">{row.pickedOn}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Assignee</div>
-                <div className="font-medium text-gray-900">
-                  {row.assignee || 'N/A'}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase">
-                  Total Tasks
-                </div>
-                <div className="font-medium text-gray-900">
-                  {row.totalTasks}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* Alert Information */}
-        {row.alertId && (
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">
-              Alert Information
-            </div>
-            <SectionCard>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <div>
-                  <div className="text-xs text-gray-500 uppercase">
-                    Alert ID
-                  </div>
-                  <div className="font-medium text-gray-900">{row.alertId}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 uppercase">
-                    Confidence Score
-                  </div>
-                  <div
-                    className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}
-                  >
-                    {row.confidencePercent || 0}%
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-gray-500 uppercase">Message</div>
-                  <div className="font-medium text-gray-900 mt-1">
-                    {row.alertMessage || 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-          </div>
-        )}
-      </div>
-
-      {/* Creditor Information */}
+      {/* Tasks Information */}
       <div className="space-y-3">
         <div className="text-sm font-semibold text-gray-700">
-          Creditor Information
+          Task Information
         </div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">FSP ID</div>
-            <div className="text-gray-900 font-mono">{creditorFsp}</div>
-          </div>
-        </SectionCard>
-      </div>
+        {loadingTasks ? (
+          <SectionCard>
+            <div className="text-sm text-gray-500 text-center py-4">
+              Loading tasks...
+            </div>
+          </SectionCard>
+        ) : tasks.length === 0 ? (
+          <SectionCard>
+            <div className="text-sm text-gray-500 text-center py-4">
+              No tasks found for this case
+            </div>
+          </SectionCard>
+        ) : (
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <SectionCard key={task.task_id}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    {/* Task ID */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Task ID
+                      </div>
+                      <div className="font-medium text-gray-900">
+                        {formatTaskId(task.task_id)}
+                      </div>
+                    </div>
 
-      {/* Debtor Information */}
-      <div className="space-y-3 md:col-span-2">
-        <div className="text-sm font-semibold text-gray-700">
-          Debtor Information
-        </div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">FSP ID</div>
-            <div className="text-gray-900 font-mono">{debtorFsp}</div>
+                    {/* Title */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Title
+                      </div>
+                      <div className="font-medium text-gray-900">
+                        {task.name || 'Unnamed Task'}
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Status
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getTaskStatusColor(task.status)}`}
+                      >
+                        {formatTaskStatus(task.status).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Priority */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Priority
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(getTaskPriority(task))}`}
+                      >
+                        {getTaskPriority(task)}
+                      </span>
+                    </div>
+
+                    {/* Created On */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Created On
+                      </div>
+                      <div className="font-medium text-gray-900">
+                        {new Date(task.created_at).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Assigned To */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Assigned To
+                      </div>
+                      <div className="font-medium text-gray-900">
+                        {task.assignedUser?.username || 'Unassigned'}
+                      </div>
+                    </div>
+
+                    {/* Description - Full Width */}
+                    <div className="col-span-2">
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Description
+                      </div>
+                      <div className="text-sm text-gray-700">
+                        {task.description || 'No description provided'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Related Case Section */}
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="text-xs font-semibold text-gray-700 uppercase mb-3">
+                      Related Case
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                      {/* Case ID */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                          Case ID
+                        </div>
+                        <div className="font-medium text-gray-900">
+                          {row.id.substring(0, 8)}
+                        </div>
+                      </div>
+
+                      {/* Case Type */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                          Case Type
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}
+                        >
+                          {row.type || 'N/A'}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                          Status
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+
+                      {/* Priority */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                          Priority
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}
+                        >
+                          {row.priority}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+            ))}
           </div>
-        </SectionCard>
+        )}
       </div>
     </div>
   );

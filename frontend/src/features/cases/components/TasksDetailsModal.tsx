@@ -8,6 +8,7 @@ import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 import CustomerProfileTab from './view/CustomerProfileTab';
+import { taskService, type TaskForSupervisor } from '../services/taskService';
 
 type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer';
 
@@ -22,18 +23,36 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   open,
   onClose,
   row,
-  onRefreshCases,
+  onRefreshCases: _onRefreshCases,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
+  const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
+  const [loadingTasks, setLoadingTasks] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
       setTab('details');
       setShowCollaborate(false);
       window.scrollTo({ top: 0 });
+      
+      // Fetch tasks for this case
+      if (row?.id) {
+        setLoadingTasks(true);
+        taskService
+          .getTasksByCaseId(row.id)
+          .then((fetchedTasks) => {
+            setTasks(fetchedTasks);
+          })
+          .catch((error) => {
+            console.error('Failed to fetch tasks:', error);
+          })
+          .finally(() => {
+            setLoadingTasks(false);
+          });
+      }
     }
-  }, [open]);
+  }, [open, row?.id]);
 
   if (!open || !row) return null;
 
@@ -99,13 +118,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         )}
 
         {}
+                {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />
           ) : (
             <>
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
-                <CaseDetailsTab row={row} />
+                <CaseDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
               </div>
               <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
                 <CustomerProfileTab />
