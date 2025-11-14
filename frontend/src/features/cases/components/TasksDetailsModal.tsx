@@ -136,7 +136,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <TaskEvidenceTab />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
-                <LinkedItemsTab />
+                {row?.id && <LinkedItemsTab caseId={row.id} />}
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab />

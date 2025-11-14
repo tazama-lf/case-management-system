@@ -6,8 +6,9 @@ import CollaboratePanel from './view/CollaboratePanel';
 import TaskLogTab from './view/TaskLogTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 import CaseHistoryTab from './view/CaseHistoryTab';
+import InvestigationSummaryTab from './view/InvestigationSummaryTab';
 
-type ViewTabKey = 'details' | 'tasks' | 'history';
+type ViewTabKey = 'details' | 'summary' | 'tasks' | 'history';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -74,6 +75,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Case Details' },
+                { key: 'summary', label: 'Investigation Summary' },
                 { key: 'tasks', label: 'Task Log' },
                 { key: 'history', label: 'Case History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -100,6 +102,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           ) : (
             <>
               {tab === 'details' && <CaseDetailsTab row={row} />}
+              {tab === 'summary' && (
+                <InvestigationSummaryTab caseId={row.id} row={row} />
+              )}
               {tab === 'tasks' && (
                 <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />
               )}
