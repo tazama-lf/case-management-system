@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 // import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
@@ -7,8 +7,9 @@ import TaskEvidenceTab from './view/TaskEvidenceTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
+import CustomerProfileTab from './view/CustomerProfileTab';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes';
+type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer';
 
 interface TaskDetailsModalProps {
   open: boolean;
@@ -76,8 +77,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Task Details' },
-                { key: 'evidence', label: 'Evidence' },
                 { key: 'linked', label: 'Linked Items' },
+                { key: 'customer', label: 'Customer Profile' },
+                { key: 'evidence', label: 'Evidence' },
                 { key: 'notes', label: 'Investigation Notes' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
@@ -105,6 +107,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
                 <CaseDetailsTab row={row} />
               </div>
+              <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
+                <CustomerProfileTab />
+              </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab />
               </div>
@@ -116,6 +121,25 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
             </>
           )}
+        </div>
+
+        {}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
+          >
+            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+            Close
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
+          >
+            <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+            Save Task
+          </button>
         </div>
       </div>
     </div>

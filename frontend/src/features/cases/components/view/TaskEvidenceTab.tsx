@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowUpTrayIcon, ChartBarIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfileModal';
 
 const evidenceSections: Array<{ key: string; title: string; helper?: string; commentPlaceholder: string; emptyMessage: string }> = [
   {
@@ -28,6 +29,7 @@ const evidenceSections: Array<{ key: string; title: string; helper?: string; com
 const TaskEvidenceTab: React.FC = () => {
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const [sectionFiles, setSectionFiles] = React.useState<Record<string, File[]>>({});
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
 
   React.useEffect(() => {
     console.log('🔄 State changed:', sectionFiles);
@@ -120,6 +122,7 @@ const TaskEvidenceTab: React.FC = () => {
           </div>
           <button
             type="button"
+            onClick={() => setShowProfileModal(true)}
             className="inline-flex items-center gap-2 rounded-md border border-purple-600 bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-purple-700 focus:ring-1 focus:ring-purple-600"
           >
             <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
@@ -217,23 +220,8 @@ const TaskEvidenceTab: React.FC = () => {
         </section>
       ))}
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-        >
-          <XMarkIcon className="h-4 w-4" aria-hidden="true" />
-          Close
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
-        >
-          <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
-          Save Task
-        </button>
-      </div>
+      {/* Generate Transaction Profile Modal */}
+      <GenerateTransactionProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 };
