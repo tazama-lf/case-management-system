@@ -77,9 +77,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Task Details' },
+                { key: 'linked', label: 'Linked Items' },
                 { key: 'customer', label: 'Customer Profile' },
                 { key: 'evidence', label: 'Evidence' },
-                { key: 'linked', label: 'Linked Items' },
                 { key: 'notes', label: 'Investigation Notes' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
