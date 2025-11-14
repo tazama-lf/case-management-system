@@ -3,7 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 // import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
-import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
+import TaskEvidenceTab from './view/TaskEvidenceTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
@@ -76,7 +76,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Task Details' },
-                { key: 'evidence', label: 'Evidence & Documents' },
+                { key: 'evidence', label: 'Evidence' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'notes', label: 'Investigation Notes' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -102,10 +102,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <CollaboratePanel />
           ) : (
             <>
-              {tab === 'details' && <CaseDetailsTab row={row} />}
-              {tab === 'evidence' && <EvidenceDocumentsTab />}
-              {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'notes' && <InvestigationNotesTab />}
+              <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
+                <CaseDetailsTab row={row} />
+              </div>
+              <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
+                <TaskEvidenceTab />
+              </div>
+              <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
+                <LinkedItemsTab />
+              </div>
+              <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
+                <InvestigationNotesTab />
+              </div>
             </>
           )}
         </div>
