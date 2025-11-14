@@ -12,10 +12,10 @@ export enum EvidenceType {
 }
 
 export class UploadEvidenceDto {
-  @ApiProperty({ description: 'Case ID this evidence belongs to' })
+  @ApiProperty({ description: 'Task ID this evidence belongs to' })
   @IsString()
   @IsNotEmpty()
-  caseId: string;
+  taskId: string;
 
   @ApiProperty({ description: 'Type of evidence', enum: EvidenceType })
   @IsEnum(EvidenceType)

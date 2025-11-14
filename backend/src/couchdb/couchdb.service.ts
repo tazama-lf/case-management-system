@@ -15,7 +15,6 @@ export class CouchdbService implements OnModuleInit {
     const password = this.configService.get<string>('COUCHDB_PASSWORD', '1234');
     this.dbName = this.configService.get<string>('COUCHDB_DATABASE', 'evidence_store');
 
-    // Construct URL with authentication
     const urlWithAuth = url.replace('://', `://${username}:${password}@`);
 
     this.nanoInstance = nano(urlWithAuth);
@@ -48,14 +47,14 @@ export class CouchdbService implements OnModuleInit {
     attachmentName: string,
     attachmentData: Buffer,
     contentType: string,
-  ): Promise<nano.DocumentInsertResponse> {
+  ) {
     try {
       const response = await this.db.insert(metadata, docId);
 
       await this.db.attachment.insert(docId, attachmentName, attachmentData, contentType, { rev: response.rev });
 
       this.logger.log(`Document inserted with attachment: ${docId}`);
-      return response;
+      return `${this.db.config.url}/${this.db.config.db}/${docId}/${encodeURIComponent(metadata.fileName)}`;
     } catch (error) {
       this.logger.error(`Failed to insert document with attachment: ${error.message}`, error.stack);
       throw error;
@@ -105,6 +104,21 @@ export class CouchdbService implements OnModuleInit {
       return result.docs;
     } catch (error) {
       this.logger.error(`Failed to query by case ID: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+  async queryByTaskId(taskId: string): Promise<any[]> {
+    try {
+      const result = await this.db.find({
+        selector: {
+          taskId: taskId,
+        },
+        limit: 1000,
+      });
+
+      return result.docs;
+    } catch (error) {
+      this.logger.error(`Failed to query by task ID: ${error.message}`, error.stack);
       throw error;
     }
   }

@@ -44,9 +44,9 @@ export class EvidenceController {
           format: 'binary',
           description: 'Evidence file to upload',
         },
-        caseId: {
+        taskId: {
           type: 'string',
-          description: 'Case ID',
+          description: 'Task ID',
         },
         type: {
           type: 'string',
@@ -66,7 +66,7 @@ export class EvidenceController {
           description: 'Additional comments',
         },
       },
-      required: ['file', 'caseId', 'type'],
+      required: ['file', 'taskID', 'type'],
     },
   })
   @ApiResponse({
@@ -91,10 +91,11 @@ export class EvidenceController {
     }
 
     const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.uploadEvidence(file, dto, userId);
+    const tenantId = req.user?.token?.tenantId || 'DEFAULT';
+    return this.evidenceService.uploadEvidence(file, dto, userId, tenantId);
   }
 
-  @Get('case/:caseId')
+  @Get('task/:taskId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get all evidence for a case' })
   @ApiResponse({
@@ -102,10 +103,22 @@ export class EvidenceController {
     description: 'List of evidence retrieved successfully',
     type: EvidenceListResponseDto,
   })
-  async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+  async getEvidenceByCase(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.getEvidenceByCase(caseId, userId);
+    return this.evidenceService.getEvidenceByTaskId(taskId, userId);
   }
+  // @Get('case/:caseId')
+  // @RequireInvestigatorOrSupervisorRole()
+  // @ApiOperation({ summary: 'Get all evidence for a case' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'List of evidence retrieved successfully',
+  //   type: EvidenceListResponseDto,
+  // })
+  // async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+  //   const userId = req.user?.token?.clientId || 'system';
+  //   return this.evidenceService.getEvidenceByCase(caseId, userId);
+  // }
 
   @Get(':id')
   @RequireInvestigatorOrSupervisorRole()
@@ -150,22 +163,5 @@ export class EvidenceController {
   async verifyEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<VerifyEvidenceDto> {
     const userId = req.user?.token?.clientId || 'system';
     return this.evidenceService.verifyEvidence(id, userId);
-  }
-
-  @Get('search/hash')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Search evidence by hash' })
-  @ApiResponse({
-    status: 200,
-    description: 'Evidence found by hash',
-    type: [EvidenceResponseDto],
-  })
-  async searchByHash(@Query('hash') hash: string, @Req() req: AuthenticatedRequest): Promise<EvidenceResponseDto[]> {
-    if (!hash) {
-      throw new BadRequestException('Hash parameter is required');
-    }
-
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.searchByHash(hash, userId);
   }
 }

@@ -6,19 +6,19 @@ export class EvidenceMetadataDto {
   id: string;
 
   @ApiProperty()
-  caseId: string;
+  taskId: string;
 
   @ApiProperty()
   fileName: string;
-
-  @ApiProperty()
-  originalName: string;
 
   @ApiProperty({ enum: EvidenceType })
   type: EvidenceType;
 
   @ApiProperty()
   fileSize: number;
+
+  @ApiProperty()
+  filePath: string;
 
   @ApiProperty()
   mimeType: string;
@@ -42,9 +42,6 @@ export class EvidenceMetadataDto {
   comments?: string;
 
   @ApiProperty()
-  couchdbDocId: string;
-
-  @ApiProperty()
   couchdbRev?: string;
 }
 
@@ -64,7 +61,7 @@ export class EvidenceListResponseDto {
   total: number;
 
   @ApiProperty()
-  caseId: string;
+  taskId: string;
 }
 
 export class VerifyEvidenceDto {
