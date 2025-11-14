@@ -1,9 +1,18 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { Evidence } from '@prisma/client';
 
 @Injectable()
 export class EvidenceService {
@@ -75,9 +84,15 @@ export class EvidenceService {
         },
       };
 
-      console.log("EvidenceDoc: ", evidenceDoc);
+      console.log('EvidenceDoc: ', evidenceDoc);
 
-      const insertedEvidenceDoc = await this.couchdb.insertWithAttachment(evidenceId, evidenceDoc, file.originalname, file.buffer, file.mimetype);
+      const insertedEvidenceDoc = await this.couchdb.insertWithAttachment(
+        evidenceId,
+        evidenceDoc,
+        file.originalname,
+        file.buffer,
+        file.mimetype,
+      );
 
       this.logger.log(`Evidence stored in CouchDB: ${evidenceId}`);
 
@@ -121,23 +136,35 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get list of evidence for a case
-   */
-  async getEvidenceByTaskId(taskId: string, userId: string): Promise<EvidenceListResponseDto> {
-    this.logger.log(`Fetching evidence for task ${taskId}`);
+  async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    this.logger.log(`Fetching evidence list for task ${taskId}`);
 
     try {
-      const evidenceList = await this.couchdb.queryByTaskId(taskId);
+      const query: any = {
+        tenantId,
+        taskId,
+        page: 1,
+        limit: 100,
+      };
 
-      const evidence: EvidenceResponseDto[] = evidenceList.map((item) => ({
+      if (role === 'CMS_INVESTIGATOR') {
+        query.uploadedBy = userId;
+      } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+      } else {
+        throw new UnauthorizedException('Invalid role');
+      }
+
+      const result = await this.couchdb.queryDocuments(query);
+      const docs = result.data || [];
+
+      const evidence: EvidenceResponseDto[] = docs.map((item) => ({
         id: item.evidenceId,
         taskId: item.taskId,
         fileName: item.fileName,
         originalName: item.originalName,
         type: item.type,
         fileSize: Number(item.fileSize),
-        mimeType: item.mimeType || item.file.mimetype,
+        mimeType: item.mimeType,
         hash: item.hash,
         uploadedBy: item.uploadedBy,
         uploadedAt: item.uploadedAt,
@@ -149,7 +176,6 @@ export class EvidenceService {
         verified: true,
       }));
 
-      // Log audit trail
       await this.auditLog.logAction({
         userId,
         operation: 'view',
@@ -169,16 +195,28 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get single evidence by ID
-   */
-  async getEvidenceById(evidenceId: string, userId: string): Promise<EvidenceResponseDto> {
+  async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
     this.logger.log(`Fetching evidence ${evidenceId}`);
 
-    const evidenceDoc = await this.couchdb.getDocument(evidenceId);
+    let query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
+
+    if (userRole === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (userRole === 'CMS_AUDITOR' || userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
+    }
+
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
 
     if (!evidenceDoc) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+      throw new ForbiddenException('Access denied or evidence not found');
     }
 
     await this.auditLog.logAction({
@@ -195,7 +233,7 @@ export class EvidenceService {
       fileName: evidenceDoc.fileName,
       type: evidenceDoc.type,
       fileSize: Number(evidenceDoc.fileSize),
-      mimeType: evidenceDoc.mimeType || evidenceDoc.file.mimetype,
+      mimeType: evidenceDoc.mimeType,
       hash: evidenceDoc.hash,
       uploadedBy: evidenceDoc.uploadedBy,
       uploadedAt: evidenceDoc.uploadedAt,
@@ -208,24 +246,41 @@ export class EvidenceService {
     };
   }
 
-
-  async downloadEvidence(evidenceId: string, userId: string): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
+  async downloadEvidence(
+    evidenceId: string,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
-    const evidenceDoc = await this.couchdb.getDocument(evidenceId);
+    const query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
 
+    if (role === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
+    }
+
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
 
     if (!evidenceDoc) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
     }
 
     try {
-
       const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
 
       const currentHash = this.calculateHash(file);
       if (currentHash !== evidenceDoc.hash) {
-        this.logger.error(`Hash mismatch for evidence ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
+        this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
       }
 
@@ -243,7 +298,7 @@ export class EvidenceService {
         fileName: evidenceDoc.fileName,
         type: evidenceDoc.type,
         fileSize: Number(evidenceDoc.fileSize),
-        mimeType: evidenceDoc.mimeType || evidenceDoc.file.mimetype,
+        mimeType: evidenceDoc.mimeType,
         hash: evidenceDoc.hash,
         uploadedBy: evidenceDoc.uploadedBy,
         uploadedAt: evidenceDoc.uploadedAt,
@@ -262,24 +317,38 @@ export class EvidenceService {
     }
   }
 
-  async verifyEvidence(evidenceId: string, userId: string): Promise<VerifyEvidenceDto> {
+  async verifyEvidence(evidenceId: string, userId: string, tenantId: string, role: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
-    const evidenceDoc = await this.couchdb.getDocument(evidenceId);
-    console.log("evidenceDoc: ", evidenceDoc);
+    const query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
 
+    if (role === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
+    }
+
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
 
     if (!evidenceDoc) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
     }
 
     try {
       const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
-      
+
       const currentHash = this.calculateHash(file);
+      const verified = currentHash === evidenceDoc.hash;
+
       console.log("currentHash: ", currentHash);
       console.log("evidenceDoc.hash: ", evidenceDoc.hash);
-      const verified = currentHash === evidenceDoc.hash;
 
       await this.auditLog.logAction({
         userId,

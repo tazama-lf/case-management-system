@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nano from 'nano';
 
@@ -41,13 +41,7 @@ export class CouchdbService implements OnModuleInit {
     return this.db;
   }
 
-  async insertWithAttachment(
-    docId: string,
-    metadata: any,
-    attachmentName: string,
-    attachmentData: Buffer,
-    contentType: string,
-  ) {
+  async insertWithAttachment(docId: string, metadata: any, attachmentName: string, attachmentData: Buffer, contentType: string) {
     try {
       const response = await this.db.insert(metadata, docId);
 
@@ -73,6 +67,69 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
+  async queryDocuments(params: {
+    evidenceId?: string,
+    tenantId?: string;
+    uploadedBy?: string;
+    taskId?: string;
+    id?: string;
+    verified?: boolean;
+    search?: string;
+    page: number;
+    limit: number;
+  }) {
+    const { evidenceId, tenantId, uploadedBy, taskId, id, verified, search, page, limit} = params;
+
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Page must be a positive integer');
+    }
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new BadRequestException('Limit must be a positive integer');
+    }
+
+    const selector: any = {};
+
+    if (tenantId) selector.tenantId = tenantId;
+    if (uploadedBy) selector.uploadedBy = uploadedBy;
+    if (taskId) selector.taskId = taskId;
+    if (evidenceId) selector.evidenceId = evidenceId;
+    if (id) selector.id = id;
+    if (verified !== undefined) selector.verified = verified;
+
+    if (search) {
+      selector.$or = [{ fileName: { $regex: search } }, { description: { $regex: search } }, { comments: { $regex: search } }];
+
+      if (search.length === 36) {
+        selector.$or.push({ id: search });
+        selector.$or.push({ taskId: search });
+      }
+    }
+
+    try {
+      const result = await this.db.find({
+        selector,
+        limit,
+        skip: (page - 1) * limit,
+      });
+
+      const totalCountResult = await this.db.find({
+        selector,
+        limit: 0,
+      });
+
+      return {
+        data: result.docs,
+        page,
+        limit,
+        total: totalCountResult.docs.length,
+        totalPages: Math.ceil(totalCountResult.docs.length / limit),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to query documents: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Unable to fetch document list');
+    }
+  }
+
   async getAttachment(docId: string, attachmentName: string): Promise<Buffer> {
     try {
       const attachment = await this.db.attachment.get(docId, attachmentName);
@@ -88,37 +145,6 @@ export class CouchdbService implements OnModuleInit {
       return await this.db.list(params || {});
     } catch (error) {
       this.logger.error(`Failed to list documents: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  async queryByCaseId(caseId: string): Promise<any[]> {
-    try {
-      const result = await this.db.find({
-        selector: {
-          caseId: caseId,
-        },
-        limit: 1000,
-      });
-
-      return result.docs;
-    } catch (error) {
-      this.logger.error(`Failed to query by case ID: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-  async queryByTaskId(taskId: string): Promise<any[]> {
-    try {
-      const result = await this.db.find({
-        selector: {
-          taskId: taskId,
-        },
-        limit: 1000,
-      });
-
-      return result.docs;
-    } catch (error) {
-      this.logger.error(`Failed to query by task ID: ${error.message}`, error.stack);
       throw error;
     }
   }
