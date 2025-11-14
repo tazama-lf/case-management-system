@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, MaxLength, IsDateString, IsArray } from 'class-validator';
 
 export enum EvidenceType {
   SANCTIONS = 'SANCTIONS',
@@ -34,4 +34,43 @@ export class UploadEvidenceDto {
   @IsString()
   @MaxLength(2000)
   comments?: string;
+
+  // --- Adverse Media Screening specific ---
+  @ApiProperty({ description: 'Name of the media aggregator or tool', required: false })
+  @IsOptional()
+  @IsString()
+  aggregator?: string;
+
+  @ApiProperty({ description: 'Date when the media search was conducted', required: false })
+  @IsOptional()
+  @IsDateString()
+  dateSearched?: string;
+
+  @ApiProperty({ description: 'Search keywords used', required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  keywords?: string[];
+
+  @ApiProperty({ description: 'Findings or summary of the media search', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  findings?: string;
+
+   // --- Sanctions Screening specific ---
+  @ApiProperty({ description: 'Date when screening was performed', required: false })
+  @IsOptional()
+  @IsDateString()
+  screeningDate?: string;
+
+  @ApiProperty({ description: 'External screening tool or source used', required: false })
+  @IsOptional()
+  @IsString()
+  tool?: string;
+
+  @ApiProperty({ description: 'Summary of screening disposition (Cleared/Escalated/Positive Match)', required: false })
+  @IsOptional()
+  @IsString()
+  summaryDisposition?: string;
 }

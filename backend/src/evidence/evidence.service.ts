@@ -50,17 +50,15 @@ export class EvidenceService {
     return Buffer.concat([decipher.update(enc), decipher.final()]);
   }
 
-  async uploadEvidence(file, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
     const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
-
     const hash = this.sha256(encrypted);
-
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
-    const metadata = {
+    const metadata: any = {
       _id: evidenceId,
       evidenceId,
       tenantId,
@@ -78,7 +76,22 @@ export class EvidenceService {
       comments: dto.comments,
     };
 
-    await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
+    // extra metadata for Adverse Media Screening
+    if (dto.evidenceType === 'ADVERSE_MEDIA') {
+      metadata.aggregator = dto.aggregator;
+      metadata.dateSearched = dto.dateSearched;
+      metadata.keywords = dto.keywords;
+      metadata.findings = dto.findings;
+    }
+
+    // extra metadata for Sanction Screening
+    if (dto.evidenceType === 'SANCTIONS') {
+      metadata.screeningDate = dto.screeningDate;
+      metadata.tool = dto.tool;
+      metadata.summaryDisposition = dto.summaryDisposition;
+    }
+
+    const fileAttachmentPath = await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
 
     await this.auditLog.logAction({
       userId,
@@ -101,9 +114,7 @@ export class EvidenceService {
       tags: dto.tags,
       description: dto.description,
       comments: dto.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${evidenceId}/download`,
-      verified: true,
+      filePath: fileAttachmentPath
     };
   }
 
@@ -152,9 +163,7 @@ export class EvidenceService {
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
-      verified: true,
+      filePath: ''
     };
   }
 
@@ -220,9 +229,7 @@ export class EvidenceService {
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
-          filePath: '',
-          downloadUrl: `/api/evidenceDoc/${evidenceId}/download`,
-          verified: true,
+          filePath: ''
         },
       };
     } catch (error) {
