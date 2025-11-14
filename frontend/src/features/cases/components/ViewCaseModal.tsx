@@ -3,13 +3,11 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 // import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
-import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
-import LinkedItemsTab from './view/LinkedItemsTab';
 import TaskLogTab from './view/TaskLogTab';
-import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
+import CaseHistoryTab from './view/CaseHistoryTab';
 
-type ViewTabKey = 'details' | 'tasks';
+type ViewTabKey = 'details' | 'tasks' | 'history';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -77,6 +75,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               [
                 { key: 'details', label: 'Case Details' },
                 { key: 'tasks', label: 'Task Log' },
+                { key: 'history', label: 'Case History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -103,6 +102,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               {tab === 'details' && <CaseDetailsTab row={row} />}
               {tab === 'tasks' && (
                 <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />
+              )}
+              {tab === 'history' && (
+                <CaseHistoryTab caseId={row.id} row={row} />
               )}
             </>
           )}

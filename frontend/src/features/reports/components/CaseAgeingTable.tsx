@@ -2,6 +2,7 @@ import React from 'react';
 import type { CaseAgeingDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import PaginationControls from '../../../shared/components/PaginationControls';
+import authService from '@/features/auth/services/authService';
 
 interface CaseAgeingTableProps {
   data: CaseAgeingDetail[];
@@ -18,6 +19,26 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
   onExportCSV,
   onExportPDF,
 }) => {
+  const [investigators, setInvestigators] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    const fetchInvestigators = async () => {
+      try {
+        const investigatorList = await authService.fetchAllInvestigators();
+        const investigatorMap: Record<string, string> = {};
+        investigatorList.forEach((inv) => {
+          const fullName = inv.firstName && inv.lastName ? `${inv.firstName} ${inv.lastName}` : inv.username;
+          investigatorMap[inv.id] = fullName;
+        });
+        setInvestigators(investigatorMap);
+      } catch (err) {
+        console.warn('Failed to fetch investigators:', err);
+      }
+    };
+
+    fetchInvestigators();
+  }, []);
+
   const {
     currentPage,
     itemsPerPage,
@@ -112,10 +133,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                 Priority
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User ID
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Investigator
+                Assigned To
               </th>
             </tr>
           </thead>
@@ -161,27 +179,14 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                   >
                     {row.priority}
                   </td>
-                  <td className="px-4 py-3">
-                    <div
-                      className="break-all font-mono text-sm"
-                      title={
-                        (row as any).userId ||
-                        (row as any).user_id ||
-                        (row as any).assigneeId ||
-                        (row as any).assignee_id ||
-                        ''
-                      }
-                    >
-                      {(row as any).userId ||
-                        (row as any).user_id ||
-                        (row as any).assigneeId ||
-                        (row as any).assignee_id ||
-                        'N/A'}
-                    </div>
-                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div className="break-words">
-                      {row.investigator || 'Unassigned'}
+                      {row.investigator && row.investigator.includes('User ')
+                        ? (() => {
+                            const userId = row.investigator.replace('User ', '');
+                            return investigators[userId] || row.investigator;
+                          })()
+                        : row.investigator || 'Unassigned'}
                     </div>
                   </td>
                 </tr>

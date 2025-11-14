@@ -140,7 +140,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       title="View case details"
                     >
                       <EyeIcon className="h-4 w-4" />
-                      <span className="hidden sm:inline">View</span>
+                      <span className="hidden sm:inline">Review</span>
                     </button>
 
                     {c.action === 'Complete' && (

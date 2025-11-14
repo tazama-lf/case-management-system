@@ -12,6 +12,7 @@ import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import TaskDetailsModal from '../TasksDetailsModal';
 import type { CaseRow } from '../casesTable.utils';
+import authService from '@/features/auth/services/authService';
 
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
@@ -42,6 +43,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(
     null,
   );
+  const [investigators, setInvestigators] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -52,6 +54,19 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
         setError(null);
         const fetchedTasks = await taskService.getTasksByCaseId(caseId);
         setTasks(fetchedTasks);
+
+        // Fetch all investigators to build name mapping
+        try {
+          const investigatorList = await authService.fetchAllInvestigators();
+          const investigatorMap: Record<string, string> = {};
+          investigatorList.forEach((inv) => {
+            const fullName = inv.firstName && inv.lastName ? `${inv.firstName} ${inv.lastName}` : inv.username;
+            investigatorMap[inv.id] = fullName;
+          });
+          setInvestigators(investigatorMap);
+        } catch (err) {
+          console.warn('Failed to fetch investigators:', err);
+        }
       } catch (err) {
         console.error('Failed to fetch tasks for case:', caseId, err);
         setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
@@ -74,14 +89,21 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
 
+    // Get full name from investigators map, fallback to username or ID
+    let assigneeName: string | undefined;
+    if (backendTask.assigned_user_id) {
+      assigneeName = investigators[backendTask.assigned_user_id] || 
+                     backendTask.assignedUser?.username || 
+                     backendTask.assigned_user_id;
+    }
+
     return {
       id: backendTask.task_id,
       taskId: backendTask.task_id,
       name: backendTask.name || 'Unnamed Task',
       description: backendTask.description,
       assignee: backendTask.assigned_user_id,
-      assigneeName:
-        backendTask.assignedUser?.username || backendTask.assigned_user_id,
+      assigneeName,
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
       priority: 'NEW',
