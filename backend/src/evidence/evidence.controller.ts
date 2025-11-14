@@ -20,7 +20,7 @@ import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, TazamaClaims } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto } from './dto';
 
@@ -44,9 +44,9 @@ export class EvidenceController {
           format: 'binary',
           description: 'Evidence file to upload',
         },
-        caseId: {
+        taskId: {
           type: 'string',
-          description: 'Case ID',
+          description: 'Task ID',
         },
         type: {
           type: 'string',
@@ -66,7 +66,7 @@ export class EvidenceController {
           description: 'Additional comments',
         },
       },
-      required: ['file', 'caseId', 'type'],
+      required: ['file', 'taskID', 'type'],
     },
   })
   @ApiResponse({
@@ -90,22 +90,40 @@ export class EvidenceController {
       throw new BadRequestException('File is required');
     }
 
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.uploadEvidence(file, dto, userId);
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.uploadEvidence(file, dto, clientId, tenantId);
   }
 
-  @Get('case/:caseId')
+  @Get('task/:taskId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get all evidence for a case' })
+  @ApiOperation({ summary: 'Get all evidence for a task' })
   @ApiResponse({
     status: 200,
     description: 'List of evidence retrieved successfully',
     type: EvidenceListResponseDto,
   })
-  async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.getEvidenceByCase(caseId, userId);
+  async getEvidenceByTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
   }
+  // @Get('case/:caseId')
+  // @RequireInvestigatorOrSupervisorRole()
+  // @ApiOperation({ summary: 'Get all evidence for a case' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'List of evidence retrieved successfully',
+  //   type: EvidenceListResponseDto,
+  // })
+  // async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+  //   const userId = req.user?.token?.clientId || 'system';
+  //   return this.evidenceService.getEvidenceByCase(caseId, userId);
+  // }
 
   @Get(':id')
   @RequireInvestigatorOrSupervisorRole()
@@ -116,8 +134,11 @@ export class EvidenceController {
     type: EvidenceResponseDto,
   })
   async getEvidenceById(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<EvidenceResponseDto> {
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.getEvidenceById(id, userId);
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.getEvidenceById(id, clientId, tenantId, role);
   }
 
   @Get(':id/download')
@@ -128,8 +149,11 @@ export class EvidenceController {
     description: 'Evidence file downloaded successfully',
   })
   async downloadEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response): Promise<void> {
-    const userId = req.user?.token?.clientId || 'system';
-    const { file, metadata } = await this.evidenceService.downloadEvidence(id, userId);
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const { file, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role);
 
     res.setHeader('Content-Type', metadata.mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${metadata.fileName}"`);
@@ -148,24 +172,10 @@ export class EvidenceController {
     type: VerifyEvidenceDto,
   })
   async verifyEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<VerifyEvidenceDto> {
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.verifyEvidence(id, userId);
-  }
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-  @Get('search/hash')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Search evidence by hash' })
-  @ApiResponse({
-    status: 200,
-    description: 'Evidence found by hash',
-    type: [EvidenceResponseDto],
-  })
-  async searchByHash(@Query('hash') hash: string, @Req() req: AuthenticatedRequest): Promise<EvidenceResponseDto[]> {
-    if (!hash) {
-      throw new BadRequestException('Hash parameter is required');
-    }
-
-    const userId = req.user?.token?.clientId || 'system';
-    return this.evidenceService.searchByHash(hash, userId);
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role);
   }
 }

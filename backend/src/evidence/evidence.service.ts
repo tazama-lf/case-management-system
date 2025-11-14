@@ -1,9 +1,18 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { Evidence } from '@prisma/client';
 
 @Injectable()
 export class EvidenceService {
@@ -15,85 +24,77 @@ export class EvidenceService {
     private auditLog: AuditLogService,
   ) {}
 
-  /**
-   * Calculate SHA-256 hash of file buffer
-   */
   private calculateHash(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
   }
 
-  /**
-   * Upload evidence file with integrity validation
-   */
-  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string): Promise<EvidenceResponseDto> {
-    this.logger.log(`Uploading evidence for case ${dto.caseId} by user ${userId}`);
+  private encryptBuffer(buffer: Buffer): { encrypted: Buffer; key: string; iv: string; authTag: string } {
+    const key = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+    const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    return {
+      encrypted,
+      key: key.toString('base64'),
+      iv: iv.toString('base64'),
+      authTag: authTag.toString('base64'),
+    };
+  }
+
+  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+    this.logger.log(`Uploading evidence for task ${dto.taskId} by user ${userId}`);
 
     try {
-      const caseExists = await this.prisma.case.findUnique({
-        where: { case_id: dto.caseId },
+      const taskExists = await this.prisma.task.findUnique({
+        where: { task_id: dto.taskId },
       });
 
-      if (!caseExists) {
-        throw new NotFoundException(`Case ${dto.caseId} not found`);
+      if (!taskExists) {
+        throw new NotFoundException(`Task ${dto.taskId} not found`);
       }
 
       const fileHash = this.calculateHash(file.buffer);
       this.logger.log(`File hash calculated: ${fileHash}`);
 
-      // 3. Generate unique document ID
-      const docId = `evidence_${dto.caseId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const evidenceId = `evidence_${dto.taskId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const { encrypted, key, iv, authTag } = this.encryptBuffer(file.buffer);
 
-      // 4. Prepare metadata for CouchDB
-      const couchMetadata = {
-        _id: docId,
-        caseId: dto.caseId,
+      const evidenceDoc = {
+        _id: evidenceId,
+        evidenceId: evidenceId,
+        taskId: dto.taskId,
+        tenantId: tenantId,
+        userId: userId,
         fileName: file.originalname,
-        type: dto.type,
         fileSize: file.size,
         mimeType: file.mimetype,
-        hash: fileHash,
-        uploadedBy: userId,
-        uploadedAt: new Date().toISOString(),
+        type: dto.type,
         tags: dto.tags,
+        hash: fileHash,
         description: dto.description,
         comments: dto.comments,
+        uploadedBy: userId,
+        uploadedAt: new Date(),
+        encryption_meta: {
+          iv,
+          authTag,
+        },
       };
 
-      await this.couchdb.insertWithAttachment(docId, couchMetadata, file.originalname, file.buffer, file.mimetype);
+      console.log('EvidenceDoc: ', evidenceDoc);
 
-      this.logger.log(`Evidence stored in CouchDB: ${docId}`);
+      const insertedEvidenceDoc = await this.couchdb.insertWithAttachment(
+        evidenceId,
+        evidenceDoc,
+        file.originalname,
+        file.buffer,
+        file.mimetype,
+      );
 
-      const task = await this.prisma.task.findFirst({
-        where: { case_id: dto.caseId },
-        orderBy: { created_at: 'desc' },
-      });
-
-      if (!task) {
-        throw new BadRequestException(`No task found for case ${dto.caseId}. Evidence must be linked to a task.`);
-      }
-
-      const evidence = await this.prisma.evidence.create({
-        data: {
-          case_id: dto.caseId,
-          task_id: task.task_id,
-          uploader_user_id: userId,
-          tenant_id: 'default',
-          name: file.originalname,
-          description: dto.description || '',
-          type: dto.type,
-          file_path: docId,
-          file_size: BigInt(file.size),
-          file_type: file.mimetype,
-          evidence_hash: fileHash,
-          metadata: {
-            tags: dto.tags,
-            comments: dto.comments,
-            couchdbDocId: docId,
-          },
-        },
-      });
-
-      this.logger.log(`Evidence metadata stored in PostgreSQL: ${evidence.evidence_id}`);
+      this.logger.log(`Evidence stored in CouchDB: ${evidenceId}`);
 
       await this.auditLog.logAction({
         userId,
@@ -104,21 +105,20 @@ export class EvidenceService {
       });
 
       return {
-        id: evidence.evidence_id,
-        caseId: evidence.case_id || dto.caseId,
-        fileName: evidence.name,
-        originalName: file.originalname,
-        type: dto.type,
-        fileSize: Number(evidence.file_size),
-        mimeType: evidence.file_type || file.mimetype,
-        hash: evidence.evidence_hash,
-        uploadedBy: evidence.uploader_user_id,
-        uploadedAt: evidence.uploaded_at,
-        tags: dto.tags,
+        id: evidenceDoc.evidenceId,
+        taskId: evidenceDoc.taskId,
+        fileName: evidenceDoc.fileName,
+        type: evidenceDoc.type,
+        fileSize: Number(evidenceDoc.fileSize),
+        mimeType: evidenceDoc.mimeType || file.mimetype,
+        hash: evidenceDoc.hash,
+        uploadedBy: evidenceDoc.uploadedBy,
+        uploadedAt: evidenceDoc.uploadedAt,
+        tags: evidenceDoc.tags,
         description: dto.description,
         comments: dto.comments,
-        couchdbDocId: docId,
-        downloadUrl: `/api/evidence/${evidence.evidence_id}/download`,
+        filePath: insertedEvidenceDoc,
+        downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
         verified: true,
       };
     } catch (error) {
@@ -136,37 +136,46 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get list of evidence for a case
-   */
-  async getEvidenceByCase(caseId: string, userId: string): Promise<EvidenceListResponseDto> {
-    this.logger.log(`Fetching evidence for case ${caseId}`);
+  async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    this.logger.log(`Fetching evidence list for task ${taskId}`);
 
     try {
-      const evidenceList = await this.prisma.evidence.findMany({
-        where: { case_id: caseId },
-        orderBy: { uploaded_at: 'desc' },
-      });
+      const query: any = {
+        tenantId,
+        taskId,
+        page: 1,
+        limit: 100,
+      };
 
-      const evidence: EvidenceResponseDto[] = evidenceList.map((item) => ({
-        id: item.evidence_id,
-        caseId: item.case_id || caseId,
-        fileName: item.name,
-        originalName: item.name,
-        type: (item.type as EvidenceType) || EvidenceType.OTHER,
-        fileSize: Number(item.file_size),
-        mimeType: item.file_type || 'application/octet-stream',
-        hash: item.evidence_hash,
-        uploadedBy: item.uploader_user_id,
-        uploadedAt: item.uploaded_at,
-        tags: (item.metadata as any)?.tags,
+      if (role === 'CMS_INVESTIGATOR') {
+        query.uploadedBy = userId;
+      } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+      } else {
+        throw new UnauthorizedException('Invalid role');
+      }
+
+      const result = await this.couchdb.queryDocuments(query);
+      const docs = result.data || [];
+
+      const evidence: EvidenceResponseDto[] = docs.map((item) => ({
+        id: item.evidenceId,
+        taskId: item.taskId,
+        fileName: item.fileName,
+        originalName: item.originalName,
+        type: item.type,
+        fileSize: Number(item.fileSize),
+        mimeType: item.mimeType,
+        hash: item.hash,
+        uploadedBy: item.uploadedBy,
+        uploadedAt: item.uploadedAt,
+        tags: item.tags,
         description: item.description,
-        comments: (item.metadata as any)?.comments,
-        couchdbDocId: item.file_path,
-        downloadUrl: `/api/evidence/${item.evidence_id}/download`,
+        comments: item.comments,
+        filePath: '',
+        downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
+        verified: true,
       }));
 
-      // Log audit trail
       await this.auditLog.logAction({
         userId,
         operation: 'view',
@@ -178,7 +187,7 @@ export class EvidenceService {
       return {
         evidence,
         total: evidence.length,
-        caseId,
+        taskId,
       };
     } catch (error) {
       this.logger.error(`Failed to fetch evidence: ${error.message}`, error.stack);
@@ -186,21 +195,30 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get single evidence by ID
-   */
-  async getEvidenceById(evidenceId: string, userId: string): Promise<EvidenceResponseDto> {
+  async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
     this.logger.log(`Fetching evidence ${evidenceId}`);
 
-    const evidence = await this.prisma.evidence.findUnique({
-      where: { evidence_id: evidenceId },
-    });
+    let query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
 
-    if (!evidence) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+    if (userRole === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (userRole === 'CMS_AUDITOR' || userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
     }
 
-    // Log audit trail
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
+
+    if (!evidenceDoc) {
+      throw new ForbiddenException('Access denied or evidence not found');
+    }
+
     await this.auditLog.logAction({
       userId,
       operation: 'view',
@@ -210,52 +228,62 @@ export class EvidenceService {
     });
 
     return {
-      id: evidence.evidence_id,
-      caseId: evidence.case_id || 'unknown',
-      fileName: evidence.name,
-      originalName: evidence.name,
-      type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
-      fileSize: Number(evidence.file_size),
-      mimeType: evidence.file_type || 'application/octet-stream',
-      hash: evidence.evidence_hash,
-      uploadedBy: evidence.uploader_user_id,
-      uploadedAt: evidence.uploaded_at,
-      tags: (evidence.metadata as any)?.tags,
-      description: evidence.description,
-      comments: (evidence.metadata as any)?.comments,
-      couchdbDocId: evidence.file_path,
-      downloadUrl: `/api/evidence/${evidence.evidence_id}/download`,
+      id: evidenceDoc.evidenceId,
+      taskId: evidenceDoc.taskId,
+      fileName: evidenceDoc.fileName,
+      type: evidenceDoc.type,
+      fileSize: Number(evidenceDoc.fileSize),
+      mimeType: evidenceDoc.mimeType,
+      hash: evidenceDoc.hash,
+      uploadedBy: evidenceDoc.uploadedBy,
+      uploadedAt: evidenceDoc.uploadedAt,
+      tags: evidenceDoc.tags,
+      description: evidenceDoc.description,
+      comments: evidenceDoc.comments,
+      filePath: '',
+      downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
+      verified: true,
     };
   }
 
-  /**
-   * Download evidence file
-   */
-  async downloadEvidence(evidenceId: string, userId: string): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
+  async downloadEvidence(
+    evidenceId: string,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
-    // Get metadata from PostgreSQL
-    const evidence = await this.prisma.evidence.findUnique({
-      where: { evidence_id: evidenceId },
-    });
+    const query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
 
-    if (!evidence) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+    if (role === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
+    }
+
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
+
+    if (!evidenceDoc) {
+      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
     }
 
     try {
-      // Get file from CouchDB
-      const couchdbDocId = evidence.file_path;
-      const file = await this.couchdb.getAttachment(couchdbDocId, evidence.name);
+      const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
 
-      // Verify hash integrity
       const currentHash = this.calculateHash(file);
-      if (currentHash !== evidence.evidence_hash) {
-        this.logger.error(`Hash mismatch for evidence ${evidenceId}. Expected: ${evidence.evidence_hash}, Got: ${currentHash}`);
+      if (currentHash !== evidenceDoc.hash) {
+        this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
       }
 
-      // Log audit trail
       await this.auditLog.logAction({
         userId,
         operation: 'download',
@@ -265,21 +293,20 @@ export class EvidenceService {
       });
 
       const metadata: EvidenceResponseDto = {
-        id: evidence.evidence_id,
-        caseId: evidence.case_id || 'unknown',
-        fileName: evidence.name,
-        originalName: evidence.name,
-        type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
-        fileSize: Number(evidence.file_size),
-        mimeType: evidence.file_type || 'application/octet-stream',
-        hash: evidence.evidence_hash,
-        uploadedBy: evidence.uploader_user_id,
-        uploadedAt: evidence.uploaded_at,
-        tags: (evidence.metadata as any)?.tags,
-        description: evidence.description,
-        comments: (evidence.metadata as any)?.comments,
-        couchdbDocId: couchdbDocId,
-        downloadUrl: `/api/evidence/${evidence.evidence_id}/download`,
+        id: evidenceDoc.evidenceId,
+        taskId: evidenceDoc.taskId,
+        fileName: evidenceDoc.fileName,
+        type: evidenceDoc.type,
+        fileSize: Number(evidenceDoc.fileSize),
+        mimeType: evidenceDoc.mimeType,
+        hash: evidenceDoc.hash,
+        uploadedBy: evidenceDoc.uploadedBy,
+        uploadedAt: evidenceDoc.uploadedAt,
+        tags: evidenceDoc.tags,
+        description: evidenceDoc.description,
+        comments: evidenceDoc.comments,
+        filePath: '',
+        downloadUrl: `/api/evidenceDoc/${evidenceDoc.evidenceId}/download`,
         verified: true,
       };
 
@@ -290,22 +317,38 @@ export class EvidenceService {
     }
   }
 
-  async verifyEvidence(evidenceId: string, userId: string): Promise<VerifyEvidenceDto> {
+  async verifyEvidence(evidenceId: string, userId: string, tenantId: string, role: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
-    const evidence = await this.prisma.evidence.findUnique({
-      where: { evidence_id: evidenceId },
-    });
+    const query: any = {
+      tenantId,
+      evidenceId,
+      page: 1,
+      limit: 1,
+    };
 
-    if (!evidence) {
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+    if (role === 'CMS_INVESTIGATOR') {
+      query.uploadedBy = userId;
+    } else if (role === 'CMS_AUDITOR' || role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    } else {
+      throw new UnauthorizedException('Invalid role');
+    }
+
+    const result = await this.couchdb.queryDocuments(query);
+    const evidenceDoc = result.data?.[0];
+
+    if (!evidenceDoc) {
+      throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
     }
 
     try {
-      const file = await this.couchdb.getAttachment(evidence.file_path, evidence.name);
+      const file = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
 
       const currentHash = this.calculateHash(file);
-      const verified = currentHash === evidence.evidence_hash;
+      const verified = currentHash === evidenceDoc.hash;
+
+      console.log("currentHash: ", currentHash);
+      console.log("evidenceDoc.hash: ", evidenceDoc.hash);
 
       await this.auditLog.logAction({
         userId,
@@ -316,8 +359,8 @@ export class EvidenceService {
       });
 
       return {
-        evidenceId: evidence.evidence_id,
-        expectedHash: evidence.evidence_hash,
+        evidenceId: evidenceDoc.evidenceId,
+        expectedHash: evidenceDoc.hash,
         verified,
         message: verified
           ? 'Evidence integrity verified successfully'
@@ -329,39 +372,5 @@ export class EvidenceService {
       this.logger.error(`Failed to verify evidence: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to verify evidence');
     }
-  }
-
-  async searchByHash(hash: string, userId: string): Promise<EvidenceResponseDto[]> {
-    this.logger.log(`Searching evidence by hash: ${hash}`);
-
-    const evidenceList = await this.prisma.evidence.findMany({
-      where: { evidence_hash: hash },
-    });
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'search',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_SEARCH_BY_HASH',
-      outcome: 'SUCCESS',
-    });
-
-    return evidenceList.map((evidence) => ({
-      id: evidence.evidence_id,
-      caseId: evidence.case_id || 'unknown',
-      fileName: evidence.name,
-      originalName: evidence.name,
-      type: (evidence.type as EvidenceType) || EvidenceType.OTHER,
-      fileSize: Number(evidence.file_size),
-      mimeType: evidence.file_type || 'application/octet-stream',
-      hash: evidence.evidence_hash,
-      uploadedBy: evidence.uploader_user_id,
-      uploadedAt: evidence.uploaded_at,
-      tags: (evidence.metadata as any)?.tags,
-      description: evidence.description,
-      comments: (evidence.metadata as any)?.comments,
-      couchdbDocId: evidence.file_path,
-      downloadUrl: `/api/evidence/${evidence.evidence_id}/download`,
-    }));
   }
 }
