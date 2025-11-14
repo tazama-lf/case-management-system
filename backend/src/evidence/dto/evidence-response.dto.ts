@@ -12,7 +12,7 @@ export class EvidenceMetadataDto {
   fileName: string;
 
   @ApiProperty({ enum: EvidenceType })
-  type: EvidenceType;
+  evidenceType: EvidenceType;
 
   @ApiProperty()
   fileSize: number;
@@ -61,7 +61,10 @@ export class EvidenceListResponseDto {
   total: number;
 
   @ApiProperty()
-  taskId: string;
+  taskId?: string;
+  
+  @ApiProperty()
+  evidenceType?: EvidenceType;
 }
 
 export class VerifyEvidenceDto {
