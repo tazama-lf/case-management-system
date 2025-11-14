@@ -6,7 +6,7 @@ import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
-import CaseDetailsTab from './view/CaseDetailsTab';
+import TaskDetailsTab from './view/TaskDetailsTab';
 import CustomerProfileTab from './view/CustomerProfileTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
@@ -39,13 +39,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       // Fetch tasks for this case
       if (row?.id) {
         setLoadingTasks(true);
+        console.log('📋 Fetching tasks for case:', row.id);
         taskService
           .getTasksByCaseId(row.id)
           .then((fetchedTasks) => {
+            console.log('✅ Tasks fetched successfully:', fetchedTasks);
             setTasks(fetchedTasks);
           })
           .catch((error) => {
-            console.error('Failed to fetch tasks:', error);
+            console.error('❌ Failed to fetch tasks:', error);
           })
           .finally(() => {
             setLoadingTasks(false);
@@ -125,7 +127,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           ) : (
             <>
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
-                <CaseDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
+                <TaskDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
               </div>
               <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
                 <CustomerProfileTab />

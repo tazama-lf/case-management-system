@@ -70,6 +70,17 @@ export const formatStatus = (status: string): string => {
 export const transformBackendCaseToUI = (
   backendCase: CaseWithTasksDto,
 ): CaseRow => {
+  // Determine assignee display
+  let assigneeDisplay = 'Unassigned';
+  if (backendCase.assigned_to?.user_id) {
+    // Use the first 8 characters of user_id for display
+    assigneeDisplay = backendCase.assigned_to.user_id;
+  } else if (backendCase.case_owner_user_id) {
+    assigneeDisplay = backendCase.case_owner_user_id;
+  } else if (backendCase.user_role === 'owner') {
+    assigneeDisplay = 'Current User';
+  }
+
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
@@ -84,10 +95,9 @@ export const transformBackendCaseToUI = (
         ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
         : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee:
-      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
+    assignee: assigneeDisplay,
     priority: backendCase.priority,
-    userRole: backendCase.user_role,
+    userRole: backendCase.user_role || 'none',
     totalTasks: backendCase.total_tasks,
     alertId: backendCase.alert?.alert_id,
     alertMessage: backendCase.alert?.message,

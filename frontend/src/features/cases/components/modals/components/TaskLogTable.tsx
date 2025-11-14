@@ -53,14 +53,14 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
   ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
-      ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
+      UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'STATUS_01_UNASSIGNED' },
+      ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'STATUS_10_ASSIGNED' },
       IN_PROGRESS: {
         color: 'bg-yellow-100 text-yellow-800',
-        label: 'In Progress',
+        label: 'STATUS_20_IN_PROGRESS',
       },
-      COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
-      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
+      COMPLETED: { color: 'bg-green-100 text-green-800', label: 'STATUS_30_COMPLETED' },
+      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'STATUS_21_BLOCKED' },
     };
 
     const config =

@@ -574,11 +574,43 @@ export class TaskService {
               case_id: true,
               status: true,
               priority: true,
+              case_type: true,
             },
           },
         },
         orderBy: { created_at: 'desc' },
       });
+
+      // Enrich tasks with assigned user information
+      const enrichedTasks = await Promise.all(
+        tasks.map(async (task) => {
+          let assignedUser: { user_id: string; username: string; role?: string } | null = null;
+          
+          if (task.assigned_user_id) {
+            try {
+              // Fetch user info from auth service
+              const userInfo = await this.authHelperService.getUserDetailsFromAuthService(task.assigned_user_id);
+              assignedUser = {
+                user_id: task.assigned_user_id,
+                username: userInfo.username || userInfo.email || task.assigned_user_id,
+                role: userInfo.roles[0],
+              };
+            } catch (error: any) {
+              this.logger.warn(`Could not fetch user info for ${task.assigned_user_id}: ${error.message}`, TaskService.name);
+              // Fallback to just the user ID
+              assignedUser = {
+                user_id: task.assigned_user_id,
+                username: task.assigned_user_id.substring(0, 8),
+              };
+            }
+          }
+
+          return {
+            ...task,
+            assignedUser,
+          };
+        }),
+      );
 
       if (userId) {
         this.auditLogService.logAction({
@@ -591,7 +623,7 @@ export class TaskService {
         });
       }
 
-      return tasks;
+      return enrichedTasks;
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
       if (userId) {

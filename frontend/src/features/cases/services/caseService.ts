@@ -33,10 +33,17 @@ export interface CaseWithTasksDto {
   case_type: string;
   created_at: Date;
   updated_at: Date;
-  user_role: 'owner' | 'task_assignee' | 'both';
-  user_tasks: UserTaskDto[];
+  user_role?: 'owner' | 'task_assignee' | 'both';
+  user_tasks?: UserTaskDto[];
   total_tasks: number;
   alert?: AlertInfoDto;
+  assigned_to?: {
+    user_id: string;
+    task_count: number;
+  };
+  case_owner_user_id?: string;
+  completed_tasks?: number;
+  pending_tasks?: number;
 }
 
 export interface PaginationDto {
