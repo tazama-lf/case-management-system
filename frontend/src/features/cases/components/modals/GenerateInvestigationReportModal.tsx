@@ -3,8 +3,7 @@ import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  DocumentIcon,
-  ClipboardDocumentCheckIcon
+  DocumentIcon
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -47,67 +46,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsGenerating(false);
     setStep('generated');
-  };
-
-  const generateReportContent = () => {
-    const timestamp = new Date().toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
-    return `
-CASE INVESTIGATION REPORT
-${caseTitle}
-Generated: ${timestamp}
-
-================================================================================
-
-CASE INFORMATION
-----------------
-Case ID: CASE-2023-0045
-Type: Fraud
-Investigator: John Smith
-Submitted: 2023-05-14 10:23 AM
-
-================================================================================
-
-EXECUTIVE SUMMARY
------------------
-${executiveSummary}
-
-================================================================================
-
-KEY FINDINGS
-------------
-${keyFindings}
-
-================================================================================
-
-EVIDENCE SUMMARY
-----------------
-• Transaction logs showing suspicious patterns (3 documents)
-• Customer account statements for review period (2 documents)
-• Communication records and correspondence (5 documents)
-• Supporting documentation and reference materials (4 documents)
-
-All evidence items are attached to this case and available for audit review.
-
-================================================================================
-
-RECOMMENDATIONS & CONCLUSIONS
-------------------------------
-${recommendations}
-
-================================================================================
-
-Report End
-This report was generated electronically and contains sensitive information.
-Handle according to data protection and confidentiality policies.
-    `.trim();
   };
 
   const handleDownload = () => {
@@ -316,41 +254,204 @@ Handle according to data protection and confidentiality policies.
   };
 
   const handlePrint = () => {
-    const reportContent = generateReportContent();
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Investigation Report - ${caseId}</title>
-            <style>
-              body {
-                font-family: 'Courier New', monospace;
-                padding: 40px;
-                line-height: 1.6;
-                max-width: 800px;
-                margin: 0 auto;
+    try {
+      const timestamp = new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        pageMargins: [40, 60, 40, 60],
+        content: [
+          {
+            text: 'CASE INVESTIGATION REPORT',
+            style: 'header',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: caseTitle,
+            style: 'subheader',
+            margin: [0, 0, 0, 5],
+          },
+          {
+            text: `Generated: ${timestamp}`,
+            style: 'timestamp',
+            margin: [0, 0, 0, 20],
+          },
+          {
+            canvas: [
+              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }
+            ],
+            margin: [0, 0, 0, 20],
+          },
+
+          // Case Information Section
+          {
+            text: 'CASE INFORMATION',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            columns: [
+              {
+                width: '50%',
+                stack: [
+                  { text: [{ text: 'Case ID: ', bold: true }, 'CASE-2023-0045'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Type: ', bold: true }, 'Fraud'], margin: [0, 0, 0, 5] },
+                ]
+              },
+              {
+                width: '50%',
+                stack: [
+                  { text: [{ text: 'Investigator: ', bold: true }, 'John Smith'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Submitted: ', bold: true }, '2023-05-14 10:23 AM'], margin: [0, 0, 0, 5] },
+                ]
               }
-              pre {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-              }
-              @media print {
-                body {
-                  padding: 20px;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <pre>${reportContent}</pre>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
+            ],
+            margin: [0, 0, 0, 20],
+          },
+
+          // Executive Summary Section
+          {
+            text: 'EXECUTIVE SUMMARY',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: executiveSummary,
+            style: 'body',
+            margin: [0, 0, 0, 20],
+          },
+
+          // Key Findings Section
+          {
+            text: 'KEY FINDINGS',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: keyFindings,
+            style: 'body',
+            margin: [0, 0, 0, 20],
+          },
+
+          // Evidence Summary Section
+          {
+            text: 'EVIDENCE SUMMARY',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            ul: [
+              'Transaction logs showing suspicious patterns (3 documents)',
+              'Customer account statements for review period (2 documents)',
+              'Communication records and correspondence (5 documents)',
+              'Supporting documentation and reference materials (4 documents)',
+            ],
+            style: 'body',
+            margin: [0, 0, 0, 5],
+          },
+          {
+            text: 'All evidence items are attached to this case and available for audit review.',
+            style: 'italic',
+            margin: [0, 10, 0, 20],
+          },
+
+          // Recommendations Section
+          {
+            text: 'RECOMMENDATIONS & CONCLUSIONS',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: recommendations,
+            style: 'body',
+            margin: [0, 0, 0, 30],
+          },
+
+          // Footer
+          {
+            canvas: [
+              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
+            ],
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: 'Report End',
+            style: 'footer',
+            margin: [0, 0, 0, 5],
+          },
+          {
+            text: 'This report was generated electronically and contains sensitive information. Handle according to data protection and confidentiality policies.',
+            style: 'disclaimer',
+          },
+        ],
+        styles: {
+          header: {
+            fontSize: 20,
+            bold: true,
+            alignment: 'center',
+            color: '#1f2937',
+          },
+          subheader: {
+            fontSize: 14,
+            bold: true,
+            alignment: 'center',
+            color: '#3b82f6',
+          },
+          timestamp: {
+            fontSize: 10,
+            alignment: 'center',
+            color: '#6b7280',
+            italics: true,
+          },
+          sectionHeader: {
+            fontSize: 14,
+            bold: true,
+            color: '#1f2937',
+            decoration: 'underline',
+            decorationColor: '#3b82f6',
+          },
+          body: {
+            fontSize: 10,
+            color: '#374151',
+            lineHeight: 1.5,
+          },
+          italic: {
+            fontSize: 9,
+            color: '#6b7280',
+            italics: true,
+          },
+          footer: {
+            fontSize: 10,
+            bold: true,
+            alignment: 'center',
+            color: '#1f2937',
+          },
+          disclaimer: {
+            fontSize: 8,
+            alignment: 'center',
+            color: '#6b7280',
+            italics: true,
+          },
+        },
+        defaultStyle: {
+          fontSize: 10,
+          color: '#374151',
+        },
+      };
+
+      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+      pdfDoc.print();
+    } catch (error) {
+      console.error('Failed to print report:', error);
+      showError('Failed to print report. Please try again.');
     }
   };
 
