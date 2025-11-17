@@ -1,7 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { CaseService } from './case.service';
-import { UpdateCaseDto } from './dto/update-case.dto';
-import { CloseCaseDto, ApproveCaseClosureDto, RejectCaseClosureDto, ReturnCaseForReviewDto } from './dto/close-case.dto';
 import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
 import {
   RequireAlertTriageRole,
@@ -13,18 +11,53 @@ import {
 } from 'src/modules/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { GetUserCasesQueryDto, GetUserCasesResponseDto } from './dto/get-user-cases.dto';
-import { GetAllCasesQueryDto, GetAllCasesResponseDto } from './dto/get-all-cases.dto';
-import { ManualCreateCaseDto } from './dto/manual-case-create.dto';
-import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
-import { RejectCaseReopeningDto } from './dto/reopen-case.dto';
+import {
+  GetUserCasesQueryDto,
+  GetUserCasesResponseDto,
+  GetAllCasesQueryDto,
+  GetAllCasesResponseDto,
+  ManualCreateCaseDto,
+  SystemCaseCreationDto,
+  RejectCaseReopeningDto,
+  RequestReopenCaseDto,
+  RequestAbandonCaseDto,
+  RequestSuspendCaseDto,
+  UpdateCaseDto,
+  CloseCaseDto,
+  ApproveCaseClosureDto,
+  RejectCaseClosureDto,
+  ReturnCaseForReviewDto,
+  RequestResumeCaseDto,
+  // Response DTOs
+  SystemCaseCreatedResponseDto,
+  ManualCaseCreatedResponseDto,
+  CloseCaseValidationErrorResponseDto,
+  CaseNotFoundResponseDto,
+  CaseConflictResponseDto,
+  CaseErrorResponseDto,
+  ApproveCaseClosureBadRequestResponseDto,
+  RejectCaseClosureResponseDto,
+  ApproveCaseCreationResponseDto,
+  CaseMissingFieldsResponseDto,
+  SimpleMessageResponseDto,
+  CaseCreationConflictResponseDto,
+  RejectCaseCreationBodyDto,
+  RejectCaseCreationResponseDto,
+  RejectCaseCreationBadRequestResponseDto,
+  ApproveCaseReopeningResponseDto,
+  CaseReopeningConflictResponseDto,
+  RejectCaseReopeningResponseDto,
+  RejectReopeningBadRequestResponseDto,
+  ReturnCaseForReviewResponseDto,
+  UserWorkloadResponseDto,
+} from './dto/index.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(private readonly caseService: CaseService) { }
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -34,12 +67,12 @@ export class CaseController {
     description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.',
   })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to abandon' })
-  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for abandoning the case' } } } })
+  @ApiBody({ type: RequestAbandonCaseDto })
   @ApiResponse({ status: 200, description: 'Case abandoned successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to abandon cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async abandonCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+  async abandonCase(@Param('caseId') caseId: string, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
@@ -54,12 +87,12 @@ export class CaseController {
     description: 'Reopen a closed case, requires reason, resumes associated task, and logs the event.',
   })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
-  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for resume the case' } } } })
+  @ApiBody({ type: RequestReopenCaseDto })
   @ApiResponse({ status: 200, description: 'Case reopened successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async reopenCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+  async reopenCase(@Param('caseId') caseId: string, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
@@ -75,12 +108,12 @@ export class CaseController {
     description: 'Suspends a an in-progress case, requires reason, blocks associated task, and logs the event.',
   })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to suspend' })
-  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for suspending the case' } } } })
+  @ApiBody({ type: RequestSuspendCaseDto })
   @ApiResponse({ status: 200, description: 'Case suspended successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async suspendCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+  async suspendCase(@Param('caseId') caseId: string, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
     return this.caseService.suspendCase(caseId, body.reason, clientId, tenantId);
@@ -94,12 +127,12 @@ export class CaseController {
     description: 'Resumes a suspended case, requires reason, resumes associated task, and logs the event.',
   })
   @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
-  @ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string', description: 'Reason for resume the case' } } } })
+  @ApiBody({ type: RequestResumeCaseDto })
   @ApiResponse({ status: 200, description: 'Case resumed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async resumeCase(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+  async resumeCase(@Param('caseId') caseId: string, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
     return this.caseService.resumeCase(caseId, body.reason, clientId, tenantId);
@@ -137,13 +170,7 @@ export class CaseController {
   @ApiResponse({
     status: 201,
     description: 'Case created successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        caseId: { type: 'string', format: 'uuid' },
-        status: { type: 'string' },
-      },
-    },
+    type: SystemCaseCreatedResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -165,28 +192,7 @@ export class CaseController {
   @ApiResponse({
     status: 201,
     description: 'Case created successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string' },
-            priority: { type: 'string' },
-            case_type: { type: 'string' },
-          },
-        },
-        alert: {
-          type: 'object',
-          properties: {
-            alert_id: { type: 'string', format: 'uuid' },
-            case_id: { type: 'string', format: 'uuid' },
-          },
-        },
-      },
-    },
+    type: ManualCaseCreatedResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad Request - Missing required fields or alert already has a case' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -231,55 +237,22 @@ export class CaseController {
   @ApiResponse({
     status: 400,
     description: 'Bad Request - Validation failed',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        errors: {
-          type: 'array',
-          items: { type: 'string' },
-          example: ['Final notes are required and must be at least 20 characters'],
-        },
-        caseId: { type: 'string' },
-      },
-    },
+    type: CloseCaseValidationErrorResponseDto,
   })
   @ApiResponse({
     status: 404,
     description: 'Not Found - Case not found or no permission',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Case not found or you don\'t have permission to close it' },
-      },
-    },
+    type: CaseNotFoundResponseDto,
   })
   @ApiResponse({
     status: 409,
     description: 'Conflict - Case or task not in correct state',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        currentStatus: { type: 'string' },
-        requiredStatus: { type: 'string' },
-        caseId: { type: 'string' },
-      },
-    },
+    type: CaseConflictResponseDto,
   })
   @ApiResponse({
     status: 500,
     description: 'Internal Server Error - System error during closure',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'System error occurred during case closure' },
-        caseId: { type: 'string' },
-        error: { type: 'string' },
-        timestamp: { type: 'string', format: 'date-time' },
-      },
-    },
+    type: CaseErrorResponseDto,
   })
   async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
@@ -309,8 +282,7 @@ export class CaseController {
     const userClaims = req.user.token.claims || [];
 
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
     return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
   }
@@ -353,11 +325,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  async getUserCasesByUserId(
-    @Param('userId') targetUserId: string,
-    @Query() query: GetUserCasesQueryDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  async getUserCasesByUserId(@Param('userId') targetUserId: string, @Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const requestingUserId = req.user.token.clientId;
     if (requestingUserId !== targetUserId) {
       /* empty */
@@ -368,45 +336,8 @@ export class CaseController {
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get case workload statistics',
-    description: 'Get summary statistics of user\'s case workload',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Workload statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        totalActiveCases: { type: 'number', example: 15 },
-        totalPendingTasks: { type: 'number', example: 8 },
-        casesByStatus: {
-          type: 'object',
-          example: {
-            STATUS_20_IN_PROGRESS: 10,
-            STATUS_02_READY_FOR_ASSIGNMENT: 5,
-          },
-        },
-        casesByPriority: {
-          type: 'object',
-          example: {
-            CRITICAL: 2,
-            URGENT: 5,
-            NEW: 8,
-          },
-        },
-        oldestCase: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string' },
-            created_at: { type: 'string', format: 'date-time' },
-            days_old: { type: 'number' },
-          },
-        },
-        averageCaseAge: { type: 'number', example: 5.5 },
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user\'s case workload' })
+  @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.caseService.getUserWorkloadStats(userId);
@@ -414,14 +345,8 @@ export class CaseController {
 
   @Get(':caseId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Retrieve case by ID',
-    description: 'Get detailed information about a specific case',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Case retrieved successfully',
-  })
+  @ApiOperation({ summary: 'Retrieve case by ID', description: 'Get detailed information about a specific case' })
+  @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async getCase(@Param('caseId') caseId: string) {
     return this.caseService.retrieveCase(caseId);
@@ -450,26 +375,26 @@ export class CaseController {
   @ApiOperation({
     summary: 'Approve case closure',
     description: `Supervisor approves case closure with final outcome.
-  Comprehensive validation ensures all preconditions are met.
+    Comprehensive validation ensures all preconditions are met.
   
-  **Validation Checks:**
-  - Case exists and has complete information
-  - Case status is STATUS_22_PENDING_FINAL_APPROVAL
-  - "Approve case closure" task exists and is unassigned
-  - All other tasks are completed
-  - Investigation task is completed
-  - Closure recommendation exists
+    **Validation Checks:**
+    - Case exists and has complete information
+    - Case status is STATUS_22_PENDING_FINAL_APPROVAL
+    - "Approve case closure" task exists and is unassigned
+    - All other tasks are completed
+    - Investigation task is completed
+    - Closure recommendation exists
   
-  **On Success:**
-  - Updates case to final status (81/82/83)
-  - Completes approval task
-  - Notifies investigator
-  - Logs to audit trail
+    **On Success:**
+    - Updates case to final status (81/82/83)
+    - Completes approval task
+    - Notifies investigator
+    - Logs to audit trail
   
-  **On Failure:**
-  - Provides detailed error message
-  - No changes made to case or tasks
-  - Failure logged to audit trail`,
+    **On Failure:**
+    - Provides detailed error message
+    - No changes made to case or tasks
+    - Failure logged to audit trail`,
   })
   @ApiParam({
     name: 'caseId',
@@ -503,72 +428,11 @@ export class CaseController {
       },
     },
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Case closure approved successfully',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad Request - Invalid outcome or missing case information',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        providedOutcome: { type: 'string' },
-        validOutcomes: {
-          type: 'array',
-          items: { type: 'string' },
-          example: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'],
-        },
-        missingInformation: {
-          type: 'array',
-          items: { type: 'string' },
-          example: ['Completed investigation task', 'Investigation closure recommendation'],
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - Case or approval task not found',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL or incomplete tasks',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        currentStatus: { type: 'string' },
-        requiredStatus: { type: 'string', example: 'STATUS_22_PENDING_FINAL_APPROVAL' },
-        incompleteTasks: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              taskId: { type: 'string' },
-              name: { type: 'string' },
-              status: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal Server Error - System error during approval',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'System error occurred during case closure approval' },
-        caseId: { type: 'string' },
-        error: { type: 'string' },
-        timestamp: { type: 'string', format: 'date-time' },
-        action: { type: 'string', example: 'approveCaseClosure' },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Case closure approved successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid outcome or missing case information', type: ApproveCaseClosureBadRequestResponseDto })
+  @ApiResponse({ status: 404, description: 'Not Found - Case or approval task not found' })
+  @ApiResponse({ status: 409, description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL or incomplete tasks', type: CaseConflictResponseDto })
+  @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     if (!supervisorId) {
@@ -623,39 +487,7 @@ export class CaseController {
   @ApiResponse({
     status: 200,
     description: 'Case closure rejected successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example: 'Case closure rejected and returned for investigation',
-        },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_20_IN_PROGRESS' },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        completed_approval_task: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_30_COMPLETED' },
-          },
-        },
-        new_investigation_task: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Investigate Case' },
-            assigned_to: { type: 'string', format: 'uuid', description: 'Original investigator user ID' },
-            status: { type: 'string', example: 'STATUS_10_ASSIGNED' },
-          },
-        },
-      },
-    },
+    type: RejectCaseClosureResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -695,77 +527,22 @@ export class CaseController {
   @ApiResponse({
     status: 200,
     description: 'Case creation approved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_02_READY_FOR_ASSIGNMENT' },
-            priority: { type: 'string', example: 'URGENT' },
-            case_type: { type: 'string', example: 'FRAUD' },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        approvedTask: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Approve Case Creation' },
-            status: { type: 'string', example: 'STATUS_30_COMPLETED' },
-            assigned_user_id: { type: 'string', format: 'uuid' },
-          },
-        },
-        newTask: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Investigate case' },
-            status: { type: 'string', example: 'STATUS_01_UNASSIGNED' },
-            candidateGroup: { type: 'string', example: 'investigations' },
-          },
-        },
-      },
-    },
+    type: ApproveCaseCreationResponseDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Bad Request - Missing required fields',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Case has missing required fields' },
-        missingFields: {
-          type: 'array',
-          items: { type: 'string' },
-          example: ['priority', 'case_type'],
-        },
-      },
-    },
+    type: CaseMissingFieldsResponseDto,
   })
   @ApiResponse({
     status: 404,
     description: 'Not Found - Case or approval task not found',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Case not found' },
-      },
-    },
+    type: SimpleMessageResponseDto,
   })
   @ApiResponse({
     status: 409,
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Case is not pending creation approval' },
-        currentStatus: { type: 'string', example: 'STATUS_00_DRAFT' },
-        requiredStatus: { type: 'string', example: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' },
-      },
-    },
+    type: CaseCreationConflictResponseDto,
   })
   async approveCaseCreation(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
@@ -792,68 +569,16 @@ export class CaseController {
     description: 'UUID of the case to reject creation for',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['reason'],
-      properties: {
-        reason: {
-          type: 'string',
-          description: 'Reason for rejecting the case creation (minimum 10 characters)',
-          example: 'Missing critical information about the alert source and transaction details',
-          minLength: 10,
-        },
-      },
-    },
-  })
+  @ApiBody({ type: RejectCaseCreationBodyDto })
   @ApiResponse({
     status: 200,
     description: 'Case creation rejected successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_00_DRAFT' },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        completedTask: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Approve Case Creation' },
-            status: { type: 'string', example: 'STATUS_30_COMPLETED' },
-          },
-        },
-        newTask: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Complete New Case' },
-            status: { type: 'string', example: 'STATUS_10_ASSIGNED' },
-            assigned_user_id: { type: 'string', format: 'uuid' },
-            description: { type: 'string', example: 'Revise and complete the case as per supervisor feedback' },
-          },
-        },
-      },
-    },
+    type: RejectCaseCreationResponseDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Bad Request - Missing/invalid reason or invalid case state',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example: 'Rejection reason is required and must be at least 10 characters',
-        },
-      },
-    },
+    type: RejectCaseCreationBadRequestResponseDto,
   })
   @ApiResponse({
     status: 404,
@@ -862,24 +587,13 @@ export class CaseController {
   @ApiResponse({
     status: 409,
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Case is not pending creation approval' },
-        currentStatus: { type: 'string' },
-        requiredStatus: { type: 'string', example: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' },
-      },
-    },
+    type: CaseCreationConflictResponseDto,
   })
-  async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: { reason: string }, @Req() req: AuthenticatedRequest) {
+  async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
 
     if (!supervisorId || !tenantId) {
       throw new BadRequestException('Missing supervisor ID or tenant ID in auth token');
-    }
-
-    if (!body.reason || body.reason.trim().length < 10) {
-      throw new BadRequestException('Rejection reason is required and must be at least 10 characters');
     }
 
     return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
@@ -906,49 +620,7 @@ export class CaseController {
   @ApiResponse({
     status: 200,
     description: 'Case reopening approved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Case reopening approved' },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: {
-              type: 'string',
-              enum: ['STATUS_10_ASSIGNED', 'STATUS_02_READY_FOR_ASSIGNMENT'],
-              example: 'STATUS_10_ASSIGNED',
-            },
-            case_owner_user_id: { type: 'string', format: 'uuid', nullable: true },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        completed_approval_task: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_30_COMPLETED' },
-          },
-        },
-        investigation_task: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            name: { type: 'string', example: 'Investigate Case' },
-            status: {
-              type: 'string',
-              enum: ['STATUS_10_ASSIGNED', 'STATUS_01_UNASSIGNED'],
-            },
-            assigned_to: {
-              type: 'string',
-              description: 'User ID or candidate group name',
-            },
-            candidateGroup: { type: 'string', example: 'investigations' },
-          },
-        },
-      },
-    },
+    type: ApproveCaseReopeningResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -969,15 +641,7 @@ export class CaseController {
   @ApiResponse({
     status: 409,
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        currentStatus: { type: 'string' },
-        requiredStatus: { type: 'string', example: 'STATUS_31_REOPENED' },
-        caseId: { type: 'string', format: 'uuid' },
-      },
-    },
+    type: CaseReopeningConflictResponseDto,
   })
   async approveCaseReopening(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const { clientId: supervisorId, tenantId } = req.user.token;
@@ -1026,51 +690,12 @@ export class CaseController {
   @ApiResponse({
     status: 200,
     description: 'Case reopening rejected successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Case reopening rejected' },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: {
-              type: 'string',
-              enum: [
-                'STATUS_81_CLOSED_REFUTED',
-                'STATUS_82_CLOSED_CONFIRMED',
-                'STATUS_83_CLOSED_INCONCLUSIVE',
-                'STATUS_71_AUTOCLOSED_CONFIRMED',
-                'STATUS_72_AUTOCLOSED_REFUTED',
-              ],
-              example: 'STATUS_82_CLOSED_CONFIRMED',
-            },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        completed_task: {
-          type: 'object',
-          properties: {
-            task_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_30_COMPLETED' },
-          },
-        },
-        rejection_reason: { type: 'string' },
-      },
-    },
+    type: RejectCaseReopeningResponseDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Bad Request - Missing or insufficient rejection reason',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'Rejection reason must be at least 20 characters' },
-        error: { type: 'string', example: 'Bad Request' },
-      },
-    },
+    type: RejectReopeningBadRequestResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -1119,20 +744,7 @@ export class CaseController {
   @ApiResponse({
     status: 200,
     description: 'Case returned for review successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Case returned for review' },
-        case: {
-          type: 'object',
-          properties: {
-            case_id: { type: 'string', format: 'uuid' },
-            status: { type: 'string', example: 'STATUS_20_IN_PROGRESS' },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-      },
-    },
+    type: ReturnCaseForReviewResponseDto,
   })
   @ApiResponse({
     status: 400,
