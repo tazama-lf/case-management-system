@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
-import { IngestAlertDto } from './dto/ingest-alert.dto';
+import { IngestAlertDto } from '../alert/dto/IngestAlert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -110,6 +110,8 @@ export class TriageService {
       }
     }
   }
+
+  async handleAlertOrNALT() {}
 
   async handleNotAlert(alert: IngestAlertDto, userId: string, tenantId: string, source: string) {
     const txtp = alert.transaction.TxTp;

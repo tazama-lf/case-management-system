@@ -8,9 +8,10 @@ import { TaskModule } from '../task/task.module';
 import { CommentModule } from '../comment/comment.module';
 import { CaseCreationModule } from '../case-creation/case-creation.module';
 import { FeatureExtractionModule } from 'src/modules/feature-extraction/feature-extraction.module';
+import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
-  imports: [PrismaModule, LoggerModule, CaseCreationModule, TaskModule, CommentModule, FeatureExtractionModule],
+  imports: [PrismaModule, RepositoryModule, LoggerModule, CaseCreationModule, TaskModule, CommentModule, FeatureExtractionModule],
   controllers: [TriageController],
   providers: [TriageService, AuditLogService],
   exports: [TriageService],
