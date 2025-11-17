@@ -3,14 +3,9 @@ import type {
   Evidence,
   UploadEvidenceDto,
   UploadEvidenceResponse,
-  VerifyEvidenceDto,
   VerifyEvidenceResponse,
-  EvidenceSearchFilters,
   EvidenceListResponse,
-  DeleteEvidenceResponse,
-  DownloadEvidenceResponse,
-  EvidenceAuditLog,
-  EvidenceStatistics,
+  EvidenceType,
 } from '../types/evidence.types';
 
 export class EvidenceService {
@@ -18,6 +13,7 @@ export class EvidenceService {
 
   /**
    * Upload evidence file with metadata
+   * Maps to: POST /api/v1/evidence/upload
    */
   async uploadEvidence(
     data: UploadEvidenceDto,
@@ -25,24 +21,52 @@ export class EvidenceService {
     try {
       const formData = new FormData();
       formData.append('file', data.file);
-      formData.append('case_id', data.case_id);
-      formData.append('tags', JSON.stringify(data.tags));
-      formData.append('evidence_type', data.evidence_type);
+      formData.append('taskId', data.taskId);
+      formData.append('evidenceType', data.evidenceType);
+
+      if (data.tags) {
+        formData.append('tags', data.tags);
+      }
 
       if (data.description) {
         formData.append('description', data.description);
       }
 
-      if (data.access_level) {
-        formData.append('access_level', data.access_level);
+      if (data.comments) {
+        formData.append('comments', data.comments);
       }
 
-      if (data.metadata) {
-        formData.append('metadata', JSON.stringify(data.metadata));
+      // Sanctions specific fields
+      if (data.evidenceType === 'SANCTIONS') {
+        if (data.screeningDate) {
+          formData.append('screeningDate', data.screeningDate);
+        }
+        if (data.tool) {
+          formData.append('tool', data.tool);
+        }
+        if (data.summaryDisposition) {
+          formData.append('summaryDisposition', data.summaryDisposition);
+        }
+      }
+
+      // Adverse Media specific fields
+      if (data.evidenceType === 'ADVERSE_MEDIA') {
+        if (data.aggregator) {
+          formData.append('aggregator', data.aggregator);
+        }
+        if (data.dateSearched) {
+          formData.append('dateSearched', data.dateSearched);
+        }
+        if (data.keywords && data.keywords.length > 0) {
+          formData.append('keywords', JSON.stringify(data.keywords));
+        }
+        if (data.findings) {
+          formData.append('findings', data.findings);
+        }
       }
 
       const response = await apiClient.upload<UploadEvidenceResponse>(
-        this.baseUrl,
+        `${this.baseUrl}/upload`,
         formData,
       );
 
@@ -53,45 +77,29 @@ export class EvidenceService {
   }
 
   /**
-   * Get all evidence for a specific case
+   * Get all evidence for a specific task
+   * Maps to: GET /api/v1/evidence/task/:taskId
    */
-  async getCaseEvidence(
-    caseId: string,
-    filters?: EvidenceSearchFilters,
-    page: number = 1,
-    limit: number = 20,
-  ): Promise<EvidenceListResponse> {
+  async getTaskEvidence(taskId: string): Promise<EvidenceListResponse> {
     try {
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
+      const response = await apiClient.get<EvidenceListResponse>(
+        `${this.baseUrl}/task/${taskId}`,
+      );
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'get task evidence');
+    }
+  }
 
-      if (filters?.evidence_type) {
-        params.append('evidence_type', filters.evidence_type);
-      }
-      if (filters?.tags && filters.tags.length > 0) {
-        params.append('tags', filters.tags.join(','));
-      }
-      if (filters?.uploader_id) {
-        params.append('uploader_id', filters.uploader_id);
-      }
-      if (filters?.date_from) {
-        params.append('date_from', filters.date_from);
-      }
-      if (filters?.date_to) {
-        params.append('date_to', filters.date_to);
-      }
-      if (filters?.verified !== undefined) {
-        params.append('verified', filters.verified.toString());
-      }
-      if (filters?.search) {
-        params.append('search', filters.search);
-      }
-
-      const queryString = params.toString();
-      const url = `${this.baseUrl}/case/${caseId}${queryString ? `?${queryString}` : ''}`;
-
-      const response = await apiClient.get<EvidenceListResponse>(url);
+  /**
+   * Get all evidence for a specific case
+   * Maps to: GET /api/v1/evidence/case/:caseId
+   */
+  async getCaseEvidence(caseId: string): Promise<EvidenceListResponse> {
+    try {
+      const response = await apiClient.get<EvidenceListResponse>(
+        `${this.baseUrl}/case/${caseId}`,
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'get case evidence');
@@ -99,7 +107,25 @@ export class EvidenceService {
   }
 
   /**
+   * Get evidence by type
+   * Maps to: GET /api/v1/evidence/evidenceType/:evidenceType
+   */
+  async getEvidenceByType(
+    evidenceType: EvidenceType,
+  ): Promise<EvidenceListResponse> {
+    try {
+      const response = await apiClient.get<EvidenceListResponse>(
+        `${this.baseUrl}/evidenceType/${evidenceType}`,
+      );
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'get evidence by type');
+    }
+  }
+
+  /**
    * Get evidence details by ID
+   * Maps to: GET /api/v1/evidence/:id
    */
   async getEvidenceById(evidenceId: string): Promise<Evidence> {
     try {
@@ -114,14 +140,14 @@ export class EvidenceService {
 
   /**
    * Verify evidence integrity using SHA-256 hash
+   * Maps to: GET /api/v1/evidence/:id/verify
    */
   async verifyEvidence(
-    data: VerifyEvidenceDto,
+    evidenceId: string,
   ): Promise<VerifyEvidenceResponse> {
     try {
-      const response = await apiClient.post<VerifyEvidenceResponse>(
-        `${this.baseUrl}/${data.evidence_id}/verify`,
-        { expected_hash: data.expected_hash },
+      const response = await apiClient.get<VerifyEvidenceResponse>(
+        `${this.baseUrl}/${evidenceId}/verify`,
       );
       return response;
     } catch (error) {
@@ -131,127 +157,28 @@ export class EvidenceService {
 
   /**
    * Download evidence file
+   * Maps to: GET /api/v1/evidence/:id/download
    */
-  async downloadEvidence(
-    evidenceId: string,
-  ): Promise<DownloadEvidenceResponse> {
+  async downloadEvidence(evidenceId: string): Promise<Blob> {
     try {
-      const response = await apiClient.get<DownloadEvidenceResponse>(
+      // Direct fetch for blob response
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const response = await fetch(
         `${this.baseUrl}/${evidenceId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
-      return response;
+
+      if (!response.ok) {
+        throw new Error('Failed to download evidence');
+      }
+
+      return await response.blob();
     } catch (error) {
       throw this.handleError(error, 'download evidence');
-    }
-  }
-
-  /**
-   * Delete evidence (soft delete with audit trail)
-   */
-  async deleteEvidence(
-    evidenceId: string,
-    reason?: string,
-  ): Promise<DeleteEvidenceResponse> {
-    try {
-      const response = await apiClient.delete<DeleteEvidenceResponse>(
-        `${this.baseUrl}/${evidenceId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`,
-      );
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'delete evidence');
-    }
-  }
-
-  /**
-   * Update evidence metadata
-   */
-  async updateEvidenceMetadata(
-    evidenceId: string,
-    updates: Partial<
-      Pick<Evidence, 'tags' | 'description' | 'evidence_type' | 'access_level'>
-    >,
-  ): Promise<Evidence> {
-    try {
-      const response = await apiClient.patch<Evidence>(
-        `${this.baseUrl}/${evidenceId}`,
-        updates,
-      );
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'update evidence metadata');
-    }
-  }
-
-  /**
-   * Get evidence audit log
-   */
-  async getEvidenceAuditLog(evidenceId: string): Promise<EvidenceAuditLog[]> {
-    try {
-      const response = await apiClient.get<{ logs: EvidenceAuditLog[] }>(
-        `${this.baseUrl}/${evidenceId}/audit-log`,
-      );
-      return response.logs;
-    } catch (error) {
-      throw this.handleError(error, 'get evidence audit log');
-    }
-  }
-
-  /**
-   * Get evidence statistics for a case
-   */
-  async getCaseEvidenceStatistics(caseId: string): Promise<EvidenceStatistics> {
-    try {
-      const response = await apiClient.get<EvidenceStatistics>(
-        `${this.baseUrl}/case/${caseId}/statistics`,
-      );
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'get evidence statistics');
-    }
-  }
-
-  /**
-   * Search evidence across all cases (for registry)
-   */
-  async searchEvidence(
-    filters: EvidenceSearchFilters,
-    page: number = 1,
-    limit: number = 20,
-  ): Promise<EvidenceListResponse> {
-    try {
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
-
-      if (filters.evidence_type) {
-        params.append('evidence_type', filters.evidence_type);
-      }
-      if (filters.tags && filters.tags.length > 0) {
-        params.append('tags', filters.tags.join(','));
-      }
-      if (filters.uploader_id) {
-        params.append('uploader_id', filters.uploader_id);
-      }
-      if (filters.date_from) {
-        params.append('date_from', filters.date_from);
-      }
-      if (filters.date_to) {
-        params.append('date_to', filters.date_to);
-      }
-      if (filters.verified !== undefined) {
-        params.append('verified', filters.verified.toString());
-      }
-      if (filters.search) {
-        params.append('search', filters.search);
-      }
-
-      const queryString = params.toString();
-      const url = `${this.baseUrl}/search${queryString ? `?${queryString}` : ''}`;
-
-      const response = await apiClient.get<EvidenceListResponse>(url);
-      return response;
-    } catch (error) {
-      throw this.handleError(error, 'search evidence');
     }
   }
 

@@ -29,25 +29,30 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
 
   React.useEffect(() => {
     if (open) {
       setTab('details');
       setShowCollaborate(false);
+      setSaveSuccess(false);
+      uploadEvidenceRef.current = null;
       window.scrollTo({ top: 0 });
       
       // Fetch tasks for this case
       if (row?.id) {
         setLoadingTasks(true);
-        console.log('📋 Fetching tasks for case:', row.id);
+        console.log('Fetching tasks for case:', row.id);
         taskService
           .getTasksByCaseId(row.id)
           .then((fetchedTasks) => {
-            console.log('✅ Tasks fetched successfully:', fetchedTasks);
+            console.log('Tasks fetched successfully:', fetchedTasks);
             setTasks(fetchedTasks);
           })
           .catch((error) => {
-            console.error('❌ Failed to fetch tasks:', error);
+            console.error('Failed to fetch tasks:', error);
           })
           .finally(() => {
             setLoadingTasks(false);
@@ -55,6 +60,38 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
     }
   }, [open, row?.id]);
+
+  const handleSaveTask = async () => {
+    if (!tasks[0]?.task_id) {
+      console.error('No task ID available');
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      // Call the upload evidence function if available
+      if (uploadEvidenceRef.current) {
+        await uploadEvidenceRef.current();
+        setSaveSuccess(true);
+        
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => setSaveSuccess(false), 3000);
+        
+        console.log('Evidence uploaded successfully');
+      } else {
+        console.log('No evidence to upload');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to save task:', error);
+      alert('Failed to upload evidence. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!open || !row) return null;
 
@@ -132,14 +169,24 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
                 <CustomerProfileTab />
               </div>
-              <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
-                <TaskEvidenceTab />
+                            <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
+                <TaskEvidenceTab 
+                  taskId={tasks[0]?.task_id || ''}
+                  onSaveRequest={(uploadFn) => {
+                    uploadEvidenceRef.current = uploadFn;
+                  }}
+                  onUploadComplete={() => {
+                    console.log('Upload completed');
+                  }}
+                />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && <LinkedItemsTab caseId={row.id} />}
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
-                <InvestigationNotesTab />
+                <InvestigationNotesTab 
+                  taskId={tasks[0]?.task_id}
+                />
               </div>
             </>
           )}
@@ -147,20 +194,28 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         {}
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          {saveSuccess && (
+            <span className="text-sm text-green-600 font-medium">
+              ✓ Evidence uploaded successfully
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
+            disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
+            onClick={handleSaveTask}
+            disabled={saving || !tasks[0]?.task_id}
+            className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
-            Save Task
+            {saving ? 'Uploading...' : 'Save Task'}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import type { TaskForSupervisor } from '../../services/taskService';
+import userService, { type UserDetails } from '../../services/userService';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -38,7 +39,32 @@ const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
-const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row, tasks = [], loadingTasks = false }) => {
+const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row, tasks: _tasks = [], loadingTasks: _loadingTasks = false }) => {
+  const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(null);
+  const [loadingUser, setLoadingUser] = React.useState(false);
+
+  // Fetch user details when row changes
+  React.useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (row.assignedUserId) {
+        setLoadingUser(true);
+        try {
+          const userDetails = await userService.getUserDetailsById(row.assignedUserId);
+          setAssignedUser(userDetails);
+        } catch (error) {
+          console.error('Failed to fetch user details:', error);
+          setAssignedUser(null);
+        } finally {
+          setLoadingUser(false);
+        }
+      } else {
+        setAssignedUser(null);
+      }
+    };
+
+    fetchUserDetails();
+  }, [row.assignedUserId]);
+
   // Extract transaction data
   const getTransactionData = () => {
     if (!row.transaction) return null;
@@ -82,28 +108,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row, tasks = [], loadin
     'ClrSysMmbId',
     'MmbId',
   ]);
-
-  const getTaskStatusColor = (status: string): string => {
-    const statusColors: Record<string, string> = {
-      STATUS_01_UNASSIGNED: 'bg-gray-50 text-gray-700 ring-gray-200',
-      STATUS_10_ASSIGNED: 'bg-blue-50 text-blue-700 ring-blue-200',
-      STATUS_20_IN_PROGRESS: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-      STATUS_21_BLOCKED: 'bg-orange-50 text-orange-700 ring-orange-200',
-      STATUS_30_COMPLETED: 'bg-green-50 text-green-700 ring-green-200',
-    };
-    return statusColors[status] || 'bg-gray-50 text-gray-700 ring-gray-200';
-  };
-
-  const formatTaskStatus = (status: string): string => {
-    const statusLabels: Record<string, string> = {
-      STATUS_01_UNASSIGNED: 'Unassigned',
-      STATUS_10_ASSIGNED: 'Assigned',
-      STATUS_20_IN_PROGRESS: 'In Progress',
-      STATUS_21_BLOCKED: 'Blocked',
-      STATUS_30_COMPLETED: 'Completed',
-    };
-    return statusLabels[status] || status;
-  };
 
   return (
     <div className="space-y-4">
@@ -158,7 +162,17 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row, tasks = [], loadin
               <div>
                 <div className="text-xs text-gray-500 uppercase">Assignee</div>
                 <div className="font-medium text-gray-900">
-                  {row.assignee || 'N/A'}
+                  {loadingUser ? (
+                    <span className="text-gray-400">Loading...</span>
+                  ) : assignedUser ? (
+                    `${assignedUser.firstName} ${assignedUser.lastName}`.trim() || 
+                    assignedUser.username || 
+                    'Unknown'
+                  ) : row.assignee && row.assignee !== 'Unassigned' && row.assignee !== 'Current User' ? (
+                    row.assignee.substring(0, 8)
+                  ) : (
+                    row.assignee || 'N/A'
+                  )}
                 </div>
               </div>
               <div>

@@ -1,14 +1,24 @@
 import React from 'react';
 import { ArrowUpTrayIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfileModal';
+import { evidenceService } from '../../services/evidenceService';
+import type { Evidence, EvidenceType } from '../../types/evidence.types';
 
-const evidenceSections: Array<{ key: string; title: string; helper?: string; commentPlaceholder: string; emptyMessage: string }> = [
+const evidenceSections: Array<{ 
+  key: string; 
+  title: string; 
+  helper?: string; 
+  commentPlaceholder: string; 
+  emptyMessage: string;
+  evidenceType: EvidenceType;
+}> = [
   {
     key: 'sanctions',
     title: 'Sanctions Screening',
     helper: 'Upload evidence gathered during sanctions screening',
     commentPlaceholder: 'Add any notes about the sanctions screening results...',
     emptyMessage: 'No sanctions screening evidence attached',
+    evidenceType: 'SANCTIONS',
   },
   {
     key: 'adverse-media',
@@ -16,6 +26,7 @@ const evidenceSections: Array<{ key: string; title: string; helper?: string; com
     helper: 'Attach supporting documents from adverse media checks',
     commentPlaceholder: 'Summarise any key findings from adverse media screening...',
     emptyMessage: 'No adverse media screening evidence attached',
+    evidenceType: 'ADVERSE_MEDIA',
   },
   {
     key: 'others',
@@ -23,13 +34,143 @@ const evidenceSections: Array<{ key: string; title: string; helper?: string; com
     helper: 'Add any additional evidence that supports this task',
     commentPlaceholder: 'Provide context for the additional evidence...',
     emptyMessage: 'No other evidence attached',
+    evidenceType: 'OTHER',
   },
 ];
 
-const TaskEvidenceTab: React.FC = () => {
+interface TaskEvidenceTabProps {
+  taskId: string;
+  onUploadComplete?: () => void;
+  onSaveRequest?: (uploadFn: () => Promise<void>) => void;
+}
+
+const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({ 
+  taskId,
+  onUploadComplete,
+  onSaveRequest,
+}) => {
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const [sectionFiles, setSectionFiles] = React.useState<Record<string, File[]>>({});
+  const [sectionComments, setSectionComments] = React.useState<Record<string, string>>({});
+  const [uploadedEvidence, setUploadedEvidence] = React.useState<Record<string, Evidence[]>>({});
+  const [loading, setLoading] = React.useState(false);
+  const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [showProfileModal, setShowProfileModal] = React.useState(false);
+
+  // Load existing evidence for the task
+  React.useEffect(() => {
+    const loadEvidence = async () => {
+      if (!taskId) return;
+      
+      setLoading(true);
+      try {
+        const response = await evidenceService.getTaskEvidence(taskId);
+        
+        // Group evidence by type
+        const grouped: Record<string, Evidence[]> = {
+          sanctions: [],
+          'adverse-media': [],
+          others: [],
+        };
+
+        response.evidence.forEach((evidence) => {
+          if (evidence.evidenceType === 'SANCTIONS') {
+            grouped.sanctions.push(evidence);
+          } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
+            grouped['adverse-media'].push(evidence);
+          } else {
+            grouped.others.push(evidence);
+          }
+        });
+
+        setUploadedEvidence(grouped);
+      } catch (error) {
+        console.error('Failed to load evidence:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvidence();
+  }, [taskId]);
+
+  // Upload all evidence files
+  const handleUploadEvidence = async () => {
+    if (!taskId) {
+      throw new Error('No task ID available');
+    }
+
+    const sectionsToUpload = Object.entries(sectionFiles).filter(([_, files]) => files.length > 0);
+    
+    if (sectionsToUpload.length === 0) {
+      console.log('No files to upload');
+      return;
+    }
+
+    setUploading({ sanctions: true, 'adverse-media': true, others: true });
+
+    try {
+      const uploadPromises = sectionsToUpload.flatMap(([sectionKey, files]) => {
+        const section = evidenceSections.find(s => s.key === sectionKey);
+        if (!section) return [];
+
+        return files.map(async (file) => {
+          const uploadDto = {
+            file,
+            taskId,
+            evidenceType: section.evidenceType,
+            description: sectionComments[sectionKey] || `${section.title} evidence`,
+            comments: sectionComments[sectionKey],
+          };
+
+          return evidenceService.uploadEvidence(uploadDto);
+        });
+      });
+
+      await Promise.all(uploadPromises);
+
+      // Clear uploaded files and reload evidence
+      setSectionFiles({});
+      setSectionComments({});
+      
+      // Reload evidence to show newly uploaded files
+      const response = await evidenceService.getTaskEvidence(taskId);
+      const grouped: Record<string, Evidence[]> = {
+        sanctions: [],
+        'adverse-media': [],
+        others: [],
+      };
+
+      response.evidence.forEach((evidence) => {
+        if (evidence.evidenceType === 'SANCTIONS') {
+          grouped.sanctions.push(evidence);
+        } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
+          grouped['adverse-media'].push(evidence);
+        } else {
+          grouped.others.push(evidence);
+        }
+      });
+
+      setUploadedEvidence(grouped);
+      
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
+    } catch (error) {
+      console.error('Failed to upload evidence:', error);
+      throw error;
+    } finally {
+      setUploading({});
+    }
+  };
+
+  // Register upload function with parent
+  React.useEffect(() => {
+    if (onSaveRequest) {
+      onSaveRequest(handleUploadEvidence);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSaveRequest, sectionFiles, sectionComments, taskId]);
 
   React.useEffect(() => {
     console.log('🔄 State changed:', sectionFiles);
@@ -178,9 +319,11 @@ const TaskEvidenceTab: React.FC = () => {
           </div>
 
           <div className="space-y-4 p-4">
-            {/* File Preview Section */}
+            {/* File Preview Section - Pending Upload */}
             <div>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Attached Files</div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Pending Upload
+              </div>
               {sectionFiles[section.key]?.length ? (
                 <ul className="space-y-2">
                   {sectionFiles[section.key].map((file, index) => (
@@ -194,16 +337,53 @@ const TaskEvidenceTab: React.FC = () => {
                         </p>
                         <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                       </div>
-                      <span className="text-xs text-gray-400">Ready to upload</span>
+                      {uploading[section.key] ? (
+                        <span className="text-xs text-blue-600">Uploading...</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Ready to upload</span>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
-                  {section.emptyMessage}
+                  No files pending
                 </p>
               )}
             </div>
+
+            {/* Already Uploaded Evidence */}
+            {uploadedEvidence[section.key]?.length > 0 && (
+              <div>
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Uploaded Evidence ({uploadedEvidence[section.key].length})
+                </div>
+                {loading ? (
+                  <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
+                    Loading...
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {uploadedEvidence[section.key].map((evidence) => (
+                      <li
+                        key={evidence.id}
+                        className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm shadow-sm"
+                      >
+                        <div className="truncate flex-1">
+                          <p className="truncate font-medium text-gray-900" title={evidence.fileName}>
+                            {evidence.fileName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Uploaded {new Date(evidence.uploadedAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="text-xs text-green-600 ml-2">✓ Uploaded</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div>
               <label htmlFor={`${section.key}-comments`} className="mb-1 block text-xs font-medium text-gray-700">
@@ -213,6 +393,8 @@ const TaskEvidenceTab: React.FC = () => {
                 id={`${section.key}-comments`}
                 placeholder={section.commentPlaceholder}
                 rows={4}
+                value={sectionComments[section.key] || ''}
+                onChange={(e) => setSectionComments(prev => ({ ...prev, [section.key]: e.target.value }))}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>

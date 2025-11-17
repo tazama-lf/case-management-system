@@ -2,6 +2,7 @@ import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '../../../../shared/utils/dateUtils';
+import userService, { type UserDetails } from '../../services/userService';
 
 interface TaskDetailsTabProps {
   row: CaseRow;
@@ -37,6 +38,30 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   loadingTasks = false,
 }) => {
   const task = tasks.length > 0 ? tasks[0] : null;
+  const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(null);
+  const [loadingUser, setLoadingUser] = React.useState(false);
+
+  // Fetch user details when task changes
+  React.useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (task?.assigned_user_id) {
+        setLoadingUser(true);
+        try {
+          const userDetails = await userService.getUserDetailsById(task.assigned_user_id);
+          setAssignedUser(userDetails);
+        } catch (error) {
+          console.error('Failed to fetch user details:', error);
+          setAssignedUser(null);
+        } finally {
+          setLoadingUser(false);
+        }
+      } else {
+        setAssignedUser(null);
+      }
+    };
+
+    fetchUserDetails();
+  }, [task?.assigned_user_id]);
 
   // Debug logging
   React.useEffect(() => {
@@ -45,8 +70,9 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
       tasks,
       loadingTasks,
       task,
+      assignedUser,
     });
-  }, [row, tasks, loadingTasks, task]);
+  }, [row, tasks, loadingTasks, task, assignedUser]);
 
   const getTaskStatusColor = (status: string): string => {
     // Map status to colors - matching TaskLogTable's approach
@@ -194,7 +220,17 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Assigned To
                   </div>
                   <div className="font-medium text-gray-900">
-                    {task.assigned_user_id || 'Unknown'}
+                    {loadingUser ? (
+                      <span className="text-gray-400">Loading...</span>
+                    ) : assignedUser ? (
+                      `${assignedUser.firstName} ${assignedUser.lastName}`.trim() || 
+                      assignedUser.username || 
+                      'Unknown'
+                    ) : task.assigned_user_id ? (
+                      task.assigned_user_id.substring(0, 8)
+                    ) : (
+                      'Unassigned'
+                    )}
                   </div>
                 </div>
 

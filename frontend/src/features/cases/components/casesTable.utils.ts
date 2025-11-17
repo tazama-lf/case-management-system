@@ -12,6 +12,7 @@ export type CaseRow = {
   pickedOn: string;
   action: 'View' | 'Complete';
   assignee?: string;
+  assignedUserId?: string; // Full user ID for fetching user details
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
@@ -70,13 +71,16 @@ export const formatStatus = (status: string): string => {
 export const transformBackendCaseToUI = (
   backendCase: CaseWithTasksDto,
 ): CaseRow => {
-  // Determine assignee display
+  // Determine assignee display and full user ID
   let assigneeDisplay = 'Unassigned';
+  let assignedUserId: string | undefined;
+  
   if (backendCase.assigned_to?.user_id) {
-    // Use the first 8 characters of user_id for display
-    assigneeDisplay = backendCase.assigned_to.user_id;
+    assignedUserId = backendCase.assigned_to.user_id;
+    assigneeDisplay = backendCase.assigned_to.user_id.substring(0, 8);
   } else if (backendCase.case_owner_user_id) {
-    assigneeDisplay = backendCase.case_owner_user_id;
+    assignedUserId = backendCase.case_owner_user_id;
+    assigneeDisplay = backendCase.case_owner_user_id.substring(0, 8);
   } else if (backendCase.user_role === 'owner') {
     assigneeDisplay = 'Current User';
   }
@@ -96,6 +100,7 @@ export const transformBackendCaseToUI = (
         : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
     assignee: assigneeDisplay,
+    assignedUserId: assignedUserId,
     priority: backendCase.priority,
     userRole: backendCase.user_role || 'none',
     totalTasks: backendCase.total_tasks,
