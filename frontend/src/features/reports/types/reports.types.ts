@@ -254,10 +254,25 @@ export interface EvidenceItem {
 
 export interface FindingDetail {
   caseId: string;
+  taskId?: string;
   finding: string;
   conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive';
   evidenceCount: number;
-  supportingEvidence: string[];
+  supportingEvidence: (
+    | string
+    | {
+        id: string;
+        fileName: string;
+        fileSize?: number;
+        mimeType?: string;
+        evidenceType?: string;
+        uploadedBy?: string;
+        uploadedByName?: string;
+        uploadedAt?: string;
+        description?: string;
+        hash?: string;
+      }
+  )[];
   dateIdentified: string;
 }
 
