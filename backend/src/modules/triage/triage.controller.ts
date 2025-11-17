@@ -13,12 +13,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { IngestAlertDto } from '../alert/dto/IngestAlert.dto';
+import { IngestAlertDto } from '../../dtos/IngestAlert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
-import { RequireAlertTriageRole, RequireInvestigatorOrSupervisorRole } from 'src/modules/auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole } from 'src/modules/auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
-import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Alert Triage')
@@ -58,7 +57,7 @@ export class TriageController {
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
-    const alert = await this.triageService.handleNewAlert(dto, userId, tenantId, 'REST API');
+    const alert = await this.triageService.handleAlertOrNALT(dto, userId, tenantId, 'REST API');
     return alert;
   }
 
@@ -333,23 +332,5 @@ export class TriageController {
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
     return this.triageService.getAlertDetails(alertId, tenantId, userId);
-  }
-
-  @Post('ingest')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Process incoming alert event',
-    description: 'Internal endpoint for alert ingestion from event stream',
-  })
-  @ApiBody({ type: AlertMessageDto })
-  @ApiResponse({ status: 201, description: 'Alert processed successfully' })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async processIncomingAlert(@Body() dto: AlertMessageDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    if (!userId) throw new BadRequestException('Missing userId');
-    return await this.triageService.processIncomingAlert(dto, 'REST API', userId, tenantId);
   }
 }

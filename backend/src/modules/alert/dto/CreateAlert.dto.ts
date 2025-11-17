@@ -3,7 +3,7 @@ import { AlertType, PredictionOutcome, Priority } from '@prisma/client';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { IsEnum, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
-import { TransactionDTO } from 'src/nats/dto/Transaction.dto';
+import { TransactionDTO } from 'src/dtos/Transaction.dto';
 
 export class CreateAlertDTO {
   @IsString()
@@ -102,5 +102,5 @@ export class CreateAlertDTO {
     description: 'Case ID associated with the alert',
     example: 'a8b7cd6c-7caf-4c4e-9a09-23bffa944160',
   })
-  caseId?: string;
+  caseId: string;
 }

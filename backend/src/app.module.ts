@@ -13,7 +13,7 @@ import { TriageModule } from './modules/triage/triage.module';
 import { CaseModule } from './modules/case/case.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { TaskModule } from './modules/task/task.module';
-import { NatsModule } from './nats/nats.module';
+import { NatsModule } from './modules/nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './modules/flowable/flowable.module';
 import { WorkQueueModule } from './modules/work-queue/work-queue.module';
@@ -24,6 +24,7 @@ import { validate } from './config/env.validation';
 import { ConfigManagementModule } from './modules/config-management/config-management.module';
 import { UserModule } from './modules/user/user.module';
 import { FeatureExtractionModule } from './modules/feature-extraction/feature-extraction.module';
+import { RepositoryModule } from './modules/repository/repository.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { FeatureExtractionModule } from './modules/feature-extraction/feature-ex
       validate,
     }),
     EventEmitterModule.forRoot(),
+    RepositoryModule,
     SharedModule,
     PrismaModule,
     CaseCreationModule,

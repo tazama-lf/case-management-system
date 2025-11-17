@@ -664,8 +664,6 @@ export class FlowableEventListener {
           candidateGroup: event.candidateGroup,
         },
         'system',
-        this.auditLogService,
-        this.logger,
       );
 
       const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
@@ -767,8 +765,6 @@ export class FlowableEventListener {
           assignedUserId: flowableTask.assignee,
         },
         'system',
-        this.auditLogService,
-        this.logger,
       );
 
       const variables = {

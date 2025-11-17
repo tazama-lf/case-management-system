@@ -122,7 +122,7 @@ export class TaskController {
   })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.createTask(createTaskDto, userId, this.auditLogService, this.loggerService);
+    return this.taskService.createTask(createTaskDto, userId);
   }
 
   @Patch(':taskId/reassign')

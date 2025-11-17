@@ -1,20 +1,18 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { TriageService } from '../modules/triage/triage.service';
-import { TaskService } from '../modules/task/task.service';
-import { AlertMessageDto } from './dto/AlertMessageDto.dto';
 import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
+import { ProcessAlertService } from '../process-alert/process-alert.service';
+import { IngestAlertDto } from 'src/dtos';
 
 @Injectable()
 export class NatsStartupService implements OnModuleInit {
   private startupService: StartupFactory;
 
   constructor(
-    private readonly triageService: TriageService,
-    private readonly taskService: TaskService,
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
+    private readonly processAlertService: ProcessAlertService,
   ) {}
 
   async onModuleInit() {
@@ -29,13 +27,13 @@ export class NatsStartupService implements OnModuleInit {
     }
   }
 
-  async handleMessage(req: AlertMessageDto) {
+  async handleMessage(req: IngestAlertDto) {
     const tenantId = req.transaction.TenantId ?? 'DEFAULT';
     const systemId = this.configService.get<string>('SYSTEM_UUID') || 'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9';
     this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
 
     try {
-      await this.triageService.processIncomingAlert(req, 'NATS', systemId, tenantId);
+      await this.processAlertService.processIncomingAlert(req, 'NATS', systemId, tenantId);
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`, NatsStartupService.name);
     } catch (err) {
       this.logger.error(

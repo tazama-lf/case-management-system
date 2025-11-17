@@ -49,8 +49,8 @@ export class TaskService {
     this.systemUserId = this.configService.get<string>('SYSTEM_UUID', 'system-user');
   }
 
-  async createTask(taskDTO: CreateTaskDto, userId: string, auditLogService: AuditLogService, loggerService: LoggerService) {
-    loggerService.log('Creating task', TaskService.name);
+  async createTask(taskDTO: CreateTaskDto, userId: string) {
+    this.logger.log('Creating task', TaskService.name);
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -101,13 +101,13 @@ export class TaskService {
 
               derivedFlowableGroupId = `tenant-${caseData.tenant_id}__queue-${normalizedQueueName}`;
 
-              loggerService.log(
+              this.logger.log(
                 `Auto-assigned task to work queue: ${matchingQueue.name} (${workQueueId}) with Flowable group: ${derivedFlowableGroupId}`,
                 TaskService.name,
               );
             }
           } catch (error) {
-            loggerService.warn(`Failed to auto-assign work queue: ${error.message}`, TaskService.name);
+            this.logger.warn(`Failed to auto-assign work queue: ${error.message}`, TaskService.name);
           }
         }
 
@@ -166,7 +166,7 @@ export class TaskService {
         });
       }
 
-      auditLogService.logAction({
+      this.auditLogService.logAction({
         userId,
         actionPerformed: `Created task ${updatedTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
         entityName: TaskService.name,
@@ -180,8 +180,8 @@ export class TaskService {
         candidateGroup: taskDTO.candidateGroup,
       };
     } catch (error) {
-      loggerService.error('Error creating task', error, TaskService.name);
-      auditLogService.logAction({
+      this.logger.error('Error creating task', error, TaskService.name);
+      this.auditLogService.logAction({
         userId,
         actionPerformed: 'Error creating task',
         entityName: TaskService.name,

@@ -73,7 +73,7 @@ export class FlowableService implements OnModuleInit {
   }
 
   private async deployBpmnProcess() {
-    const bpmnFilePath = path.join(process.cwd(), 'src', 'bpmn', 'case-management.bpmn20.xml');
+    const bpmnFilePath = path.join(process.cwd(), 'src', 'modules', 'bpmn', 'case-management.bpmn20.xml');
 
     try {
       this.logger.log('Deploying BPMN process', FlowableService.name);

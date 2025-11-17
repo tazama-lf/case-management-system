@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Priority } from '@prisma/client';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { AlertMessageDto } from '../../src/nats/dto/AlertMessageDto.dto';
+import { AlertMessageDto } from '../../src/modules/nats/dto/AlertMessageDto.dto';
 
 describe('AlertMessageDto', () => {
   it('should be defined', () => {
@@ -25,7 +25,7 @@ describe('AlertMessageDto', () => {
       report: {}, // External Alert interface - simplified for testing
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {}, // External NetworkMap interface - simplified for testing
       confidence_per: 85,
@@ -35,7 +35,7 @@ describe('AlertMessageDto', () => {
 
     // Use plainToClass instead of plainToInstance and skip nested validation for external types
     const dto = plainToClass(AlertMessageDto, alertData);
-    
+
     // Manually validate only the basic fields we control
     expect(dto.tenant_id).toBe('test-tenant');
     expect(dto.priority).toBe(Priority.URGENT);
@@ -54,14 +54,14 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 75,
     };
 
     const dto = plainToClass(AlertMessageDto, minimalData);
-    
+
     // Verify required fields are set
     expect(dto.tenant_id).toBe('test-tenant');
     expect(dto.message).toBe('Test alert message');
@@ -78,7 +78,7 @@ describe('AlertMessageDto', () => {
         report: {},
         transaction: {
           TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-          TxTp: 'payment'
+          TxTp: 'payment',
         },
         networkMap: {},
         confidence_per: 50,
@@ -99,10 +99,10 @@ describe('AlertMessageDto', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
-    
+
     // Check for specific missing field errors
-    const hasRequiredFieldErrors = errors.some(error => 
-      ['tenant_id', 'message', 'confidence_per', 'report', 'transaction', 'networkMap'].includes(error.property)
+    const hasRequiredFieldErrors = errors.some((error) =>
+      ['tenant_id', 'message', 'confidence_per', 'report', 'transaction', 'networkMap'].includes(error.property),
     );
     expect(hasRequiredFieldErrors).toBe(true);
   });
@@ -114,7 +114,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -122,7 +122,7 @@ describe('AlertMessageDto', () => {
     });
 
     const errors = await validate(dto);
-    const priorityErrors = errors.filter(error => error.property === 'priority');
+    const priorityErrors = errors.filter((error) => error.property === 'priority');
     expect(priorityErrors.length).toBeGreaterThan(0);
   });
 
@@ -133,7 +133,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -163,7 +163,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
     });
@@ -179,7 +179,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -205,7 +205,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -231,7 +231,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -246,7 +246,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -263,7 +263,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
@@ -281,7 +281,7 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'e52cc9fb-920b-43db-be90-712b4b923514',
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
     });
@@ -301,7 +301,7 @@ describe('AlertMessageDto', () => {
     });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    
+
     // Check that there's at least one error (transaction field is missing)
     const hasValidationErrors = errors.length > 0;
     expect(hasValidationErrors).toBe(true);
@@ -314,16 +314,16 @@ describe('AlertMessageDto', () => {
       report: {},
       transaction: {
         TenantId: 'invalid-uuid', // should be valid UUID
-        TxTp: 'payment'
+        TxTp: 'payment',
       },
       networkMap: {},
       confidence_per: 50,
     });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    
+
     // Look for transaction validation errors
-    const transactionErrors = errors.filter(error => error.property === 'transaction');
+    const transactionErrors = errors.filter((error) => error.property === 'transaction');
     expect(transactionErrors.length).toBeGreaterThan(0);
   });
 });

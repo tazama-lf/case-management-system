@@ -6,7 +6,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
-import { NatsStartupService } from '../../src/nats/nats.service';
+import { NatsStartupService } from '../../src/modules/nats/nats.service';
 import { FlowableService } from '../../src/modules/flowable/flowable.service';
 
 // Increase Jest timeout for this integration suite
@@ -57,9 +57,7 @@ describe('Case Management Integration', () => {
 
   it('/api/v1/cases/system-transmission (POST) should autoclose case for Money-Laundering', async () => {
     const payload = { ...basePayload, fraudType: 'Money-Laundering' };
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/cases/system-transmission')
-      .send(payload);
+    const response = await request(app.getHttpServer()).post('/api/v1/cases/system-transmission').send(payload);
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
@@ -76,9 +74,7 @@ describe('Case Management Integration', () => {
 
   it('/api/v1/cases/system-transmission (POST) should autoclose case for Fraud Only', async () => {
     const payload = { ...basePayload, fraudType: 'Fraud Only' };
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/cases/system-transmission')
-      .send(payload);
+    const response = await request(app.getHttpServer()).post('/api/v1/cases/system-transmission').send(payload);
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
@@ -95,9 +91,7 @@ describe('Case Management Integration', () => {
 
   it('/api/v1/cases/system-transmission (POST) should autoclose case for Transaction Blocked', async () => {
     const payload = { ...basePayload, fraudType: 'Transaction Blocked' };
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/cases/system-transmission')
-      .send(payload);
+    const response = await request(app.getHttpServer()).post('/api/v1/cases/system-transmission').send(payload);
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);
@@ -114,9 +108,7 @@ describe('Case Management Integration', () => {
 
   it('/api/v1/cases/system-transmission (POST) should autoclose as refuted for other fraudType', async () => {
     const payload = { ...basePayload, fraudType: 'False Positive' };
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/cases/system-transmission')
-      .send(payload);
+    const response = await request(app.getHttpServer()).post('/api/v1/cases/system-transmission').send(payload);
     if (response.status !== 201) {
       console.error('Test failed with status:', response.status);
       console.error('Response body:', response.body);

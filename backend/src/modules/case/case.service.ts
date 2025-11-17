@@ -467,8 +467,6 @@ export class CaseService {
           candidateGroup: 'investigations',
         },
         supervisorId,
-        this.auditLogService,
-        this.logger,
       );
 
       await this.prismaService.comment.create({
@@ -1173,8 +1171,6 @@ export class CaseService {
           candidateGroup,
         },
         supervisorId,
-        this.auditLogService,
-        this.logger,
       );
 
       this.eventEmitter.emit(
@@ -2090,8 +2086,6 @@ export class CaseService {
             candidateGroup: 'supervisors',
           },
           userId,
-          this.auditLogService,
-          this.logger,
         );
 
         await tx.comment.create({
@@ -2243,8 +2237,6 @@ export class CaseService {
           candidateGroup: 'investigations',
         },
         userId,
-        this.auditLogService,
-        this.logger,
       );
 
       this.eventEmitter.emit(

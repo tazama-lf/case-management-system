@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FeatureExtractionService } from '../../src/modules/feature-extraction/feature-extraction.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../../src/modules/audit/auditLog.service';
-import { AlertMessageDto } from '../../src/nats/dto/AlertMessageDto.dto';
+import { AlertMessageDto } from '../../src/modules/nats/dto/AlertMessageDto.dto';
 
 describe('FeatureExtractionService', () => {
   let service: FeatureExtractionService;

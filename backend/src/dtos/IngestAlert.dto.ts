@@ -1,6 +1,6 @@
 import { IsString, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TransactionDTO } from 'src/nats/dto/Transaction.dto';
+import { TransactionDTO } from 'src/dtos/Transaction.dto';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 

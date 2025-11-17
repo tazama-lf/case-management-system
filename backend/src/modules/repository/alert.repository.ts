@@ -1,35 +1,40 @@
-import { NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateAlertDTO } from '../alert/dto/CreateAlert.dto';
-import { Alert } from '@prisma/client';
+import { Alert, Priority } from '@prisma/client';
 
+@Injectable()
 export class AlertRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createAlert(alertData: CreateAlertDTO) {
-    const createdAlert = await this.prisma.alert.create({
-      data: {
-        tenant_id: alertData.tenantId,
-        priority_score: alertData.priority_score,
-        priority: alertData.priority,
-        alert_type: alertData.alertType,
-        prediction_outcome: alertData.predictionOutcome,
-        source: alertData.source,
-        txtp: alertData.txtp,
-        confidence_per: alertData.confidencePer,
-        message: alertData.message,
-        alert_data: JSON.parse(JSON.stringify(alertData.report)),
-        transaction: JSON.parse(JSON.stringify(alertData.transaction)),
-        network_map: JSON.parse(JSON.stringify(alertData.networkMap)),
-        case_id: alertData.caseId,
-      },
-    });
+    try {
+      const alert_data = JSON.parse(JSON.stringify(alertData.report));
+      const transaction = JSON.parse(JSON.stringify(alertData.transaction));
+      const network_map = JSON.parse(JSON.stringify(alertData.networkMap));
+      const createdAlert = await this.prisma.alert.create({
+        data: {
+          tenant_id: alertData.tenantId,
+          priority: Priority.NEW,
+          source: alertData.source,
+          txtp: alertData.txtp,
+          confidence_per: alertData.confidencePer,
+          message: alertData.message,
+          alert_data,
+          transaction,
+          network_map,
+          case_id: alertData.caseId,
+        },
+      });
 
-    if (!createdAlert) {
-      throw new Error('Failed to create alert');
+      if (!createdAlert) {
+        throw new Error('Failed to create alert');
+      }
+
+      return createdAlert;
+    } catch (error) {
+      throw new Error(`Failed to create alert: ${error.message}`);
     }
-
-    return createdAlert;
   }
 
   async getAlertById(alertId: string) {
