@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
-import { TaskService } from '../../src/task/task.service';
+import { TaskService } from '../../src/modules/task/task.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
-import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
-import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
+import { CreateTaskDto } from '../../src/modules/task/dto/create-task.dto';
+import { UpdateTaskDto } from '../../src/modules/task/dto/update-task.dto';
 import { TaskStatus } from '@prisma/client';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../src/audit/types/outcome';
+import { Outcome } from '../../src/modules/audit/types/outcome';
 jest.mock('axios');
 import axios from 'axios';
 

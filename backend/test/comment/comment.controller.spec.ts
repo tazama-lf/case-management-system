@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CommentController } from '../../src/comment/comment.controller';
-import { CommentService } from '../../src/comment/comment.service';
-import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
-import { CreateCommentDto } from '../../src/comment/dto/create-comment.dto';
-import { AuthenticatedRequest } from '../../src/auth/auth.types';
+import { CommentController } from '../../src/modules/comment/comment.controller';
+import { CommentService } from '../../src/modules/comment/comment.service';
+import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
+import { CreateCommentDto } from '../../src/modules/comment/dto/create-comment.dto';
+import { AuthenticatedRequest } from '../../src/modules/auth/auth.types';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('CommentController', () => {

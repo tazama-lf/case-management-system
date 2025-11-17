@@ -1,8 +1,8 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { UpdateTaskDto } from '../../../src/task/dto/update-task.dto';
+import { UpdateTaskDto } from '../../../src/modules/task/dto/update-task.dto';
 import { TaskStatus } from '@prisma/client';
-import * as UpdateTaskDtoModule from '../../../src/task/dto/update-task.dto';
+import * as UpdateTaskDtoModule from '../../../src/modules/task/dto/update-task.dto';
 
 describe('UpdateTaskDto', () => {
   it('should be defined', () => {

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TaskController } from '../../src/task/task.controller';
-import { TaskService } from '../../src/task/task.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { TaskController } from '../../src/modules/task/task.controller';
+import { TaskService } from '../../src/modules/task/task.service';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 describe('Task Business Flow (Integration)', () => {

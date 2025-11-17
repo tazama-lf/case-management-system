@@ -1,7 +1,7 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { RequireAlertTriageRole } from 'src/auth/auth.decorator';
+import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
+import { RequireAlertTriageRole } from 'src/modules/auth/auth.decorator';
 
 export interface SystemConfig {
   triageType: 'AI' | 'MANUAL' | 'DISABLED';

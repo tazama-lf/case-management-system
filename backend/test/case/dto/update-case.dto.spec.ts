@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { UpdateCaseDto } from '../../../src/case/dto/update-case.dto';
+import { UpdateCaseDto } from '../../../src/modules/case/dto/update-case.dto';
 import { CaseStatus, Priority, CaseType } from '@prisma/client';
 
 describe('UpdateCaseDto', () => {

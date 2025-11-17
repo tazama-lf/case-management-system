@@ -1,4 +1,4 @@
-import { User } from '../../src/auth/user.decorator';
+import { User } from '../../src/modules/auth/user.decorator';
 
 describe('User Decorator', () => {
   it('should be defined', () => {

@@ -4,10 +4,10 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
+import { AlertPriorityService } from '../../src/modules/alert-priority/alert-priority.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Logger } from '@nestjs/common';
-import { TriageService } from '../../src/triage/triage.service';
+import { TriageService } from '../../src/modules/triage/triage.service';
 
 // Mock Logger to prevent console output during tests
 jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from '../../src/auth/auth.controller';
-import { AuthService } from '../../src/auth/auth.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { AuthController } from '../../src/modules/auth/auth.controller';
+import { AuthService } from '../../src/modules/auth/auth.service';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../src/audit/types/outcome'; 
+import { Outcome } from '../../src/modules/audit/types/outcome'; 
 
 describe('AuthController', () => {
   let controller: AuthController;

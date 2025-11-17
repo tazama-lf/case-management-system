@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { CommentService } from '../../src/comment/comment.service';
+import { CommentService } from '../../src/modules/comment/comment.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
-import { CreateCommentDto } from '../../src/comment/dto/create-comment.dto';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
+import { CreateCommentDto } from '../../src/modules/comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../src/audit/types/outcome';
+import { Outcome } from '../../src/modules/audit/types/outcome';
 
 describe('CommentService', () => {
   let service: CommentService;

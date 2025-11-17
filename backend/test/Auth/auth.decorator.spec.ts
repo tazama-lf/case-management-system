@@ -9,7 +9,7 @@ import {
   TazamaClaims,
  RequireAlertTriageRole,
   RequireAccountManagement,
-} from '../../src/auth/auth.decorator';
+} from '../../src/modules/auth/auth.decorator';
 
 // Mock SetMetadata to capture calls
 jest.mock('@nestjs/common', () => ({

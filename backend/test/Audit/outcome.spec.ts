@@ -1,4 +1,4 @@
-import { Outcome } from '../../src/audit/types/outcome';
+import { Outcome } from '../../src/modules/audit/types/outcome';
 
 describe('Outcome Enum', () => {
   it('should have SUCCESS and FAILURE values', () => {

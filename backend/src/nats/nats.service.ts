@@ -1,8 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { TriageService } from '../triage/triage.service';
-import { TaskService } from '../task/task.service';
+import { TriageService } from '../modules/triage/triage.service';
+import { TaskService } from '../modules/task/task.service';
 import { AlertMessageDto } from './dto/AlertMessageDto.dto';
 import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
 

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { TaskController } from '../../src/task/task.controller';
-import { TaskService } from '../../src/task/task.service';
-import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
-import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
+import { TaskController } from '../../src/modules/task/task.controller';
+import { TaskService } from '../../src/modules/task/task.service';
+import { CreateTaskDto } from '../../src/modules/task/dto/create-task.dto';
+import { UpdateTaskDto } from '../../src/modules/task/dto/update-task.dto';
 import { TaskStatus } from '@prisma/client';
-import { AuthenticatedRequest } from '../../src/auth/auth.types';
+import { AuthenticatedRequest } from '../../src/modules/auth/auth.types';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LogCallback } from '@tazama-lf/frms-coe-lib/lib/helpers/logUtilities';
 import { LumberjackGRPCService } from '@tazama-lf/frms-coe-lib/lib/services/lumberjackGRPCService';

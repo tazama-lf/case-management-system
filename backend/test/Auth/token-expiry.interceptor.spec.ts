@@ -1,5 +1,5 @@
-import { TokenExpiryInterceptor } from '../../src/auth/token-expiry.interceptor';
-import { AuthService } from '../../src/auth/auth.service';
+import { TokenExpiryInterceptor } from '../../src/modules/auth/token-expiry.interceptor';
+import { AuthService } from '../../src/modules/auth/auth.service';
 import { ExecutionContext, UnauthorizedException, CallHandler } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 

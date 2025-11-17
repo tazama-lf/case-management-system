@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BpmnDeploymentService } from '../../src/flowable/bpmn-deployment.service';
-import { FlowableService } from '../../src/flowable/flowable.service';
+import { BpmnDeploymentService } from '../../src/modules/flowable/bpmn-deployment.service';
+import { FlowableService } from '../../src/modules/flowable/flowable.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as fs from 'fs/promises';
 import * as path from 'path';

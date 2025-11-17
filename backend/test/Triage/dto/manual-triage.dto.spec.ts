@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { ManualTriageDto } from '../../../src/triage/dto/manual-triage.dto';
+import { ManualTriageDto } from '../../../src/modules/triage/dto/manual-triage.dto';
 import { CaseStatus, Priority, AlertType, PredictionOutcome } from '@prisma/client';
 
 describe('ManualTriageDto', () => {

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 // Mock uuid

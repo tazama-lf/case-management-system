@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuditLogModule } from '../../src/audit/auditLog.module';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { AuditLogModule } from '../../src/modules/audit/auditLog.module';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 describe('AuditLogModule', () => {

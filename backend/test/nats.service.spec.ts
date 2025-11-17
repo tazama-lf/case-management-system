@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { NatsStartupService } from 'src/nats/nats.service';
-import { TriageService } from 'src/triage/triage.service';
-import { TaskService } from 'src/task/task.service';
+import { TriageService } from 'src/modules/triage/triage.service';
+import { TaskService } from 'src/modules/task/task.service';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 
 // Mock the external library

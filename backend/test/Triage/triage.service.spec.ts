@@ -3,19 +3,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { TriageService } from '../../src/triage/triage.service';
+import { TriageService } from '../../src/modules/triage/triage.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
-import { IngestAlertDto } from '../../src/triage/dto/ingest-alert.dto';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
+import { IngestAlertDto } from '../../src/modules/triage/dto/ingest-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { CaseService } from '../../src/case/case.service';
-import { TaskService } from '../../src/task/task.service';
-import { CommentService } from '../../src/comment/comment.service';
+import { CaseService } from '../../src/modules/case/case.service';
+import { TaskService } from '../../src/modules/task/task.service';
+import { CommentService } from '../../src/modules/comment/comment.service';
 
 import { Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { UpdateAlertDto } from 'src/triage/dto/update-alert.dto';
+import { UpdateAlertDto } from 'src/modules/triage/dto/update-alert.dto';
 jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 
 const createMockPrismaService = () => ({

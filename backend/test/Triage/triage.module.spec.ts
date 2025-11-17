@@ -1,13 +1,13 @@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Test, TestingModule } from '@nestjs/testing';
-import { TriageController } from '../../src/triage/triage.controller';
-import { TriageService } from '../../src/triage/triage.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { TriageController } from '../../src/modules/triage/triage.controller';
+import { TriageService } from '../../src/modules/triage/triage.service';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { CaseService } from '../../src/case/case.service';
-import { TaskService } from '../../src/task/task.service';
-import { CommentService } from '../../src/comment/comment.service';
+import { CaseService } from '../../src/modules/case/case.service';
+import { TaskService } from '../../src/modules/task/task.service';
+import { CommentService } from '../../src/modules/comment/comment.service';
 
 describe('TriageModule', () => {
   let module: TestingModule;

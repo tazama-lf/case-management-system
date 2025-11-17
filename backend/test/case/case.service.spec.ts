@@ -1,16 +1,16 @@
  
 import { Test, TestingModule } from '@nestjs/testing';
-import { CaseService } from '../../src/case/case.service';
+import { CaseService } from '../../src/modules/case/case.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuditLogService } from '../../src/audit/auditLog.service';
+import { AuditLogService } from '../../src/modules/audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableService } from '../../src/flowable/flowable.service';
+import { FlowableService } from '../../src/modules/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
-import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
-import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
+import { CreateCaseDto } from '../../src/modules/case/dto/create-case.dto';
+import { UpdateCaseDto } from '../../src/modules/case/dto/update-case.dto';
 import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { Outcome } from '../../src/audit/types/outcome';
+import { Outcome } from '../../src/modules/audit/types/outcome';
 
 describe('CaseService', () => {
   let service: CaseService;

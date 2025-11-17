@@ -1,8 +1,8 @@
  
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
-import { AlertPriorityTask } from '../../src/alert-priority/alert-priority.task';
-import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
+import { AlertPriorityTask } from '../../src/modules/alert-priority/alert-priority.task';
+import { AlertPriorityService } from '../../src/modules/alert-priority/alert-priority.service';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 

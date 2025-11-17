@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FlowableService } from '../../src/flowable/flowable.service';
+import { FlowableService } from '../../src/modules/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { HttpException, HttpStatus } from '@nestjs/common';

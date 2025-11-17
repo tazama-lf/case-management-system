@@ -1,9 +1,9 @@
-import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
 import { ClaimValidationResult } from '@tazama-lf/auth-lib/lib/interfaces/iTazamaToken';
-import { TazamaToken } from '../../src/auth/auth.types';
+import { TazamaToken } from '../../src/modules/auth/auth.types';
 import * as jwt from 'jsonwebtoken';
 
 // Mock the external auth library

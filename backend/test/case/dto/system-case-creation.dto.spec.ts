@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { SystemCaseCreationDto } from '../../../src/case/dto/system-case-creation.dto';
+import { SystemCaseCreationDto } from '../../../src/modules/case/dto/system-case-creation.dto';
 import { Priority, CaseType, AlertType } from '@prisma/client';
 
 describe('SystemCaseCreationDto', () => {

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
-import { TriageController } from '../../src/triage/triage.controller';
-import { TriageService } from '../../src/triage/triage.service';
+import { TriageController } from '../../src/modules/triage/triage.controller';
+import { TriageService } from '../../src/modules/triage/triage.service';
 
 const mockTriageService = {
   handleNewAlert: jest.fn(),

@@ -1,10 +1,10 @@
-import * as AuthTypes from '../../src/auth/auth.types';
+import * as AuthTypes from '../../src/modules/auth/auth.types';
 import { 
   AuthenticatedUser, 
   AuthenticatedRequest, 
   TazamaToken, 
   ClaimValidationResult 
-} from '../../src/auth/auth.types';
+} from '../../src/modules/auth/auth.types';
 
 describe('Auth Types', () => {
   // Test that imports are working and the module exports are accessible

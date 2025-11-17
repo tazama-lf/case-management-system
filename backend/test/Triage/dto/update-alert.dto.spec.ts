@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { UpdateAlertDto } from '../../../src/triage/dto/update-alert.dto';
+import { UpdateAlertDto } from '../../../src/modules/triage/dto/update-alert.dto';
 import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
 
 describe('UpdateAlertDto', () => {

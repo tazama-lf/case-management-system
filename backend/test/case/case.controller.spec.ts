@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CaseController } from '../../src/case/case.controller';
-import { CaseService } from '../../src/case/case.service';
-import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
-import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
-import { SystemCaseCreationDto } from '../../src/case/dto/system-case-creation.dto';
-import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
+import { CaseController } from '../../src/modules/case/case.controller';
+import { CaseService } from '../../src/modules/case/case.service';
+import { CreateCaseDto } from '../../src/modules/case/dto/create-case.dto';
+import { UpdateCaseDto } from '../../src/modules/case/dto/update-case.dto';
+import { SystemCaseCreationDto } from '../../src/modules/case/dto/system-case-creation.dto';
+import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
 import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
-import { AuthenticatedRequest } from '../../src/auth/auth.types';
+import { AuthenticatedRequest } from '../../src/modules/auth/auth.types';
 
 describe('CaseController', () => {
   let controller: CaseController;

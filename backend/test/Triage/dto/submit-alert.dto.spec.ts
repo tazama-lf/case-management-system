@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import { IngestAlertDto } from '../../../src/triage/dto/ingest-alert.dto';
+import { IngestAlertDto } from '../../../src/modules/triage/dto/ingest-alert.dto';
 
 describe('SubmitAlertDto', () => {
   it('should be defined', () => {

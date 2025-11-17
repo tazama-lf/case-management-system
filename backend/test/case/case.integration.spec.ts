@@ -5,9 +5,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
 import { NatsStartupService } from '../../src/nats/nats.service';
-import { FlowableService } from '../../src/flowable/flowable.service';
+import { FlowableService } from '../../src/modules/flowable/flowable.service';
 
 // Increase Jest timeout for this integration suite
 jest.setTimeout(30000); // 30 seconds

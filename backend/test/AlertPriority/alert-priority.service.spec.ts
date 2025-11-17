@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { AlertPriorityService } from '../../src/alert-priority/alert-priority.service';
+import { AlertPriorityService } from '../../src/modules/alert-priority/alert-priority.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 describe('AlertPriorityService', () => {
