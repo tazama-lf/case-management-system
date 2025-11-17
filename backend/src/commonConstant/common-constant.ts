@@ -1,0 +1,5 @@
+export const CMS_ROLES = {
+  SUPERVISOR: 'CMS_SUPERVISOR',
+  INVESTIGATOR: 'CMS_INVESTIGATOR',
+  ADMIN: 'CMS_ADMIN',
+} as const;

@@ -1,0 +1,477 @@
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { AuditLogService } from "src/modules/audit/auditLog.service";
+import { CaseRepository } from "src/modules/repository/case.repository";
+import { NotificationService } from "src/modules/notification/notification.service";
+import { LoggerService } from "@tazama-lf/frms-coe-lib";
+import { TaskService } from "src/modules/task/task.service";
+import { CaseStatus, TaskStatus } from "@prisma/client";
+import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from "../utils/constants/case.constants";
+import { ConflictException } from "@nestjs/common/exceptions/conflict.exception";
+import { determineOriginalClosedStatus, isInvestigatorRole } from "../utils/helpers/case-validation.helper";
+import { PrismaService } from "prisma/prisma.service";
+import { CaseQueryService } from "./case-query.service";
+import { Outcome } from "../../audit/types/outcome";
+
+@Injectable()
+export class CaseReopeningService {
+    constructor(
+        private readonly caseRepository: CaseRepository,
+        private readonly auditLogService: AuditLogService,
+        private readonly notificationService: NotificationService,
+        private readonly prismaService: PrismaService,
+        private readonly taskService: TaskService,
+        private readonly logger: LoggerService,
+        private readonly caseQueryService: CaseQueryService,
+    ) { }
+
+    private determineOriginalClosedStatus(caseData: any): CaseStatus {
+        return determineOriginalClosedStatus(caseData);
+    }
+
+    async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
+        try {
+            this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
+
+            const existingCase = await this.caseQueryService.retrieveCase(caseId);
+
+            if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
+                throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
+            }
+
+            if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
+                throw new BadRequestException(`Reason for reopening case is required and must be at least ${VALIDATION_LENGTHS.MIN_REOPENING_REASON} characters`);
+            }
+
+            const isSupervisor = role === 'CMS_SUPERVISOR';
+
+            if (isSupervisor) {
+                const result = await this.prismaService.$transaction(async (tx) => {
+                    const updatedCase = await tx.case.update({
+                        where: { case_id: caseId },
+                        data: {
+                            status: CaseStatus.STATUS_10_ASSIGNED,
+                            updated_at: new Date(),
+                        },
+                    });
+
+                    return { case: updatedCase };
+                });
+
+
+
+                await this.auditLogService.logAction({
+                    userId,
+                    operation: 'reopenCase',
+                    entityName: CaseReopeningService.name,
+                    actionPerformed: `Reopened case ${caseId} Reason: ${reason}`,
+                    outcome: Outcome.SUCCESS,
+                });
+
+                return {
+                    success: true,
+                    message: 'Case reopened ',
+                    case: result.case,
+                };
+            }
+
+            const result = await this.prismaService.$transaction(async (tx) => {
+                const updatedCase = await tx.case.update({
+                    where: { case_id: caseId },
+                    data: {
+                        status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+                        updated_at: new Date(),
+                    },
+                });
+
+                const approvalTask = await this.taskService.createTask(
+                    {
+                        caseId,
+                        name: TASK_NAMES.APPROVE_CASE_REOPENING,
+                        status: TaskStatus.STATUS_01_UNASSIGNED,
+                        description: `Case reopening approval required. Reason: ${reason}`,
+                        candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+                    },
+                    userId,
+                    this.auditLogService,
+                    this.logger,
+                );
+
+                await tx.comment.create({
+                    data: {
+                        user_id: userId,
+                        task_id: approvalTask.task_id,
+                        note: JSON.stringify({
+                            requestedBy: userId,
+                            requesterRole: role || 'UNKNOWN',
+                            reason,
+                            previousStatus: existingCase.status,
+                            requestedAt: new Date().toISOString(),
+                        }),
+                    },
+                });
+
+                return { case: updatedCase, approvalTask };
+            });
+
+
+
+            await this.auditLogService.logAction({
+                userId,
+                operation: 'reopenCase',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+                outcome: Outcome.SUCCESS,
+            });
+
+            return {
+                success: true,
+                message: 'Case reopened and pending supervisor approval',
+                case: result.case,
+                approvalTask: result.approvalTask,
+            };
+        } catch (error) {
+            this.logger.error(`Failed to reopen case ${caseId}: ${error.message}`, error.stack, CaseReopeningService.name);
+
+            await this.auditLogService.logAction({
+                userId,
+                operation: 'reopenCase',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Failed to reopen case ${caseId}: ${error.message}`,
+                outcome: Outcome.FAILURE,
+            });
+
+            throw error;
+        }
+    }
+
+    async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
+        try {
+            this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
+
+            const caseData = await this.validateReopeningPreconditions(caseId);
+
+            // Step 2: Find the reopening approval task
+            const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId);
+
+            if (!reopeningTask) {
+                throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
+            }
+
+            let reopeningMetadata: any = {};
+            let requesterId: string | null = null;
+            let requesterRole: string | null = null;
+
+            if (reopeningTask.comments.length > 0) {
+                try {
+                    const comment = reopeningTask.comments[0];
+                    const metadata = JSON.parse(comment.note);
+                    reopeningMetadata = metadata;
+                    requesterId = metadata.requestedBy;
+                    requesterRole = metadata.requesterRole;
+                } catch (parseError) {
+                    this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseReopeningService.name);
+                }
+            }
+
+            let newCaseStatus: CaseStatus;
+            let newTaskStatus: TaskStatus;
+            let assignedUserId: string | undefined;
+            let candidateGroup: string;
+
+            const isAnalystOrInvestigator = isInvestigatorRole(requesterRole);
+
+            if (isAnalystOrInvestigator && requesterId) {
+                newCaseStatus = CaseStatus.STATUS_10_ASSIGNED;
+                newTaskStatus = TaskStatus.STATUS_10_ASSIGNED;
+                assignedUserId = requesterId;
+                candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
+
+                this.logger.log(`Reopening approved - assigning to original requester ${requesterId}`, CaseReopeningService.name);
+            } else {
+                newCaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+                newTaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
+                assignedUserId = undefined;
+                candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
+
+                this.logger.log(
+                    `Reopening approved - assigning to investigations queue (requester role: ${requesterRole || 'unknown'})`,
+                    CaseReopeningService.name,
+                );
+            }
+
+            const result = await this.prismaService.$transaction(async (tx) => {
+                // Update case status
+                const updatedCase = await tx.case.update({
+                    where: { case_id: caseId },
+                    data: {
+                        status: newCaseStatus,
+                        case_owner_user_id: assignedUserId || null,
+                        updated_at: new Date(),
+                    },
+                });
+
+                const completedTask = await tx.task.update({
+                    where: { task_id: reopeningTask.task_id },
+                    data: {
+                        status: TaskStatus.STATUS_30_COMPLETED,
+                        assigned_user_id: supervisorId,
+                        updated_at: new Date(),
+                    },
+                });
+
+                await tx.comment.create({
+                    data: {
+                        user_id: supervisorId,
+                        task_id: reopeningTask.task_id,
+                        note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
+                    },
+                });
+
+                return { updatedCase, completedTask };
+            });
+
+            const investigationTask = await this.taskService.createTask(
+                {
+                    caseId,
+                    status: newTaskStatus,
+                    assignedUserId,
+                    name: TASK_NAMES.INVESTIGATE_CASE,
+                    description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
+                    candidateGroup,
+                },
+                supervisorId,
+                this.auditLogService,
+                this.logger,
+            );
+
+
+
+            if (assignedUserId) {
+                try {
+                    await this.notificationService.sendNotification({
+                        userId: assignedUserId,
+                        type: 'CASE_REOPENED_ASSIGNED',
+                        message: `Case ${caseId} has been reopened and assigned to you`,
+                        metadata: {
+                            caseId,
+                            taskId: investigationTask.task_id,
+                            approvedBy: supervisorId,
+                            reason: reopeningMetadata.reason,
+                        },
+                    });
+                } catch (notificationError) {
+                    this.logger.warn(`Failed to send analyst notification: ${notificationError.message}`, CaseReopeningService.name);
+                }
+            } else {
+                try {
+                    await this.notificationService.sendGroupNotification({
+                        candidateGroup,
+                        type: 'CASE_REOPENED_AVAILABLE',
+                        message: `Case ${caseId} has been reopened and is available in the work queue`,
+                        metadata: {
+                            caseId,
+                            taskId: investigationTask.task_id,
+                            approvedBy: supervisorId,
+                        },
+                    });
+                } catch (notificationError) {
+                    this.logger.warn(`Failed to send group notification: ${notificationError.message}`, CaseReopeningService.name);
+                }
+            }
+
+            await this.auditLogService.logAction({
+                userId: supervisorId,
+                operation: 'approveCaseReopening',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+                outcome: Outcome.SUCCESS,
+            });
+
+            this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
+
+            return {
+                success: true,
+                message: 'Case reopening approved',
+                case: {
+                    case_id: result.updatedCase.case_id,
+                    status: result.updatedCase.status,
+                    case_owner_user_id: result.updatedCase.case_owner_user_id,
+                    updated_at: result.updatedCase.updated_at,
+                },
+                completed_approval_task: {
+                    task_id: result.completedTask.task_id,
+                    status: result.completedTask.status,
+                },
+                investigation_task: {
+                    task_id: investigationTask.task_id,
+                    name: investigationTask.name,
+                    status: investigationTask.status,
+                    assigned_to: assignedUserId || candidateGroup,
+                    candidateGroup,
+                },
+            };
+        } catch (error) {
+            this.logger.error(`Failed to approve case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
+
+            await this.auditLogService.logAction({
+                userId: supervisorId,
+                operation: 'approveCaseReopening',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Failed to approve case reopening for ${caseId}: ${error.message}`,
+                outcome: Outcome.FAILURE,
+            });
+
+            throw error;
+        }
+    }
+
+    async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
+        try {
+            this.logger.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
+
+            if (!rejectionReason || rejectionReason.trim().length < VALIDATION_LENGTHS.MIN_REJECTION_REASON) {
+                const errorMsg = `Rejection reason must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`;
+                await this.auditLogService.logAction({
+                    userId: supervisorId,
+                    operation: 'rejectCaseReopening',
+                    entityName: CaseReopeningService.name,
+                    actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMsg}`,
+                    outcome: Outcome.FAILURE,
+                });
+                throw new BadRequestException(errorMsg);
+            }
+
+            const caseData = await this.validateReopeningPreconditions(caseId);
+
+            const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId);
+
+            if (!reopeningTask) {
+                throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
+            }
+
+            let requesterId: string | null = null;
+            if (reopeningTask.comments.length > 0) {
+                try {
+                    const metadata = JSON.parse(reopeningTask.comments[0].note);
+                    requesterId = metadata.requestedBy;
+                } catch (parseError) {
+                    this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseReopeningService.name);
+                }
+            }
+
+            const originalClosedStatus = this.determineOriginalClosedStatus(caseData);
+
+            const result = await this.prismaService.$transaction(async (tx) => {
+                // Restore case to original closed status
+                const updatedCase = await tx.case.update({
+                    where: { case_id: caseId },
+                    data: {
+                        status: originalClosedStatus,
+                        updated_at: new Date(),
+                    },
+                });
+
+                const completedTask = await tx.task.update({
+                    where: { task_id: reopeningTask.task_id },
+                    data: {
+                        status: TaskStatus.STATUS_30_COMPLETED,
+                        assigned_user_id: supervisorId,
+                        updated_at: new Date(),
+                    },
+                });
+
+                await tx.comment.create({
+                    data: {
+                        user_id: supervisorId,
+                        task_id: reopeningTask.task_id,
+                        note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
+                    },
+                });
+
+                return { updatedCase, completedTask };
+            });
+
+
+
+            if (requesterId) {
+                try {
+                    await this.notificationService.sendNotification({
+                        userId: requesterId,
+                        type: 'CASE_REOPENING_REJECTED',
+                        message: `Your case reopening request for case ${caseId} was rejected`,
+                        metadata: {
+                            caseId,
+                            rejectionReason,
+                            rejectedBy: supervisorId,
+                            restoredStatus: originalClosedStatus,
+                        },
+                    });
+                } catch (notificationError) {
+                    this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseReopeningService.name);
+                }
+            }
+
+            await this.auditLogService.logAction({
+                userId: supervisorId,
+                operation: 'rejectCaseReopening',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
+                outcome: Outcome.SUCCESS,
+            });
+
+            this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);
+
+            return {
+                success: true,
+                message: 'Case reopening rejected',
+                case: {
+                    case_id: result.updatedCase.case_id,
+                    status: result.updatedCase.status,
+                    updated_at: result.updatedCase.updated_at,
+                },
+                completed_task: {
+                    task_id: result.completedTask.task_id,
+                    status: result.completedTask.status,
+                },
+                rejection_reason: rejectionReason,
+            };
+        } catch (error) {
+            this.logger.error(`Failed to reject case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
+
+            await this.auditLogService.logAction({
+                userId: supervisorId,
+                operation: 'rejectCaseReopening',
+                entityName: CaseReopeningService.name,
+                actionPerformed: `Failed to reject case reopening for ${caseId}: ${error.message}`,
+                outcome: Outcome.FAILURE,
+            });
+
+            throw error;
+        }
+    }
+
+    private async validateReopeningPreconditions(caseId: string): Promise<any> {
+        const caseData = await this.caseRepository.findCaseForReopening(caseId);
+
+        if (!caseData) {
+            throw new NotFoundException(`Case ${caseId} not found`);
+        }
+
+        if (caseData.status !== CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL) {
+            throw new ConflictException({
+                message: 'Case is not pending reopening approval',
+                currentStatus: caseData.status,
+                requiredStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+                caseId,
+            });
+        }
+
+        const reopeningTask = caseData.tasks.find((t) => t.name === 'Approve Case Reopening' && t.status === TaskStatus.STATUS_01_UNASSIGNED);
+
+        if (!reopeningTask) {
+            throw new NotFoundException(`"Approve Case Reopening" task not found or not in correct state for case ${caseId}`);
+        }
+
+        return caseData;
+    }
+}
