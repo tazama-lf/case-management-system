@@ -45,7 +45,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     );
   }
 
-  // Mock evidence data - replace with actual data from your API
   const evidenceSummary: EvidenceItem[] = [
     {
       type: 'Transaction logs showing suspicious patterns',
