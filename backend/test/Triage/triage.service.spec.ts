@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TriageService } from '../../src/modules/triage/triage.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/modules/audit/auditLog.service';
-import { IngestAlertDto } from '../../src/modules/triage/dto/ingest-alert.dto';
+import { IngestAlertDto } from '../../src/modules/alert/dto/IngestAlert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -163,12 +163,13 @@ describe('TriageService', () => {
   });
 
   describe('handleNewAlert', () => {
-      const mockSubmitAlertDto: IngestAlertDto = {
-        message: 'Test Alert',
-        report: {} as any,
-        transaction: { TxTp: 'test-txtp' } as any,
-        networkMap: {} as any,
-      };    const userId = 'test-user-id';
+    const mockSubmitAlertDto: IngestAlertDto = {
+      message: 'Test Alert',
+      report: {} as any,
+      transaction: { TxTp: 'test-txtp' } as any,
+      networkMap: {} as any,
+    };
+    const userId = 'test-user-id';
     const tenantId = 'test-tenant-id';
 
     it('should create new alert successfully', async () => {
@@ -207,7 +208,7 @@ describe('TriageService', () => {
       priority: Priority.URGENT,
       alertType: AlertType.FRAUD, // Added because service updates alert_type
       note: 'Test update note',
-      predictionOutcome: 'TRUE_POSITIVE'
+      predictionOutcome: 'TRUE_POSITIVE',
     };
 
     const mockExistingAlert = {
@@ -312,7 +313,7 @@ describe('TriageService', () => {
         priority: Priority.NEW,
         source: 'test-source',
         txtp: 'transaction-txtp',
-        
+
         message: 'Test alert',
       };
 
@@ -377,7 +378,7 @@ describe('TriageService', () => {
     const alertId = 'alert-123';
     const userId = 'user-123';
     const tenantId = 'tenant-123';
-    
+
     const mockManualTriageDto = {
       priorityScore: 0.75, // Use decimal value instead of 75
       note: 'Manual triage completed',
@@ -409,11 +410,16 @@ describe('TriageService', () => {
       // Mock ConfigService for manual triage
       configService.get.mockImplementation((key: string, defaultValue?: any) => {
         switch (key) {
-          case 'TRIAGE_TYPE': return 'MANUAL';
-          case 'PRIORITY_FIRST_HALF': return '0.33';
-          case 'PRIORITY_SECOND_HALF': return '0.66';
-          case 'PRIORITY_THIRD_HALF': return '1.0';
-          default: return defaultValue;
+          case 'TRIAGE_TYPE':
+            return 'MANUAL';
+          case 'PRIORITY_FIRST_HALF':
+            return '0.33';
+          case 'PRIORITY_SECOND_HALF':
+            return '0.66';
+          case 'PRIORITY_THIRD_HALF':
+            return '1.0';
+          default:
+            return defaultValue;
         }
       });
 
@@ -426,12 +432,12 @@ describe('TriageService', () => {
           tenant_id: tenantId,
           created_at: new Date(),
           updated_at: new Date(),
-        }
+        },
       });
 
       // Mock updateAlertData
       jest.spyOn(service, 'updateAlertData').mockResolvedValue(mockAlert);
-      
+
       // Mock case service
       caseService.retrieveCase.mockResolvedValue({
         case_id: 'case-123',
@@ -445,9 +451,9 @@ describe('TriageService', () => {
           name: 'Triage Alert',
           status: 'STATUS_01_UNASSIGNED',
           assigned_user_id: null, // Start unassigned, will be auto-assigned
-        }
+        },
       ]);
-      
+
       taskService.updateTask.mockResolvedValue({
         task_id: 'triage-task-123',
         status: 'STATUS_30_COMPLETED',
@@ -467,29 +473,26 @@ describe('TriageService', () => {
     it('should handle manual triage with case closure', async () => {
       const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
 
-      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
-        priorityScore: 0.75,
-        priority: Priority.CRITICAL, // Should be calculated based on priorityScore (0.75 >= 0.66)
-      }), userId, tenantId);
+      expect(service.updateAlertData).toHaveBeenCalledWith(
+        alertId,
+        expect.objectContaining({
+          priorityScore: 0.75,
+          priority: Priority.CRITICAL, // Should be calculated based on priorityScore (0.75 >= 0.66)
+        }),
+        userId,
+        tenantId,
+      );
 
       expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('case-123');
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { assignedUserId: userId },
-        userId
-      );
-      
+      expect(taskService.updateTask).toHaveBeenCalledWith('triage-task-123', { assignedUserId: userId }, userId);
+
       // Then complete the task
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { status: 'STATUS_30_COMPLETED' },
-        userId
-      );
+      expect(taskService.updateTask).toHaveBeenCalledWith('triage-task-123', { status: 'STATUS_30_COMPLETED' }, userId);
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
         { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
-        userId
+        userId,
       );
 
       expect(result).toEqual(mockAlert);
@@ -510,13 +513,13 @@ describe('TriageService', () => {
           name: 'Investigate Case',
           description: 'Investigate case: case-123',
         },
-        userId
+        userId,
       );
 
       expect(caseService.updateCase).toHaveBeenCalledWith(
         'case-123',
         { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, caseType: AlertType.FRAUD, priority: Priority.CRITICAL },
-        userId
+        userId,
       );
     });
 
@@ -524,34 +527,54 @@ describe('TriageService', () => {
       // Test NEW priority (score < 0.33)
       const lowScoreDto = { ...mockManualTriageDto, priorityScore: 0.2 };
       await service.handleManualTriage(alertId, lowScoreDto, userId, tenantId);
-      
-      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
-        priority: Priority.NEW,
-      }), userId, tenantId);
+
+      expect(service.updateAlertData).toHaveBeenCalledWith(
+        alertId,
+        expect.objectContaining({
+          priority: Priority.NEW,
+        }),
+        userId,
+        tenantId,
+      );
 
       // Test URGENT priority (0.33 <= score < 0.66)
       const mediumScoreDto = { ...mockManualTriageDto, priorityScore: 0.5 };
       await service.handleManualTriage(alertId, mediumScoreDto, userId, tenantId);
-      
-      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
-        priority: Priority.URGENT,
-      }), userId, tenantId);
+
+      expect(service.updateAlertData).toHaveBeenCalledWith(
+        alertId,
+        expect.objectContaining({
+          priority: Priority.URGENT,
+        }),
+        userId,
+        tenantId,
+      );
 
       // Test CRITICAL priority (0.66 <= score < 1.0)
       const highScoreDto = { ...mockManualTriageDto, priorityScore: 0.8 };
       await service.handleManualTriage(alertId, highScoreDto, userId, tenantId);
-      
-      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
-        priority: Priority.CRITICAL,
-      }), userId, tenantId);
+
+      expect(service.updateAlertData).toHaveBeenCalledWith(
+        alertId,
+        expect.objectContaining({
+          priority: Priority.CRITICAL,
+        }),
+        userId,
+        tenantId,
+      );
 
       // Test BREACH priority (score >= 1.0)
       const maxScoreDto = { ...mockManualTriageDto, priorityScore: 1.0 };
       await service.handleManualTriage(alertId, maxScoreDto, userId, tenantId);
-      
-      expect(service.updateAlertData).toHaveBeenCalledWith(alertId, expect.objectContaining({
-        priority: Priority.BREACH,
-      }), userId, tenantId);
+
+      expect(service.updateAlertData).toHaveBeenCalledWith(
+        alertId,
+        expect.objectContaining({
+          priority: Priority.BREACH,
+        }),
+        userId,
+        tenantId,
+      );
     });
 
     it('should throw error when triage type is not MANUAL', async () => {
@@ -560,8 +583,9 @@ describe('TriageService', () => {
         return defaultValue;
       });
 
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('Cannot update alert alert-123 when triageType is not MANUAL');
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId)).rejects.toThrow(
+        'Cannot update alert alert-123 when triageType is not MANUAL',
+      );
     });
 
     it('should throw error when user is not assigned to triage task', async () => {
@@ -571,18 +595,14 @@ describe('TriageService', () => {
           name: 'Triage Alert',
           status: 'ASSIGNED_11',
           assigned_user_id: 'other-user',
-        }
+        },
       ]);
 
       const result = await service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId);
 
       // Should auto-assign the task to the current user
-      expect(taskService.updateTask).toHaveBeenCalledWith(
-        'triage-task-123',
-        { assignedUserId: userId },
-        userId
-      );
-      
+      expect(taskService.updateTask).toHaveBeenCalledWith('triage-task-123', { assignedUserId: userId }, userId);
+
       expect(result).toEqual(mockAlert);
     });
 
@@ -593,11 +613,12 @@ describe('TriageService', () => {
           name: 'Triage Alert',
           status: 'STATUS_30_COMPLETED',
           assigned_user_id: userId,
-        }
+        },
       ]);
 
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('User user-123 is not allowed to complete triage task triage-task-123, assigned to other-user');
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId)).rejects.toThrow(
+        'User user-123 is not allowed to complete triage task triage-task-123, assigned to other-user',
+      );
     });
 
     it('should throw error when case is already closed', async () => {
@@ -610,11 +631,12 @@ describe('TriageService', () => {
           tenant_id: tenantId,
           created_at: new Date(),
           updated_at: new Date(),
-        }
+        },
       });
 
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('Case case-123 linked with alert alert-123 is already closed');
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId)).rejects.toThrow(
+        'Case case-123 linked with alert alert-123 is already closed',
+      );
     });
 
     it('should handle case where no triage task exists', async () => {
@@ -629,8 +651,7 @@ describe('TriageService', () => {
     it('should handle errors in manual triage process', async () => {
       jest.spyOn(service, 'updateAlertData').mockRejectedValue(new Error('Update failed'));
 
-      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId))
-        .rejects.toThrow('Update failed');
+      await expect(service.handleManualTriage(alertId, mockManualTriageDto, userId, tenantId)).rejects.toThrow('Update failed');
     });
   });
 
@@ -649,7 +670,7 @@ describe('TriageService', () => {
         txtp: 'PAYMENT',
         priority: Priority.URGENT,
         confidence_per: 85,
-        
+
         source: 'REST API',
         alert_type: AlertType.AML,
         created_at: new Date(),
@@ -659,7 +680,7 @@ describe('TriageService', () => {
         txtp: 'TRANSFER',
         priority: Priority.NEW,
         confidence_per: 45,
-        
+
         source: 'REST API',
         alert_type: AlertType.AML,
         created_at: new Date(),
@@ -772,7 +793,7 @@ describe('TriageService', () => {
           where: expect.objectContaining({
             OR: expect.arrayContaining([
               { txtp: { contains: 'CLOSED', mode: 'insensitive' } },
-              { source: { contains: 'CLOSED', mode: 'insensitive' } }
+              { source: { contains: 'CLOSED', mode: 'insensitive' } },
             ]),
           }),
         }),
@@ -959,7 +980,7 @@ describe('TriageService', () => {
       expect(result).toEqual(expectedResult);
       expect(loggerSpy).toHaveBeenCalledWith(
         expect.stringContaining(`Alert ${alertId} opened by user ${userId} for review`),
-        'TriageService'
+        'TriageService',
       );
 
       loggerSpy.mockRestore();
@@ -1019,7 +1040,7 @@ describe('TriageService', () => {
       prismaService.alert.findFirst.mockResolvedValue(null);
 
       await expect(service.getAlertActionHistory(alertId, tenantId, userId)).rejects.toThrow(
-        new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`)
+        new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`),
       );
     });
   });
@@ -1033,7 +1054,7 @@ describe('TriageService', () => {
       message: 'test',
       transaction: {},
       networkMap: {},
-      report: { tadpResult: null }
+      report: { tadpResult: null },
     } as unknown as IngestAlertDto;
 
     beforeEach(() => {
@@ -1045,7 +1066,8 @@ describe('TriageService', () => {
 
       // Mock ConfigService
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(100) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('true'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1070,14 +1092,15 @@ describe('TriageService', () => {
         userId,
         'triage-task-123',
         'Investigate Case as confidence is below threshold',
-        'Triage complete - AI predicted confidence percentage below threshold manual investigation needed'
+        'Triage complete - AI predicted confidence percentage below threshold manual investigation needed',
       );
     });
 
     it('should handle high confidence false positive - auto close as refuted', async () => {
       // Reset and properly mock configuration values for this test
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD - lower than our prediction (95)
           .mockReturnValueOnce('false'), // CLIENT_SYSTEM_INTERDICTION_ENABLED - disabled
       } as any;
@@ -1091,16 +1114,16 @@ describe('TriageService', () => {
       });
 
       jest.spyOn(service as any, 'updateAlertAndUpdateTriageTask').mockResolvedValue(undefined);
-      jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({ 
-        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
+      jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({
+        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' },
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' },
       });
 
       const result = await service.handleAITriage(alertId, caseId, dto, userId, tenantId);
 
-      expect(result).toEqual({ 
-        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
+      expect(result).toEqual({
+        updatedCase: { caseId: 'case-123', status: 'STATUS_72_AUTOCLOSED_REFUTED' },
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' },
       });
     });
 
@@ -1108,12 +1131,14 @@ describe('TriageService', () => {
       const dtoWithInterdiction = {
         report: {
           tadpResult: {
-            typologyResult: [{
-              result: 50,
-              workflow: { interdictionThreshold: 80 }
-            }]
-          }
-        }
+            typologyResult: [
+              {
+                result: 50,
+                workflow: { interdictionThreshold: 80 },
+              },
+            ],
+          },
+        },
       } as IngestAlertDto;
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
@@ -1134,7 +1159,8 @@ describe('TriageService', () => {
     it('should handle FRAUD_AND_AML alert type - create child cases', async () => {
       // Mock configuration values
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('false'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1166,7 +1192,8 @@ describe('TriageService', () => {
     it('should handle AML alert type - create investigation task', async () => {
       // Mock configuration values
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('false'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1198,17 +1225,20 @@ describe('TriageService', () => {
       const dtoWithInterdiction = {
         report: {
           tadpResult: {
-            typologyResult: [{
-              result: 90, // Above interdiction threshold
-              workflow: { interdictionThreshold: 80 }
-            }]
-          }
-        }
+            typologyResult: [
+              {
+                result: 90, // Above interdiction threshold
+                workflow: { interdictionThreshold: 80 },
+              },
+            ],
+          },
+        },
       } as IngestAlertDto;
 
       // Mock configuration values
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('true'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1221,9 +1251,9 @@ describe('TriageService', () => {
       });
 
       jest.spyOn(service as any, 'updateAlertAndUpdateTriageTask').mockResolvedValue(undefined);
-      jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({ 
-        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
+      jest.spyOn(service as any, 'autoCloseCase').mockResolvedValue({
+        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' },
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' },
       });
 
       const result = await service.handleAITriage(alertId, caseId, dtoWithInterdiction, userId, tenantId);
@@ -1235,9 +1265,9 @@ describe('TriageService', () => {
         'triage-task-123',
         'Triage complete - AI predicted true positive (case auto-closed confirmed)',
       );
-      expect(result).toEqual({ 
-        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' }, 
-        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' }
+      expect(result).toEqual({
+        updatedCase: { caseId: 'case-123', status: 'STATUS_71_AUTOCLOSED_CONFIRMED' },
+        updatedTask: { taskId: 'triage-task-123', status: 'STATUS_30_COMPLETED' },
       });
     });
 
@@ -1245,17 +1275,20 @@ describe('TriageService', () => {
       const dtoWithInterdiction = {
         report: {
           tadpResult: {
-            typologyResult: [{
-              result: 50, // Below interdiction threshold
-              workflow: { interdictionThreshold: 80 }
-            }]
-          }
-        }
+            typologyResult: [
+              {
+                result: 50, // Below interdiction threshold
+                workflow: { interdictionThreshold: 80 },
+              },
+            ],
+          },
+        },
       } as IngestAlertDto;
 
       // Mock configuration values
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('true'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1286,7 +1319,8 @@ describe('TriageService', () => {
     it('should handle errors in AI triage process', async () => {
       // Mock configuration values
       service['configService'] = {
-        get: jest.fn()
+        get: jest
+          .fn()
           .mockReturnValueOnce(80) // CONFIDENCE_THRESHOLD
           .mockReturnValueOnce('false'), // CLIENT_SYSTEM_INTERDICTION_ENABLED
       } as any;
@@ -1294,8 +1328,7 @@ describe('TriageService', () => {
       // Mock predictAlert to throw an error
       jest.spyOn(service as any, 'predictAlert').mockRejectedValue(new Error('AI prediction failed'));
 
-      await expect(service.handleAITriage(alertId, caseId, dto, userId, tenantId))
-        .rejects.toThrow('AI triage process failed');
+      await expect(service.handleAITriage(alertId, caseId, dto, userId, tenantId)).rejects.toThrow('AI triage process failed');
     });
   });
 
@@ -1345,8 +1378,9 @@ describe('TriageService', () => {
         return await callback(prismaService);
       });
 
-      await expect(service['autoCloseCase'](caseId, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, userId, taskId))
-        .rejects.toThrow('Failed to auto close case');
+      await expect(service['autoCloseCase'](caseId, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, userId, taskId)).rejects.toThrow(
+        'Failed to auto close case',
+      );
     });
 
     it('should execute transaction callback and return array values', async () => {
@@ -1379,7 +1413,7 @@ describe('TriageService', () => {
           status: 'STATUS_30_COMPLETED',
           description: 'Auto-closed case with status STATUS_72_AUTOCLOSED_REFUTED',
         },
-        userId
+        userId,
       );
       expect(service['caseService'].updateCase).toHaveBeenCalled();
       expect(result).toEqual({ updatedCase: mockCase, updatedTask: mockTask });
@@ -1421,8 +1455,9 @@ describe('TriageService', () => {
         createTask: jest.fn().mockResolvedValue({ task_id: 'task-123' }),
       } as any;
 
-      await expect(service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123', priority))
-        .rejects.toThrow('Failed to create FRAUD case and task');
+      await expect(service.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, 'parent-case-123', priority)).rejects.toThrow(
+        'Failed to create FRAUD case and task',
+      );
     });
   });
 
@@ -1459,7 +1494,7 @@ describe('TriageService', () => {
           description: taskName, // taskName is the investigateTaskDesc parameter
           status: 'STATUS_01_UNASSIGNED',
         }),
-        userId
+        userId,
       );
     });
 
@@ -1481,8 +1516,9 @@ describe('TriageService', () => {
         updateCase: jest.fn().mockResolvedValue({ case_id: 'case-123', status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
       } as any;
 
-      await expect(service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription, priority))
-        .rejects.toThrow('Failed to create investigation task');
+      await expect(service.createInvestigationTask(caseId, userId, triageTaskId, taskName, taskDescription, priority)).rejects.toThrow(
+        'Failed to create investigation task',
+      );
     });
   });
 
@@ -1506,7 +1542,17 @@ describe('TriageService', () => {
         updateTask: jest.fn().mockResolvedValue(mockTask),
       } as any;
 
-      await service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, priority, predictedTruePositive, userId, tenantId);
+      await service['updateAlertAndUpdateTriageTask'](
+        alertId,
+        triageTaskId,
+        alertType,
+        confidence,
+        priorityScore,
+        priority,
+        predictedTruePositive,
+        userId,
+        tenantId,
+      );
 
       expect(service['updateAlertData']).toHaveBeenCalledWith(
         alertId,
@@ -1523,9 +1569,20 @@ describe('TriageService', () => {
     it('should handle errors in updateAlertAndUpdateTriageTask', async () => {
       // Mock updateAlertData to throw an error
       jest.spyOn(service as any, 'updateAlertData').mockRejectedValue(new Error('Update failed'));
-      
-      await expect(service['updateAlertAndUpdateTriageTask'](alertId, triageTaskId, alertType, confidence, priorityScore, priority, predictedTruePositive, userId, tenantId))
-        .rejects.toThrow('Failed to update alert and triage task');
+
+      await expect(
+        service['updateAlertAndUpdateTriageTask'](
+          alertId,
+          triageTaskId,
+          alertType,
+          confidence,
+          priorityScore,
+          priority,
+          predictedTruePositive,
+          userId,
+          tenantId,
+        ),
+      ).rejects.toThrow('Failed to update alert and triage task');
     });
   });
 
@@ -1542,28 +1599,28 @@ describe('TriageService', () => {
             FIToFIPmtSts: {
               GrpHdr: {
                 MsgId: 'test-msg-001',
-                CreDtTm: '2025-09-04T15:30:00.000Z'
-              }
-            }
-          }
+                CreDtTm: '2025-09-04T15:30:00.000Z',
+              },
+            },
+          },
         },
         networkMap: {
           active: true,
           cfg: '1.0.0',
-          messages: []
+          messages: [],
         },
         report: {
           id: 'test-report-001',
           cfg: '1.0.0',
           result: {
-            ruleResults: []
-          }
-        }
+            ruleResults: [],
+          },
+        },
       };
 
       // Reset all mocks
       jest.clearAllMocks();
-      
+
       // Mock handleNewAlert to return a basic alert
       jest.spyOn(service, 'handleNewAlert').mockResolvedValue({
         alert_id: 'alert-123',
@@ -1580,7 +1637,7 @@ describe('TriageService', () => {
         created_at: new Date(),
         priority_score: null,
         prediction_outcome: null,
-        txtp: null
+        txtp: null,
       });
 
       // Mock handleAITriage
@@ -1602,20 +1659,14 @@ describe('TriageService', () => {
             message: 'Test alert message',
             transaction: mockAlertMessageDto.transaction,
             networkMap: mockAlertMessageDto.networkMap,
-            report: mockAlertMessageDto.report
+            report: mockAlertMessageDto.report,
           }),
           'user-123',
           'test-tenant-id',
-          'NATS'
+          'NATS',
         );
 
-        expect(service.handleAITriage).toHaveBeenCalledWith(
-          'alert-123',
-          'case-123',
-          expect.any(Object),
-          'user-123',
-          'test-tenant-id'
-        );
+        expect(service.handleAITriage).toHaveBeenCalledWith('alert-123', 'case-123', expect.any(Object), 'user-123', 'test-tenant-id');
 
         expect(taskService.createTask).not.toHaveBeenCalled();
         expect(caseService.updateCase).not.toHaveBeenCalled();
@@ -1647,22 +1698,22 @@ describe('TriageService', () => {
           case_id: 'case-123',
           status: 'STATUS_01_UNASSIGNED',
           name: 'Triage Alert',
-          description: 'Manual triage required for alert: alert-123'
+          description: 'Manual triage required for alert: alert-123',
         });
 
         await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
 
         expect(service.handleNewAlert).toHaveBeenCalled();
         expect(service.handleAITriage).not.toHaveBeenCalled();
-        
+
         expect(taskService.createTask).toHaveBeenCalledWith(
           {
             caseId: 'case-123',
             status: 'STATUS_01_UNASSIGNED',
             name: 'Triage Alert',
-            description: 'Manual triage required for alert: alert-123'
+            description: 'Manual triage required for alert: alert-123',
           },
-          'user-123'
+          'user-123',
         );
 
         expect(caseService.updateCase).not.toHaveBeenCalled();
@@ -1680,9 +1731,9 @@ describe('TriageService', () => {
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
             status: 'STATUS_01_UNASSIGNED',
-            name: 'Triage Alert'
+            name: 'Triage Alert',
           }),
-          'user-123'
+          'user-123',
         );
       });
     });
@@ -1700,35 +1751,35 @@ describe('TriageService', () => {
           case_id: 'case-123',
           status: 'STATUS_01_UNASSIGNED',
           name: 'Investigate Case',
-          description: 'Investigate case: case-123'
+          description: 'Investigate case: case-123',
         });
 
         caseService.updateCase.mockResolvedValue({
           case_id: 'case-123',
-          status: 'STATUS_02_READY_FOR_ASSIGNMENT'
+          status: 'STATUS_02_READY_FOR_ASSIGNMENT',
         });
 
         await service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id');
 
         expect(service.handleNewAlert).toHaveBeenCalled();
         expect(service.handleAITriage).not.toHaveBeenCalled();
-        
+
         expect(taskService.createTask).toHaveBeenCalledWith(
           {
             caseId: 'case-123',
             status: 'STATUS_01_UNASSIGNED',
             name: 'Investigate Case',
-            description: 'Investigate case: case-123'
+            description: 'Investigate case: case-123',
           },
-          'user-123'
+          'user-123',
         );
 
         expect(caseService.updateCase).toHaveBeenCalledWith(
           'case-123',
           {
-            status: 'STATUS_02_READY_FOR_ASSIGNMENT'
+            status: 'STATUS_02_READY_FOR_ASSIGNMENT',
           },
-          'user-123'
+          'user-123',
         );
       });
 
@@ -1744,17 +1795,17 @@ describe('TriageService', () => {
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
             status: 'STATUS_01_UNASSIGNED',
-            name: 'Investigate Case'
+            name: 'Investigate Case',
           }),
-          'user-123'
+          'user-123',
         );
 
         expect(caseService.updateCase).toHaveBeenCalledWith(
           'case-123',
           expect.objectContaining({
-            status: 'STATUS_02_READY_FOR_ASSIGNMENT'
+            status: 'STATUS_02_READY_FOR_ASSIGNMENT',
           }),
-          'user-123'
+          'user-123',
         );
       });
 
@@ -1770,9 +1821,9 @@ describe('TriageService', () => {
         expect(taskService.createTask).toHaveBeenCalledWith(
           expect.objectContaining({
             status: 'STATUS_01_UNASSIGNED',
-            name: 'Investigate Case'
+            name: 'Investigate Case',
           }),
-          'user-123'
+          'user-123',
         );
       });
     });
@@ -1787,9 +1838,9 @@ describe('TriageService', () => {
         const error = new Error('Failed to create alert');
         jest.spyOn(service, 'handleNewAlert').mockRejectedValue(error);
 
-        await expect(
-          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
-        ).rejects.toThrow('Failed to create alert');
+        await expect(service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')).rejects.toThrow(
+          'Failed to create alert',
+        );
       });
 
       it('should propagate errors from handleAITriage', async () => {
@@ -1801,9 +1852,7 @@ describe('TriageService', () => {
         const error = new Error('AI triage failed');
         jest.spyOn(service, 'handleAITriage').mockRejectedValue(error);
 
-        await expect(
-          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
-        ).rejects.toThrow('AI triage failed');
+        await expect(service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')).rejects.toThrow('AI triage failed');
       });
 
       it('should propagate errors from task creation in manual triage', async () => {
@@ -1815,9 +1864,9 @@ describe('TriageService', () => {
         const error = new Error('Task creation failed');
         taskService.createTask.mockRejectedValue(error);
 
-        await expect(
-          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
-        ).rejects.toThrow('Task creation failed');
+        await expect(service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')).rejects.toThrow(
+          'Task creation failed',
+        );
       });
 
       it('should propagate errors from case update in disabled triage', async () => {
@@ -1830,9 +1879,7 @@ describe('TriageService', () => {
         const error = new Error('Case update failed');
         caseService.updateCase.mockRejectedValue(error);
 
-        await expect(
-          service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')
-        ).rejects.toThrow('Case update failed');
+        await expect(service.processIncomingAlert(mockAlertMessageDto, 'user-123', 'test-tenant-id')).rejects.toThrow('Case update failed');
       });
     });
   });
