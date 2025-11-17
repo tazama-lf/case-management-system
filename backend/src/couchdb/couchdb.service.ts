@@ -41,30 +41,12 @@ export class CouchdbService implements OnModuleInit {
     return this.db;
   }
 
-  // CouchdbService method
-  async insertWithAttachment(docId: string, metadata: any, attachmentName: string, attachmentData: Buffer, contentType: string) {
-    try {
-      // Insert document metadata
-      const response = await this.db.insert(metadata, docId);
+  async insertDocument(docId: string, metadata: any) {
+    return this.db.insert(metadata, docId);
+  }
 
-      // Store attachment as Uint8Array
-      await this.db.attachment.insert(docId, attachmentName, new Uint8Array(attachmentData), contentType, { rev: response.rev });
-
-      this.logger.log(`Document inserted with attachment: ${docId}`);
-
-      // Verify attachment length
-      // const downloaded = await this.db.attachment.get(docId, attachmentName);
-      // const downloadedBuffer = Buffer.isBuffer(downloaded) ? downloaded : Buffer.from(downloaded);
-      // if (downloadedBuffer.length !== attachmentData.length) {
-      //   this.logger.error(`Attachment size mismatch: original=${attachmentData.length}, stored=${downloadedBuffer.length}`);
-      //   throw new Error('Attachment verification failed: size mismatch');
-      // }
-
-      return `${this.db.config.url}/${this.db.config.db}/${docId}/${encodeURIComponent(metadata.fileName)}`;
-    } catch (error) {
-      this.logger.error(`Failed to insert document with attachment: ${error.message}`, error.stack);
-      throw error;
-    }
+  async insertAttachment(docId: string, rev: string, name: string, data: Buffer, mime: string) {
+    return this.db.attachment.insert(docId, name, new Uint8Array(data), mime, { rev });
   }
 
   async getDocument(docId: string): Promise<any> {
@@ -144,6 +126,13 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
+  async updateDocument(data: any) {
+  if (!data._id) throw new Error('Missing _id');
+  if (!data._rev) throw new Error('Missing _rev');
+  return this.db.insert(data);
+}
+
+w
   async getAttachment(docId: string, attachmentName: string): Promise<Buffer> {
     try {
       const attachment = await this.db.attachment.get(docId, attachmentName);

@@ -14,8 +14,9 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
@@ -33,16 +34,15 @@ export class EvidenceController {
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Upload evidence for a case' })
+  @ApiOperation({ summary: 'Upload evidence for a task' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         file: {
-          type: 'string',
-          format: 'binary',
-          description: 'Evidence file to upload',
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
         },
         taskId: {
           type: 'string',
@@ -50,7 +50,7 @@ export class EvidenceController {
         },
         evidenceType: {
           type: 'string',
-          enum: ['DOCUMENT', 'SCREENSHOT', 'LOG', 'VIDEO', 'AUDIO', 'IMAGE', 'OTHER'],
+          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER'],
           description: 'Type of evidence',
         },
         tags: {
@@ -74,27 +74,24 @@ export class EvidenceController {
     description: 'Evidence uploaded successfully',
     type: EvidenceResponseDto,
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10))
   async uploadEvidence(
-    @UploadedFile(
+    @UploadedFiles(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 })],
         fileIsRequired: true,
       }),
     )
-    file: any,
+    files: any[],
     @Body() dto: UploadEvidenceDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<EvidenceResponseDto> {
-    if (!file) {
-      throw new BadRequestException('File is required');
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one file is required');
     }
 
     const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.uploadEvidence(file, dto, clientId, tenantId);
+    return this.evidenceService.uploadEvidence(files, dto, clientId, tenantId);
   }
 
   @Get('task/:taskId')
