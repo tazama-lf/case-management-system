@@ -57,41 +57,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   
-  // Sanctions Screening specific fields
-  const [sanctionsMetadata, setSanctionsMetadata] = React.useState({
-    screeningDate: '',
-    tool: '',
-    summaryDisposition: ''
-  });
-  
-  // Adverse Media specific fields
-  const [adverseMediaMetadata, setAdverseMediaMetadata] = React.useState({
-    aggregator: '',
-    dateSearched: '',
-    keywords: [] as string[],
-    findings: ''
-  });
-  
-  const [keywordInput, setKeywordInput] = React.useState('');
 
-  // Helper function to add keywords
-  const handleAddKeyword = () => {
-    if (keywordInput.trim() && !adverseMediaMetadata.keywords.includes(keywordInput.trim())) {
-      setAdverseMediaMetadata(prev => ({
-        ...prev,
-        keywords: [...prev.keywords, keywordInput.trim()]
-      }));
-      setKeywordInput('');
-    }
-  };
-
-  // Helper function to remove keyword
-  const handleRemoveKeyword = (index: number) => {
-    setAdverseMediaMetadata(prev => ({
-      ...prev,
-      keywords: prev.keywords.filter((_, i) => i !== index)
-    }));
-  };
 
   // Load existing evidence for the task
   React.useEffect(() => {
@@ -159,53 +125,15 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
             comments: sectionComments[sectionKey],
           };
 
-          // Add specific metadata based on evidence type
-          if (section.evidenceType === 'SANCTIONS') {
-            if (sanctionsMetadata.screeningDate) {
-              uploadDto.screeningDate = sanctionsMetadata.screeningDate;
-            }
-            if (sanctionsMetadata.tool) {
-              uploadDto.tool = sanctionsMetadata.tool;
-            }
-            if (sanctionsMetadata.summaryDisposition) {
-              uploadDto.summaryDisposition = sanctionsMetadata.summaryDisposition;
-            }
-          } else if (section.evidenceType === 'ADVERSE_MEDIA') {
-            if (adverseMediaMetadata.aggregator) {
-              uploadDto.aggregator = adverseMediaMetadata.aggregator;
-            }
-            if (adverseMediaMetadata.dateSearched) {
-              uploadDto.dateSearched = adverseMediaMetadata.dateSearched;
-            }
-            if (adverseMediaMetadata.keywords.length > 0) {
-              uploadDto.keywords = adverseMediaMetadata.keywords;
-            }
-            if (adverseMediaMetadata.findings) {
-              uploadDto.findings = adverseMediaMetadata.findings;
-            }
-          }
-
           return evidenceService.uploadEvidence(uploadDto);
         });
       });
 
       await Promise.all(uploadPromises);
 
-      // Clear uploaded files, comments, and metadata
+      // Clear uploaded files and comments
       setSectionFiles({});
       setSectionComments({});
-      setSanctionsMetadata({
-        screeningDate: '',
-        tool: '',
-        summaryDisposition: ''
-      });
-      setAdverseMediaMetadata({
-        aggregator: '',
-        dateSearched: '',
-        keywords: [],
-        findings: ''
-      });
-      setKeywordInput('');
       
       // Reload evidence to show newly uploaded files
       const response = await evidenceService.getTaskEvidence(taskId);
@@ -460,152 +388,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
               </div>
             )}
 
-            {/* Evidence Type Specific Metadata */}
-            {section.evidenceType === 'SANCTIONS' && (
-              <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-                <h5 className="text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                  Sanctions Screening Details
-                </h5>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label htmlFor="sanctions-screening-date" className="block text-xs font-medium text-gray-700 mb-1">
-                      Screening Date
-                    </label>
-                    <input
-                      id="sanctions-screening-date"
-                      type="date"
-                      value={sanctionsMetadata.screeningDate}
-                      onChange={(e) => setSanctionsMetadata(prev => ({ ...prev, screeningDate: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="sanctions-tool" className="block text-xs font-medium text-gray-700 mb-1">
-                      Screening Tool/Source
-                    </label>
-                    <input
-                      id="sanctions-tool"
-                      type="text"
-                      placeholder="e.g., World-Check, OFAC, UN Sanctions List"
-                      value={sanctionsMetadata.tool}
-                      onChange={(e) => setSanctionsMetadata(prev => ({ ...prev, tool: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="sanctions-disposition" className="block text-xs font-medium text-gray-700 mb-1">
-                      Summary Disposition
-                    </label>
-                    <select
-                      id="sanctions-disposition"
-                      value={sanctionsMetadata.summaryDisposition}
-                      onChange={(e) => setSanctionsMetadata(prev => ({ ...prev, summaryDisposition: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">Select disposition...</option>
-                      <option value="Cleared">Cleared</option>
-                      <option value="Escalated">Escalated</option>
-                      <option value="Positive Match">Positive Match</option>
-                      <option value="False Positive">False Positive</option>
-                      <option value="Pending Review">Pending Review</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {section.evidenceType === 'ADVERSE_MEDIA' && (
-              <div className="space-y-3 p-3 bg-orange-50 rounded-md border border-orange-200">
-                <h5 className="text-xs font-semibold text-orange-900 uppercase tracking-wide">
-                  Adverse Media Screening Details
-                </h5>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label htmlFor="media-aggregator" className="block text-xs font-medium text-gray-700 mb-1">
-                      Media Aggregator/Tool
-                    </label>
-                    <input
-                      id="media-aggregator"
-                      type="text"
-                      placeholder="e.g., Factiva, LexisNexis, Google News"
-                      value={adverseMediaMetadata.aggregator}
-                      onChange={(e) => setAdverseMediaMetadata(prev => ({ ...prev, aggregator: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="media-date-searched" className="block text-xs font-medium text-gray-700 mb-1">
-                      Date Searched
-                    </label>
-                    <input
-                      id="media-date-searched"
-                      type="date"
-                      value={adverseMediaMetadata.dateSearched}
-                      onChange={(e) => setAdverseMediaMetadata(prev => ({ ...prev, dateSearched: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="media-keywords" className="block text-xs font-medium text-gray-700 mb-1">
-                      Search Keywords
-                    </label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        id="media-keywords"
-                        type="text"
-                        placeholder="Add keyword and press Enter"
-                        value={keywordInput}
-                        onChange={(e) => setKeywordInput(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddKeyword();
-                          }
-                        }}
-                        className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddKeyword}
-                        className="px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {adverseMediaMetadata.keywords.map((keyword, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
-                        >
-                          {keyword}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveKeyword(index)}
-                            className="hover:text-blue-900"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="media-findings" className="block text-xs font-medium text-gray-700 mb-1">
-                      Findings Summary
-                    </label>
-                    <textarea
-                      id="media-findings"
-                      placeholder="Summarize key findings from adverse media screening..."
-                      rows={3}
-                      value={adverseMediaMetadata.findings}
-                      onChange={(e) => setAdverseMediaMetadata(prev => ({ ...prev, findings: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div>
               <label htmlFor={`${section.key}-comments`} className="mb-1 block text-xs font-medium text-gray-700">
