@@ -23,7 +23,7 @@ export class AlertRepository {
           alert_data,
           transaction,
           network_map,
-          case_id: alertData.caseId,
+          case_id: alertData.caseId === '' ? null : alertData.caseId,
         },
       });
 
