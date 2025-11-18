@@ -6,6 +6,7 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   Body,
   UseGuards,
   Res,
@@ -15,7 +16,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
@@ -33,71 +34,148 @@ export class EvidenceController {
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Upload evidence for a case' })
+  @ApiOperation({ summary: 'Upload evidence file(s) - supports single or multiple files' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-          description: 'Evidence file to upload',
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+          description: 'Evidence file(s) to upload (one or more files)',
         },
         taskId: {
           type: 'string',
           description: 'Task ID',
+          example: '550e8400-e29b-41d4-a716-446655440000',
         },
         evidenceType: {
           type: 'string',
-          enum: ['DOCUMENT', 'SCREENSHOT', 'LOG', 'VIDEO', 'AUDIO', 'IMAGE', 'OTHER'],
+          enum: ['SANCTIONS', 'ADVERSE_MEDIA', 'OTHER', 'SAR_STR_FILING'],
           description: 'Type of evidence',
+          example: 'SANCTIONS',
         },
         tags: {
           type: 'string',
           description: 'Tags (comma-separated)',
+          example: 'kyc,screening',
         },
         description: {
           type: 'string',
           description: 'Description of evidence',
+          example: 'OFAC sanctions screening results',
         },
         comments: {
           type: 'string',
           description: 'Additional comments',
+          example: 'No matches found',
+        },
+        aggregator: {
+          type: 'string',
+          description: 'Media aggregator or tool (for ADVERSE_MEDIA)',
+          example: 'LexisNexis',
+        },
+        dateSearched: {
+          type: 'string',
+          format: 'date',
+          description: 'Date when media search was conducted (for ADVERSE_MEDIA)',
+          example: '2025-11-17',
+        },
+        keywords: {
+          type: 'string',
+          description: 'Search keywords comma-separated (for ADVERSE_MEDIA)',
+          example: 'fraud,money laundering',
+        },
+        findings: {
+          type: 'string',
+          description: 'Findings or summary (for ADVERSE_MEDIA)',
+          example: 'No adverse media found',
+        },
+        screeningDate: {
+          type: 'string',
+          format: 'date',
+          description: 'Date when screening was performed (for SANCTIONS)',
+          example: '2025-11-17',
+        },
+        tool: {
+          type: 'string',
+          description: 'External screening tool or source used (for SANCTIONS)',
+          example: 'WorldCheck',
+        },
+        summaryDisposition: {
+          type: 'string',
+          description: 'Summary of screening disposition (for SANCTIONS)',
+          example: 'Cleared',
+        },
+        submissionDate: {
+          type: 'string',
+          format: 'date',
+          description: 'Date when SAR/STR was submitted to FIU (for SAR_STR_FILING)',
+          example: '2025-11-17',
+        },
+        referenceNumber: {
+          type: 'string',
+          description: 'Reference number from FIU acknowledgment (for SAR_STR_FILING)',
+          example: 'SAR-2025-001234',
+        },
+        submissionChannel: {
+          type: 'string',
+          description: 'Submission channel (for SAR_STR_FILING)',
+          example: 'Portal',
         },
       },
-      required: ['file', 'taskID', 'type'],
+      required: ['files', 'taskId', 'evidenceType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Evidence uploaded successfully',
-    type: EvidenceResponseDto,
+    description: 'Evidence uploaded successfully (returns array even for single file)',
+    type: [EvidenceResponseDto],
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - missing required fields or invalid file',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - invalid or missing JWT token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - insufficient permissions',
+  })
+  @UseInterceptors(FilesInterceptor('files', 10))
   async uploadEvidence(
-    @UploadedFile(
+    @UploadedFiles(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 })],
         fileIsRequired: true,
       }),
     )
-    file: any,
+    files: any[],
     @Body() dto: UploadEvidenceDto,
     @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceResponseDto> {
-    if (!file) {
-      throw new BadRequestException('File is required');
+  ): Promise<EvidenceResponseDto[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one file is required');
     }
 
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.uploadEvidence(file, dto, clientId, tenantId);
-  }
-
-  @Get('task/:taskId')
+    
+    // Upload all files in parallel and return array of responses
+    const results = await Promise.all(
+      files.map(file => this.evidenceService.uploadEvidence(file, dto, clientId, tenantId))
+    );
+    
+    return results;
+  }  @Get('task/:taskId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get all evidence for a task' })
   @ApiResponse({

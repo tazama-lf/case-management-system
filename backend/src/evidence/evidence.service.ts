@@ -91,7 +91,50 @@ export class EvidenceService {
       metadata.summaryDisposition = dto.summaryDisposition;
     }
 
+    // extra metadata for SAR/STR Filing
+    if (dto.evidenceType === 'SAR_STR_FILING') {
+      metadata.submissionDate = dto.submissionDate;
+      metadata.referenceNumber = dto.referenceNumber;
+      metadata.submissionChannel = dto.submissionChannel;
+    }
+
     const fileAttachmentPath = await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
+
+    // Auto-complete SAR/STR Filing task when SAR evidence is uploaded
+    if (dto.evidenceType === 'SAR_STR_FILING') {
+      try {
+        const sarTask = await this.prisma.task.findFirst({
+          where: {
+            task_id: dto.taskId,
+            task_type: 'SAR_STR_FILING' as any,
+          },
+        });
+
+        if (sarTask && sarTask.status !== 'STATUS_30_COMPLETED') {
+          await this.prisma.task.update({
+            where: { task_id: dto.taskId },
+            data: {
+              status: 'STATUS_30_COMPLETED' as any,
+              completed_at: new Date(),
+              updated_at: new Date(),
+            },
+          });
+
+          this.logger.log(`Auto-completed SAR/STR Filing task ${dto.taskId} after evidence upload`);
+
+          await this.auditLog.logAction({
+            userId,
+            operation: 'completeTask',
+            entityName: 'Evidence',
+            actionPerformed: `SAR/STR Filing task ${dto.taskId} auto-completed after evidence upload`,
+            outcome: 'SUCCESS',
+          });
+        }
+      } catch (error) {
+        this.logger.error(`Failed to auto-complete SAR task ${dto.taskId}: ${error.message}`, error.stack);
+        // Don't throw - evidence upload succeeded, task completion is secondary
+      }
+    }
 
     await this.auditLog.logAction({
       userId,

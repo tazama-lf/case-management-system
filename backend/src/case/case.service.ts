@@ -25,6 +25,7 @@ import {
   CaseSuspendedEvent,
   CaseResumedEvent,
   TaskStatusChangedEvent,
+  TaskCreatedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -709,6 +710,16 @@ export class CaseService {
             `Case closed directly by supervisor with outcome: ${dto.recommendedOutcome}`,
           ),
         );
+
+        // Auto-generate SAR/STR Filing task if case is confirmed
+        if (finalStatus === CaseStatus.STATUS_82_CLOSED_CONFIRMED) {
+          try {
+            await this.createSARFilingTask(caseId, tenantId, userId);
+            this.logger.log(`Auto-generated SAR/STR Filing task for confirmed case ${caseId}`, CaseService.name);
+          } catch (error) {
+            this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+          }
+        }
 
         await this.auditLogService.logAction({
           userId,
@@ -1643,6 +1654,16 @@ export class CaseService {
           `Case closure approved with outcome: ${finalOutcome}`,
         ),
       );
+
+      // Auto-generate SAR/STR Filing task if case is confirmed
+      if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
+        try {
+          await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
+          this.logger.log(`Auto-generated SAR/STR Filing task for confirmed case ${caseId}`, CaseService.name);
+        } catch (error) {
+          this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+        }
+      }
 
       const investigationTask = caseDetails.tasks.find(
         (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.assigned_user_id,
@@ -2706,6 +2727,100 @@ export class CaseService {
     } catch (error) {
       this.logger.error(`Failed to get workload stats: ${error.message}`, error.stack, CaseService.name);
       throw error;
+    }
+  }
+
+  /**
+   * Auto-generates SAR/STR Filing task for Compliance Officer when case is confirmed
+   * Uses direct DB creation (bypassing Flowable) 
+   */
+  private async createSARFilingTask(caseId: string, tenantId: string, userId: string): Promise<void> {
+    this.logger.log(`Creating SAR/STR Filing task for case ${caseId}`, CaseService.name);
+
+    try {
+      // Check if SAR task already exists for this case
+      const existingSARTask = await this.prismaService.task.findFirst({
+        where: {
+          case_id: caseId,
+          task_type: 'SAR_STR_FILING' as any,
+        },
+      });
+
+      if (existingSARTask) {
+        this.logger.log(`SAR/STR Filing task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseService.name);
+        return;
+      }
+
+      // Find compliance work queue (optional)
+      const complianceQueue = await this.prismaService.workQueue.findFirst({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          name: {
+            contains: 'compliance',
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      // Create SAR task directly in DB with task_type field
+      const taskData: any = {
+        case: {
+          connect: { case_id: caseId },
+        },
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        name: 'SAR/STR Filing',
+        description:
+          'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
+        task_type: 'SAR_STR_FILING',
+        candidateGroup: 'compliance',
+        sla_duration_hours: 48, // 2 business days for regulatory filing
+      };
+
+      if (complianceQueue) {
+        taskData.workQueue = {
+          connect: { work_queue_id: complianceQueue.work_queue_id },
+        };
+      }
+
+      const sarTask = await this.prismaService.task.create({
+        data: taskData,
+      });
+
+      // Emit task created event for notifications
+      this.eventEmitter.emit(
+        'task.created',
+        new TaskCreatedEvent(
+          sarTask.task_id,
+          caseId,
+          sarTask.name || 'SAR/STR Filing',
+          sarTask.description || 'Upload SAR/STR acknowledgment from FIU',
+          sarTask.candidateGroup || 'compliance',
+          sarTask.status,
+          undefined,
+        ),
+      );
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'createSARTask',
+        entityName: CaseService.name,
+        actionPerformed: `Auto-generated SAR/STR Filing task ${sarTask.task_id} for confirmed case ${caseId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(`Successfully created SAR/STR Filing task ${sarTask.task_id} for case ${caseId}`, CaseService.name);
+    } catch (error) {
+      // Log error but don't throw - SAR task creation should not block case closure
+      this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'createSARTask',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
     }
   }
 
