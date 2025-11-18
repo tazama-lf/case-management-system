@@ -84,14 +84,14 @@ export class EvidenceService {
       metadata.findings = dto.findings;
     }
 
-    // extra metadata for Sanction Screening
+    
     if (dto.evidenceType === 'SANCTIONS') {
       metadata.screeningDate = dto.screeningDate;
       metadata.tool = dto.tool;
       metadata.summaryDisposition = dto.summaryDisposition;
     }
 
-    // extra metadata for SAR/STR Filing
+
     if (dto.evidenceType === 'SAR_STR_FILING') {
       metadata.submissionDate = dto.submissionDate;
       metadata.referenceNumber = dto.referenceNumber;
@@ -100,7 +100,7 @@ export class EvidenceService {
 
     const fileAttachmentPath = await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
 
-    // Auto-complete SAR/STR Filing task when SAR evidence is uploaded
+    
     if (dto.evidenceType === 'SAR_STR_FILING') {
       try {
         const sarTask = await this.prisma.task.findFirst({
@@ -132,7 +132,7 @@ export class EvidenceService {
         }
       } catch (error) {
         this.logger.error(`Failed to auto-complete SAR task ${dto.taskId}: ${error.message}`, error.stack);
-        // Don't throw - evidence upload succeeded, task completion is secondary
+        
       }
     }
 

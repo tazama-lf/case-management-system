@@ -2730,15 +2730,12 @@ export class CaseService {
     }
   }
 
-  /**
-   * Auto-generates SAR/STR Filing task for Compliance Officer when case is confirmed
-   * Uses direct DB creation (bypassing Flowable) 
-   */
+  
   private async createSARFilingTask(caseId: string, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Creating SAR/STR Filing task for case ${caseId}`, CaseService.name);
 
     try {
-      // Check if SAR task already exists for this case
+     
       const existingSARTask = await this.prismaService.task.findFirst({
         where: {
           case_id: caseId,
@@ -2751,7 +2748,7 @@ export class CaseService {
         return;
       }
 
-      // Find compliance work queue (optional)
+      
       const complianceQueue = await this.prismaService.workQueue.findFirst({
         where: {
           tenant_id: tenantId,
@@ -2763,7 +2760,6 @@ export class CaseService {
         },
       });
 
-      // Create SAR task directly in DB with task_type field
       const taskData: any = {
         case: {
           connect: { case_id: caseId },
@@ -2774,7 +2770,7 @@ export class CaseService {
           'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
         task_type: 'SAR_STR_FILING',
         candidateGroup: 'compliance',
-        sla_duration_hours: 48, // 2 business days for regulatory filing
+        sla_duration_hours: 48, 
       };
 
       if (complianceQueue) {
@@ -2787,7 +2783,7 @@ export class CaseService {
         data: taskData,
       });
 
-      // Emit task created event for notifications
+      
       this.eventEmitter.emit(
         'task.created',
         new TaskCreatedEvent(
@@ -2811,7 +2807,7 @@ export class CaseService {
 
       this.logger.log(`Successfully created SAR/STR Filing task ${sarTask.task_id} for case ${caseId}`, CaseService.name);
     } catch (error) {
-      // Log error but don't throw - SAR task creation should not block case closure
+     
       this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
