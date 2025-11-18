@@ -16,21 +16,21 @@ import { CaseReopeningService } from './services/case-reopening.service';
 import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
-  imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule],
-  providers: [
-    CaseService, 
-    CaseQueryService,
-    CaseClosureApprovalService,
-    CaseCreationApprovalService,
-    CaseReopeningService
-  ],
-  exports: [
-    CaseService, 
-    CaseQueryService,
-    CaseClosureApprovalService,
-    CaseCreationApprovalService,
-    CaseReopeningService
-  ],
-  controllers: [CaseController],
+	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule],
+	providers: [
+		CaseService,
+		CaseQueryService,
+		CaseClosureApprovalService,
+		CaseCreationApprovalService,
+		CaseReopeningService
+	],
+	exports: [
+		CaseService,
+		CaseQueryService,
+		CaseClosureApprovalService,
+		CaseCreationApprovalService,
+		CaseReopeningService
+	],
+	controllers: [CaseController],
 })
 export class CaseModule {}

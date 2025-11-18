@@ -19,283 +19,284 @@ import { CloseCaseDto, SystemCaseCreationDto, ManualCreateCaseDto, GetAllCasesQu
 
 @Injectable()
 export class CaseService {
-  constructor(
-    private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
-    private readonly prismaService: PrismaService,
-    private readonly taskService: TaskService,
-    private readonly commentService: CommentService,
-    private readonly notificationService: NotificationService,
-    private readonly authHelperService: AuthHelperService,
-    private readonly caseQueryService: CaseQueryService,
-    private readonly caseReopeningService: CaseReopeningService,
-    private readonly caseClosureApprovalService: CaseClosureApprovalService,
-    private readonly caseCreationApprovalService: CaseCreationApprovalService,
-    private readonly flowableService: FlowableService,
-  ) { }
+	constructor(
+		private readonly logger: LoggerService,
+		private readonly auditLogService: AuditLogService,
+		private readonly prismaService: PrismaService,
+		private readonly taskService: TaskService,
+		private readonly commentService: CommentService,
+		private readonly notificationService: NotificationService,
+		private readonly authHelperService: AuthHelperService,
+		private readonly caseQueryService: CaseQueryService,
+		private readonly caseReopeningService: CaseReopeningService,
+		private readonly caseClosureApprovalService: CaseClosureApprovalService,
+		private readonly caseCreationApprovalService: CaseCreationApprovalService,
+		private readonly flowableService: FlowableService,
+	) { }
 
-  async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
-    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
-    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
+	async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
+		const existingCase = await this.caseQueryService.retrieveCase(caseId);
+		if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+		if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
 
-    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
-      throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
+		if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
+			throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
+		if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
+		const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+		const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
 
-    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+		if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
-    if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
-      throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
+		if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
+			throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
 
-    try {
-      const result = await this.prismaService.$transaction(async (prisma) => {
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
+		try {
+			const result = await this.prismaService.$transaction(async (prisma) => {
+				const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
-        const updatedTask = await this.taskService.updateTask(
-          investigateTask.task_id,
-          { status: TaskStatus.STATUS_21_BLOCKED },
-          userId,
-          this.auditLogService,
-        );
+				const updatedTask = await this.taskService.updateTask(
+					investigateTask.task_id,
+					{ status: TaskStatus.STATUS_21_BLOCKED },
+					userId,
+					this.auditLogService,
+				);
 
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
-        createCommentDto.note = `Case suspended: ${reason}`;
-        await this.commentService.addComment(createCommentDto, userId);
+				const createCommentDto = new CreateCommentDto();
+				createCommentDto.taskId = updatedTask.task_id;
+				createCommentDto.note = `Case suspended: ${reason}`;
+				await this.commentService.addComment(createCommentDto, userId);
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'suspendCase',
-          entityName: CaseService.name,
-          actionPerformed: `Suspend case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
+				await this.auditLogService.logAction({
+					userId,
+					operation: 'suspendCase',
+					entityName: CaseService.name,
+					actionPerformed: `Suspend case ${caseId}`,
+					outcome: Outcome.SUCCESS,
+				});
 
-        return { case: updatedCase, task: updatedTask };
-      });
+				return { case: updatedCase, task: updatedTask };
+			});
 
-      await new Promise((res) => setTimeout(res, 1000));
-      // await this.flowableService.
+			await new Promise((res) => setTimeout(res, 1000));
 
-      try {
-        const caseAssignee = investigateTask.assigned_user_id;
-        if (caseAssignee) {
-          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          const emailTo = assigneeUserDetail.email;
-          const suspendedBy = assigneeUserDetail.username;
-          await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
-        }
-      } catch (notificationError) {
-        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
-      }
+			this.flowableService.handleSuspendCase({ caseId, reason });
 
-      return { success: true, ...result };
-    } catch (err) {
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'suspendCase',
-        entityName: CaseService.name,
-        actionPerformed: `Attempted to suspend case ${caseId}`,
-        outcome: Outcome.FAILURE,
-      });
+			try {
+				const caseAssignee = investigateTask.assigned_user_id;
+				if (caseAssignee) {
+					const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
+					const emailTo = assigneeUserDetail.email;
+					const suspendedBy = assigneeUserDetail.username;
+					await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
+				}
+			} catch (notificationError) {
+				this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
+			}
 
-      this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
-    }
-  }
+			return { success: true, ...result };
+		} catch (err) {
+			await this.auditLogService.logAction({
+				userId,
+				operation: 'suspendCase',
+				entityName: CaseService.name,
+				actionPerformed: `Attempted to suspend case ${caseId}`,
+				outcome: Outcome.FAILURE,
+			});
 
-  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
+			this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
+			throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
+		}
+	}
 
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
-    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
-    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can resume a case');
+	async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
+		if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
-    if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
+		const existingCase = await this.caseQueryService.retrieveCase(caseId);
+		if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+		if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can resume a case');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
+		if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
-    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+		const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+		const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
 
-    if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
-      throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
+		if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
-    try {
-      this.flowableService.handleCaseStatusChanged({
-        caseId,
-        oldStatus: CaseStatus.STATUS_21_SUSPENDED,
-        newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case resumed: ${reason}`,
-      });
+		if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
+			throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
 
-      const result = await this.prismaService.$transaction(async (prisma) => {
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        const updatedTask = await this.taskService.updateTask(
-          investigateTask.task_id,
-          { status: TaskStatus.STATUS_20_IN_PROGRESS },
-          userId,
-          this.auditLogService,
-        );
+		try {
+			this.flowableService.handleCaseStatusChanged({
+				caseId,
+				oldStatus: CaseStatus.STATUS_21_SUSPENDED,
+				newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+				reason: `Case resumed: ${reason}`,
+			});
 
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
-        createCommentDto.note = `Case resumed: ${reason}`;
-        await this.commentService.addComment(createCommentDto, userId);
+			const result = await this.prismaService.$transaction(async (prisma) => {
+				const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
+				const updatedTask = await this.taskService.updateTask(
+					investigateTask.task_id,
+					{ status: TaskStatus.STATUS_20_IN_PROGRESS },
+					userId,
+					this.auditLogService,
+				);
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'resumeCase',
-          entityName: CaseService.name,
-          actionPerformed: `Resume case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
+				const createCommentDto = new CreateCommentDto();
+				createCommentDto.taskId = updatedTask.task_id;
+				createCommentDto.note = `Case resumed: ${reason}`;
+				await this.commentService.addComment(createCommentDto, userId);
 
-        return { case: updatedCase, task: updatedTask };
-      });
+				await this.auditLogService.logAction({
+					userId,
+					operation: 'resumeCase',
+					entityName: CaseService.name,
+					actionPerformed: `Resume case ${caseId}`,
+					outcome: Outcome.SUCCESS,
+				});
 
-      try {
-        const caseAssignee = investigateTask.assigned_user_id;
-        if (caseAssignee) {
-          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          const emailTo = assigneeUserDetail.email;
-          const resumedBy = assigneeUserDetail.username;
-          await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
-        }
-      } catch (notificationError) {
-        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
-      }
+				return { case: updatedCase, task: updatedTask };
+			});
 
-      return { success: true, ...result };
-    } catch (err) {
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'resumeCase',
-        entityName: CaseService.name,
-        actionPerformed: `Attempted to resume case ${caseId}`,
-        outcome: Outcome.FAILURE,
-      });
+			try {
+				const caseAssignee = investigateTask.assigned_user_id;
+				if (caseAssignee) {
+					const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
+					const emailTo = assigneeUserDetail.email;
+					const resumedBy = assigneeUserDetail.username;
+					await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
+				}
+			} catch (notificationError) {
+				this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
+			}
 
-      this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
-    }
-  }
+			return { success: true, ...result };
+		} catch (err) {
+			await this.auditLogService.logAction({
+				userId,
+				operation: 'resumeCase',
+				entityName: CaseService.name,
+				actionPerformed: `Attempted to resume case ${caseId}`,
+				outcome: Outcome.FAILURE,
+			});
 
-  async abandonCase(caseId: string, reason: string, userId: string, tenantId: string) {
-    if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
-    if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
-    if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
+			this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
+			throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
+		}
+	}
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
-    if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
-    if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
-      throw new BadRequestException(`Cannot update Complete New Case task ${completeNewCaseTask.task_id} as it is already completed`);
-    }
+	async abandonCase(caseId: string, reason: string, userId: string, tenantId: string) {
+		if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
+		const existingCase = await this.caseQueryService.retrieveCase(caseId);
+		if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
+		if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
 
-    try {
-      const result = await this.prismaService.$transaction(async (prisma) => {
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED }, userId);
-        const updatedTask = await this.taskService.updateTask(
-          completeNewCaseTask.task_id,
-          { status: TaskStatus.STATUS_30_COMPLETED },
-          userId,
-          this.auditLogService,
-        );
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
-        createCommentDto.note = reason;
-        this.commentService.addComment(createCommentDto, userId);
-        
-        this.flowableService.handleCaseAbandoned({caseId, reason});
+		const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+		const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
+		if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
+		if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
+			throw new BadRequestException(`Cannot update Complete New Case task ${completeNewCaseTask.task_id} as it is already completed`);
+		}
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'abandonCase',
-          entityName: CaseService.name,
-          actionPerformed: `Abandon case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
+		try {
+			const result = await this.prismaService.$transaction(async (prisma) => {
+				const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED }, userId);
+				const updatedTask = await this.taskService.updateTask(
+					completeNewCaseTask.task_id,
+					{ status: TaskStatus.STATUS_30_COMPLETED },
+					userId,
+					this.auditLogService,
+				);
+				const createCommentDto = new CreateCommentDto();
+				createCommentDto.taskId = updatedTask.task_id;
+				createCommentDto.note = reason;
+				this.commentService.addComment(createCommentDto, userId);
 
-        return { case: updatedCase, task: updatedTask };
-      });
+				this.flowableService.handleCaseAbandoned({ caseId, reason });
 
-      return { success: true, ...result };
-    } catch (err) {
-      this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
-    }
-  }
+				await this.auditLogService.logAction({
+					userId,
+					operation: 'abandonCase',
+					entityName: CaseService.name,
+					actionPerformed: `Abandon case ${caseId}`,
+					outcome: Outcome.SUCCESS,
+				});
 
-  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
-    this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
-  }
+				return { case: updatedCase, task: updatedTask };
+			});
 
-  async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
-    this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
-  }
+			return { success: true, ...result };
+		} catch (err) {
+			this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
+			throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
+		}
+	}
 
-  async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
-    this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
-  }
+	async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
+		this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
+	}
 
-  async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
-    this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
-  }
+	async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
+		this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
+	}
 
-  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
-    this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
-  }
+	async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
+		this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
+	}
 
-  async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
-    this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
-  }
+	async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
+		this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
+	}
 
-  async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
-    this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
-  }
+	async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
+		this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
+	}
 
-  async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
-    this.caseCreationApprovalService.createCaseSystemTransmission(payload, clientId, tenantId);
-  }
+	async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
+		this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
+	}
 
-  async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
-  }
-  async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
-    this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
-  }
+	async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
+		this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
+	}
 
-  async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
-    this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
-  }
+	async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
+		this.caseCreationApprovalService.createCaseSystemTransmission(payload, clientId, tenantId);
+	}
 
-  async completeCase(caseId: string, userId: string, tenantId: string) {
-    this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
-  }
+	async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+		this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
+	}
+	async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
+		this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
+	}
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
-    return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId);
-  }
+	async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
+		this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
+	}
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto) {
-    return this.caseQueryService.getUserCases(userId, query);
-  }
+	async completeCase(caseId: string, userId: string, tenantId: string) {
+		this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
+	}
 
-  async getUserWorkloadStats(userId: string) {
-    return this.caseQueryService.getUserWorkloadStats(userId);
-  }
+	async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
+		return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId);
+	}
 
-  async updateCase(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string) {
-    return this.caseQueryService.updateCase(caseId, updateData, userId);
-  }
+	async getUserCases(userId: string, query: GetUserCasesQueryDto) {
+		return this.caseQueryService.getUserCases(userId, query);
+	}
 
-  async retrieveCase(caseId: string) {
-    return this.caseQueryService.retrieveCase(caseId);
-  }
+	async getUserWorkloadStats(userId: string) {
+		return this.caseQueryService.getUserWorkloadStats(userId);
+	}
+
+	async updateCase(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string) {
+		return this.caseQueryService.updateCase(caseId, updateData, userId);
+	}
+
+	async retrieveCase(caseId: string) {
+		return this.caseQueryService.retrieveCase(caseId);
+	}
 }

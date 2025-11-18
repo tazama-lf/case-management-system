@@ -287,7 +287,25 @@ export class CaseCreationApprovalService {
                 return { case: updatedCase, approvedTask: completedApprovalTask };
             });
 
-            // Emit case status changed
+            this.flowableService.handleTaskStatusChanged({
+                taskId: result.approvedTask.task_id,
+                caseId: caseId,
+                taskName: 'Approve Case Creation',
+                oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
+                newStatus: TaskStatus.STATUS_30_COMPLETED,
+                assignedUserId: supervisorId,
+                completionVariables: {
+                    creationApproval: 'approve',
+                    creationComments: 'Case creation approved by supervisor',
+                },
+            });
+             
+            this.flowableService.handleCaseStatusChanged({
+                caseId: caseId,
+                oldStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+                newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+                reason: 'Case creation approved by supervisor',
+            });
 
             await this.auditLogService.logAction({
                 userId: supervisorId,
@@ -405,6 +423,13 @@ export class CaseCreationApprovalService {
                 user_id: supervisorId,
                 task_id: completeNewCaseTask.task_id,
                 note: `Case creation rejected. Reason: ${reason}`,
+            });
+
+            this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+                newStatus: CaseStatus.STATUS_00_DRAFT,
+                reason: `Case creation rejected: ${reason}`,
             });
 
             await this.auditLogService.logAction({

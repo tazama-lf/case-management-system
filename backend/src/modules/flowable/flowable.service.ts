@@ -13,7 +13,7 @@ import { FlowableIdentityService } from './services/flowable-identity.service';
 import { FlowableUtilitiesService } from './utils/flowable-utilities.service';
 import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
-import { TaskAssignedEvent, TaskCreatedEvent, TaskStatusChangedEvent, TaskUnassignedEvent, BpmnTaskCreatedEvent, CaseAbandonedEvent, CaseCreatedEvent, CaseStatusChangedEvent, TaskCompletedEvent } from '../events/domain-events';
+import { TaskAssignedEvent, TaskCreatedEvent, TaskStatusChangedEvent, TaskUnassignedEvent, BpmnTaskCreatedEvent, CaseAbandonedEvent, CaseCreatedEvent, CaseStatusChangedEvent, TaskCompletedEvent, CaseSuspendedEvent } from '../events/domain-events';
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
@@ -320,6 +320,10 @@ export class FlowableService implements OnModuleInit {
 
   async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
     this.taskEventListener.handleBpmnTaskCreated(event);
+  }
+
+  async handleSuspendCase(event: CaseSuspendedEvent) {
+    this.caseEventListener.handleSuspendCase(event);
   }
 
   private sleep(ms: number): Promise<void> {
