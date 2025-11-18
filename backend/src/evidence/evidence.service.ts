@@ -136,6 +136,7 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
+    console.log("evidenceDoc: ", evidenceDoc);
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -162,7 +163,7 @@ export class EvidenceService {
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
-      filePath: '',
+      attachments: evidenceDoc.attachments,
     };
   }
 
@@ -228,7 +229,7 @@ export class EvidenceService {
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
-          filePath: '',
+          attachments: evidenceDoc.attachments,
         },
       };
     } catch (error) {
@@ -304,9 +305,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
@@ -359,9 +358,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
@@ -397,9 +394,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
