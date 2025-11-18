@@ -7,7 +7,6 @@ import type {
   CaseAgeingData,
   EvidenceFindingsData,
 } from '../types/reports.types';
-import { evidenceFindingsMockData } from '../mocks/evidenceFindingsMockData';
 
 class ReportsService {
   async getReportsData(
@@ -270,46 +269,180 @@ class ReportsService {
   }
 
   async getEvidenceFindingsData(
-    dateRange?: string,
+    _dateRange?: string,
   ): Promise<EvidenceFindingsData> {
     try {
-      // For now, return mock data
-      // In production, this will call the actual API
-      // const response = await apiClient.get<EvidenceFindingsData>(`/api/v1/reports/evidence-findings?dateRange=${dateRange || 'last30'}`);
+      // Fetch all cases first - use correct endpoint
+      const casesResponse = await apiClient.get<Record<string, unknown> | Record<string, unknown>[]>(
+        `/api/v1/cases/all`,
+      );
+      console.log('[Evidence Report] Cases Response:', casesResponse);
+      
+      const cases = Array.isArray(casesResponse)
+        ? casesResponse
+        : (casesResponse && typeof casesResponse === 'object'
+            ? ((casesResponse.data as Record<string, unknown>[]) ||
+                (casesResponse.cases as Record<string, unknown>[]) ||
+                [])
+            : []);
+      console.log('[Evidence Report] Cases:', cases);
+
+      if (!cases || cases.length === 0) {
+        console.warn('[Evidence Report] No cases found, returning empty findings');
+        return {
+          stats: {
+            totalFindings: 0,
+            evidenceItems: 0,
+            confirmedFindings: 0,
+            refutedFindings: 0,
+          },
+          statusDistribution: {
+            confirmed: 0,
+            refuted: 0,
+            inconclusive: 0,
+          },
+          evidenceItems: [],
+          findings: [],
+        };
+      }
+
+      // Aggregate evidence from all cases
+      const allFindings: EvidenceFindingsData['findings'] = [];
+      let totalEvidenceItems = 0;
+      let confirmedCount = 0;
+      let refutedCount = 0;
+      let inconclusiveCount = 0;
+
+      // For each case, fetch all evidence by case ID (the backend should handle finding evidence with any taskId)
+      for (const caseItem of cases) {
+        let caseEvidence: Record<string, unknown>[] = [];
+        
+        try {
+          console.log(`[Evidence Report] Fetching evidence for case ${caseItem.case_id}`);
+          
+          // Query evidence for this case
+          const caseEvidenceResponse = await apiClient.get<Record<string, unknown>>(
+            `/api/v1/evidence/case/${caseItem.case_id}`,
+          );
+          console.log(`[Evidence Report] Case evidence response for case ${caseItem.case_id}:`, caseEvidenceResponse);
+          
+          if (
+            caseEvidenceResponse &&
+            typeof caseEvidenceResponse === 'object' &&
+            'evidence' in caseEvidenceResponse
+          ) {
+            const evidence = caseEvidenceResponse.evidence;
+            if (Array.isArray(evidence)) {
+              caseEvidence = evidence;
+            }
+          } else if (Array.isArray(caseEvidenceResponse)) {
+            caseEvidence = caseEvidenceResponse;
+          }
+          
+          console.log(`[Evidence Report] Total evidence retrieved for case ${caseItem.case_id}: ${caseEvidence.length} items`);
+        } catch (caseErr) {
+          console.warn(`[Evidence Report] Failed to fetch evidence for case ${caseItem.case_id}:`, caseErr);
+        }
+
+        if (caseEvidence.length > 0) {
+          totalEvidenceItems += caseEvidence.length;
+
+          // Determine conclusion from case status
+          let conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive' = 'Inconclusive';
+          const caseStatus = caseItem.status as string;
+          if (
+            caseStatus?.includes('CONFIRMED') ||
+            caseStatus === 'STATUS_82_CLOSED_CONFIRMED' ||
+            caseStatus === 'STATUS_71_AUTOCLOSED_CONFIRMED'
+          ) {
+            conclusion = 'Confirmed';
+            confirmedCount++;
+          } else if (
+            caseStatus?.includes('REFUTED') ||
+            caseStatus === 'STATUS_81_CLOSED_REFUTED' ||
+            caseStatus === 'STATUS_72_AUTOCLOSED_REFUTED'
+          ) {
+            conclusion = 'Refuted';
+            refutedCount++;
+          } else {
+            inconclusiveCount++;
+          }
+
+          // Map evidence to include full object with all available fields
+          const supportingEvidence = caseEvidence.map((e: Record<string, unknown>) => {
+            const evidenceId =
+              (e.id as string) ||
+              (e.evidenceId as string) ||
+              (e.evidence_id as string) ||
+              `unknown_${Date.now()}`;
+            const fileName =
+              (e.fileName as string) ||
+              (e.file_name as string) ||
+              'Unknown Document';
+            
+            console.log(
+              `[Evidence Report] Mapping evidence: ID=${evidenceId}, FileName=${fileName}, TaskID=${(e.taskId as string) || (e.task_id as string)}, UploadedBy=${(e.uploadedBy as string)}, UploadedAt=${(e.uploadedAt as string)}`,
+            );
+            
+            return {
+              id: evidenceId,
+              fileName: fileName,
+              fileSize: (e.fileSize as number) || undefined,
+              mimeType: (e.mimeType as string) || undefined,
+              evidenceType: (e.evidenceType as string) || undefined,
+              uploadedBy: (e.uploadedBy as string) || undefined,
+              uploadedByName: (e.uploadedByName as string) || undefined,
+              uploadedAt: (e.uploadedAt as string) || undefined,
+              description: (e.description as string) || undefined,
+              hash: (e.hash as string) || undefined,
+            };
+          });
+          
+          console.log(
+            `[Evidence Report] Created ${supportingEvidence.length} supporting evidence items for case ${String(caseItem.case_id)}`,
+          );
+          
+          // Get the first task ID from evidence (all evidence in a finding should be from the same task initially)
+          const firstTaskId = (caseEvidence[0]?.taskId as string) ||
+            (caseEvidence[0]?.task_id as string);
+          
+          // Create finding entry for each case with evidence
+          allFindings.push({
+            caseId: String(caseItem.case_id),
+            taskId: firstTaskId,
+            finding: `Evidence collected for task ${firstTaskId || 'unknown'}`,
+            conclusion,
+            evidenceCount: caseEvidence.length,
+            supportingEvidence,
+            dateIdentified: (caseItem.created_at as string) || new Date().toISOString(),
+          });
+        } else {
+          console.log(`[Evidence Report] No evidence found for case ${String(caseItem.case_id)}`);
+        }
+      }
+
+      console.log('[Evidence Report] All Findings:', allFindings);
 
       const processedResponse: EvidenceFindingsData = {
-        ...evidenceFindingsMockData,
         stats: {
-          totalFindings: this.safeFallback(
-            evidenceFindingsMockData.stats?.totalFindings,
-            0,
-          ),
-          evidenceItems: this.safeFallback(
-            evidenceFindingsMockData.stats?.evidenceItems,
-            0,
-          ),
-          confirmedFindings: this.safeFallback(
-            evidenceFindingsMockData.stats?.confirmedFindings,
-            0,
-          ),
-          refutedFindings: this.safeFallback(
-            evidenceFindingsMockData.stats?.refutedFindings,
-            0,
-          ),
+          totalFindings: allFindings.length,
+          evidenceItems: totalEvidenceItems,
+          confirmedFindings: confirmedCount,
+          refutedFindings: refutedCount,
         },
-        statusDistribution: evidenceFindingsMockData.statusDistribution || {
-          confirmed: 0,
-          refuted: 0,
-          inconclusive: 0,
+        statusDistribution: {
+          confirmed: confirmedCount,
+          refuted: refutedCount,
+          inconclusive: inconclusiveCount,
         },
-        evidenceItems: evidenceFindingsMockData.evidenceItems || [],
-        findings: evidenceFindingsMockData.findings || [],
+        evidenceItems: [],
+        findings: allFindings.length > 0 ? allFindings : [],
       };
 
+      console.log('[Evidence Report] Final Response:', processedResponse);
       return processedResponse;
     } catch (error) {
-      console.error('Failed to fetch evidence findings data:', error);
-
+      console.error('[Evidence Report] Error in getEvidenceFindingsData:', error);
       return {
         stats: {
           totalFindings: 0,

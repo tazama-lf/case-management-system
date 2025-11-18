@@ -10,7 +10,6 @@ import {
 } from '@heroicons/react/24/outline';
 import EvidenceFindingsStatsCards from '@/features/reports/components/EvidenceFindingsStatsCards';
 import { useEvidenceFindings } from '@/features/reports/hooks/useReports';
-import { evidenceFindingsMockData } from '@/features/reports/mocks/evidenceFindingsMockData';
 import {
   exportToExcel,
   exportToCSV,
@@ -19,6 +18,7 @@ import {
   getColumnsForReport,
 } from '@/shared/utils/exportUtils';
 import { usePagination } from '@/shared/hooks/usePagination';
+import type { FindingDetail } from '@/features/reports/types/reports.types';
 
 const PaginationControls = React.lazy(
   () => import('@/shared/components/PaginationControls'),
@@ -52,10 +52,14 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     isOpen: boolean;
     filename: string;
     description: string;
-  }>({ isOpen: false, filename: '', description: '' });
+    evidenceId: string;
+    fileSize?: string;
+    uploadedAt?: string;
+    contentUrl?: string;
+  }>({ isOpen: false, filename: '', description: '', evidenceId: '' });
 
-  // Use mock data for now
-  const displayData = evidenceData || evidenceFindingsMockData;
+  // Use real data from API
+  const displayData = evidenceData;
 
   const handleExportExcel = () => {
     try {
@@ -99,44 +103,158 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     }
   };
 
-  const handleViewEvidence = (filename: string) => {
+  const handleViewEvidence = (filename: string, evidenceId: string = '') => {
     try {
-      setModalState({
-        isOpen: true,
-        filename,
-        description: 'Transaction logs showing duplicate payments',
-      });
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const actualEvidenceId = evidenceId || filename;
+      
+      console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename, hasToken: !!token });
+      
+      if (!token) {
+        console.warn('[Evidence View] No auth token found');
+        alert('Authentication token not found. Please log in again.');
+        return;
+      }
+      
+      // Fetch metadata from API
+      fetch(`/api/v1/evidence/${actualEvidenceId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((response) => {
+          console.log('[Evidence View] Response status:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log('[Evidence View] Metadata received:', data);
+          
+          // Extract real filename
+          const realFileName = data.fileName || data.file_name || filename;
+          const fileExtension = realFileName.split('.').pop()?.toLowerCase() || 'unknown';
+          const mimeType = data.mimeType || data.mime_type || 'application/octet-stream';
+          
+          // Get file size
+          const fileSizeBytes = data.fileSize || data.file_size || 0;
+          const fileSize = fileSizeBytes 
+            ? `${(fileSizeBytes / 1024 / 1024).toFixed(2)} MB` 
+            : 'Unknown';
+          
+          // Get upload date
+          const uploadedAt = (data.uploadedAt || data.uploaded_at)
+            ? new Date(data.uploadedAt || data.uploaded_at).toLocaleString('en-GB')
+            : 'Unknown';
+          
+          // Get evidence type
+          const evidenceType = data.evidenceType || data.mimeType || 'Document';
+          
+          // Create preview URL
+          const contentUrl = `/api/v1/evidence/${actualEvidenceId}/download`;
+          
+          console.log('[Evidence View] Setting modal with:', { fileExtension, mimeType, fileSize });
+          
+          setModalState({
+            isOpen: true,
+            filename: realFileName,
+            description: evidenceType,
+            evidenceId: actualEvidenceId,
+            fileSize,
+            uploadedAt,
+            contentUrl,
+          });
+        })
+        .catch((err) => {
+          console.error('[Evidence View] Error fetching metadata:', err);
+          alert(`Failed to fetch evidence metadata: ${err.message}`);
+        });
     } catch (err) {
-      console.error('View failed:', err);
-      alert('Failed to view document. Please try again.');
+      console.error('[Evidence View] Error:', err);
+      alert(`Failed to view document: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
-  const handleDownloadEvidence = (filename: string) => {
+  const handleDownloadEvidence = (evidenceId: string) => {
     try {
-      // In a real application, this would fetch the document from a server
-      // For now, we'll create a mock file and trigger a download
-      const mockFileContent = `Evidence Document: ${filename}\n\nThis is a mock download of the evidence file.\n\nIn production, this would download the actual file from your document storage system (e.g., AWS S3, Azure Blob Storage, etc.)`;
-
-      const blob = new Blob([mockFileContent], {
-        type: 'application/octet-stream',
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const url = `/api/v1/evidence/${evidenceId}/download`;
+      
+      console.log('[Evidence Download] Starting download:', { evidenceId, hasToken: !!token });
+      
+      if (!token) {
+        console.warn('[Evidence Download] No auth token found');
+        alert('Authentication token not found. Please log in again.');
+        return;
+      }
+      
+      fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+        .then((response) => {
+          console.log('[Evidence Download] Response status:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          // Get filename from response headers - backend provides this
+          const contentDisposition = response.headers.get('content-disposition');
+          let downloadFilename = 'evidence';
+          
+          if (contentDisposition) {
+            // Extract filename from: attachment; filename="real-filename.pdf"
+            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (filenameMatch && filenameMatch[1]) {
+              downloadFilename = filenameMatch[1];
+            }
+          }
+          
+          console.log('[Evidence Download] Filename from headers:', downloadFilename);
+          
+          return response.blob().then(blob => {
+            if (blob.size === 0) {
+              throw new Error('Received empty file from server');
+            }
+            console.log('[Evidence Download] Blob received, size:', blob.size);
+            return { blob, downloadFilename };
+          });
+        })
+        .then(({ blob, downloadFilename }) => {
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = downloadFilename;
+          link.setAttribute('style', 'display: none');
+          document.body.appendChild(link);
+          
+          console.log('[Evidence Download] Triggering download:', downloadFilename);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+            console.log('[Evidence Download] Download completed and cleaned up');
+          }, 100);
+        })
+        .catch((err) => {
+          console.error('[Evidence Download] Download failed:', err);
+          alert(`Failed to download file: ${err.message}`);
+        });
     } catch (err) {
-      console.error('Download failed:', err);
-      alert('Failed to download document. Please try again.');
+      console.error('[Evidence Download] Error:', err);
+      alert(`Download error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
   const closeModal = () => {
-    setModalState({ isOpen: false, filename: '', description: '' });
+    setModalState({ isOpen: false, filename: '', description: '', evidenceId: '' });
   };
 
   const {
@@ -150,7 +268,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   } = displayData || {};
 
   // Filter findings based on search and status
-  const filteredFindings = findings.filter((finding) => {
+  const filteredFindings = (findings || []).filter((finding: FindingDetail) => {
     const matchesSearch =
       finding.finding.toLowerCase().includes(searchTerm.toLowerCase()) ||
       finding.caseId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -342,7 +460,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                     <div className="relative">
                       <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                        onChange={(e) => setStatusFilter(e.target.value as 'All' | 'Confirmed' | 'Refuted' | 'Inconclusive')}
                         className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-8 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="All">All Statuses</option>
@@ -400,9 +518,9 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                     {finding.finding}
                                   </h4>
                                   <p className="text-xs text-gray-500 mt-1">
-                                    Case:{' '}
+                                    Task:{' '}
                                     <span className="font-mono">
-                                      {finding.caseId}
+                                      {finding.taskId || finding.caseId}
                                     </span>{' '}
                                     | Date:{' '}
                                     <span className="font-mono">
@@ -441,48 +559,121 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                 </h5>
                                 <div className="space-y-3">
                                   {finding.supportingEvidence.map(
-                                    (evidence, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="flex items-start gap-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors"
-                                      >
-                                        <DocumentIcon className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="font-medium text-gray-900 text-sm break-words">
-                                            {evidence}
-                                          </p>
-                                          <p className="text-xs text-gray-500 mt-1">
-                                            2.40 KB · Jan 15, 2024, 09:30 AM
-                                          </p>
-                                          <p className="text-xs text-gray-600 italic mt-1">
-                                            Transaction logs showing duplicate
-                                            payments
-                                          </p>
+                                    (evidence: string | {
+                                      id: string;
+                                      fileName: string;
+                                      fileSize?: number;
+                                      mimeType?: string;
+                                      evidenceType?: string;
+                                      uploadedBy?: string;
+                                      uploadedByName?: string;
+                                      uploadedAt?: string;
+                                      description?: string;
+                                      hash?: string;
+                                    }, idx: number) => {
+                                     
+                                      const evidenceId = typeof evidence === 'string' ? evidence : evidence.id;
+                                      const evidenceName = typeof evidence === 'string' ? evidence : evidence.fileName;
+                                      const evidenceObj = typeof evidence === 'object' ? evidence : null;
+                                      
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="flex flex-col gap-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors"
+                                        >
+                                          <div className="flex items-start gap-3">
+                                            <DocumentIcon className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-gray-900 text-sm break-words">
+                                                {evidenceName}
+                                              </p>
+                                              <p className="text-xs text-gray-500 mt-1">
+                                                ID: <span className="font-mono">{evidenceId}</span>
+                                              </p>
+                                              {evidenceObj?.description && (
+                                                <p className="text-xs text-gray-600 mt-1">
+                                                  {evidenceObj.description}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleViewEvidence(evidenceName, evidenceId);
+                                                }}
+                                                className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                title="View evidence"
+                                              >
+                                                <EyeIcon className="h-4 w-4" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDownloadEvidence(evidenceId);
+                                                }}
+                                                className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                                title="Download evidence"
+                                              >
+                                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Evidence details grid */}
+                                          {evidenceObj && (
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                              {evidenceObj.fileSize && (
+                                                <div>
+                                                  <span className="text-gray-500 font-medium">Size:</span>
+                                                  <span className="text-gray-700 ml-1">
+                                                    {(evidenceObj.fileSize / 1024 / 1024).toFixed(2)} MB
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.mimeType && (
+                                                <div>
+                                                  <span className="text-gray-500 font-medium">Type:</span>
+                                                  <span className="text-gray-700 ml-1">{evidenceObj.mimeType}</span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.evidenceType && (
+                                                <div>
+                                                  <span className="text-gray-500 font-medium">Category:</span>
+                                                  <span className="text-gray-700 ml-1">{evidenceObj.evidenceType}</span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.uploadedAt && (
+                                                <div>
+                                                  <span className="text-gray-500 font-medium">Uploaded:</span>
+                                                  <span className="text-gray-700 ml-1">
+                                                    {new Date(evidenceObj.uploadedAt).toLocaleDateString()}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.uploadedByName && (
+                                                <div className="col-span-2">
+                                                  <span className="text-gray-500 font-medium">Uploaded By:</span>
+                                                  <span className="text-gray-700 ml-1">{evidenceObj.uploadedByName}</span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.uploadedBy && !evidenceObj.uploadedByName && (
+                                                <div className="col-span-2">
+                                                  <span className="text-gray-500 font-medium">Uploaded By (ID):</span>
+                                                  <span className="text-gray-700 ml-1 font-mono">{evidenceObj.uploadedBy}</span>
+                                                </div>
+                                              )}
+                                              {evidenceObj.hash && (
+                                                <div className="col-span-2">
+                                                  <span className="text-gray-500 font-medium">Hash:</span>
+                                                  <span className="text-gray-700 ml-1 font-mono text-xs truncate">{evidenceObj.hash}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
-                                        <div className="flex gap-1 flex-shrink-0">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleViewEvidence(evidence);
-                                            }}
-                                            className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                            title="View evidence"
-                                          >
-                                            <EyeIcon className="h-4 w-4" />
-                                          </button>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDownloadEvidence(evidence);
-                                            }}
-                                            className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                            title="Download evidence"
-                                          >
-                                            <ArrowDownTrayIcon className="h-4 w-4" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ),
+                                      );
+                                    }
                                   )}
                                 </div>
                               </div>
@@ -567,27 +758,68 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                             <strong>File:</strong> {modalState.filename}
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
-                            2.40 KB • Jan 15, 2024, 09:30 AM
+                            {modalState.fileSize || 'Unknown size'} • {modalState.uploadedAt || 'Unknown date'}
                           </p>
                           <p className="text-sm text-gray-700 mt-3 italic">
                             {modalState.description}
                           </p>
                         </div>
 
-                        <div className="bg-gray-50 rounded-lg border border-gray-300 p-8 min-h-[350px] flex items-center justify-center">
-                          <div className="text-center">
-                            <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600 font-medium mb-2">
-                              Document Preview
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              This is a mock preview of the evidence document.
-                            </p>
-                            <p className="text-sm text-gray-500 mt-2">
-                              In production, this would display the actual
-                              document content.
-                            </p>
-                          </div>
+                        <div className="bg-white rounded-lg border border-gray-300 min-h-[450px] flex items-center justify-center overflow-auto">
+                          {modalState.contentUrl && (
+                            <>
+                              {modalState.filename?.toLowerCase().endsWith('.pdf') ? (
+                                <iframe
+                                  src={`${modalState.contentUrl}#toolbar=1&navpanes=0`}
+                                  className="w-full h-[450px] rounded"
+                                  title="PDF Preview"
+                                  onError={() => {
+                                    console.warn('[Evidence Modal] PDF preview failed to load');
+                                  }}
+                                />
+                              ) : (
+                                <>
+                                  {['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(
+                                    modalState.filename?.split('.').pop()?.toLowerCase() || '',
+                                  ) ? (
+                                    <div className="flex items-center justify-center p-4 max-w-full">
+                                      <img
+                                        src={modalState.contentUrl}
+                                        alt={modalState.filename}
+                                        className="max-h-[450px] max-w-full object-contain rounded"
+                                        onError={() => {
+                                          console.warn('[Evidence Modal] Image preview failed to load');
+                                        }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="text-center p-8">
+                                      <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-600 font-medium mb-2">
+                                        {modalState.filename?.split('.').pop()?.toUpperCase() || 'FILE'}
+                                      </p>
+                                      <p className="text-sm text-gray-500">
+                                        Preview not available for this file type
+                                      </p>
+                                      <p className="text-sm text-gray-400 mt-1">
+                                        Use Download button to open the file
+                                      </p>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </>
+                          ) || (
+                            <div className="text-center p-8">
+                              <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                              <p className="text-gray-600 font-medium mb-2">
+                                {modalState.filename?.split('.').pop()?.toUpperCase() || 'FILE'}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                Unable to load preview
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -601,7 +833,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                         </button>
                         <button
                           onClick={() => {
-                            handleDownloadEvidence(modalState.filename);
+                            console.log('[Evidence Modal] Download button clicked, evidenceId:', modalState.evidenceId);
+                            handleDownloadEvidence(modalState.evidenceId || modalState.filename);
                             closeModal();
                           }}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 rounded-lg text-sm font-medium text-white hover:bg-green-700 transition-colors"

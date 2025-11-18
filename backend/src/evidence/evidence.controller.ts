@@ -6,7 +6,6 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
-  UploadedFiles,
   Body,
   UseGuards,
   Res,
@@ -15,6 +14,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  UploadedFiles,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -34,19 +34,15 @@ export class EvidenceController {
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Upload evidence file(s) - supports single or multiple files' })
+  @ApiOperation({ summary: 'Upload evidence for a task' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        files: {
+        file: {
           type: 'array',
-          items: {
-            type: 'string',
-            format: 'binary',
-          },
-          description: 'Evidence file(s) to upload (one or more files)',
+          items: { type: 'string', format: 'binary' },
         },
         taskId: {
           type: 'string',
@@ -55,7 +51,7 @@ export class EvidenceController {
         },
         evidenceType: {
           type: 'string',
-          enum: ['SANCTIONS', 'ADVERSE_MEDIA', 'OTHER', 'SAR_STR_FILING'],
+          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER'],
           description: 'Type of evidence',
           example: 'SANCTIONS',
         },
@@ -136,18 +132,6 @@ export class EvidenceController {
     description: 'Evidence uploaded successfully (returns array even for single file)',
     type: [EvidenceResponseDto],
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request - missing required fields or invalid file',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - invalid or missing JWT token',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - insufficient permissions',
-  })
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadEvidence(
     @UploadedFiles(
@@ -159,23 +143,16 @@ export class EvidenceController {
     files: any[],
     @Body() dto: UploadEvidenceDto,
     @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceResponseDto[]> {
+  ): Promise<EvidenceResponseDto> {
     if (!files || files.length === 0) {
       throw new BadRequestException('At least one file is required');
     }
 
     const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    return this.evidenceService.uploadEvidence(files, dto, clientId, tenantId);
+  }
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    
-    // Upload all files in parallel and return array of responses
-    const results = await Promise.all(
-      files.map(file => this.evidenceService.uploadEvidence(file, dto, clientId, tenantId))
-    );
-    
-    return results;
-  }  @Get('task/:taskId')
+  @Get('task/:taskId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get all evidence for a task' })
   @ApiResponse({

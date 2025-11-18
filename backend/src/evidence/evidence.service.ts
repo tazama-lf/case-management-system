@@ -50,12 +50,10 @@ export class EvidenceService {
     return Buffer.concat([decipher.update(enc), decipher.final()]);
   }
 
-  async uploadEvidence(file: any, dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
-    const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
-    const hash = this.sha256(encrypted);
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
     const metadata: any = {
@@ -65,76 +63,38 @@ export class EvidenceService {
       taskId: dto.taskId,
       uploadedBy: userId,
       uploadedAt: new Date(),
-      fileName: file.originalname,
-      fileSize: file.size,
-      mimeType: file.mimetype,
       evidenceType: dto.evidenceType,
-      hash,
-      encryption: { key, iv, authTag },
       tags: dto.tags,
       description: dto.description,
       comments: dto.comments,
+      attachments: [],
     };
 
-    // extra metadata for Adverse Media Screening
-    if (dto.evidenceType === 'ADVERSE_MEDIA') {
-      metadata.aggregator = dto.aggregator;
-      metadata.dateSearched = dto.dateSearched;
-      metadata.keywords = dto.keywords;
-      metadata.findings = dto.findings;
+    const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
+    let currentRev = insertResult.rev;
+
+    for (const file of files) {
+      const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
+      const hash = this.sha256(encrypted);
+
+      const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
+
+      metadata.attachments.push({
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        hash,
+        encryption: { key, iv, authTag },
+      });
+
+      currentRev = attachmentResult.rev;
     }
 
-    
-    if (dto.evidenceType === 'SANCTIONS') {
-      metadata.screeningDate = dto.screeningDate;
-      metadata.tool = dto.tool;
-      metadata.summaryDisposition = dto.summaryDisposition;
-    }
-
-
-    if (dto.evidenceType === 'SAR_STR_FILING') {
-      metadata.submissionDate = dto.submissionDate;
-      metadata.referenceNumber = dto.referenceNumber;
-      metadata.submissionChannel = dto.submissionChannel;
-    }
-
-    const fileAttachmentPath = await this.couchdb.insertWithAttachment(evidenceId, metadata, file.originalname, encrypted, file.mimetype);
-
-    
-    if (dto.evidenceType === 'SAR_STR_FILING') {
-      try {
-        const sarTask = await this.prisma.task.findFirst({
-          where: {
-            task_id: dto.taskId,
-            task_type: 'SAR_STR_FILING' as any,
-          },
-        });
-
-        if (sarTask && sarTask.status !== 'STATUS_30_COMPLETED') {
-          await this.prisma.task.update({
-            where: { task_id: dto.taskId },
-            data: {
-              status: 'STATUS_30_COMPLETED' as any,
-              completed_at: new Date(),
-              updated_at: new Date(),
-            },
-          });
-
-          this.logger.log(`Auto-completed SAR/STR Filing task ${dto.taskId} after evidence upload`);
-
-          await this.auditLog.logAction({
-            userId,
-            operation: 'completeTask',
-            entityName: 'Evidence',
-            actionPerformed: `SAR/STR Filing task ${dto.taskId} auto-completed after evidence upload`,
-            outcome: 'SUCCESS',
-          });
-        }
-      } catch (error) {
-        this.logger.error(`Failed to auto-complete SAR task ${dto.taskId}: ${error.message}`, error.stack);
-        
-      }
-    }
+    await this.couchdb.updateDocument({
+      ...metadata,
+      _id: evidenceId,
+      _rev: currentRev,
+    });
 
     await this.auditLog.logAction({
       userId,
@@ -144,21 +104,7 @@ export class EvidenceService {
       outcome: 'SUCCESS',
     });
 
-    return {
-      id: evidenceId,
-      taskId: dto.taskId,
-      fileName: file.originalname,
-      evidenceType: dto.evidenceType,
-      fileSize: file.size,
-      mimeType: file.mimetype,
-      hash,
-      uploadedBy: userId,
-      uploadedAt: metadata.uploadedAt,
-      tags: dto.tags,
-      description: dto.description,
-      comments: dto.comments,
-      filePath: fileAttachmentPath
-    };
+    return metadata;
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
@@ -206,7 +152,7 @@ export class EvidenceService {
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
-      filePath: ''
+      filePath: '',
     };
   }
 
@@ -272,7 +218,7 @@ export class EvidenceService {
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
-          filePath: ''
+          filePath: '',
         },
       };
     } catch (error) {
