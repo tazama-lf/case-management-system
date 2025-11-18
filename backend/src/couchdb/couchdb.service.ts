@@ -45,8 +45,23 @@ export class CouchdbService implements OnModuleInit {
     return this.db.insert(metadata, docId);
   }
 
-  async insertAttachment(docId: string, rev: string, name: string, data: Buffer, mime: string) {
-    return this.db.attachment.insert(docId, name, new Uint8Array(data), mime, { rev });
+  async insertAttachment(
+    docId: string,
+    rev: string,
+    name: string,
+    data: Buffer,
+    mime: string,
+  ): Promise<{ ok: boolean; id: string; rev: string; filePath: string }> {
+    const result = await this.db.attachment.insert(docId, name, new Uint8Array(data), mime, { rev });
+
+    const attachmentUrl = `${this.db.config.url}/${this.db.config.db}/${docId}/${encodeURIComponent(name)}`;
+
+    return {
+      ok: result.ok,
+      id: result.id,
+      rev: result.rev,
+      filePath: attachmentUrl,
+    };
   }
 
   async getDocument(docId: string): Promise<any> {
@@ -126,13 +141,19 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  async updateDocument(data: any) {
-  if (!data._id) throw new Error('Missing _id');
-  if (!data._rev) throw new Error('Missing _rev');
-  return this.db.insert(data);
-}
+  async updateDocument(docId: string, data: any) {
+    const existing = await this.db.get(docId);
 
-w
+    const updated = {
+      ...existing,
+      ...data,
+      _attachments: existing._attachments,
+      _rev: existing._rev,
+    };
+
+    return this.db.insert(updated);
+  }
+
   async getAttachment(docId: string, attachmentName: string): Promise<Buffer> {
     try {
       const attachment = await this.db.attachment.get(docId, attachmentName);

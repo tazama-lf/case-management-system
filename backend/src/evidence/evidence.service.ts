@@ -70,6 +70,19 @@ export class EvidenceService {
       attachments: [],
     };
 
+    if (dto.evidenceType === 'ADVERSE_MEDIA') {
+      metadata.aggregator = dto.aggregator;
+      metadata.dateSearched = dto.dateSearched;
+      metadata.keywords = dto.keywords;
+      metadata.findings = dto.findings;
+    }
+
+    if (dto.evidenceType === 'SANCTIONS') {
+      metadata.screeningDate = dto.screeningDate;
+      metadata.tool = dto.tool;
+      metadata.summaryDisposition = dto.summaryDisposition;
+    }
+
     const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
     let currentRev = insertResult.rev;
 
@@ -82,6 +95,7 @@ export class EvidenceService {
       metadata.attachments.push({
         fileName: file.originalname,
         fileSize: file.size,
+        filePath: attachmentResult.filePath,
         mimeType: file.mimetype,
         hash,
         encryption: { key, iv, authTag },
@@ -90,11 +104,7 @@ export class EvidenceService {
       currentRev = attachmentResult.rev;
     }
 
-    await this.couchdb.updateDocument({
-      ...metadata,
-      _id: evidenceId,
-      _rev: currentRev,
-    });
+    await this.couchdb.updateDocument(evidenceId, metadata);
 
     await this.auditLog.logAction({
       userId,
