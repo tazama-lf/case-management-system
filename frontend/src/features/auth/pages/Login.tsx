@@ -288,6 +288,28 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                       Fill
                     </button>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-yellow-700 text-xs">
+                      <span className="font-medium">Compliance-Officer</span>{' '}
+                      <code className="bg-yellow-100 px-1 rounded">
+                        compliance-officer
+                      </code>{' '}
+                      /{' '}
+                      <code className="bg-yellow-100 px-1 rounded">abc.123</code>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCredentials({
+                          username: 'compliance-officer',
+                          password: 'abc.123',
+                        })
+                      }
+                      className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
+                    >
+                      Fill
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

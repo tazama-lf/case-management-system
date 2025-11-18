@@ -18,7 +18,7 @@ export class EvidenceResponseDto {
   fileSize: number;
 
   @ApiProperty()
-  filePath: string;
+  attachments: any [];
 
   @ApiProperty()
   mimeType: string;

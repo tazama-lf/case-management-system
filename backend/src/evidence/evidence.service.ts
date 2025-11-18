@@ -70,6 +70,19 @@ export class EvidenceService {
       attachments: [],
     };
 
+    if (dto.evidenceType === 'ADVERSE_MEDIA') {
+      metadata.aggregator = dto.aggregator;
+      metadata.dateSearched = dto.dateSearched;
+      metadata.keywords = dto.keywords;
+      metadata.findings = dto.findings;
+    }
+
+    if (dto.evidenceType === 'SANCTIONS') {
+      metadata.screeningDate = dto.screeningDate;
+      metadata.tool = dto.tool;
+      metadata.summaryDisposition = dto.summaryDisposition;
+    }
+
     const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
     let currentRev = insertResult.rev;
 
@@ -82,6 +95,7 @@ export class EvidenceService {
       metadata.attachments.push({
         fileName: file.originalname,
         fileSize: file.size,
+        filePath: attachmentResult.filePath,
         mimeType: file.mimetype,
         hash,
         encryption: { key, iv, authTag },
@@ -90,11 +104,7 @@ export class EvidenceService {
       currentRev = attachmentResult.rev;
     }
 
-    await this.couchdb.updateDocument({
-      ...metadata,
-      _id: evidenceId,
-      _rev: currentRev,
-    });
+    await this.couchdb.updateDocument(evidenceId, metadata);
 
     await this.auditLog.logAction({
       userId,
@@ -126,6 +136,7 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
+    console.log("evidenceDoc: ", evidenceDoc);
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -152,7 +163,7 @@ export class EvidenceService {
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
-      filePath: '',
+      attachments: evidenceDoc.attachments,
     };
   }
 
@@ -218,7 +229,7 @@ export class EvidenceService {
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
-          filePath: '',
+          attachments: evidenceDoc.attachments,
         },
       };
     } catch (error) {
@@ -294,9 +305,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
@@ -349,9 +358,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
@@ -387,9 +394,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      filePath: '',
-      downloadUrl: `/api/evidenceDoc/${item.evidenceId}/download`,
-      verified: true,
+      attachments: item.attachments,
     }));
 
     await this.auditLog.logAction({
