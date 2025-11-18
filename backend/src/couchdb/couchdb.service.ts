@@ -85,11 +85,12 @@ export class CouchdbService implements OnModuleInit {
     taskId?: string;
     evidenceType?: string;
     verified?: boolean;
+    archive?: boolean;
     search?: string;
     page: number;
     limit: number;
   }) {
-    const { id, evidenceId, tenantId, uploadedBy, taskId, evidenceType, verified, search, page, limit } = params;
+    const { id, evidenceId, tenantId, uploadedBy, taskId, evidenceType, verified, archive, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -106,6 +107,7 @@ export class CouchdbService implements OnModuleInit {
     if (taskId) selector.taskId = taskId;
     if (evidenceId) selector.evidenceId = evidenceId;
     if (evidenceType) selector.evidenceType = evidenceType;
+    if (archive !== undefined) selector.archive = archive;
     if (verified !== undefined) selector.verified = verified;
 
     if (search) {

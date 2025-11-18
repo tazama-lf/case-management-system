@@ -124,6 +124,7 @@ export class EvidenceService {
     let query: any = {
       tenantId,
       evidenceId,
+      archive:false,
       page: 1,
       limit: 1,
     };
@@ -177,7 +178,7 @@ export class EvidenceService {
   ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
-    const query: any = { tenantId, evidenceId, page: 1, limit: 1 };
+    const query: any = { tenantId, evidenceId, archive:false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
@@ -244,7 +245,7 @@ export class EvidenceService {
   async verifyEvidence(evidenceId: string, userId: string, tenantId: string, role: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
-    const query: any = { tenantId, evidenceId, page: 1, limit: 1 };
+    const query: any = { tenantId, evidenceId, archive:false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
@@ -287,7 +288,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, taskId, page: 1, limit: 100 };
+    const query: any = { tenantId, taskId, archive:false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
@@ -378,7 +379,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, evidenceType, page: 1, limit: 100 };
+    const query: any = { tenantId, evidenceType, archive:false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
