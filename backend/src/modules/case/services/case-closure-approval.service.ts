@@ -11,6 +11,7 @@ import { CloseCaseDto, } from '../dto/index.dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { validateClosureData } from '../utils/helpers/case-validation.helper';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
+import { FlowableService } from 'src/modules/flowable/flowable.service';
 
 @Injectable()
 export class CaseClosureApprovalService {
@@ -21,6 +22,7 @@ export class CaseClosureApprovalService {
         private readonly caseRepository: CaseRepository,
         private readonly taskService: TaskService,
         private readonly notificationService: NotificationService,
+        private readonly flowableService: FlowableService,
     ) { }
 
     async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
@@ -182,6 +184,27 @@ export class CaseClosureApprovalService {
 
                 }
 
+                await this.flowableService.handleTaskStatusChanged({
+                    taskId: investigationTask.task_id,
+                    caseId,
+                    taskName: investigationTask.name || 'Investigate Case',
+                    oldStatus: oldTaskStatus,
+                    newStatus: TaskStatus.STATUS_30_COMPLETED,
+                    assignedUserId: userId,
+                    completionVariables: {
+                        investigationAction: 'directClose',
+                        finalOutcome: dto.recommendedOutcome,
+                        finalNotes: dto.finalNotes,
+                        supervisorClosure: true,
+                    },
+                });
+
+                await this.flowableService.handleCaseStatusChanged({
+                    caseId,
+                    oldStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+                    newStatus: finalStatus,
+                    reason: `Case closed directly by supervisor with outcome: ${dto.recommendedOutcome}`,
+                });
 
                 await this.auditLogService.logAction({
                     userId,
@@ -492,6 +515,27 @@ export class CaseClosureApprovalService {
             });
 
 
+            this.flowableService.handleTaskStatusChanged({
+                taskId: result.completedTask.task_id,
+                caseId,
+                taskName: approvalTask.name || 'Approve Case Closure',
+                oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
+                newStatus: TaskStatus.STATUS_30_COMPLETED,
+                assignedUserId: supervisorId,
+                completionVariables: {
+                    approvalDecision: 'approve',
+                    finalOutcome: finalOutcome,
+                    supervisorComments: comments,
+                },
+            });
+
+            this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+                newStatus: finalOutcome as CaseStatus,
+                reason: `Case closure approved with outcome: ${finalOutcome}`,
+            });
+
 
             const investigationTask = caseDetails.tasks.find(
                 (t) => t.name && TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(t.name as any) && t.assigned_user_id,
@@ -652,7 +696,15 @@ export class CaseClosureApprovalService {
                 return { updatedCase, completedTask, updatedInvestigationTask };
             });
 
-
+            this.flowableService.handleTaskCompleted({
+                taskId: result.completedTask.task_id,
+                caseId,
+                completedByUserId: supervisorId,
+                completionVariables: {
+                    approvalDecision: 'reject',
+                    supervisorComments: comments,
+                },
+            });
 
             // const newInvestigationTask = await this.taskService.createTask(
             //     {
@@ -676,7 +728,12 @@ export class CaseClosureApprovalService {
             //   },
             // });
 
-
+            this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+                newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+                reason: `Case closure rejected and returned to investigator: ${comments}`,
+            });
 
             try {
                 await this.notificationService.sendNotification({
@@ -777,7 +834,12 @@ export class CaseClosureApprovalService {
                 return { updatedCase, completedTask };
             });
 
-
+            this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+                newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+                reason: `Case returned for review by supervisor: ${comments}`,
+            });
 
             await this.auditLogService.logAction({
                 userId: supervisorId,

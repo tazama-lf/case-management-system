@@ -1,0 +1,131 @@
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { AxiosInstance } from 'axios';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { FlowableApiEndpoints } from '../constants/flowable-api.constants';
+
+/**
+ * Service responsible for Flowable identity and group management
+ * Handles users, groups, and work queue statistics
+ */
+@Injectable()
+export class FlowableIdentityService {
+  constructor(private readonly logger: LoggerService) {}
+
+  /**
+   * Add a user to a Flowable identity group
+   */
+  async addUserToGroup(flowableClient: AxiosInstance, groupId: string, userId: string) {
+    try {
+      const response = await flowableClient.post(FlowableApiEndpoints.GROUP_MEMBERS(groupId), {
+        userId,
+      });
+      return response.data;
+    } catch (error) {
+      // 409 means membership already exists; treat as success
+      if (error.response?.status === 409) {
+        this.logger.log(`User ${userId} already a member of group ${groupId}`, FlowableIdentityService.name);
+        return null;
+      }
+      this.logger.error(`Failed to add user ${userId} to group ${groupId}: ${error.message}`, error.stack, FlowableIdentityService.name);
+      throw new HttpException('Failed to add user to group', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Remove a user from a Flowable identity group
+   */
+  async removeUserFromGroup(flowableClient: AxiosInstance, groupId: string, userId: string) {
+    try {
+      await flowableClient.delete(FlowableApiEndpoints.GROUP_MEMBER(groupId, userId));
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // Not a member; ignore
+        return;
+      }
+      this.logger.error(`Failed to remove user ${userId} from group ${groupId}: ${error.message}`, error.stack, FlowableIdentityService.name);
+      throw new HttpException('Failed to remove user from group', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Create a new Flowable group
+   */
+  async createGroup(flowableClient: AxiosInstance, groupData: { id: string; name: string; type: string }) {
+    try {
+      const response = await flowableClient.post(FlowableApiEndpoints.GROUPS, groupData);
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 409) {
+        this.logger.log(`Group ${groupData.id} already exists`, FlowableIdentityService.name);
+        return null;
+      }
+      throw new HttpException(`Failed to create group: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get a group by ID
+   */
+  async getGroup(flowableClient: AxiosInstance, groupId: string) {
+    try {
+      const response = await flowableClient.get(FlowableApiEndpoints.GROUP(groupId));
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw new HttpException(`Failed to get group: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get all candidate groups
+   */
+  async getAllCandidateGroups(flowableClient: AxiosInstance) {
+    try {
+      const response = await flowableClient.get(FlowableApiEndpoints.GROUPS, {
+        params: {
+          type: 'candidate',
+        },
+      });
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to get candidate groups: ${error.message}`, error.stack, FlowableIdentityService.name);
+      return [];
+    }
+  }
+
+  /**
+   * Get work queue statistics for candidate groups
+   * 
+   * @param flowableClient - Axios instance for Flowable API
+   * @param getCandidateGroupTasksFn - Function to get tasks for a group (injected to avoid circular dependency)
+   * @param candidateGroup - Optional specific group to get stats for
+   */
+  async getWorkQueueStatistics(
+    flowableClient: AxiosInstance,
+    getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<any[]>,
+    candidateGroup?: string,
+  ) {
+    try {
+      const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups(flowableClient);
+      const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);
+      const statistics: Record<string, unknown> = {};
+
+      for (const group of groups) {
+        const tasks = await getCandidateGroupTasksFn(group, false);
+
+        statistics[group] = {
+          total: tasks.length,
+          unassigned: tasks.filter((t: unknown) => !(t as Record<string, unknown>).assignee).length,
+          assigned: tasks.filter((t: unknown) => !!(t as Record<string, unknown>).assignee).length,
+        };
+      }
+
+      return statistics;
+    } catch (error) {
+      this.logger.error(`Failed to get work queue statistics: ${error.message}`, error.stack, FlowableIdentityService.name);
+      throw new HttpException('Failed to get work queue statistics', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+}
