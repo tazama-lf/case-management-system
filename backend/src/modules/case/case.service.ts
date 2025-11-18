@@ -14,14 +14,8 @@ import { TASK_NAMES } from './utils/constants/case.constants';
 import { CaseReopeningService } from './services/case-reopening.service';
 import { CaseClosureApprovalService } from './services/case-closure-approval.service';
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
-import {
-  CloseCaseDto,
-  SystemCaseCreationDto,
-  ManualCreateCaseDto,
-  GetAllCasesQueryDto,
-  GetUserCasesQueryDto,
-  UpdateCaseDto,
-} from './dto/index.dto';
+import { FlowableService } from 'src/modules/flowable/flowable.service';
+import { CloseCaseDto, SystemCaseCreationDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto/index.dto';
 
 @Injectable()
 export class CaseService {
@@ -37,7 +31,8 @@ export class CaseService {
     private readonly caseReopeningService: CaseReopeningService,
     private readonly caseClosureApprovalService: CaseClosureApprovalService,
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
-  ) {}
+    private readonly flowableService: FlowableService,
+  ) { }
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -84,6 +79,7 @@ export class CaseService {
       });
 
       await new Promise((res) => setTimeout(res, 1000));
+      // await this.flowableService.
 
       try {
         const caseAssignee = investigateTask.assigned_user_id;
@@ -130,6 +126,13 @@ export class CaseService {
       throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
 
     try {
+      this.flowableService.handleCaseStatusChanged({
+        caseId,
+        oldStatus: CaseStatus.STATUS_21_SUSPENDED,
+        newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+        reason: `Case resumed: ${reason}`,
+      });
+
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
         const updatedTask = await this.taskService.updateTask(
@@ -208,6 +211,8 @@ export class CaseService {
         createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.note = reason;
         this.commentService.addComment(createCommentDto, userId);
+        
+        this.flowableService.handleCaseAbandoned({caseId, reason});
 
         await this.auditLogService.logAction({
           userId,
