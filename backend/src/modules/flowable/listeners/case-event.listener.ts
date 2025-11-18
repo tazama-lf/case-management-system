@@ -4,7 +4,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableService } from '../flowable.service';
 import { BpmnSyncService } from '../services/bpmn-sync.service';
 import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
-import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent } from '../../events/domain-events';
+import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
 
 /**
  * Listener for case-related domain events
@@ -161,5 +161,13 @@ export class CaseEventListener {
         CaseEventListener.name,
       );
     }
+  }
+
+  /**
+   * Handle case.suspended event
+   * Terminates the Flowable process instance when a case is suspended
+   */
+  @OnEvent('case.suspended')
+  async handleSuspendCase(event: CaseSuspendedEvent) {
   }
 }

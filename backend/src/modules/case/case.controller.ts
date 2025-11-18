@@ -352,7 +352,7 @@ export class CaseController {
     return this.caseService.retrieveCase(caseId);
   }
 
-  @Post(':caseId')
+  @Put(':caseId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Update case',

@@ -264,6 +264,27 @@ export class CaseClosureApprovalService {
                 CaseClosureApprovalService.name,
             );
 
+            await this.flowableService.handleTaskStatusChanged({
+                taskId: investigationTask.task_id,
+                caseId,
+                taskName: investigationTask.name || 'Investigate Case',
+                oldStatus: oldTaskStatus,
+                newStatus: TaskStatus.STATUS_30_COMPLETED,
+                assignedUserId: userId,
+                completionVariables: {
+                    investigationAction: 'requestClosure',
+                    recommendedOutcome: dto.recommendedOutcome,
+                    finalNotes: dto.finalNotes,
+                },
+            });
+
+            await this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+                newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+                reason: `Case closure requested with outcome: ${dto.recommendedOutcome}`,
+            })
+
 
 
             setTimeout(async () => {
