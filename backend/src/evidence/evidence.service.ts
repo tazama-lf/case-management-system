@@ -67,6 +67,7 @@ export class EvidenceService {
       tags: dto.tags,
       description: dto.description,
       comments: dto.comments,
+      archive:false,
       attachments: [],
     };
 
@@ -164,6 +165,7 @@ export class EvidenceService {
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
       attachments: evidenceDoc.attachments,
+      archive: evidenceDoc.archive
     };
   }
 
@@ -230,6 +232,7 @@ export class EvidenceService {
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
           attachments: evidenceDoc.attachments,
+          archive: evidenceDoc.archive
         },
       };
     } catch (error) {
@@ -306,6 +309,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
+      archive: item.archive
     }));
 
     await this.auditLog.logAction({
@@ -359,6 +363,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
+      archive: item.archive
     }));
 
     await this.auditLog.logAction({
@@ -395,6 +400,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
+      archive: item.archive
     }));
 
     await this.auditLog.logAction({

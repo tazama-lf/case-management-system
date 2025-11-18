@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import * as nano from 'nano';
 
 @Injectable()
@@ -192,6 +193,36 @@ export class CouchdbService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`Failed to create index: ${error.message}`, error.stack);
       throw error;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async autoArchiveOldEvidence() {
+    const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+    try {
+      const result = await this.db.view('evidence', 'by_uploadedAt', {
+        endkey: cutoff,
+        include_docs: true,
+      });
+
+      for (const row of result.rows) {
+        const doc = row.doc;
+
+        if (!doc.archiveFlag) {
+          doc.archive = true;
+
+          await this.db.insert({
+            ...doc,
+            _id: doc._id,
+            _rev: doc._rev,
+          });
+        }
+      }
+
+      this.logger.log(`Auto-archived ${result.rows.length} evidence older than 7 days`);
+    } catch (error) {
+      this.logger.error(`Failed to auto-archive evidence: ${error.message}`, error.stack);
     }
   }
 }

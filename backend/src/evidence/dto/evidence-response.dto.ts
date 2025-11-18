@@ -32,6 +32,9 @@ export class EvidenceResponseDto {
   @ApiProperty()
   uploadedAt: Date;
 
+  @ApiProperty()
+  archive: boolean;
+
   @ApiProperty({ required: false })
   tags?: string;
 
