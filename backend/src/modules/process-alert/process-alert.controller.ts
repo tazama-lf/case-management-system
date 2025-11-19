@@ -1,11 +1,13 @@
-import { BadRequestException, Body, Controller, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ProcessAlertService } from './process-alert.service';
 import { RequireAuthenticated } from '../auth/auth.decorator';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateAlertDTO } from '../alert/dto/CreateAlert.dto';
 import { AuthenticatedRequest } from '../auth/auth.types';
+import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 
 @Controller('ingest-alert')
+@UseGuards(TazamaAuthGuard)
 export class ProcessAlertController {
   constructor(private readonly processAlertService: ProcessAlertService) {}
 
