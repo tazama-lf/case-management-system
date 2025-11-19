@@ -12,7 +12,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: HomeIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER', 'alert-triage', 'CMS_ADMIN'],
   },
   {
     name: 'Alerts',
@@ -24,13 +24,13 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Cases',
     href: '/cases',
     icon: FolderIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER', 'alert-triage', 'CMS_ADMIN'],
   },
   {
     name: 'Work Queues',
     href: '/work-queue',
     icon: QueueListIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage', 'CMS_ADMIN'],
+    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER', 'alert-triage', 'CMS_ADMIN'],
   },
   {
     name: 'Reports',

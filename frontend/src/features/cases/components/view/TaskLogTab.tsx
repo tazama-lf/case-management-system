@@ -11,6 +11,7 @@ import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.typ
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import TaskDetailsModal from '../TasksDetailsModal';
+import SarStrFilingModal from '../modals/SarStrFilingModal';
 import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
 
@@ -24,17 +25,19 @@ const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 interface TaskLogTabProps {
   caseId: string;
+  caseStatus?: string;
   onRefreshCases?: () => Promise<void>;
 }
-const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
+const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCases }) => {
   const { success, error: toastError } = useToast();
-  const { hasSupervisorRole, hasCMSAdminRole } = useAuth();
+  const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskDetailsModalOpen, setTaskDetailsModalOpen] = useState(false);
+  const [sarStrFilingModalOpen, setSarStrFilingModalOpen] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
@@ -416,7 +419,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
 
   const handleViewTaskDetails = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
-    setTaskDetailsModalOpen(true);
+    
+    // Check if this should open SAR/STR Filing modal instead of Task Details
+    const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole();
+    const isClosedCase = caseStatus === 'STATUS_81_CLOSED_REFUTED' || 
+                         caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
+    const isUnassignedTask = task.status === 'UNASSIGNED';
+    
+    if (hasRequiredRole && isClosedCase && isUnassignedTask) {
+      // Open SAR/STR Filing modal for closed cases with unassigned tasks
+      setSarStrFilingModalOpen(true);
+    } else {
+      // Open regular Task Details modal
+      setTaskDetailsModalOpen(true);
+    }
   };
 
   return (
@@ -559,6 +575,21 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
               } as unknown as CaseRow
             }
             onRefreshCases={onRefreshCases}
+          />
+        </Suspense>
+      )}
+
+      {sarStrFilingModalOpen && selectedTask && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <SarStrFilingModal
+            open={sarStrFilingModalOpen}
+            onClose={() => {
+              setSarStrFilingModalOpen(false);
+              setSelectedTask(null);
+            }}
+            taskId={selectedTask.id}
+            caseId={selectedTask.caseId || caseId}
+            caseName={selectedTask.name || 'Untitled Case'}
           />
         </Suspense>
       )}

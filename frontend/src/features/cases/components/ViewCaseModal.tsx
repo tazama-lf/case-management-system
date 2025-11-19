@@ -106,7 +106,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 <InvestigationSummaryTab caseId={row.id} row={row} />
               )}
               {tab === 'tasks' && (
-                <TaskLogTab caseId={row.id} onRefreshCases={onRefreshCases} />
+                <TaskLogTab 
+                  caseId={row.id} 
+                  caseStatus={row.status}
+                  onRefreshCases={onRefreshCases} 
+                />
               )}
               {tab === 'history' && (
                 <CaseHistoryTab caseId={row.id} row={row} />

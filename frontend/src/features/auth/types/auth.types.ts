@@ -87,6 +87,7 @@ export interface AuthContextType extends AuthState {
   // hasAlertTriageRole: () => boolean;
   hasInvestigatorRole: () => boolean;
   hasSupervisorRole: () => boolean;
+  hasComplianceOfficerRole: () => boolean;
   hasCMSAdminRole: () => boolean;
   hasAdminRole: () => boolean;
   hasAnyRole: (roles: string[]) => boolean;

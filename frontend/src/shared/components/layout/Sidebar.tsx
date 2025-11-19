@@ -12,6 +12,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
     hasAdminRole,
     hasInvestigatorRole,
     hasSupervisorRole,
+    hasComplianceOfficerRole,
     hasBackendClaim,
   } = useAuth();
 
@@ -26,6 +27,8 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
           return hasInvestigatorRole();
         case 'CMS_SUPERVISOR':
           return hasSupervisorRole();
+        case 'CMS_COMPLIANCE_OFFICER':
+          return hasComplianceOfficerRole();
         default:
           return hasBackendClaim(role);
       }

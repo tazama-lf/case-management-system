@@ -253,6 +253,10 @@ class AuthService {
     return this.hasBackendClaim('CMS_SUPERVISOR');
   }
 
+  hasComplianceOfficerRole(): boolean {
+    return this.hasBackendClaim('CMS_COMPLIANCE_OFFICER');
+  }
+
   hasCMSAdminRole(): boolean {
     return this.hasBackendClaim('CMS_ADMIN');
   }
@@ -279,7 +283,7 @@ class AuthService {
    * @returns true if user has at least one valid CMS role
    */
   validateBackendAccess(): boolean {
-    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN'];
+    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_ADMIN'];
 
     return this.hasAnyRole(validRoles);
   }
