@@ -8,6 +8,7 @@ import { BpmnSyncService } from './services/bpmn-sync.service';
 import { FlowableProcessService } from './services/flowable-process.service';
 import { FlowableTaskService } from './services/flowable-task.service';
 import { FlowableIdentityService } from './services/flowable-identity.service';
+import { FlowableClientFactory } from './services/flowable-client.factory';
 import { LoggerModule } from '../../logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { TaskModule } from '../task/task.module';
@@ -17,6 +18,7 @@ import { PrismaModule } from '../../../prisma/prisma.module';
 @Module({
   imports: [LoggerModule, ConfigModule, forwardRef(() => TaskModule), AuditLogModule, PrismaModule],
   providers: [
+    FlowableClientFactory,
     FlowableService,
     FlowableProcessService,
     FlowableTaskService,

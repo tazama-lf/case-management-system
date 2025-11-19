@@ -120,8 +120,6 @@ export class BpmnSyncService {
           assignedUserId: flowableTask.assignee,
         },
         'system',
-        this.auditLogService,
-        this.logger,
       );
 
       // Update Flowable task with database reference

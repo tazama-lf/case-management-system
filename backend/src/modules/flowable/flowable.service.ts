@@ -11,6 +11,7 @@ import { FlowableProcessService } from './services/flowable-process.service';
 import { FlowableTaskService } from './services/flowable-task.service';
 import { FlowableIdentityService } from './services/flowable-identity.service';
 import { FlowableUtilitiesService } from './utils/flowable-utilities.service';
+import { FlowableClientFactory } from './services/flowable-client.factory';
 import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
 import { TaskAssignedEvent, TaskCreatedEvent, TaskStatusChangedEvent, TaskUnassignedEvent, BpmnTaskCreatedEvent, CaseAbandonedEvent, CaseCreatedEvent, CaseStatusChangedEvent, TaskCompletedEvent, CaseSuspendedEvent } from '../events/domain-events';
@@ -19,14 +20,14 @@ import { TaskAssignedEvent, TaskCreatedEvent, TaskStatusChangedEvent, TaskUnassi
 export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
-  private readonly flowableAuth: { username: string; password: string };
-  private readonly tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
+  private readonly tenantId: string;
   private readonly maxRetries = FlowableDefaults.MAX_RETRIES;
   private readonly retryDelayMs = FlowableDefaults.RETRY_DELAY_MS;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
+    private readonly clientFactory: FlowableClientFactory,
     private readonly processService: FlowableProcessService,
     private readonly taskService: FlowableTaskService,
     private readonly identityService: FlowableIdentityService,
@@ -34,23 +35,9 @@ export class FlowableService implements OnModuleInit {
     private readonly caseEventListener: CaseEventListener,
     private readonly taskEventListener: TaskEventListener,
   ) {
-    this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');
-
-    this.flowableAuth = {
-      username: this.configService.get<string>('FLOWABLE_USERNAME', 'rest-admin'),
-      password: this.configService.get<string>('FLOWABLE_PASSWORD', 'test'),
-    };
-
-    const timeoutMs = this.configService.get<number>('FLOWABLE_TIMEOUT_MS', FlowableDefaults.TIMEOUT_MS);
-
-    this.flowableClient = axios.create({
-      baseURL: this.flowableUrl,
-      auth: this.flowableAuth,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: timeoutMs,
-    });
+    this.flowableClient = this.clientFactory.getClient();
+    this.flowableUrl = this.clientFactory.getBaseUrl();
+    this.tenantId = this.clientFactory.tenantId;
   }
 
   async onModuleInit() {
@@ -126,28 +113,26 @@ export class FlowableService implements OnModuleInit {
    * Ensure a user is a member of a Flowable identity group
    */
   async addUserToGroup(groupId: string, userId: string) {
-    return this.identityService.addUserToGroup(this.flowableClient, groupId, userId);
+    return this.identityService.addUserToGroup(groupId, userId);
   }
 
   /**
    * Remove a user from a Flowable identity group
    */
   async removeUserFromGroup(groupId: string, userId: string) {
-    return this.identityService.removeUserFromGroup(this.flowableClient, groupId, userId);
+    return this.identityService.removeUserFromGroup(groupId, userId);
   }
 
   async createGroup(groupData: { id: string; name: string; type: string }) {
-    return this.identityService.createGroup(this.flowableClient, groupData);
+    return this.identityService.createGroup(groupData);
   }
 
   async getGroup(groupId: string) {
-    return this.identityService.getGroup(this.flowableClient, groupId);
+    return this.identityService.getGroup(groupId);
   }
 
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
     return this.processService.startProcessInstance(
-      this.flowableClient,
-      this.tenantId,
       processDefinitionKey,
       variables,
       businessKey,
@@ -155,59 +140,59 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getProcessInstance(processInstanceId: string) {
-    return this.processService.getProcessInstance(this.flowableClient, processInstanceId);
+    return this.processService.getProcessInstance(processInstanceId);
   }
 
   async getProcessInstanceByBusinessKey(businessKey: string) {
-    return this.processService.getProcessInstanceByBusinessKey(this.flowableClient, businessKey);
+    return this.processService.getProcessInstanceByBusinessKey(businessKey);
   }
 
   async getProcessTasks(processInstanceId: string) {
-    return this.taskService.getProcessTasks(this.flowableClient, processInstanceId);
+    return this.taskService.getProcessTasks(processInstanceId);
   }
 
   async createTask(taskData: CreateFlowableTaskDto) {
-    return this.taskService.createTask(this.flowableClient, taskData);
+    return this.taskService.createTask(taskData);
   }
 
   async completeTask(taskId: string, variables?: Record<string, string>) {
-    return this.taskService.completeTask(this.flowableClient, taskId, variables);
+    return this.taskService.completeTask(taskId, variables);
   }
 
   async claimTask(taskId: string, userId: string): Promise<void> {
-    return this.taskService.claimTask(this.flowableClient, taskId, userId);
+    return this.taskService.claimTask(taskId, userId);
   }
 
   async unclaimTask(taskId: string): Promise<void> {
-    return this.taskService.unclaimTask(this.flowableClient, taskId);
+    return this.taskService.unclaimTask(taskId);
   }
 
   async delegateTask(taskId: string, userId: string): Promise<void> {
-    return this.taskService.delegateTask(this.flowableClient, taskId, userId);
+    return this.taskService.delegateTask(taskId, userId);
   }
 
   async assignTaskToCandidateGroup(taskId: string, group: string) {
-    return this.taskService.assignTaskToCandidateGroup(this.flowableClient, taskId, group);
+    return this.taskService.assignTaskToCandidateGroup(taskId, group);
   }
 
   async getTaskIdentityLinks(taskId: string) {
-    return this.taskService.getTaskIdentityLinks(this.flowableClient, taskId);
+    return this.taskService.getTaskIdentityLinks(taskId);
   }
 
   async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
-    return this.taskService.getCandidateGroupTasks(this.flowableClient, candidateGroup, includeVariables);
+    return this.taskService.getCandidateGroupTasks(candidateGroup, includeVariables);
   }
 
   async getUserTasks(assignee: string, includeVariables: boolean = true) {
-    return this.taskService.getUserTasks(this.flowableClient, assignee, includeVariables);
+    return this.taskService.getUserTasks(assignee, includeVariables);
   }
 
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
-    return this.processService.updateProcessVariable(this.flowableClient, processInstanceId, variableName, value);
+    return this.processService.updateProcessVariable(processInstanceId, variableName, value);
   }
 
   async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
-    return this.processService.setProcessVariables(this.flowableClient, processInstanceId, variables);
+    return this.processService.setProcessVariables(processInstanceId, variables);
   }
 
   async getTenantTasks(
@@ -218,39 +203,39 @@ export class FlowableService implements OnModuleInit {
       unassigned?: boolean;
     },
   ) {
-    return this.taskService.getTenantTasks(this.flowableClient, tenantId, filters);
+    return this.taskService.getTenantTasks(filters);
   }
 
   async getTask(taskId: string) {
-    return this.taskService.getTask(this.flowableClient, taskId);
+    return this.taskService.getTask(taskId);
   }
 
   async setTaskVariables(taskId: string, variables: Record<string, string>) {
-    return this.taskService.setTaskVariables(this.flowableClient, taskId, variables);
+    return this.taskService.setTaskVariables(taskId, variables);
   }
 
   async getTaskVariables(taskId: string): Promise<Record<string, string>> {
-    return this.utilitiesService.getTaskVariables(this.flowableClient, taskId);
+    return this.utilitiesService.getTaskVariables(taskId);
   }
 
   async updateTaskVariable(taskId: string, variableName: string, value: string) {
-    return this.taskService.updateTaskVariable(this.flowableClient, taskId, variableName, value);
+    return this.taskService.updateTaskVariable(taskId, variableName, value);
   }
 
   async deleteTaskVariable(taskId: string, variableName: string) {
-    return this.taskService.deleteTaskVariable(this.flowableClient, taskId, variableName);
+    return this.taskService.deleteTaskVariable(taskId, variableName);
   }
 
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
-    return this.processService.terminateProcessInstance(this.flowableClient, processInstanceId, reason);
+    return this.processService.terminateProcessInstance(processInstanceId, reason);
   }
 
   async suspendProcessInstance(processInstanceId: string) {
-    return this.processService.suspendProcessInstance(this.flowableClient, processInstanceId);
+    return this.processService.suspendProcessInstance(processInstanceId);
   }
 
   async activateProcessInstance(processInstanceId: string) {
-    return this.processService.activateProcessInstance(this.flowableClient, processInstanceId);
+    return this.processService.activateProcessInstance(processInstanceId);
   }
 
   async getWorkQueueStatistics(candidateGroup?: string) {
@@ -277,11 +262,11 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getProcessDefinitions(processDefinitionKey?: string) {
-    return this.processService.getProcessDefinitions(this.flowableClient, this.tenantId, processDefinitionKey);
+    return this.processService.getProcessDefinitions(processDefinitionKey);
   }
 
   async listProcessDefinitions(): Promise<string> {
-    return this.processService.listProcessDefinitions(this.flowableClient, this.tenantId);
+    return this.processService.listProcessDefinitions();
   }
 
   /* Event Handlers to delegate to listeners */
@@ -330,3 +315,4 @@ export class FlowableService implements OnModuleInit {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
+

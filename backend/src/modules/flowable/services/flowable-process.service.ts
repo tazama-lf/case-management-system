@@ -3,6 +3,7 @@ import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableApiEndpoints, FlowableTaskActions } from '../constants/flowable-api.constants';
 import { FlowableVariable } from '../dto/flowable.dto';
+import { FlowableClientFactory } from './flowable-client.factory';
 
 /**
  * Service responsible for Flowable process instance operations
@@ -10,23 +11,30 @@ import { FlowableVariable } from '../dto/flowable.dto';
  */
 @Injectable()
 export class FlowableProcessService {
-  constructor(private readonly logger: LoggerService) {}
+  private readonly flowableClient: AxiosInstance;
+  private readonly tenantId: string;
+
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly clientFactory: FlowableClientFactory,
+  ) {
+    this.flowableClient = this.clientFactory.getClient();
+    this.tenantId = this.clientFactory.tenantId;
+  }
 
   /**
    * Start a new process instance
    */
   async startProcessInstance(
-    flowableClient: AxiosInstance,
-    tenantId: string,
     processDefinitionKey: string,
     variables: Record<string, string>,
     businessKey: string,
   ) {
     try {
       // First, verify the process definition exists
-      const processDefinitions = await this.getProcessDefinitions(flowableClient, tenantId, processDefinitionKey);
+      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey);
       if (!processDefinitions || processDefinitions.length === 0) {
-        const availableDefinitions = await this.listProcessDefinitions(flowableClient, tenantId);
+        const availableDefinitions = await this.listProcessDefinitions();
         throw new Error(
           `Process definition '${processDefinitionKey}' not found. Available definitions: ${availableDefinitions}`,
         );
@@ -37,21 +45,21 @@ export class FlowableProcessService {
         processDefinitionKey,
         variables: formattedVariables,
         businessKey,
-        tenantId,
+        tenantId: this.tenantId,
       };
 
       this.logger.log(
         `Starting process instance with payload: ${JSON.stringify({
           processDefinitionKey,
           businessKey,
-          tenantId,
+          tenantId: this.tenantId,
           variableCount: formattedVariables.length,
           variables: formattedVariables.map((v) => `${v.name}=${v.value}`).join(', '),
         })}`,
         FlowableProcessService.name,
       );
 
-      const response = await flowableClient.post(FlowableApiEndpoints.PROCESS_INSTANCES, payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.PROCESS_INSTANCES, payload);
 
       this.logger.log(`Process instance started: ${response.data.id} with businessKey: ${businessKey}`, FlowableProcessService.name);
       return response.data;
@@ -70,9 +78,9 @@ export class FlowableProcessService {
   /**
    * Get a process instance by ID
    */
-  async getProcessInstance(flowableClient: AxiosInstance, processInstanceId: string) {
+  async getProcessInstance(processInstanceId: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
+      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -85,9 +93,9 @@ export class FlowableProcessService {
   /**
    * Get a process instance by business key
    */
-  async getProcessInstanceByBusinessKey(flowableClient: AxiosInstance, businessKey: string) {
+  async getProcessInstanceByBusinessKey(businessKey: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
         params: {
           businessKey,
         },
@@ -103,13 +111,12 @@ export class FlowableProcessService {
    * Update a single process variable
    */
   async updateProcessVariable(
-    flowableClient: AxiosInstance,
     processInstanceId: string,
     variableName: string,
     value: any,
   ): Promise<void> {
     try {
-      await flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
+      await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
         name: variableName,
         value: String(value),
         type: typeof value === 'boolean' ? 'boolean' : 'string',
@@ -125,11 +132,11 @@ export class FlowableProcessService {
   /**
    * Set multiple process variables at once
    */
-  async setProcessVariables(flowableClient: AxiosInstance, processInstanceId: string, variables: Record<string, string>) {
+  async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await flowableClient.put(
+      const response = await this.flowableClient.put(
         FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLES(processInstanceId),
         formattedVariables,
       );
@@ -149,7 +156,7 @@ export class FlowableProcessService {
 
         try {
           for (const [name, value] of Object.entries(variables)) {
-            await this.updateProcessVariable(flowableClient, processInstanceId, name, value);
+            await this.updateProcessVariable(processInstanceId, name, value);
           }
           this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableProcessService.name);
           return;
@@ -166,14 +173,14 @@ export class FlowableProcessService {
   /**
    * Terminate a process instance
    */
-  async terminateProcessInstance(flowableClient: AxiosInstance, processInstanceId: string, reason?: string) {
+  async terminateProcessInstance(processInstanceId: string, reason?: string) {
     try {
       const payload = {
         action: 'delete',
         deleteReason: reason || 'Process terminated by system',
       };
 
-      const response = await flowableClient.delete(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), {
+      const response = await this.flowableClient.delete(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), {
         data: payload,
       });
 
@@ -188,13 +195,13 @@ export class FlowableProcessService {
   /**
    * Suspend a process instance
    */
-  async suspendProcessInstance(flowableClient: AxiosInstance, processInstanceId: string) {
+  async suspendProcessInstance(processInstanceId: string) {
     try {
       const payload = {
         action: FlowableTaskActions.SUSPEND,
       };
 
-      const response = await flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
+      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
 
       this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
@@ -207,13 +214,13 @@ export class FlowableProcessService {
   /**
    * Activate a process instance
    */
-  async activateProcessInstance(flowableClient: AxiosInstance, processInstanceId: string) {
+  async activateProcessInstance(processInstanceId: string) {
     try {
       const payload = {
         action: FlowableTaskActions.ACTIVATE,
       };
 
-      const response = await flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
+      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
 
       this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
@@ -226,15 +233,15 @@ export class FlowableProcessService {
   /**
    * Get process definitions
    */
-  async getProcessDefinitions(flowableClient: AxiosInstance, tenantId: string, processDefinitionKey?: string) {
+  async getProcessDefinitions(processDefinitionKey?: string) {
     try {
       const params: Record<string, unknown> = {};
       if (processDefinitionKey) {
         params.key = processDefinitionKey;
       }
-      params.tenantId = tenantId;
+      params.tenantId = this.tenantId;
 
-      const response = await flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
         params,
       });
       return response.data.data || [];
@@ -247,9 +254,9 @@ export class FlowableProcessService {
   /**
    * List all process definition keys
    */
-  async listProcessDefinitions(flowableClient: AxiosInstance, tenantId: string): Promise<string> {
+  async listProcessDefinitions(): Promise<string> {
     try {
-      const definitions = await this.getProcessDefinitions(flowableClient, tenantId);
+      const definitions = await this.getProcessDefinitions();
       return definitions.map((def: any) => def.key).join(', ');
     } catch (error) {
       return 'Unable to list process definitions';

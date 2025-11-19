@@ -4,6 +4,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableApiEndpoints, FlowableDefaults, FlowableTaskActions } from '../constants/flowable-api.constants';
 import { CreateFlowableTaskDto, FlowableVariable } from '../dto/flowable.dto';
 import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
+import { FlowableClientFactory } from './flowable-client.factory';
 
 /**
  * Service responsible for Flowable task operations
@@ -11,15 +12,20 @@ import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
  */
 @Injectable()
 export class FlowableTaskService {
+  private readonly flowableClient: AxiosInstance;
+
   constructor(
     private readonly logger: LoggerService,
-    private readonly utilitiesService: FlowableUtilitiesService,
-  ) {}
+    private readonly utilityService: FlowableUtilitiesService,
+    private readonly clientFactory: FlowableClientFactory,
+  ) {
+    this.flowableClient = this.clientFactory.getClient();
+  }
 
   /**
    * Create a new standalone task or add to a process
    */
-  async createTask(flowableClient: AxiosInstance, taskData: CreateFlowableTaskDto) {
+  async createTask(taskData: CreateFlowableTaskDto) {
     try {
       const payload: Record<string, unknown> = {
         name: taskData.name,
@@ -41,7 +47,7 @@ export class FlowableTaskService {
         payload.variables = this.formatVariables(taskData.variables);
       }
 
-      const response = await flowableClient.post(FlowableApiEndpoints.TASKS, payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASKS, payload);
       const taskId = response.data.id;
 
       this.logger.log(`Task created: ${taskId}`, FlowableTaskService.name);
@@ -55,9 +61,9 @@ export class FlowableTaskService {
   /**
    * Get a task by ID
    */
-  async getTask(flowableClient: AxiosInstance, taskId: string) {
+  async getTask(taskId: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASK(taskId));
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASK(taskId));
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -70,9 +76,9 @@ export class FlowableTaskService {
   /**
    * Get all tasks for a process instance
    */
-  async getProcessTasks(flowableClient: AxiosInstance, processInstanceId: string) {
+  async getProcessTasks(processInstanceId: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASKS, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
           processInstanceId,
         },
@@ -83,7 +89,7 @@ export class FlowableTaskService {
       const tasksWithVariables = await Promise.all(
         tasks.map(async (task: any) => {
           try {
-            const variablesResponse = await flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(task.id));
+            const variablesResponse = await this.flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(task.id));
             const variablesArray = variablesResponse.data || [];
             const variablesObject: Record<string, any> = {};
 
@@ -119,14 +125,14 @@ export class FlowableTaskService {
   /**
    * Complete a task
    */
-  async completeTask(flowableClient: AxiosInstance, taskId: string, variables?: Record<string, string>) {
+  async completeTask(taskId: string, variables?: Record<string, string>) {
     try {
       const payload: Record<string, unknown> = {
         action: FlowableTaskActions.COMPLETE,
         variables: variables ? this.formatVariables(variables) : [],
       };
 
-      const response = await flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
 
       this.logger.log(`Task completed: ${taskId}`, FlowableTaskService.name);
       return response.data;
@@ -139,14 +145,14 @@ export class FlowableTaskService {
   /**
    * Claim a task for a user
    */
-  async claimTask(flowableClient: AxiosInstance, taskId: string, userId: string): Promise<void> {
+  async claimTask(taskId: string, userId: string): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.CLAIM,
         assignee: userId,
       };
 
-      await flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
+      await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
 
       this.logger.log(`Task ${taskId} claimed by user ${userId}`, FlowableTaskService.name);
     } catch (error) {
@@ -158,14 +164,14 @@ export class FlowableTaskService {
   /**
    * Unclaim a task (remove assignee)
    */
-  async unclaimTask(flowableClient: AxiosInstance, taskId: string): Promise<void> {
+  async unclaimTask(taskId: string): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.CLAIM,
         assignee: null,
       };
 
-      await flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
+      await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
 
       this.logger.log(`Task ${taskId} unclaimed`, FlowableTaskService.name);
     } catch (error) {
@@ -177,14 +183,14 @@ export class FlowableTaskService {
   /**
    * Delegate a task to another user
    */
-  async delegateTask(flowableClient: AxiosInstance, taskId: string, userId: string): Promise<void> {
+  async delegateTask(taskId: string, userId: string): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.DELEGATE,
         assignee: userId,
       };
 
-      await flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
+      await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
 
       this.logger.log(`Task ${taskId} delegated to user ${userId}`, FlowableTaskService.name);
     } catch (error) {
@@ -196,9 +202,9 @@ export class FlowableTaskService {
   /**
    * Assign a task to a candidate group
    */
-  async assignTaskToCandidateGroup(flowableClient: AxiosInstance, taskId: string, group: string) {
+  async assignTaskToCandidateGroup(taskId: string, group: string) {
     try {
-      const response = await flowableClient.post(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId), {
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId), {
         type: 'candidate',
         group: group.toLowerCase(),
       });
@@ -214,9 +220,9 @@ export class FlowableTaskService {
   /**
    * Get identity links for a task (assignees, candidates, etc.)
    */
-  async getTaskIdentityLinks(flowableClient: AxiosInstance, taskId: string) {
+  async getTaskIdentityLinks(taskId: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId));
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId));
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to get task identity links: ${error.message}`, error.stack, FlowableTaskService.name);
@@ -227,9 +233,9 @@ export class FlowableTaskService {
   /**
    * Get tasks for a candidate group
    */
-  async getCandidateGroupTasks(flowableClient: AxiosInstance, candidateGroup: string, includeVariables: boolean = true) {
+  async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASKS, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
           candidateGroup: candidateGroup.toLowerCase(),
           includeTaskLocalVariables: includeVariables,
@@ -244,7 +250,7 @@ export class FlowableTaskService {
           tasks.map(async (task: unknown) => {
             const taskObj = task as Record<string, unknown>;
             try {
-              const variables = await this.utilitiesService.getTaskVariables(flowableClient, taskObj.id as string);
+              const variables = await this.utilityService.getTaskVariables(taskObj.id as string);
               return { ...taskObj, variables };
             } catch (error) {
               this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
@@ -265,9 +271,9 @@ export class FlowableTaskService {
   /**
    * Get tasks assigned to a specific user
    */
-  async getUserTasks(flowableClient: AxiosInstance, assignee: string, includeVariables: boolean = true) {
+  async getUserTasks(assignee: string, includeVariables: boolean = true) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASKS, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
           assignee,
           includeTaskLocalVariables: includeVariables,
@@ -282,7 +288,7 @@ export class FlowableTaskService {
           tasks.map(async (task: unknown) => {
             const taskObj = task as Record<string, unknown>;
             try {
-              const variables = await this.utilitiesService.getTaskVariables(flowableClient, taskObj.id as string);
+              const variables = await this.utilityService.getTaskVariables(taskObj.id as string);
               return { ...taskObj, variables };
             } catch (error) {
               this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
@@ -295,7 +301,7 @@ export class FlowableTaskService {
 
       return tasks;
     } catch (error) {
-      this.logger.error(`Failed to get user tasks: ${error.message}`, error.stack, FlowableTaskService.name);
+      this.logger.error(`Failed to get tasks: ${error.message}`, error.stack, FlowableTaskService.name);
       throw new HttpException('Failed to get user tasks', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -304,8 +310,6 @@ export class FlowableTaskService {
    * Get tasks for a tenant with optional filters
    */
   async getTenantTasks(
-    flowableClient: AxiosInstance,
-    tenantId: string,
     filters?: {
       candidateGroup?: string;
       assignee?: string;
@@ -314,7 +318,7 @@ export class FlowableTaskService {
   ) {
     try {
       const params: Record<string, unknown> = {
-        tenantId,
+        tenantId: this.clientFactory.tenantId,
       };
 
       if (filters?.candidateGroup) {
@@ -327,7 +331,7 @@ export class FlowableTaskService {
         params.unassigned = true;
       }
 
-      const response = await flowableClient.get(`${FlowableApiEndpoints.TASKS}?includeTaskLocalVariables=true`, {
+      const response = await this.flowableClient.get(`${FlowableApiEndpoints.TASKS}?includeTaskLocalVariables=true`, {
         params,
       });
 
@@ -341,11 +345,11 @@ export class FlowableTaskService {
   /**
    * Set multiple task variables
    */
-  async setTaskVariables(flowableClient: AxiosInstance, taskId: string, variables: Record<string, string>) {
+  async setTaskVariables(taskId: string, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
-      const response = await flowableClient.post(FlowableApiEndpoints.TASK_VARIABLES(taskId), formattedVariables);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK_VARIABLES(taskId), formattedVariables);
 
       this.logger.log(`Variables set successfully for task ${taskId}: ${JSON.stringify(variables)}`, FlowableTaskService.name);
 
@@ -365,9 +369,9 @@ export class FlowableTaskService {
   /**
    * Update a single task variable
    */
-  async updateTaskVariable(flowableClient: AxiosInstance, taskId: string, variableName: string, value: string) {
+  async updateTaskVariable(taskId: string, variableName: string, value: string) {
     try {
-      const response = await flowableClient.put(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName), {
+      const response = await this.flowableClient.put(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName), {
         name: variableName,
         value,
         type: 'string',
@@ -384,9 +388,9 @@ export class FlowableTaskService {
   /**
    * Delete a task variable
    */
-  async deleteTaskVariable(flowableClient: AxiosInstance, taskId: string, variableName: string) {
+  async deleteTaskVariable(taskId: string, variableName: string) {
     try {
-      await flowableClient.delete(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName));
+      await this.flowableClient.delete(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName));
       this.logger.log(`Variable ${variableName} deleted from task ${taskId}`, FlowableTaskService.name);
     } catch (error) {
       this.logger.error(`Failed to delete task variable: ${error.message}`, error.stack, FlowableTaskService.name);
@@ -410,3 +414,4 @@ export class FlowableTaskService {
     });
   }
 }
+

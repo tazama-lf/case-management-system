@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { FlowableDefaults, CandidateGroups, FlowableApiEndpoints } from '../constants/flowable-api.constants';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
+import { FlowableClientFactory } from '../services/flowable-client.factory';
 
 /**
  * Unified utility service for Flowable operations
@@ -12,8 +13,14 @@ export class FlowableUtilitiesService {
   private recentlyProcessedEvents = new Map<string, number>();
   private readonly EVENT_DEBOUNCE_MS = FlowableDefaults.EVENT_DEBOUNCE_MS;
   private readonly MAX_CACHE_SIZE = FlowableDefaults.MAX_CACHE_SIZE;
+  private readonly flowableClient: AxiosInstance;
 
-  constructor(private readonly logger: LoggerService) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly clientFactory: FlowableClientFactory,
+  ) {
+    this.flowableClient = this.clientFactory.getClient();
+  }
 
   // ==================== Event Deduplication ====================
 
@@ -177,13 +184,12 @@ export class FlowableUtilitiesService {
 
   /**
    * Get all variables for a task
-   * @param flowableClient Axios client configured for Flowable API
    * @param taskId Flowable task ID
    * @returns Record of variable names to values
    */
-  async getTaskVariables(flowableClient: AxiosInstance, taskId: string): Promise<Record<string, string>> {
+  async getTaskVariables(taskId: string): Promise<Record<string, string>> {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(taskId));
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(taskId));
 
       const variables: Record<string, string> = {};
       if (Array.isArray(response.data)) {
