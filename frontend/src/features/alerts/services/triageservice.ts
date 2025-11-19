@@ -79,23 +79,23 @@ class TriageService {
 
     const alerts = backendResponse.data || [];
 
-    const detailedAlerts = await Promise.all(
-      alerts.map(async (alert) => {
-        try {
-          const detailedAlert = await this.getAlertById(alert.alert_id);
-          return {
-            ...detailedAlert,
-            alert_type: detailedAlert.alert_type || alert.alert_type,
-          };
-        } catch (error) {
-          console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
-          return alert;
-        }
-      })
-    );
+    // const detailedAlerts = await Promise.all(
+    //   alerts.map(async (alert) => {
+    //     try {
+    //       const detailedAlert = await this.getAlertById(alert.alert_id);
+    //       return {
+    //         ...detailedAlert,
+    //         alert_type: detailedAlert.alert_type || alert.alert_type,
+    //       };
+    //     } catch (error) {
+    //       console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
+    //       return alert;
+    //     }
+    //   })
+    // );
 
     return {
-      alerts: detailedAlerts,
+      alerts: alerts,
       pagination: {
         currentPage: backendResponse.page || 1,
         totalPages: backendResponse.totalPages || 1,

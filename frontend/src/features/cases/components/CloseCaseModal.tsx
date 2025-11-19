@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CloseCaseDto } from '../services/caseService';
+import  authService  from '../../auth/services/authService';
 
 interface CloseCaseModalProps {
   open: boolean;
@@ -23,6 +24,14 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSupervisor, setIsSupervisor] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getUser();
+    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+    setIsSupervisor(isSupervisor);
+  }, []);
+
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -203,7 +212,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               disabled={isSubmitting}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting for Approval...' : 'Submit for Supervisor Approval'}
+              {isSubmitting ? 'Submitting for Approval...' : isSupervisor ? 'Close Case' : 'Submit for Approval'}
             </button>
           </div>
         </form>
