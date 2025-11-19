@@ -272,39 +272,39 @@ export class FlowableService implements OnModuleInit {
   /* Event Handlers to delegate to listeners */
 
   async handleCaseCreated(event: CaseCreatedEvent) {
-    this.caseEventListener.handleCaseCreated(event);
+   return this.caseEventListener.handleCaseCreated(event);
   }
 
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
-    this.caseEventListener.handleCaseStatusChanged(event);
+    return this.caseEventListener.handleCaseStatusChanged(event);
   }
 
   async handleCaseAbandoned(event: CaseAbandonedEvent) {
-    this.caseEventListener.handleCaseAbandoned(event);
+    return this.caseEventListener.handleCaseAbandoned(event);
   }
 
   async handleTaskCreated(event: TaskCreatedEvent) {
-    this.taskEventListener.handleTaskCreated(event);
+    return this.taskEventListener.handleTaskCreated(event);
   }
 
   async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
-    this.taskEventListener.handleTaskStatusChanged(event);
+    return this.taskEventListener.handleTaskStatusChanged(event);
   }
 
   async handleTaskCompleted(event: TaskCompletedEvent) {
-    this.taskEventListener.handleTaskCompleted(event);
+    return this.taskEventListener.handleTaskCompleted(event);
   }
 
   async handleTaskAssigned(event: TaskAssignedEvent) {
-    this.taskEventListener.handleTaskAssigned(event);
+    return this.taskEventListener.handleTaskAssigned(event);
   }
 
   async handleTaskUnassigned(event: TaskUnassignedEvent) {
-    this.taskEventListener.handleTaskUnassigned(event);
+    return this.taskEventListener.handleTaskUnassigned(event);
   }
 
   async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
-    this.taskEventListener.handleBpmnTaskCreated(event);
+    return this.taskEventListener.handleBpmnTaskCreated(event);
   }
 
   async handleSuspendCase(event: CaseSuspendedEvent) {

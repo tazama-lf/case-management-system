@@ -234,50 +234,50 @@ export class CaseService {
 	}
 
 	async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
-		this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
+		return this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
 	}
 
 	async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
-		this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
+		return this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
 	}
 
 	async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
-		this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
+		return this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
 	}
 
 	async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
-		this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
+		return this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
 	}
 
 	async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
-		this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
+		return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
 	}
 
 	async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
-		this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
+		return this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
 	}
 
 	async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
-		this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
+		return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
 	}
 
 	async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
-		this.caseCreationApprovalService.createCaseSystemTransmission(payload, clientId, tenantId);
+		return this.caseCreationApprovalService.createCaseSystemTransmission(payload, clientId, tenantId);
 	}
 
 	async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-		this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
+		return this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
 	}
 	async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
-		this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
+		return this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
 	}
 
 	async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
-		this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
+		return this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
 	}
 
 	async completeCase(caseId: string, userId: string, tenantId: string) {
-		this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
+		return this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
 	}
 
 	async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
