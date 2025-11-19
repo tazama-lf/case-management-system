@@ -10,7 +10,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
-import { CaseCreationService } from '../case-creation/case-creation.service';
+// import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Priority, CaseCreationType, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client';
 import { Outcome } from 'src/modules/audit/types/outcome';
@@ -19,6 +19,7 @@ import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
 import axios from 'axios';
 import { AlertService } from '../alert/alert.service';
+import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 
 @Injectable()
 export class TriageService {
@@ -27,7 +28,7 @@ export class TriageService {
     private prisma: PrismaService,
     private readonly alertService: AlertService,
     private audit: AuditLogService,
-    private readonly caseCreationService: CaseCreationService,
+    private readonly caseCreationService: CaseCreationApprovalService,
     private taskService: TaskService,
     private commentService: CommentService,
     private configService: ConfigService,

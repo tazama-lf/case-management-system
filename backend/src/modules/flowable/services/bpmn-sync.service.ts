@@ -31,25 +31,15 @@ export class BpmnSyncService {
     try {
       const flowableTasks = await this.flowableService.getProcessTasks(processInstanceId);
 
-      this.logger.log(
-        `[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`,
-        BpmnSyncService.name,
-      );
+      this.logger.log(`[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`, BpmnSyncService.name);
 
       for (const flowableTask of flowableTasks) {
         await this.syncSingleTask(flowableTask, caseId);
       }
 
-      this.logger.log(
-        `[BPMN-Sync] Completed sync for all tasks in case ${caseId}`,
-        BpmnSyncService.name,
-      );
+      this.logger.log(`[BPMN-Sync] Completed sync for all tasks in case ${caseId}`, BpmnSyncService.name);
     } catch (error) {
-      this.logger.error(
-        `[BPMN-Sync] Failed to sync BPMN tasks for case ${caseId}: ${error.message}`,
-        error.stack,
-        BpmnSyncService.name,
-      );
+      this.logger.error(`[BPMN-Sync] Failed to sync BPMN tasks for case ${caseId}: ${error.message}`, error.stack, BpmnSyncService.name);
       throw error;
     }
   }
@@ -73,10 +63,7 @@ export class BpmnSyncService {
         });
 
         if (dbTask) {
-          this.logger.debug(
-            `[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`,
-            BpmnSyncService.name,
-          );
+          this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, BpmnSyncService.name);
           return;
         } else {
           this.logger.warn(
@@ -92,22 +79,14 @@ export class BpmnSyncService {
       });
 
       if (!dbCase) {
-        this.logger.error(
-          `[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`,
-          BpmnSyncService.name,
-        );
+        this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, BpmnSyncService.name);
         return;
       }
 
       // Determine candidate group and status
-      const candidateGroup = this.utilitiesService.determineCandidateGroup(
-        flowableTask.name,
-        flowableTask.candidateGroups,
-      );
+      const candidateGroup = this.utilitiesService.determineCandidateGroup(flowableTask.name, flowableTask.candidateGroups);
 
-      const taskStatus = flowableTask.assignee
-        ? TaskStatus.STATUS_10_ASSIGNED
-        : TaskStatus.STATUS_01_UNASSIGNED;
+      const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
 
       // Create database task
       const dbTask = await this.taskService.createTask(
@@ -120,8 +99,6 @@ export class BpmnSyncService {
           assignedUserId: flowableTask.assignee,
         },
         'system',
-        this.auditLogService,
-        this.logger,
       );
 
       // Update Flowable task with database reference
@@ -140,11 +117,7 @@ export class BpmnSyncService {
         BpmnSyncService.name,
       );
     } catch (error) {
-      this.logger.error(
-        `[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`,
-        error.stack,
-        BpmnSyncService.name,
-      );
+      this.logger.error(`[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`, error.stack, BpmnSyncService.name);
     }
   }
 }

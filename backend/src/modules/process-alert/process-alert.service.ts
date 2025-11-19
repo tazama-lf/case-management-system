@@ -3,9 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { IngestAlertDto } from 'src/dtos/IngestAlert.dto';
 import { TaskService } from '../task/task.service';
-import { CaseCreationService } from '../case-creation/case-creation.service';
+// import { CaseCreationService } from '../case-creation/case-creation.service';
 import { TriageService } from '../triage/triage.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';
+import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 
 @Injectable()
 export class ProcessAlertService {
@@ -14,7 +15,7 @@ export class ProcessAlertService {
     private readonly configService: ConfigService,
     private readonly triageService: TriageService,
     private readonly taskService: TaskService,
-    private readonly caseCreationService: CaseCreationService,
+    private readonly caseCreationService: CaseCreationApprovalService,
   ) {}
 
   async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string) {
