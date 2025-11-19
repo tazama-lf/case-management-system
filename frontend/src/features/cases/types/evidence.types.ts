@@ -41,12 +41,18 @@ export interface Evidence {
   dateSearched?: string;
   keywords?: string[];
   findings?: string;
+
+  // SAR/STR Filing specific fields
+  submissionDate?: string;
+  referenceNumber?: string;
+  submissionChannel?: string;
 }
 
 export type EvidenceType =
   | 'SANCTIONS'
   | 'ADVERSE_MEDIA'
-  | 'OTHER';
+  | 'OTHER'
+  | 'SAR_STR_FILING';
 
 export interface EvidenceMetadata {
   screeningDate?: string;
@@ -77,6 +83,11 @@ export interface UploadEvidenceDto {
   dateSearched?: string;
   keywords?: string[];
   findings?: string;
+
+  // SAR/STR Filing specific fields
+  submissionDate?: string;
+  referenceNumber?: string;
+  submissionChannel?: string;
 }
 
 export interface UploadEvidenceResponse {

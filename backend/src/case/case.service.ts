@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
@@ -25,6 +25,7 @@ import {
   CaseSuspendedEvent,
   CaseResumedEvent,
   TaskStatusChangedEvent,
+  TaskCreatedEvent,
 } from '../events/domain-events';
 import { SystemCaseCreationDto } from './dto/system-case-creation.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -709,6 +710,16 @@ export class CaseService {
             `Case closed directly by supervisor with outcome: ${dto.recommendedOutcome}`,
           ),
         );
+
+        // Auto-generate SAR_STR_FILING task if case is confirmed
+        if (finalStatus === CaseStatus.STATUS_82_CLOSED_CONFIRMED) {
+          try {
+            await this.createSARFilingTask(caseId, tenantId, userId);
+            this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseService.name);
+          } catch (error) {
+            this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+          }
+        }
 
         await this.auditLogService.logAction({
           userId,
@@ -1644,6 +1655,16 @@ export class CaseService {
         ),
       );
 
+      // Auto-generate SAR/STR Filing task if case is confirmed
+      if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
+        try {
+          await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
+            this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseService.name);
+        } catch (error) {
+          this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+        }
+      }
+
       const investigationTask = caseDetails.tasks.find(
         (t) => (t.name === 'Investigate Case' || t.name === 'Investigate case') && t.assigned_user_id,
       );
@@ -2354,7 +2375,7 @@ export class CaseService {
     return { caseData, approvalTask };
   }
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto) {
+  async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
     try {
       const {
         status,
@@ -2373,6 +2394,8 @@ export class CaseService {
         const ownedCasesCondition: any = { case_owner_user_id: userId };
         if (status) ownedCasesCondition.status = status;
         if (priority) ownedCasesCondition.priority = priority;
+        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
+        if (isComplianceOfficer) ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
         whereConditions.push(ownedCasesCondition);
       }
 
@@ -2380,6 +2403,8 @@ export class CaseService {
         const taskAssignmentCondition: any = { tasks: { some: { assigned_user_id: userId } } };
         if (status) taskAssignmentCondition.status = status;
         if (priority) taskAssignmentCondition.priority = priority;
+        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
+        if (isComplianceOfficer) taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
         whereConditions.push(taskAssignmentCondition);
       }
 
@@ -2475,7 +2500,7 @@ export class CaseService {
     }
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
+  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
     try {
       const {
         status,
@@ -2505,8 +2530,13 @@ export class CaseService {
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
       }
 
+      // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
+      if (isComplianceOfficer) {
+        baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
+        Object.assign(whereClause, baseFilters);
+      }
       // Handle investigator filtering (only unassigned, ready for assignment, or assigned to them)
-      if (investigatorUserId) {
+      else if (investigatorUserId) {
         // Investigator filter: show only unassigned, ready for assignment, OR assigned to them
         whereClause.AND = [
           baseFilters, // Apply all other filters
@@ -2625,12 +2655,12 @@ export class CaseService {
     }
   }
 
-  async getUserWorkloadStats(userId: string) {
+  async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
     try {
-      const [activeCases, pendingTasks, allUserCases] = await Promise.all([
-        this.prismaService.case.count({
-          where: {
-            OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
+      // For compliance officers, filter to only STATUS_82_CLOSED_CONFIRMED cases
+      const statusFilter = isComplianceOfficer
+        ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
+        : {
             status: {
               notIn: [
                 CaseStatus.STATUS_81_CLOSED_REFUTED,
@@ -2639,6 +2669,13 @@ export class CaseService {
                 CaseStatus.STATUS_99_ABANDONED,
               ],
             },
+          };
+
+      const [activeCases, pendingTasks, allUserCases] = await Promise.all([
+        this.prismaService.case.count({
+          where: {
+            OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
+            ...statusFilter,
           },
         }),
         this.prismaService.task.count({
@@ -2647,14 +2684,7 @@ export class CaseService {
         this.prismaService.case.findMany({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: {
-              notIn: [
-                CaseStatus.STATUS_81_CLOSED_REFUTED,
-                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                CaseStatus.STATUS_99_ABANDONED,
-              ],
-            },
+            ...statusFilter,
           },
           select: { case_id: true, status: true, priority: true, created_at: true },
           orderBy: { created_at: 'asc' },
@@ -2709,9 +2739,105 @@ export class CaseService {
     }
   }
 
-  async retrieveCase(caseId: string) {
+  
+  private async createSARFilingTask(caseId: string, tenantId: string, userId: string): Promise<void> {
+    this.logger.log(`Creating SAR_STR_FILING task for case ${caseId}`, CaseService.name);
+
+    try {
+     
+      const existingSARTask = await this.prismaService.task.findFirst({
+        where: {
+          case_id: caseId,
+          task_type: 'SAR_STR_FILING' as any,
+        },
+      });
+
+      if (existingSARTask) {
+        this.logger.log(`SAR_STR_FILING task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseService.name);
+        return;
+      }
+
+      
+      const complianceQueue = await this.prismaService.workQueue.findFirst({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          name: {
+            contains: 'compliance',
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      const taskData: any = {
+        case: {
+          connect: { case_id: caseId },
+        },
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        name: 'SAR_STR_FILING',
+        description:
+          'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
+        task_type: 'SAR_STR_FILING',
+        candidateGroup: 'compliance',
+        sla_duration_hours: 48, 
+      };
+
+      if (complianceQueue) {
+        taskData.workQueue = {
+          connect: { work_queue_id: complianceQueue.work_queue_id },
+        };
+      }
+
+      const sarTask = await this.prismaService.task.create({
+        data: taskData,
+      });
+
+      
+      this.eventEmitter.emit(
+        'task.created',
+        new TaskCreatedEvent(
+          sarTask.task_id,
+          caseId,
+          sarTask.name || 'SAR_STR_FILING',
+          sarTask.description || 'Upload SAR/STR acknowledgment from FIU',
+          sarTask.candidateGroup || 'compliance',
+          sarTask.status,
+          undefined,
+        ),
+      );
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'createSARTask',
+        entityName: CaseService.name,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.logger.log(`Successfully created SAR_STR_FILING task ${sarTask.task_id} for case ${caseId}`, CaseService.name);
+    } catch (error) {
+     
+        this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+
+      await this.auditLogService.logAction({
+        userId,
+        operation: 'createSARTask',
+        entityName: CaseService.name,
+        actionPerformed: `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
+    }
+  }
+
+  async retrieveCase(caseId: string, isComplianceOfficer?: boolean) {
     const retrievedCase = await this.prismaService.case.findUnique({ where: { case_id: caseId }, include: { alert: true, tasks: true } });
     if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
+    
+    // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
+    if (isComplianceOfficer && retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
+      throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
+    }
+    
     return retrievedCase;
   }
 

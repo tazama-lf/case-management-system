@@ -7,6 +7,7 @@ import {
   RequireAlertTriageRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
   RequireAnyValidRole,
   RequireSupervisorRole,
   TazamaClaims,
@@ -290,10 +291,10 @@ export class CaseController {
   }
 
   @Get('all')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get all cases',
-    description: 'Retrieves cases based on user role. Investigators see unassigned or assigned to them. Supervisors see all cases.',
+    description: 'Retrieves cases based on user role. Investigators see unassigned or assigned to them. Supervisors see all cases. Compliance officers see only STATUS_82_CLOSED_CONFIRMED cases.',
   })
   @ApiQuery({ type: GetAllCasesQueryDto })
   @ApiResponse({
@@ -308,18 +309,29 @@ export class CaseController {
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims || [];
 
-    // Check if user is investigator (not supervisor/admin)
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    // Check if user is compliance officer
+    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
 
-    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
+    // Check if user is investigator (not supervisor/admin/compliance officer)
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && 
+      !userClaims.includes('CMS_SUPERVISOR') && 
+      !userClaims.includes('CMS_ADMIN') &&
+      !userClaims.includes('CMS_COMPLIANCE_OFFICER');
+
+    return this.caseService.getAllCases(
+      query, 
+      tenantId, 
+      isInvestigator ? userId : undefined,
+      isComplianceOfficer
+    );
   }
 
   @Get('user/assigned')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get cases assigned to current user',
-    description: 'Retrieves all cases where the user is either the owner or has assigned tasks',
+    description: 'Retrieves all cases where the user is either the owner or has assigned tasks. Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases.',
   })
   @ApiQuery({ type: GetUserCasesQueryDto })
   @ApiResponse({
@@ -330,7 +342,9 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserCases(@Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.caseService.getUserCases(userId, query);
+    const userClaims = req.user.token.claims || [];
+    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+    return this.caseService.getUserCases(userId, query, isComplianceOfficer);
   }
 
   @Get('user/:userId/assigned')
@@ -367,10 +381,10 @@ export class CaseController {
   }
 
   @Get('user/workload')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload",
+    description: "Get summary statistics of user's case workload. Compliance officers only see statistics for STATUS_82_CLOSED_CONFIRMED cases.",
   })
   @ApiResponse({
     status: 200,
@@ -409,26 +423,31 @@ export class CaseController {
   })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.caseService.getUserWorkloadStats(userId);
+    const userClaims = req.user.token.claims || [];
+    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+    return this.caseService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
   @Get(':caseId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Retrieve case by ID',
-    description: 'Get detailed information about a specific case',
+    description: 'Get detailed information about a specific case. Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases.',
   })
   @ApiResponse({
     status: 200,
     description: 'Case retrieved successfully',
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async getCase(@Param('caseId') caseId: string) {
-    return this.caseService.retrieveCase(caseId);
+  @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
+  async getCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+    const userClaims = req.user.token.claims || [];
+    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+    return this.caseService.retrieveCase(caseId, isComplianceOfficer);
   }
 
   @Post(':caseId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Update case',
     description: 'Update case details such as status, priority, or assignment',

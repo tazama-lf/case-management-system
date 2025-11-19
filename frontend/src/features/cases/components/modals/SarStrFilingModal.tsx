@@ -38,6 +38,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
         
         // Filter only SAR/STR filings
         const sarStrEvidence = response.evidence.filter((evidence) => 
+          evidence.evidenceType === 'SAR_STR_FILING' ||
           evidence.description?.includes('SAR/STR') || 
           evidence.description?.includes('Regulatory Filing')
         );
@@ -97,8 +98,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
       for (const file of selectedFiles) {
         const uploadDto: UploadEvidenceDto = {
           taskId,
-          evidenceType: 'OTHER', // Using OTHER type with special description
+          evidenceType: 'SAR_STR_FILING',
           description: fullDescription,
+          comments: sarRemarks,
           file,
         };
 
@@ -118,6 +120,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
       // Reload evidence
       const response = await evidenceService.getTaskEvidence(taskId);
       const sarStrEvidence = response.evidence.filter((evidence) => 
+        evidence.evidenceType === 'SAR_STR_FILING' ||
         evidence.description?.includes('SAR/STR') || 
         evidence.description?.includes('Regulatory Filing')
       );

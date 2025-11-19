@@ -283,6 +283,7 @@ enum TaskType {
   REPORT_GENERATION
   CASE_CLOSURE
   ESCALATION
+  SAR_STR_FILING
 }
 
 enum UserRole {

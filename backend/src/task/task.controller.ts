@@ -27,6 +27,7 @@ import {
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../auth/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/audit/auditLog.service';
@@ -567,7 +568,7 @@ export class TaskController {
   }
 
   @Get('case/:caseId')
-  @RequireAnyValidRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
     description: 'Retrieves all tasks associated with a given case ID. Any authenticated user can access this endpoint.',
@@ -619,7 +620,7 @@ export class TaskController {
   }
 
   @Get('work-queues/:candidateGroup')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get work queue for a candidate group',
     description:
@@ -899,7 +900,7 @@ export class TaskController {
   }
 
   @Get('statistics')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get work queue statistics',
     description: 'Retrieves task statistics for work queues accessible to the authenticated user.',

@@ -18,7 +18,7 @@ export class EvidenceResponseDto {
   fileSize: number;
 
   @ApiProperty()
-  attachments: any [];
+  attachments: any[];
 
   @ApiProperty()
   mimeType: string;
@@ -57,7 +57,7 @@ export class EvidenceListResponseDto {
 
   @ApiProperty()
   taskId?: string;
-  
+
   @ApiProperty()
   evidenceType?: EvidenceType;
 }

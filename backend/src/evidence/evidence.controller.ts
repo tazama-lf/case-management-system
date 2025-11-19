@@ -13,7 +13,6 @@ import {
   BadRequestException,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
   UploadedFiles,
   NotFoundException,
 } from '@nestjs/common';
@@ -22,7 +21,7 @@ import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, TazamaClaims } from '../auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
 
@@ -34,7 +33,7 @@ export class EvidenceController {
   constructor(private evidenceService: EvidenceService) {}
 
   @Post('upload')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Upload evidence for a task' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -51,7 +50,7 @@ export class EvidenceController {
         },
         evidenceType: {
           type: 'string',
-          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER'],
+          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER', 'SAR_STR_FILING'],
           description: 'Type of evidence',
         },
         tags: {
@@ -96,7 +95,7 @@ export class EvidenceController {
   }
 
   @Get('task/:taskId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get all evidence for a task' })
   @ApiResponse({
     status: 200,
@@ -107,7 +106,11 @@ export class EvidenceController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) 
+      ? 'CMS_SUPERVISOR' 
+      : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
+      ? 'CMS_COMPLIANCE_OFFICER'
+      : 'CMS_INVESTIGATOR';
     return this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
   }
 
@@ -147,7 +150,7 @@ export class EvidenceController {
   }
 
   @Get(':id')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get evidence by ID' })
   @ApiResponse({
     status: 200,
@@ -166,7 +169,7 @@ export class EvidenceController {
   @RequireInvestigatorOrSupervisorRole()
   async downloadEvidence(@Param('id') id: string, @Res() res: Response,  @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
-    const role = claims.includes('cms_supervisor') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
     const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
 
     if (!files.length) throw new NotFoundException('No files found');
