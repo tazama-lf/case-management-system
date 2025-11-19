@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { TaskService } from '../../task/task.service';
 import { BpmnSyncService } from '../services/bpmn-sync.service';
 import { TaskCreatedEvent, TaskStatusChangedEvent, BpmnTaskCreatedEvent, TaskAssignedEvent, TaskUnassignedEvent, TaskCompletedEvent } from '../../events/domain-events';
 import { TaskStatus } from '@prisma/client';
@@ -18,7 +17,6 @@ export class TaskEventListener {
     constructor(
         private readonly flowableTaskService: FlowableTaskService,
         private readonly flowableProcessService: FlowableProcessService,
-        private readonly taskService: TaskService,
         private readonly logger: LoggerService,
         private readonly bpmnSyncService: BpmnSyncService,
         private readonly utilityService: FlowableUtilitiesService,
@@ -368,7 +366,7 @@ export class TaskEventListener {
                 TaskEventListener.name,
             );
 
-            const postgresTask = await this.taskService.createTask(
+            const postgresTask = await this.utilityService.createTask(
                 {
                     caseId: event.caseId,
                     status: TaskStatus.STATUS_01_UNASSIGNED,
@@ -377,7 +375,7 @@ export class TaskEventListener {
                     candidateGroup: event.candidateGroup,
                 },
                 'system'
-            );
+            )
 
             const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
