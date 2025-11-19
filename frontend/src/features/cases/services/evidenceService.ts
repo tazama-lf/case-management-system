@@ -12,6 +12,25 @@ export class EvidenceService {
   private baseUrl = '/api/v1/evidence';
 
   /**
+   * Normalize evidence data by extracting fileName and other properties from attachments array
+   * if they don't exist at root level (backward compatibility with new CouchDB structure)
+   */
+  private normalizeEvidenceData(evidence: any): any {
+    if (!evidence) return evidence;
+
+    // If attachments array exists, extract data from first attachment
+    const firstAttachment = evidence.attachments?.[0];
+
+    return {
+      ...evidence,
+      fileName: evidence.fileName || firstAttachment?.fileName || 'unknown',
+      fileSize: evidence.fileSize || firstAttachment?.fileSize || 0,
+      mimeType: evidence.mimeType || firstAttachment?.mimeType || 'application/octet-stream',
+      hash: evidence.hash || firstAttachment?.hash || '',
+    };
+  }
+
+  /**
    * Upload evidence file with metadata
    * Maps to: POST /api/v1/evidence/upload
    */
@@ -20,7 +39,7 @@ export class EvidenceService {
   ): Promise<UploadEvidenceResponse> {
     try {
       const formData = new FormData();
-      formData.append('file', data.file);
+      formData.append('files', data.file);
       formData.append('taskId', data.taskId);
       formData.append('evidenceType', data.evidenceType);
 
@@ -85,6 +104,10 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
+      // Normalize evidence data to extract fileName from attachments if needed
+      if (response.evidence) {
+        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
+      }
       return response;
     } catch (error) {
       throw this.handleError(error, 'get task evidence');
@@ -100,6 +123,10 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
+      // Normalize evidence data to extract fileName from attachments if needed
+      if (response.evidence) {
+        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
+      }
       return response;
     } catch (error) {
       throw this.handleError(error, 'get case evidence');
@@ -117,6 +144,10 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
+      // Normalize evidence data to extract fileName from attachments if needed
+      if (response.evidence) {
+        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
+      }
       return response;
     } catch (error) {
       throw this.handleError(error, 'get evidence by type');
@@ -132,7 +163,8 @@ export class EvidenceService {
       const response = await apiClient.get<Evidence>(
         `${this.baseUrl}/${evidenceId}`,
       );
-      return response;
+      // Normalize evidence data to extract fileName from attachments if needed
+      return this.normalizeEvidenceData(response);
     } catch (error) {
       throw this.handleError(error, 'get evidence details');
     }
@@ -156,6 +188,16 @@ export class EvidenceService {
   }
 
   /**
+   * View evidence file - uses the same download endpoint as downloadEvidence
+   * Just an alias to make the API clearer for view operations
+   */
+  async viewEvidence(evidenceId: string): Promise<Blob> {
+    console.log('[Evidence View] Using download endpoint to fetch file');
+    // Use the same download method - it decrypts the file on the backend
+    return this.downloadEvidence(evidenceId);
+  }
+
+  /**
    * Download evidence file
    * Maps to: GET /api/v1/evidence/:id/download
    */
@@ -173,10 +215,16 @@ export class EvidenceService {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to download evidence');
+        // Try to get error message from response
+        const errorText = await response.text();
+        console.error('[Evidence Download] Server error:', response.status, errorText);
+        throw new Error(`Failed to download evidence: ${response.status} - ${errorText.substring(0, 100)}`);
       }
 
-      return await response.blob();
+      const blob = await response.blob();
+      console.log('[Evidence Download] Blob received:', { size: blob.size, type: blob.type });
+
+      return blob;
     } catch (error) {
       throw this.handleError(error, 'download evidence');
     }

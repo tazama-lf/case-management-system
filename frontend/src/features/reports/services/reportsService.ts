@@ -375,26 +375,47 @@ class ReportsService {
               (e.evidenceId as string) ||
               (e.evidence_id as string) ||
               `unknown_${Date.now()}`;
+
+            // Extract fileName from attachments array if it exists there
+            const attachments = e.attachments as Array<Record<string, unknown>> | undefined;
+            const firstAttachment = attachments?.[0];
+
             const fileName =
               (e.fileName as string) ||
               (e.file_name as string) ||
+              (firstAttachment?.fileName as string) ||
               'Unknown Document';
-            
+
+            const fileSize =
+              (e.fileSize as number) ||
+              (firstAttachment?.fileSize as number) ||
+              undefined;
+
+            const mimeType =
+              (e.mimeType as string) ||
+              (firstAttachment?.mimeType as string) ||
+              undefined;
+
+            const hash =
+              (e.hash as string) ||
+              (firstAttachment?.hash as string) ||
+              undefined;
+
             console.log(
               `[Evidence Report] Mapping evidence: ID=${evidenceId}, FileName=${fileName}, TaskID=${(e.taskId as string) || (e.task_id as string)}, UploadedBy=${(e.uploadedBy as string)}, UploadedAt=${(e.uploadedAt as string)}`,
             );
-            
+
             return {
               id: evidenceId,
               fileName: fileName,
-              fileSize: (e.fileSize as number) || undefined,
-              mimeType: (e.mimeType as string) || undefined,
+              fileSize,
+              mimeType,
               evidenceType: (e.evidenceType as string) || undefined,
               uploadedBy: (e.uploadedBy as string) || undefined,
               uploadedByName: (e.uploadedByName as string) || undefined,
               uploadedAt: (e.uploadedAt as string) || undefined,
               description: (e.description as string) || undefined,
-              hash: (e.hash as string) || undefined,
+              hash,
             };
           });
           

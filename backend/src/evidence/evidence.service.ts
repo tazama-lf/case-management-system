@@ -67,7 +67,7 @@ export class EvidenceService {
       tags: dto.tags,
       description: dto.description,
       comments: dto.comments,
-      archive:false,
+      archive: false,
       attachments: [],
     };
 
@@ -124,7 +124,7 @@ export class EvidenceService {
     let query: any = {
       tenantId,
       evidenceId,
-      archive:false,
+      archive: false,
       page: 1,
       limit: 1,
     };
@@ -138,7 +138,7 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
-    console.log("evidenceDoc: ", evidenceDoc);
+    console.log('evidenceDoc: ', evidenceDoc);
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -166,7 +166,7 @@ export class EvidenceService {
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
       attachments: evidenceDoc.attachments,
-      archive: evidenceDoc.archive
+      archive: evidenceDoc.archive,
     };
   }
 
@@ -178,7 +178,7 @@ export class EvidenceService {
   ): Promise<{ file: Buffer; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
 
-    const query: any = { tenantId, evidenceId, archive:false, page: 1, limit: 1 };
+    const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
@@ -189,23 +189,41 @@ export class EvidenceService {
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     try {
-      const encryptedFile = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
+      // Extract from attachments array (new structure) or root level (old structure)
+      const firstAttachment = evidenceDoc.attachments?.[0];
+      const fileName = evidenceDoc.fileName || firstAttachment?.fileName;
+      const fileSize = evidenceDoc.fileSize || firstAttachment?.fileSize || 0;
+      const mimeType = evidenceDoc.mimeType || firstAttachment?.mimeType || 'application/octet-stream';
+      const hash = evidenceDoc.hash || firstAttachment?.hash || '';
+      const encryptionKey = evidenceDoc.encryption_key || firstAttachment?.encryption?.key;
+      const encryptionIv = evidenceDoc.encryption_meta?.iv || firstAttachment?.encryption?.iv;
+      const encryptionAuthTag = evidenceDoc.encryption_meta?.authTag || firstAttachment?.encryption?.authTag;
+
+      if (!fileName) {
+        this.logger.error(`No fileName found in evidence ${evidenceId}`);
+        throw new NotFoundException('File name not found in evidence document');
+      }
+
+      if (!encryptionKey || !encryptionIv || !encryptionAuthTag) {
+        this.logger.error(`Missing encryption keys for evidence ${evidenceId}`);
+        throw new NotFoundException('Encryption keys not found in evidence document');
+      }
+
+      this.logger.log(`Downloading attachment: ${fileName} for evidence ${evidenceId}`);
+
+      const encryptedFile = await this.couchdb.getAttachment(evidenceId, fileName);
       if (!encryptedFile) {
-        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${evidenceDoc.fileName}`);
+        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${fileName}`);
         throw new NotFoundException('Encrypted file not found');
       }
       const encryptedBuffer = Buffer.isBuffer(encryptedFile) ? encryptedFile : Buffer.from(encryptedFile);
 
-      const file = this.decrypt(
-        encryptedBuffer,
-        evidenceDoc.encryption_key,
-        evidenceDoc.encryption_meta.iv,
-        evidenceDoc.encryption_meta.authTag,
-      );
+      this.logger.log(`Decrypting file: ${fileName}`);
+      const file = this.decrypt(encryptedBuffer, encryptionKey, encryptionIv, encryptionAuthTag);
 
       const currentHash = this.sha256(file);
-      if (currentHash !== evidenceDoc.hash) {
-        this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
+      if (currentHash !== hash) {
+        this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${hash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
       }
 
@@ -222,18 +240,18 @@ export class EvidenceService {
         metadata: {
           id: evidenceDoc.evidenceId,
           taskId: evidenceDoc.taskId,
-          fileName: evidenceDoc.fileName,
+          fileName,
           evidenceType: evidenceDoc.evidenceType,
-          fileSize: Number(evidenceDoc.fileSize),
-          mimeType: evidenceDoc.mimeType,
-          hash: evidenceDoc.hash,
+          fileSize: Number(fileSize),
+          mimeType,
+          hash,
           uploadedBy: evidenceDoc.uploadedBy,
           uploadedAt: evidenceDoc.uploadedAt,
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
           attachments: evidenceDoc.attachments,
-          archive: evidenceDoc.archive
+          archive: evidenceDoc.archive,
         },
       };
     } catch (error) {
@@ -245,7 +263,7 @@ export class EvidenceService {
   async verifyEvidence(evidenceId: string, userId: string, tenantId: string, role: string): Promise<VerifyEvidenceDto> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
-    const query: any = { tenantId, evidenceId, archive:false, page: 1, limit: 1 };
+    const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
@@ -288,7 +306,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, taskId, archive:false, page: 1, limit: 100 };
+    const query: any = { tenantId, taskId, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
@@ -310,7 +328,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
-      archive: item.archive
+      archive: item.archive,
     }));
 
     await this.auditLog.logAction({
@@ -364,7 +382,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
-      archive: item.archive
+      archive: item.archive,
     }));
 
     await this.auditLog.logAction({
@@ -379,7 +397,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, evidenceType, archive:false, page: 1, limit: 100 };
+    const query: any = { tenantId, evidenceType, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
@@ -401,7 +419,7 @@ export class EvidenceService {
       description: item.description,
       comments: item.comments,
       attachments: item.attachments,
-      archive: item.archive
+      archive: item.archive,
     }));
 
     await this.auditLog.logAction({

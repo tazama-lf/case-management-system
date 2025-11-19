@@ -1,3 +1,16 @@
+export interface EvidenceAttachment {
+  fileName: string;
+  fileSize: number;
+  filePath: string;
+  mimeType: string;
+  hash: string;
+  encryption?: {
+    key: string;
+    iv: string;
+    authTag: string;
+  };
+}
+
 export interface Evidence {
   id: string; // Evidence ID
   taskId: string; // Task ID this evidence belongs to
@@ -16,12 +29,13 @@ export interface Evidence {
   comments?: string;
   verified?: boolean;
   downloadUrl?: string;
-  
+  attachments?: EvidenceAttachment[]; // CouchDB attachments array
+
   // Sanctions specific fields
   screeningDate?: string;
   tool?: string;
   summaryDisposition?: string;
-  
+
   // Adverse Media specific fields
   aggregator?: string;
   dateSearched?: string;
