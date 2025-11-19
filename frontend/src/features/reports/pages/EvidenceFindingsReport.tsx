@@ -48,6 +48,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'
   >('All');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   // Use real data from API
   const displayData = evidenceData;
@@ -95,9 +97,10 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   };
 
   const handleViewEvidence = async (filename: string, evidenceId: string = '') => {
+    const actualEvidenceId = evidenceId || filename;
+    setViewingId(actualEvidenceId);
+    
     try {
-      const actualEvidenceId = evidenceId || filename;
-
       console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename });
 
       // Fetch the encrypted blob from CouchDB
@@ -109,30 +112,76 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
         throw new Error('Received empty file');
       }
 
-      // Create blob URL and open in new tab
+      // Determine the best way to preview based on MIME type
+      const mimeType = blob.type || 'application/octet-stream';
+      const isPreviewable = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml',
+        'text/plain',
+        'text/html',
+        'text/csv',
+      ].some(type => mimeType.includes(type));
+
+      // Create blob URL
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank', 'noopener,noreferrer');
 
-      console.log('[Evidence View] Opened blob URL in new tab:', blobUrl);
+      if (isPreviewable) {
+        // Open in new tab for previewable files
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        console.log('[Evidence View] Opened in new tab:', blobUrl);
+      } else {
+        // For non-previewable files, inform user and offer download
+        const shouldDownload = confirm(
+          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`
+        );
+        
+        if (shouldDownload) {
+          // Trigger download
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          console.log('[Evidence View] File downloaded:', filename);
+        }
+        
+        // Clean up immediately if not downloading
+        if (!shouldDownload) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      }
 
-      // Clean up after delay
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-        console.log('[Evidence View] Cleaned up blob URL');
-      }, 10000);
+      // Clean up blob URL after a delay (for previewable files)
+      if (isPreviewable) {
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          console.log('[Evidence View] Cleaned up blob URL');
+        }, 30000); // 30 seconds should be enough for the browser to load it
+      }
     } catch (err) {
       console.error('[Evidence View] Error:', err);
-      alert(`Failed to view evidence: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      alert(`Failed to view evidence: ${errorMessage}`);
+    } finally {
+      setViewingId(null);
     }
   };
 
   const handleDownloadEvidence = async (evidenceId: string) => {
+    setDownloadingId(evidenceId);
+    
     try {
       console.log('[Evidence Download] Starting download:', { evidenceId });
 
       // First get the evidence metadata to get the real filename
       const metadata = await evidenceService.getEvidenceById(evidenceId);
-      const downloadFilename = metadata.fileName || 'evidence';
+      const downloadFilename = metadata.fileName || metadata.attachments?.[0]?.fileName || 'evidence';
 
       console.log('[Evidence Download] Fetching file blob for:', downloadFilename);
 
@@ -143,10 +192,12 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
         throw new Error('Received empty file from server');
       }
 
-      console.log('[Evidence Download] Blob received, size:', blob.size);
+      console.log('[Evidence Download] Blob received, size:', blob.size, 'bytes');
 
-      // Create download link
+      // Create blob URL
       const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create and trigger download
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = downloadFilename;
@@ -162,9 +213,15 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
         window.URL.revokeObjectURL(blobUrl);
         console.log('[Evidence Download] Download completed and cleaned up');
       }, 100);
+      
+      // Show success message briefly
+      console.log('[Evidence Download] ✓ Download started successfully');
     } catch (err) {
       console.error('[Evidence Download] Download failed:', err);
-      alert(`Failed to download file: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      alert(`Failed to download file: ${errorMessage}`);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -514,20 +571,48 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                                   e.stopPropagation();
                                                   handleViewEvidence(evidenceName, evidenceId);
                                                 }}
-                                                className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                title="View evidence"
+                                                disabled={viewingId === evidenceId || downloadingId === evidenceId}
+                                                className={`inline-flex items-center justify-center p-2 rounded transition-colors ${
+                                                  viewingId === evidenceId
+                                                    ? 'text-blue-400 bg-blue-50 cursor-wait'
+                                                    : downloadingId === evidenceId
+                                                    ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                                                    : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                                                }`}
+                                                title={viewingId === evidenceId ? 'Loading...' : 'View evidence'}
                                               >
-                                                <EyeIcon className="h-4 w-4" />
+                                                {viewingId === evidenceId ? (
+                                                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                  </svg>
+                                                ) : (
+                                                  <EyeIcon className="h-4 w-4" />
+                                                )}
                                               </button>
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   handleDownloadEvidence(evidenceId);
                                                 }}
-                                                className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                                title="Download evidence"
+                                                disabled={downloadingId === evidenceId || viewingId === evidenceId}
+                                                className={`inline-flex items-center justify-center p-2 rounded transition-colors ${
+                                                  downloadingId === evidenceId
+                                                    ? 'text-green-400 bg-green-50 cursor-wait'
+                                                    : viewingId === evidenceId
+                                                    ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                                                    : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
+                                                }`}
+                                                title={downloadingId === evidenceId ? 'Downloading...' : 'Download evidence'}
                                               >
-                                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                                {downloadingId === evidenceId ? (
+                                                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                  </svg>
+                                                ) : (
+                                                  <ArrowDownTrayIcon className="h-4 w-4" />
+                                                )}
                                               </button>
                                             </div>
                                           </div>

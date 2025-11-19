@@ -104,7 +104,6 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
-      // Normalize evidence data to extract fileName from attachments if needed
       if (response.evidence) {
         response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
       }
@@ -123,7 +122,6 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
-      // Normalize evidence data to extract fileName from attachments if needed
       if (response.evidence) {
         response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
       }
@@ -163,7 +161,6 @@ export class EvidenceService {
       const response = await apiClient.get<Evidence>(
         `${this.baseUrl}/${evidenceId}`,
       );
-      // Normalize evidence data to extract fileName from attachments if needed
       return this.normalizeEvidenceData(response);
     } catch (error) {
       throw this.handleError(error, 'get evidence details');
@@ -198,34 +195,100 @@ export class EvidenceService {
   }
 
   /**
-   * Download evidence file
+   * Download evidence file with robust error handling and proper headers
    * Maps to: GET /api/v1/evidence/:id/download
    */
   async downloadEvidence(evidenceId: string): Promise<Blob> {
+    const startTime = performance.now();
+    
     try {
-      // Direct fetch for blob response
+      console.log('[Evidence Download] Starting download for:', evidenceId);
+      
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const response = await fetch(
-        `${this.baseUrl}/${evidenceId}/download`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      // Build the full URL
+      const baseApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
+      const url = `${baseApiUrl}${this.baseUrl}/${evidenceId}/download`;
+      
+      console.log('[Evidence Download] Fetching from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/octet-stream, */*',
         },
-      );
+        credentials: 'include',
+      });
+
+      console.log('[Evidence Download] Response status:', response.status);
+      console.log('[Evidence Download] Response headers:', {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length'),
+        contentDisposition: response.headers.get('content-disposition'),
+      });
 
       if (!response.ok) {
-        // Try to get error message from response
-        const errorText = await response.text();
-        console.error('[Evidence Download] Server error:', response.status, errorText);
-        throw new Error(`Failed to download evidence: ${response.status} - ${errorText.substring(0, 100)}`);
+        let errorMessage = `Server returned ${response.status}: ${response.statusText}`;
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } else {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText.substring(0, 200);
+            }
+          }
+        } catch (parseError) {
+          console.error('[Evidence Download] Error parsing error response:', parseError);
+        }
+
+        console.error('[Evidence Download] Server error:', errorMessage);
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to access this evidence.');
+        } else if (response.status === 404) {
+          throw new Error('Evidence file not found.');
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       const blob = await response.blob();
-      console.log('[Evidence Download] Blob received:', { size: blob.size, type: blob.type });
+      const downloadTime = performance.now() - startTime;
+
+      console.log('[Evidence Download] Success!', {
+        size: blob.size,
+        type: blob.type,
+        timeMs: downloadTime.toFixed(2),
+        sizeMB: (blob.size / 1024 / 1024).toFixed(2),
+      });
+
+      if (blob.size === 0) {
+        throw new Error('Received empty file from server. The file may be corrupted or deleted.');
+      }
+
+      if (!blob.type || blob.type === 'application/octet-stream') {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType !== 'application/octet-stream') {
+          console.log('[Evidence Download] Using content-type from headers:', contentType);
+          return new Blob([blob], { type: contentType });
+        }
+      }
 
       return blob;
     } catch (error) {
+      const downloadTime = performance.now() - startTime;
+      console.error('[Evidence Download] Failed after', downloadTime.toFixed(2), 'ms:', error);
       throw this.handleError(error, 'download evidence');
     }
   }
