@@ -15,6 +15,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   UploadedFiles,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -163,24 +164,25 @@ export class EvidenceController {
 
   @Get(':id/download')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Download evidence file' })
-  @ApiResponse({
-    status: 200,
-    description: 'Evidence file downloaded successfully',
-  })
-  async downloadEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response): Promise<void> {
+  async downloadEvidence(@Param('id') id: string, @Res() res: Response,  @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    const role = claims.includes('cms_supervisor') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    const { file, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role);
+    if (!files.length) throw new NotFoundException('No files found');
 
-    res.setHeader('Content-Type', metadata.mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${metadata.fileName}"`);
-    res.setHeader('Content-Length', metadata.fileSize);
-    res.setHeader('X-Evidence-Hash', metadata.hash);
+    const file = files[0];
+    const buffer = file.file;
+    const fileName = file.attachmentMeta.fileName;
+    const mimeType = file.attachmentMeta.mimeType;
 
-    res.send(file);
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
   }
 
   @Get(':id/verify')
@@ -191,11 +193,15 @@ export class EvidenceController {
     description: 'Evidence integrity verified',
     type: VerifyEvidenceDto,
   })
-  async verifyEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<VerifyEvidenceDto> {
+  async verifyEvidence(
+    @Param('id') id: string,
+    @Param('attachmentName') attachmentName: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<VerifyEvidenceDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role);
+    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role, attachmentName);
   }
 }
