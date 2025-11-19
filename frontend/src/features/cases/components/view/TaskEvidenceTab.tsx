@@ -116,9 +116,9 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         const section = evidenceSections.find(s => s.key === sectionKey);
         if (!section) return [];
 
-        return files.map(async (file) => {
+        return files.map(async (files) => {
           const uploadDto: UploadEvidenceDto = {
-            file,
+            file: files,
             taskId,
             evidenceType: section.evidenceType,
             description: sectionComments[sectionKey] || `${section.title} evidence`,
@@ -329,16 +329,16 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
               </div>
               {sectionFiles[section.key]?.length ? (
                 <ul className="space-y-2">
-                  {sectionFiles[section.key].map((file, index) => (
+                  {sectionFiles[section.key].map((files, index) => (
                     <li
-                      key={`${file.name}-${index}`}
+                      key={`${files.name}-${index}`}
                       className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm"
                     >
                       <div className="truncate">
-                        <p className="truncate font-medium text-gray-900" title={file.name}>
-                          {file.name}
+                        <p className="truncate font-medium text-gray-900" title={files.name}>
+                          {files.name}
                         </p>
-                        <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(files.size)}</p>
                       </div>
                       {uploading[section.key] ? (
                         <span className="text-xs text-blue-600">Uploading...</span>

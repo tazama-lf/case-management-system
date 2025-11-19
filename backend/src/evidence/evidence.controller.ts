@@ -5,6 +5,7 @@ import {
   Param,
   Query,
   UseInterceptors,
+  UploadedFile,
   Body,
   UseGuards,
   Res,
@@ -12,14 +13,16 @@ import {
   BadRequestException,
   ParseFilePipe,
   MaxFileSizeValidator,
+  FileTypeValidator,
   UploadedFiles,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, RequireCMSComplianceOfficerRole, TazamaClaims } from '../auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, TazamaClaims } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
 
@@ -38,97 +41,39 @@ export class EvidenceController {
     schema: {
       type: 'object',
       properties: {
-        files: {
+        file: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
         },
         taskId: {
           type: 'string',
           description: 'Task ID',
-          example: '550e8400-e29b-41d4-a716-446655440000',
         },
         evidenceType: {
           type: 'string',
           enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER'],
           description: 'Type of evidence',
-          example: 'SANCTIONS',
         },
         tags: {
           type: 'string',
           description: 'Tags (comma-separated)',
-          example: 'kyc,screening',
         },
         description: {
           type: 'string',
           description: 'Description of evidence',
-          example: 'OFAC sanctions screening results',
         },
         comments: {
           type: 'string',
           description: 'Additional comments',
-          example: 'No matches found',
-        },
-        aggregator: {
-          type: 'string',
-          description: 'Media aggregator or tool (for ADVERSE_MEDIA)',
-          example: 'LexisNexis',
-        },
-        dateSearched: {
-          type: 'string',
-          format: 'date',
-          description: 'Date when media search was conducted (for ADVERSE_MEDIA)',
-          example: '2025-11-17',
-        },
-        keywords: {
-          type: 'string',
-          description: 'Search keywords comma-separated (for ADVERSE_MEDIA)',
-          example: 'fraud,money laundering',
-        },
-        findings: {
-          type: 'string',
-          description: 'Findings or summary (for ADVERSE_MEDIA)',
-          example: 'No adverse media found',
-        },
-        screeningDate: {
-          type: 'string',
-          format: 'date',
-          description: 'Date when screening was performed (for SANCTIONS)',
-          example: '2025-11-17',
-        },
-        tool: {
-          type: 'string',
-          description: 'External screening tool or source used (for SANCTIONS)',
-          example: 'WorldCheck',
-        },
-        summaryDisposition: {
-          type: 'string',
-          description: 'Summary of screening disposition (for SANCTIONS)',
-          example: 'Cleared',
-        },
-        submissionDate: {
-          type: 'string',
-          format: 'date',
-          description: 'Date when SAR/STR was submitted to FIU (for SAR_STR_FILING)',
-          example: '2025-11-17',
-        },
-        referenceNumber: {
-          type: 'string',
-          description: 'Reference number from FIU acknowledgment (for SAR_STR_FILING)',
-          example: 'SAR-2025-001234',
-        },
-        submissionChannel: {
-          type: 'string',
-          description: 'Submission channel (for SAR_STR_FILING)',
-          example: 'Portal',
         },
       },
-      required: ['files', 'taskId', 'evidenceType'],
+      required: ['file', 'taskID', 'type'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Evidence uploaded successfully (returns array even for single file)',
-    type: [EvidenceResponseDto],
+    description: 'Evidence uploaded successfully',
+    type: EvidenceResponseDto,
   })
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadEvidence(
@@ -219,44 +164,44 @@ export class EvidenceController {
 
   @Get(':id/download')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Download evidence file' })
-  @ApiResponse({
-    status: 200,
-    description: 'Evidence file downloaded successfully',
-  })
-  async downloadEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response): Promise<void> {
+  async downloadEvidence(@Param('id') id: string, @Res() res: Response,  @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+    const role = claims.includes('cms_supervisor') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    const { file, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role);
+    if (!files.length) throw new NotFoundException('No files found');
 
-    res.setHeader('Content-Type', metadata.mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${metadata.fileName}"`);
-    res.setHeader('Content-Length', metadata.fileSize);
-    res.setHeader('X-Evidence-Hash', metadata.hash);
+    const file = files[0];
+    const buffer = file.file;
+    const fileName = file.attachmentMeta.fileName;
+    const mimeType = file.attachmentMeta.mimeType;
 
-    res.send(file);
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
   }
 
   @Get(':id/verify')
-  @RequireCMSComplianceOfficerRole()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Verify evidence integrity' })
   @ApiResponse({
     status: 200,
     description: 'Evidence integrity verified',
     type: VerifyEvidenceDto,
   })
-  async verifyEvidence(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<VerifyEvidenceDto> {
+  async verifyEvidence(
+    @Param('id') id: string,
+    @Param('attachmentName') attachmentName: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<VerifyEvidenceDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
-      ? 'CMS_COMPLIANCE_OFFICER'
-      : claims.includes(TazamaClaims.CMS_SUPERVISOR)
-      ? 'CMS_SUPERVISOR'
-      : 'CMS_INVESTIGATOR';
-
-    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role);
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role, attachmentName);
   }
 }
