@@ -120,7 +120,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   )}
                   
                   {/* Close Case button - show for in-progress cases */}
-                  {onCloseCase && (
+                  {/* {onCloseCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
                   ) && (
@@ -132,7 +132,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       <span className="hidden lg:inline">Close Case</span>
                       <span className="lg:hidden">Close</span>
                     </button>
-                  )}
+                  )} */}
                   
                   {/* Case Closure Decision button - show for cases pending final approval */}
                   {showSupervisorControls &&
