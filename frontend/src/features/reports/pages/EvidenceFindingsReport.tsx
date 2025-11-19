@@ -6,7 +6,6 @@ import {
   DocumentIcon,
   EyeIcon,
   ArrowDownTrayIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import EvidenceFindingsStatsCards from '@/features/reports/components/EvidenceFindingsStatsCards';
 import { useEvidenceFindings } from '@/features/reports/hooks/useReports';
@@ -19,6 +18,7 @@ import {
 } from '@/shared/utils/exportUtils';
 import { usePagination } from '@/shared/hooks/usePagination';
 import type { FindingDetail } from '@/features/reports/types/reports.types';
+import { evidenceService } from '@/features/cases/services/evidenceService';
 
 const PaginationControls = React.lazy(
   () => import('@/shared/components/PaginationControls'),
@@ -48,15 +48,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'
   >('All');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    filename: string;
-    description: string;
-    evidenceId: string;
-    fileSize?: string;
-    uploadedAt?: string;
-    contentUrl?: string;
-  }>({ isOpen: false, filename: '', description: '', evidenceId: '' });
 
   // Use real data from API
   const displayData = evidenceData;
@@ -103,159 +94,80 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     }
   };
 
-  const handleViewEvidence = (filename: string, evidenceId: string = '') => {
+  const handleViewEvidence = async (filename: string, evidenceId: string = '') => {
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       const actualEvidenceId = evidenceId || filename;
-      
-      console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename, hasToken: !!token });
-      
-      if (!token) {
-        console.warn('[Evidence View] No auth token found');
-        alert('Authentication token not found. Please log in again.');
-        return;
+
+      console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename });
+
+      // Fetch the encrypted blob from CouchDB
+      const blob = await evidenceService.viewEvidence(actualEvidenceId);
+
+      console.log('[Evidence View] Blob received:', { size: blob.size, type: blob.type });
+
+      if (blob.size === 0) {
+        throw new Error('Received empty file');
       }
-      
-      // Fetch metadata from API
-      fetch(`/api/v1/evidence/${actualEvidenceId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-        .then((response) => {
-          console.log('[Evidence View] Response status:', response.status);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
-          console.log('[Evidence View] Metadata received:', data);
-          
-          // Extract real filename
-          const realFileName = data.fileName || data.file_name || filename;
-          const fileExtension = realFileName.split('.').pop()?.toLowerCase() || 'unknown';
-          const mimeType = data.mimeType || data.mime_type || 'application/octet-stream';
-          
-          // Get file size
-          const fileSizeBytes = data.fileSize || data.file_size || 0;
-          const fileSize = fileSizeBytes 
-            ? `${(fileSizeBytes / 1024 / 1024).toFixed(2)} MB` 
-            : 'Unknown';
-          
-          // Get upload date
-          const uploadedAt = (data.uploadedAt || data.uploaded_at)
-            ? new Date(data.uploadedAt || data.uploaded_at).toLocaleString('en-GB')
-            : 'Unknown';
-          
-          // Get evidence type
-          const evidenceType = data.evidenceType || data.mimeType || 'Document';
-          
-          // Create preview URL
-          const contentUrl = `/api/v1/evidence/${actualEvidenceId}/download`;
-          
-          console.log('[Evidence View] Setting modal with:', { fileExtension, mimeType, fileSize });
-          
-          setModalState({
-            isOpen: true,
-            filename: realFileName,
-            description: evidenceType,
-            evidenceId: actualEvidenceId,
-            fileSize,
-            uploadedAt,
-            contentUrl,
-          });
-        })
-        .catch((err) => {
-          console.error('[Evidence View] Error fetching metadata:', err);
-          alert(`Failed to fetch evidence metadata: ${err.message}`);
-        });
+
+      // Create blob URL and open in new tab
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+      console.log('[Evidence View] Opened blob URL in new tab:', blobUrl);
+
+      // Clean up after delay
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        console.log('[Evidence View] Cleaned up blob URL');
+      }, 10000);
     } catch (err) {
       console.error('[Evidence View] Error:', err);
-      alert(`Failed to view document: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(`Failed to view evidence: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
-  const handleDownloadEvidence = (evidenceId: string) => {
+  const handleDownloadEvidence = async (evidenceId: string) => {
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const url = `/api/v1/evidence/${evidenceId}/download`;
-      
-      console.log('[Evidence Download] Starting download:', { evidenceId, hasToken: !!token });
-      
-      if (!token) {
-        console.warn('[Evidence Download] No auth token found');
-        alert('Authentication token not found. Please log in again.');
-        return;
+      console.log('[Evidence Download] Starting download:', { evidenceId });
+
+      // First get the evidence metadata to get the real filename
+      const metadata = await evidenceService.getEvidenceById(evidenceId);
+      const downloadFilename = metadata.fileName || 'evidence';
+
+      console.log('[Evidence Download] Fetching file blob for:', downloadFilename);
+
+      // Use evidenceService to download with proper auth handling
+      const blob = await evidenceService.downloadEvidence(evidenceId);
+
+      if (blob.size === 0) {
+        throw new Error('Received empty file from server');
       }
-      
-      fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-        .then((response) => {
-          console.log('[Evidence Download] Response status:', response.status);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          
-          // Get filename from response headers - backend provides this
-          const contentDisposition = response.headers.get('content-disposition');
-          let downloadFilename = 'evidence';
-          
-          if (contentDisposition) {
-            // Extract filename from: attachment; filename="real-filename.pdf"
-            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-            if (filenameMatch && filenameMatch[1]) {
-              downloadFilename = filenameMatch[1];
-            }
-          }
-          
-          console.log('[Evidence Download] Filename from headers:', downloadFilename);
-          
-          return response.blob().then(blob => {
-            if (blob.size === 0) {
-              throw new Error('Received empty file from server');
-            }
-            console.log('[Evidence Download] Blob received, size:', blob.size);
-            return { blob, downloadFilename };
-          });
-        })
-        .then(({ blob, downloadFilename }) => {
-          const blobUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = downloadFilename;
-          link.setAttribute('style', 'display: none');
-          document.body.appendChild(link);
-          
-          console.log('[Evidence Download] Triggering download:', downloadFilename);
-          link.click();
-          
-          // Clean up
-          setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(blobUrl);
-            console.log('[Evidence Download] Download completed and cleaned up');
-          }, 100);
-        })
-        .catch((err) => {
-          console.error('[Evidence Download] Download failed:', err);
-          alert(`Failed to download file: ${err.message}`);
-        });
+
+      console.log('[Evidence Download] Blob received, size:', blob.size);
+
+      // Create download link
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = downloadFilename;
+      link.setAttribute('style', 'display: none');
+      document.body.appendChild(link);
+
+      console.log('[Evidence Download] Triggering download:', downloadFilename);
+      link.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        console.log('[Evidence Download] Download completed and cleaned up');
+      }, 100);
     } catch (err) {
-      console.error('[Evidence Download] Error:', err);
-      alert(`Download error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('[Evidence Download] Download failed:', err);
+      alert(`Failed to download file: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
-  const closeModal = () => {
-    setModalState({ isOpen: false, filename: '', description: '', evidenceId: '' });
-  };
 
   const {
     stats = {
@@ -716,137 +628,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                   </div>
                 )}
               </div>
-
-              {/* Evidence Modal */}
-              {modalState.isOpen && (
-                <>
-                  {/* Modal Backdrop */}
-                  <div
-                    className="fixed inset-0 bg-black/50 z-40"
-                    onClick={closeModal}
-                  />
-
-                  {/* Modal Dialog */}
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                    <div
-                      className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Modal Header */}
-                      <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
-                        <div className="flex-1 pr-4">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {modalState.filename}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {modalState.description}
-                          </p>
-                        </div>
-                        <button
-                          onClick={closeModal}
-                          className="flex-shrink-0 inline-flex items-center justify-center p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          aria-label="Close modal"
-                        >
-                          <XMarkIcon className="h-6 w-6" />
-                        </button>
-                      </div>
-
-                      {/* Modal Content */}
-                      <div className="flex-1 overflow-y-auto p-6">
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                          <p className="text-sm text-gray-700">
-                            <strong>File:</strong> {modalState.filename}
-                          </p>
-                          <p className="text-sm text-gray-600 mt-2">
-                            {modalState.fileSize || 'Unknown size'} • {modalState.uploadedAt || 'Unknown date'}
-                          </p>
-                          <p className="text-sm text-gray-700 mt-3 italic">
-                            {modalState.description}
-                          </p>
-                        </div>
-
-                        <div className="bg-white rounded-lg border border-gray-300 min-h-[450px] flex items-center justify-center overflow-auto">
-                          {modalState.contentUrl && (
-                            <>
-                              {modalState.filename?.toLowerCase().endsWith('.pdf') ? (
-                                <iframe
-                                  src={`${modalState.contentUrl}#toolbar=1&navpanes=0`}
-                                  className="w-full h-[450px] rounded"
-                                  title="PDF Preview"
-                                  onError={() => {
-                                    console.warn('[Evidence Modal] PDF preview failed to load');
-                                  }}
-                                />
-                              ) : (
-                                <>
-                                  {['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(
-                                    modalState.filename?.split('.').pop()?.toLowerCase() || '',
-                                  ) ? (
-                                    <div className="flex items-center justify-center p-4 max-w-full">
-                                      <img
-                                        src={modalState.contentUrl}
-                                        alt={modalState.filename}
-                                        className="max-h-[450px] max-w-full object-contain rounded"
-                                        onError={() => {
-                                          console.warn('[Evidence Modal] Image preview failed to load');
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="text-center p-8">
-                                      <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-600 font-medium mb-2">
-                                        {modalState.filename?.split('.').pop()?.toUpperCase() || 'FILE'}
-                                      </p>
-                                      <p className="text-sm text-gray-500">
-                                        Preview not available for this file type
-                                      </p>
-                                      <p className="text-sm text-gray-400 mt-1">
-                                        Use Download button to open the file
-                                      </p>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </>
-                          ) || (
-                            <div className="text-center p-8">
-                              <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                              <p className="text-gray-600 font-medium mb-2">
-                                {modalState.filename?.split('.').pop()?.toUpperCase() || 'FILE'}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                Unable to load preview
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Modal Footer */}
-                      <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-                        <button
-                          onClick={closeModal}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          Close
-                        </button>
-                        <button
-                          onClick={() => {
-                            console.log('[Evidence Modal] Download button clicked, evidenceId:', modalState.evidenceId);
-                            handleDownloadEvidence(modalState.evidenceId || modalState.filename);
-                            closeModal();
-                          }}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 rounded-lg text-sm font-medium text-white hover:bg-green-700 transition-colors"
-                        >
-                          <ArrowDownTrayIcon className="h-4 w-4" />
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         </div>
