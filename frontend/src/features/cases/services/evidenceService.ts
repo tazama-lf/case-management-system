@@ -20,7 +20,7 @@ export class EvidenceService {
   ): Promise<UploadEvidenceResponse> {
     try {
       const formData = new FormData();
-      formData.append('file', data.file);
+      formData.append('files', data.file);
       formData.append('taskId', data.taskId);
       formData.append('evidenceType', data.evidenceType);
 
