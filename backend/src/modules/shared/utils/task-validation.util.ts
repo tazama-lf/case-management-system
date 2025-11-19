@@ -29,11 +29,11 @@ export interface TaskFilterOptions {
 export class TaskValidationUtil {
   static readonly TASK_NAMES = {
     INVESTIGATE_CASE: ['Investigate Case', 'Investigate case'],
-    APPROVE_CASE_CLOSURE: 'Approve case closure',
+    APPROVE_CASE_CLOSURE: 'approve case closure',
   } as const;
 
   static findApprovalTask(tasks: Task[]): Task | undefined {
-    return tasks.find((task) => task.name === TaskValidationUtil.TASK_NAMES.APPROVE_CASE_CLOSURE);
+    return tasks.find((task) => task.name?.toLowerCase() === TaskValidationUtil.TASK_NAMES.APPROVE_CASE_CLOSURE);
   }
 
   static filterTasks(tasks: Task[], options: TaskFilterOptions = {}): Task[] {
@@ -60,7 +60,7 @@ export class TaskValidationUtil {
   ): TaskValidationResult & { approvalTask?: Task } {
     const errors: string[] = [];
     const approvalTask = TaskValidationUtil.findApprovalTask(tasks);
-
+console.log(approvalTask, "<=======APPROVAL TASK");
     if (!approvalTask) {
       errors.push('Approval task not found');
     } else {

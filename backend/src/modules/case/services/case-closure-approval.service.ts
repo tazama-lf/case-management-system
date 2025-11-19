@@ -705,16 +705,29 @@ export class CaseClosureApprovalService {
                     },
                 });
 
-                const updatedInvestigationTask = await tx.task.update({
-                    where: { task_id: originalInvestigationTask.task_id },
+                // Create new investigation task assigned to the user who requested approval
+                const newInvestigationTask = await tx.task.create({
                     data: {
-                        status: TaskStatus.STATUS_20_IN_PROGRESS,
+                        case_id: caseId,
+                        name: TASK_NAMES.INVESTIGATE_CASE,
+                        description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
+                        status: TaskStatus.STATUS_10_ASSIGNED,
                         assigned_user_id: originalInvestigatorId,
+                        created_at: new Date(),
                         updated_at: new Date(),
                     },
                 });
 
-                return { updatedCase, completedTask, updatedInvestigationTask };
+                // Add supervisor feedback as comment on new investigation task
+                await tx.comment.create({
+                    data: {
+                        user_id: supervisorId,
+                        task_id: newInvestigationTask.task_id,
+                        note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
+                    },
+                });
+
+                return { updatedCase, completedTask, newInvestigationTask };
             });
 
             this.flowableService.handleTaskCompleted({
@@ -727,27 +740,19 @@ export class CaseClosureApprovalService {
                 },
             });
 
-            // const newInvestigationTask = await this.taskService.createTask(
-            //     {
-            //       caseId,
-            //       status: TaskStatus.STATUS_10_ASSIGNED,
-            //       assignedUserId: originalInvestigatorId,
-            //       name: 'Investigate Case',
-            //       description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
-            //       candidateGroup: 'investigations',
-            //     },
-            //     supervisorId,
-            //     this.auditLogService,
-            //     this.logger,
-            // );
-
-            // await this.prismaService.comment.create({
-            //   data: {
-            //     user_id: supervisorId,
-            //     task_id: newInvestigationTask.task_id,
-            //     note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
-            //   },
-            // });
+            // Notify workflow engine about new investigation task creation
+            this.flowableService.handleTaskStatusChanged({
+                taskId: result.newInvestigationTask.task_id,
+                caseId,
+                taskName: result.newInvestigationTask.name || 'Investigate Case',
+                oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
+                newStatus: TaskStatus.STATUS_10_ASSIGNED,
+                assignedUserId: originalInvestigatorId,
+                completionVariables: {
+                    reason: 'Case closure rejected by supervisor',
+                    supervisorComments: comments,
+                },
+            });
 
             this.flowableService.handleCaseStatusChanged({
                 caseId,
@@ -763,30 +768,30 @@ export class CaseClosureApprovalService {
                     message: `Your case closure for case ${caseId} was rejected by supervisor`,
                     metadata: {
                         caseId,
-                        taskId: originalInvestigationTask.task_id,
+                        taskId: result.newInvestigationTask.task_id,
                         supervisorComments: comments,
                         rejectedBy: supervisorId,
                     },
                 });
             } catch (notificationError) {
-                this.logger.warn(`Failed to send investigator notification: ${notificationError.message}`, CaseClosureApprovalService.name);
+                this.logger.warn(`Failed to send notification to requesting user: ${notificationError.message}`, CaseClosureApprovalService.name);
             }
 
             await this.auditLogService.logAction({
                 userId: supervisorId,
                 operation: 'rejectCaseClosure',
                 entityName: CaseClosureApprovalService.name,
-                actionPerformed: `Case ${caseId} closure rejected and reassigned to investigator ${originalInvestigatorId}`,
+                actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
                 outcome: Outcome.SUCCESS,
             });
 
             this.logger.log(
-                `Case ${caseId} closure rejected successfully. Investigation task ${originalInvestigationTask.task_id} updated back to in progress`,
+                `Case ${caseId} closure rejected successfully. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
                 CaseClosureApprovalService.name,
             );
 
             return {
-                message: 'Case closure rejected and returned for investigation',
+                message: 'Case closure rejected and new investigation task created',
                 case: {
                     case_id: result.updatedCase.case_id,
                     status: result.updatedCase.status,
@@ -797,10 +802,10 @@ export class CaseClosureApprovalService {
                     status: result.completedTask.status,
                 },
                 investigation_task: {
-                    task_id: originalInvestigationTask.task_id,
-                    name: originalInvestigationTask.name,
+                    task_id: result.newInvestigationTask.task_id,
+                    name: result.newInvestigationTask.name,
                     assigned_to: originalInvestigatorId,
-                    status: originalInvestigationTask.status,
+                    status: result.newInvestigationTask.status,
                 },
             };
         } catch (error) {
@@ -900,7 +905,7 @@ export class CaseClosureApprovalService {
             requireClaim: Boolean(supervisorId),
             expectedAssignee: supervisorId,
         });
-
+        
         const shouldAttemptAutoClaim =
             options.autoClaimApprovalTask &&
             Boolean(supervisorId) &&
