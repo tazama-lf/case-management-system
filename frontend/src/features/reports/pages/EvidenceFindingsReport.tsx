@@ -620,14 +620,12 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                           {/* Evidence details grid */}
                                           {evidenceObj && (
                                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                              {evidenceObj.fileSize && (
-                                                <div>
-                                                  <span className="text-gray-500 font-medium">Size:</span>
-                                                  <span className="text-gray-700 ml-1">
-                                                    {(evidenceObj.fileSize / 1024 / 1024).toFixed(2)} MB
-                                                  </span>
-                                                </div>
-                                              )}
+                                              <div>
+                                                <span className="text-gray-500 font-medium">Size:</span>
+                                                <span className="text-gray-700 ml-1">
+                                                  {evidenceService.formatFileSize(evidenceObj.fileSize || 0)}
+                                                </span>
+                                              </div>
                                               {evidenceObj.mimeType && (
                                                 <div>
                                                   <span className="text-gray-500 font-medium">Type:</span>
@@ -660,12 +658,12 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                                   <span className="text-gray-700 ml-1 font-mono">{evidenceObj.uploadedBy}</span>
                                                 </div>
                                               )}
-                                              {evidenceObj.hash && (
+                                              {/* {evidenceObj.hash && (
                                                 <div className="col-span-2">
                                                   <span className="text-gray-500 font-medium">Hash:</span>
                                                   <span className="text-gray-700 ml-1 font-mono text-xs truncate">{evidenceObj.hash}</span>
                                                 </div>
-                                              )}
+                                              )} */}
                                             </div>
                                           )}
                                         </div>

@@ -18,13 +18,16 @@ export class EvidenceService {
   private normalizeEvidenceData(evidence: any): any {
     if (!evidence) return evidence;
 
-    // If attachments array exists, extract data from first attachment
     const firstAttachment = evidence.attachments?.[0];
+
+    const totalFileSize = evidence.fileSize ?? 
+      (evidence.attachments?.reduce((sum: number, att: any) => sum + (att.fileSize || 0), 0) || 0);
 
     return {
       ...evidence,
       fileName: evidence.fileName || firstAttachment?.fileName || 'unknown',
-      fileSize: evidence.fileSize || firstAttachment?.fileSize || 0,
+      fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
+      file_size: evidence.file_size ? evidence.file_size : totalFileSize,
       mimeType: evidence.mimeType || firstAttachment?.mimeType || 'application/octet-stream',
       hash: evidence.hash || firstAttachment?.hash || '',
     };
