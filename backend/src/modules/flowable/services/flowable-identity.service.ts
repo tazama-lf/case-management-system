@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableApiEndpoints } from '../constants/flowable-api.constants';
+import { FlowableClientFactory } from './flowable-client.factory';
 
 /**
  * Service responsible for Flowable identity and group management
@@ -9,14 +10,21 @@ import { FlowableApiEndpoints } from '../constants/flowable-api.constants';
  */
 @Injectable()
 export class FlowableIdentityService {
-  constructor(private readonly logger: LoggerService) {}
+  private readonly flowableClient: AxiosInstance;
+
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly clientFactory: FlowableClientFactory,
+  ) {
+    this.flowableClient = this.clientFactory.getClient();
+  }
 
   /**
    * Add a user to a Flowable identity group
    */
-  async addUserToGroup(flowableClient: AxiosInstance, groupId: string, userId: string) {
+  async addUserToGroup(groupId: string, userId: string) {
     try {
-      const response = await flowableClient.post(FlowableApiEndpoints.GROUP_MEMBERS(groupId), {
+      const response = await this.flowableClient.post(FlowableApiEndpoints.GROUP_MEMBERS(groupId), {
         userId,
       });
       return response.data;
@@ -34,9 +42,9 @@ export class FlowableIdentityService {
   /**
    * Remove a user from a Flowable identity group
    */
-  async removeUserFromGroup(flowableClient: AxiosInstance, groupId: string, userId: string) {
+  async removeUserFromGroup(groupId: string, userId: string) {
     try {
-      await flowableClient.delete(FlowableApiEndpoints.GROUP_MEMBER(groupId, userId));
+      await this.flowableClient.delete(FlowableApiEndpoints.GROUP_MEMBER(groupId, userId));
     } catch (error) {
       if (error.response?.status === 404) {
         // Not a member; ignore
@@ -50,9 +58,9 @@ export class FlowableIdentityService {
   /**
    * Create a new Flowable group
    */
-  async createGroup(flowableClient: AxiosInstance, groupData: { id: string; name: string; type: string }) {
+  async createGroup(groupData: { id: string; name: string; type: string }) {
     try {
-      const response = await flowableClient.post(FlowableApiEndpoints.GROUPS, groupData);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.GROUPS, groupData);
       return response.data;
     } catch (error) {
       if (error.response?.status === 409) {
@@ -66,9 +74,9 @@ export class FlowableIdentityService {
   /**
    * Get a group by ID
    */
-  async getGroup(flowableClient: AxiosInstance, groupId: string) {
+  async getGroup(groupId: string) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.GROUP(groupId));
+      const response = await this.flowableClient.get(FlowableApiEndpoints.GROUP(groupId));
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -83,7 +91,7 @@ export class FlowableIdentityService {
    */
   async getAllCandidateGroups(flowableClient: AxiosInstance) {
     try {
-      const response = await flowableClient.get(FlowableApiEndpoints.GROUPS, {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.GROUPS, {
         params: {
           type: 'candidate',
         },
@@ -129,3 +137,4 @@ export class FlowableIdentityService {
     }
   }
 }
+

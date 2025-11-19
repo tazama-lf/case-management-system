@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../../prisma/prisma.service';
-import { TaskService } from '../../task/task.service';
-import { FlowableService } from '../flowable.service';
+import { FlowableTaskService } from './flowable-task.service';
 import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
 import { AuditLogService } from '../../audit/auditLog.service';
 import { TaskStatus } from '@prisma/client';
+import { CaseRepository } from '../../repository/case.repository';
+import { TaskRepository } from 'src/modules/repository/task.repository';
 
 /**
  * Service responsible for synchronizing BPMN-created tasks with PostgreSQL
@@ -14,11 +15,11 @@ import { TaskStatus } from '@prisma/client';
 @Injectable()
 export class BpmnSyncService {
   constructor(
-    private readonly flowableService: FlowableService,
+    private readonly flowableTaskService: FlowableTaskService,
     private readonly utilitiesService: FlowableUtilitiesService,
-    private readonly taskService: TaskService,
     private readonly auditLogService: AuditLogService,
-    private readonly prismaService: PrismaService,
+    private readonly caseRepository: CaseRepository,
+    private readonly taskRepository: TaskRepository,
     private readonly logger: LoggerService,
   ) {}
 
@@ -29,7 +30,7 @@ export class BpmnSyncService {
    */
   async syncAllTasksForCase(caseId: string, processInstanceId: string): Promise<void> {
     try {
-      const flowableTasks = await this.flowableService.getProcessTasks(processInstanceId);
+      const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstanceId);
 
       this.logger.log(`[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`, BpmnSyncService.name);
 
@@ -55,12 +56,10 @@ export class BpmnSyncService {
 
     try {
       // Check if already synced
-      const taskVariables = await this.flowableService.getTaskVariables(taskId);
+      const taskVariables = await this.utilitiesService.getTaskVariables(taskId);
 
       if (taskVariables.postgres_task_id) {
-        const dbTask = await this.prismaService.task.findUnique({
-          where: { task_id: taskVariables.postgres_task_id },
-        });
+        const dbTask = await this.taskRepository.findTaskById(taskVariables.postgres_task_id);
 
         if (dbTask) {
           this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, BpmnSyncService.name);
@@ -74,9 +73,7 @@ export class BpmnSyncService {
       }
 
       // Verify case exists
-      const dbCase = await this.prismaService.case.findUnique({
-        where: { case_id: caseId },
-      });
+      const dbCase = await this.caseRepository.findCaseById(caseId);
 
       if (!dbCase) {
         this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, BpmnSyncService.name);
@@ -89,7 +86,7 @@ export class BpmnSyncService {
       const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
 
       // Create database task
-      const dbTask = await this.taskService.createTask(
+      const dbTask = await this.utilitiesService.createTask(
         {
           caseId,
           status: taskStatus,
@@ -110,7 +107,7 @@ export class BpmnSyncService {
         candidate_group: dbTask.candidateGroup || '',
       };
 
-      await this.flowableService.setTaskVariables(taskId, variables);
+      await this.flowableTaskService.setTaskVariables(taskId, variables);
 
       this.logger.log(
         `[BPMN-Sync] ✓ Synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,

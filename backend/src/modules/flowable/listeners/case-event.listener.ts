@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableService } from '../flowable.service';
 import { BpmnSyncService } from '../services/bpmn-sync.service';
 import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
 import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
+import { FlowableProcessService } from '../services/flowable-process.service';
 
 /**
  * Listener for case-related domain events
@@ -13,7 +13,7 @@ import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspe
 @Injectable()
 export class CaseEventListener {
   constructor(
-    private readonly flowableService: FlowableService,
+    private readonly flowableProcessService: FlowableProcessService,
     private readonly logger: LoggerService,
     private readonly flowableUtilitiesService: FlowableUtilitiesService,
     private readonly bpmnSyncService: BpmnSyncService,
@@ -38,7 +38,7 @@ export class CaseEventListener {
         CaseEventListener.name,
       );
 
-      const processInstance = await this.flowableService.startProcessInstance(
+      const processInstance = await this.flowableProcessService.startProcessInstance(
         'caseManagementProcess',
         {
           caseId: event.caseId,
@@ -95,7 +95,7 @@ export class CaseEventListener {
         CaseEventListener.name,
       );
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
         this.logger.warn(`[CaseEventListener] No Flowable process found for case ${event.caseId}`, CaseEventListener.name);
@@ -103,17 +103,17 @@ export class CaseEventListener {
       }
 
       try {
-        await this.flowableService.updateProcessVariable(processInstance.id as string, 'case_status', event.newStatus);
+        await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'case_status', event.newStatus);
 
-        await this.flowableService.updateProcessVariable(
+        await this.flowableProcessService.updateProcessVariable(
           processInstance.id as string,
           'status_change_reason',
           event.reason || 'Status updated',
         );
 
-        await this.flowableService.updateProcessVariable(processInstance.id as string, 'status_changed_at', new Date().toISOString());
+        await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'status_changed_at', new Date().toISOString());
 
-        await this.flowableService.updateProcessVariable(processInstance.id as string, 'previous_status', event.oldStatus);
+        await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'previous_status', event.oldStatus);
 
         this.logger.log(
           `[CaseEventListener] ✓ Updated Flowable process ${processInstance.id} status for case ${event.caseId}: ${event.oldStatus} → ${event.newStatus}`,
@@ -143,10 +143,10 @@ export class CaseEventListener {
     try {
       this.logger.log(`[CaseEventListener] Processing case abandonment for case ${event.caseId}`, CaseEventListener.name);
 
-      const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(event.caseId);
+      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (processInstance) {
-        await this.flowableService.terminateProcessInstance(processInstance.id as string, `Case abandoned: ${event.reason}`);
+        await this.flowableProcessService.terminateProcessInstance(processInstance.id as string, `Case abandoned: ${event.reason}`);
         this.logger.log(
           `[CaseEventListener] ✓ Terminated Flowable process ${processInstance.id} for abandoned case ${event.caseId}`,
           CaseEventListener.name,
