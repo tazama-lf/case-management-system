@@ -711,13 +711,13 @@ export class CaseService {
           ),
         );
 
-        // Auto-generate SAR/STR Filing task if case is confirmed
+        // Auto-generate SAR_STR_FILING task if case is confirmed
         if (finalStatus === CaseStatus.STATUS_82_CLOSED_CONFIRMED) {
           try {
             await this.createSARFilingTask(caseId, tenantId, userId);
-            this.logger.log(`Auto-generated SAR/STR Filing task for confirmed case ${caseId}`, CaseService.name);
+            this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseService.name);
           } catch (error) {
-            this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+            this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
           }
         }
 
@@ -1659,9 +1659,9 @@ export class CaseService {
       if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
         try {
           await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
-          this.logger.log(`Auto-generated SAR/STR Filing task for confirmed case ${caseId}`, CaseService.name);
+            this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseService.name);
         } catch (error) {
-          this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+          this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
         }
       }
 
@@ -2732,7 +2732,7 @@ export class CaseService {
 
   
   private async createSARFilingTask(caseId: string, tenantId: string, userId: string): Promise<void> {
-    this.logger.log(`Creating SAR/STR Filing task for case ${caseId}`, CaseService.name);
+    this.logger.log(`Creating SAR_STR_FILING task for case ${caseId}`, CaseService.name);
 
     try {
      
@@ -2744,7 +2744,7 @@ export class CaseService {
       });
 
       if (existingSARTask) {
-        this.logger.log(`SAR/STR Filing task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseService.name);
+        this.logger.log(`SAR_STR_FILING task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseService.name);
         return;
       }
 
@@ -2765,7 +2765,7 @@ export class CaseService {
           connect: { case_id: caseId },
         },
         status: TaskStatus.STATUS_01_UNASSIGNED,
-        name: 'SAR/STR Filing',
+        name: 'SAR_STR_FILING',
         description:
           'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
         task_type: 'SAR_STR_FILING',
@@ -2789,7 +2789,7 @@ export class CaseService {
         new TaskCreatedEvent(
           sarTask.task_id,
           caseId,
-          sarTask.name || 'SAR/STR Filing',
+          sarTask.name || 'SAR_STR_FILING',
           sarTask.description || 'Upload SAR/STR acknowledgment from FIU',
           sarTask.candidateGroup || 'compliance',
           sarTask.status,
@@ -2801,20 +2801,20 @@ export class CaseService {
         userId,
         operation: 'createSARTask',
         entityName: CaseService.name,
-        actionPerformed: `Auto-generated SAR/STR Filing task ${sarTask.task_id} for confirmed case ${caseId}`,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Successfully created SAR/STR Filing task ${sarTask.task_id} for case ${caseId}`, CaseService.name);
+      this.logger.log(`Successfully created SAR_STR_FILING task ${sarTask.task_id} for case ${caseId}`, CaseService.name);
     } catch (error) {
      
-      this.logger.error(`Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
+        this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseService.name);
 
       await this.auditLogService.logAction({
         userId,
         operation: 'createSARTask',
         entityName: CaseService.name,
-        actionPerformed: `Failed to create SAR/STR Filing task for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
         outcome: Outcome.FAILURE,
       });
     }

@@ -12,6 +12,7 @@ import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { TaskStatus } from '@prisma/client';
 
 @Injectable()
 export class EvidenceService {
@@ -82,6 +83,18 @@ export class EvidenceService {
       metadata.screeningDate = dto.screeningDate;
       metadata.tool = dto.tool;
       metadata.summaryDisposition = dto.summaryDisposition;
+    }
+    if (dto.evidenceType === 'SAR_STR_FILING') {
+      metadata.submissionDate = dto.submissionDate;
+      metadata.referenceNumber = dto.referenceNumber;
+      metadata.submissionChannel = dto.submissionChannel;
+
+      await this.prisma.task.update({
+        where: { task_id: dto.taskId },
+        data: {
+          status: TaskStatus.STATUS_30_COMPLETED,
+        },
+      });
     }
 
     const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
@@ -191,7 +204,7 @@ export class EvidenceService {
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;
-    console.log("targets: ", targets);
+    
 
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 
