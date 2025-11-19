@@ -5,7 +5,6 @@ import {
   Param,
   Query,
   UseInterceptors,
-  UploadedFile,
   Body,
   UseGuards,
   Res,
@@ -13,7 +12,6 @@ import {
   BadRequestException,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
   UploadedFiles,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -21,7 +19,7 @@ import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, TazamaClaims } from '../auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireCMSComplianceOfficerRole, TazamaClaims } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
 
@@ -40,7 +38,7 @@ export class EvidenceController {
     schema: {
       type: 'object',
       properties: {
-        file: {
+        files: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
         },
@@ -242,7 +240,7 @@ export class EvidenceController {
   }
 
   @Get(':id/verify')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireCMSComplianceOfficerRole()
   @ApiOperation({ summary: 'Verify evidence integrity' })
   @ApiResponse({
     status: 200,
@@ -253,7 +251,12 @@ export class EvidenceController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
+      ? 'CMS_COMPLIANCE_OFFICER'
+      : claims.includes(TazamaClaims.CMS_SUPERVISOR)
+      ? 'CMS_SUPERVISOR'
+      : 'CMS_INVESTIGATOR';
+
     return this.evidenceService.verifyEvidence(id, clientId, tenantId, role);
   }
 }

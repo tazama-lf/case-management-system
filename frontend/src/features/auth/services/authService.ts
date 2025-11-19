@@ -257,6 +257,10 @@ class AuthService {
     return this.hasBackendClaim('CMS_ADMIN');
   }
 
+  hasCMSComplianceOfficerRole(): boolean {
+    return this.hasBackendClaim('CMS_COMPLIANCE_OFFICER');
+  }
+
   /**
    * @deprecated Legacy admin check. Use hasCMSAdminRole() for CMS_ADMIN role.
    * This checks for legacy admin roles (alert-triage or CMS-TEST-ROLE).
@@ -279,7 +283,7 @@ class AuthService {
    * @returns true if user has at least one valid CMS role
    */
   validateBackendAccess(): boolean {
-    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN'];
+    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN', 'CMS_COMPLIANCE_OFFICER'];
 
     return this.hasAnyRole(validRoles);
   }

@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { TaskStatus } from '@prisma/client';
 import { CouchdbService } from '../couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
@@ -110,9 +111,28 @@ export class EvidenceService {
       userId,
       operation: 'upload',
       entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_UPLOADED',
+      actionPerformed: `EVIDENCE_UPLOADED | evidenceId=${evidenceId} | taskId=${dto.taskId}`,
       outcome: 'SUCCESS',
     });
+
+    if (dto.evidenceType === 'SAR_STR_FILING') {
+      try {
+        await this.prisma.task.update({
+          where: { task_id: dto.taskId },
+          data: { status: TaskStatus.STATUS_30_COMPLETED, completed_at: new Date() },
+        });
+
+        await this.auditLog.logAction({
+          userId,
+          operation: 'task',
+          entityName: 'Task',
+          actionPerformed: `SAR_TASK_AUTO_COMPLETED | taskId=${dto.taskId} | evidenceId=${evidenceId}`,
+          outcome: 'SUCCESS',
+        });
+      } catch (err) {
+        this.logger.error(`Failed to auto-complete SAR task ${dto.taskId}: ${err?.message ?? err}`);
+      }
+    }
 
     return metadata;
   }
@@ -146,7 +166,7 @@ export class EvidenceService {
       userId,
       operation: 'view',
       entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_VIEWED',
+      actionPerformed: `EVIDENCE_VIEWED | evidenceId=${evidenceId}`,
       outcome: 'SUCCESS',
     });
 
@@ -186,31 +206,47 @@ export class EvidenceService {
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     try {
-      const encryptedFile = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
+      // support two possible document shapes:
+      // 1) legacy/top-level fields: evidenceDoc.fileName, evidenceDoc.encryption_key, evidenceDoc.encryption_meta, evidenceDoc.hash
+      // 2) attachments array: evidenceDoc.attachments[0].fileName, .encryption.{key,iv,authTag}, .hash
+      const attachment = (evidenceDoc.attachments && evidenceDoc.attachments.length > 0)
+        ? evidenceDoc.attachments[0]
+        : null;
+
+      const fileName = evidenceDoc.fileName || attachment?.fileName;
+      const expectedHash = evidenceDoc.hash || attachment?.hash;
+      const encryptionKey = evidenceDoc.encryption_key || attachment?.encryption?.key;
+      const encryptionIv = evidenceDoc.encryption_meta?.iv || attachment?.encryption?.iv;
+      const encryptionAuthTag = evidenceDoc.encryption_meta?.authTag || attachment?.encryption?.authTag;
+
+      if (!fileName || !expectedHash || !encryptionKey || !encryptionIv || !encryptionAuthTag) {
+        this.logger.error(`Missing attachment or encryption metadata for evidenceId=${evidenceId}`);
+        throw new NotFoundException('Encrypted file or metadata not found');
+      }
+
+      const encryptedFile = await this.couchdb.getAttachment(evidenceId, fileName);
       if (!encryptedFile) {
-        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${evidenceDoc.fileName}`);
+        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${fileName}`);
         throw new NotFoundException('Encrypted file not found');
       }
+
       const encryptedBuffer = Buffer.isBuffer(encryptedFile) ? encryptedFile : Buffer.from(encryptedFile);
 
-      const file = this.decrypt(
-        encryptedBuffer,
-        evidenceDoc.encryption_key,
-        evidenceDoc.encryption_meta.iv,
-        evidenceDoc.encryption_meta.authTag,
-      );
-
-      const currentHash = this.sha256(file);
-      if (currentHash !== evidenceDoc.hash) {
-        this.logger.error(`Hash mismatch for ${evidenceId}. Expected: ${evidenceDoc.hash}, Got: ${currentHash}`);
+      // Verify hash over the encrypted bytes (stored at upload time as sha256(encrypted))
+      const currentHash = this.sha256(encryptedBuffer);
+      if (currentHash !== expectedHash) {
+        this.logger.error(`Encrypted-hash mismatch for ${evidenceId}. Expected: ${expectedHash}, Got: ${currentHash}`);
         throw new BadRequestException('Evidence integrity check failed');
       }
+
+      // Decrypt after integrity of the encrypted blob has been confirmed
+      const file = this.decrypt(encryptedBuffer, encryptionKey, encryptionIv, encryptionAuthTag);
 
       await this.auditLog.logAction({
         userId,
         operation: 'download',
         entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_DOWNLOADED',
+        actionPerformed: `EVIDENCE_DOWNLOADED | evidenceId=${evidenceId} | taskId=${evidenceDoc.taskId}`,
         outcome: 'SUCCESS',
       });
 
@@ -219,11 +255,11 @@ export class EvidenceService {
         metadata: {
           id: evidenceDoc.evidenceId,
           taskId: evidenceDoc.taskId,
-          fileName: evidenceDoc.fileName,
+          fileName: fileName,
           evidenceType: evidenceDoc.evidenceType,
-          fileSize: Number(evidenceDoc.fileSize),
-          mimeType: evidenceDoc.mimeType,
-          hash: evidenceDoc.hash,
+          fileSize: Number(attachment?.fileSize || evidenceDoc.fileSize || 0),
+          mimeType: attachment?.mimeType || evidenceDoc.mimeType,
+          hash: expectedHash,
           uploadedBy: evidenceDoc.uploadedBy,
           uploadedAt: evidenceDoc.uploadedAt,
           tags: evidenceDoc.tags,
@@ -250,26 +286,45 @@ export class EvidenceService {
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     try {
-      const encryptedFile = await this.couchdb.getAttachment(evidenceId, evidenceDoc.fileName);
-      const file = this.decrypt(
-        encryptedFile,
-        evidenceDoc.encryption_key,
-        evidenceDoc.encryption_meta.iv,
-        evidenceDoc.encryption_meta.authTag,
-      );
-      const verified = this.sha256(file) === evidenceDoc.hash;
+      const attachment = (evidenceDoc.attachments && evidenceDoc.attachments.length > 0)
+        ? evidenceDoc.attachments[0]
+        : null;
+
+      const fileName = evidenceDoc.fileName || attachment?.fileName;
+      const expectedHash = evidenceDoc.hash || attachment?.hash;
+      const encryptionKey = evidenceDoc.encryption_key || attachment?.encryption?.key;
+      const encryptionIv = evidenceDoc.encryption_meta?.iv || attachment?.encryption?.iv;
+      const encryptionAuthTag = evidenceDoc.encryption_meta?.authTag || attachment?.encryption?.authTag;
+
+      if (!fileName || !expectedHash || !encryptionKey || !encryptionIv || !encryptionAuthTag) {
+        this.logger.error(`Missing attachment or encryption metadata for evidenceId=${evidenceId}`);
+        throw new NotFoundException('Encrypted file or metadata not found');
+      }
+
+      const encryptedFile = await this.couchdb.getAttachment(evidenceId, fileName);
+      if (!encryptedFile) {
+        this.logger.error(`Attachment not found for evidenceId=${evidenceId}, name=${fileName}`);
+        throw new NotFoundException('Encrypted file not found');
+      }
+
+      const encryptedBuffer = Buffer.isBuffer(encryptedFile) ? encryptedFile : Buffer.from(encryptedFile);
+
+      // Compare hash over encrypted bytes (that's what we store at upload)
+      const verified = this.sha256(encryptedBuffer) === expectedHash;
 
       await this.auditLog.logAction({
         userId,
         operation: 'verify',
         entityName: 'Evidence',
-        actionPerformed: verified ? 'EVIDENCE_VERIFIED' : 'EVIDENCE_VERIFICATION_FAILED',
+        actionPerformed: verified
+          ? `EVIDENCE_VERIFIED | evidenceId=${evidenceId} | taskId=${evidenceDoc.taskId}`
+          : `EVIDENCE_VERIFICATION_FAILED | evidenceId=${evidenceId} | taskId=${evidenceDoc.taskId}`,
         outcome: verified ? 'SUCCESS' : 'FAILURE',
       });
 
       return {
         evidenceId,
-        expectedHash: evidenceDoc.hash,
+        expectedHash: expectedHash,
         verified,
         message: verified
           ? 'Evidence integrity verified successfully'
@@ -312,7 +367,7 @@ export class EvidenceService {
       userId,
       operation: 'view',
       entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      actionPerformed: `EVIDENCE_LIST_VIEWED | taskId=${taskId}`,
       outcome: 'SUCCESS',
     });
 
@@ -365,7 +420,7 @@ export class EvidenceService {
       userId,
       operation: 'view',
       entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      actionPerformed: `EVIDENCE_LIST_VIEWED | caseId=${caseId}`,
       outcome: 'SUCCESS',
     });
 
@@ -401,7 +456,7 @@ export class EvidenceService {
       userId,
       operation: 'view',
       entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
+      actionPerformed: `EVIDENCE_LIST_VIEWED | evidenceType=${evidenceType}`,
       outcome: 'SUCCESS',
     });
 

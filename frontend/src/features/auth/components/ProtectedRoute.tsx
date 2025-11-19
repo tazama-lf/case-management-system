@@ -16,7 +16,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRoles = [],
-  requireBackendAccess = true,
+  requireBackendAccess = false,
   requireInvestigator = false,
   requireSupervisor = false,
   requireAdmin = false,
@@ -44,6 +44,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasCMSTestRole = authService.hasCMSTestRole();
     const hasInvestigator = authService.hasInvestigatorRole();
     const hasSupervisor = authService.hasSupervisorRole();
+    const hasCMSComplianceOfficer = authService.hasCMSComplianceOfficerRole();
 
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -83,6 +84,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                   className={hasSupervisor ? 'text-green-600' : 'text-red-600'}
                 >
                   CMS_SUPERVISOR: {hasSupervisor ? '✓ Available' : '✗ Missing'}
+                </li>
+                <li
+                  className={hasCMSComplianceOfficer ? 'text-green-600' : 'text-red-600'}
+                >
+                  CMS_COMPLIANCE_OFFICER: {hasCMSComplianceOfficer ? '✓ Available' : '✗ Missing'}
                 </li>
               </ul>
             </div>
