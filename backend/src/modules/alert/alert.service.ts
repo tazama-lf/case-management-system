@@ -2,13 +2,22 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from '../../dtos/IngestAlert.dto';
-import { Priority } from '@prisma/client';
+import { Alert, CaseCreationType, CaseStatus, Priority } from '@prisma/client';
+import { CreateCaseDto } from '../case/dto/index.dto';
+import { ConfigService } from '@nestjs/config';
+import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
+import { CreateAlertDTO } from './dto/CreateAlert.dto';
+import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
+import { AuditLogService } from '../audit/auditLog.service';
 
 @Injectable()
 export class AlertService {
   constructor(
     private readonly loggerService: LoggerService,
+    private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
+    private readonly caseCreationService: CaseCreationApprovalService,
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: string) {
@@ -34,6 +43,49 @@ export class AlertService {
     } catch (error) {
       this.loggerService.error(`Error creating alert: ${error.message}`, error, AlertService.name);
       throw new InternalServerErrorException('Failed to create alert');
+    }
+  }
+
+  async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string) {
+    if (data.report.status === 'NALT') {
+      const createdNALT = await this.createNewAlert(data, tenantId, source, '');
+      return createdNALT;
+    } else {
+      const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
+      const caseDetail: CreateCaseDto = {
+        tenantId,
+        caseCreatorUserId: userId,
+        caseOwnerUserId: systemUuid,
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.NEW,
+        caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+      };
+
+      const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
+      const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
+      return createdAlert;
+    }
+  }
+
+  async updateAlert(alertId: string, userId: string, updateData: UpdateAlertDTO): Promise<Alert> {
+    this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
+
+    try {
+      const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData);
+
+      this.auditLogService.logAction({
+        userId,
+        operation: 'ALERT_UPDATED',
+        entityName: AlertService.name,
+        actionPerformed: `${JSON.stringify(updateData, null, 2)}`,
+        outcome: `${JSON.stringify(updatedAlert, null, 2)}`,
+      });
+      this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
+
+      return updatedAlert;
+    } catch (error) {
+      this.loggerService.error(`Error updating alert ${alertId}: ${error.message}`, error, AlertService.name);
+      throw new InternalServerErrorException(`Failed to update alert ${alertId}`);
     }
   }
 }

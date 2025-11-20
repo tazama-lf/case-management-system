@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableService } from '../flowable.service';
+import { FlowableIdentityService } from '../services/flowable-identity.service';
 
 interface WorkQueueBaseEvent {
   workQueueId: string;
@@ -21,7 +21,7 @@ interface WorkQueueSyncEvent extends WorkQueueBaseEvent {
 @Injectable()
 export class FlowableWorkQueueListener {
   constructor(
-    private readonly flowable: FlowableService,
+    private readonly flowableIdentityService: FlowableIdentityService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -29,9 +29,9 @@ export class FlowableWorkQueueListener {
   async handleWorkQueueCreated(payload: WorkQueueBaseEvent) {
     if (!payload.flowableGroupId || !payload.name) return;
     try {
-      const existing = await this.flowable.getGroup(payload.flowableGroupId);
+      const existing = await this.flowableIdentityService.getGroup(payload.flowableGroupId);
       if (!existing) {
-        await this.flowable.createGroup({
+        await this.flowableIdentityService.createGroup({
           id: payload.flowableGroupId,
           name: payload.name,
           type: 'candidate',
@@ -48,9 +48,9 @@ export class FlowableWorkQueueListener {
     try {
       // If name changed, ensure the new group exists
       if (payload.flowableGroupId && payload.name) {
-        const existing = await this.flowable.getGroup(payload.flowableGroupId);
+        const existing = await this.flowableIdentityService.getGroup(payload.flowableGroupId);
         if (!existing) {
-          await this.flowable.createGroup({ id: payload.flowableGroupId, name: payload.name, type: 'candidate' });
+          await this.flowableIdentityService.createGroup({ id: payload.flowableGroupId, name: payload.name, type: 'candidate' });
           this.logger.log(`Ensured Flowable group ${payload.flowableGroupId} after rename for queue ${payload.workQueueId}`);
         }
       }
@@ -62,16 +62,16 @@ export class FlowableWorkQueueListener {
   @OnEvent('workQueue.sync')
   async handleWorkQueueSync(payload: WorkQueueSyncEvent) {
     try {
-      const existing = await this.flowable.getGroup(payload.flowableGroupId);
+      const existing = await this.flowableIdentityService.getGroup(payload.flowableGroupId);
       if (!existing) {
-        await this.flowable.createGroup({ id: payload.flowableGroupId, name: payload.name, type: 'candidate' });
+        await this.flowableIdentityService.createGroup({ id: payload.flowableGroupId, name: payload.name, type: 'candidate' });
         this.logger.log(`Bootstrapped Flowable group ${payload.flowableGroupId} for queue ${payload.workQueueId}`);
       }
 
       if (payload.members && payload.members.length > 0) {
         for (const userId of payload.members) {
           try {
-            await this.flowable.addUserToGroup(payload.flowableGroupId, userId);
+            await this.flowableIdentityService.addUserToGroup(payload.flowableGroupId, userId);
           } catch (err) {
             this.logger.warn(`Failed to add user ${userId} to group ${payload.flowableGroupId}: ${err.message}`);
           }
@@ -86,7 +86,7 @@ export class FlowableWorkQueueListener {
   async handleUserAssigned(payload: WorkQueueBaseEvent & { userId: string }) {
     if (!payload.flowableGroupId) return;
     try {
-      await this.flowable.addUserToGroup(payload.flowableGroupId, payload.userId);
+      await this.flowableIdentityService.addUserToGroup(payload.flowableGroupId, payload.userId);
       this.logger.log(`Added user ${payload.userId} to Flowable group ${payload.flowableGroupId}`);
     } catch (e) {
       this.logger.error(`Failed to add user to group for workQueue.userAssigned: ${e.message}`, e.stack);
@@ -97,7 +97,7 @@ export class FlowableWorkQueueListener {
   async handleUserRemoved(payload: WorkQueueBaseEvent & { userId: string }) {
     if (!payload.flowableGroupId) return;
     try {
-      await this.flowable.removeUserFromGroup(payload.flowableGroupId, payload.userId);
+      await this.flowableIdentityService.removeUserFromGroup(payload.flowableGroupId, payload.userId);
       this.logger.log(`Removed user ${payload.userId} from Flowable group ${payload.flowableGroupId}`);
     } catch (e) {
       this.logger.error(`Failed to remove user from group for workQueue.userRemoved: ${e.message}`, e.stack);

@@ -4,12 +4,14 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { TriageModule } from '../triage/triage.module';
 import { TaskModule } from '../task/task.module';
-import { CaseCreationModule } from '../case-creation/case-creation.module';
+// import { CaseCreationModule } from '../case-creation/case-creation.module';
 import { ProcessAlertController } from './process-alert.controller';
 import { AuditLogModule } from '../audit/auditLog.module';
+import { CaseModule } from '../case/case.module';
+import { AlertModule } from '../alert/alert.module';
 
 @Module({
-  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, TaskModule, CaseCreationModule],
+  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, AlertModule, TaskModule, CaseModule],
   providers: [ProcessAlertService],
   exports: [ProcessAlertService],
   controllers: [ProcessAlertController],

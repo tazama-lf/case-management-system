@@ -223,7 +223,7 @@ export class CaseService {
 
   async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
-      const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
+      const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'update case');

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CreateAlertDTO } from '../alert/dto/CreateAlert.dto';
 import { Alert, Priority } from '@prisma/client';
+import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 
 @Injectable()
 export class AlertRepository {
@@ -23,7 +23,7 @@ export class AlertRepository {
           alert_data,
           transaction,
           network_map,
-          case_id: alertData.caseId,
+          case_id: alertData.caseId === '' ? null : alertData.caseId,
         },
       });
 
@@ -49,24 +49,28 @@ export class AlertRepository {
     return alert;
   }
 
-  async updateAlert(alertId: string, updateData: Partial<CreateAlertDTO>): Promise<Alert> {
-    const updatedAlert = await this.prisma.alert.update({
-      where: { alert_id: alertId },
-      data: {
-        priority_score: updateData.priority_score,
-        priority: updateData.priority,
-        alert_type: updateData.alertType,
-        prediction_outcome: updateData.predictionOutcome,
-        confidence_per: updateData.confidencePer,
-        message: updateData.message,
-        case_id: updateData.caseId,
-      },
-    });
+  async updateAlert(alertId: string, updateData: UpdateAlertDTO): Promise<Alert> {
+    try {
+      const updatedAlert = await this.prisma.alert.update({
+        where: { alert_id: alertId },
+        data: {
+          priority_score: updateData.priority_score,
+          priority: updateData.priority,
+          alert_type: updateData.alertType,
+          prediction_outcome: updateData.predictionOutcome,
+          confidence_per: updateData.confidencePer,
+          message: updateData.message,
+          case_id: updateData.caseId,
+        },
+      });
 
-    if (!updatedAlert) {
-      throw new Error(`Failed to update alert with ID ${alertId}`);
+      if (!updatedAlert) {
+        throw new Error(`Failed to update alert with ID ${alertId}`);
+      }
+
+      return updatedAlert;
+    } catch (error) {
+      throw new Error(`Failed to update alert ${alertId}: ${error.message}`);
     }
-
-    return updatedAlert;
   }
 }
