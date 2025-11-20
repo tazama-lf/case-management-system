@@ -53,7 +53,7 @@ export class CaseReopeningService {
                     const updatedCase = await tx.case.update({
                         where: { case_id: caseId },
                         data: {
-                            status: CaseStatus.STATUS_10_ASSIGNED,
+                            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
                             updated_at: new Date(),
                         },
                     });
@@ -61,10 +61,22 @@ export class CaseReopeningService {
                     return { case: updatedCase };
                 });
 
+                // Create new investigation task for supervisor
+                const investigationTask = await this.taskService.createTask(
+                    {
+                        caseId,
+                        status: TaskStatus.STATUS_01_UNASSIGNED,
+                        name: TASK_NAMES.INVESTIGATE_CASE,
+                        description: `Case reopened by supervisor for additional investigation. Reason: ${reason}`,
+                        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                    },
+                    userId,
+                );
+
                 this.flowableService.handleCaseStatusChanged({
                     caseId,
                     oldStatus: existingCase.status,
-                    newStatus: CaseStatus.STATUS_10_ASSIGNED,
+                    newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
                     reason: `Case reopening requested: ${reason}`,
                 });
 
@@ -72,14 +84,20 @@ export class CaseReopeningService {
                     userId,
                     operation: 'reopenCase',
                     entityName: CaseReopeningService.name,
-                    actionPerformed: `Reopened case ${caseId} Reason: ${reason}`,
+                    actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
                     outcome: Outcome.SUCCESS,
                 });
 
                 return {
                     success: true,
-                    message: 'Case reopened ',
+                    message: 'Case reopened successfully',
                     case: result.case,
+                    investigation_task: {
+                        task_id: investigationTask.task_id,
+                        name: investigationTask.name,
+                        status: investigationTask.status,
+                        assigned_to: userId,
+                    },
                 };
             }
 
