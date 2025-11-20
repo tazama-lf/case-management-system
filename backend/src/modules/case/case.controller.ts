@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { CaseService } from './case.service';
-import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../../src/modules/auth/tazama-auth.guard';
 import {
   RequireAlertTriageRole,
   RequireInvestigatorRole,
@@ -8,8 +8,8 @@ import {
   RequireAnyValidRole,
   RequireSupervisorRole,
   TazamaClaims,
-} from 'src/modules/auth/auth.decorator';
-import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
+} from '../../../src/modules/auth/auth.decorator';
+import { AuthenticatedRequest } from '../../../src/modules/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import {
   GetUserCasesQueryDto,
@@ -57,7 +57,7 @@ import {
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) { }
+  constructor(private readonly caseService: CaseService) {}
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -257,7 +257,7 @@ export class CaseController {
   async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    
+
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
     return this.caseService.closeCase(caseId, dto, clientId, tenantId, role);
   }
@@ -282,7 +282,8 @@ export class CaseController {
     const userClaims = req.user.token.claims || [];
 
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator = userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
     return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
   }
@@ -325,7 +326,11 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  async getUserCasesByUserId(@Param('userId') targetUserId: string, @Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
+  async getUserCasesByUserId(
+    @Param('userId') targetUserId: string,
+    @Query() query: GetUserCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const requestingUserId = req.user.token.clientId;
     if (requestingUserId !== targetUserId) {
       /* empty */
@@ -336,7 +341,7 @@ export class CaseController {
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user\'s case workload' })
+  @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
@@ -429,9 +434,17 @@ export class CaseController {
     },
   })
   @ApiResponse({ status: 200, description: 'Case closure approved successfully' })
-  @ApiResponse({ status: 400, description: 'Bad Request - Invalid outcome or missing case information', type: ApproveCaseClosureBadRequestResponseDto })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid outcome or missing case information',
+    type: ApproveCaseClosureBadRequestResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Not Found - Case or approval task not found' })
-  @ApiResponse({ status: 409, description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL or incomplete tasks', type: CaseConflictResponseDto })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL or incomplete tasks',
+    type: CaseConflictResponseDto,
+  })
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
