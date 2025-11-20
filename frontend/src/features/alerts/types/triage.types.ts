@@ -73,6 +73,14 @@ export type CaseType = (typeof CaseType)[keyof typeof CaseType];
 export type CaseCreationType =
   (typeof CaseCreationType)[keyof typeof CaseCreationType];
 
+export interface AlertData {
+  status?: string;
+  metaData?: Record<string, unknown>;
+  timestamp?: string;
+  tadpResult?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface Alert extends Record<string, unknown> {
   alert_id: string;
   tenant_id: string;
@@ -81,7 +89,7 @@ export interface Alert extends Record<string, unknown> {
   source?: string;
   txtp?: string;
   message: string;
-  alert_data: unknown;
+  alert_data?: AlertData;
   transaction: unknown;
   network_map: unknown;
   confidence_per: number;
