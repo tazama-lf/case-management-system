@@ -35,7 +35,7 @@ export class BpmnSyncService {
       this.logger.log(`[BPMN-Sync] Found ${flowableTasks.length} Flowable tasks for case ${caseId}`, BpmnSyncService.name);
 
       for (const flowableTask of flowableTasks) {
-        await this.syncSingleTask(flowableTask, caseId);
+        await this.syncSingleTask(flowableTasks[0], caseId);
       }
 
       this.logger.log(`[BPMN-Sync] Completed sync for all tasks in case ${caseId}`, BpmnSyncService.name);

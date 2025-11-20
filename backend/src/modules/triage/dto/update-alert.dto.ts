@@ -2,7 +2,7 @@ import { Priority, AlertType, PredictionOutcome, CaseStatus } from '@prisma/clie
 import { IsOptional, IsEnum, IsNumber, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdateAlertDto {
+export class ManualAlertUpdateDTO {
   @ApiProperty({
     description: 'Confidence percentage (0-100)',
     example: 85.5,

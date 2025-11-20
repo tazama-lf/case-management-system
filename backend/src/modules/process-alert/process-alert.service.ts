@@ -7,6 +7,7 @@ import { TaskService } from '../task/task.service';
 import { TriageService } from '../triage/triage.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
+import { AlertService } from '../alert/alert.service';
 
 @Injectable()
 export class ProcessAlertService {
@@ -16,6 +17,7 @@ export class ProcessAlertService {
     private readonly triageService: TriageService,
     private readonly taskService: TaskService,
     private readonly caseCreationService: CaseCreationApprovalService,
+    private readonly alertService: AlertService,
   ) {}
 
   async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string) {
@@ -27,7 +29,7 @@ export class ProcessAlertService {
       networkMap: req.networkMap,
     };
 
-    const alert = await this.triageService.handleAlertOrNALT(submitAlertDto, userId, tenantId, source);
+    const alert = await this.alertService.handleAlertOrNALT(submitAlertDto, userId, tenantId, source);
     if (submitAlertDto.report.status === 'NALT' || !alert.case_id) return;
 
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();

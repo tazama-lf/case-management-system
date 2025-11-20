@@ -57,16 +57,16 @@ export class CaseEventListener {
       );
 
       // Sync BPMN tasks to PostgreSQL
-      try {
-        await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id);
-        this.logger.log(`[CaseEventListener] BPMN task sync completed for case ${event.caseId}`, CaseEventListener.name);
-      } catch (syncError) {
-        this.logger.error(
-          `[CaseEventListener] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
-          syncError.stack,
-          CaseEventListener.name,
-        );
-      }
+      // try {
+      //   await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id);
+      //   this.logger.log(`[CaseEventListener] BPMN task sync completed for case ${event.caseId}`, CaseEventListener.name);
+      // } catch (syncError) {
+      //   this.logger.error(
+      //     `[CaseEventListener] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
+      //     syncError.stack,
+      //     CaseEventListener.name,
+      //   );
+      // }
     } catch (error) {
       this.logger.error(
         `[CaseEventListener] Failed to start process for case ${event.caseId}: ${error.message}`,
@@ -111,7 +111,11 @@ export class CaseEventListener {
           event.reason || 'Status updated',
         );
 
-        await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'status_changed_at', new Date().toISOString());
+        await this.flowableProcessService.updateProcessVariable(
+          processInstance.id as string,
+          'status_changed_at',
+          new Date().toISOString(),
+        );
 
         await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'previous_status', event.oldStatus);
 
@@ -168,6 +172,5 @@ export class CaseEventListener {
    * Terminates the Flowable process instance when a case is suspended
    */
   @OnEvent('case.suspended')
-  async handleSuspendCase(event: CaseSuspendedEvent) {
-  }
+  async handleSuspendCase(event: CaseSuspendedEvent) {}
 }
