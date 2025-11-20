@@ -361,7 +361,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-lg text-gray-600 mb-1">{alert.message || 'No message available'}</p>
+                  <p className="text-lg text-gray-600 mb-1">{alert?.alert_data?.status || 'No message available'}</p>
                   <p className="text-sm text-gray-500">
                     Alert ID: {alert.alert_id} • Source: {alert.source || 'N/A'}
                   </p>
