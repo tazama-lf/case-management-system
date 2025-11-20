@@ -11,6 +11,7 @@ import type {
 
 class TriageService {
   private baseUrl = '/api/v1/triage/alerts';
+  private alertBaseUrl = '/api/v1/alert';
 
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
@@ -69,7 +70,9 @@ class TriageService {
     params.append('includeData', 'true');
 
     const queryString = params.toString();
-    const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
+    const url = queryString
+      ? `${this.alertBaseUrl}?${queryString}`
+      : this.alertBaseUrl;
 
     const backendResponse = await apiClient.get<{
       data: Alert[];
@@ -80,21 +83,6 @@ class TriageService {
     }>(url);
 
     const alerts = backendResponse.data || [];
-
-    // const detailedAlerts = await Promise.all(
-    //   alerts.map(async (alert) => {
-    //     try {
-    //       const detailedAlert = await this.getAlertById(alert.alert_id);
-    //       return {
-    //         ...detailedAlert,
-    //         alert_type: detailedAlert.alert_type || alert.alert_type,
-    //       };
-    //     } catch (error) {
-    //       console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
-    //       return alert;
-    //     }
-    //   })
-    // );
 
     return {
       alerts: alerts,
