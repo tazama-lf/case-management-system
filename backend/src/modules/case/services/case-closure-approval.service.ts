@@ -665,14 +665,7 @@ export class CaseClosureApprovalService {
             }
 
             const result = await this.prismaService.$transaction(async (tx) => {
-                const updatedCase = await tx.case.update({
-                    where: { case_id: caseId },
-                    data: {
-                        status: CaseStatus.STATUS_20_IN_PROGRESS,
-                        updated_at: new Date(),
-                    },
-                });
-
+                // Find approval task first
                 const approvalTask = await tx.task.findFirst({
                     where: {
                         case_id: caseId,
@@ -688,6 +681,7 @@ export class CaseClosureApprovalService {
                     throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
                 }
 
+                // Complete the approval task
                 const completedTask = await tx.task.update({
                     where: { task_id: approvalTask.task_id },
                     data: {
@@ -727,9 +721,27 @@ export class CaseClosureApprovalService {
                     },
                 });
 
+                // Update case status LAST to prevent BPMN from overriding it
+                const updatedCase = await tx.case.update({
+                    where: { case_id: caseId },
+                    data: {
+                        status: CaseStatus.STATUS_20_IN_PROGRESS,
+                        updated_at: new Date(),
+                    },
+                });
+
                 return { updatedCase, completedTask, newInvestigationTask };
             });
 
+            // Notify Flowable about case status change FIRST to set the BPMN state
+            this.flowableService.handleCaseStatusChanged({
+                caseId,
+                oldStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+                newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+                reason: `Case closure rejected and returned to investigator: ${comments}`,
+            });
+
+            // Then complete the approval task in BPMN
             this.flowableService.handleTaskCompleted({
                 taskId: result.completedTask.task_id,
                 caseId,
@@ -737,6 +749,7 @@ export class CaseClosureApprovalService {
                 completionVariables: {
                     approvalDecision: 'reject',
                     supervisorComments: comments,
+                    newCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS, // Explicitly set target status
                 },
             });
 
@@ -752,13 +765,6 @@ export class CaseClosureApprovalService {
                     reason: 'Case closure rejected by supervisor',
                     supervisorComments: comments,
                 },
-            });
-
-            this.flowableService.handleCaseStatusChanged({
-                caseId,
-                oldStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-                newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-                reason: `Case closure rejected and returned to investigator: ${comments}`,
             });
 
             try {
@@ -905,7 +911,7 @@ export class CaseClosureApprovalService {
             requireClaim: Boolean(supervisorId),
             expectedAssignee: supervisorId,
         });
-        
+
         const shouldAttemptAutoClaim =
             options.autoClaimApprovalTask &&
             Boolean(supervisorId) &&

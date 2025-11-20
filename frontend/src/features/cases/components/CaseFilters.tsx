@@ -24,11 +24,11 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 }) => {
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'DRAFT', label: 'Draft' },
-    { value: 'PENDING_CASE_CREATION_APPROVAL', label: 'Pending Creation Approval' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'SUSPENDED', label: 'Suspended' },
-    { value: 'PENDING_FINAL_APPROVAL', label: 'Pending Final Approval' },
+    { value: 'STATUS_00_DRAFT', label: 'Draft' },
+    { value: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL', label: 'Pending Creation Approval' },
+    { value: 'STATUS_20_IN_PROGRESS', label: 'In Progress' },
+    { value: 'STATUS_21_SUSPENDED', label: 'Suspended' },
+    { value: 'STATUS_22_PENDING_FINAL_APPROVAL', label: 'Pending Final Approval' },
     { value: 'STATUS_81_CLOSED_REFUTED', label: 'Closed - Refuted' },
     { value: 'STATUS_82_CLOSED_CONFIRMED', label: 'Closed - Confirmed' },
     { value: 'STATUS_83_CLOSED_INCONCLUSIVE', label: 'Closed - Inconclusive' },
@@ -36,10 +36,10 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   const priorityOptions = [
     { value: '', label: 'All Priorities' },
-    { value: 'LOW', label: 'Low' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'HIGH', label: 'High' },
+    { value: 'NEW', label: 'New' },
+    { value: 'URGENT', label: 'Urgent' },
     { value: 'CRITICAL', label: 'Critical' },
+    { value: 'BREACH', label: 'Breach' },
   ];
 
   return (
