@@ -12,7 +12,6 @@ interface RoleGuardProps {
   requireAdmin?: boolean;
 }
 
-
 const RoleGuard: React.FC<RoleGuardProps> = ({
   children,
   requiredRoles = [],
@@ -29,21 +28,21 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
     hasBackendClaim,
     hasSupervisorRole,
     hasInvestigatorRole,
-    hasAdminRole
+    hasAdminRole,
   } = useAuth();
 
-const hasAccess = (
+  const hasAccess =
     // Supervisor check
     (!requireSupervisor || hasSupervisorRole() || hasAdminRole()) &&
     // Investigator check
     (!requireInvestigator || hasInvestigatorRole() || hasAdminRole()) &&
-    // Admin check
+    // Admin check - use legacy hasAdminRole for general admin access (includes alert-triage)
     (!requireAdmin || hasAdminRole()) &&
     // Backend claim check
     (!requireBackendClaim || hasBackendClaim(requireBackendClaim)) &&
     // Required roles check
-    (!requiredRoles.length || (requireAll ? hasAllRoles(requiredRoles) : hasAnyRole(requiredRoles)))
-);
+    (!requiredRoles.length ||
+      (requireAll ? hasAllRoles(requiredRoles) : hasAnyRole(requiredRoles)));
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;
 };

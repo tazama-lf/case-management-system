@@ -17,37 +17,39 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 
 export const useCaseData = () => {
   const { hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
-  
+
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
-  const fetchCases = async (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => {
+  const fetchCases = async (
+    statusFilter?: string,
+    priorityFilter?: string,
+    sortBy?: 'recent' | 'oldest',
+  ) => {
     setLoading(true);
     setErrorState(null);
 
     try {
       let response;
-      
 
-      const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
-      
+      const isInvestigatorOnly =
+        hasInvestigatorRole() && !hasSupervisorRole() && !hasAdminRole();
+
       if (isInvestigatorOnly) {
-
         response = await caseService.getUserAssignedCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           includeTaskAssignments: true,
           includeOwnedCases: true,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         });
       } else {
-
         response = await caseService.getAllCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         });
       }
 
@@ -62,13 +64,17 @@ export const useCaseData = () => {
     }
   };
 
-  const refreshCases = async (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => {
+  const refreshCases = async (
+    statusFilter?: string,
+    priorityFilter?: string,
+    sortBy?: 'recent' | 'oldest',
+  ) => {
     try {
       const response = await caseService.getAllCases({
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
         sortBy: 'updated_at',
-        sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+        sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
       });
       setCases(response.cases.map(transformBackendCaseToUI));
     } catch (refreshError) {
@@ -86,10 +92,16 @@ export const useCaseData = () => {
   };
 };
 
-export const useCaseActions = (refreshCases: (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => Promise<void>) => {
+export const useCaseActions = (
+  refreshCases: (
+    statusFilter?: string,
+    priorityFilter?: string,
+    sortBy?: 'recent' | 'oldest',
+  ) => Promise<void>,
+) => {
   const { user } = useAuth();
   const { success, error } = useToast();
-  
+
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
@@ -113,25 +125,38 @@ export const useCaseActions = (refreshCases: (statusFilter?: string, priorityFil
 
       const newCase = await caseService.createCase(manualCreateCaseData);
 
-      const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
-      success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
+      const alertInfo = payload.alertId
+        ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}`
+        : '';
+      success(
+        'Case Created',
+        `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`,
+      );
 
       await refreshCases();
     } catch (err) {
       console.error('Error creating case:', err);
-      setCreateCaseError(err instanceof Error ? err.message : 'Failed to create case');
-      error('Create Case Failed', err instanceof Error ? err.message : 'Failed to create case');
+      setCreateCaseError(
+        err instanceof Error ? err.message : 'Failed to create case',
+      );
+      error(
+        'Create Case Failed',
+        err instanceof Error ? err.message : 'Failed to create case',
+      );
     } finally {
       setCreateCaseLoading(false);
     }
   };
 
-  const handleUpdate = async (caseId: string, payload: {
-    priority: Priority;
-    priorityScore: number;
-    alertType: AlertType;
-    assignee?: string;
-  }) => {
+  const handleUpdate = async (
+    caseId: string,
+    payload: {
+      priority: Priority;
+      priorityScore: number;
+      alertType: AlertType;
+      assignee?: string;
+    },
+  ) => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
 
@@ -145,12 +170,16 @@ export const useCaseActions = (refreshCases: (statusFilter?: string, priorityFil
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
 
-      success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
+      success(
+        'Draft Case Completed',
+        `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`,
+      );
 
       await refreshCases();
     } catch (err) {
       console.error('Error updating case:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to update case';
       setCreateCaseError(errorMessage);
       error('Update Case Failed', errorMessage);
     } finally {
@@ -161,12 +190,15 @@ export const useCaseActions = (refreshCases: (statusFilter?: string, priorityFil
   const handleReopenSubmit = async (caseId: string, reason: string) => {
     try {
       const reopenCaseData = {
-        reason: reason.trim()
+        reason: reason.trim(),
       };
 
       await caseService.reopenCase(caseId, reopenCaseData);
 
-      success('Case Reopened', `Case ${caseId} has been successfully reopened.`);
+      success(
+        'Case Reopened',
+        `Case ${caseId} has been successfully reopened.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -183,7 +215,10 @@ This case may not meet the reopening requirements:
 • Case must not be already reopened
 
 Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
         errorMessage = `Access Denied.
 
 You don't have permission to reopen this case.
@@ -201,12 +236,18 @@ The case may have been deleted or moved.`;
   const handleAbandonSubmit = async (caseId: string, reason: string) => {
     try {
       const abandonCaseData: AbandonCaseDto = {
-        reason: reason.trim()
+        reason: reason.trim(),
       };
 
-      const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
+      const abandonedCase = await caseService.abandonCase(
+        caseId,
+        abandonCaseData,
+      );
 
-      success('Case Abandoned', `Case ${caseId} has been successfully abandoned.\nReason: ${reason}\nStatus: ${abandonedCase.status}`);
+      success(
+        'Case Abandoned',
+        `Case ${caseId} has been successfully abandoned.\nReason: ${reason}\nStatus: ${abandonedCase.status}`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -216,24 +257,30 @@ The case may have been deleted or moved.`;
       const errorString = err instanceof Error ? err.message : '';
 
       if (errorString.includes('Cannot abandon case other than draft status')) {
-        errorMessage = `Case cannot be abandoned.\n\n` +
-                      `This case may not meet the abandonment requirements:\n` +
-                      `• Case must be in "DRAFT" status\n` +
-                      `• Case must have a "Complete New Case" task\n\n` +
-                      `Please check the case status and try again.`;
+        errorMessage =
+          `Case cannot be abandoned.\n\n` +
+          `This case may not meet the abandonment requirements:\n` +
+          `• Case must be in "DRAFT" status\n` +
+          `• Case must have a "Complete New Case" task\n\n` +
+          `Please check the case status and try again.`;
       } else if (errorString.includes('No complete new Case Task exists')) {
-        errorMessage = `Case cannot be abandoned.\n\n` +
-                      `This case may not meet the abandonment requirements:\n` +
-                      `• Case must be in "DRAFT" status\n` +
-                      `• Case must have a "Complete New Case" task\n\n` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to abandon this case.\n` +
-                      `Please ensure you have the appropriate role.`;
+        errorMessage =
+          `Case cannot be abandoned.\n\n` +
+          `This case may not meet the abandonment requirements:\n` +
+          `• Case must be in "DRAFT" status\n` +
+          `• Case must have a "Complete New Case" task\n\n` +
+          `Please check the case status and try again.`;
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
+        errorMessage =
+          `Access Denied.\n\n` +
+          `You don't have permission to abandon this case.\n` +
+          `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.\n\n` +
-                      `The case may have been deleted or moved.`;
+        errorMessage =
+          `Case Not Found.\n\n` + `The case may have been deleted or moved.`;
       }
 
       error('Abandon Case Failed', errorMessage);
@@ -243,16 +290,22 @@ The case may have been deleted or moved.`;
   const handleSuspendSubmit = async (caseId: string, reason: string) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
-        reason: reason.trim()
+        reason: reason.trim(),
       };
 
-      const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
+      const suspendedCase = await caseService.suspendCase(
+        caseId,
+        suspendCaseData,
+      );
 
-      success('Case Suspended', `Case ${caseId} has been successfully suspended.
+      success(
+        'Case Suspended',
+        `Case ${caseId} has been successfully suspended.
 Reason: ${reason}
 Status: ${suspendedCase.status}
 
-The case has been suspended and all associated tasks have been blocked. Supervisor has been notified of the suspension.`);
+The case has been suspended and all associated tasks have been blocked. Supervisor has been notified of the suspension.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -265,15 +318,20 @@ The case has been suspended and all associated tasks have been blocked. Supervis
         .replace(/\bcase\b/g, 'Case');
 
       if (errorString.includes('not in a suspendable state')) {
-        errorMessage = `Case cannot be suspended.\n\n` +
-                      `This case may not meet the suspension requirements:\n` +
-                      `• Case must be in "IN PROGRESS" status\n` +
-                      `• Case must not be already suspended or closed\n\n` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.\n\n` +
-                      `You don't have permission to suspend this case.\n` +
-                      `Please ensure you have the appropriate role.`;
+        errorMessage =
+          `Case cannot be suspended.\n\n` +
+          `This case may not meet the suspension requirements:\n` +
+          `• Case must be in "IN PROGRESS" status\n` +
+          `• Case must not be already suspended or closed\n\n` +
+          `Please check the case status and try again.`;
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
+        errorMessage =
+          `Access Denied.\n\n` +
+          `You don't have permission to suspend this case.\n` +
+          `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
 
@@ -289,16 +347,19 @@ The case may have been deleted or moved.`;
   const handleResumeSubmit = async (caseId: string, reason: string) => {
     try {
       const resumeCaseData = {
-        reason: reason.trim()
+        reason: reason.trim(),
       };
 
       const resumedCase = await caseService.resumeCase(caseId, resumeCaseData);
 
-      success('Case Resumed', `Case ${caseId} has been successfully resumed.
+      success(
+        'Case Resumed',
+        `Case ${caseId} has been successfully resumed.
 Reason: ${reason}
 Status: ${resumedCase.status}
 
-The case has been moved back to "In Progress" status. All associated tasks have been unblocked.`);
+The case has been moved back to "In Progress" status. All associated tasks have been unblocked.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -308,50 +369,64 @@ The case has been moved back to "In Progress" status. All associated tasks have 
       const errorString = err instanceof Error ? err.message : '';
 
       if (errorString.includes('not in a resumable state')) {
-        errorMessage = `Case cannot be resumed.
+        errorMessage =
+          `Case cannot be resumed.
 
 ` +
-                      `This case may not meet the resumption requirements:
+          `This case may not meet the resumption requirements:
 ` +
-                      `• Case must be in "SUSPENDED" status
+          `• Case must be in "SUSPENDED" status
 ` +
-                      `• Case must not be already closed or completed
+          `• Case must not be already closed or completed
 
 ` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
+          `Please check the case status and try again.`;
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
+        errorMessage =
+          `Access Denied.
 
 ` +
-                      `You don't have permission to resume this case.
+          `You don't have permission to resume this case.
 ` +
-                      `Please ensure you have the appropriate role.`;
+          `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
+        errorMessage =
+          `Case Not Found.
 
-` +
-                      `The case may have been deleted or moved.`;
+` + `The case may have been deleted or moved.`;
       }
 
       error('Resume Case Failed', errorMessage);
     }
   };
 
-  const handleRejectSubmit = async (rejectionReason: string, selectedRow: CaseRow | null) => {
+  const handleRejectSubmit = async (
+    rejectionReason: string,
+    selectedRow: CaseRow | null,
+  ) => {
     if (!selectedRow) return;
 
     try {
       const rejectCaseData: RejectCaseDto = {
-        rejectionReason: rejectionReason.trim()
+        rejectionReason: rejectionReason.trim(),
       };
 
-      const rejectedCase = await caseService.rejectCase(selectedRow.id, rejectCaseData);
+      const rejectedCase = await caseService.rejectCase(
+        selectedRow.id,
+        rejectCaseData,
+      );
 
-      success('Case Closure Rejected', `Case ${selectedRow.id} closure has been successfully rejected.
+      success(
+        'Case Closure Rejected',
+        `Case ${selectedRow.id} closure has been successfully rejected.
 Reason: ${rejectionReason}
 Status: ${rejectedCase.status}
 
-The case has been returned to the investigator for additional work.`);
+The case has been returned to the investigator for additional work.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -361,27 +436,32 @@ The case has been returned to the investigator for additional work.`);
       const errorString = err instanceof Error ? err.message : '';
 
       if (errorString.includes('not in a rejectable state')) {
-        errorMessage = `Case cannot be rejected.
+        errorMessage =
+          `Case cannot be rejected.
 
 ` +
-                      `This case may not meet the rejection requirements:
+          `This case may not meet the rejection requirements:
 ` +
-                      `• Case must be pending final approval
+          `• Case must be pending final approval
 
 ` +
-                      `Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
-        errorMessage = `Access Denied.
+          `Please check the case status and try again.`;
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
+        errorMessage =
+          `Access Denied.
 
 ` +
-                      `You don't have permission to reject this case.
+          `You don't have permission to reject this case.
 ` +
-                      `Please ensure you have the appropriate role.`;
+          `Please ensure you have the appropriate role.`;
       } else if (errorString.includes('404')) {
-        errorMessage = `Case Not Found.
+        errorMessage =
+          `Case Not Found.
 
-` +
-                      `The case may have been deleted or moved.`;
+` + `The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = errorString;
       }
@@ -390,18 +470,30 @@ The case has been returned to the investigator for additional work.`);
     }
   };
 
-  const handleApproveSubmit = async (data: ApproveCaseClosureDto, selectedRow: CaseRow | null) => {
+  const handleApproveSubmit = async (
+    data: ApproveCaseClosureDto,
+    selectedRow: CaseRow | null,
+  ) => {
     if (!selectedRow) return;
 
     try {
-      const approvedCase = await caseService.approveCaseClosure(selectedRow.id, data);
+      const approvedCase = await caseService.approveCaseClosure(
+        selectedRow.id,
+        data,
+      );
 
-      success('Case Closure Approved', `Case ${selectedRow.id} closure has been successfully approved.
+      success(
+        'Case Closure Approved',
+        `Case ${selectedRow.id} closure has been successfully approved.
 
-Final Outcome: ${data.finalOutcome.replace('STATUS_', '').replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+Final Outcome: ${data.finalOutcome
+          .replace('STATUS_', '')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l: string) => l.toUpperCase())}
 Status: ${approvedCase.status}
 
-The case has been finalized with the selected outcome.`);
+The case has been finalized with the selected outcome.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -419,7 +511,10 @@ This case may not meet the approval requirements:
 • The "Approve case closure" task must be claimed by you
 
 Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
         errorMessage = `Access Denied.
 
 You don't have permission to approve this case closure.
@@ -428,7 +523,7 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
-  } else if (errorString.includes('Approval task validation failed')) {
+      } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = `Approval Task Validation Failed.
 
 The case may not have the required "Approve case closure" task,
@@ -448,11 +543,14 @@ Please verify that:
     try {
       const approvedCase = await caseService.approveCaseCreation(caseId);
 
-      success('Case Creation Approved', `Case ${caseId} creation has been successfully approved.
+      success(
+        'Case Creation Approved',
+        `Case ${caseId} creation has been successfully approved.
 
 Status: ${approvedCase.status}
 
-The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" task has been created in the Flowable investigations queue.`);
+The case has been moved to "READY FOR ASSIGNMENT" status. An "Investigate Case" task has been created in the Flowable investigations queue.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -469,7 +567,10 @@ This case may not meet the approval requirements:
 • Case must have an "Approve Case Creation" task
 
 Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
         errorMessage = `Access Denied.
 
 You don't have permission to approve this case creation.
@@ -484,16 +585,22 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleRejectCreationSubmit = async (caseId: string, data: RejectCaseCreationDto) => {
+  const handleRejectCreationSubmit = async (
+    caseId: string,
+    data: RejectCaseCreationDto,
+  ) => {
     try {
       const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
 
-      success('Case Creation Rejected', `Case ${caseId} creation has been successfully rejected.
+      success(
+        'Case Creation Rejected',
+        `Case ${caseId} creation has been successfully rejected.
 
 Reason: ${data.reason}
 Status: ${rejectedCase.status}
 
-The case has been returned to "DRAFT" status. A "Complete New Case" task has been assigned to the original creator.`);
+The case has been returned to "DRAFT" status. A "Complete New Case" task has been assigned to the original creator.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -510,7 +617,10 @@ This case may not meet the rejection requirements:
 • Case must have an "Approve Case Creation" task
 
 Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
         errorMessage = `Access Denied.
 
 You don't have permission to reject this case creation.
@@ -525,16 +635,22 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleReturnForReviewSubmit = async (caseId: string, data: ReturnCaseForReviewDto) => {
+  const handleReturnForReviewSubmit = async (
+    caseId: string,
+    data: ReturnCaseForReviewDto,
+  ) => {
     try {
       const returnedCase = await caseService.returnCaseForReview(caseId, data);
 
-      success('Case Returned for Review', `Case ${caseId} has been successfully returned for additional review.
+      success(
+        'Case Returned for Review',
+        `Case ${caseId} has been successfully returned for additional review.
 
 Review Comments: ${data.reviewComments}
 Status: ${returnedCase.status}
 
-The case has been returned to the investigator for additional work.`);
+The case has been returned to the investigator for additional work.`,
+      );
 
       await refreshCases();
     } catch (err) {
@@ -551,7 +667,10 @@ This case may not meet the return requirements:
 • Case must have an "Approve case closure" task
 
 Please check the case status and try again.`;
-      } else if (errorString.includes('Unauthorized') || errorString.includes('403')) {
+      } else if (
+        errorString.includes('Unauthorized') ||
+        errorString.includes('403')
+      ) {
         errorMessage = `Access Denied.
 
 You don't have permission to return this case for review.
@@ -560,7 +679,7 @@ Please ensure you have supervisor role.`;
         errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
-  } else if (errorString.includes('Approval task validation failed')) {
+      } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = `Approval Task Validation Failed.
 
 The case may not have the required "Approve case closure" task,
