@@ -231,7 +231,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Case Information Section
           {
             text: 'CASE INFORMATION',
             style: 'sectionHeader',
@@ -257,7 +256,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Executive Summary Section
           {
             text: 'EXECUTIVE SUMMARY',
             style: 'sectionHeader',
@@ -269,7 +267,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Key Findings Section
           {
             text: 'KEY FINDINGS',
             style: 'sectionHeader',
@@ -281,7 +278,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Supervisor Feedback Section (if available) - moved after key findings
           ...(supervisorFeedback ? [
             {
               text: 'SUPERVISOR FEEDBACK',
@@ -295,7 +291,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             },
           ] : []),
 
-          // Evidence Summary Section
           {
             text: 'EVIDENCE SUMMARY',
             style: 'sectionHeader',
@@ -312,7 +307,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 10, 0, 20],
           },
 
-          // Recommendations Section
           {
             text: 'RECOMMENDATIONS & CONCLUSIONS',
             style: 'sectionHeader',
@@ -453,7 +447,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Case Information Section
           {
             text: 'CASE INFORMATION',
             style: 'sectionHeader',
@@ -479,7 +472,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Executive Summary Section
           {
             text: 'EXECUTIVE SUMMARY',
             style: 'sectionHeader',
@@ -491,7 +483,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Key Findings Section
           {
             text: 'KEY FINDINGS',
             style: 'sectionHeader',
@@ -503,7 +494,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
-          // Supervisor Feedback Section (if available) - moved after key findings
           ...(supervisorFeedback ? [
             {
               text: 'SUPERVISOR FEEDBACK',
@@ -517,7 +507,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             },
           ] : []),
 
-          // Evidence Summary Section
           {
             text: 'EVIDENCE SUMMARY',
             style: 'sectionHeader',
@@ -534,7 +523,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 10, 0, 20],
           },
 
-          // Recommendations Section
           {
             text: 'RECOMMENDATIONS & CONCLUSIONS',
             style: 'sectionHeader',
