@@ -540,7 +540,7 @@ export class CaseService {
   async getCaseHistory(caseId: string): Promise<AuditLogEntry[]> {
     try {
       const response = await apiClient.get<AuditLogEntry[]>(
-        `/api/v1/report/audit-logs`
+        `/api/v1/reports/audit-logs`
       );
 
       // Get all tasks for this case to filter task-related audit logs

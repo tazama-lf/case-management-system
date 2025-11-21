@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
 import { caseService } from '../../services/caseService';
+import { evidenceService } from '../../services/evidenceService';
+import { commentService } from '../../services/commentService';
+import { taskService } from '../../services/taskService';
+import userService from '../../services/userService';
 import type { Case } from '@/features/alerts/types/triage.types';
+import type { Evidence } from '../../types/evidence.types';
+import type { Comment } from '../../services/commentService';
 import GenerateInvestigationReportModal from '../modals/GenerateInvestigationReportModal';
 
 interface InvestigationSummaryTabProps {
@@ -10,31 +16,136 @@ interface InvestigationSummaryTabProps {
   row?: CaseRow;
 }
 
-interface EvidenceItem {
+interface EvidenceCategory {
   type: string;
   count: number;
   description: string;
+  evidence: Evidence[];
 }
 
-const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, row }) => {
+const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId }) => {
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
+  const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
+  const [caseComments, setCaseComments] = useState<Comment[]>([]);
+  const [supervisorComments, setSupervisorComments] = useState<Comment[]>([]);
+  const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [investigationNotes, setInvestigationNotes] = useState<string>('');
+  const [taskId, setTaskId] = useState<string>('');
 
   useEffect(() => {
-    const fetchCaseDetails = async () => {
+    const fetchCaseAndEvidence = async () => {
       try {
         setLoading(true);
+
+     
         const details = await caseService.getCaseDetails(caseId);
         setCaseDetails(details);
+
+       
+        const evidenceResponse = await evidenceService.getCaseEvidence(caseId);
+        
+
+        const groupedByType = new Map<string, Evidence[]>();
+        
+        if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
+          evidenceResponse.evidence.forEach((evidence) => {
+            const type = evidence.evidenceType || 'OTHER';
+            if (!groupedByType.has(type)) {
+              groupedByType.set(type, []);
+            }
+            groupedByType.get(type)!.push(evidence);
+          });
+        }
+
+   
+        const categories: EvidenceCategory[] = Array.from(groupedByType.entries()).map(([type, items]) => {
+          let displayLabel = '';
+          
+          switch (type) {
+            case 'ADVERSE_MEDIA':
+              displayLabel = 'Adverse Media and Search Records';
+              break;
+            case 'SANCTIONS':
+              displayLabel = 'Sanctions Screening Results';
+              break;
+            case 'SAR_STR_FILING':
+              displayLabel = 'SAR/STR Filing Documentation';
+              break;
+            case 'OTHER':
+              displayLabel = 'Supporting Documentation and Reference Materials';
+              break;
+            default:
+              displayLabel = type;
+          }
+
+          return {
+            type: displayLabel,
+            count: items.length,
+            description: items.length === 1 ? 'document' : 'documents',
+            evidence: items,
+          };
+        });
+
+        categories.sort((a, b) => b.count - a.count);
+        setEvidenceCategories(categories);
+
+       
+        const comments = await commentService.getCommentsByCase(caseId);
+        setCaseComments(comments || []);
+
+ 
+        if (comments && comments.length > 0 && comments[0].user_id) {
+          try {
+            const userDetails = await userService.getUserDetailsById(comments[0].user_id);
+            if (userDetails) {
+              const fullName = userService.formatUserName(userDetails);
+              setInvestigatorName(fullName);
+            }
+          } catch (error) {
+            console.error('Failed to fetch investigator name:', error);
+          }
+        }
+
+      
+        try {
+          const tasks = await taskService.getTasksByCaseId(caseId);
+          const approvalTask = tasks.find(
+            (t) => t.name && t.name.toLowerCase().includes('approve')
+          );
+          if (approvalTask) {
+            const supervisorTaskComments = await commentService.getCommentsByTask(
+              approvalTask.task_id
+            );
+            setSupervisorComments(supervisorTaskComments || []);
+          }
+
+          const investigationTask = tasks.find(
+            (t) => t.name && t.name.toLowerCase().includes('investigat')
+          );
+          if (investigationTask) {
+            setTaskId(investigationTask.task_id);
+            if (investigationTask.investigationNotes) {
+              setInvestigationNotes(investigationTask.investigationNotes);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch supervisor comments or investigation notes:', error);
+        }
       } catch (error) {
-        console.error('Failed to fetch case details:', error);
+        console.error('Failed to fetch case details, evidence, or comments:', error);
+        setEvidenceCategories([]);
+        setCaseComments([]);
+        setSupervisorComments([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCaseDetails();
+    fetchCaseAndEvidence();
   }, [caseId]);
 
   if (loading) {
@@ -44,29 +155,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       </div>
     );
   }
-
-  const evidenceSummary: EvidenceItem[] = [
-    {
-      type: 'Transaction logs showing suspicious patterns',
-      count: 3,
-      description: 'documents'
-    },
-    {
-      type: 'Customer account statements for review period',
-      count: 2,
-      description: 'documents'
-    },
-    {
-      type: 'Communication records and correspondence',
-      count: 5,
-      description: 'documents'
-    },
-    {
-      type: 'Supporting documentation and reference materials',
-      count: 4,
-      description: 'documents'
-    }
-  ];
 
   const getOutcomeLabel = (status: string): string => {
     if (status?.includes('CONFIRMED')) return 'Confirmed Fraud';
@@ -82,19 +170,83 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     return 'text-blue-700 bg-blue-50';
   };
 
+  const toggleCategory = (categoryType: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryType)) {
+      newExpanded.delete(categoryType);
+    } else {
+      newExpanded.add(categoryType);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
+    try {
+      setDownloadingId(evidenceId);
+      const blob = await evidenceService.downloadEvidence(evidenceId);
+      
+   
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download evidence:', error);
+      alert('Failed to download evidence: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
-        {/* Generate Report Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => setShowReportModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-          >
-            <DocumentTextIcon className="h-5 w-5" />
-            Generate Report
-          </button>
+        {/* Case Details Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-4 flex-1">
+            {/* Case ID Row */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Case ID:</span>
+              <span className="text-sm font-semibold text-gray-900 font-mono">{caseDetails?.case_id || 'N/A'}</span>
+            </div>
+            
+            {/* Other Details Row */}
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <p className="text-xs text-gray-600 font-medium mb-1">Type</p>
+                <p className="text-sm font-semibold text-gray-900">{caseDetails?.case_type || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium mb-1">Investigator</p>
+                <p className="text-sm font-semibold text-gray-900">{investigatorName}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium mb-1">Submitted</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {caseComments?.[0]?.created_at 
+                    ? new Date(caseComments[0].created_at).toLocaleString() 
+                    : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 ml-6">
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+            >
+              <DocumentTextIcon className="h-5 w-5" />
+              Generate Report
+            </button>
+          </div>
         </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200"></div>
 
         {/* Recommended Outcome Section */}
         <div className="rounded-lg border border-gray-200 bg-blue-50 p-6">
@@ -111,35 +263,143 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         <h3 className="text-sm font-semibold text-gray-700 mb-4">
           Investigation Notes
         </h3>
-        <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
-          <p>
-            The investigation revealed multiple suspicious transactions that align with the triggered typologies.
-            Detailed analysis of transaction patterns, customer behavior, and supporting evidence has been completed.
-          </p>
-          <p>
-            All evidence has been collected and documented according to standard procedures. The findings support
-            the recommended outcome based on the risk assessment and regulatory requirements.
-          </p>
-        </div>
+        {investigationNotes ? (
+          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded border border-gray-200">
+            {investigationNotes}
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
+            No investigation notes have been added yet. Add notes in the Task Details → Investigation Notes tab.
+          </div>
+        )}
       </div>
+
+      {/* Final Investigation Summary Section - Investigator Comments */}
+      {caseComments.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+            Final Investigation Summary
+          </h3>
+          <div className="space-y-4">
+            {caseComments.map((comment, index) => (
+              <div key={comment.comment_id || index}>
+                {/* Notes */}
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {comment.note}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Supervisor Comments Section */}
+      {supervisorComments.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+            Supervisor Approval
+          </h3>
+          <div className="space-y-4">
+            {supervisorComments.map((comment, index) => (
+              <div key={comment.comment_id || index}>
+                {/* Notes */}
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
+                  {comment.note}
+                </p>
+                
+                {/* Supervisor outcome only */}
+                <div className="p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
+                  <p className="text-sm font-semibold text-green-900">
+                    {caseDetails?.status || 'N/A'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Evidence Summary Section */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">
           Evidence Summary
         </h3>
-        <div className="space-y-3">
-          {evidenceSummary.map((item, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <DocumentTextIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <span className="text-sm text-gray-900">{item.type}</span>
-                <span className="text-sm text-gray-500 ml-1">
-                  ({item.count} {item.description})
-                </span>
+        <div className="space-y-2">
+          {evidenceCategories.length > 0 ? (
+            evidenceCategories.map((category, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(category.type)}
+                  className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    {expandedCategories.has(category.type) ? (
+                      <ChevronDownIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                    )}
+                    <DocumentTextIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">{category.type}</span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        ({category.count} {category.description})
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Documents List */}
+                {expandedCategories.has(category.type) && (
+                  <div className="border-t border-gray-200 bg-gray-50">
+                    {category.evidence.map((doc, docIndex) => (
+                      <div
+                        key={docIndex}
+                        className="border-t border-gray-200 p-4 flex items-center justify-between hover:bg-gray-100 transition-colors first:border-t-0"
+                      >
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <DocumentTextIcon className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {doc.fileName || 'Untitled Document'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                              <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                              <span>•</span>
+                              <span>{doc.evidenceType}</span>
+                              {doc.uploadedAt && (
+                                <>
+                                  <span>•</span>
+                                  <span>
+                                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {doc.description && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                {doc.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadEvidence(doc.id || '', doc.fileName || 'document')}
+                          disabled={downloadingId === doc.id}
+                          className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          {downloadingId === doc.id ? 'Downloading...' : 'Download'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 italic">No evidence uploaded yet for this case</p>
+          )}
         </div>
       </div>
 
@@ -174,6 +434,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
         caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
+        taskId={taskId}
+        caseData={caseDetails || undefined}
+        caseComments={caseComments}
+        supervisorComments={supervisorComments}
+        investigationNotes={investigationNotes}
+        evidenceCount={evidenceCategories.reduce((acc, category) => {
+          acc[category.type] = category.count;
+          return acc;
+        }, {} as Record<string, number>)}
       />
     </>
   );

@@ -6,8 +6,11 @@ import {
   ListBulletIcon,
   NumberedListIcon,
   LinkIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { commentService, type Comment } from '../../services/commentService';
+import { taskService } from '../../services/taskService';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface InvestigationNotesTabProps {
   taskId?: string;
@@ -16,12 +19,14 @@ interface InvestigationNotesTabProps {
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({ 
   taskId,
 }) => {
+  const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<Comment[]>([]);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // Load existing comments when component mounts
+
   React.useEffect(() => {
     const loadComments = async () => {
       if (!taskId) return;
@@ -30,7 +35,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       try {
         const comments = await commentService.getCommentsByTask(taskId);
         setExistingComments(comments);
-        // Combine all notes (most recent first)
+    
         if (comments.length > 0) {
           const combinedNotes = comments.map(c => c.note).join('\n\n---\n\n');
           setNotes(combinedNotes);
@@ -67,7 +72,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
     setNotes(newText);
 
-    // Set cursor position after the inserted text
+   
     setTimeout(() => {
       textarea.focus();
       const newPosition = start + prefix.length + textToInsert.length;
@@ -111,6 +116,26 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   };
 
   const handleLink = () => insertFormatting('[', '](url)', 'link text');
+
+  const handleSaveNotes = async () => {
+    if (!taskId || !notes.trim()) {
+      showError('Please add investigation notes before saving.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await taskService.updateTaskForSupervisor(taskId, {
+        investigationNotes: notes,
+      });
+      showSuccess('Investigation notes saved successfully!');
+    } catch (error) {
+      console.error('Failed to save investigation notes:', error);
+      showError('Failed to save investigation notes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -207,6 +232,18 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
               rows={12}
               className="w-full resize-none border-0 px-3 py-2 text-sm focus:outline-none focus:ring-0"
             />
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={handleSaveNotes}
+              disabled={saving || !notes.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
+            >
+              <CheckIcon className="h-4 w-4" />
+              {saving ? 'Saving...' : 'Save Investigation Notes'}
+            </button>
           </div>
         </>
       )}

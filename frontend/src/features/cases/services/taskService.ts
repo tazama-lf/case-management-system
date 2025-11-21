@@ -19,6 +19,7 @@ export interface TaskForSupervisor {
   name?: string;
   description?: string;
   candidateGroup?: string;
+  investigationNotes?: string;
   created_at: string;
   updated_at: string;
 
@@ -46,6 +47,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
+  investigationNotes?: string;
 }
 
 export interface AssignTaskData {
@@ -239,6 +241,7 @@ export class TaskService {
       assigned_user_id?: string;
       name?: string;
       description?: string;
+      investigationNotes?: string;
     },
   ): Promise<TaskForSupervisor> {
     try {
@@ -296,6 +299,24 @@ export class TaskService {
         error,
       );
       throw this.handleError(error, 'get tasks by case ID');
+    }
+  }
+
+  async getInvestigationTaskForCase(caseId: string): Promise<TaskForSupervisor | null> {
+    try {
+      const tasks = await this.getTasksByCaseId(caseId);
+      // Find investigation task
+      const investigationTask = tasks.find(
+        (t) => t.name && t.name.toLowerCase().includes('investigation')
+      );
+      return investigationTask || null;
+    } catch (error: any) {
+      console.error(
+        'TaskService: Failed to get investigation task for case:',
+        caseId,
+        error,
+      );
+      throw this.handleError(error, 'get investigation task for case');
     }
   }
 

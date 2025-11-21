@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon,
@@ -6,8 +6,49 @@ import {
   DocumentIcon
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
+import userService from '../../services/userService';
+import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
+
+// Helper function to get user info from localStorage
+const getUserInfo = () => {
+  try {
+    const user = localStorage.getItem('user');
+    if (user) {
+      const userData = JSON.parse(user);
+      return {
+        userId: userData.userId || '',
+        tenantId: userData.tenantId || '',
+      };
+    }
+  } catch (error) {
+    console.error('Failed to parse user from localStorage:', error);
+  }
+  return { userId: '', tenantId: '' };
+};
+
+// Helper function to get user role from token claims
+const getUserRole = () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      // Decode JWT to get claims
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const decoded = JSON.parse(atob(parts[1]));
+        const claims = decoded.claims || [];
+        if (claims.includes('CMS_SUPERVISOR')) return 'CMS_SUPERVISOR';
+        if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
+      }
+    }
+  } catch (error) {
+    console.error('Failed to extract role from token:', error);
+  }
+  return 'CMS_SUPERVISOR';
+};
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
 
@@ -16,6 +57,28 @@ interface GenerateInvestigationReportModalProps {
   onClose: () => void;
   caseId: string;
   caseTitle?: string;
+  taskId?: string;
+  caseData?: {
+    case_id?: string;
+    case_type?: string;
+    status?: string;
+    priority?: string;
+    created_at?: string;
+  };
+  caseComments?: Array<{
+    note?: string;
+    user_id?: string;
+    created_at?: string;
+  }>;
+  supervisorComments?: Array<{
+    note?: string;
+    user_id?: string;
+    created_at?: string;
+  }>;
+  evidenceCount?: {
+    [key: string]: number;
+  };
+  investigationNotes?: string;
 }
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
@@ -23,29 +86,109 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   onClose,
   caseId,
   caseTitle = 'Case CASE-2023-0045 - Fraud',
+  taskId,
+  caseData,
+  caseComments,
+  supervisorComments,
+  evidenceCount = {},
+  investigationNotes,
 }) => {
   const { showSuccess, showError } = useNotifications();
   const [step, setStep] = useState<'initial' | 'generated'>('initial');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [investigatorName, setInvestigatorName] = useState<string>('N/A');
+  const [isApproved, setIsApproved] = useState(false);
+
+  // Fetch investigator name when modal opens
+  useEffect(() => {
+    if (open && caseComments?.[0]?.user_id) {
+      userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
+        if (userDetails) {
+          setInvestigatorName(userService.formatUserName(userDetails));
+        }
+      }).catch((error) => {
+        console.error('Failed to fetch investigator name:', error);
+      });
+    }
+  }, [open, caseComments]);
+
+  // Build executive summary from real data
+  const buildExecutiveSummary = () => {
+    const investigatorComment = caseComments?.[0]?.note || '';
+    const createdDate = caseData?.created_at ? new Date(caseData.created_at).toLocaleDateString() : 'N/A';
+    const investigatorId = caseComments?.[0]?.user_id || 'Investigator';
+    const caseType = caseData?.case_type || 'Investigation';
+    const outcome = caseData?.status || 'Under Review';
+    
+    return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
+  };
+
+  // Build evidence summary from real data
+  const buildEvidenceSummary = () => {
+    if (!evidenceCount || Object.keys(evidenceCount).length === 0) {
+      return 'No evidence items available for this case.';
+    }
+    
+    const items = Object.entries(evidenceCount).map(([type, count]) => 
+      `• ${type} (${count} ${count === 1 ? 'document' : 'documents'})`
+    );
+    return items.join('\n') + '\n\nAll evidence items are attached to this case and available for audit review.';
+  };
 
   // State for editable report sections
-  const [executiveSummary, setExecutiveSummary] = useState(
-    "This report summarizes the investigation of Case CASE-2023-0045, a Fraud case with typology TYP-001 (Risk Score: 1450). The investigation was conducted by John Smith and submitted for approval on 2023-05-14 10:23 AM. After thorough analysis of the evidence and transaction patterns, the investigator has recommended the outcome: Confirmed Fraud."
-  );
+  const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
-    "1. Transaction Analysis: Multiple suspicious transactions were identified showing patterns consistent with fraud activity.\n\n2. Customer Behavior: The customer's account activity deviated significantly from their established transaction profile.\n\n3. Evidence Review: Documentary evidence including transaction logs, account statements, and communication records support the investigator's conclusions.\n\n4. Risk Assessment: The case presents a high risk level based on the typology score of 1450 and the nature of the suspicious activity."
+    caseComments?.[0]?.note || "1. Investigation findings pending.\n\n2. Additional details to be added."
   );
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. The recommended outcome of 'Confirmed Fraud' is supported by the evidence.\n2. Recommend escalation to compliance team for regulatory reporting.\n3. Suggest account monitoring and enhanced due diligence for related entities."
+    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
   );
+  const [supervisorFeedback, setSupervisorFeedback] = useState(
+    supervisorComments?.[0]?.note || ""
+  );
+  const [evidenceSummary, setEvidenceSummary] = useState(buildEvidenceSummary());
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [reportOutcome, setReportOutcome] = useState<'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring'>('Confirmed Fraud');
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsGenerating(false);
-    setStep('generated');
+    try {
+      const { userId, tenantId } = getUserInfo();
+      const role = getUserRole();
+
+      const payload = {
+        caseId,
+        investigatorInputs: keyFindings,
+        supervisorRemarks: supervisorFeedback,
+        userId,
+        tenantId,
+        role,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+
+      const report = await response.json();
+      setCurrentReportId(report.reportId);
+      showSuccess('Report generated successfully!');
+      setStep('generated');
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      showError('Failed to generate report. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDownload = () => {
@@ -59,6 +202,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         hour12: true
       });
 
+      const submittedDate = caseComments?.[0]?.created_at 
+        ? new Date(caseComments[0].created_at).toLocaleString()
+        : 'N/A';
+
+      // Build evidence list from real data
+      const evidenceList = Object.entries(evidenceCount || {}).length > 0
+        ? Object.entries(evidenceCount).map(([type, count]) => 
+            `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
+          )
+        : ['No evidence items available for this case.'];
+
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
@@ -70,7 +224,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 10],
           },
           {
-            text: caseTitle,
+            text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
             style: 'subheader',
             margin: [0, 0, 0, 5],
           },
@@ -97,15 +251,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               {
                 width: '50%',
                 stack: [
-                  { text: [{ text: 'Case ID: ', bold: true }, 'CASE-2023-0045'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Type: ', bold: true }, 'Fraud'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
                 ]
               },
               {
                 width: '50%',
                 stack: [
-                  { text: [{ text: 'Investigator: ', bold: true }, 'John Smith'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Submitted: ', bold: true }, '2023-05-14 10:23 AM'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
                 ]
               }
             ],
@@ -136,6 +290,20 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
+          // Supervisor Feedback Section (if available) - moved after key findings
+          ...(supervisorFeedback ? [
+            {
+              text: 'SUPERVISOR FEEDBACK',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10],
+            },
+            {
+              text: supervisorFeedback,
+              style: 'body',
+              margin: [0, 0, 0, 20],
+            },
+          ] : []),
+
           // Evidence Summary Section
           {
             text: 'EVIDENCE SUMMARY',
@@ -143,12 +311,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 10],
           },
           {
-            ul: [
-              'Transaction logs showing suspicious patterns (3 documents)',
-              'Customer account statements for review period (2 documents)',
-              'Communication records and correspondence (5 documents)',
-              'Supporting documentation and reference materials (4 documents)',
-            ],
+            ul: evidenceList,
             style: 'body',
             margin: [0, 0, 0, 5],
           },
@@ -264,6 +427,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         hour12: true
       });
 
+      const submittedDate = caseComments?.[0]?.created_at 
+        ? new Date(caseComments[0].created_at).toLocaleString()
+        : 'N/A';
+
+      // Build evidence list from real data
+      const evidenceList2 = Object.entries(evidenceCount || {}).length > 0
+        ? Object.entries(evidenceCount).map(([type, count]) => 
+            `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
+          )
+        : ['No evidence items available for this case.'];
+
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
@@ -275,7 +449,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 10],
           },
           {
-            text: caseTitle,
+            text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
             style: 'subheader',
             margin: [0, 0, 0, 5],
           },
@@ -302,15 +476,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               {
                 width: '50%',
                 stack: [
-                  { text: [{ text: 'Case ID: ', bold: true }, 'CASE-2023-0045'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Type: ', bold: true }, 'Fraud'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
                 ]
               },
               {
                 width: '50%',
                 stack: [
-                  { text: [{ text: 'Investigator: ', bold: true }, 'John Smith'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Submitted: ', bold: true }, '2023-05-14 10:23 AM'], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
+                  { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
                 ]
               }
             ],
@@ -341,6 +515,20 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 20],
           },
 
+          // Supervisor Feedback Section (if available) - moved after key findings
+          ...(supervisorFeedback ? [
+            {
+              text: 'SUPERVISOR FEEDBACK',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10],
+            },
+            {
+              text: supervisorFeedback,
+              style: 'body',
+              margin: [0, 0, 0, 20],
+            },
+          ] : []),
+
           // Evidence Summary Section
           {
             text: 'EVIDENCE SUMMARY',
@@ -348,12 +536,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 10],
           },
           {
-            ul: [
-              'Transaction logs showing suspicious patterns (3 documents)',
-              'Customer account statements for review period (2 documents)',
-              'Communication records and correspondence (5 documents)',
-              'Supporting documentation and reference materials (4 documents)',
-            ],
+            ul: evidenceList2,
             style: 'body',
             margin: [0, 0, 0, 5],
           },
@@ -458,30 +641,79 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const handleFinalize = async () => {
     setIsFinalizing(true);
 
-    // Create the report data
-    const reportData = {
-      case_id: caseId,
-      executive_summary: executiveSummary,
-      key_findings: keyFindings,
-      recommendations: recommendations,
-      generated_at: new Date().toISOString(),
-      finalized: true
-    };
-
     try {
-      // Save report to backend (implement your actual API call here)
-      console.log('Finalizing report:', reportData);
+      // First, if report has been edited, update it
+      if (currentReportId) {
+        const updatePayload = {
+          keyFindings,
+          recommendations,
+          supervisorRemarks: supervisorFeedback,
+          decisions: reportOutcome,
+        };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+        const updateResponse = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/edit/${currentReportId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+          },
+          body: JSON.stringify(updatePayload),
+        });
 
-      // Show success notification
-      showSuccess('Report has been finalized and saved successfully!');
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json().catch(() => ({}));
+          throw new Error(`Failed to update report: ${updateResponse.status} ${updateResponse.statusText} ${JSON.stringify(errorData)}`);
+        }
+      }
 
-      // Close modal after a short delay to allow user to see the success message
-      setTimeout(() => {
-        onClose();
-      }, 500);
+      // Get supervisor name and user info
+      const { userId: supervisorUserId } = getUserInfo();
+      const supervisorName = investigatorName || 'Supervisor';
+
+      // Now approve the report
+      const approvePayload = {
+        reportId: currentReportId || `${caseId}-v1`,
+        outcome: reportOutcome,
+        supervisor: supervisorName,
+        supervisorUserId,
+      };
+
+      const approveResponse = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+        },
+        body: JSON.stringify(approvePayload),
+      });
+
+      if (!approveResponse.ok) {
+        const errorData = await approveResponse.json().catch(() => ({}));
+        throw new Error(`Failed to approve report: ${approveResponse.status} ${approveResponse.statusText} ${JSON.stringify(errorData)}`);
+      }
+
+      // Save investigation notes to task if available
+      if (taskId && investigationNotes) {
+        try {
+          await taskService.updateTaskForSupervisor(taskId, {
+            investigationNotes: investigationNotes,
+          });
+        } catch (error) {
+          console.error('Failed to save investigation notes to task:', error);
+          // Don't fail the entire flow if notes save fails
+        }
+      }
+
+      // Persist the outcome to localStorage for retrieval
+      const outcomeKey = `fraud-report-outcome-${caseId}`;
+      localStorage.setItem(outcomeKey, JSON.stringify({
+        outcome: reportOutcome,
+        approvedAt: new Date().toISOString(),
+        reportId: currentReportId || `${caseId}-v1`,
+      }));
+
+      setIsApproved(true);
+      showSuccess('Report has been finalized and approved successfully!');
     } catch (error) {
       console.error('Failed to finalize report:', error);
       showError('Failed to finalize report. Please try again.');
@@ -630,20 +862,24 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <DocumentIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Case ID:</span>
-                    <span className="text-gray-900">CASE-2023-0045</span>
+                    <span className="text-gray-900">{caseData?.case_id || caseId || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Type:</span>
-                    <span className="text-gray-900">Fraud</span>
+                    <span className="text-gray-900">{caseData?.case_type || 'Investigation'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Investigator:</span>
-                    <span className="text-gray-900">John Smith</span>
+                    <span className="text-gray-900">{investigatorName}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Submitted:</span>
-                    <span className="text-gray-900">2023-05-14 10:23 AM</span>
+                    <span className="text-gray-900">
+                      {caseComments?.[0]?.created_at 
+                        ? new Date(caseComments[0].created_at).toLocaleString() 
+                        : 'N/A'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -668,20 +904,45 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 />
               </div>
 
+              {/* Supervisor Feedback - moved next to Key Findings */}
+              {supervisorComments && supervisorComments.length > 0 && (
+                <div className="space-y-3">
+                  <h5 className="text-sm font-semibold text-gray-900">Supervisor Feedback</h5>
+                  <textarea
+                    value={supervisorFeedback}
+                    onChange={(e) => setSupervisorFeedback(e.target.value)}
+                    className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                  />
+                </div>
+              )}
+
               {/* Evidence Summary */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">Evidence Summary</h5>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <ul className="space-y-2 text-sm text-gray-700">
-                    <li>• Transaction logs showing suspicious patterns (3 documents)</li>
-                    <li>• Customer account statements for review period (2 documents)</li>
-                    <li>• Communication records and correspondence (5 documents)</li>
-                    <li>• Supporting documentation and reference materials (4 documents)</li>
+                    {Object.entries(evidenceCount || {}).map(([type, count]) => (
+                      <li key={type}>• {type} ({count} {count === 1 ? 'document' : 'documents'})</li>
+                    ))}
                   </ul>
                   <p className="text-xs text-gray-500 mt-3 italic">
                     All evidence items are attached to this case and available for audit review.
                   </p>
                 </div>
+              </div>
+
+              {/* Report Outcome - for approval */}
+              <div className="space-y-3">
+                <h5 className="text-sm font-semibold text-gray-900">Final Outcome Decision</h5>
+                <select
+                  value={reportOutcome}
+                  onChange={(e) => setReportOutcome(e.target.value as 'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring')}
+                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Confirmed Fraud">Confirmed Fraud</option>
+                  <option value="Refuted Fraud">Refuted Fraud</option>
+                  <option value="Under Monitoring">Under Monitoring</option>
+                </select>
               </div>
 
               {/* Recommendations */}
@@ -710,7 +971,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             <div className="flex items-center gap-3">
               <button
                 onClick={handleDownload}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={!isApproved}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                  isApproved
+                    ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                    : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                }`}
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -719,7 +985,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </button>
               <button
                 onClick={handlePrint}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={!isApproved}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                  isApproved
+                    ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                    : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                }`}
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -728,13 +999,22 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </button>
               <button
                 onClick={handleFinalize}
-                disabled={isFinalizing}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed"
+                disabled={isFinalizing || isApproved}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                  isApproved
+                    ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                    : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                }`}
               >
                 {isFinalizing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Finalizing...
+                  </>
+                ) : isApproved ? (
+                  <>
+                    <CheckCircleIcon className="h-5 w-5" />
+                    Approved
                   </>
                 ) : (
                   <>

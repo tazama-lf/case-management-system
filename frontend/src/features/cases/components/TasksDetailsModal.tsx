@@ -208,15 +208,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
-          <button
-            type="button"
-            onClick={handleSaveTask}
-            disabled={saving || !tasks[0]?.task_id}
-            className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
-            {saving ? 'Uploading...' : 'Save Task'}
-          </button>
+          {tab !== 'notes' && (
+            <button
+              type="button"
+              onClick={handleSaveTask}
+              disabled={saving || !tasks[0]?.task_id}
+              className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+              {saving ? 'Uploading...' : 'Save Task'}
+            </button>
+          )}
         </div>
       </div>
     </div>
