@@ -39,9 +39,7 @@ const getUserRole = () => {
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
     }
-  } catch {
-    // Silent fail
-  }
+  } catch {}
   return 'CMS_SUPERVISOR';
 };
 
@@ -95,7 +93,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [isApproved, setIsApproved] = useState(false);
 
-  // Fetch investigator name when modal opens
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
       userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
@@ -127,7 +124,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     return items.join('\n') + '\n\nAll evidence items are attached to this case and available for audit review.';
   };
 
-  // State for editable report sections
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
     caseComments?.[0]?.note || "1. Investigation findings pending.\n\n2. Additional details to be added."
