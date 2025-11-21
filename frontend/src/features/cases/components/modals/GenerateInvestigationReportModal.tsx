@@ -23,9 +23,7 @@ const getUserInfo = () => {
         tenantId: userData.tenantId || '',
       };
     }
-  } catch {
-    // Silent fail
-  }
+  } catch {}
   return { userId: '', tenantId: '' };
 };
 
@@ -318,7 +316,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 30],
           },
 
-          // Footer
           {
             canvas: [
               { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
@@ -534,7 +531,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 30],
           },
 
-          // Footer
           {
             canvas: [
               { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
