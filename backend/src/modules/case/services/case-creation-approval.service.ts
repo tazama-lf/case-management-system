@@ -95,7 +95,7 @@ export class CaseCreationApprovalService {
                     caseCreationType: CaseCreationType.MANUAL,
                 };
 
-                const createdCase = await this.createCase(caseDetail, userId, role);
+                const createdCase = await this.createCase(caseDetail, userId, role, true);
 
                 this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via workflow service`, CaseCreationApprovalService.name);
 
@@ -521,7 +521,7 @@ export class CaseCreationApprovalService {
         }
     }
 
-    async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string) {
+    async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string, shouldSyncBpmnTasks: boolean = false) {
         try {
             this.logger.log(`[CaseWorkflow] Creating case for user ${userId} with role ${creatorRole || 'UNKNOWN'}`, CaseCreationApprovalService.name);
 
@@ -554,6 +554,7 @@ export class CaseCreationApprovalService {
                 creationType: createCaseDTO.caseCreationType,
                 autocloseEligible,
                 creatorRole: creatorRole || 'SYSTEM',
+                shouldSyncBpmnTasks: shouldSyncBpmnTasks,
             });
 
             await this.auditLogService.logAction({

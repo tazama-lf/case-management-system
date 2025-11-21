@@ -106,35 +106,28 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
       return tasks;
     }
 
-    // Filter out supervisor tasks for investigators
-    // Investigators should not see tasks that are meant for supervisors
+    // Filter out supervisor-only tasks for investigators
+    // Investigators should see their own tasks (Investigate Case, etc.) but not approval tasks
     const filtered = tasks.filter((task) => {
       const candidateGroup = (task.candidateGroup || '').toLowerCase();
       const taskName = (task.name || '').toLowerCase();
-      const taskDescription = (task.description || '').toLowerCase();
       
       // Define patterns that identify supervisor-only tasks
+      // Only filter based on candidate group and specific task names, not descriptions
       const supervisorTaskPatterns = [
         // Candidate group patterns
         candidateGroup === 'supervisors',
         candidateGroup === 'supervisor',
         
-        // Task name patterns
+        // Specific supervisor task name patterns
         taskName.includes('approve case creation'),
         taskName.includes('approve case reopening'),
+        taskName.includes('approve case closure'),
         taskName.includes('reject case creation'),
         taskName.includes('reject case reopening'),
-        taskName.includes('review case closure'),
-        taskName.includes('supervisor review'),
-        taskName.includes('final approval'),
-        
-        // Task description patterns
-        taskDescription.includes('supervisor'),
-        taskDescription.includes('approval required'),
-        
-        // Legacy patterns
         taskName === 'approve case creation',
-        taskName === 'review case closure'
+        taskName === 'approve case reopening',
+        taskName === 'approve case closure',
       ];
       
       const isSupervisorTask = supervisorTaskPatterns.some(pattern => pattern === true);
