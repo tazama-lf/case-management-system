@@ -137,6 +137,7 @@ model Task {
   assigned_user_id   String?    @db.Uuid
   name               String?
   description        String?
+  investigationNotes String? @db.Text
   task_type          TaskType?
   candidateGroup     String?    @db.VarChar(50)
   work_queue_id      String?    @db.Uuid

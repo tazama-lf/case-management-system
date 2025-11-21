@@ -119,6 +119,7 @@ export class TaskService {
           name: taskDTO.name,
           description: taskDTO.description,
           candidateGroup: taskDTO.candidateGroup,
+          investigationNotes: taskDTO.investigationNotes,
         };
 
         if (taskDTO.assignedUserId) {
@@ -345,6 +346,7 @@ export class TaskService {
         status: updateData.status,
         name: updateData.name,
         description: updateData.description,
+        investigationNotes: updateData.investigationNotes,
       };
 
       if (updateData.assignedUserId !== undefined) {
