@@ -137,6 +137,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [evidenceSummary, setEvidenceSummary] = useState(buildEvidenceSummary());
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [reportOutcome, setReportOutcome] = useState<'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring'>('Confirmed Fraud');
+  const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
+  const [justification, setJustification] = useState<string>('');
+  const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
@@ -605,7 +609,27 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   };
 
+  const validateReport = (): boolean => {
+    const errors: string[] = [];
+
+    if (justification.length < 100) {
+      errors.push('justification');
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  const handleApproveClick = () => {
+    if (!validateReport()) {
+      showError('Please fix validation errors before approving.');
+      return;
+    }
+    setShowApprovalConfirm(true);
+  };
+
   const handleFinalize = async () => {
+    setShowApprovalConfirm(false);
     setIsFinalizing(true);
 
     try {
@@ -640,6 +664,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         outcome: reportOutcome,
         supervisor: supervisorName,
         supervisorUserId,
+        justification,
+        ...(reportOutcome === 'Under Monitoring' && { monitoringDuration }),
       };
 
       const approveResponse = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/approve`, {
@@ -904,6 +930,53 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </select>
               </div>
 
+              {/* Monitoring Duration - only shown when Under Monitoring is selected */}
+              {reportOutcome === 'Under Monitoring' && (
+                <div className="space-y-3">
+                  <h5 className="text-sm font-semibold text-gray-900">Monitoring Duration</h5>
+                  <select
+                    value={monitoringDuration}
+                    onChange={(e) => setMonitoringDuration(Number(e.target.value) as 30 | 60 | 90 | 180)}
+                    className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value={30}>30 Days</option>
+                    <option value={60}>60 Days</option>
+                    <option value={90}>90 Days</option>
+                    <option value={180}>180 Days</option>
+                  </select>
+                  <p className="text-xs text-gray-500">Select the duration for continued monitoring of this case.</p>
+                </div>
+              )}
+
+              {/* Justification - required field */}
+              <div className="space-y-3">
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Justification <span className="text-red-500">*</span>
+                </h5>
+                <textarea
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  placeholder={
+                    reportOutcome === 'Confirmed Fraud'
+                      ? 'Provide justification for confirming fraud, including evidence summary and recommended actions...'
+                      : reportOutcome === 'Refuted Fraud'
+                      ? 'Provide explanation for refuting fraud, including evidence of legitimacy...'
+                      : 'Provide monitoring criteria, trigger conditions for escalation, and review schedule...'
+                  }
+                  className={`w-full h-28 px-3 py-2 text-sm text-gray-700 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+                    justification.length > 0 && justification.length < 100 ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                />
+                <div className="flex justify-between items-center">
+                  <p className={`text-xs ${justification.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
+                    {justification.length}/100 characters minimum
+                  </p>
+                  {validationErrors.includes('justification') && (
+                    <p className="text-xs text-red-500">Justification must be at least 100 characters</p>
+                  )}
+                </div>
+              </div>
+
               {/* Recommendations */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">Recommendations & Conclusions</h5>
@@ -957,10 +1030,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 Print
               </button>
               <button
-                onClick={handleFinalize}
-                disabled={isFinalizing || isApproved}
+                onClick={handleApproveClick}
+                disabled={isFinalizing || isApproved || justification.length < 100}
                 className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
                   isApproved
+                    ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                    : justification.length < 100
                     ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
                     : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
                 }`}
@@ -986,6 +1061,64 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           )}
         </div>
       </div>
+
+      {/* Approval Confirmation Dialog */}
+      {showApprovalConfirm && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircleIcon className="h-6 w-6 text-green-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900">Confirm Report Approval</h4>
+            </div>
+
+            <div className="mb-6 space-y-3">
+              <p className="text-sm text-gray-600">
+                You are about to finalize and approve this investigation report. This action will:
+              </p>
+              <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
+                <li>Lock the report for editing</li>
+                <li>Set the case outcome to: <strong>{reportOutcome}</strong></li>
+                {reportOutcome === 'Under Monitoring' && (
+                  <li>Set monitoring duration to: <strong>{monitoringDuration} days</strong></li>
+                )}
+                <li>Archive the report for compliance</li>
+                <li>Notify relevant stakeholders</li>
+              </ul>
+              <p className="text-sm text-gray-600 font-medium">
+                Are you sure you want to proceed?
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowApprovalConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFinalize}
+                disabled={isFinalizing}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400"
+              >
+                {isFinalizing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Approving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="h-5 w-5" />
+                    Confirm Approval
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
