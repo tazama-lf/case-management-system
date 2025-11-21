@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer } from '@/shared/components/ui';
 import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
 import WorkQueuesTable from '@/features/admin/components/WorkQueuesTable';
 import StatusFilter from '@/features/admin/components/StatusFilter';
 import SearchInput from './SearchInput';
+import CreateQueueModal from './modals/CreateQueueModal';
 import { ROLE_COLORS, TASK_TYPE_COLORS } from '../constants/colors';
 import { useWorkQueueFilter } from '../hooks/useWorkQueueFilter';
 import { useWorkQueues } from '../hooks/useWorkQueues';
@@ -17,6 +19,7 @@ interface WorkQueueManagementProps {
 const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
   className = ''
 }) => {
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const { workQueues, loading, error, refetch } = useWorkQueues();
   const {
     searchTerm,
@@ -45,6 +48,37 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
       console.error('Failed to delete work queue:', err);
     }
   };
+
+  const handleCreateQueue = () => {
+    setCreateModalOpen(true);
+  };
+
+  // const handleCreate = async (data: { id: string; name: string; type: string }) => {
+  //   try {
+  //     // Create the work queue using the service
+  //     await workQueueService.createWorkQueue({
+  //       workQueueId: data.id,
+  //       name: data.name,
+  //       description: `Work queue for ${data.type} tasks`,
+  //       tenantId: 'DEFAULT',
+  //       isActive: true,
+  //       createdByUserId: 'current-user', // TODO: Get from auth context
+  //       roles: [],
+  //       taskTypes: [data.type],
+  //       taskCount: 0
+  //     });
+      
+  //     // Refresh the queues list
+  //     await refetch();
+      
+  //     // Close the modal
+  //     setCreateModalOpen(false);
+      
+  //     console.log('Queue created successfully:', data);
+  //   } catch (err) {
+  //     console.error('Failed to create work queue:', err);
+  //   }
+  // };
 
   if (error) {
     return (
@@ -83,6 +117,15 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             onChange={setStatusFilter}
           />
         </div>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={handleCreateQueue}
+            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create Queue
+          </button>
+        </div>
       </div>
       
       {loading ? (
@@ -98,6 +141,12 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
           onDelete={handleDelete}
         />
       )}
+      
+      <CreateQueueModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={refetch} // Pass refetch to refresh data after creation
+      />
     </PageContainer>
   );
 };
