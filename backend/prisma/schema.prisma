@@ -203,7 +203,8 @@ model Report {
   report_type      ReportType
   report_file_path String
   report_hash      String     @db.VarChar(255)
-  version          String
+  version          Int        @default(1)
+  locked           Boolean    @default(false)
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
   task             Task       @relation(fields: [task_id], references: [task_id])
