@@ -269,7 +269,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           </div>
         ) : (
           <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
-            No investigation notes have been added yet. Add notes in the Task Details → Investigation Notes tab.
+            No investigation notes available.
           </div>
         )}
       </div>

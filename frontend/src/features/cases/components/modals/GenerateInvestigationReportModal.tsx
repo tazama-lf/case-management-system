@@ -13,7 +13,6 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
-// Helper function to get user info from localStorage
 const getUserInfo = () => {
   try {
     const user = localStorage.getItem('user');
@@ -24,18 +23,16 @@ const getUserInfo = () => {
         tenantId: userData.tenantId || '',
       };
     }
-  } catch (error) {
-    console.error('Failed to parse user from localStorage:', error);
+  } catch {
+    // Silent fail
   }
   return { userId: '', tenantId: '' };
 };
 
-// Helper function to get user role from token claims
 const getUserRole = () => {
   try {
     const token = localStorage.getItem('authToken');
     if (token) {
-      // Decode JWT to get claims
       const parts = token.split('.');
       if (parts.length === 3) {
         const decoded = JSON.parse(atob(parts[1]));
@@ -44,8 +41,8 @@ const getUserRole = () => {
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
     }
-  } catch (error) {
-    console.error('Failed to extract role from token:', error);
+  } catch {
+    // Silent fail
   }
   return 'CMS_SUPERVISOR';
 };
@@ -107,13 +104,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         if (userDetails) {
           setInvestigatorName(userService.formatUserName(userDetails));
         }
-      }).catch((error) => {
-        console.error('Failed to fetch investigator name:', error);
-      });
+      }).catch(() => {});
     }
   }, [open, caseComments]);
 
-  // Build executive summary from real data
   const buildExecutiveSummary = () => {
     const investigatorComment = caseComments?.[0]?.note || '';
     const createdDate = caseData?.created_at ? new Date(caseData.created_at).toLocaleDateString() : 'N/A';
@@ -124,7 +118,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
-  // Build evidence summary from real data
   const buildEvidenceSummary = () => {
     if (!evidenceCount || Object.keys(evidenceCount).length === 0) {
       return 'No evidence items available for this case.';
@@ -183,8 +176,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       setCurrentReportId(report.reportId);
       showSuccess('Report generated successfully!');
       setStep('generated');
-    } catch (error) {
-      console.error('Failed to generate report:', error);
+    } catch {
       showError('Failed to generate report. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -206,7 +198,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? new Date(caseComments[0].created_at).toLocaleString()
         : 'N/A';
 
-      // Build evidence list from real data
       const evidenceList = Object.entries(evidenceCount || {}).length > 0
         ? Object.entries(evidenceCount).map(([type, count]) => 
             `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
@@ -408,10 +399,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       const pdfDoc = (pdfMake as any).createPdf(docDefinition);
       pdfDoc.download(`Investigation_Report_${caseId}_${new Date().toISOString().split('T')[0]}.pdf`);
 
-      // Show success notification
       showSuccess('Report downloaded successfully!');
-    } catch (error) {
-      console.error('Failed to download report:', error);
+    } catch {
       showError('Failed to download report. Please try again.');
     }
   };
@@ -431,7 +420,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? new Date(caseComments[0].created_at).toLocaleString()
         : 'N/A';
 
-      // Build evidence list from real data
       const evidenceList2 = Object.entries(evidenceCount || {}).length > 0
         ? Object.entries(evidenceCount).map(([type, count]) => 
             `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
@@ -632,8 +620,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
       const pdfDoc = (pdfMake as any).createPdf(docDefinition);
       pdfDoc.print();
-    } catch (error) {
-      console.error('Failed to print report:', error);
+    } catch {
       showError('Failed to print report. Please try again.');
     }
   };
@@ -642,7 +629,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setIsFinalizing(true);
 
     try {
-      // First, if report has been edited, update it
       if (currentReportId) {
         const updatePayload = {
           keyFindings,
@@ -666,11 +652,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         }
       }
 
-      // Get supervisor name and user info
       const { userId: supervisorUserId } = getUserInfo();
       const supervisorName = investigatorName || 'Supervisor';
 
-      // Now approve the report
       const approvePayload = {
         reportId: currentReportId || `${caseId}-v1`,
         outcome: reportOutcome,
@@ -692,19 +676,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         throw new Error(`Failed to approve report: ${approveResponse.status} ${approveResponse.statusText} ${JSON.stringify(errorData)}`);
       }
 
-      // Save investigation notes to task if available
       if (taskId && investigationNotes) {
         try {
           await taskService.updateTaskForSupervisor(taskId, {
             investigationNotes: investigationNotes,
           });
-        } catch (error) {
-          console.error('Failed to save investigation notes to task:', error);
-          // Don't fail the entire flow if notes save fails
+        } catch {
         }
       }
 
-      // Persist the outcome to localStorage for retrieval
       const outcomeKey = `fraud-report-outcome-${caseId}`;
       localStorage.setItem(outcomeKey, JSON.stringify({
         outcome: reportOutcome,
@@ -714,8 +694,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');
-    } catch (error) {
-      console.error('Failed to finalize report:', error);
+    } catch {
       showError('Failed to finalize report. Please try again.');
     } finally {
       setIsFinalizing(false);
