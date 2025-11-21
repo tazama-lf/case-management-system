@@ -1054,11 +1054,17 @@ export class ReportsService {
   ): Promise<FraudReport> {
     const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
     if (!caseData) throw new Error('Case not found');
-    // Fetch evidence summary 
+    const db = this.couchdbService.getDatabase();
+    const existingReportsResult = await db.find({ selector: { caseId, category: 'report' } });
+    const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
+    const nextVersion = existingReports.length > 0
+      ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
+      : 1;
+    const reportId = `${caseId}-v${nextVersion}`;
     const evidenceResult = await this.evidenceService.getEvidenceByCaseId(caseId, userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
     const evidenceSummary = evidenceResult.evidence;
     const report: FraudReport = {
-      reportId: `${caseId}-v1`,
+      reportId,
       caseId,
       metadata: {
         caseType: caseData.case_type ?? '',
@@ -1073,18 +1079,16 @@ export class ReportsService {
       supervisorRemarks,
       recommendations: '',
       archived: false,
-      version: 1,
+      version: nextVersion,
       history: [],
       category: 'report',
     };
-    
-    await this.couchdbService.insertDocument(report.reportId, report);
-    
+    await this.couchdbService.insertDocument(reportId, report);
     await this.auditLogService.logAction({
       userId: userId ?? '',
       operation: 'CREATE',
       entityName: 'FraudReport',
-      actionPerformed: 'Fraud report generated',
+      actionPerformed: `Fraud report generated (v${nextVersion})`,
       outcome: 'SUCCESS',
       performedAt: new Date(),
     });
@@ -1092,27 +1096,56 @@ export class ReportsService {
   }
 
   async editFraudReport(reportId: string, updates: Partial<FraudReport>, userId?: string): Promise<FraudReport> {
-    // Fetch and update report in CouchDB
     const existing = await this.couchdbService.getDocument(reportId);
     if (!existing) throw new Error('Report not found');
-    const updated: FraudReport = {
-      ...existing,
-      ...updates,
-      version: (existing.version ?? 1) + 1,
-      history: [...(existing.history ?? []), existing],
-      category: 'report',
-    };
-    await this.couchdbService.updateDocument(reportId, updated);
-    // Audit trail: log report edit
-    await this.auditLogService.logAction({
-      userId: userId ?? '',
-      operation: 'UPDATE',
-      entityName: 'FraudReport',
-      actionPerformed: 'Fraud report edited',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
-    return updated;
+    if (existing.locked) {
+      // Create new version
+      const newVersion = (existing.version ?? 1) + 1;
+      const newReport: FraudReport = {
+        ...existing,
+        ...updates,
+        reportId: `${existing.caseId}-v${newVersion}`,
+        version: newVersion,
+        locked: false,
+        history: [...(existing.history ?? []), existing],
+        category: 'report',
+        metadata: {
+          ...existing.metadata,
+          submittedAt: new Date().toISOString(),
+        },
+      };
+      await this.couchdbService.insertDocument(newReport.reportId, newReport);
+      await this.auditLogService.logAction({
+        userId: userId ?? '',
+        operation: 'CREATE_VERSION',
+        entityName: 'FraudReport',
+        actionPerformed: `Created new report version ${newVersion} for case ${existing.caseId}`,
+        outcome: 'SUCCESS',
+        performedAt: new Date(),
+      });
+      return newReport;
+    } else {
+      // Update unlocked report
+      const updated: FraudReport = {
+        ...existing,
+        ...updates,
+        category: 'report',
+        metadata: {
+          ...existing.metadata,
+          submittedAt: new Date().toISOString(),
+        },
+      };
+      await this.couchdbService.updateDocument(reportId, updated);
+      await this.auditLogService.logAction({
+        userId: userId ?? '',
+        operation: 'UPDATE',
+        entityName: 'FraudReport',
+        actionPerformed: 'Fraud report edited',
+        outcome: 'SUCCESS',
+        performedAt: new Date(),
+      });
+      return updated;
+    }
   }
 
   async approveFraudReport(
@@ -1124,11 +1157,10 @@ export class ReportsService {
     const report = await this.couchdbService.getDocument(reportId);
     if (!report) throw new Error('Report not found');
     report.archived = true;
+    report.locked = true;
     report.metadata.approvedAt = new Date().toISOString();
     report.decisions = outcome;
     report.supervisorRemarks = supervisor;
-    report.version = (report.version ?? 1) + 1;
-    report.history = [...(report.history ?? []), { ...report }];
     report.category = 'report';
     await this.couchdbService.updateDocument(reportId, report);
     // Audit trail: log report approval
