@@ -138,9 +138,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [reportOutcome, setReportOutcome] = useState<'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring'>('Confirmed Fraud');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
-  const [justification, setJustification] = useState<string>('');
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [userRole] = useState<string>(getUserRole());
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
@@ -609,22 +608,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   };
 
-  const validateReport = (): boolean => {
-    const errors: string[] = [];
-
-    if (justification.length < 100) {
-      errors.push('justification');
-    }
-
-    setValidationErrors(errors);
-    return errors.length === 0;
-  };
-
   const handleApproveClick = () => {
-    if (!validateReport()) {
-      showError('Please fix validation errors before approving.');
-      return;
-    }
     setShowApprovalConfirm(true);
   };
 
@@ -664,7 +648,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         outcome: reportOutcome,
         supervisor: supervisorName,
         supervisorUserId,
-        justification,
         ...(reportOutcome === 'Under Monitoring' && { monitoringDuration }),
       };
 
@@ -835,7 +818,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                       Report Generated Successfully
                     </h5>
                     <p className="text-sm text-blue-700">
-                      Review the report content below. You can edit any section before finalizing and approving.
+                      {userRole === 'CMS_SUPERVISOR'
+                        ? 'Review the report content below. You can edit any section before finalizing and approving.'
+                        : 'Review the report content below.'}
                     </p>
                   </div>
                 </div>
@@ -874,8 +859,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 <h5 className="text-sm font-semibold text-gray-900">Executive Summary</h5>
                 <textarea
                   value={executiveSummary}
-                  onChange={(e) => setExecutiveSummary(e.target.value)}
-                  className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  onChange={(e) => {
+                    setExecutiveSummary(e.target.value);
+                    setIsApproved(false);
+                  }}
+                  disabled={userRole !== 'CMS_SUPERVISOR'}
+                  className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -884,8 +873,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 <h5 className="text-sm font-semibold text-gray-900">Key Findings</h5>
                 <textarea
                   value={keyFindings}
-                  onChange={(e) => setKeyFindings(e.target.value)}
-                  className="w-full h-32 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  onChange={(e) => {
+                    setKeyFindings(e.target.value);
+                    setIsApproved(false);
+                  }}
+                  disabled={userRole !== 'CMS_SUPERVISOR'}
+                  className="w-full h-32 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -895,8 +888,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <h5 className="text-sm font-semibold text-gray-900">Supervisor Feedback</h5>
                   <textarea
                     value={supervisorFeedback}
-                    onChange={(e) => setSupervisorFeedback(e.target.value)}
-                    className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    onChange={(e) => {
+                      setSupervisorFeedback(e.target.value);
+                      setIsApproved(false);
+                    }}
+                    disabled={userRole !== 'CMS_SUPERVISOR'}
+                    className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                 </div>
               )}
@@ -921,8 +918,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 <h5 className="text-sm font-semibold text-gray-900">Final Outcome Decision</h5>
                 <select
                   value={reportOutcome}
-                  onChange={(e) => setReportOutcome(e.target.value as 'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring')}
-                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    setReportOutcome(e.target.value as 'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring');
+                    setIsApproved(false);
+                  }}
+                  disabled={userRole !== 'CMS_SUPERVISOR'}
+                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                 >
                   <option value="Confirmed Fraud">Confirmed Fraud</option>
                   <option value="Refuted Fraud">Refuted Fraud</option>
@@ -936,8 +937,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <h5 className="text-sm font-semibold text-gray-900">Monitoring Duration</h5>
                   <select
                     value={monitoringDuration}
-                    onChange={(e) => setMonitoringDuration(Number(e.target.value) as 30 | 60 | 90 | 180)}
-                    className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => {
+                      setMonitoringDuration(Number(e.target.value) as 30 | 60 | 90 | 180);
+                      setIsApproved(false);
+                    }}
+                    disabled={userRole !== 'CMS_SUPERVISOR'}
+                    className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                   >
                     <option value={30}>30 Days</option>
                     <option value={60}>60 Days</option>
@@ -948,42 +953,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </div>
               )}
 
-              {/* Justification - required field */}
-              <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">
-                  Justification <span className="text-red-500">*</span>
-                </h5>
-                <textarea
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value)}
-                  placeholder={
-                    reportOutcome === 'Confirmed Fraud'
-                      ? 'Provide justification for confirming fraud, including evidence summary and recommended actions...'
-                      : reportOutcome === 'Refuted Fraud'
-                      ? 'Provide explanation for refuting fraud, including evidence of legitimacy...'
-                      : 'Provide monitoring criteria, trigger conditions for escalation, and review schedule...'
-                  }
-                  className={`w-full h-28 px-3 py-2 text-sm text-gray-700 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
-                    justification.length > 0 && justification.length < 100 ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
-                <div className="flex justify-between items-center">
-                  <p className={`text-xs ${justification.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
-                    {justification.length}/100 characters minimum
-                  </p>
-                  {validationErrors.includes('justification') && (
-                    <p className="text-xs text-red-500">Justification must be at least 100 characters</p>
-                  )}
-                </div>
-              </div>
-
               {/* Recommendations */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">Recommendations & Conclusions</h5>
                 <textarea
                   value={recommendations}
-                  onChange={(e) => setRecommendations(e.target.value)}
-                  className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  onChange={(e) => {
+                    setRecommendations(e.target.value);
+                    setIsApproved(false);
+                  }}
+                  disabled={userRole !== 'CMS_SUPERVISOR'}
+                  className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -1001,62 +981,64 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
           {step === 'generated' && (
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleDownload}
-                disabled={!isApproved}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                  isApproved
-                    ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                    : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                }`}
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Report
-              </button>
-              <button
-                onClick={handlePrint}
-                disabled={!isApproved}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                  isApproved
-                    ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                    : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                }`}
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print
-              </button>
-              <button
-                onClick={handleApproveClick}
-                disabled={isFinalizing || isApproved || justification.length < 100}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                  isApproved
-                    ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                    : justification.length < 100
-                    ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                    : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
-                }`}
-              >
-                {isFinalizing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Finalizing...
-                  </>
-                ) : isApproved ? (
-                  <>
-                    <CheckCircleIcon className="h-5 w-5" />
-                    Approved
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="h-5 w-5" />
-                    Finalize & Approve Report
-                  </>
-                )}
-              </button>
+              {userRole === 'CMS_SUPERVISOR' && (
+                <>
+                  <button
+                    onClick={handleDownload}
+                    disabled={!isApproved}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                      isApproved
+                        ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                        : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Report
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    disabled={!isApproved}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                      isApproved
+                        ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                        : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print
+                  </button>
+                  <button
+                    onClick={handleApproveClick}
+                    disabled={isFinalizing || isApproved}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                      isApproved
+                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                    }`}
+                  >
+                    {isFinalizing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Finalizing...
+                      </>
+                    ) : isApproved ? (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Approved
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Finalize & Approve Report
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
