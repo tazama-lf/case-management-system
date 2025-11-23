@@ -73,12 +73,12 @@ export class AlertService {
     try {
       const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData);
 
-      this.auditLogService.logAction({
+      await this.auditLogService.logAction({
         userId,
         operation: 'ALERT_UPDATED',
         entityName: AlertService.name,
-        actionPerformed: `${JSON.stringify(updateData, null, 2)}`,
-        outcome: `${JSON.stringify(updatedAlert, null, 2)}`,
+        actionPerformed: `${alertId} - Triaged by user ${userId}`,
+        outcome: `Alert ${alertId} updated successfully`,
       });
       this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
 
