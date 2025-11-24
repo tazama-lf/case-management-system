@@ -47,7 +47,9 @@ export const useCaseDashboard = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
+  const [backendTotalItems, setBackendTotalItems] = useState(0);
+  const [backendTotalPages, setBackendTotalPages] = useState(1);
  
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
@@ -90,7 +92,9 @@ export const useCaseDashboard = () => {
           includeTaskAssignments: true,
           includeOwnedCases: true,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
+          page: currentPage,
+          limit: pageSize
         });
       } else {
         // Fetch all cases for supervisors and admins
@@ -98,19 +102,27 @@ export const useCaseDashboard = () => {
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc'
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
+          page: currentPage,
+          limit: pageSize
         });
       }
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);
+      
+      // Update pagination state from backend response
+      if (response.pagination) {
+        setBackendTotalItems(response.pagination.total);
+        setBackendTotalPages(response.pagination.totalPages);
+      }
   } catch {
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sortBy, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
+  }, [statusFilter, priorityFilter, sortBy, currentPage, pageSize, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -136,39 +148,49 @@ export const useCaseDashboard = () => {
   }, [cases, params.caseId, navigate, error]);
 
 
-  const filteredCases = cases.filter((c) =>
-    search === '' || [
-      c.id,
-      c.type,
-      c.status,
-      c.typologyId,
-      String(c.score),
-      c.createdOn,
-      c.pickedOn,
-      c.assignee || '',
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+  // Apply search filter on frontend (since backend doesn't have search yet)
+  const filteredCases = useMemo(() => {
+    if (search === '') return cases;
+    return cases.filter((c) =>
+      [
+        c.id,
+        c.type,
+        c.status,
+        c.typologyId,
+        String(c.score),
+        c.createdOn,
+        c.pickedOn,
+        c.assignee || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+  }, [cases, search]);
 
-  // Calculate pagination
-  const totalItems = filteredCases.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  // Use backend pagination data when available, otherwise calculate from filtered results
+  const totalItems = search === '' ? backendTotalItems : filteredCases.length;
+  const totalPages = search === '' ? backendTotalPages : Math.max(1, Math.ceil(filteredCases.length / pageSize));
   
-  // Reset to page 1 if current page exceeds total pages
+  // Reset to page 1 if current page exceeds total pages and we're doing client-side pagination
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
+    if (search !== '' && currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
-  }, [totalPages, currentPage]);
+  }, [totalPages, currentPage, search]);
 
-  // Get paginated cases
+  // Use filteredCases directly when backend pagination is active (search is empty)
+  // Otherwise use client-side pagination for search results
   const paginatedCases = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return filteredCases.slice(start, end);
-  }, [filteredCases, currentPage, pageSize]);
+    if (search === '') {
+      return filteredCases; // Backend already paginated the results
+    } else {
+      // Apply client-side pagination for search results
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      return filteredCases.slice(start, end);
+    }
+  }, [filteredCases, currentPage, pageSize, search]);
 
   const pagination: PaginationState = {
     currentPage,
@@ -337,8 +359,13 @@ export const useCaseDashboard = () => {
     caseActions,
     
     // Pagination actions
-    setCurrentPage,
-    setPageSize,
+    setCurrentPage: (page: number) => {
+      setCurrentPage(page);
+    },
+    setPageSize: (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1); // Reset to first page when changing page size
+    },
     refreshCases: fetchCases
   };
 };

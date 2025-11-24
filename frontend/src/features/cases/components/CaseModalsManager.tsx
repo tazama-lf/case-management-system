@@ -123,6 +123,39 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       modalActions.setCreateCaseLoading(false);
     }
   };
+  const handleSaveDraft = async (payload: {
+    alertId?: string;
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+    draft?: boolean;
+  }) => {
+    modalActions.setCreateCaseLoading(true);
+    modalActions.setCreateCaseError('');
+
+    try {
+      const manualCreateCaseData = {
+        alertId: payload.alertId,
+        priorityScore: payload.priorityScore,
+        alertType: payload.alertType,
+      };
+
+      const newCase = await caseService.SaveCaseAsDraft(manualCreateCaseData);
+
+      const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
+      success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
+
+      modalActions.setIsCreateOpen(false);
+      await onRefreshCases();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create case';
+      modalActions.setCreateCaseError(errorMessage);
+      error('Create Case Failed', errorMessage);
+    } finally {
+      modalActions.setCreateCaseLoading(false);
+    }
+  };
 
   const handleUpdate = async (caseId: string, payload: {
     priority: Priority;
@@ -142,6 +175,40 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       };
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
+
+      success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
+
+      modalActions.setIsCreateOpen(false);
+      modalActions.setCreateModalMode('create');
+      modalActions.setEditingCaseId(null);
+
+      await onRefreshCases();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
+      modalActions.setCreateCaseError(errorMessage);
+      error('Update Case Failed', errorMessage);
+    } finally {
+      modalActions.setCreateCaseLoading(false);
+    }
+  };
+  const handleCompleteCase = async (caseId: string, payload: {
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+  }) => {
+    modalActions.setCreateCaseLoading(true);
+    modalActions.setCreateCaseError('');
+
+    try {
+      const updateCaseData = {
+        status: 'STATUS_02_READY_FOR_ASSIGNMENT' as const,
+        priority: payload.priority,
+        caseType: payload.alertType,
+        ...(payload.assignee && { caseOwnerUserId: payload.assignee }),
+      };
+
+      const updatedCase = await caseService.completeCase(caseId, updateCaseData);
 
       success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
 
@@ -281,7 +348,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           modalActions.setCreateModalMode('create');
           modalActions.setEditingCaseId(null);
         }}
+        onCompleteCase={handleCompleteCase}
         onCreate={handleCreate}
+        onSaveDraft={handleSaveDraft}
         onUpdate={handleUpdate}
         loading={modalState.createCaseLoading}
         error={modalState.createCaseError}

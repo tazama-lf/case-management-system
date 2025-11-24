@@ -158,7 +158,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Justification <span className="text-red-500">*</span>
+              Note <span className="text-red-500">*</span>
             </label>
             <textarea
               value={justification}
@@ -169,7 +169,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               disabled={isSubmitting}
             />
             <p className="mt-1 text-xs text-gray-500">
-              This justification will be recorded in the audit log and sent to both users.
+              This note will be recorded in the audit log and sent to both users.
             </p>
           </div>
 

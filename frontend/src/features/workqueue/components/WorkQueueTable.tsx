@@ -63,7 +63,37 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       return actions;
     }
 
-    if (task.status === 'IN_PROGRESS') {
+     if (task.status === 'IN_PROGRESS') {
+      
+      // Add Reassign and Unassign actions for IN_PROGRESS tasks
+      if (task.assignee && onReassign) {
+        actions.push(
+          <button
+            key="reassign"
+            onClick={() => onReassign(task)}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            title="Reassign task"
+          >
+            <ArrowPathIcon className="h-3 w-3 mr-1" />
+            Reassign
+          </button>
+        );
+      }
+
+      if (task.assignee && onUnassign) {
+        actions.push(
+          <button
+            key="unassign"
+            onClick={() => onUnassign(task)}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+            title="Unassign task"
+          >
+            <UserMinusIcon className="h-3 w-3 mr-1" />
+            Unassign
+          </button>
+        );
+      }
+
       if (task.assignee && onComplete) {
         actions.push(
           <button
@@ -77,6 +107,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           </button>
         );
       }
+
+
       return actions;
     }
 
@@ -107,6 +139,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         </button>
       );
     }
+
+    
 
     if (task.assignee && onUnassign) {
       actions.push(

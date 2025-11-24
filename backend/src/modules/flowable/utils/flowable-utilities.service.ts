@@ -4,8 +4,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
 import { FlowableClientFactory } from '../services/flowable-client.factory';
 import { CreateTaskDto } from 'src/modules/task/dto/create-task.dto';
-import { TaskService } from 'src/modules/task/task.service';
-import { SharedService } from 'src/modules/shared/shared.service';
+import { TaskBridgeService } from 'src/modules/task-bridge/task-bridge.service';
 
 /**
  * Unified utility service for Flowable operations
@@ -21,7 +20,7 @@ export class FlowableUtilitiesService {
 	constructor(
 		private readonly logger: LoggerService,
 		private readonly clientFactory: FlowableClientFactory,
-		private readonly sharedService: SharedService
+		private readonly taskBridgeService: TaskBridgeService
 	) {
 		this.flowableClient = this.clientFactory.getClient();
 	}
@@ -214,7 +213,7 @@ export class FlowableUtilitiesService {
 		}
 	}
 	async createTask(taskData: CreateTaskDto, createdBy: string) {
-		return await this.sharedService.createTask(
+		return await this.taskBridgeService.createTask(
 			{
 				caseId: taskData.caseId,
 				status: taskData.status,

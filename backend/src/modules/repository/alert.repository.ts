@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Alert, Priority } from '@prisma/client';
+import { Alert, Priority, Prisma } from '@prisma/client';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 
 @Injectable()
@@ -71,6 +71,50 @@ export class AlertRepository {
       return updatedAlert;
     } catch (error) {
       throw new Error(`Failed to update alert ${alertId}: ${error.message}`);
+    }
+  }
+
+  async findMany(options: {
+    where?: Prisma.AlertWhereInput;
+    sortOrder?: 'asc' | 'desc';
+    sortBy?: keyof Alert;
+    page?: number;
+    limit?: number;
+  }) {
+    try {
+      const { where: whereClause = {}, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 10 } = options;
+
+      const alerts = await this.prisma.alert.findMany({
+        where: whereClause,
+        orderBy: { [sortBy]: sortOrder },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          alert_id: true,
+          txtp: true,
+          priority: true,
+          confidence_per: true,
+          source: true,
+          alert_type: true,
+          created_at: true,
+          transaction: true,
+          alert_data: true,
+        },
+      });
+
+      return alerts;
+    } catch (error) {
+      throw new Error(`Failed to fetch alerts: ${error.message}`);
+    }
+  }
+
+  async count(options: { where?: Prisma.AlertWhereInput }) {
+    try {
+      const { where: whereClause = {} } = options;
+      const totalCount = await this.prisma.alert.count({ where: whereClause });
+      return totalCount;
+    } catch (error) {
+      throw new Error(`Failed to count alerts: ${error.message}`);
     }
   }
 }

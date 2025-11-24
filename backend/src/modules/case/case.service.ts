@@ -2,20 +2,27 @@ import { Injectable, BadRequestException, InternalServerErrorException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
+import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';
 import { CaseQueryService } from './services/case-query.service';
-import { TaskService } from 'src/modules/task/task.service';
-import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
-import { CommentService } from 'src/modules/comment/comment.service';
+import { TaskService } from '../../../src/modules/task/task.service';
+import { CreateCommentDto } from '../../../src/modules/comment/dto/create-comment.dto';
+import { CommentService } from '../../../src/modules/comment/comment.service';
 import { NotificationService } from '../notification/notification.service';
-import { AuthHelperService } from 'src/modules/auth/auth-helper.service';
-import { TASK_NAMES } from './utils/constants/case.constants';
+import { AuthHelperService } from '../../../src/modules/auth/auth-helper.service';
+import { TASK_NAMES, CANDIDATE_GROUPS } from './utils/constants/case.constants';
 import { CaseReopeningService } from './services/case-reopening.service';
 import { CaseClosureApprovalService } from './services/case-closure-approval.service';
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
-import { FlowableService } from 'src/modules/flowable/flowable.service';
-import { CloseCaseDto, SystemCaseCreationDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto/index.dto';
+import { FlowableService } from '../../../src/modules/flowable/flowable.service';
+import {
+	CloseCaseDto,
+	SystemCaseCreationDto,
+	ManualCreateCaseDto,
+	GetAllCasesQueryDto,
+	GetUserCasesQueryDto,
+	UpdateCaseDto,
+} from './dto/index.dto';
 
 @Injectable()
 export class CaseService {
@@ -233,6 +240,10 @@ export class CaseService {
 		}
 	}
 
+	async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+		return this.caseCreationApprovalService.saveCaseAsDraft(dto, userId, tenantId, role);
+	}
+
 	async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
 		return this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
 	}
@@ -296,6 +307,145 @@ export class CaseService {
 		return this.caseQueryService.updateCase(caseId, updateData, userId);
 	}
 
+	async completeCaseCreation(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string, role: string) {
+		const existingCase = await this.caseQueryService.retrieveCase(caseId);
+		if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+		
+		if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) {
+			throw new BadRequestException('Only cases in DRAFT status can be completed');
+		}
+
+		// Validate required fields are provided
+		const missingFields: string[] = [];
+		if (!updateData.priority && !existingCase.priority) missingFields.push('priority');
+		if (!updateData.caseType && !existingCase.case_type) missingFields.push('caseType');
+
+		if (missingFields.length > 0) {
+			throw new BadRequestException({
+				message: 'Missing required fields to complete case creation',
+				missingFields,
+			});
+		}
+
+		const isSupervisor = role === 'SUPERVISOR';
+		const needsApproval = !isSupervisor;
+
+		// Determine the target status based on role
+		const targetStatus = needsApproval 
+			? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL 
+			: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+
+		this.logger.log(
+			`[CompleteCaseCreation] Completing draft case ${caseId} by ${role}. Will ${needsApproval ? 'require approval' : 'be auto-approved'}`,
+			CaseService.name,
+		);
+
+		try {
+			const result = await this.prismaService.$transaction(async (prisma) => {
+				// Update case with provided data and new status
+				const updatedCase = await this.caseQueryService.updateCase(
+					caseId, 
+					{ ...updateData, status: targetStatus }, 
+					userId
+				);
+
+				// Find and complete the "Complete New Case" task
+				const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+				const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
+				
+				if (!completeNewCaseTask) {
+					throw new BadRequestException('No Complete New Case task found');
+				}
+
+				if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
+					throw new BadRequestException(`Complete New Case task ${completeNewCaseTask.task_id} is already completed`);
+				}
+
+				const completedTask = await this.taskService.updateTask(
+					completeNewCaseTask.task_id,
+					{ status: TaskStatus.STATUS_30_COMPLETED },
+					userId,
+					this.auditLogService,
+				);
+
+				return { case: updatedCase, completedTask };
+			});
+
+			this.logger.log(
+				`[CompleteCaseCreation] Case ${caseId} updated to ${targetStatus}, Complete New Case task completed`,
+				CaseService.name,
+			);
+
+			// Create appropriate next task based on role
+			let nextTask;
+			if (needsApproval) {
+				// Investigator/Analyst: Create approval task for supervisor
+				nextTask = await this.taskService.createTask(
+					{
+						caseId,
+						status: TaskStatus.STATUS_01_UNASSIGNED,
+						name: TASK_NAMES.APPROVE_CASE_CREATION,
+						description: `Review and approve case creation for case ${caseId}`,
+						candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+					},
+					userId,
+				);
+
+				this.logger.log(
+					`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`,
+					CaseService.name,
+				);
+			} else {
+				// Supervisor: Create investigation task directly
+				nextTask = await this.taskService.createTask(
+					{
+						caseId,
+						status: TaskStatus.STATUS_01_UNASSIGNED,
+						name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
+						description: `Task to investigate: ${caseId}`,
+						candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+					},
+					userId,
+				);
+
+				this.logger.log(
+					`[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
+					CaseService.name,
+				);
+			}
+
+			await this.auditLogService.logAction({
+				userId,
+				operation: 'completeCaseCreation',
+				entityName: CaseService.name,
+				actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+				outcome: Outcome.SUCCESS,
+			});
+
+			return {
+				success: true,
+				case: result.case,
+				completedTask: result.completedTask,
+				nextTask,
+				message: needsApproval
+					? 'Case creation completed and pending supervisor approval'
+					: 'Case creation completed and ready for investigation',
+				requiresApproval: needsApproval,
+			};
+		} catch (err) {
+			this.logger.error('completeCaseCreation failed', { error: err, caseId, userId, role });
+
+			await this.auditLogService.logAction({
+				userId,
+				operation: 'completeCaseCreation',
+				entityName: CaseService.name,
+				actionPerformed: `Failed to complete draft case ${caseId}: ${err.message}`,
+				outcome: Outcome.FAILURE,
+			});
+
+			throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
+		}
+	}
 	async retrieveCase(caseId: string) {
 		return this.caseQueryService.retrieveCase(caseId);
 	}

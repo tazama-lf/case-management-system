@@ -49,6 +49,7 @@ export class CaseEventListener {
           creatorRole: creatorRole,
         },
         event.caseId,
+        event.tenantId,
       );
 
       this.logger.log(
@@ -56,17 +57,24 @@ export class CaseEventListener {
         CaseEventListener.name,
       );
 
-      // Sync BPMN tasks to PostgreSQL
-      // try {
-      //   await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id);
-      //   this.logger.log(`[CaseEventListener] BPMN task sync completed for case ${event.caseId}`, CaseEventListener.name);
-      // } catch (syncError) {
-      //   this.logger.error(
-      //     `[CaseEventListener] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
-      //     syncError.stack,
-      //     CaseEventListener.name,
-      //   );
-      // }
+      // Sync BPMN tasks to PostgreSQL only if requested
+      if (event.shouldSyncBpmnTasks) {
+        try {
+          await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id);
+          this.logger.log(`[CaseEventListener] BPMN task sync completed for case ${event.caseId}`, CaseEventListener.name);
+        } catch (syncError) {
+          this.logger.error(
+            `[CaseEventListener] BPMN task sync failed for case ${event.caseId}: ${syncError.message}`,
+            syncError.stack,
+            CaseEventListener.name,
+          );
+        }
+      } else {
+        this.logger.log(
+          `[CaseEventListener] Skipping BPMN task sync for case ${event.caseId} (shouldSyncBpmnTasks=false)`,
+          CaseEventListener.name,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `[CaseEventListener] Failed to start process for case ${event.caseId}: ${error.message}`,

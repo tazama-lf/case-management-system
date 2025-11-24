@@ -12,32 +12,26 @@ import { FlowableClientFactory } from './flowable-client.factory';
 @Injectable()
 export class FlowableProcessService {
   private readonly flowableClient: AxiosInstance;
-  private readonly tenantId: string;
+  // private readonly tenantId: string;
 
   constructor(
     private readonly logger: LoggerService,
     private readonly clientFactory: FlowableClientFactory,
   ) {
     this.flowableClient = this.clientFactory.getClient();
-    this.tenantId = this.clientFactory.tenantId;
+    // this.tenantId = this.clientFactory.tenantId;
   }
 
   /**
    * Start a new process instance
    */
-  async startProcessInstance(
-    processDefinitionKey: string,
-    variables: Record<string, string>,
-    businessKey: string,
-  ) {
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
     try {
       // First, verify the process definition exists
-      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey);
+      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey, tenantId);
       if (!processDefinitions || processDefinitions.length === 0) {
         const availableDefinitions = await this.listProcessDefinitions();
-        throw new Error(
-          `Process definition '${processDefinitionKey}' not found. Available definitions: ${availableDefinitions}`,
-        );
+        throw new Error(`Process definition '${processDefinitionKey}' not found. Available definitions: ${availableDefinitions}`);
       }
 
       const formattedVariables = this.formatVariables(variables);
@@ -45,14 +39,14 @@ export class FlowableProcessService {
         processDefinitionKey,
         variables: formattedVariables,
         businessKey,
-        tenantId: this.tenantId,
+        tenantId,
       };
 
       this.logger.log(
         `Starting process instance with payload: ${JSON.stringify({
           processDefinitionKey,
           businessKey,
-          tenantId: this.tenantId,
+          tenantId: tenantId,
           variableCount: formattedVariables.length,
           variables: formattedVariables.map((v) => `${v.name}=${v.value}`).join(', '),
         })}`,
@@ -110,11 +104,7 @@ export class FlowableProcessService {
   /**
    * Update a single process variable
    */
-  async updateProcessVariable(
-    processInstanceId: string,
-    variableName: string,
-    value: any,
-  ): Promise<void> {
+  async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
     try {
       await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
         name: variableName,
@@ -161,7 +151,11 @@ export class FlowableProcessService {
           this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableProcessService.name);
           return;
         } catch (retryError) {
-          this.logger.error(`Failed to update variables individually: ${retryError.message}`, retryError.stack, FlowableProcessService.name);
+          this.logger.error(
+            `Failed to update variables individually: ${retryError.message}`,
+            retryError.stack,
+            FlowableProcessService.name,
+          );
           throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
         }
       }
@@ -233,13 +227,13 @@ export class FlowableProcessService {
   /**
    * Get process definitions
    */
-  async getProcessDefinitions(processDefinitionKey?: string) {
+  async getProcessDefinitions(processDefinitionKey?: string, tenantId?: string) {
     try {
       const params: Record<string, unknown> = {};
       if (processDefinitionKey) {
         params.key = processDefinitionKey;
       }
-      params.tenantId = this.tenantId;
+      params.tenantId = tenantId;
 
       const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
         params,

@@ -70,16 +70,16 @@ export class CaseCreationApprovalService {
 
         const priorityScore = dto.priorityScore;
         const priority = this.casePriorityUtil.determinePriority(priorityScore);
-        const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
+        const caseType = dto.alertType;
 
-        const isSupervisor = role === 'SUPERVISOR';
-
-        const needsApproval = !isSupervisor;
-        const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+        const needsApproval = role !== 'SUPERVISOR';
+        const caseStatus = needsApproval
+            ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
+            : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
         const caseOwnerId = needsApproval ? undefined : userId;
 
         this.logger.log(
-            `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}, role: ${role}`,
+            `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
             CaseCreationApprovalService.name,
         );
 
@@ -95,31 +95,83 @@ export class CaseCreationApprovalService {
                     caseCreationType: CaseCreationType.MANUAL,
                 };
 
-                const createdCase = await this.createCase(caseDetail, userId, role);
+                const createdCase = await this.createCase(caseDetail, userId, undefined, false);
 
-                this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via workflow service`, CaseCreationApprovalService.name);
+                this.logger.log(
+                    `[ManualCase] Case ${createdCase.case_id} created via workflow service`,
+                    CaseCreationApprovalService.name
+                );
 
                 const updatedAlert = await this.caseRepository.updateAlertByAlertId(dto, priorityScore, createdCase, priority);
 
-                this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseCreationApprovalService.name);
+                this.logger.log(
+                    `[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`,
+                    CaseCreationApprovalService.name
+                );
+
                 return { case: createdCase, alert: updatedAlert };
             });
 
             this.logger.log(
-                `[ManualCase] Case ${result.case.case_id} created. BPMN will create ${needsApproval ? 'approval task' : 'investigation task'} automatically.`,
+                `[ManualCase] About to create task for case ${result.case.case_id}. needsApproval: ${needsApproval}, role: ${role}`,
                 CaseCreationApprovalService.name,
             );
 
+            let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
+            let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
+            if (needsApproval) {
+                this.logger.log(
+                    `[ManualCase] Creating APPROVAL task for investigator-created case ${result.case.case_id}`,
+                    CaseCreationApprovalService.name,
+                );
+                approvalTask = await this.taskService.createTask(
+                    {
+                        caseId: result.case.case_id,
+                        status: TaskStatus.STATUS_01_UNASSIGNED,
+                        name: 'Approve Case Creation',
+                        description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
+                        candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+                    },
+                    userId,
+                );
+
+                this.logger.log(
+                    `[ManualCase] ✓ Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
+                    CaseCreationApprovalService.name,
+                );
+            }
+            else {
+                this.logger.log(
+                    `[ManualCase] Creating INVESTIGATION task for supervisor-created case ${result.case.case_id}`,
+                    CaseCreationApprovalService.name,
+                );
+                investigateTask = await this.taskService.createTask(
+                    {
+                        caseId: result.case.case_id,
+                        status: TaskStatus.STATUS_01_UNASSIGNED,
+                        name: 'Investigate case',
+                        description: `Investigation task for manually created case ${result.case.case_id}`,
+                        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                    },
+                    userId,
+                );
+
+                this.logger.log(
+                    `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${result.case.case_id} → INVESTIGATIONS queue (auto-approved by supervisor)`,
+                    CaseCreationApprovalService.name,
+                );
+            }
+
             this.logger.log(
                 `[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`,
-                CaseCreationApprovalService.name,
+                CaseCreationApprovalService.name
             );
 
             await this.auditLogService.logAction({
                 userId,
                 operation: 'createManualCase',
                 entityName: CaseCreationApprovalService.name,
-                actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval, BPMN will create approval task)' : ' (auto-approved, BPMN will create investigation task)'}`,
+                actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
                 outcome: Outcome.SUCCESS,
             });
 
@@ -127,15 +179,126 @@ export class CaseCreationApprovalService {
                 success: true,
                 case: result.case,
                 alert: result.alert,
-                message: needsApproval
-                    ? 'Case created and pending approval. Approval task will be created by workflow engine.'
-                    : 'Case created and ready for investigation. Investigation task will be created by workflow engine.',
-                requiresApproval: needsApproval,
-                creatorRole: role,
+                approvalTask,
+                investigateTask
             };
         } catch (err) {
             this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
             throw new InternalServerErrorException(`Failed to create case & link alert: ${err.message}`);
+        }
+    }
+
+    /**
+     * Save a case as draft
+     * Creates a case with DRAFT status and a "Complete New Case" task assigned to the creator
+     * Used when user wants to save incomplete case information and complete it later
+     * 
+     * @param dto - Manual case creation data including alert ID and priority
+     * @param userId - ID of the user saving the draft
+     * @param tenantId - Tenant ID for multi-tenancy
+     * @param role - User's role (SUPERVISOR or INVESTIGATOR)
+     * @returns Created case, alert, and success message
+     * @throws NotFoundException if alert doesn't exist
+     * @throws BadRequestException if alert already has a case or is not NALT status
+     */
+    async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+        this.logger.log(`[DraftCase] User ${userId} with role ${role} is saving a case as draft`, CaseCreationApprovalService.name);
+
+        // Verify alert exists and is eligible for case creation
+        const existingAlert = await this.caseRepository.findCaseByAlertId(dto.alertId);
+
+        if (!existingAlert) {
+            throw new NotFoundException(`Alert ${dto.alertId} not found`);
+        }
+
+        if (existingAlert.case_id) {
+            throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
+        }
+
+        // Only NALT (Not Alert) status alerts can have manual cases created
+        if ((existingAlert.alert_data as any)?.status !== 'NALT') {
+            throw new BadRequestException('Can only create manual cases from alerts with NALT status');
+        }
+
+        // Calculate priority based on priority score
+        const priorityScore = dto.priorityScore;
+        const priority = this.casePriorityUtil.determinePriority(priorityScore);
+        const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
+
+        this.logger.log(
+            `[DraftCase] Creating draft case with status STATUS_00_DRAFT for user ${userId}`,
+            CaseCreationApprovalService.name,
+        );
+
+        try {
+            // Prepare case details for draft creation
+            const caseDetail: CreateCaseDto = {
+                tenantId,
+                caseCreatorUserId: userId,
+                caseOwnerUserId: userId, // Draft cases are owned by the creator
+                status: CaseStatus.STATUS_00_DRAFT, // Mark as draft - requires completion
+                caseType,
+                priority,
+                caseCreationType: CaseCreationType.MANUAL,
+            };
+
+            // Create draft case and link to alert in a single atomic transaction
+            const result = await this.caseRepository.createDraftCase(caseDetail, dto, priorityScore, priority);
+
+            this.logger.log(
+                `[DraftCase] Transaction complete for case ${result.case.case_id}, creating task...`,
+                CaseCreationApprovalService.name,
+            );
+
+            // Create "Complete New Case" task assigned to the creator
+            // This task prompts the user to complete the missing case information
+            // Task is created OUTSIDE transaction to avoid blocking the case creation
+            const completeNewCaseTask = await this.taskService.createTask(
+                {
+                    caseId: result.case.case_id,
+                    status: TaskStatus.STATUS_10_ASSIGNED, // Directly assigned to creator
+                    assignedUserId: userId,
+                    name: 'Complete New Case',
+                    description: 'Complete the draft case by providing all required information',
+                    candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                },
+                userId,
+            );
+
+            // Log successful draft creation
+            await this.auditLogService.logAction({
+                userId,
+                operation: 'saveCaseAsDraft',
+                entityName: 'CaseCreation',
+                actionPerformed: `Draft case ${result.case.case_id} created`,
+                outcome: Outcome.SUCCESS,
+            });
+
+            this.logger.log(
+                `[DraftCase] Draft saved: case ${result.case.case_id}`,
+                CaseCreationApprovalService.name,
+            );
+
+            return {
+                success: true,
+                case: result.case,
+                alert: result.alert,
+                // task: completeNewCaseTask, // Task object commented out from response
+                message: 'Case saved as draft. Complete the case by providing all required information.',
+            };
+        } catch (err) {
+            this.logger.error('[DraftCase] Failed to save case as draft', { error: err, dto, userId, tenantId });
+
+            // Log failure for audit trail
+            await this.auditLogService.logAction({
+                userId,
+                operation: 'saveCaseAsDraft',
+                entityName: 'CaseCreation',
+                actionPerformed: `Failed: alert ${dto.alertId}`,
+                outcome: Outcome.FAILURE,
+            });
+
+            throw new InternalServerErrorException(`Failed to save case as draft: ${err.message}`);
         }
     }
 
@@ -307,51 +470,39 @@ export class CaseCreationApprovalService {
                 reason: 'Case creation approved by supervisor',
             });
 
+            // Create investigation task after approval
+            this.logger.log(`[ApproveCaseCreation] Creating Investigation task for approved case ${caseId}`, CaseCreationApprovalService.name);
+            const investigationTask = await this.taskService.createTask(
+                {
+                    caseId: caseId,
+                    status: TaskStatus.STATUS_01_UNASSIGNED,
+                    name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
+                    description: `Investigate case: ${caseId}`,
+                    candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                },
+                supervisorId,
+            );
+            this.logger.log(`[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`, CaseCreationApprovalService.name);
+
             await this.auditLogService.logAction({
                 userId: supervisorId,
                 operation: 'approveCaseCreation',
                 entityName: CaseCreationApprovalService.name,
-                actionPerformed: `Approved case creation for case ${caseId}. BPMN will create investigation task.`,
+                actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
                 outcome: Outcome.SUCCESS,
             });
 
             this.logger.log(
-                `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. BPMN will create investigation task automatically.`,
+                `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
                 CaseCreationApprovalService.name,
             );
-
-            setTimeout(async () => {
-                try {
-                    const investigationTask = await this.caseRepository.findTaskByNames(
-                        caseId,
-                        [...TASK_NAMES.INVESTIGATE_CASE_VARIANTS],
-                        TaskStatus.STATUS_01_UNASSIGNED,
-                    );
-
-                    if (investigationTask) {
-                        this.logger.log(
-                            `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created successfully for case ${caseId}`,
-                            CaseCreationApprovalService.name,
-                        );
-                    } else {
-                        this.logger.warn(
-                            `[ApproveCaseCreation] Investigation task not found after 3 seconds for case ${caseId}. BPMN may still be processing.`,
-                            CaseCreationApprovalService.name,
-                        );
-                    }
-                } catch (error) {
-                    this.logger.warn(
-                        `[ApproveCaseCreation] Failed to verify investigation task creation: ${error.message}`,
-                        CaseCreationApprovalService.name,
-                    );
-                }
-            }, 3000);
 
             return {
                 success: true,
                 case: result.case,
                 approvedTask: result.approvedTask,
-                message: 'Case creation approved. Investigation task will be created by workflow engine.',
+                investigationTask: investigationTask,
+                message: 'Case creation approved. Investigation task created.',
             };
         } catch (error) {
             this.logger.error(
@@ -407,6 +558,10 @@ export class CaseCreationApprovalService {
                 return { case: updatedCase, completedTask: approvalTask };
             });
 
+            this.logger.log(
+                `[REJECT_CASE_CREATION] Creating Complete New Case task for rejected case ${caseId}`,
+                CaseCreationApprovalService.name,
+            );
             const completeNewCaseTask = await this.taskService.createTask(
                 {
                     caseId,
@@ -417,6 +572,10 @@ export class CaseCreationApprovalService {
                     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
                 },
                 supervisorId,
+            );
+            this.logger.log(
+                `[REJECT_CASE_CREATION] Complete New Case task ${completeNewCaseTask.task_id} created for case ${caseId}`,
+                CaseCreationApprovalService.name,
             );
 
             await this.caseRepository.createComment({
@@ -521,9 +680,12 @@ export class CaseCreationApprovalService {
         }
     }
 
-    async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string) {
+    async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string, shouldSyncBpmnTasks: boolean = true) {
         try {
-            this.logger.log(`[CaseWorkflow] Creating case for user ${userId} with role ${creatorRole || 'UNKNOWN'}`, CaseCreationApprovalService.name);
+            this.logger.log(
+                `[CaseWorkflow] Creating case for user ${userId} with role ${creatorRole || 'UNKNOWN'}, shouldSyncBpmnTasks: ${shouldSyncBpmnTasks}`,
+                CaseCreationApprovalService.name,
+            );
 
             const createdCase = await this.prismaService.case.create({
                 data: {
@@ -542,7 +704,7 @@ export class CaseCreationApprovalService {
             const autocloseEligible = false; // Set based on your business logic
 
             this.logger.log(
-                `[CaseWorkflow] Case ${createdCase.case_id} created, emitting case.created event with creatorRole: ${creatorRole || 'SYSTEM'}`,
+                `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event with shouldSyncBpmnTasks: ${shouldSyncBpmnTasks}`,
                 CaseCreationApprovalService.name,
             );
 
@@ -554,6 +716,7 @@ export class CaseCreationApprovalService {
                 creationType: createCaseDTO.caseCreationType,
                 autocloseEligible,
                 creatorRole: creatorRole || 'SYSTEM',
+                shouldSyncBpmnTasks: shouldSyncBpmnTasks,
             });
 
             await this.auditLogService.logAction({

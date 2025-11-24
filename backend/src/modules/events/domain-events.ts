@@ -7,6 +7,7 @@ export class CaseCreatedEvent {
     public readonly creationType: string,
     public readonly autocloseEligible: boolean,
     public readonly creatorRole?: string,
+    public readonly shouldSyncBpmnTasks: boolean = true,
   ) {}
 }
 

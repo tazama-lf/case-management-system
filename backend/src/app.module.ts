@@ -24,6 +24,8 @@ import { ConfigManagementModule } from './modules/config-management/config-manag
 import { UserModule } from './modules/user/user.module';
 import { FeatureExtractionModule } from './modules/feature-extraction/feature-extraction.module';
 import { RepositoryModule } from './modules/repository/repository.module';
+import { AlertModule } from './modules/alert/alert.module';
+import { WorkqueueModule } from './modules/workqueue/workqueue.module';
 
 @Module({
   imports: [
@@ -40,6 +42,7 @@ import { RepositoryModule } from './modules/repository/repository.module';
     NatsModule,
     AuditLogModule,
     ConfigManagementModule,
+    AlertModule,
     TriageModule,
     CommentModule,
     CaseModule,
@@ -47,6 +50,7 @@ import { RepositoryModule } from './modules/repository/repository.module';
     AuthModule,
     SystemConfigModule,
     WorkQueueModule,
+    WorkqueueModule,
     NotificationModule,
     NotificationPreferencesModule,
     ReportsModule,

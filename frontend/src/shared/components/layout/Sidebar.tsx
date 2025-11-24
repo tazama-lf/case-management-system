@@ -10,9 +10,10 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const {
     hasAdminRole,
+    hasCMSAdminRole,
     hasInvestigatorRole,
     hasSupervisorRole,
-    hasBackendClaim
+    hasBackendClaim,
   } = useAuth();
 
   const hasAccess = (item: NavItem): boolean => {
@@ -21,7 +22,9 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
     return item.roles.some((role) => {
       switch (role) {
         case 'CMS_ADMIN':
-          return hasAdminRole();
+          return hasCMSAdminRole();
+        case 'alert-triage':
+          return hasAdminRole(); // Legacy admin role includes alert-triage
         case 'CMS_INVESTIGATOR':
           return hasInvestigatorRole();
         case 'CMS_SUPERVISOR':
@@ -138,8 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
       {}
       <div className="flex h-16 shrink-0 items-center">
         <div className="flex items-center">
-          {
-}
+          {}
           <span className="ml-3 text-xl font-semibold text-gray-900">
             Investigation Platform
           </span>

@@ -281,7 +281,12 @@ class AuthService {
   validateBackendAccess(): boolean {
     const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN'];
 
-    return this.hasAnyRole(validRoles);
+    // Also allow legacy admin roles for backward compatibility
+    return (
+      this.hasAnyRole(validRoles) ||
+      this.hasAlertTriageRole() ||
+      this.hasCMSTestRole()
+    );
   }
 
   /**
@@ -300,7 +305,6 @@ class AuthService {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
-
 
   /**
    * Fetches all users with the CMS_INVESTIGATOR role from the backend.
