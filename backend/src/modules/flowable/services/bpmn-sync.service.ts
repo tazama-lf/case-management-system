@@ -86,33 +86,33 @@ export class BpmnSyncService {
       const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
 
       // Create database task
-      const dbTask = await this.utilitiesService.createTask(
-        {
-          caseId,
-          status: taskStatus,
-          name: flowableTask.name,
-          description: flowableTask.description || `Task created from BPMN: ${flowableTask.name}`,
-          candidateGroup,
-          assignedUserId: flowableTask.assignee,
-        },
-        'system',
-      );
+      // const dbTask = await this.utilitiesService.createTask(
+      //   {
+      //     caseId,
+      //     status: taskStatus,
+      //     name: flowableTask.name,
+      //     description: flowableTask.description || `Task created from BPMN: ${flowableTask.name}`,
+      //     candidateGroup,
+      //     assignedUserId: flowableTask.assignee,
+      //   },
+      //   'system',
+      // );
 
       // Update Flowable task with database reference
-      const variables = {
-        postgres_task_id: dbTask.task_id,
-        postgres_case_id: caseId,
-        task_status: dbTask.status,
-        task_name: flowableTask.name,
-        candidate_group: dbTask.candidateGroup || '',
-      };
+      // const variables = {
+      //   postgres_task_id: dbTask.task_id,
+      //   postgres_case_id: caseId,
+      //   task_status: dbTask.status,
+      //   task_name: flowableTask.name,
+      //   candidate_group: dbTask.candidateGroup || '',
+      // };
 
-      await this.flowableTaskService.setTaskVariables(taskId, variables);
+      // await this.flowableTaskService.setTaskVariables(taskId, variables);
 
-      this.logger.log(
-        `[BPMN-Sync] ✓ Synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,
-        BpmnSyncService.name,
-      );
+      // this.logger.log(
+      //   `[BPMN-Sync] ✓ Synced Flowable task ${taskId} with database task ${dbTask.task_id} for case ${caseId}`,
+      //   BpmnSyncService.name,
+      // );
     } catch (error) {
       this.logger.error(`[BPMN-Sync] Failed to sync Flowable task ${taskId}: ${error.message}`, error.stack, BpmnSyncService.name);
     }

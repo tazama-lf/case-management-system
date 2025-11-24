@@ -31,17 +31,7 @@ export class FlowableTaskService {
         name: taskData.name,
         description: taskData.description,
         assignee: taskData.assignee,
-        tenantId: taskData.tenantId,
-        priority: taskData.priority || FlowableDefaults.DEFAULT_PRIORITY,
       };
-
-      if (taskData.dueDate) {
-        payload.dueDate = taskData.dueDate;
-      }
-
-      if (taskData.candidateGroups && taskData.candidateGroups.length > 0) {
-        payload.candidateGroups = taskData.candidateGroups;
-      }
 
       if (taskData.variables) {
         payload.variables = this.formatVariables(taskData.variables);

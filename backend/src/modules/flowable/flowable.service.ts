@@ -90,7 +90,7 @@ export class FlowableService implements OnModuleInit {
       const buffer = Buffer.from(bpmnXml);
 
       formData.append('deployment', buffer, {
-        filename: 'UnifiedCaseManagementProcess.bpmn20.xml',
+        filename: 'cms.bpmn20.xml',
         contentType: 'text/xml',
       });
 
@@ -139,8 +139,8 @@ export class FlowableService implements OnModuleInit {
     return this.identityService.getGroup(groupId);
   }
 
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
-    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, 'DEFAULT');
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
+    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
   }
 
   async getProcessInstance(processInstanceId: string) {

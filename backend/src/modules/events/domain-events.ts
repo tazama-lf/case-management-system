@@ -7,15 +7,12 @@ export class CaseCreatedEvent {
     public readonly creationType: string,
     public readonly autocloseEligible: boolean,
     public readonly isTriageAlert: boolean = false,
-    public readonly creatorRole?: string,
-    public readonly shouldSyncBpmnTasks: boolean = true,
   ) {}
 }
 
 export class CaseStatusChangedEvent {
   constructor(
     public readonly caseId: string,
-    public readonly oldStatus: string,
     public readonly newStatus: string,
     public readonly reason?: string,
   ) {}

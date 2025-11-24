@@ -12,14 +12,17 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
 import { FlowableService } from '../..//flowable/flowable.service';
+import { ConfigService } from '@nestjs/config';
+import { TaskRepository } from 'src/modules/repository/task.repository';
 
 @Injectable()
 export class CaseCreationApprovalService {
   constructor(
     private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
-    private readonly prismaService: PrismaService,
+    private readonly configService: ConfigService,
     private readonly taskService: TaskService,
+    private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
@@ -446,7 +449,6 @@ export class CaseCreationApprovalService {
 
       this.flowableService.handleCaseStatusChanged({
         caseId: caseId,
-        oldStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
         newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         reason: 'Case creation approved by supervisor',
       });
@@ -535,7 +537,6 @@ export class CaseCreationApprovalService {
           approvalTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
           supervisorId,
-          this.auditLogService,
         );
 
         return { case: updatedCase, completedTask: approvalTask };
@@ -569,7 +570,6 @@ export class CaseCreationApprovalService {
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
-        oldStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
         newStatus: CaseStatus.STATUS_00_DRAFT,
         reason: `Case creation rejected: ${reason}`,
       });
@@ -631,7 +631,6 @@ export class CaseCreationApprovalService {
           completeNewCaseTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED },
           userId,
-          this.auditLogService,
         );
 
         return { case: updatedCase, completedTask: updatedTask };
@@ -663,12 +662,11 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string, creatorRole?: string, shouldSyncBpmnTasks: boolean = true) {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
     try {
-      this.logger.log(
-        `[CaseWorkflow] Creating case for user ${userId} with role ${creatorRole || 'UNKNOWN'}, shouldSyncBpmnTasks: ${shouldSyncBpmnTasks}`,
-        CaseCreationApprovalService.name,
-      );
+      this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
+      const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
+      const isTriageAlert = triageType === 'DISABLED' ? false : true;
 
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
@@ -681,31 +679,25 @@ export class CaseCreationApprovalService {
         caseCreationType: createCaseDTO.caseCreationType,
       });
 
-      // Determine autoclose eligibility
-      const autocloseEligible = false; // Set based on your business logic
-
-      this.logger.log(
-        `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event with shouldSyncBpmnTasks: ${shouldSyncBpmnTasks}`,
-        CaseCreationApprovalService.name,
-      );
-
       this.flowableService.handleCaseCreated({
         caseId: createdCase.case_id,
         tenantId: createdCase.tenant_id,
         creatorUserId: createdCase.case_creator_user_id,
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
-        autocloseEligible,
-        creatorRole: creatorRole || 'SYSTEM',
-        isTriageAlert: true,
-        shouldSyncBpmnTasks: shouldSyncBpmnTasks,
+        autocloseEligible: false,
+        isTriageAlert,
       });
 
+      this.logger.log(
+        `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
+        CaseCreationApprovalService.name,
+      );
       await this.auditLogService.logAction({
         userId,
         operation: 'createCase',
         entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created by ${creatorRole || 'SYSTEM'}`,
+        actionPerformed: `Case ${createdCase.case_id} created successfully`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -718,37 +710,45 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async updateCaseStatus(
-    caseId: string,
-    status: CaseStatus,
-    userId: string,
-    additionalUpdates?: { priority?: Priority; caseType?: CaseType },
-  ): Promise<void> {
+  async updateCaseStatus(caseId: string, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<void> {
+    this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
-      const existingCase = await this.caseRepository.findCaseById(caseId);
-
-      if (!existingCase) {
-        throw new NotFoundException(`Case ${caseId} not found`);
-      }
-
       const updateData: Record<string, unknown> = {
         status,
-        updated_at: new Date(),
+        priority,
+        case_type: caseType,
       };
 
-      if (additionalUpdates?.priority) {
-        updateData.priority = additionalUpdates.priority;
-      }
+      if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+        await this.taskRepository.transaction(async (tx) => {
+          const createdTask = await this.taskRepository.createTask(
+            {
+              case: {
+                connect: { case_id: caseId },
+              },
+              name: TASK_NAMES.INVESTIGATE_CASE,
+              description: `Investigate case: ${caseId}`,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            },
+            tx,
+          );
 
-      if (additionalUpdates?.caseType) {
-        updateData.case_type = additionalUpdates.caseType;
+          await this.flowableService.handleTaskCreated({
+            caseId,
+            taskId: createdTask.task_id,
+            taskName: createdTask.name!,
+            description: createdTask.description!,
+            status: TaskStatus.STATUS_01_UNASSIGNED as string,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          });
+        });
       }
 
       await this.caseRepository.updateCase(caseId, updateData);
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
-        oldStatus: existingCase.status,
         newStatus: status,
         reason: 'Case status updated',
       });
@@ -761,11 +761,11 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Case ${caseId} status updated to ${status}`, 'CaseCreationService');
+      this.logger.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to update case status for ${caseId}: ${errorMessage}`, errorStack, 'CaseCreationService');
+      this.logger.error(`Failed to update case status for ${caseId}: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
       throw error;
     }
   }

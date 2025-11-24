@@ -26,29 +26,18 @@ export class FlowableProcessService {
    * Start a new process instance
    */
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
+    this.logger.log(`Start - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
     try {
       const formattedVariables = this.formatVariables(variables);
       const payload = {
         processDefinitionKey,
         variables: formattedVariables,
         businessKey,
-        tenantId,
       };
-
-      this.logger.log(
-        `Starting process instance with payload: ${JSON.stringify({
-          processDefinitionKey,
-          businessKey,
-          tenantId: tenantId,
-          variableCount: formattedVariables.length,
-          variables: formattedVariables.map((v) => `${v.name}=${v.value}`).join(', '),
-        })}`,
-        FlowableProcessService.name,
-      );
 
       const response = await this.flowableClient.post(FlowableApiEndpoints.PROCESS_INSTANCES, payload);
 
-      this.logger.log(`Process instance started: ${response.data.id} with businessKey: ${businessKey}`, FlowableProcessService.name);
+      this.logger.log(`End - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableProcessService.name);
@@ -99,7 +88,7 @@ export class FlowableProcessService {
         type: typeof value === 'boolean' ? 'boolean' : 'string',
       });
 
-      this.logger.log(`Successfully updated variable '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
+      this.logger.log(`Updated '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
     } catch (error) {
       this.logger.error(`Failed to update variable '${variableName}': ${error.message}`, error.stack, FlowableProcessService.name);
       throw new HttpException(`Failed to update process variable: ${variableName}`, HttpStatus.INTERNAL_SERVER_ERROR);

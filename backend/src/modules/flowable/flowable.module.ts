@@ -14,17 +14,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AuditLogModule } from 'src/modules/audit/auditLog.module';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { RepositoryModule } from '../repository/repository.module';
-import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 
 @Module({
-  imports: [
-    LoggerModule,
-    ConfigModule,
-    RepositoryModule,
-    AuditLogModule,
-    PrismaModule,
-    TaskBridgeModule
-  ],
+  imports: [LoggerModule, ConfigModule, RepositoryModule, AuditLogModule, PrismaModule],
   providers: [
     FlowableClientFactory,
     FlowableService,

@@ -14,10 +14,9 @@
         <!-- Start Event -->
         <startEvent id="startEvent" name="Case Initiated">
             <extensionElements>
-                <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
                 <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
+                <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
-                <!-- <flowable:formProperty id="creatorRole" name="Creator Role" type="string"/> -->
                 <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="00_DRAFT"/>
                 <flowable:formProperty id="isTriageAlert" name="Is Triage Alert" type="boolean" default="false"/>
@@ -67,7 +66,7 @@
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
 
         <!-- CASE ASSIGNMENT LOGIC -->
-        <userTask id="completeCaseCreation" name="Complete Case Creation"
+        <userTask id="completeCaseCreation" name="Complete New Case"
                   flowable:candidateGroups="investigations">
             <documentation>Complete case creation and prepare for assignment</documentation>
             <extensionElements>
