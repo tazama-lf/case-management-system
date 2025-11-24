@@ -58,6 +58,21 @@ export class WorkqueueController {
     return this.workqueueService.getCandidateGroup(groupId);
   }
 
+  @Get('candidate-groups')
+  @RequireAdminRole()
+  @ApiOperation({
+    summary: 'Get all candidate groups',
+    description: 'Retrieve all candidate groups',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Candidate groups retrieved successfully',
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getAllCandidateGroups() {
+    return this.workqueueService.getAllCandidateGroups();
+  }
+
   @Get('candidate-group/:groupId/tasks')
   @RequireAdminRole()
   @ApiOperation({

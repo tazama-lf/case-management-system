@@ -53,6 +53,23 @@ export class WorkqueueService {
   }
 
   /**
+   * Get all candidate groups
+   */
+  async getAllCandidateGroups() {
+    try {
+      this.loggerService.log('Retrieving all candidate groups', WorkqueueService.name);
+
+      const result = await this.flowableService.getAllCandidateGroups();
+
+      this.loggerService.log(`Retrieved ${result.length} candidate groups`, WorkqueueService.name);
+      return result;
+    } catch (error) {
+      this.loggerService.error(`Failed to get all candidate groups: ${error.message}`, error.stack, WorkqueueService.name);
+      throw new HttpException('Failed to get all candidate groups', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Get tasks for a candidate group
    * @param groupId - The group identifier
    * @param includeVariables - Whether to include task variables
