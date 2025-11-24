@@ -69,8 +69,16 @@ export class WorkqueueController {
     description: 'Candidate groups retrieved successfully',
   })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getAllCandidateGroups() {
-    return this.workqueueService.getAllCandidateGroups();
+  @ApiQuery({
+    name: 'size',
+    type: 'number',
+  })
+  @ApiQuery({
+    name: 'start',
+    type: 'number',
+  })
+  async getAllCandidateGroups(@Query('size') size: number, @Query('start') start: number) {
+    return this.workqueueService.getAllCandidateGroups(size, start);
   }
 
   @Get('candidate-group/:groupId/tasks')
