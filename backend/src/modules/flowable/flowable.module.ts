@@ -14,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuditLogModule } from 'src/modules/audit/auditLog.module';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { RepositoryModule } from '../repository/repository.module';
+import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RepositoryModule } from '../repository/repository.module';
     RepositoryModule,
     AuditLogModule,
     PrismaModule,
+    TaskBridgeModule
   ],
   providers: [
     FlowableClientFactory,

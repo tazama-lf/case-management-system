@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.tazama.org/cms">
+
+    <process id="caseManagementProcess" name="NestJS Case Management Process" isExecutable="true">
+
+        <!-- Start Event -->
+        <startEvent id="startEvent" name="Case Initiated">
+            <extensionElements>
+                <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
+                <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
+                <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
+                <!-- <flowable:formProperty id="creatorRole" name="Creator Role" type="string"/> -->
+                <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
+                <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="00_DRAFT"/>
+                <flowable:formProperty id="isTriageAlert" name="Is Triage Alert" type="boolean" default="false"/>
+            </extensionElements>
+        </startEvent>
+
+        <!-- Creation Type Gateway -->
+        <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
+
+        <!-- AUTOMATIC CREATION PATH -->
+        <exclusiveGateway id="autocloseGateway" name="Autoclose Check"/>
+
+        <!-- Autoclose Task (Manual completion in NestJS) -->
+        <userTask id="performAutoclose" name="System: Process Autoclose"
+                  flowable:assignee="system">
+            <documentation>System task to handle autoclose - complete via NestJS API</documentation>
+            <extensionElements>
+                <flowable:formProperty id="autocloseType" name="Autoclose Type" 
+                                       type="enum" readable="false" writable="false">
+                    <flowable:value id="confirmed" name="Confirmed"/>
+                    <flowable:value id="refuted" name="Refuted"/>
+                    <flowable:value id="inconclusive" name="Inconclusive"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="autocloseReason" name="Autoclose Reason" type="string"/>
+            </extensionElements>
+        </userTask>
+
+        <endEvent id="endAutoclose" name="Case Autoclosed"/>
+
+        <!-- MANUAL CREATION PATH -->
+        <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
+
+        <!-- SUPERVISOR APPROVAL PATH -->
+        <userTask id="approveCaseCreation" name="Approve Case Creation"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Supervisor approves manual case creation</documentation>
+            <extensionElements>
+                <flowable:formProperty id="creationApproval" name="Approval Decision"
+                                       type="enum" required="true">
+                    <flowable:value id="approve" name="Approve"/>
+                    <flowable:value id="reject" name="Reject"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="creationComments" name="Comments" type="string"/>
+            </extensionElements>
+        </userTask>
+
+        <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
+
+        <!-- CASE ASSIGNMENT LOGIC -->
+        <userTask id="completeCaseCreation" name="Complete Case Creation"
+                  flowable:candidateGroups="investigations">
+            <documentation>Complete case creation and prepare for assignment</documentation>
+            <extensionElements>
+                <flowable:formProperty id="caseTitle" name="Case Title" type="string" required="true"/>
+                <flowable:formProperty id="caseDescription" name="Case Description" type="string" required="true"/>
+                <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="medium">
+                    <flowable:value id="high" name="High"/>
+                    <flowable:value id="medium" name="Medium"/>
+                    <flowable:value id="low" name="Low"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="readyForAssignment" name="Ready for Assignment" 
+                                       type="boolean" default="true"/>
+                <flowable:formProperty id="assignToSelf" name="Assign to Self" type="boolean" default="false"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Assignment Decision Gateway -->
+        <exclusiveGateway id="assignmentGateway" name="Assignment Required?"/>
+
+        <!-- Assignment Task -->
+        <userTask id="assignCase" name="Assign Case"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Supervisor assigns the case to an investigator</documentation>
+            <extensionElements>
+                <flowable:formProperty id="assignedTo" name="Assign To" type="string" required="true"/>
+                <flowable:formProperty id="assignmentNotes" name="Assignment Notes" type="string"/>
+                <flowable:formProperty id="priority" name="Priority" type="enum" default="medium">
+                    <flowable:value id="high" name="High"/>
+                    <flowable:value id="medium" name="Medium"/>
+                    <flowable:value id="low" name="Low"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="dueDate" name="Due Date" type="date"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- INVESTIGATION TASK -->
+        <userTask id="investigateCase" name="Investigate Case"
+                  flowable:candidateGroups="investigations">
+            <documentation>Investigation task for the case</documentation>
+            <extensionElements>
+                <flowable:formProperty id="investigationNotes" name="Investigation Notes" type="string"/>
+                <flowable:formProperty id="investigationAction" name="Action"
+                                       type="enum" required="true">
+                    <flowable:value id="inProgress" name="Mark In Progress"/>
+                    <flowable:value id="complete" name="Complete Investigation"/>
+                    <flowable:value id="suspend" name="Suspend Case"/>
+                    <flowable:value id="requestClosure" name="Request Closure"/>
+                    <flowable:value id="returnCase" name="Return Case"/>
+                    <flowable:value id="escalate" name="Escalate Case"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="recommendedOutcome" name="Recommended Outcome" type="enum">
+                    <flowable:value id="STATUS_81_CLOSED_REFUTED" name="Closed - Refuted"/>
+                    <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
+                    <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="fraudFound" name="Fraud Found" type="boolean"/>
+                <flowable:formProperty id="evidenceCollected" name="Evidence Collected" type="string"/>
+                <flowable:formProperty id="finalNotes" name="Final Notes" type="string"/>
+                <flowable:formProperty id="recommendations" name="Recommendations" type="string"/>
+                <flowable:formProperty id="hoursSpent" name="Hours Spent" type="long"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Investigation Decision Gateway -->
+        <exclusiveGateway id="investigationDecisionGateway" name="Investigation Action"/>
+
+        <!-- CASE CLOSURE APPROVAL PATH -->
+        <userTask id="supervisorApproval" name="Approve Case Closure"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Supervisor reviews and approves or rejects the case closure</documentation>
+            <extensionElements>
+                <flowable:formProperty id="approvalDecision" name="Approval Decision"
+                                       type="enum" required="true">
+                    <flowable:value id="approve" name="Approve"/>
+                    <flowable:value id="reject" name="Reject"/>
+                    <flowable:value id="returnForReview" name="Return for Review"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="finalOutcome" name="Final Outcome"
+                                       type="enum" required="true">
+                    <flowable:value id="STATUS_81_CLOSED_REFUTED" name="Closed - Refuted"/>
+                    <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
+                    <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="supervisorComments" name="Supervisor Comments" type="string"/>
+                <flowable:formProperty id="qualityScore" name="Quality Score" type="long"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Approval Decision Gateway -->
+        <exclusiveGateway id="approvalDecisionGateway" name="Approval Decision"/>
+
+        <!-- Case Reopening Support -->
+        <userTask id="reopenCase" name="Reopen Case"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Supervisor can reopen a closed case</documentation>
+            <extensionElements>
+                <flowable:formProperty id="reopenReason" name="Reason for Reopening" type="string" required="true"/>
+                <flowable:formProperty id="newAssignee" name="Reassign To" type="string"/>
+                <flowable:formProperty id="reopenNotes" name="Reopening Notes" type="string"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- System Tasks for Status Updates (Completed via NestJS APIs) -->
+        <userTask id="updateCaseStatus" name="System: Update Case Status"
+                  flowable:assignee="system">
+            <documentation>System task to update case status - auto-completed by NestJS</documentation>
+            <extensionElements>
+                <flowable:formProperty id="newStatus" name="New Status" type="string"/>
+                <flowable:formProperty id="statusReason" name="Status Change Reason" type="string"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- End Events -->
+        <endEvent id="endSuccess" name="Case Workflow Complete"/>
+        <endEvent id="endApproved" name="Case Closed"/>
+        <endEvent id="endRejected" name="Case Rejected"/>
+        <endEvent id="endSuspended" name="Case Suspended"/>
+        <endEvent id="endAbandoned" name="Case Abandoned"/>
+
+        <!-- SEQUENCE FLOWS -->
+
+        <!-- Initial routing -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="creationTypeGateway"/>
+
+        <!-- Automatic creation path -->
+        <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway" targetRef="autocloseGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationType == 'AUTOMATIC_SYSTEM'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowAutoclose" sourceRef="autocloseGateway" targetRef="performAutoclose">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${autocloseEligible == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
+
+        <!-- From autoclose to case creation for non-eligible cases -->
+        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autocloseGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${autocloseEligible == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Manual creation path -->
+        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="roleGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationType == 'MANUAL'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Supervisor creates case - goes to case creation -->
+        <sequenceFlow id="flowSupervisor" sourceRef="roleGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Non-supervisor creates case - needs approval -->
+        <sequenceFlow id="flowNonSupervisor" sourceRef="roleGateway" targetRef="approveCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole != 'SUPERVISOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowFromApproval" sourceRef="approveCaseCreation" targetRef="creationApprovalGateway"/>
+
+        <!-- After approval - go to case creation -->
+        <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationApproval == 'approve'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowCreationRejected" sourceRef="creationApprovalGateway" targetRef="endRejected">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationApproval == 'reject'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Assignment Logic -->
+        <sequenceFlow id="flowToAssignment" sourceRef="completeCaseCreation" targetRef="assignmentGateway"/>
+
+        <!-- Assignment required -->
+        <sequenceFlow id="flowRequiresAssignment" sourceRef="assignmentGateway" targetRef="assignCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${readyForAssignment == true &amp;&amp; assignToSelf == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Self-assigned or direct to investigation -->
+        <sequenceFlow id="flowDirectToInvestigation" sourceRef="assignmentGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${assignToSelf == true || readyForAssignment == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowFromAssignment" sourceRef="assignCase" targetRef="investigateCase"/>
+
+        <!-- Investigation decision routing -->
+        <sequenceFlow id="flowFromInvestigation" sourceRef="investigateCase" targetRef="investigationDecisionGateway"/>
+
+        <!-- Back to investigation for in progress -->
+        <sequenceFlow id="flowInProgress" sourceRef="investigationDecisionGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'inProgress'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Request closure -->
+        <sequenceFlow id="flowRequestClosure" sourceRef="investigationDecisionGateway" targetRef="supervisorApproval">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'requestClosure'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Suspend case -->
+        <sequenceFlow id="flowSuspend" sourceRef="investigationDecisionGateway" targetRef="endSuspended">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'suspend'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Return case -->
+        <sequenceFlow id="flowReturn" sourceRef="investigationDecisionGateway" targetRef="assignCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'returnCase'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Complete without approval -->
+        <sequenceFlow id="flowComplete" sourceRef="investigationDecisionGateway" targetRef="endSuccess">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'complete'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Escalate -->
+        <sequenceFlow id="flowEscalate" sourceRef="investigationDecisionGateway" targetRef="supervisorApproval">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${investigationAction == 'escalate'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Closure approval workflow -->
+        <sequenceFlow id="flowFromSupervisorApproval" sourceRef="supervisorApproval" targetRef="approvalDecisionGateway"/>
+
+        <sequenceFlow id="flowApprove" sourceRef="approvalDecisionGateway" targetRef="endApproved">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${approvalDecision == 'approve'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReject" sourceRef="approvalDecisionGateway" targetRef="endRejected">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${approvalDecision == 'reject'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Return for review - back to investigation -->
+        <sequenceFlow id="flowReturnForReview" sourceRef="approvalDecisionGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${approvalDecision == 'returnForReview'}
+            </conditionExpression>
+        </sequenceFlow>
+
+    </process>
+
+</definitions>
