@@ -10,6 +10,8 @@ import { NotificationService } from 'src/modules/notification/notification.servi
 import { TaskCreatedEvent, TaskStatusChangedEvent, TaskAssignedEvent, TaskUnassignedEvent, CaseStatusChangedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
+import { FlowableService } from '../flowable/flowable.service';
+import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 
 export interface TaskWithCase extends Task {
 	case: {
@@ -29,67 +31,13 @@ export class TaskService {
 		private readonly eventEmitter: EventEmitter2,
 		private readonly notificationService: NotificationService,
 		private readonly lifecycle: TaskLifecycleService,
+		private readonly flowableService: FlowableService,
+		private readonly taskBridgeService: TaskBridgeService,
 	) {}
 
 	async createTask(taskDTO: CreateTaskDto, userId: string) {
-		this.logger.log('Creating task', TaskService.name);
-		try {
-			const result = await this.repository.createTaskWithAutoAssign({
-				caseId: taskDTO.caseId,
-				name: taskDTO.name,
-				description: taskDTO.description,
-				candidateGroup: taskDTO.candidateGroup,
-				status: taskDTO.status,
-				assignedUserId: taskDTO.assignedUserId,
-			});
-			const created = result.task;
-			this.eventEmitter.emit(
-				'task.created',
-				new TaskCreatedEvent(
-					created.task_id,
-					taskDTO.caseId,
-					taskDTO.name,
-					taskDTO.description || '',
-					taskDTO.candidateGroup || 'Investigations',
-					created.status,
-					created.assigned_user_id ?? undefined,
-				),
-			);
-			if (result.workQueueId && result.matchingQueue) {
-				this.eventEmitter.emit('task.workQueueAssigned', {
-					taskId: created.task_id,
-					workQueueId: result.workQueueId,
-					workQueueName: result.matchingQueue.name,
-					candidateGroup: taskDTO.candidateGroup,
-					flowableGroupId: result.derivedFlowableGroupId,
-					autoAssigned: true,
-					assignedBy: 'SYSTEM',
-					tenantId: result.tenantId,
-				});
-			}
-			this.auditLogService.logAction({
-				userId,
-				actionPerformed: `Created task ${created.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-				entityName: TaskService.name,
-				operation: 'createTask',
-				outcome: Outcome.SUCCESS,
-				performedAt: new Date(),
-			});
-			return { ...created, candidateGroup: taskDTO.candidateGroup };
-		} catch (error) {
-			this.logger.error('Error creating task', error, TaskService.name);
-			this.auditLogService.logAction({
-				userId,
-				actionPerformed: 'Error creating task',
-				entityName: TaskService.name,
-				operation: 'createTask',
-				outcome: Outcome.FAILURE,
-				performedAt: new Date(),
-			});
-			throw error;
-		}
+		return this.taskBridgeService.createTask(taskDTO, userId);
 	}
-
 	async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
 		return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId);
 	}
