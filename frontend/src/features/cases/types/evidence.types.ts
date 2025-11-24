@@ -52,7 +52,9 @@ export type EvidenceType =
   | 'SANCTIONS'
   | 'ADVERSE_MEDIA'
   | 'OTHER'
-  | 'SAR_STR_FILING';
+  | 'SAR_STR_FILING'
+  | 'KYC'
+  | 'EDD';
 
 export interface EvidenceMetadata {
   screeningDate?: string;

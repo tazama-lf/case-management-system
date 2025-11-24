@@ -4,14 +4,22 @@ import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfil
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
 
-const evidenceSections: Array<{ 
-  key: string; 
-  title: string; 
-  helper?: string; 
-  commentPlaceholder: string; 
+const evidenceSections: Array<{
+  key: string;
+  title: string;
+  helper?: string;
+  commentPlaceholder: string;
   emptyMessage: string;
   evidenceType: EvidenceType;
 }> = [
+  {
+    key: 'kyc-edd',
+    title: 'KYC/EDD Report',
+    helper: 'Upload KYC/EDD documentation',
+    commentPlaceholder: 'Add comments about the KYC/EDD report...',
+    emptyMessage: 'No KYC/EDD report attached',
+    evidenceType: 'KYC',
+  },
   {
     key: 'sanctions',
     title: 'Sanctions Screening',
@@ -70,13 +78,16 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         
         // Group evidence by type
         const grouped: Record<string, Evidence[]> = {
+          'kyc-edd': [],
           sanctions: [],
           'adverse-media': [],
           others: [],
         };
 
         response.evidence.forEach((evidence) => {
-          if (evidence.evidenceType === 'SANCTIONS') {
+          if (evidence.evidenceType === 'KYC' || evidence.evidenceType === 'EDD') {
+            grouped['kyc-edd'].push(evidence);
+          } else if (evidence.evidenceType === 'SANCTIONS') {
             grouped.sanctions.push(evidence);
           } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
             grouped['adverse-media'].push(evidence);
@@ -138,13 +149,16 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       // Reload evidence to show newly uploaded files
       const response = await evidenceService.getTaskEvidence(taskId);
       const grouped: Record<string, Evidence[]> = {
+        'kyc-edd': [],
         sanctions: [],
         'adverse-media': [],
         others: [],
       };
 
       response.evidence.forEach((evidence) => {
-        if (evidence.evidenceType === 'SANCTIONS') {
+        if (evidence.evidenceType === 'KYC' || evidence.evidenceType === 'EDD') {
+          grouped['kyc-edd'].push(evidence);
+        } else if (evidence.evidenceType === 'SANCTIONS') {
           grouped.sanctions.push(evidence);
         } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
           grouped['adverse-media'].push(evidence);
@@ -373,9 +387,16 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                         className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm shadow-sm"
                       >
                         <div className="truncate flex-1">
-                          <p className="truncate font-medium text-gray-900" title={evidence.fileName}>
-                            {evidence.fileName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-medium text-gray-900" title={evidence.fileName}>
+                              {evidence.fileName}
+                            </p>
+                            {section.key === 'kyc-edd' && (
+                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                {evidence.evidenceType}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500">
                             Uploaded {new Date(evidence.uploadedAt).toLocaleString()}
                           </p>
