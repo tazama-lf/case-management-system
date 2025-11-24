@@ -11,7 +11,7 @@ import { FlowableDefaults } from '../constants/flowable-api.constants';
 export class FlowableClientFactory {
   private readonly client: AxiosInstance;
   private readonly flowableUrl: string;
-  readonly tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
+  // readonly tenantId = 'c950ac85-96f0-4390-8d94-5b8fdec4e863';
 
   constructor(private readonly configService: ConfigService) {
     this.flowableUrl = this.configService.get<string>('FLOWABLE_URL', 'http://10.10.80.30:8081/flowable-rest');

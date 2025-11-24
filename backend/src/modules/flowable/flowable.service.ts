@@ -14,7 +14,18 @@ import { FlowableUtilitiesService } from './utils/flowable-utilities.service';
 import { FlowableClientFactory } from './services/flowable-client.factory';
 import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
-import { TaskAssignedEvent, TaskCreatedEvent, TaskStatusChangedEvent, TaskUnassignedEvent, BpmnTaskCreatedEvent, CaseAbandonedEvent, CaseCreatedEvent, CaseStatusChangedEvent, TaskCompletedEvent, CaseSuspendedEvent } from '../events/domain-events';
+import {
+  TaskAssignedEvent,
+  TaskCreatedEvent,
+  TaskStatusChangedEvent,
+  TaskUnassignedEvent,
+  BpmnTaskCreatedEvent,
+  CaseAbandonedEvent,
+  CaseCreatedEvent,
+  CaseStatusChangedEvent,
+  TaskCompletedEvent,
+  CaseSuspendedEvent,
+} from '../events/domain-events';
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
@@ -37,7 +48,7 @@ export class FlowableService implements OnModuleInit {
   ) {
     this.flowableClient = this.clientFactory.getClient();
     this.flowableUrl = this.clientFactory.getBaseUrl();
-    this.tenantId = this.clientFactory.tenantId;
+    // this.tenantId = this.clientFactory.tenantId;
   }
 
   async onModuleInit() {
@@ -69,7 +80,7 @@ export class FlowableService implements OnModuleInit {
   }
 
   private async deployBpmnProcess() {
-    const bpmnFilePath = path.join(process.cwd(), 'src', 'modules', 'bpmn', 'case-management.bpmn20.xml');
+    const bpmnFilePath = path.join(process.cwd(), 'src', 'modules', 'bpmn', 'cms.bpmn20.xml');
 
     try {
       this.logger.log('Deploying BPMN process', FlowableService.name);
@@ -87,9 +98,6 @@ export class FlowableService implements OnModuleInit {
 
       const response = await this.flowableClient.post(FlowableApiEndpoints.DEPLOYMENTS, formData, {
         headers,
-        params: {
-          tenantId: this.tenantId,
-        },
       });
 
       this.logger.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
@@ -132,11 +140,7 @@ export class FlowableService implements OnModuleInit {
   }
 
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
-    return this.processService.startProcessInstance(
-      processDefinitionKey,
-      variables,
-      businessKey,
-    );
+    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, 'DEFAULT');
   }
 
   async getProcessInstance(processInstanceId: string) {
@@ -195,16 +199,16 @@ export class FlowableService implements OnModuleInit {
     return this.processService.setProcessVariables(processInstanceId, variables);
   }
 
-  async getTenantTasks(
-    tenantId: string,
-    filters?: {
-      candidateGroup?: string;
-      assignee?: string;
-      unassigned?: boolean;
-    },
-  ) {
-    return this.taskService.getTenantTasks(filters);
-  }
+  // async getTenantTasks(
+  //   tenantId: string,
+  //   filters?: {
+  //     candidateGroup?: string;
+  //     assignee?: string;
+  //     unassigned?: boolean;
+  //   },
+  // ) {
+  //   return this.taskService.getTenantTasks(filters);
+  // }
 
   async getTask(taskId: string) {
     return this.taskService.getTask(taskId);
@@ -272,7 +276,7 @@ export class FlowableService implements OnModuleInit {
   /* Event Handlers to delegate to listeners */
 
   async handleCaseCreated(event: CaseCreatedEvent) {
-   return this.caseEventListener.handleCaseCreated(event);
+    return this.caseEventListener.handleCaseCreated(event);
   }
 
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
@@ -315,4 +319,3 @@ export class FlowableService implements OnModuleInit {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-

@@ -49,6 +49,7 @@ export class CaseEventListener {
           creatorRole: creatorRole,
         },
         event.caseId,
+        event.tenantId,
       );
 
       this.logger.log(
@@ -74,7 +75,6 @@ export class CaseEventListener {
           CaseEventListener.name,
         );
       }
-
     } catch (error) {
       this.logger.error(
         `[CaseEventListener] Failed to start process for case ${event.caseId}: ${error.message}`,

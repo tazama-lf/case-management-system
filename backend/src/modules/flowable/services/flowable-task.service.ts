@@ -113,7 +113,10 @@ export class FlowableTaskService {
         }),
       );
 
-      this.logger.log(`Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`, FlowableTaskService.name);
+      this.logger.log(
+        `Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`,
+        FlowableTaskService.name,
+      );
 
       return tasksWithVariables;
     } catch (error) {
@@ -212,7 +215,11 @@ export class FlowableTaskService {
       this.logger.log(`Task ${taskId} assigned to candidate group ${group}`, FlowableTaskService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`, error.stack, FlowableTaskService.name);
+      this.logger.error(
+        `Failed to assign task ${taskId} to candidate group ${group}: ${error.message}`,
+        error.stack,
+        FlowableTaskService.name,
+      );
       throw new HttpException('Failed to assign task to candidate group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -306,41 +313,41 @@ export class FlowableTaskService {
     }
   }
 
-  /**
-   * Get tasks for a tenant with optional filters
-   */
-  async getTenantTasks(
-    filters?: {
-      candidateGroup?: string;
-      assignee?: string;
-      unassigned?: boolean;
-    },
-  ) {
-    try {
-      const params: Record<string, unknown> = {
-        tenantId: this.clientFactory.tenantId,
-      };
+  // /**
+  //  * Get tasks for a tenant with optional filters
+  //  */
+  // async getTenantTasks(
+  //   filters?: {
+  //     candidateGroup?: string;
+  //     assignee?: string;
+  //     unassigned?: boolean;
+  //   },
+  // ) {
+  //   try {
+  //     const params: Record<string, unknown> = {
+  //       tenantId: this.clientFactory.tenantId,
+  //     };
 
-      if (filters?.candidateGroup) {
-        params.candidateGroup = filters.candidateGroup.toLowerCase();
-      }
-      if (filters?.assignee) {
-        params.assignee = filters.assignee;
-      }
-      if (filters?.unassigned === true) {
-        params.unassigned = true;
-      }
+  //     if (filters?.candidateGroup) {
+  //       params.candidateGroup = filters.candidateGroup.toLowerCase();
+  //     }
+  //     if (filters?.assignee) {
+  //       params.assignee = filters.assignee;
+  //     }
+  //     if (filters?.unassigned === true) {
+  //       params.unassigned = true;
+  //     }
 
-      const response = await this.flowableClient.get(`${FlowableApiEndpoints.TASKS}?includeTaskLocalVariables=true`, {
-        params,
-      });
+  //     const response = await this.flowableClient.get(`${FlowableApiEndpoints.TASKS}?includeTaskLocalVariables=true`, {
+  //       params,
+  //     });
 
-      return response.data.data || [];
-    } catch (error) {
-      this.logger.error(`Failed to get tenant tasks: ${error.message}`, error.stack, FlowableTaskService.name);
-      throw new HttpException('Failed to get tenant tasks', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
+  //     return response.data.data || [];
+  //   } catch (error) {
+  //     this.logger.error(`Failed to get tenant tasks: ${error.message}`, error.stack, FlowableTaskService.name);
+  //     throw new HttpException('Failed to get tenant tasks', HttpStatus.INTERNAL_SERVER_ERROR);
+  //   }
+  // }
 
   /**
    * Set multiple task variables
@@ -414,4 +421,3 @@ export class FlowableTaskService {
     });
   }
 }
-
