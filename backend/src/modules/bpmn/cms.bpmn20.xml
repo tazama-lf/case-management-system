@@ -70,8 +70,8 @@
                   flowable:candidateGroups="investigations">
             <documentation>Complete case creation and prepare for assignment</documentation>
             <extensionElements>
-                <flowable:formProperty id="caseTitle" name="Case Title" type="string" required="true"/>
-                <flowable:formProperty id="caseDescription" name="Case Description" type="string" required="true"/>
+                <!-- <flowable:formProperty id="caseTitle" name="Case Title" type="string" required="true"/>
+                <flowable:formProperty id="caseDescription" name="Case Description" type="string" required="true"/> -->
                 <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="medium">
                     <flowable:value id="high" name="High"/>
                     <flowable:value id="medium" name="Medium"/>
@@ -262,7 +262,7 @@
         <!-- Self-assigned or direct to investigation -->
         <sequenceFlow id="flowDirectToInvestigation" sourceRef="assignmentGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
-                ${assignToSelf == true || readyForAssignment == false}
+                ${readyForAssignment == true}
             </conditionExpression>
         </sequenceFlow>
 

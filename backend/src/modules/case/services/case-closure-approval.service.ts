@@ -737,9 +737,9 @@ export class CaseClosureApprovalService {
 
       // Then complete the approval task in BPMN
       this.flowableService.handleTaskCompleted({
-        taskId: result.completedTask.task_id,
         caseId,
-        completedByUserId: supervisorId,
+        taskName: 'Approve Case Closure',
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
         completionVariables: {
           approvalDecision: 'reject',
           supervisorComments: comments,

@@ -58,7 +58,7 @@ export class CaseEventListener {
         throw new NotFoundException('Process instance not found');
       }
 
-      await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'case_status', event.newStatus);
+      await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'caseStatus', event.newStatus);
       this.logger.log(`Updated Case Status To ${event.newStatus} For Process ${processInstance.id}`, CaseEventListener.name);
     } catch (error) {
       this.logger.error(`Failed To Update Case Status: ${error.message}`, error.stack, CaseEventListener.name);

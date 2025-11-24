@@ -83,6 +83,14 @@ export class TaskService {
             const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
             if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
             await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+
+            await this.flowableService.handleTaskAssigned({
+              taskId: taskRecord.task_id,
+              caseId: taskRecord.case_id,
+              assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
+              taskName: existingTask.name!,
+            });
+
             return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS };
           }
 
@@ -95,6 +103,13 @@ export class TaskService {
         }
       } else {
         updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
+
+        await this.flowableService.handleTaskAssigned({
+          taskId: updatedTask.task_id,
+          caseId: updatedTask.case_id,
+          assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
+          taskName: existingTask.name!,
+        });
       }
 
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);

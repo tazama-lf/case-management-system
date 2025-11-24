@@ -642,7 +642,15 @@ export class CaseCreationApprovalService {
           { status: TaskStatus.STATUS_30_COMPLETED },
           userId,
         );
-
+        // Updated Implementation Might Need to Move
+        await this.flowableService.handleTaskCompleted({
+          caseId: updatedTask.case_id,
+          taskName: updatedTask.name!,
+          newStatus: updatedTask.status,
+          completionVariables: {
+            readyForAssignment: 'true',
+          },
+        });
         return { case: updatedCase, completedTask: updatedTask };
       });
 
@@ -731,7 +739,18 @@ export class CaseCreationApprovalService {
 
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
-          const createdTask = await this.taskRepository.createTask(
+          await this.flowableService.handleTaskCompleted({
+            caseId,
+            taskName: 'Complete New Case',
+            newStatus: TaskStatus.STATUS_30_COMPLETED as string,
+            completionVariables: {
+              priority,
+              readyForAssignment: 'true',
+              assignToSelf: 'false',
+            },
+          });
+
+          await this.taskRepository.createTask(
             {
               case: {
                 connect: { case_id: caseId },
@@ -743,15 +762,6 @@ export class CaseCreationApprovalService {
             },
             tx,
           );
-
-          await this.flowableService.handleTaskCreated({
-            caseId,
-            taskId: createdTask.task_id,
-            taskName: createdTask.name!,
-            description: createdTask.description!,
-            status: TaskStatus.STATUS_01_UNASSIGNED as string,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          });
         });
       }
 

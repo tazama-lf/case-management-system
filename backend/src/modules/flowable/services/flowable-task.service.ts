@@ -124,7 +124,6 @@ export class FlowableTaskService {
         action: FlowableTaskActions.COMPLETE,
         variables: variables ? this.formatVariables(variables) : [],
       };
-
       const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
 
       this.logger.log(`Task completed: ${taskId}`, FlowableTaskService.name);
