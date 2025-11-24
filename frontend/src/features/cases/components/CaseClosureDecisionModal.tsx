@@ -358,7 +358,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 />
                 <div className="mt-1 flex justify-between">
                   <p className="text-xs text-gray-500">
-                    {formData.rejectionReason.length}/15 characters minimum
+                    {formData.rejectionReason.length}/20 characters minimum
                   </p>
                   <p className="text-xs text-gray-500">
                     {formData.rejectionReason.length}/1000 characters
