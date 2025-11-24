@@ -7,6 +7,8 @@ export enum EvidenceType {
   ADVERSE_MEDIA = 'ADVERSE_MEDIA',
   OTHER = 'OTHER',
   SAR_STR_FILING = 'SAR_STR_FILING',
+  KYC = 'KYC',
+  EDD = 'EDD',
 }
 
 export class UploadEvidenceDto {
@@ -15,7 +17,7 @@ export class UploadEvidenceDto {
   @IsNotEmpty()
   taskId: string;
 
-  @ApiProperty({ description: 'Type of evidence', enum: EvidenceType })
+  @ApiProperty({ description: 'Type of evidence', enum: EvidenceType, example: 'KYC' })
   @IsEnum(EvidenceType)
   @IsNotEmpty()
   evidenceType: EvidenceType;

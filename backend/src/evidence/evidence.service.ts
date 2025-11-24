@@ -51,6 +51,25 @@ export class EvidenceService {
   }
 
   async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+        const kycEddTypes = ['KYC', 'EDD'];
+        const allowedMimeTypes = [
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'image/png',
+          'image/jpeg'
+        ];
+
+        if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
+          this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
+          for (const file of files) {
+            this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
+            if (!allowedMimeTypes.includes(file.mimetype)) {
+              this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
+              throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
+            }
+          }
+        }
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 

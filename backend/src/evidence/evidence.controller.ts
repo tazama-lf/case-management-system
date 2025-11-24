@@ -50,16 +50,12 @@ export class EvidenceController {
         },
         evidenceType: {
           type: 'string',
-          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER', 'SAR_STR_FILING'],
+          enum: ['ADVERSE_MEDIA', 'SANCTIONS', 'OTHER', 'SAR_STR_FILING', 'KYC', 'EDD'],
           description: 'Type of evidence',
         },
         tags: {
           type: 'string',
           description: 'Tags (comma-separated)',
-        },
-        description: {
-          type: 'string',
-          description: 'Description of evidence',
         },
         comments: {
           type: 'string',
