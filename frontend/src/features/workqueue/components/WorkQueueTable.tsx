@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { Suspense, useState } from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
+import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
+import { transformBackendAlertToUI, convertToTriageAlert } from '@/features/alerts/utils/alertTransformers';
+import triageService from '@/features/alerts/services/triageservice';
+import type { Alert } from '@/features/alerts/types/alertsdashboard.types';
+import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
+import { useToast } from '@/shared/providers/ToastProvider';
+import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
 
 interface WorkQueueTableProps {
+  alertId?: string;
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;
   onUnassign?: (task: UnifiedWorkQueueTask) => void;
@@ -18,9 +26,11 @@ interface WorkQueueTableProps {
     totalPages: number;
     onPageChange: (page: number) => void;
   };
+  onRefreshCases?: () => void;
 }
 
 const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
+  alertId,
   tasks,
   onAssign,
   onUnassign,
@@ -28,7 +38,14 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   onComplete,
   onUpdateStatus,
   pagination,
+  onRefreshCases
 }) => {
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [showManualTriageModal, setShowManualTriageModal] = useState(false);
+  const [loadingAlertForTask, setLoadingAlertForTask] = useState<string | null>(null);
+  const { success, error: showError } = useToast();
+  const { performManualTriage } = useAlertOperations();
+
   const tableColumns = [
     { key: 'task', label: 'Task', width: 'w-80' },
     { key: 'case', label: 'Case', width: 'w-72' },
@@ -55,6 +72,31 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     );
   };
 
+  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
+    try {
+      await performManualTriage({
+        alertId: alert.alert_id as string,
+        data: triageData,
+      });
+      success('Triage Complete', 'Alert triage completed successfully');
+
+      // Refresh the alert details and keep the modal open
+      try {
+        const updatedAlert = await triageService.getAlertById(alert.alert_id as string);
+        setSelectedAlert(transformBackendAlertToUI(updatedAlert));
+        setShowManualTriageModal(false);
+      } catch (error) {
+        console.error('Failed to refresh alert:', error);
+        onRefreshCases?.();
+      }
+    } catch (error) {
+      console.error('Failed to perform manual triage:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
+      showError('Triage Failed', errorMessage);
+      throw error;
+    }
+  };
+
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions: React.ReactNode[] = [];
 
@@ -63,8 +105,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       return actions;
     }
 
-     if (task.status === 'IN_PROGRESS') {
-      
+    if (task.status === 'IN_PROGRESS') {
       // Add Reassign and Unassign actions for IN_PROGRESS tasks
       if (task.assignee && onReassign) {
         actions.push(
@@ -140,7 +181,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       );
     }
 
-    
+
 
     if (task.assignee && onUnassign) {
       actions.push(
@@ -157,17 +198,54 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
 
     if (task.assignee && onUpdateStatus) {
-      actions.push(
-        <button
-          key="update-status"
-          onClick={() => onUpdateStatus(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-          title="Update status"
-        >
-          <Cog6ToothIcon className="h-3 w-3 mr-1" />
-          Status
-        </button>
-      );
+      if (task.name === 'Complete New Case') {
+        actions.push(
+          <button
+            key="complete-triage"
+            onClick={async () => {
+              try {
+                // Fetch alert details using the cached or newly fetched alert ID
+                const alertDetails = await triageService.getAlertById(alertId || '');
+                setSelectedAlert(transformBackendAlertToUI(alertDetails));
+                setShowManualTriageModal(true);
+              } catch (error) {
+                console.error('Failed to load alert for triage:', error);
+                const errorMessage = error instanceof Error ? error.message : 'Failed to load alert details';
+                showError('Error', errorMessage);
+              } finally {
+                setLoadingAlertForTask(null);
+              }
+            }}
+            disabled={loadingAlertForTask === task.id}
+            className="inline-flex items-center px-1 py-1 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Complete triage"
+          >
+            {loadingAlertForTask === task.id ? (
+              <>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-1" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <CheckIcon className="h-3 w-3 mr-1" />
+                Complete
+              </>
+            )}
+          </button>
+        );
+      } else {
+        actions.push(
+          <button
+            key="update-status"
+            onClick={() => onUpdateStatus(task)}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            title="Update status"
+          >
+            <Cog6ToothIcon className="h-3 w-3 mr-1" />
+            Status
+          </button>
+        );
+      }
     }
 
     return actions;
@@ -185,10 +263,9 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <thead className="bg-gray-50">
             <tr>
               {tableColumns.map((col) => (
-                <th 
+                <th
                   key={col.key}
-                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                    col.align === 'right' ? 'text-right' : 'text-left'
+                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${col.align === 'right' ? 'text-right' : 'text-left'
                   }`}
                 >
                   {col.label}
@@ -296,7 +373,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 >
                   Previous
                 </button>
-                {}
+                { }
                 {(() => {
                   const { currentPage, totalPages } = pagination;
                   const pages: (number | 'ellipsis')[] = [];
@@ -331,11 +408,10 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                       <button
                         key={p}
                         onClick={() => pagination.onPageChange(p)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          pagination.currentPage === p
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.currentPage === p
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
                         aria-current={pagination.currentPage === p ? 'page' : undefined}
                       >
                         {p}
@@ -356,6 +432,20 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Manual Triage Modal */}
+      {selectedAlert && (
+        <Suspense fallback={<div>Loading modal...</div>}>
+          <ManualTriageModal
+            isOpen={showManualTriageModal}
+            alert={convertToTriageAlert(selectedAlert)}
+            onClose={() => {
+              setShowManualTriageModal(false);
+              setSelectedAlert(null);
+            }}
+            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+          />
+        </Suspense>
       )}
     </div>
   );

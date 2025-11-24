@@ -162,12 +162,16 @@ export class CaseQueryService {
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
       }
       if (investigatorUserId) {
+        // For investigators, show cases that are either:
+        // 1. Unassigned (case_owner_user_id is null)
+        // 2. Ready for assignment (available in work queue)
+        // 3. Owned by this specific investigator
         whereClause.AND = [
           baseFilters,
           {
             OR: [
               { case_owner_user_id: null },
-              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
+              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
               { case_owner_user_id: investigatorUserId },
             ],
           },

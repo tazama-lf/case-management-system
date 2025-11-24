@@ -347,96 +347,32 @@ export class CaseCreationApprovalService {
         try {
             this.logger.log(
                 `[ApproveCaseCreation] Supervisor ${supervisorId} approving case creation for case ${caseId}`,
-                CaseCreationApprovalService.name,
+                CaseCreationApprovalService.name
             );
 
-            // First check the case status
-            const caseData = await this.caseRepository.findCaseBasicInfo(caseId);
-
-            if (!caseData) {
-                throw new NotFoundException(`Case ${caseId} not found`);
-            }
-
-            if (caseData.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
-                const errorMsg = `Case ${caseId} was already approved (created by supervisor). Current status: ${caseData.status}`;
-                this.logger.warn(`[ApproveCaseCreation] ${errorMsg}`, CaseCreationApprovalService.name);
-
-                await this.auditLogService.logAction({
-                    userId: supervisorId,
-                    operation: 'approveCaseCreation',
-                    entityName: CaseCreationApprovalService.name,
-                    actionPerformed: errorMsg,
-                    outcome: Outcome.FAILURE,
-                });
-
-                throw new ConflictException({
-                    message: 'Case does not require approval - it was already approved when created by a supervisor',
-                    currentStatus: caseData.status,
-                    caseId,
-                    note: 'This case was created by a supervisor and skipped the approval workflow',
-                });
-            }
-
-            if (caseData.status !== CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL) {
-                throw new ConflictException({
-                    message: 'Case is not pending creation approval',
-                    currentStatus: caseData.status,
-                    requiredStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-                    caseId,
-                });
-            }
-
-            const missingFields: string[] = [];
-            if (!caseData.priority) missingFields.push('priority');
-            if (!caseData.case_type) missingFields.push('case_type');
-            if (!caseData.case_creator_user_id) missingFields.push('case_creator_user_id');
-
-            if (missingFields.length > 0) {
-                throw new BadRequestException({
-                    message: 'Case has missing required fields',
-                    missingFields,
-                });
-            }
-
-            const approvalTask = await this.caseRepository.findTaskByNameAndStatus(
-                caseId,
-                'Approve Case Creation',
-                TaskStatus.STATUS_01_UNASSIGNED,
-            );
-
-            if (!approvalTask) {
-                const errorMsg = 'Approve Case Creation task not found';
-                this.logger.error(`[ApproveCaseCreation] ${errorMsg} for case ${caseId}`, null, CaseCreationApprovalService.name);
-
-                await this.auditLogService.logAction({
-                    userId: supervisorId,
-                    operation: 'approveCaseCreation',
-                    entityName: CaseCreationApprovalService.name,
-                    actionPerformed: `${errorMsg} for case ${caseId}`,
-                    outcome: Outcome.FAILURE,
-                });
-
-                throw new NotFoundException(
-                    `${errorMsg}. The case may have been created by a supervisor and doesn't require approval, or the BPMN workflow has not yet created the task.`,
-                );
-            }
-
-            if (approvalTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
-                throw new ConflictException({
-                    message: 'Approval task is not in correct state',
-                    currentStatus: approvalTask.status,
-                    requiredStatus: TaskStatus.STATUS_01_UNASSIGNED,
-                });
-            }
+            await this.validateCaseCreationApprovalPreconditions(caseId);
 
             const result = await this.prismaService.$transaction(async (tx) => {
                 const updatedCase = await tx.case.update({
                     where: { case_id: caseId },
                     data: {
                         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+                        case_owner_user_id: null, // Clear owner so case goes to work queue
                         updated_at: new Date(),
                     },
                 });
+
+                const approvalTask = await tx.task.findFirst({
+                    where: {
+                        case_id: caseId,
+                        name: 'Approve Case Creation',
+                        status: TaskStatus.STATUS_01_UNASSIGNED,
+                    },
+                });
+
+                if (!approvalTask) {
+                    throw new NotFoundException('Approve Case Creation task not found');
+                }
 
                 const completedApprovalTask = await tx.task.update({
                     where: { task_id: approvalTask.task_id },
@@ -450,6 +386,21 @@ export class CaseCreationApprovalService {
                 return { case: updatedCase, approvedTask: completedApprovalTask };
             });
 
+            const investigateTask = await this.taskService.createTask(
+                {
+                    caseId,
+                    status: TaskStatus.STATUS_01_UNASSIGNED,
+                    name: 'Investigate case',
+                    description: `Investigation task for approved case ${caseId}`,
+                    candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                },
+                supervisorId,
+            );
+
+            this.logger.log(
+                `[ApproveCaseCreation] Investigation task ${investigateTask.task_id} created for case ${caseId} → INVESTIGATIONS queue (after approval)`,
+                CaseCreationApprovalService.name,
+            );
             this.flowableService.handleTaskStatusChanged({
                 taskId: result.approvedTask.task_id,
                 caseId: caseId,
@@ -462,7 +413,7 @@ export class CaseCreationApprovalService {
                     creationComments: 'Case creation approved by supervisor',
                 },
             });
-             
+
             this.flowableService.handleCaseStatusChanged({
                 caseId: caseId,
                 oldStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
@@ -470,45 +421,30 @@ export class CaseCreationApprovalService {
                 reason: 'Case creation approved by supervisor',
             });
 
-            // Create investigation task after approval
-            this.logger.log(`[ApproveCaseCreation] Creating Investigation task for approved case ${caseId}`, CaseCreationApprovalService.name);
-            const investigationTask = await this.taskService.createTask(
-                {
-                    caseId: caseId,
-                    status: TaskStatus.STATUS_01_UNASSIGNED,
-                    name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
-                    description: `Investigate case: ${caseId}`,
-                    candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-                },
-                supervisorId,
-            );
-            this.logger.log(`[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`, CaseCreationApprovalService.name);
-
             await this.auditLogService.logAction({
                 userId: supervisorId,
                 operation: 'approveCaseCreation',
                 entityName: CaseCreationApprovalService.name,
-                actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+                actionPerformed: `Approved case creation for case ${caseId}, created investigation task ${investigateTask.task_id}`,
                 outcome: Outcome.SUCCESS,
             });
 
             this.logger.log(
-                `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
-                CaseCreationApprovalService.name,
+                `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}`,
+                CaseCreationApprovalService.name
             );
 
             return {
                 success: true,
                 case: result.case,
                 approvedTask: result.approvedTask,
-                investigationTask: investigationTask,
-                message: 'Case creation approved. Investigation task created.',
+                investigateTask,
             };
         } catch (error) {
             this.logger.error(
                 `[ApproveCaseCreation] Failed to approve case creation: ${error.message}`,
                 error.stack,
-                CaseCreationApprovalService.name,
+                CaseCreationApprovalService.name
             );
 
             await this.auditLogService.logAction({

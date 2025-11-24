@@ -66,35 +66,35 @@ export class TriageService {
         throw new NotFoundException(`Case ${alert.case_id} not found`);
       }
 
-      const triageTasks = existingCase.tasks.filter((t) => t.name === 'Triage Alert');
-      const completedTriageTask = triageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+      const completeNewCaseTasks = existingCase.tasks.filter((t) => t.name === 'Complete New Case');
+      const completedTriageTask = completeNewCaseTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
 
       if (completedTriageTask) {
         throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
       }
 
-      const triageTask = triageTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
+      const completeNewCaseTask = completeNewCaseTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
-      if (triageTask) {
+      if (completeNewCaseTask) {
         this.logger.log(
-          `Found triage task ${triageTask.task_id} with assigned_user_id: ${triageTask.assigned_user_id}, current userId: ${userId}`,
+          `Found triage task ${completeNewCaseTask.task_id} with assigned_user_id: ${completeNewCaseTask.assigned_user_id}, current userId: ${userId}`,
           TriageService.name,
         );
 
-        if (!triageTask.assigned_user_id || triageTask.assigned_user_id !== userId) {
-          this.logger.log(`Auto-assigning triage task ${triageTask.task_id} to user ${userId}`, TriageService.name);
-          await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId }, userId, this.audit);
+        if (!completeNewCaseTask.assigned_user_id || completeNewCaseTask.assigned_user_id !== userId) {
+          this.logger.log(`Auto-assigning triage task ${completeNewCaseTask.task_id} to user ${userId}`, TriageService.name);
+          await this.taskService.updateTask(completeNewCaseTask.task_id, { assignedUserId: userId }, userId, this.audit);
         } else {
-          this.logger.log(`Triage task ${triageTask.task_id} already assigned to current user ${userId}`, TriageService.name);
+          this.logger.log(`Complete New Case task ${completeNewCaseTask.task_id} already assigned to current user ${userId}`, TriageService.name);
         }
       } else {
-        this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
+        this.logger.log(`No active Complete New Case task found for case ${existingCase.case_id}`, TriageService.name);
       }
 
-      if (triageTask) {
-        this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
+      if (completeNewCaseTask) {
+        this.logger.log(`Completing Complete New Case task ${completeNewCaseTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
         await this.taskService.updateTask(
-          triageTask.task_id,
+          completeNewCaseTask.task_id,
           {
             status: TaskStatus.STATUS_30_COMPLETED,
           },

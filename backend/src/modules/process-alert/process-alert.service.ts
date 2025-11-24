@@ -44,10 +44,11 @@ export class ProcessAlertService {
         await this.taskService.createTask(
           {
             caseId: alert.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Triage Alert',
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            name: 'Complete New Case',
             description: `Manual triage required for alert: ${alert.alert_id}`,
             candidateGroup: 'Investigator',
+            assignedUserId: userId
           },
           userId,
         );
