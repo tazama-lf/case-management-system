@@ -56,7 +56,6 @@ export class TaskStatusChangedEvent {
     public readonly taskId: string,
     public readonly caseId: string,
     public readonly taskName: string,
-    public readonly oldStatus: string,
     public readonly newStatus: string,
     public readonly assignedUserId?: string | null,
     public readonly completionVariables?: Record<string, unknown>,

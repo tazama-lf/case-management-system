@@ -49,9 +49,12 @@ export class AlertRepository {
     return alert;
   }
 
-  async updateAlert(alertId: string, updateData: UpdateAlertDTO): Promise<Alert> {
+  async updateAlert(alertId: string, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
-      const updatedAlert = await this.prisma.alert.update({
+      if (!tx) {
+        tx = this.prisma;
+      }
+      const updatedAlert = await tx.alert.update({
         where: { alert_id: alertId },
         data: {
           priority_score: updateData.priority_score,

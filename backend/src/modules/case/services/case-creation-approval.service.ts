@@ -14,6 +14,7 @@ import { CaseQueryService } from './case-query.service';
 import { FlowableService } from '../..//flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
+import { AlertRepository } from 'src/modules/repository/alert.repository';
 
 @Injectable()
 export class CaseCreationApprovalService {
@@ -22,6 +23,7 @@ export class CaseCreationApprovalService {
     private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
+    private readonly alertRepository: AlertRepository,
     private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
     private readonly casePriorityUtil: CasePriorityUtil,
@@ -100,7 +102,16 @@ export class CaseCreationApprovalService {
 
         this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via repository`, CaseCreationApprovalService.name);
 
-        const updatedAlert = await this.caseRepository.updateAlertByAlertId(dto, priorityScore, createdCase, priority);
+        const updatedAlert = await this.alertRepository.updateAlert(
+          dto.alertId,
+          {
+            caseId: createdCase.case_id,
+            priority: priority,
+            priority_score: priorityScore,
+            alertType: dto.alertType,
+          },
+          tx,
+        );
 
         this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseCreationApprovalService.name);
 
@@ -143,7 +154,7 @@ export class CaseCreationApprovalService {
           {
             caseId: result.case.case_id,
             status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate case',
+            name: 'Investigate Case',
             description: `Investigation task for manually created case ${result.case.case_id}`,
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },
@@ -438,7 +449,6 @@ export class CaseCreationApprovalService {
         taskId: result.approvedTask.task_id,
         caseId: caseId,
         taskName: 'Approve Case Creation',
-        oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
         newStatus: TaskStatus.STATUS_30_COMPLETED,
         assignedUserId: supervisorId,
         completionVariables: {
@@ -459,7 +469,7 @@ export class CaseCreationApprovalService {
         {
           caseId: caseId,
           status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
+          name: TASK_NAMES.INVESTIGATE_CASE,
           description: `Investigate case: ${caseId}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
@@ -640,7 +650,7 @@ export class CaseCreationApprovalService {
         {
           caseId,
           status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
+          name: TASK_NAMES.INVESTIGATE_CASE,
           description: `Task to investigate: ${caseId}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },

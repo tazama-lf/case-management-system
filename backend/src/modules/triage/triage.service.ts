@@ -20,6 +20,12 @@ import { CaseCreationApprovalService } from '../case/services/case-creation-appr
 
 @Injectable()
 export class TriageService {
+  private readonly closableStatuses: CaseStatus[] = [
+    CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+    CaseStatus.STATUS_81_CLOSED_REFUTED,
+    CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+  ];
+
   constructor(
     private readonly logger: LoggerService,
     private prisma: PrismaService,
@@ -85,28 +91,11 @@ export class TriageService {
         this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
       }
 
-      // if (triageTask) {
-      //   this.logger.log(`Completing triage task ${triageTask.task_id} for user ${userId} with preserved assignment`, TriageService.name);
-      //   await this.taskService.updateTask(
-      //     triageTask.task_id,
-      //     {
-      //       status: TaskStatus.STATUS_30_COMPLETED,
-      //     },
-      //     userId,
-      //   );
-      // }
-
-      const closableStatuses: CaseStatus[] = [
-        CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-        CaseStatus.STATUS_81_CLOSED_REFUTED,
-        CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-      ];
-
-      if (closableStatuses.includes(existingCase.status)) {
+      if (this.closableStatuses.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
       }
 
-      if (updateAlertDto?.status && closableStatuses.includes(updateAlertDto.status)) {
+      if (updateAlertDto?.status && this.closableStatuses.includes(updateAlertDto.status)) {
         await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId);
 
         this.logger.log(

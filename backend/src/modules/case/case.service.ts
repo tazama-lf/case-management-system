@@ -383,7 +383,7 @@ export class CaseService {
           {
             caseId,
             status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: TASK_NAMES.INVESTIGATE_CASE_LOWER,
+            name: TASK_NAMES.INVESTIGATE_CASE,
             description: `Task to investigate: ${caseId}`,
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },

@@ -48,7 +48,6 @@ export class FlowableService implements OnModuleInit {
   ) {
     this.flowableClient = this.clientFactory.getClient();
     this.flowableUrl = this.clientFactory.getBaseUrl();
-    // this.tenantId = this.clientFactory.tenantId;
   }
 
   async onModuleInit() {
@@ -305,10 +304,6 @@ export class FlowableService implements OnModuleInit {
 
   async handleTaskUnassigned(event: TaskUnassignedEvent) {
     return this.taskEventListener.handleTaskUnassigned(event);
-  }
-
-  async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
-    return this.taskEventListener.handleBpmnTaskCreated(event);
   }
 
   async handleSuspendCase(event: CaseSuspendedEvent) {

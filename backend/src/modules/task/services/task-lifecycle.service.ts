@@ -273,7 +273,6 @@ export class TaskLifecycleService {
         taskId,
         updatedTask.case_id,
         updatedTask.name || '',
-        existingTask.status,
         TaskStatus.STATUS_30_COMPLETED,
         updatedTask.assigned_user_id || undefined,
       ),

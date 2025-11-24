@@ -185,7 +185,6 @@ export class CaseClosureApprovalService {
           taskId: investigationTask.task_id,
           caseId,
           taskName: investigationTask.name || 'Investigate Case',
-          oldStatus: oldTaskStatus,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           assignedUserId: userId,
           completionVariables: {
@@ -267,7 +266,6 @@ export class CaseClosureApprovalService {
         taskId: investigationTask.task_id,
         caseId,
         taskName: investigationTask.name || 'Investigate Case',
-        oldStatus: oldTaskStatus,
         newStatus: TaskStatus.STATUS_30_COMPLETED,
         assignedUserId: userId,
         completionVariables: {
@@ -537,7 +535,6 @@ export class CaseClosureApprovalService {
         taskId: result.completedTask.task_id,
         caseId,
         taskName: approvalTask.name || 'Approve Case Closure',
-        oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
         newStatus: TaskStatus.STATUS_30_COMPLETED,
         assignedUserId: supervisorId,
         completionVariables: {
@@ -755,7 +752,6 @@ export class CaseClosureApprovalService {
         taskId: result.newInvestigationTask.task_id,
         caseId,
         taskName: result.newInvestigationTask.name || 'Investigate Case',
-        oldStatus: TaskStatus.STATUS_01_UNASSIGNED,
         newStatus: TaskStatus.STATUS_10_ASSIGNED,
         assignedUserId: originalInvestigatorId,
         completionVariables: {

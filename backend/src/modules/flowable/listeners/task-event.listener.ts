@@ -339,49 +339,6 @@ export class TaskEventListener {
     }
   }
 
-  /**
-   * Handle bpmn.task.created event
-   * Creates a PostgreSQL task for a BPMN task and syncs them
-   */
-  @OnEvent('bpmn.task.created')
-  async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
-    try {
-      this.logger.log(
-        `[TaskEventListener] Creating PostgreSQL task for BPMN task ${event.flowableTaskId} (${event.taskName})`,
-        TaskEventListener.name,
-      );
-
-      // const postgresTask = await this.utilityService.createTask(
-      //   {
-      //     caseId: event.caseId,
-      //     status: TaskStatus.STATUS_01_UNASSIGNED,
-      //     name: event.taskName,
-      //     description: event.description,
-      //     candidateGroup: event.candidateGroup,
-      //   },
-      //   'system',
-      // );
-
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-
-      // await this.flowableTaskService.setTaskVariables(event.flowableTaskId, {
-      //   postgres_task_id: postgresTask.task_id,
-      //   postgres_case_id: event.caseId,
-      //   task_status: TaskStatus.STATUS_01_UNASSIGNED,
-      //   task_name: event.taskName,
-      //   candidate_group: event.candidateGroup,
-      //   flowable_case_id: (processInstance?.id as string) || '',
-      // });
-
-      // this.logger.log(
-      //   `[TaskEventListener] ✓ Created and synced PostgreSQL task ${postgresTask.task_id} with BPMN task ${event.flowableTaskId}`,
-      //   TaskEventListener.name,
-      // );
-    } catch (error) {
-      this.logger.error(`[TaskEventListener] ✗ Failed to create PostgreSQL task: ${error.message}`, error.stack, TaskEventListener.name);
-    }
-  }
-
   @OnEvent('task.assigned')
   async handleTaskAssigned(event: TaskAssignedEvent) {
     const eventKey = `assigned-${event.taskId}-${event.assignedUserId}`;
@@ -485,9 +442,5 @@ export class TaskEventListener {
     } catch (error) {
       this.logger.error(`Failed to unassign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
     }
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

@@ -61,7 +61,8 @@ export class TaskService {
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         description: updateData.description,
-        assigned_user_id: updateData.assignedUserId ?? null,
+        assigned_user_id:
+          updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
       };
 
       const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
@@ -87,6 +88,7 @@ export class TaskService {
 
           return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: caseRecord.status };
         });
+
         updatedTask = txResult.taskRecord;
         if (txResult.updatedCaseStatus !== txResult.previousCaseStatus) {
           caseStatusTransition = { previous: txResult.previousCaseStatus, next: txResult.updatedCaseStatus };
@@ -95,52 +97,11 @@ export class TaskService {
         updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
       }
 
-      if (statusChanged) {
-        this.eventEmitter.emit(
-          'task.status.changed',
-          new TaskStatusChangedEvent(
-            taskId,
-            updatedTask.case_id,
-            updatedTask.name || '',
-            existingTask.status,
-            updateData.status!,
-            updatedTask.assigned_user_id || undefined,
-          ),
-        );
-      }
-
-      if (updateData.assignedUserId !== undefined && updateData.assignedUserId !== existingTask.assigned_user_id) {
-        if (updateData.assignedUserId) {
-          this.eventEmitter.emit(
-            'task.assigned',
-            new TaskAssignedEvent(taskId, updatedTask.case_id, updateData.assignedUserId, existingTask.assigned_user_id || undefined),
-          );
-        } else {
-          this.eventEmitter.emit(
-            'task.unassigned',
-            new TaskUnassignedEvent(taskId, updatedTask.case_id, existingTask.assigned_user_id || undefined),
-          );
-        }
-      }
-
-      if (caseStatusTransition) {
-        this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(
-            updatedTask.case_id,
-            caseStatusTransition.next,
-            `Investigation task ${updatedTask.task_id} moved to in-progress`,
-          ),
-        );
-      }
-
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
       this.auditLogService.logAction({
         userId,
-        actionPerformed: caseStatusTransition
-          ? `Updated task ${taskId} and moved case ${updatedTask.case_id} to STATUS_20_IN_PROGRESS`
-          : `Updated task ${taskId}`,
+        actionPerformed: `Updated task ${taskId}`,
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.SUCCESS,
