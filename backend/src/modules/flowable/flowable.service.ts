@@ -250,8 +250,8 @@ export class FlowableService implements OnModuleInit {
     );
   }
 
-  async getAllCandidateGroups() {
-    return this.identityService.getAllCandidateGroups(this.flowableClient);
+  async getAllCandidateGroups(size?: number, start?: number) {
+    return this.identityService.getAllCandidateGroups(size, start);
   }
 
   async healthCheck(): Promise<{ status: string; message?: string }> {

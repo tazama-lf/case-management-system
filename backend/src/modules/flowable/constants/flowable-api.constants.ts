@@ -55,7 +55,7 @@ export const FlowableIdentityLinkTypes = {
 export const FlowableDefaults = {
   MAX_RETRIES: 3,
   RETRY_DELAY_MS: 5000,
-  TIMEOUT_MS: 10000,
+  TIMEOUT_MS: 30000,
   DEFAULT_PRIORITY: 50,
   EVENT_DEBOUNCE_MS: 1000,
   MAX_CACHE_SIZE: 1000,

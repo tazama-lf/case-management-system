@@ -46,6 +46,7 @@ export class CaseEventListener {
           creationType: event.creationType,
           caseStatus: event.caseStatus,
           autocloseEligible: String(event.autocloseEligible),
+          isTriageAlert: String(event.isTriageAlert),
           creatorRole: creatorRole,
         },
         event.caseId,

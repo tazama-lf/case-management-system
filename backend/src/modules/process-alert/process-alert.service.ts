@@ -8,6 +8,7 @@ import { TriageService } from '../triage/triage.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { AlertService } from '../alert/alert.service';
+import { CANDIDATE_GROUPS } from '../case/utils/constants/case.constants';
 
 @Injectable()
 export class ProcessAlertService {
@@ -45,9 +46,9 @@ export class ProcessAlertService {
           {
             caseId: alert.case_id,
             status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Triage Alert',
+            name: 'Complete New Case',
             description: `Manual triage required for alert: ${alert.alert_id}`,
-            candidateGroup: 'Investigator',
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },
           userId,
         );

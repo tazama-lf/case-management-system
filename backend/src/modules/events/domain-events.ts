@@ -6,6 +6,7 @@ export class CaseCreatedEvent {
     public readonly caseStatus: string,
     public readonly creationType: string,
     public readonly autocloseEligible: boolean,
+    public readonly isTriageAlert: boolean = false,
     public readonly creatorRole?: string,
     public readonly shouldSyncBpmnTasks: boolean = true,
   ) {}

@@ -55,12 +55,11 @@ export class WorkqueueService {
   /**
    * Get all candidate groups
    */
-  async getAllCandidateGroups() {
+  async getAllCandidateGroups(size?: number, start?: number) {
     try {
       this.loggerService.log('Retrieving all candidate groups', WorkqueueService.name);
 
-      const result = await this.flowableService.getAllCandidateGroups();
-
+      const result = await this.flowableService.getAllCandidateGroups(size, start);
       this.loggerService.log(`Retrieved ${result.length} candidate groups`, WorkqueueService.name);
       return result;
     } catch (error) {
