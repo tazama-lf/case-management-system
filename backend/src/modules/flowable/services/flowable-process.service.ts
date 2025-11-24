@@ -27,13 +27,6 @@ export class FlowableProcessService {
    */
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
     try {
-      // First, verify the process definition exists
-      const processDefinitions = await this.getProcessDefinitions(processDefinitionKey, tenantId);
-      if (!processDefinitions || processDefinitions.length === 0) {
-        const availableDefinitions = await this.listProcessDefinitions();
-        throw new Error(`Process definition '${processDefinitionKey}' not found. Available definitions: ${availableDefinitions}`);
-      }
-
       const formattedVariables = this.formatVariables(variables);
       const payload = {
         processDefinitionKey,
@@ -58,12 +51,6 @@ export class FlowableProcessService {
       this.logger.log(`Process instance started: ${response.data.id} with businessKey: ${businessKey}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      // Enhanced error logging with more details
-      if (error.response) {
-        this.logger.error(`Flowable API error - Status: ${error.response.status}`, FlowableProcessService.name);
-        this.logger.error(`Flowable API error - Response: ${JSON.stringify(error.response.data)}`, FlowableProcessService.name);
-        this.logger.error(`Flowable API error - Headers: ${JSON.stringify(error.response.headers)}`, FlowableProcessService.name);
-      }
       this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableProcessService.name);
       throw new HttpException('Failed to start process instance', HttpStatus.INTERNAL_SERVER_ERROR);
     }

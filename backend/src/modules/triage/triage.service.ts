@@ -66,7 +66,7 @@ export class TriageService {
         throw new NotFoundException(`Case ${alert.case_id} not found`);
       }
 
-      const triageTasks = existingCase.tasks.filter((t) => t.name === 'Triage Alert');
+      const triageTasks = existingCase.tasks.filter((t) => t.name === 'Complete New Case');
       const completedTriageTask = triageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
 
       if (completedTriageTask) {
@@ -116,10 +116,10 @@ export class TriageService {
       if (updateAlertDto?.status && closableStatuses.includes(updateAlertDto.status)) {
         await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId);
 
-        this.eventEmitter.emit(
-          'case.status.changed',
-          new CaseStatusChangedEvent(alert.case_id, existingCase.status, updateAlertDto.status, 'Manual triage closed case'),
-        );
+        // this.eventEmitter.emit(
+        //   'case.status.changed',
+        //   new CaseStatusChangedEvent(alert.case_id, existingCase.status, updateAlertDto.status, 'Manual triage closed case'),
+        // );
 
         this.logger.log(
           `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,

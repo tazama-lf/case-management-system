@@ -30,4 +30,11 @@ export class CommentController {
     const userId = req?.user.token.clientId;
     return this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
   }
+
+ @Get('/case/:caseId/comment')
+ @RequireInvestigatorOrSupervisorRole()
+  async getCommentsByCaseId(@Param('caseId') caseId: string , @Req() req: AuthenticatedRequest) {
+    return this.commentService.getCommentsByCaseId(caseId);
+  }
+
 }
