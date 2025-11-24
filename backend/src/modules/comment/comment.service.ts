@@ -130,4 +130,46 @@ export class CommentService {
       throw error;
     }
   }
+
+
+  async getCommentsByCaseId(caseId: string,  userId?: string) {
+   this.logger.log('Retrieving comments by caseId: ', CommentService.name);
+
+  try {
+   const comments = await this.prisma.comment.findMany({
+      where: { case_id: caseId }
+    });
+
+    if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getCommentsByCaseId',
+          entityName: CommentService.name,
+          actionPerformed: `Successfully retrieved comments for case ID: ${caseId}`,
+          outcome: Outcome.SUCCESS,
+          performedAt: new Date(),
+        });
+      }
+
+      return comments;
+    } catch (error) {
+      this.logger.error('Error retrieving comments', error, CommentService.name);
+      if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getCommentsByCaseId',
+          entityName: CommentService.name,
+          actionPerformed: `Error retrieving comments for caseID: ${caseId}`,
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+      }
+      throw error;
+    }
+  }
+
+ 
+
+  
+
 }
