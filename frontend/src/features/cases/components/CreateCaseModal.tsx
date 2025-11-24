@@ -26,6 +26,20 @@ interface CreateCaseModalProps {
     alertType: AlertType;
     assignee?: string;
   }) => void;
+  onCompleteCase: (caseId: string, payload: {
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+  }) => void;
+  onSaveDraft?: (payload: {
+    alertId?: string;
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+    draft?: boolean;
+  }) => void;
   loading?: boolean;
   error?: string;
   mode?: 'create' | 'edit';
@@ -43,7 +57,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   open,
   onClose,
   onCreate,
+  onSaveDraft = () => {},
   onUpdate,
+  onCompleteCase,
   loading,
   error,
   mode = 'create',
@@ -206,6 +222,38 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     (mode === 'edit' || selectedAlert)
   );
 
+
+
+  const saveAsDraft = (draft = false) => {
+    const errors = validateForm();
+
+    if (Object.keys(errors).length > 0 && !draft) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors({});
+
+    if (mode === 'edit' && onUpdate && existingCaseId) {
+      onUpdate(existingCaseId, {
+        priority,
+        priorityScore,
+        alertType,
+        assignee: assignee || undefined,
+      });
+    } else {
+      const alertIdToUse = selectedAlert?.alert_id;
+
+      onSaveDraft({
+        alertId: alertIdToUse,
+        priority,
+        priorityScore,
+        alertType,
+        assignee: assignee || undefined,
+        draft,
+      });
+    }
+  };
+
   const submit = (draft = false) => {
     const errors = validateForm();
 
@@ -232,6 +280,24 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         alertType,
         assignee: assignee || undefined,
         draft,
+      });
+    }
+  };
+  const completeCase = () => {
+    const errors = validateForm();
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors({});
+
+    if (existingCaseId) {
+      onCompleteCase(existingCaseId, {
+        priority,
+        priorityScore,
+        alertType,
+        assignee: assignee || undefined,
       });
     }
   };
@@ -518,7 +584,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4">
           {mode === 'create' && (
             <button
-              onClick={() => submit(true)}
+              onClick={() => saveAsDraft(true)}
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
             >
@@ -535,7 +601,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={() => submit(false)}
+              onClick={() => mode === 'edit' ? completeCase() : submit(false)}
               disabled={loading || !canSubmit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >

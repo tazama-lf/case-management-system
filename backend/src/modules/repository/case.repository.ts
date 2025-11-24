@@ -335,4 +335,59 @@ export class CaseRepository {
         });
     }
 
+    async createCase(caseDetail: any, tx?: Prisma.TransactionClient) {
+        const prisma = tx || this.prismaService;
+        return await prisma.case.create({
+            data: {
+                tenant_id: caseDetail.tenantId,
+                case_creator_user_id: caseDetail.caseCreatorUserId,
+                case_owner_user_id: caseDetail.caseOwnerUserId,
+                status: caseDetail.status,
+                priority: caseDetail.priority,
+                case_type: caseDetail.caseType,
+                case_creation_type: caseDetail.caseCreationType,
+            },
+        });
+    }
+
+    async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any) {
+        return await this.prismaService.$transaction(async (prisma) => {
+            // Create case in PostgreSQL only (no BPMN workflow)
+            const createdCase = await prisma.case.create({
+                data: {
+                    tenant_id: caseDetail.tenantId,
+                    case_creator_user_id: caseDetail.caseCreatorUserId,
+                    case_owner_user_id: caseDetail.caseOwnerUserId,
+                    status: caseDetail.status,
+                    priority: caseDetail.priority,
+                    case_type: caseDetail.caseType,
+                    case_creation_type: caseDetail.caseCreationType,
+                },
+            });
+
+            this.logger.log(
+                `[DraftCase] Draft case ${createdCase.case_id} created in PostgreSQL only (no BPMN)`,
+                CaseRepository.name,
+            );
+
+            // Update alert within the same transaction
+            const updatedAlert = await prisma.alert.update({
+                where: { alert_id: dto.alertId },
+                data: {
+                    priority,
+                    alert_type: dto.alertType,
+                    priority_score: priorityScore,
+                    case_id: createdCase.case_id,
+                },
+            });
+
+            this.logger.log(
+                `[DraftCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`,
+                CaseRepository.name,
+            );
+
+            return { case: createdCase, alert: updatedAlert };
+        });
+    }
+
 }

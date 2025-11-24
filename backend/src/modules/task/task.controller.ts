@@ -31,6 +31,7 @@ import {
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
+import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
@@ -55,6 +56,7 @@ export class TaskController {
 		private readonly auditLogService: AuditLogService,
 		private readonly loggerService: LoggerService,
 		private readonly flowableService: FlowableService,
+		private readonly taskBridgeService: TaskBridgeService
 	) { }
 
 	@Post()
@@ -122,7 +124,7 @@ export class TaskController {
 	})
 	async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
 		const userId = req.user.token.clientId;
-		return this.taskService.createTask(createTaskDto, userId);
+		return this.taskBridgeService.createTask(createTaskDto, userId);
 	}
 
 	@Patch(':taskId/reassign')

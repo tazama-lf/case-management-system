@@ -9,6 +9,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/modules/notification/notification.module';
 import { FlowableModule } from '../flowable/flowable.module';
 import { RepositoryModule } from '../repository/repository.module';
+import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 
 @Module({
 	imports: [
@@ -17,8 +18,9 @@ import { RepositoryModule } from '../repository/repository.module';
 		LoggerModule,
 		AuthModule,
 		NotificationModule,
-		forwardRef(() => FlowableModule),
-		RepositoryModule
+		FlowableModule,
+		RepositoryModule,
+		TaskBridgeModule
 	],
 	providers: [TaskService, TaskLifecycleService],
 	exports: [TaskService],

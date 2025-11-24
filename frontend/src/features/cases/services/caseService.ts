@@ -221,12 +221,33 @@ export class CaseService {
     }
   }
 
+  async SaveCaseAsDraft(manualCreateCaseData: ManualCreateCaseDto)
+  : Promise<Case> 
+  {
+    console.log('Saving case as draft with data:', manualCreateCaseData);
+    try {
+      const response = await apiClient.post<Case>(`${this.baseUrl}/save-as-draft`, manualCreateCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'create case');
+    }
+  }
+
   async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
       return this.validateCaseResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'update case');
+    }
+  }
+
+  async completeCase(caseId: string, completeCaseData: UpdateCaseDto): Promise<Case> {
+    try {
+      const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}/complete-case-creation`, completeCaseData);
+      return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'complete case');
     }
   }
 
