@@ -23,7 +23,7 @@ const getUserInfo = () => {
         tenantId: userData.tenantId || '',
       };
     }
-  } catch {}
+  } catch { }
   return { userId: '', tenantId: '' };
 };
 
@@ -39,7 +39,7 @@ const getUserRole = () => {
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
     }
-  } catch {}
+  } catch { }
   return 'CMS_SUPERVISOR';
 };
 
@@ -99,7 +99,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         if (userDetails) {
           setInvestigatorName(userService.formatUserName(userDetails));
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [open, caseComments]);
 
@@ -109,7 +109,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     const investigatorId = caseComments?.[0]?.user_id || 'Investigator';
     const caseType = caseData?.case_type || 'Investigation';
     const outcome = caseData?.status || 'Under Review';
-    
+
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
@@ -117,8 +117,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     if (!evidenceCount || Object.keys(evidenceCount).length === 0) {
       return 'No evidence items available for this case.';
     }
-    
-    const items = Object.entries(evidenceCount).map(([type, count]) => 
+
+    const items = Object.entries(evidenceCount).map(([type, count]) =>
       `• ${type} (${count} ${count === 1 ? 'document' : 'documents'})`
     );
     return items.join('\n') + '\n\nAll evidence items are attached to this case and available for audit review.';
@@ -191,14 +191,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         hour12: true
       });
 
-      const submittedDate = caseComments?.[0]?.created_at 
+      const submittedDate = caseComments?.[0]?.created_at
         ? new Date(caseComments[0].created_at).toLocaleString()
         : 'N/A';
 
       const evidenceList = Object.entries(evidenceCount || {}).length > 0
-        ? Object.entries(evidenceCount).map(([type, count]) => 
-            `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
-          )
+        ? Object.entries(evidenceCount).map(([type, count]) =>
+          `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
+        )
         : ['No evidence items available for this case.'];
 
       const docDefinition: any = {
@@ -305,6 +305,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           },
 
           {
+            text: 'FINAL OUTCOME DECISION',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: reportOutcome,
+            style: 'outcomeDecision',
+            margin: [0, 0, 0, 20],
+          },
+
+          {
             text: 'RECOMMENDATIONS & CONCLUSIONS',
             style: 'sectionHeader',
             margin: [0, 0, 0, 10],
@@ -367,6 +378,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             color: '#6b7280',
             italics: true,
           },
+          outcomeDecision: {
+            fontSize: 12,
+            bold: true,
+            color: '#059669',
+            alignment: 'center',
+          },
           footer: {
             fontSize: 10,
             bold: true,
@@ -406,14 +423,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         hour12: true
       });
 
-      const submittedDate = caseComments?.[0]?.created_at 
+      const submittedDate = caseComments?.[0]?.created_at
         ? new Date(caseComments[0].created_at).toLocaleString()
         : 'N/A';
 
       const evidenceList2 = Object.entries(evidenceCount || {}).length > 0
-        ? Object.entries(evidenceCount).map(([type, count]) => 
-            `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
-          )
+        ? Object.entries(evidenceCount).map(([type, count]) =>
+          `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
+        )
         : ['No evidence items available for this case.'];
 
       const docDefinition: any = {
@@ -520,6 +537,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           },
 
           {
+            text: 'FINAL OUTCOME DECISION',
+            style: 'sectionHeader',
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: reportOutcome,
+            style: 'outcomeDecision',
+            margin: [0, 0, 0, 20],
+          },
+
+          {
             text: 'RECOMMENDATIONS & CONCLUSIONS',
             style: 'sectionHeader',
             margin: [0, 0, 0, 10],
@@ -581,6 +609,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             fontSize: 9,
             color: '#6b7280',
             italics: true,
+          },
+          outcomeDecision: {
+            fontSize: 12,
+            bold: true,
+            color: '#059669',
+            alignment: 'center',
           },
           footer: {
             fontSize: 10,
@@ -846,8 +880,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Submitted:</span>
                     <span className="text-gray-900">
-                      {caseComments?.[0]?.created_at 
-                        ? new Date(caseComments[0].created_at).toLocaleString() 
+                      {caseComments?.[0]?.created_at
+                        ? new Date(caseComments[0].created_at).toLocaleString()
                         : 'N/A'}
                     </span>
                   </div>
@@ -986,11 +1020,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <button
                     onClick={handleDownload}
                     disabled={!isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                      isApproved
-                        ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
+                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                      }`}
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1000,11 +1033,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <button
                     onClick={handlePrint}
                     disabled={!isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                      isApproved
-                        ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
+                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                      }`}
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1014,11 +1046,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <button
                     onClick={handleApproveClick}
                     disabled={isFinalizing || isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
-                      isApproved
-                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
+                      ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                      : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                      }`}
                   >
                     {isFinalizing ? (
                       <>

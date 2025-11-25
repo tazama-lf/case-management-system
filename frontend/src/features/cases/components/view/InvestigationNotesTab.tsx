@@ -27,6 +27,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
 
+
+
   React.useEffect(() => {
     const loadComments = async () => {
       if (!taskId) return;
@@ -35,13 +37,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       try {
         const comments = await commentService.getCommentsByTask(taskId);
         setExistingComments(comments);
-
-        if (comments.length > 0) {
-          const combinedNotes = comments.map(c => c.note).join('\n\n---\n\n');
-          setNotes(combinedNotes);
-        }
       } catch (error) {
-        console.error('Failed to load investigation notes:', error);
+        console.error('Failed to load comments:', error);
       } finally {
         setLoading(false);
       }
@@ -49,6 +46,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
     loadComments();
   }, [taskId]);
+
+
 
   const insertFormatting = (
     prefix: string,
