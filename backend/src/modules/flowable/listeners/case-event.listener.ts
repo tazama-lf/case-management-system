@@ -29,6 +29,7 @@ export class CaseEventListener {
           autocloseEligible: String(event.autocloseEligible),
           caseStatus: event.caseStatus,
           isTriageAlert: String(event.isTriageAlert),
+          creatorRole: event.creatorRole || 'SUPERVISOR',
         },
         event.caseId,
         event.tenantId,

@@ -49,6 +49,9 @@
 
         <!-- MANUAL CREATION PATH -->
         <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
+        
+        <!-- CASE STATUS GATEWAY -->
+        <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/>
 
         <!-- SUPERVISOR APPROVAL PATH -->
         <userTask id="approveCaseCreation" name="Approve Case Creation"
@@ -215,30 +218,50 @@
         </sequenceFlow>
 
         <!-- Manual creation path -->
-        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="roleGateway">
+        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="caseStatusGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'MANUAL'}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Supervisor creates case - goes to case creation -->
-        <sequenceFlow id="flowSupervisor" sourceRef="roleGateway" targetRef="completeCaseCreation">
+        <!-- Case status routing for manual creation -->
+        <sequenceFlow id="flowDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole == 'SUPERVISOR'}
+                ${caseStatus == 'STATUS_00_DRAFT'}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Non-supervisor creates case - needs approval -->
-        <sequenceFlow id="flowNonSupervisor" sourceRef="roleGateway" targetRef="approveCaseCreation">
+        <sequenceFlow id="flowNonDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole != 'SUPERVISOR'}
+                ${caseStatus != 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- DRAFT cases: All roles go directly to case creation (no approval needed) -->
+        <sequenceFlow id="flowDraftCases" sourceRef="roleGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${caseStatus == 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- NON-DRAFT cases: Supervisor goes directly to investigation -->
+        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- NON-DRAFT cases: Investigator needs approval -->
+        <sequenceFlow id="flowInvestigatorNonDraft" sourceRef="roleGateway" targetRef="approveCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
             </conditionExpression>
         </sequenceFlow>
 
         <sequenceFlow id="flowFromApproval" sourceRef="approveCaseCreation" targetRef="creationApprovalGateway"/>
 
-        <!-- After approval - go to case creation -->
-        <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="completeCaseCreation">
+        <!-- After approval for NON-DRAFT investigator cases - go directly to investigation -->
+        <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationApproval == 'approve'}
             </conditionExpression>

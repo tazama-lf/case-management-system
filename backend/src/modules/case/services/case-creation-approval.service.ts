@@ -61,7 +61,7 @@ export class CaseCreationApprovalService {
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status === 'NALT') {
+    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
       throw new BadRequestException(`Case Already Exists`);
     }
 
@@ -85,7 +85,6 @@ export class CaseCreationApprovalService {
           caseCreationType: CaseCreationType.MANUAL,
         };
 
-        // Step 1: Create case record in PostgreSQL database
         const createdCase = await this.caseRepository.createCase(caseDetail, tx);
         await this.flowableService.handleCaseCreated({
           caseId: createdCase.case_id,
@@ -112,29 +111,19 @@ export class CaseCreationApprovalService {
         return { case: createdCase, alert: updatedAlert };
       });
 
-      let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
-      let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       if (needsApproval) {
-        this.logger.log(
-          `[ManualCase] Creating APPROVAL task for investigator-created case ${result.case.case_id}`,
-          CaseCreationApprovalService.name,
-        );
-        approvalTask = await this.taskService.createTask(
+        await this.taskService.createTask(
           {
             caseId: result.case.case_id,
             status: TaskStatus.STATUS_01_UNASSIGNED,
             name: 'Approve Case Creation',
-            description: `Manual case ${result.case.case_id} created by investigator, requires supervisor approval`,
+            description: `Manual Case Creation Approval For Case ${result.case.case_id}`,
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
           },
           userId,
         );
       } else {
-        this.logger.log(
-          `[ManualCase] Creating INVESTIGATION task for supervisor-created case ${result.case.case_id}`,
-          CaseCreationApprovalService.name,
-        );
-        investigateTask = await this.taskService.createTask(
+        await this.taskService.createTask(
           {
             caseId: result.case.case_id,
             status: TaskStatus.STATUS_01_UNASSIGNED,
@@ -163,8 +152,6 @@ export class CaseCreationApprovalService {
         success: true,
         case: result.case,
         alert: result.alert,
-        approvalTask,
-        investigateTask,
       };
     } catch (err) {
       this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
@@ -186,55 +173,51 @@ export class CaseCreationApprovalService {
    * @throws BadRequestException if alert already has a case or is not NALT status
    */
   async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    this.logger.log(`[DraftCase] User ${userId} with role ${role} is saving a case as draft`, CaseCreationApprovalService.name);
+    this.logger.log(`Start - Save As Draft`, CaseCreationApprovalService.name);
 
-    // Verify alert exists and is eligible for case creation
     const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
-    if (!existingAlert) {
-      throw new NotFoundException(`Alert ${dto.alertId} not found`);
+    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as any)?.status !== 'NALT') {
+      throw new BadRequestException(
+        !existingAlert
+          ? `Alert ${dto.alertId} not found`
+          : existingAlert.case_id
+            ? `Case already exists for alertId ${dto.alertId}`
+            : 'Can only create manual cases from alerts with NALT status',
+      );
     }
 
-    if (existingAlert.case_id) {
-      throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
-    }
-
-    // Only NALT (Not Alert) status alerts can have manual cases created
-    if ((existingAlert.alert_data as any)?.status !== 'NALT') {
-      throw new BadRequestException('Can only create manual cases from alerts with NALT status');
-    }
-
-    // Calculate priority based on priority score
     const priorityScore = dto.priorityScore;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
 
-    this.logger.log(`[DraftCase] Creating draft case with status STATUS_00_DRAFT for user ${userId}`, CaseCreationApprovalService.name);
-
     try {
-      // Prepare case details for draft creation
       const caseDetail: CreateCaseDto = {
         tenantId,
         caseCreatorUserId: userId,
-        caseOwnerUserId: userId, // Draft cases are owned by the creator
-        status: CaseStatus.STATUS_00_DRAFT, // Mark as draft - requires completion
+        caseOwnerUserId: userId,
+        status: CaseStatus.STATUS_00_DRAFT,
         caseType,
         priority,
         caseCreationType: CaseCreationType.MANUAL,
       };
 
-      // Create draft case and link to alert in a single atomic transaction
       const result = await this.caseRepository.createDraftCase(caseDetail, dto, priorityScore, priority);
-
-      this.logger.log(
-        `[DraftCase] Transaction complete for case ${result.case.case_id}, creating task...`,
-        CaseCreationApprovalService.name,
-      );
+      await this.flowableService.handleCaseCreated({
+        caseId: result.case.case_id,
+        tenantId,
+        creatorUserId: userId,
+        caseStatus: CaseStatus.STATUS_00_DRAFT,
+        creationType: CaseCreationType.MANUAL,
+        autocloseEligible: false,
+        isTriageAlert: false,
+        creatorRole: role,
+      });
 
       // Create "Complete New Case" task assigned to the creator
       // This task prompts the user to complete the missing case information
       // Task is created OUTSIDE transaction to avoid blocking the case creation
-      const completeNewCaseTask = await this.taskService.createTask(
+      const completeCaseTask = await this.taskService.createTask(
         {
           caseId: result.case.case_id,
           status: TaskStatus.STATUS_10_ASSIGNED, // Directly assigned to creator
@@ -245,8 +228,13 @@ export class CaseCreationApprovalService {
         },
         userId,
       );
+      await this.flowableService.handleTaskAssigned({
+        taskId: completeCaseTask.task_id,
+        caseId: result.case.case_id,
+        taskName: 'Complete New Case',
+        assignedUserId: userId,
+      });
 
-      // Log successful draft creation
       await this.auditLogService.logAction({
         userId,
         operation: 'saveCaseAsDraft',
@@ -255,14 +243,13 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`[DraftCase] Draft saved: case ${result.case.case_id}`, CaseCreationApprovalService.name);
+      this.logger.log(`Draft saved: case ${result.case.case_id}`, CaseCreationApprovalService.name);
 
       return {
         success: true,
         case: result.case,
         alert: result.alert,
-        // task: completeNewCaseTask, // Task object commented out from response
-        message: 'Case saved as draft. Complete the case by providing all required information.',
+        message: 'Case saved as draft.',
       };
     } catch (err) {
       this.logger.error('[DraftCase] Failed to save case as draft', { error: err, dto, userId, tenantId });
@@ -665,8 +652,6 @@ export class CaseCreationApprovalService {
       const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
       const isTriageAlert = triageType === 'DISABLED' ? false : true;
 
-      // Step 1: Create case record in PostgreSQL database
-      // This creates the case with initial status and metadata (priority, type, creator, etc.)
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
@@ -678,10 +663,6 @@ export class CaseCreationApprovalService {
         caseCreationType: createCaseDTO.caseCreationType,
       });
 
-      // Step 2: Start BPMN workflow process in Flowable
-      // This initiates the workflow engine which will:
-      // - Create a process instance with the case as business key
-      // - Route through gateways based on creationType (MANUAL vs AUTOMATIC_SYSTEM)
       this.flowableService.handleCaseCreated({
         caseId: createdCase.case_id,
         tenantId: createdCase.tenant_id,
