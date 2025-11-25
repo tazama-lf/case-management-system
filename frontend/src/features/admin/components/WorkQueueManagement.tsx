@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer } from '@/shared/components/ui';
-import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
+import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import WorkQueuesTable from '@/features/admin/components/WorkQueuesTable';
-import StatusFilter from '@/features/admin/components/StatusFilter';
 import SearchInput from './SearchInput';
 import CreateQueueModal from './modals/CreateQueueModal';
-import { ROLE_COLORS, TASK_TYPE_COLORS } from '../constants/colors';
 import { useWorkQueueFilter } from '../hooks/useWorkQueueFilter';
-import { useWorkQueues } from '../hooks/useWorkQueues';
-import workQueueService from '../services/workQueueService';
+import { useCandidateGroups } from '../hooks/useCandidateGroups';
 
 interface WorkQueueManagementProps {
   className?: string;
@@ -20,65 +17,19 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
   className = ''
 }) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const { workQueues, loading, error, refetch } = useWorkQueues();
+  const { workQueues, loading, error, pagination, onPageChange, onPageSizeChange, refetch } = useCandidateGroups({
+    currentPage: 1,
+    pageSize: 10
+  });
   const {
     searchTerm,
     setSearchTerm,
-    statusFilter,
-    setStatusFilter,
     filteredQueues
   } = useWorkQueueFilter(workQueues);
-
-  const handleEdit = async (queue: WorkQueue) => {
-    try {
-      // TODO: Implement edit modal/form
-      console.log('Edit queue:', queue);
-      // await workQueueService.updateWorkQueue(queue.id, updatedData);
-      // await refetch();
-    } catch (err) {
-      console.error('Failed to update work queue:', err);
-    }
-  };
-
-  const handleDelete = async (queueId: string) => {
-    try {
-      await workQueueService.deleteWorkQueue(queueId);
-      await refetch();
-    } catch (err) {
-      console.error('Failed to delete work queue:', err);
-    }
-  };
 
   const handleCreateQueue = () => {
     setCreateModalOpen(true);
   };
-
-  // const handleCreate = async (data: { id: string; name: string; type: string }) => {
-  //   try {
-  //     // Create the work queue using the service
-  //     await workQueueService.createWorkQueue({
-  //       workQueueId: data.id,
-  //       name: data.name,
-  //       description: `Work queue for ${data.type} tasks`,
-  //       tenantId: 'DEFAULT',
-  //       isActive: true,
-  //       createdByUserId: 'current-user', // TODO: Get from auth context
-  //       roles: [],
-  //       taskTypes: [data.type],
-  //       taskCount: 0
-  //     });
-      
-  //     // Refresh the queues list
-  //     await refetch();
-      
-  //     // Close the modal
-  //     setCreateModalOpen(false);
-      
-  //     console.log('Queue created successfully:', data);
-  //   } catch (err) {
-  //     console.error('Failed to create work queue:', err);
-  //   }
-  // };
 
   if (error) {
     return (
@@ -112,10 +63,6 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             onChange={setSearchTerm}
             placeholder="Search work queues..."
           />
-          <StatusFilter 
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
         </div>
         <div className="flex items-center space-x-3">
           <button 
@@ -133,19 +80,33 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <WorkQueuesTable 
-          queues={filteredQueues}
-          roleColors={ROLE_COLORS}
-          taskTypeColors={TASK_TYPE_COLORS}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        <>
+          <ResultsSummary
+            pagination={{
+              currentPage: pagination.currentPage,
+              pageSize: pagination.pageSize,
+              totalItems: pagination.totalItems,
+            }}
+            loading={loading}
+            lastUpdated={null}
+            onPageSizeChange={onPageSizeChange}
+            sort={{ column: 'name', direction: 'asc' }}
+            itemType="work queues"
+          />
+          <WorkQueuesTable 
+            queues={filteredQueues}
+            pagination={{
+              ...pagination,
+              onPageChange
+            }}
+          />
+        </>
       )}
       
       <CreateQueueModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={refetch} // Pass refetch to refresh data after creation
+        onCreate={refetch} 
       />
     </PageContainer>
   );

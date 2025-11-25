@@ -5,7 +5,7 @@ import workQueueService from '../../services/workQueueService';
 interface CreateQueueModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate?: () => void; // Optional callback to refresh data
+  onCreate?: () => void;
 }
 
 const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ 
@@ -19,7 +19,7 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({
   const { success, error } = useToast();
   const type = 'candidate'; 
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/close
   useEffect(() => {
     if (!open) {
       setId('');
@@ -44,14 +44,12 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({
         groupType: type
       });
 
-      // Success - result is directly the CandidateGroupData
       success('Queue Created', 'Candidate group created successfully');
       onClose();
       if (onCreate) {
         onCreate(); // Refresh data if callback provided
       }
     } catch (err) {
-      // Error handling - err is an Error object with message
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
       error('Creation Failed', errorMessage);
     } finally {
