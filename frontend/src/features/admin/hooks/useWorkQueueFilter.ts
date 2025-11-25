@@ -3,22 +3,17 @@ import type { WorkQueue } from '../types/admindashboard.types';
 
 export const useWorkQueueFilter = (workQueues: WorkQueue[]) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Status');
 
   const filteredQueues = useMemo(() => {
     return workQueues.filter(queue => {
-      const matchesSearch = queue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          queue.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'All Status' || queue.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesSearch = queue.name.toLowerCase().includes(searchTerm.toLowerCase()) 
+      return matchesSearch;
     });
-  }, [workQueues, searchTerm, statusFilter]);
+  }, [workQueues, searchTerm]);
 
   return {
     searchTerm,
     setSearchTerm,
-    statusFilter,
-    setStatusFilter,
     filteredQueues
   };
 };

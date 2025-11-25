@@ -1,73 +1,63 @@
 import apiClient from '@/shared/services/apiClient';
+import type {CandidateGroupData, CreateCandidateGroupRequest} from '../types/admindashboard.types';
 
-export interface WorkQueueResponseDto {
-  workQueueId: string;
-  name: string;
-  description: string;
-  tenantId: string;
-  isActive: boolean;
-  createdByUserId: string;
-  roles: string[];
-  taskTypes: string[];
-  taskCount: number;
-  createdAt: string;
-  updatedAt: string;
+interface CandidateGroupsParams {
+  size?: number;
+  start?: number;
 }
 
-export interface WorkQueueListResponseDto {
-  data: WorkQueueResponseDto[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface GetWorkQueuesParams {
-  role?: string;
-  isActive?: boolean;
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+interface CandidateGroupsResponse {
+  items: CandidateGroupData[];
+  totalCount: number;
 }
 
 class WorkQueueService {
-  private readonly baseEndpoint = '/api/v1/work-queues';
+  private readonly baseEndpoint = '/api/v1/workqueue';
 
-  async getAllWorkQueues(params?: GetWorkQueuesParams): Promise<WorkQueueListResponseDto> {
-    const queryParams = new URLSearchParams();
-    
-    if (params) {
-      if (params.role) queryParams.append('role', params.role);
-      if (params.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
-      if (params.page) queryParams.append('page', String(params.page));
-      if (params.limit) queryParams.append('limit', String(params.limit));
-      if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+  async getCandidateGroups(params?: CandidateGroupsParams): Promise<CandidateGroupsResponse> {
+    try {
+      const searchParams = new URLSearchParams();
+      // Always include size and start parameters
+      searchParams.append('size', (params?.size || 10).toString());
+      searchParams.append('start', (params?.start || 0).toString());
+      
+      const url = `${this.baseEndpoint}/candidate-groups?${searchParams.toString()}`;
+      const response = await apiClient.get<CandidateGroupData[]>(url);
+      
+      // For now, we'll return the array as items and calculate totalCount
+      // When the backend is updated to return pagination info, we can update this
+      return {
+        items: response,
+        totalCount: response.length
+      };
+    } catch (error: any) {
+      throw this.handleError(error, 'get candidate groups');
     }
+  }
 
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `${this.baseEndpoint}?${queryString}` : this.baseEndpoint;
-
-    return apiClient.get<WorkQueueListResponseDto>(endpoint);
+  async createCandidateGroup(data: CreateCandidateGroupRequest): Promise<CandidateGroupData> {
+    try {
+      const response = await apiClient.post<CandidateGroupData>(`${this.baseEndpoint}/candidate-group`, data);
+      return response;
+    } catch (error: any) {
+      throw this.handleError(error, 'create candidate group');
+    }
   }
 
 
-  async getWorkQueueById(workQueueId: string): Promise<WorkQueueResponseDto> {
-    return apiClient.get<WorkQueueResponseDto>(`${this.baseEndpoint}/${workQueueId}`);
-  }
-
-
-  async createWorkQueue(data: Partial<WorkQueueResponseDto>): Promise<WorkQueueResponseDto> {
-    return apiClient.post<WorkQueueResponseDto>(this.baseEndpoint, data);
-  }
-
-  async updateWorkQueue(workQueueId: string, data: Partial<WorkQueueResponseDto>): Promise<WorkQueueResponseDto> {
-    return apiClient.put<WorkQueueResponseDto>(`${this.baseEndpoint}/${workQueueId}`, data);
-  }
-
-  async deleteWorkQueue(workQueueId: string): Promise<void> {
-    return apiClient.delete<void>(`${this.baseEndpoint}/${workQueueId}`);
+  private handleError(error: any, operation: string): Error {
+    console.error(`WorkQueueService Error - ${operation}:`, error);
+    
+    if (error.response?.data) {
+      const apiError = error.response.data;
+      return new Error(apiError.message || `Failed to ${operation}`);
+    }
+    
+    if (error.message) {
+      return new Error(error.message);
+    }
+    
+    return new Error(`Failed to ${operation}`);
   }
 }
 
