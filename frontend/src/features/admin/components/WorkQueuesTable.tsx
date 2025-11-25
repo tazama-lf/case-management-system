@@ -1,189 +1,163 @@
-import React, { useState } from 'react';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import React from 'react';
 import type { WorkQueue } from '@/features/admin/types/admindashboard.types';
-import EditWorkQueueForm from './EditWorkQueueForm';
+
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
 
 interface WorkQueuesTableProps {
   queues: WorkQueue[];
-  roleColors: Record<string, string>;
-  taskTypeColors: Record<string, string>;
-  onEdit: (queue: WorkQueue) => void;
-  onDelete: (queueId: string) => void;
+  pagination?: PaginationInfo;
 }
 
 const WorkQueuesTable: React.FC<WorkQueuesTableProps> = ({
   queues,
-  roleColors,
-  taskTypeColors,
-  onEdit,
-  onDelete,
+  pagination,
 }) => {
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedQueue, setSelectedQueue] = useState<WorkQueue | null>(null);
-
-  const handleEdit = (queue: WorkQueue) => {
-    setSelectedQueue(queue);
-    setEditModalOpen(true);
-  };
-
-  const handleDelete = (queue: WorkQueue) => {
-    setSelectedQueue(queue);
-    setDeleteModalOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (selectedQueue) {
-      onDelete(selectedQueue.id);
-      setDeleteModalOpen(false);
-      setSelectedQueue(null);
-    }
-  };
   return (
     <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Name
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Description
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Roles
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Task Types
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Task Count
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {queues.map((queue) => (
-            <tr key={queue.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{queue.name}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="text-sm text-gray-600 max-w-xs">{queue.description}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex flex-wrap gap-1">
-                  {queue.roles.map((role) => (
-                    <span
-                      key={role}
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        roleColors[role] || 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex flex-wrap gap-1">
-                  {queue.taskTypes.map((taskType) => (
-                    <span
-                      key={taskType}
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        taskTypeColors[taskType] || 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {taskType}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">
-                  {queue.taskCount !== undefined ? queue.taskCount : '-'}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                  queue.status === 'Active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {queue.status}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex items-center space-x-2">
-                  <button 
-                    className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                    onClick={() => handleEdit(queue)}>
-                    <PencilIcon className="h-4 w-4" />
-                  </button>
-                  <button 
-                    className="text-red-600 hover:text-red-900 p-1 rounded"
-                    onClick={() => handleDelete(queue)}>
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Group ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Group Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {queues.map((queue) => (
+              <tr key={queue.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{queue.id}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{queue.name}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-600">
+                    {queue.type}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {editModalOpen && selectedQueue && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border max-w-4xl shadow-lg rounded-md bg-white">
-            <EditWorkQueueForm
-              queue={selectedQueue}
-              onSave={(updatedQueue) => {
-                onEdit(updatedQueue);
-                setEditModalOpen(false);
-              }}
-              onCancel={() => setEditModalOpen(false)}
-            />
-          </div>
-        </div>
-      )}
-
-      {deleteModalOpen && selectedQueue && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Delete Work Queue</h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  Are you sure you want to delete this work queue? This action cannot be undone.
-                </p>
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
-                  onClick={confirmDelete}
-                >
-                  Delete
-                </button>
-                <button
-                  className="ml-2 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                  onClick={() => setDeleteModalOpen(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {queues.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No work queues found matching your search criteria.
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {pagination && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    (pagination.currentPage - 1) * pagination.pageSize + 1,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    pagination.currentPage * pagination.pageSize,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                of <span className="font-medium">{pagination.totalItems}</span>{' '}
+                results
+              </p>
+            </div>
+            <div>
+              <nav
+                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                aria-label="Pagination"
+              >
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
+                  }
+                  disabled={pagination.currentPage <= 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                {}
+                {(() => {
+                  const { currentPage, totalPages } = pagination;
+                  const pages: (number | 'ellipsis')[] = [];
+                  const windowSize = 5;
+                  const half = Math.floor(windowSize / 2);
+
+                  const addPage = (p: number) => pages.push(p);
+                  const addEllipsis = () => pages.push('ellipsis');
+
+                  if (totalPages <= windowSize + 2) {
+                    for (let p = 1; p <= totalPages; p++) addPage(p);
+                  } else {
+                    const start = Math.max(2, currentPage - half);
+                    const end = Math.min(totalPages - 1, currentPage + half);
+
+                    addPage(1);
+                    if (start > 2) addEllipsis();
+                    for (let p = start; p <= end; p++) addPage(p);
+                    if (end < totalPages - 1) addEllipsis();
+                    addPage(totalPages);
+                  }
+
+                  return pages.map((p, idx) =>
+                    p === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => pagination.onPageChange(p)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          pagination.currentPage === p
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        }`}
+                        aria-current={pagination.currentPage === p ? 'page' : undefined}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  );
+                })()}
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
+                  }
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       )}
     </div>
