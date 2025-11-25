@@ -40,15 +40,13 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setSaveSuccess(false);
       uploadEvidenceRef.current = null;
       window.scrollTo({ top: 0 });
-      
+
       // Fetch tasks for this case
       if (row?.id) {
         setLoadingTasks(true);
-        console.log('Fetching tasks for case:', row.id);
         taskService
           .getTasksByCaseId(row.id)
           .then((fetchedTasks) => {
-            console.log('Tasks fetched successfully:', fetchedTasks);
             setTasks(fetchedTasks);
           })
           .catch((error) => {
@@ -71,17 +69,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     setSaveSuccess(false);
 
     try {
-      // Call the upload evidence function if available
+     
       if (uploadEvidenceRef.current) {
         await uploadEvidenceRef.current();
         setSaveSuccess(true);
-        
-        // Auto-hide success message after 3 seconds
+
+ 
         setTimeout(() => setSaveSuccess(false), 3000);
-        
-        console.log('Evidence uploaded successfully');
       } else {
-        console.log('No evidence to upload');
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
       }
@@ -98,27 +93,13 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               {showCollaborate ? 'Case Collaboration' : 'Task Details'}
             </h3>
-            {/* <CollaborateButton onClick={() => setShowCollaborate(true)} />
-            {showCollaborate && (
-              <button
-                onClick={() => setShowCollaborate(false)}
-                className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-                title="Back to Details"
-              >
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back
-              </button>
-            )} */}
-            {/* <button className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Download
-            </button> */}
+           
           </div>
           <button
             onClick={onClose}
@@ -129,7 +110,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
             {(
@@ -144,11 +125,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
-                  tab === t.key
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
                     ? 'border-b-2 border-indigo-600 text-indigo-700'
                     : 'text-gray-600 hover:text-gray-800'
-                }`}
+                  }`}
               >
                 {t.label}
               </button>
@@ -156,8 +136,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
         )}
 
-        {}
-                {/* Content */}
+        { }
+        {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />
@@ -169,14 +149,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
                 <CustomerProfileTab />
               </div>
-                            <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
-                <TaskEvidenceTab 
+              <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
+                <TaskEvidenceTab
                   taskId={tasks[0]?.task_id || ''}
                   onSaveRequest={(uploadFn) => {
                     uploadEvidenceRef.current = uploadFn;
                   }}
                   onUploadComplete={() => {
-                    console.log('Upload completed');
+                 
                   }}
                 />
               </div>
@@ -184,7 +164,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 {row?.id && <LinkedItemsTab caseId={row.id} />}
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
-                <InvestigationNotesTab 
+                <InvestigationNotesTab
                   taskId={tasks[0]?.task_id}
                 />
               </div>
@@ -192,7 +172,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
         </div>
 
-        {}
+        { }
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
           {saveSuccess && (
             <span className="text-sm text-green-600 font-medium">
@@ -208,7 +188,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
-          {tab !== 'notes' && (
+          {tab === 'evidence' && (
             <button
               type="button"
               onClick={handleSaveTask}
@@ -216,7 +196,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
-              {saving ? 'Uploading...' : 'Save Task'}
+              {saving ? 'Uploading...' : 'Upload Evidence'}
             </button>
           )}
         </div>

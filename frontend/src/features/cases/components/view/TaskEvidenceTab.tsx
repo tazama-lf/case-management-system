@@ -12,39 +12,39 @@ const evidenceSections: Array<{
   emptyMessage: string;
   evidenceType: EvidenceType;
 }> = [
-  {
-    key: 'kyc-edd',
-    title: 'KYC/EDD Report',
-    helper: 'Upload KYC/EDD documentation',
-    commentPlaceholder: 'Add comments about the KYC/EDD report...',
-    emptyMessage: 'No KYC/EDD report attached',
-    evidenceType: 'KYC',
-  },
-  {
-    key: 'sanctions',
-    title: 'Sanctions Screening',
-    helper: 'Upload evidence gathered during sanctions screening',
-    commentPlaceholder: 'Add any notes about the sanctions screening results...',
-    emptyMessage: 'No sanctions screening evidence attached',
-    evidenceType: 'SANCTIONS',
-  },
-  {
-    key: 'adverse-media',
-    title: 'Adverse Media Screening',
-    helper: 'Attach supporting documents from adverse media checks',
-    commentPlaceholder: 'Summarise any key findings from adverse media screening...',
-    emptyMessage: 'No adverse media screening evidence attached',
-    evidenceType: 'ADVERSE_MEDIA',
-  },
-  {
-    key: 'others',
-    title: 'Others',
-    helper: 'Add any additional evidence that supports this task',
-    commentPlaceholder: 'Provide context for the additional evidence...',
-    emptyMessage: 'No other evidence attached',
-    evidenceType: 'OTHER',
-  },
-];
+    {
+      key: 'kyc-edd',
+      title: 'KYC/EDD Report',
+      helper: 'Upload KYC/EDD documentation',
+      commentPlaceholder: 'Add comments about the KYC/EDD report...',
+      emptyMessage: 'No KYC/EDD report attached',
+      evidenceType: 'KYC',
+    },
+    {
+      key: 'sanctions',
+      title: 'Sanctions Screening',
+      helper: 'Upload evidence gathered during sanctions screening',
+      commentPlaceholder: 'Add any notes about the sanctions screening results...',
+      emptyMessage: 'No sanctions screening evidence attached',
+      evidenceType: 'SANCTIONS',
+    },
+    {
+      key: 'adverse-media',
+      title: 'Adverse Media Screening',
+      helper: 'Attach supporting documents from adverse media checks',
+      commentPlaceholder: 'Summarise any key findings from adverse media screening...',
+      emptyMessage: 'No adverse media screening evidence attached',
+      evidenceType: 'ADVERSE_MEDIA',
+    },
+    {
+      key: 'others',
+      title: 'Others',
+      helper: 'Add any additional evidence that supports this task',
+      commentPlaceholder: 'Provide context for the additional evidence...',
+      emptyMessage: 'No other evidence attached',
+      evidenceType: 'OTHER',
+    },
+  ];
 
 interface TaskEvidenceTabProps {
   taskId: string;
@@ -52,7 +52,7 @@ interface TaskEvidenceTabProps {
   onSaveRequest?: (uploadFn: () => Promise<void>) => void;
 }
 
-const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({ 
+const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   taskId,
   onUploadComplete,
   onSaveRequest,
@@ -64,18 +64,15 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  
 
-
-  // Load existing evidence for the task
   React.useEffect(() => {
     const loadEvidence = async () => {
       if (!taskId) return;
-      
+
       setLoading(true);
       try {
         const response = await evidenceService.getTaskEvidence(taskId);
-        
+
         // Group evidence by type
         const grouped: Record<string, Evidence[]> = {
           'kyc-edd': [],
@@ -107,16 +104,14 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     loadEvidence();
   }, [taskId]);
 
-  // Upload all evidence files
   const handleUploadEvidence = async () => {
     if (!taskId) {
       throw new Error('No task ID available');
     }
 
     const sectionsToUpload = Object.entries(sectionFiles).filter(([_, files]) => files.length > 0);
-    
+
     if (sectionsToUpload.length === 0) {
-      console.log('No files to upload');
       return;
     }
 
@@ -142,10 +137,9 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
       await Promise.all(uploadPromises);
 
-      // Clear uploaded files and comments
       setSectionFiles({});
       setSectionComments({});
-      
+
       // Reload evidence to show newly uploaded files
       const response = await evidenceService.getTaskEvidence(taskId);
       const grouped: Record<string, Evidence[]> = {
@@ -168,7 +162,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       });
 
       setUploadedEvidence(grouped);
-      
+
       if (onUploadComplete) {
         onUploadComplete();
       }
@@ -180,32 +174,20 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   };
 
-  // Register upload function with parent
   React.useEffect(() => {
     if (onSaveRequest) {
       onSaveRequest(handleUploadEvidence);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSaveRequest, sectionFiles, sectionComments, taskId]);
 
-  React.useEffect(() => {
-    console.log('🔄 State changed:', sectionFiles);
-    console.log('File counts:', Object.entries(sectionFiles).map(([key, files]) => `${key}: ${files.length}`));
-  }, [sectionFiles]);
+
 
   const handleAttachClick = (sectionKey: string) => {
-    console.log('=== Attach clicked ===');
-    console.log('Section:', sectionKey);
     const input = fileInputRefs.current[sectionKey];
-    console.log('Input element:', input);
-    console.log('Input ref exists:', !!input);
-    console.log('All refs:', Object.keys(fileInputRefs.current));
-    
+
     if (input) {
-      console.log('Attempting to click input...');
       try {
         input.click();
-        console.log('Click triggered successfully');
       } catch (error) {
         console.error('Error clicking input:', error);
       }
@@ -215,35 +197,21 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   };
 
   const handleFilesSelected = (sectionKey: string, fileList: FileList | null) => {
-    console.log('handleFilesSelected called for', sectionKey, 'with', fileList?.length, 'files');
     if (!fileList || fileList.length === 0) return;
 
     setSectionFiles((prev) => {
-      console.log('Previous state:', prev);
       const existing = prev[sectionKey] ?? [];
-      console.log('Existing files for', sectionKey, ':', existing);
       const nextFiles = [...existing, ...Array.from(fileList)];
-      console.log('Next files for', sectionKey, ':', nextFiles);
-      const newState = { ...prev, [sectionKey]: nextFiles };
-      console.log('New state:', newState);
-      return newState;
+      return { ...prev, [sectionKey]: nextFiles };
     });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, sectionKey: string) => {
-    console.log('=== File change event ===');
-    console.log('Section:', sectionKey);
-    console.log('Files:', event.target.files);
-    console.log('File count:', event.target.files?.length);
-    
     if (event.target.files && event.target.files.length > 0) {
-      const fileArray = Array.from(event.target.files);
-      console.log('File names:', fileArray.map((f) => f.name));
       handleFilesSelected(sectionKey, event.target.files);
-      
+
       setTimeout(() => {
         event.target.value = '';
-        console.log('Input value reset');
       }, 0);
     }
   };
@@ -258,7 +226,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Save Progress Button */}
       <div className="flex justify-end">
         <button
           type="button"
@@ -269,7 +236,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         </button>
       </div>
 
-      {/* Transaction Profile Analysis Section */}
       <section className="rounded-lg border border-purple-300 bg-purple-50/30 p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -308,7 +274,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                 ref={(el) => {
                   if (el) {
                     fileInputRefs.current[section.key] = el;
-                    console.log('Ref set for', section.key, el);
                   }
                 }}
                 id={`${section.key}-uploader`}
@@ -324,7 +289,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('Button clicked for:', section.key);
                   handleAttachClick(section.key);
                 }}
                 className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
@@ -336,7 +300,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           </div>
 
           <div className="space-y-4 p-4">
-            {/* File Preview Section - Pending Upload */}
             <div>
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
                 Pending Upload
@@ -369,7 +332,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
               )}
             </div>
 
-            {/* Already Uploaded Evidence */}
             {uploadedEvidence[section.key]?.length > 0 && (
               <div>
                 <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -408,8 +370,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                 )}
               </div>
             )}
-
-
 
             <div>
               <label htmlFor={`${section.key}-comments`} className="mb-1 block text-xs font-medium text-gray-700">

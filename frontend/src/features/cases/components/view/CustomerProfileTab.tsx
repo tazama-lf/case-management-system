@@ -100,23 +100,6 @@ const CustomerProfileTab: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* Enhanced Due Diligence (EDD) & KYC Records Section */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Enhanced Due Diligence (EDD) &amp; KYC Records</h3>
-            <p className="mt-1 text-xs text-gray-500">Request detailed customer verification records from DFSP</p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
-          >
-            <DocumentArrowDownIcon className="h-4 w-4" aria-hidden="true" />
-            Fetch KYC/EDD Report
-          </button>
-        </div>
-      </section>
     </div>
   );
 };

@@ -16,7 +16,7 @@ interface InvestigationNotesTabProps {
   taskId?: string;
 }
 
-const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({ 
+const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   taskId,
 }) => {
   const { showSuccess, showError } = useNotifications();
@@ -30,12 +30,12 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   React.useEffect(() => {
     const loadComments = async () => {
       if (!taskId) return;
-      
+
       setLoading(true);
       try {
         const comments = await commentService.getCommentsByTask(taskId);
         setExistingComments(comments);
-    
+
         if (comments.length > 0) {
           const combinedNotes = comments.map(c => c.note).join('\n\n---\n\n');
           setNotes(combinedNotes);
@@ -72,7 +72,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
     setNotes(newText);
 
-   
+
     setTimeout(() => {
       textarea.focus();
       const newPosition = start + prefix.length + textToInsert.length;
