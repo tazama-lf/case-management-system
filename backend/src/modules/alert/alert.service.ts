@@ -6,7 +6,6 @@ import { Alert, CaseCreationType, CaseStatus, Priority } from '@prisma/client';
 import { CreateCaseDto } from '../case/dto/index.dto';
 import { ConfigService } from '@nestjs/config';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
-import { CreateAlertDTO } from './dto/CreateAlert.dto';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 
@@ -46,27 +45,6 @@ export class AlertService {
     }
   }
 
-  async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string) {
-    if (data.report.status === 'NALT') {
-      const createdNALT = await this.createNewAlert(data, tenantId, source, '');
-      return createdNALT;
-    } else {
-      const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
-      const caseDetail: CreateCaseDto = {
-        tenantId,
-        caseCreatorUserId: userId,
-        caseOwnerUserId: systemUuid,
-        status: CaseStatus.STATUS_00_DRAFT,
-        priority: Priority.NEW,
-        caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-      };
-
-      const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
-      const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
-      return createdAlert;
-    }
-  }
-
   async updateAlert(alertId: string, userId: string, updateData: UpdateAlertDTO): Promise<Alert> {
     this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
 
@@ -86,6 +64,27 @@ export class AlertService {
     } catch (error) {
       this.loggerService.error(`Error updating alert ${alertId}: ${error.message}`, error, AlertService.name);
       throw new InternalServerErrorException(`Failed to update alert ${alertId}`);
+    }
+  }
+
+  async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string) {
+    if (data.report.status === 'NALT') {
+      const createdNALT = await this.createNewAlert(data, tenantId, source, '');
+      return createdNALT;
+    } else {
+      const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
+      const caseDetail: CreateCaseDto = {
+        tenantId,
+        caseCreatorUserId: userId,
+        caseOwnerUserId: systemUuid,
+        status: CaseStatus.STATUS_00_DRAFT,
+        priority: Priority.NEW,
+        caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+      };
+
+      const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
+      const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
+      return createdAlert;
     }
   }
 }

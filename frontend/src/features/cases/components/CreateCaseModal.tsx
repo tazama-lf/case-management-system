@@ -1,13 +1,22 @@
 import React from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import triageService from '@/features/alerts/services/triageservice';
-import userService from '@/features/cases/services/userService';
+//import userService from '@/features/cases/services/userService';
 import type { Alert } from '@/features/alerts/types/triage.types';
-import type { UserOption } from '@/features/cases/services/userService';
+//import type { UserOption } from '@/features/cases/services/userService';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
+import authService from '../../auth/services/authService';
 
+export type PredictionOutcome = 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
 export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
+export type CaseStatus = 'STATUS_00_DRAFT' | 'STATUS_01_PENDING_CASE_CREATION_APPROVAL'
+  | 'STATUS_02_READY_FOR_ASSIGNMENT' | 'STATUS_03_RETURNED' | 'STATUS_10_ASSIGNED'
+  | 'STATUS_20_IN_PROGRESS' | 'STATUS_21_SUSPENDED' | 'STATUS_22_PENDING_FINAL_APPROVAL'
+  | 'STATUS_30_PENDING_REOPENING' | 'STATUS_31_REOPENED' | 'STATUS_71_AUTOCLOSED_CONFIRMED'
+  | 'STATUS_72_AUTOCLOSED_REFUTED' | 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED'
+  | 'STATUS_83_CLOSED_INCONCLUSIVE' | 'STATUS_99_ABANDONED';
+
 
 interface CreateCaseModalProps {
   open: boolean;
@@ -25,6 +34,10 @@ interface CreateCaseModalProps {
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
+    confidence: number;
+    predictionOutcome?: PredictionOutcome;
+    note: string;
+    status: CaseStatus;
   }) => void;
   onCompleteCase: (caseId: string, payload: {
     priority: Priority;
@@ -50,6 +63,10 @@ interface CreateCaseModalProps {
     priorityScore?: number;
     alertType?: AlertType;
     assignee?: string;
+    confidence?: number;
+    predictionOutcome?: PredictionOutcome;
+    note?: string;
+    status?: CaseStatus;
   };
 }
 
@@ -57,7 +74,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   open,
   onClose,
   onCreate,
-  onSaveDraft = () => {},
+  onSaveDraft = () => { },
   onUpdate,
   onCompleteCase,
   loading,
@@ -74,13 +91,17 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
 
+  const [status, setStatus] = React.useState<CaseStatus>('STATUS_81_CLOSED_REFUTED');
+  const [predictionOutcome, setPredictionOutcome] = React.useState<'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'>('FALSE_POSITIVE');
+  const [note, setNote] = React.useState('');
   const [priority, setPriority] = React.useState<Priority>('NEW');
+  const [confidence, setConfidence] = React.useState<number>(0);
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
-  const [users, setUsers] = React.useState<UserOption[]>([]);
-  const [loadingUsers, setLoadingUsers] = React.useState(false);
+  // const [users, setUsers] = React.useState<UserOption[]>([]);
+  // const [loadingUsers, setLoadingUsers] = React.useState(false);
 
   const calculatePriority = (score: number): Priority => {
     if (score >= 1.0) return 'BREACH';
@@ -111,21 +132,21 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       }
     };
 
-    const loadUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const fetchedUsers = await userService.getAllUsers();
-        setUsers(fetchedUsers);
-      } catch (error) {
-        console.error('Failed to load users:', error);
-        setUsers([]);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
+    // const loadUsers = async () => {
+    //   setLoadingUsers(true);
+    //   try {
+    //     const fetchedUsers = await userService.getAllUsers();
+    //     setUsers(fetchedUsers);
+    //   } catch (error) {
+    //     console.error('Failed to load users:', error);
+    //     setUsers([]);
+    //   } finally {
+    //     setLoadingUsers(false);
+    //   }
+    // };
 
     loadNALTAlerts();
-    loadUsers();
+    //loadUsers();
   }, [open]);
 
 
@@ -134,9 +155,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
     setSelectedAlert(null);
     setPriorityScore(initial?.priorityScore || 0.33);
+    setConfidence(initial?.confidence || 0);
+    setStatus('STATUS_81_CLOSED_REFUTED');
     setAlertType(initial?.alertType || 'FRAUD');
     setAssignee(initial?.assignee || '');
     setValidationErrors({});
+    setNote('');
     setAlertSearchTerm('');
   }, [open, initial]);
 
@@ -204,6 +228,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     if (mode === 'create' && !selectedAlert) {
       errors.alertId = 'Please select an alert to create a case';
     }
+    if (mode === 'edit' && confidence < 0 || confidence > 100) {
+      errors.confidence = 'Confidence must be between 0 and 100';
+    }
     if (!alertType) {
       errors.alertType = 'Alert Type is required';
     }
@@ -213,6 +240,13 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     if (priorityScore < 0 || priorityScore > 1) {
       errors.priorityScore = 'Priority Score must be between 0 and 1';
     }
+
+    if (!note.trim() && mode === 'edit') {
+      errors.note = 'Note is required for manual triage';
+    } else if (note.trim().length < 10 && mode === 'edit') {
+      errors.note = 'Note must be at least 10 characters long';
+    }
+
     return errors;
   };
 
@@ -238,6 +272,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         priority,
         priorityScore,
         alertType,
+        confidence,
+        predictionOutcome,
+        note,
+        status,
         assignee: assignee || undefined,
       });
     } else {
@@ -264,11 +302,19 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     setValidationErrors({});
 
     if (mode === 'edit' && onUpdate && existingCaseId) {
+
+      const currentUser = authService.getUser(); // returns any | null
+      const currentUserId = currentUser?.userId;
+
       onUpdate(existingCaseId, {
         priority,
         priorityScore,
         alertType,
-        assignee: assignee || undefined,
+        predictionOutcome,
+        confidence,
+        status,
+        note,
+        assignee: currentUserId || undefined,
       });
     } else {
       const alertIdToUse = selectedAlert?.alert_id;
@@ -319,7 +365,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {}
+          { }
           {(error || Object.keys(validationErrors).length > 0) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -339,10 +385,190 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             </div>
           )}
 
-          {}
+          { }
           {mode === 'edit' ? (
             <>
-              {}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                { }
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                    <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
+                  </label>
+                  <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${priority === 'BREACH' ? 'text-red-600 border-red-200' :
+                    priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
+                      priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
+                        'text-blue-600 border-blue-200'
+                    }`}>
+                    {priority}
+                  </div>
+                </div>
+
+                { }
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confidence %
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={confidence}
+                    onChange={e => setConfidence(Number(e.target.value))}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${validationErrors.confidence
+                      ? 'border-red-300 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                      } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    min={0}
+                    max={100}
+                    disabled={loading}
+                    aria-describedby={validationErrors.confidence ? 'confidence-error' : undefined}
+                  />
+                  {validationErrors.confidence && (
+                    <p id="confidence-error" className="text-red-500 text-xs mt-1">{validationErrors.confidence}</p>
+                  )}
+                </div>
+
+                { }
+                <div className="mb-4 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority Score
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      value={priorityScore}
+                      onChange={e => setPriorityScore(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      disabled={loading}
+                    />
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>0.0 (NEW)</span>
+                      <span>0.33 (URGENT)</span>
+                      <span>0.66 (CRITICAL)</span>
+                      <span>1.0 (BREACH)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <input
+                        type="number"
+                        value={priorityScore}
+                        onChange={e => setPriorityScore(Number(e.target.value))}
+                        className={`w-24 px-2 py-1 border rounded text-sm ${validationErrors.priorityScore
+                          ? 'border-red-300 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-blue-500'
+                          } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        disabled={loading}
+                      />
+                      <span className={`text-sm font-medium px-2 py-1 rounded ${priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                        priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
+                          priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                            'text-blue-600 bg-blue-50'
+                        }`}>
+                        → {priority}
+                      </span>
+                    </div>
+                  </div>
+                  {validationErrors.priorityScore && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.priorityScore}</p>
+                  )}
+                </div>
+
+                { }
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+                  <select
+                    value={alertType || ''}
+                    onChange={e => setAlertType(e.target.value as AlertType)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                      }`}
+                    disabled={loading}
+                  >
+                    <option value="">Select type</option>
+                    <option value="FRAUD">Fraud</option>
+                    <option value="AML">AML</option>
+                    <option value="FRAUD_AND_AML">Fraud and AML</option>
+                    <option value="NONE">None</option>
+                  </select>
+                </div>
+
+                { }
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prediction Outcome</label>
+                  <select
+                    value={predictionOutcome}
+                    onChange={e => setPredictionOutcome(e.target.value as 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                      }`}
+                    disabled={loading}
+                  >
+                    <option value="FALSE_POSITIVE">False Positive</option>
+                    <option value="TRUE_POSITIVE">True Positive</option>
+                    <option value="FALSE_NEGATIVE">False Negative</option>
+                    <option value="TRUE_NEGATIVE">True Negative</option>
+                  </select>
+                </div>
+
+              </div>
+              {/* {}
+                <div className="mb-4 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority Score
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      value={priorityScore}
+                      onChange={e => setPriorityScore(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      disabled={loading}
+                    />
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>0.0 (NEW)</span>
+                      <span>0.33 (URGENT)</span>
+                      <span>0.66 (CRITICAL)</span>
+                      <span>1.0 (BREACH)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <input
+                        type="number"
+                        value={priorityScore}
+                        onChange={e => setPriorityScore(Number(e.target.value))}
+                        className={`w-24 px-2 py-1 border rounded text-sm ${
+                          validationErrors.priorityScore
+                            ? 'border-red-300 focus:ring-red-500'
+                            : 'border-gray-300 focus:ring-blue-500'
+                        } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        disabled={loading}
+                      />
+                      <span className={`text-sm font-medium px-2 py-1 rounded ${
+                        priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                        priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
+                        priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                        'text-blue-600 bg-blue-50'
+                      }`}>
+                        → {priority}
+                      </span>
+                    </div>
+                  </div>
+                  {validationErrors.priorityScore && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.priorityScore}</p>
+                  )}
+                </div> */}
+              {/* {}
               <div className="space-y-2">
                 <label htmlFor="alert-type" className="block text-sm font-medium text-gray-700">
                   Alert Type *
@@ -365,9 +591,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 {validationErrors.alertType && (
                   <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
                 )}
-              </div>
+              </div> */}
 
-              {}
+              {/* {}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority Score *
@@ -416,9 +642,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 {validationErrors.priorityScore && (
                   <p className="text-sm text-red-600 mt-1">{validationErrors.priorityScore}</p>
                 )}
-              </div>
+              </div> */}
 
-              {}
+              {/* {}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Priority
@@ -432,9 +658,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 }`}>
                   {priority}
                 </div>
-              </div>
+              </div> */}
 
-              {}
+              {/* {}
               <div className="space-y-2">
                 <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
                   Assignee
@@ -453,6 +679,59 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     </option>
                   ))}
                 </select>
+              </div> */}
+              { }
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Case Status</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value as CaseStatus)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                    }`}
+                  disabled={loading}
+                >
+                  <option value="STATUS_02_READY_FOR_ASSIGNMENT">Ready for Assignment (Investigation)</option>
+                  <option value="STATUS_82_CLOSED_CONFIRMED">Closed - Confirmed</option>
+                  <option value="STATUS_81_CLOSED_REFUTED">Closed - Refuted</option>
+                  <option value="STATUS_83_CLOSED_INCONCLUSIVE">Closed - Inconclusive</option>
+                </select>
+              </div>
+              { }
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                  <span className="text-red-500 ml-1">*</span>
+                  <span className="text-xs text-gray-500 ml-2">(minimum 10 characters)</span>
+                </label>
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${validationErrors.note
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                    } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  rows={4}
+                  placeholder="Provide detailed reasoning for your triage decision (e.g., why this is suspicious, what patterns were identified, supporting evidence)..."
+                  disabled={loading}
+                  maxLength={500}
+                  aria-describedby={validationErrors.note ? 'note-error' : 'note-help'}
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <div>
+                    {validationErrors.note && (
+                      <p id="note-error" className="text-red-500 text-xs">{validationErrors.note}</p>
+                    )}
+                    {!validationErrors.note && (
+                      <p id="note-help" className="text-gray-500 text-xs">
+                        Detailed notes help with case investigation and audit trails
+                      </p>
+                    )}
+                  </div>
+                  <span className={`text-xs ${note.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                    {note.length}/500
+                  </span>
+                </div>
               </div>
             </>
           ) : (
@@ -464,7 +743,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   setSelectedAlert(alerts.length > 0 ? alerts[alerts.length - 1] : null);
                 }}
                 isVisible={true}
-                onAlertsSelected={(_hasAlerts) => {}}
+                onAlertsSelected={(_hasAlerts) => { }}
               />
 
               {/* Transaction Data Display */}
@@ -492,11 +771,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   id="alert-type"
                   value={alertType}
                   onChange={(e) => setAlertType(e.target.value as AlertType)}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
-                    validationErrors.alertType
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                      : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${validationErrors.alertType
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300'
+                    }`}
                 >
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML</option>
@@ -535,21 +813,19 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       type="number"
                       value={priorityScore}
                       onChange={(e) => setPriorityScore(Number(e.target.value))}
-                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${
-                        validationErrors.priorityScore
-                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                          : 'border-gray-300'
-                      }`}
+                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${validationErrors.priorityScore
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'border-gray-300'
+                        }`}
                       min={0}
                       max={1}
                       step={0.01}
                     />
-                    <span className={`text-sm font-medium px-2 py-1 rounded ${
-                      priority === 'BREACH' ? 'text-red-600 bg-red-50' :
+                    <span className={`text-sm font-medium px-2 py-1 rounded ${priority === 'BREACH' ? 'text-red-600 bg-red-50' :
                       priority === 'CRITICAL' ? 'text-orange-600 bg-orange-50' :
-                      priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
-                      'text-blue-600 bg-blue-50'
-                    }`}>
+                        priority === 'URGENT' ? 'text-yellow-600 bg-yellow-50' :
+                          'text-blue-600 bg-blue-50'
+                      }`}>
                       → {priority}
                     </span>
                   </div>
@@ -565,22 +841,21 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   Priority
                   <span className="text-xs text-gray-500 ml-1">(Auto-calculated)</span>
                 </label>
-                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-                  priority === 'BREACH' ? 'text-red-600 border-red-200' :
+                <div className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${priority === 'BREACH' ? 'text-red-600 border-red-200' :
                   priority === 'CRITICAL' ? 'text-orange-600 border-orange-200' :
-                  priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
-                  'text-blue-600 border-blue-200'
-                }`}>
+                    priority === 'URGENT' ? 'text-yellow-600 border-yellow-200' :
+                      'text-blue-600 border-blue-200'
+                  }`}>
                   {priority}
                 </div>
               </div>
 
-              
+
             </>
           )}
         </div>
 
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4">
           {mode === 'create' && (
             <button

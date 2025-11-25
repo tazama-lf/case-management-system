@@ -50,7 +50,11 @@ export class FlowableIdentityService {
         // Not a member; ignore
         return;
       }
-      this.logger.error(`Failed to remove user ${userId} from group ${groupId}: ${error.message}`, error.stack, FlowableIdentityService.name);
+      this.logger.error(
+        `Failed to remove user ${userId} from group ${groupId}: ${error.message}`,
+        error.stack,
+        FlowableIdentityService.name,
+      );
       throw new HttpException('Failed to remove user from group', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -89,11 +93,13 @@ export class FlowableIdentityService {
   /**
    * Get all candidate groups
    */
-  async getAllCandidateGroups(flowableClient: AxiosInstance) {
+  async getAllCandidateGroups(size?: number, start?: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.GROUPS, {
         params: {
           type: 'candidate',
+          size,
+          start,
         },
       });
       return response.data.data || [];
@@ -105,7 +111,7 @@ export class FlowableIdentityService {
 
   /**
    * Get work queue statistics for candidate groups
-   * 
+   *
    * @param flowableClient - Axios instance for Flowable API
    * @param getCandidateGroupTasksFn - Function to get tasks for a group (injected to avoid circular dependency)
    * @param candidateGroup - Optional specific group to get stats for
@@ -116,7 +122,7 @@ export class FlowableIdentityService {
     candidateGroup?: string,
   ) {
     try {
-      const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups(flowableClient);
+      const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups();
       const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);
       const statistics: Record<string, unknown> = {};
 
@@ -137,4 +143,3 @@ export class FlowableIdentityService {
     }
   }
 }
-

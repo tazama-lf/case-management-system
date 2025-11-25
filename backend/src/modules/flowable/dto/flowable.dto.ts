@@ -67,11 +67,7 @@ export interface CreateFlowableTaskDto {
   name: string;
   description?: string;
   assignee?: string;
-  candidateGroups?: string[];
-  tenantId?: string;
   variables?: Record<string, string>;
-  priority?: number;
-  dueDate?: string;
 }
 
 /**
