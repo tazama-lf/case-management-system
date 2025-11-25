@@ -20,6 +20,7 @@
                 <flowable:formProperty id="autocloseEligible" name="Autoclose Eligible" type="boolean"/>
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="00_DRAFT"/>
                 <flowable:formProperty id="isTriageAlert" name="Is Triage Alert" type="boolean" default="false"/>
+                <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
             </extensionElements>
         </startEvent>
 
@@ -249,8 +250,8 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Assignment Logic -->
-        <sequenceFlow id="flowToAssignment" sourceRef="completeCaseCreation" targetRef="assignmentGateway"/>
+        <!-- Direct to Investigation -->
+        <sequenceFlow id="flowToInvestigation" sourceRef="completeCaseCreation" targetRef="investigateCase"/>
 
         <!-- Assignment required -->
         <sequenceFlow id="flowRequiresAssignment" sourceRef="assignmentGateway" targetRef="assignCase">
@@ -293,7 +294,7 @@
         </sequenceFlow>
 
         <!-- Return case -->
-        <sequenceFlow id="flowReturn" sourceRef="investigationDecisionGateway" targetRef="assignCase">
+        <sequenceFlow id="flowReturn" sourceRef="investigationDecisionGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${investigationAction == 'returnCase'}
             </conditionExpression>

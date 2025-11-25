@@ -57,20 +57,12 @@ export class CaseCreationApprovalService {
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    this.logger.log(`[ManualCase] Starting manual case creation by user ${userId} with role ${role}`, CaseCreationApprovalService.name);
+    this.logger.log(`Start - Manual Case Creation`, CaseCreationApprovalService.name);
 
-    const existingAlert = await this.caseRepository.findCaseByAlertId(dto.alertId);
+    const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
-    if (!existingAlert) {
-      throw new NotFoundException(`Alert ${dto.alertId} not found`);
-    }
-
-    if (existingAlert.case_id) {
-      throw new BadRequestException(`Case already exists for alertId ${dto.alertId}`);
-    }
-
-    if ((existingAlert.alert_data as any)?.status !== 'NALT') {
-      throw new BadRequestException('Can only create manual cases from alerts with NALT status');
+    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status === 'NALT') {
+      throw new BadRequestException(`Case Already Exists`);
     }
 
     const priorityScore = dto.priorityScore;
@@ -80,11 +72,6 @@ export class CaseCreationApprovalService {
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
-
-    this.logger.log(
-      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-      CaseCreationApprovalService.name,
-    );
 
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
@@ -99,8 +86,16 @@ export class CaseCreationApprovalService {
         };
 
         const createdCase = await this.caseRepository.createCase(caseDetail, tx);
-
-        this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via repository`, CaseCreationApprovalService.name);
+        await this.flowableService.handleCaseCreated({
+          caseId: createdCase.case_id,
+          tenantId,
+          creatorUserId: userId,
+          caseStatus,
+          creationType: CaseCreationType.MANUAL,
+          autocloseEligible: false,
+          isTriageAlert: false,
+          creatorRole: role,
+        });
 
         const updatedAlert = await this.alertRepository.updateAlert(
           dto.alertId,
@@ -113,15 +108,8 @@ export class CaseCreationApprovalService {
           tx,
         );
 
-        this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseCreationApprovalService.name);
-
         return { case: createdCase, alert: updatedAlert };
       });
-
-      this.logger.log(
-        `[ManualCase] About to create task for case ${result.case.case_id}. needsApproval: ${needsApproval}, role: ${role}`,
-        CaseCreationApprovalService.name,
-      );
 
       let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
@@ -210,7 +198,7 @@ export class CaseCreationApprovalService {
     this.logger.log(`[DraftCase] User ${userId} with role ${role} is saving a case as draft`, CaseCreationApprovalService.name);
 
     // Verify alert exists and is eligible for case creation
-    const existingAlert = await this.caseRepository.findCaseByAlertId(dto.alertId);
+    const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
     if (!existingAlert) {
       throw new NotFoundException(`Alert ${dto.alertId} not found`);

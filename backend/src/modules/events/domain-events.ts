@@ -7,6 +7,7 @@ export class CaseCreatedEvent {
     public readonly creationType: string,
     public readonly autocloseEligible: boolean,
     public readonly isTriageAlert: boolean = false,
+    public readonly creatorRole?: string,
   ) {}
 }
 
