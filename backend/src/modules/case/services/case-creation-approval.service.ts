@@ -506,7 +506,7 @@ export class CaseCreationApprovalService {
       throw error;
     }
   }
-
+  
   async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case creation for case ${caseId}`, CaseCreationApprovalService.name);

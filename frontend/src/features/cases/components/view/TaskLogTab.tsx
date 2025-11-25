@@ -15,8 +15,9 @@ const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 interface TaskLogTabProps {
   caseId: string;
   onRefreshCases?: () => Promise<void>;
+  alertId?: string;
 }
-const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
+const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId }) => {
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
@@ -376,12 +377,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases }) => {
         </div>
       ) : (
         <WorkQueueTable
+          alertId={alertId}
           tasks={transformedTasks}
           onAssign={handleAssign}
           onReassign={handleReassign}
           onUnassign={handleUnassign}
           onUpdateStatus={handleUpdateStatus}
           onComplete={handleCompleteTask}
+          onRefreshCases={onRefreshCases}
         />
       )}
 

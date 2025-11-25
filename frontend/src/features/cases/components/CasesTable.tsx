@@ -123,7 +123,9 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   {onCloseCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
-                  ) && (
+                  ) 
+                  && (c?.tasks && c.tasks.length > 0 && c.tasks.find((t) => t.name === 'Investigate Case' && t.status === 'STATUS_30_COMPLETED')) 
+                  && (
                     <button
                       onClick={() => onCloseCase(c)}
                       className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
@@ -240,7 +242,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   {onSuspendCase && (
                     c.status === 'STATUS_20_IN_PROGRESS' ||
                     c.status.includes('IN PROGRESS')
-                  ) && (
+                  ) && (c?.tasks && c.tasks.length > 0 && c.tasks.some((t) => t.status === 'STATUS_20_IN_PROGRESS')) && (
                     <button
                       onClick={() => onSuspendCase(c)}
                       className="inline-flex items-center gap-0.5 rounded bg-yellow-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-1 focus:ring-yellow-500 whitespace-nowrap"

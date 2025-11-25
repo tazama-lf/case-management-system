@@ -71,24 +71,24 @@ export class TriageService {
         throw new NotFoundException(`Case ${alert.case_id} not found`);
       }
 
-      const triageTasks = existingCase.tasks.filter((t) => t.name === 'Complete New Case');
-      const completedTriageTask = triageTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+      const completeNewCaseTasks = existingCase.tasks.filter((t) => t.name === 'Complete New Case');
+      const completedTriageTask = completeNewCaseTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
 
       if (completedTriageTask) {
         throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
       }
 
-      const triageTask = triageTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
+      const completeNewCaseTask = completeNewCaseTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
-      if (triageTask) {
-        await this.taskService.updateTask(triageTask.task_id, { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED }, userId);
+      if (completeNewCaseTask) {
+        await this.taskService.updateTask(completeNewCaseTask.task_id, { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED }, userId);
 
         await this.commentService.addComment(
-          { caseId: alert.case_id, taskId: triageTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
+          { caseId: alert.case_id, taskId: completeNewCaseTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
           userId,
         );
       } else {
-        this.logger.log(`No active triage task found for case ${existingCase.case_id}`, TriageService.name);
+        this.logger.log(`No active Complete New Case task found for case ${existingCase.case_id}`, TriageService.name);
       }
 
       if (this.closableStatuses.includes(existingCase.status)) {

@@ -6,11 +6,10 @@ import { PageContainer, Notification } from '@/shared/components/ui';
 import ErrorFallback from '@/shared/components/ErrorFallback';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
 import { useToast } from '@/shared/providers/ToastProvider';
-
 import type { Alert, AlertsTableColumn, TransactionMessage } from '@/features/alerts/types/alertsdashboard.types';
-import type { ManualTriageDto, Alert as TriageAlert, AlertType } from '@/features/alerts/types/triage.types';
+import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
 import triageService from '@/features/alerts/services/triageservice';
-import { transformBackendAlertToUI } from '@/features/alerts/utils/alertTransformers';
+import { convertToTriageAlert, transformBackendAlertToUI } from '@/features/alerts/utils/alertTransformers';
 import { extractTransactionIdFromAlert } from '@/features/alerts/utils/transactionUtils';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useAlertFilterOptions, useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
@@ -99,13 +98,6 @@ const AlertsDashboard: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedAlert(null);
-  };
-
-  const convertToTriageAlert = (alert: Alert): TriageAlert => {
-    return {
-      ...alert,
-      alert_type: (alert.alert_type as AlertType) || null,
-    };
   };
 
   const handleTransactionIdClick = (alert: Alert) => {
