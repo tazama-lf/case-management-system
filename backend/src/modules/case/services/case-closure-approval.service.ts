@@ -244,6 +244,16 @@ export class CaseClosureApprovalService {
           },
         });
 
+        await this.taskService.createTask({
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: TASK_NAMES.APPROVE_CASE_CLOSURE,
+            description: `Review and approve case closure for case ${caseId}`,
+            candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+          },
+          userId,
+        );
+
         if (dto.finalNotes) {
           await tx.comment.create({
             data: {
@@ -262,18 +272,18 @@ export class CaseClosureApprovalService {
         CaseClosureApprovalService.name,
       );
 
-      await this.flowableService.handleTaskStatusChanged({
-        taskId: investigationTask.task_id,
-        caseId,
-        taskName: investigationTask.name || 'Investigate Case',
-        newStatus: TaskStatus.STATUS_30_COMPLETED,
-        assignedUserId: userId,
-        completionVariables: {
-          investigationAction: 'requestClosure',
-          recommendedOutcome: dto.recommendedOutcome,
-          finalNotes: dto.finalNotes,
-        },
-      });
+    //   await this.flowableService.handleTaskStatusChanged({
+    //     taskId: investigationTask.task_id,
+    //     caseId,
+    //     taskName: investigationTask.name || 'Investigate Case',
+    //     newStatus: TaskStatus.STATUS_30_COMPLETED,
+    //     assignedUserId: userId,
+    //     completionVariables: {
+    //       investigationAction: 'requestClosure',
+    //       recommendedOutcome: dto.recommendedOutcome,
+    //       finalNotes: dto.finalNotes,
+    //     },
+    //   });
 
       await this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -281,60 +291,61 @@ export class CaseClosureApprovalService {
         reason: `Case closure requested with outcome: ${dto.recommendedOutcome}`,
       });
 
-      setTimeout(async () => {
-        try {
-          const tasks = await this.taskService.getTasksByCaseId(caseId);
-          const approvalTask = tasks.find(
-            (t) =>
-              t.name && TASK_NAMES.APPROVE_CASE_CLOSURE_VARIANTS.includes(t.name as any) && t.status === TaskStatus.STATUS_01_UNASSIGNED,
-          );
+      // Sync BPMN tasks after a delay to allow BPMN engine to create approval task
+    //   setTimeout(async () => {
+    //     try {
+    //       const tasks = await this.taskService.getTasksByCaseId(caseId);
+    //       const approvalTask = tasks.find(
+    //         (t) =>
+    //           t.name && TASK_NAMES.APPROVE_CASE_CLOSURE_VARIANTS.includes(t.name as any) && t.status === TaskStatus.STATUS_01_UNASSIGNED,
+    //       );
 
-          if (approvalTask) {
-            this.logger.log(`[CloseCase] Found BPMN-created approval task ${approvalTask.task_id}`, CaseClosureApprovalService.name);
+    //       if (approvalTask) {
+    //         this.logger.log(`[CloseCase] Found BPMN-created approval task ${approvalTask.task_id}`, CaseClosureApprovalService.name);
 
-            await this.caseRepository.createComment({
-              user_id: userId,
-              task_id: approvalTask.task_id,
-              note: JSON.stringify({
-                recommendedOutcome: dto.recommendedOutcome,
-                finalNotes: dto.finalNotes,
-                submittedBy: userId,
-                submittedAt: new Date(),
-              }),
-            });
+    //         await this.caseRepository.createComment({
+    //           user_id: userId,
+    //           task_id: approvalTask.task_id,
+    //           note: JSON.stringify({
+    //             recommendedOutcome: dto.recommendedOutcome,
+    //             finalNotes: dto.finalNotes,
+    //             submittedBy: userId,
+    //             submittedAt: new Date(),
+    //           }),
+    //         });
 
-            this.logger.log(`[CloseCase] Added closure metadata to approval task ${approvalTask.task_id}`, CaseClosureApprovalService.name);
+    //         this.logger.log(`[CloseCase] Added closure metadata to approval task ${approvalTask.task_id}`, CaseClosureApprovalService.name);
 
-            try {
-              await this.notificationService.sendGroupNotification({
-                candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
-                type: 'CASE_CLOSURE_PENDING',
-                message: `Case ${caseId} submitted for closure approval`,
-                metadata: {
-                  caseId,
-                  recommendedOutcome: dto.recommendedOutcome,
-                  submittedBy: userId,
-                  approvalTaskId: approvalTask.task_id,
-                },
-              });
-            } catch (notificationError) {
-              this.logger.warn(`Failed to send supervisor notification: ${notificationError.message}`, CaseClosureApprovalService.name);
-            }
-          } else {
-            this.logger.warn(
-              '[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...',
-              CaseClosureApprovalService.name,
-            );
+    //         try {
+    //           await this.notificationService.sendGroupNotification({
+    //             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+    //             type: 'CASE_CLOSURE_PENDING',
+    //             message: `Case ${caseId} submitted for closure approval`,
+    //             metadata: {
+    //               caseId,
+    //               recommendedOutcome: dto.recommendedOutcome,
+    //               submittedBy: userId,
+    //               approvalTaskId: approvalTask.task_id,
+    //             },
+    //           });
+    //         } catch (notificationError) {
+    //           this.logger.warn(`Failed to send supervisor notification: ${notificationError.message}`, CaseClosureApprovalService.name);
+    //         }
+    //       } else {
+    //         this.logger.warn(
+    //           '[CloseCase] Approval task not found after 4 seconds. Checking if BPMN process is still running...',
+    //           CaseClosureApprovalService.name,
+    //         );
 
-            this.logger.log(
-              `[CloseCase] Current tasks in case ${caseId}: ${tasks.map((t) => `${t.name}(${t.status})`).join(', ')}`,
-              CaseClosureApprovalService.name,
-            );
-          }
-        } catch (error) {
-          this.logger.error(`[CloseCase] Failed to add closure metadata: ${error.message}`, error.stack, CaseClosureApprovalService.name);
-        }
-      }, 4000);
+    //         this.logger.log(
+    //           `[CloseCase] Current tasks in case ${caseId}: ${tasks.map((t) => `${t.name}(${t.status})`).join(', ')}`,
+    //           CaseClosureApprovalService.name,
+    //         );
+    //       }
+    //     } catch (error) {
+    //       this.logger.error(`[CloseCase] Failed to add closure metadata: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+    //     }
+    //   }, 4000);
 
       await this.auditLogService.logAction({
         userId,
