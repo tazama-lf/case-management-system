@@ -48,7 +48,6 @@ export class FlowableService implements OnModuleInit {
   ) {
     this.flowableClient = this.clientFactory.getClient();
     this.flowableUrl = this.clientFactory.getBaseUrl();
-    // this.tenantId = this.clientFactory.tenantId;
   }
 
   async onModuleInit() {
@@ -90,7 +89,7 @@ export class FlowableService implements OnModuleInit {
       const buffer = Buffer.from(bpmnXml);
 
       formData.append('deployment', buffer, {
-        filename: 'UnifiedCaseManagementProcess.bpmn20.xml',
+        filename: 'cms.bpmn20.xml',
         contentType: 'text/xml',
       });
 
@@ -139,8 +138,8 @@ export class FlowableService implements OnModuleInit {
     return this.identityService.getGroup(groupId);
   }
 
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string) {
-    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, 'DEFAULT');
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
+    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
   }
 
   async getProcessInstance(processInstanceId: string) {
@@ -305,10 +304,6 @@ export class FlowableService implements OnModuleInit {
 
   async handleTaskUnassigned(event: TaskUnassignedEvent) {
     return this.taskEventListener.handleTaskUnassigned(event);
-  }
-
-  async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
-    return this.taskEventListener.handleBpmnTaskCreated(event);
   }
 
   async handleSuspendCase(event: CaseSuspendedEvent) {

@@ -84,19 +84,19 @@ export const useCaseDashboard = () => {
       const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
       const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
     
-      if (investigatorOnly) {
+      // if (investigatorOnly) {
        
-        response = await caseService.getUserAssignedCases({
-          status: statusFilter || undefined,
-          priority: priorityFilter || undefined,
-          includeTaskAssignments: true,
-          includeOwnedCases: true,
-          sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
-          page: currentPage,
-          limit: pageSize
-        });
-      } else {
+      //   response = await caseService.getUserAssignedCases({
+      //     status: statusFilter || undefined,
+      //     priority: priorityFilter || undefined,
+      //     includeTaskAssignments: true,
+      //     includeOwnedCases: true,
+      //     sortBy: 'updated_at',
+      //     sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
+      //     page: currentPage,
+      //     limit: pageSize
+      //   });
+      // } else {
         // Fetch all cases for supervisors and admins
         response = await caseService.getAllCases({
           status: statusFilter || undefined,
@@ -106,7 +106,7 @@ export const useCaseDashboard = () => {
           page: currentPage,
           limit: pageSize
         });
-      }
+      // }
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);

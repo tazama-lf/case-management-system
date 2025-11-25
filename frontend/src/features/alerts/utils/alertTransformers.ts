@@ -3,6 +3,7 @@ import type {
   Priority,
   AlertStatus,
   AlertType,
+  Alert,
 } from '../types/triage.types';
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
@@ -230,3 +231,10 @@ export function transformBackendAlertsToUI(
 ): UIAlert[] {
   return backendAlerts.map(transformBackendAlertToUI);
 }
+
+export const convertToTriageAlert = (alert: Alert): TriageAlert => {
+  return {
+    ...alert,
+    alert_type: (alert.alert_type as AlertType) || null,
+  };
+};

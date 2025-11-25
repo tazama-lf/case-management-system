@@ -7,15 +7,12 @@ export class CaseCreatedEvent {
     public readonly creationType: string,
     public readonly autocloseEligible: boolean,
     public readonly isTriageAlert: boolean = false,
-    public readonly creatorRole?: string,
-    public readonly shouldSyncBpmnTasks: boolean = true,
   ) {}
 }
 
 export class CaseStatusChangedEvent {
   constructor(
     public readonly caseId: string,
-    public readonly oldStatus: string,
     public readonly newStatus: string,
     public readonly reason?: string,
   ) {}
@@ -59,7 +56,6 @@ export class TaskStatusChangedEvent {
     public readonly taskId: string,
     public readonly caseId: string,
     public readonly taskName: string,
-    public readonly oldStatus: string,
     public readonly newStatus: string,
     public readonly assignedUserId?: string | null,
     public readonly completionVariables?: Record<string, unknown>,
@@ -71,7 +67,7 @@ export class TaskAssignedEvent {
     public readonly taskId: string,
     public readonly caseId: string,
     public readonly assignedUserId: string,
-    public readonly previousAssignedUserId?: string,
+    public readonly taskName?: string,
   ) {}
 }
 
@@ -87,10 +83,9 @@ export class TaskUnassignedEvent {
 
 export class TaskCompletedEvent {
   constructor(
-    public readonly taskId: string,
     public readonly caseId: string,
-    public readonly completedByUserId: string,
-    public readonly newStatus?: string,
+    public readonly taskName: string,
+    public readonly newStatus: string,
     public readonly completionVariables?: Record<string, any>,
   ) {}
 }

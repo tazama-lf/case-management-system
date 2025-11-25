@@ -64,13 +64,13 @@ export class TaskEventListener {
           break;
         }
 
-        if (attempt < maxRetries) {
-          this.logger.warn(
-            `[TaskEventListener] Process not found for case ${event.caseId}, retrying (${attempt}/${maxRetries}) in ${retryDelayMs}ms`,
-            TaskEventListener.name,
-          );
-          await this.sleep(retryDelayMs);
-        }
+        // if (attempt < maxRetries) {
+        //   this.logger.warn(
+        //     `[TaskEventListener] Process not found for case ${event.caseId}, retrying (${attempt}/${maxRetries}) in ${retryDelayMs}ms`,
+        //     TaskEventListener.name,
+        //   );
+        //   await this.sleep(retryDelayMs);
+        // }
       }
 
       if (!processInstance) {
@@ -125,37 +125,27 @@ export class TaskEventListener {
    */
   @OnEvent('task.status.changed')
   async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
-    const eventKey = `status-${event.taskId}-${event.newStatus}`;
+    this.logger.log(`Start - Handle task.status.changed for task ${event.taskId}`, TaskEventListener.name);
+    // const eventKey = `status-${event.taskId}-${event.newStatus}`;
 
-    if (this.utilityService.isDuplicate(eventKey)) {
-      this.logger.debug(`Skipping duplicate task.status.changed event for task ${event.taskId}`, TaskEventListener.name);
-      return;
-    }
+    // if (this.utilityService.isDuplicate(eventKey)) {
+    //   this.logger.debug(`Skipping duplicate task.status.changed event for task ${event.taskId}`, TaskEventListener.name);
+    //   return;
+    // }
 
     try {
-      this.logger.log(
-        `[TaskEventListener] Task status changed - Task: ${event.taskId}, Name: "${event.taskName}", Status: ${event.oldStatus} -> ${event.newStatus}`,
-        TaskEventListener.name,
-      );
-
-      if (event.completionVariables) {
-        this.logger.log(`[TaskEventListener] Completion variables: ${JSON.stringify(event.completionVariables)}`, TaskEventListener.name);
-      }
-
       const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
       if (!processInstance) {
-        this.logger.warn(`[TaskEventListener] No Flowable process found for case ${event.caseId}`, TaskEventListener.name);
-        return;
+        this.logger.warn(`No Flowable Process Found`, TaskEventListener.name);
+        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
       }
 
       this.logger.log(`[TaskEventListener] Found process instance: ${processInstance.id}`, TaskEventListener.name);
 
       const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
 
-      this.logger.log(`[TaskEventListener] Found ${flowableTasks.length} Flowable tasks in process`, TaskEventListener.name);
-
-      let flowableTask: any = null;
+      let flowableTask: unknown = null;
 
       for (const t of flowableTasks) {
         const task = t as Record<string, unknown>;
@@ -285,158 +275,64 @@ export class TaskEventListener {
    */
   @OnEvent('task.completed')
   async handleTaskCompleted(event: TaskCompletedEvent) {
-    const eventKey = `completed-${event.taskId}`;
-
-    if (this.utilityService.isDuplicate(eventKey)) {
-      this.logger.debug(`Skipping duplicate task.completed event for task ${event.taskId}`, TaskEventListener.name);
-      return;
-    }
-
     try {
       if (event.newStatus !== TaskStatus.STATUS_30_COMPLETED) {
         return;
       }
 
       const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-
       if (!processInstance) {
         throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
       }
 
       const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
-
-      const flowableTask = flowableTasks.find((t: unknown) => {
-        const task = t as Record<string, unknown>;
-        const taskVars = (task.variables as unknown[]) || [];
-        const postgresIdVar = taskVars.find((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        }) as Record<string, unknown> | undefined;
-        return postgresIdVar?.value === event.taskId;
+      const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
+        return task.name === event.taskName && task.processInstanceId === processInstance.id;
       });
 
-      if (!flowableTask) {
-        throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
-      }
-
-      const taskObj = flowableTask as Record<string, unknown>;
-
-      const completionVars: Record<string, string> = {
-        investigationAction: 'complete',
-        task_completed: 'true',
-        completed_at: new Date().toISOString(),
-      };
-
+      let completionVars: Record<string, string> = {};
       if (event.completionVariables) {
         Object.entries(event.completionVariables).forEach(([key, value]) => {
           completionVars[key] = String(value);
         });
       }
 
-      this.logger.log(
-        `[TaskEventListener] Completing Flowable task ${taskObj.id} with variables: ${JSON.stringify(completionVars)}`,
-        TaskEventListener.name,
-      );
+      await this.flowableTaskService.completeTask(task.id as string, completionVars);
 
-      await this.flowableTaskService.completeTask(taskObj.id as string, completionVars);
-
-      this.logger.log(
-        `[TaskEventListener] ✓ Completed Flowable task ${taskObj.id} for PostgreSQL task ${event.taskId}`,
-        TaskEventListener.name,
-      );
+      this.logger.log(`Completed Flowable task ${task.id}`, TaskEventListener.name);
     } catch (error) {
       this.logger.error(`[TaskEventListener] ✗ Failed to complete Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
     }
   }
 
-  /**
-   * Handle bpmn.task.created event
-   * Creates a PostgreSQL task for a BPMN task and syncs them
-   */
-  @OnEvent('bpmn.task.created')
-  async handleBpmnTaskCreated(event: BpmnTaskCreatedEvent) {
-    try {
-      this.logger.log(
-        `[TaskEventListener] Creating PostgreSQL task for BPMN task ${event.flowableTaskId} (${event.taskName})`,
-        TaskEventListener.name,
-      );
-
-      const postgresTask = await this.utilityService.createTask(
-        {
-          caseId: event.caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: event.taskName,
-          description: event.description,
-          candidateGroup: event.candidateGroup,
-        },
-        'system',
-      );
-
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-
-      await this.flowableTaskService.setTaskVariables(event.flowableTaskId, {
-        postgres_task_id: postgresTask.task_id,
-        postgres_case_id: event.caseId,
-        task_status: TaskStatus.STATUS_01_UNASSIGNED,
-        task_name: event.taskName,
-        candidate_group: event.candidateGroup,
-        flowable_case_id: (processInstance?.id as string) || '',
-      });
-
-      this.logger.log(
-        `[TaskEventListener] ✓ Created and synced PostgreSQL task ${postgresTask.task_id} with BPMN task ${event.flowableTaskId}`,
-        TaskEventListener.name,
-      );
-    } catch (error) {
-      this.logger.error(`[TaskEventListener] ✗ Failed to create PostgreSQL task: ${error.message}`, error.stack, TaskEventListener.name);
-    }
-  }
-
   @OnEvent('task.assigned')
   async handleTaskAssigned(event: TaskAssignedEvent) {
-    const eventKey = `assigned-${event.taskId}-${event.assignedUserId}`;
-
-    if (this.utilityService.isDuplicate(eventKey)) {
-      this.logger.debug(`Skipping duplicate task.assigned event for task ${event.taskId}`, TaskEventListener.name);
-      return;
-    }
-
     try {
       const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-
       if (!processInstance) {
         throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
       }
 
       const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
 
-      const flowableTask = flowableTasks.find((ft: unknown) => {
-        const task = ft as Record<string, unknown>;
-        const vars = (task.variables as unknown[]) || [];
-        const postgresIdVar = vars.find((v: unknown) => {
-          const variable = v as Record<string, unknown>;
-          return variable.name === 'postgres_task_id';
-        }) as Record<string, unknown> | undefined;
-        return postgresIdVar?.value === event.taskId;
+      const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
+        return task.name === event.taskName && task.processInstanceId === processInstance.id;
       });
 
-      if (!flowableTask) {
+      if (!task) {
         throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
       }
 
-      const taskObj = flowableTask as Record<string, unknown>;
-      await this.flowableTaskService.claimTask(taskObj.id as string, event.assignedUserId);
+      await this.flowableTaskService.claimTask(task.id as string, event.assignedUserId);
 
       const variablesToUpdate = {
-        assignee_user_id: event.assignedUserId,
-        task_status: 'STATUS_10_ASSIGNED',
-        reassigned_from: event.previousAssignedUserId || '',
-        reassigned_at: new Date().toISOString(),
+        assignedUserId: event.assignedUserId,
+        taskStatus: 'STATUS_10_ASSIGNED',
       };
 
-      await this.flowableTaskService.setTaskVariables(taskObj.id as string, variablesToUpdate);
+      await this.flowableTaskService.setTaskVariables(task.id as string, variablesToUpdate);
 
-      this.logger.log(`Successfully assigned Flowable task ${taskObj.id} to user ${event.assignedUserId}`, TaskEventListener.name);
+      this.logger.log(`Successfully assigned Flowable task ${task.id} to user ${event.assignedUserId}`, TaskEventListener.name);
     } catch (error) {
       this.logger.error(`Failed to assign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
     }
@@ -495,9 +391,5 @@ export class TaskEventListener {
     } catch (error) {
       this.logger.error(`Failed to unassign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
     }
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
