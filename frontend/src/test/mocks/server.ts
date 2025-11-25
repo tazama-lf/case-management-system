@@ -4,6 +4,7 @@ import type {
   Alert,
   ActionHistory,
 } from '../../features/alerts/types/triage.types';
+import { caseHandlers } from './caseHandlers';
 
 const mockAlerts: Alert[] = [
   {
@@ -241,4 +242,4 @@ export const handlers = [
   }),
 ];
 
-export const server = setupServer(...handlers);
+export const server = setupServer(...handlers, ...caseHandlers);

@@ -145,8 +145,14 @@ describe('useAlerts', () => {
 
 describe('useAlertOperations', () => {
   const TestAlertOperations = () => {
-    const { updateAlert, closeAlert, isUpdatingAlert, isClosingAlert } =
-      useAlertOperations();
+    const {
+      updateAlert,
+      closeAlert,
+      performManualTriage,
+      isUpdatingAlert,
+      isClosingAlert,
+      isPerformingManualTriage,
+    } = useAlertOperations();
 
     const handleUpdate = () => {
       updateAlert({
@@ -163,6 +169,18 @@ describe('useAlertOperations', () => {
       });
     };
 
+    const handleManualTriage = () => {
+      performManualTriage({
+        alertId: 'ALERT-001',
+        data: {
+          priorityScore: 85,
+          predictionOutcome: 'TRUE_POSITIVE',
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          note: 'Manual triage test',
+        },
+      });
+    };
+
     return (
       <div>
         <button onClick={handleUpdate} disabled={isUpdatingAlert}>
@@ -170,6 +188,12 @@ describe('useAlertOperations', () => {
         </button>
         <button onClick={handleClose} disabled={isClosingAlert}>
           Close Alert
+        </button>
+        <button
+          onClick={handleManualTriage}
+          disabled={isPerformingManualTriage}
+        >
+          Perform Manual Triage
         </button>
       </div>
     );
@@ -185,14 +209,14 @@ describe('useAlertOperations', () => {
     expect(updateButton).toBeInTheDocument();
   });
 
-  it('should handle convert to case mutation', async () => {
+  it('should handle manual triage mutation', async () => {
     const user = userEvent.setup();
     renderWithProviders(<TestAlertOperations />);
 
-    const convertButton = screen.getByText('Convert to Case');
-    await user.click(convertButton);
+    const manualTriageButton = screen.getByText('Perform Manual Triage');
+    await user.click(manualTriageButton);
 
-    expect(convertButton).toBeInTheDocument();
+    expect(manualTriageButton).toBeInTheDocument();
   });
 
   it('should handle close alert mutation', async () => {

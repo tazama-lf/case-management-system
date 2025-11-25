@@ -1,6 +1,6 @@
 {
   "name": "tazama-case-management-system",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Tazama Case and Investigation Management System - Monorepo",
   "private": true,
   "workspaces": [
