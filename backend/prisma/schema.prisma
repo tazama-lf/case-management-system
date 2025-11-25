@@ -1,3 +1,17 @@
+model TransactionProfile {
+  profile_id      String   @id @default(uuid())
+  case_id         String   @db.Uuid
+  generated_by    String   @db.Uuid
+  generated_at    DateTime @default(now())
+  filters         Json?
+  metrics         Json?
+  outliers        Json?
+  summary_table   Json?
+  notes           String?  @db.Text
+  visualization   String?
+  detected_anomalies Json?
+  case            Case     @relation(fields: [case_id], references: [case_id])
+}
 generator client {
   provider = "prisma-client-js"
 }
@@ -126,6 +140,7 @@ model Case {
   comments             Comment[]
   tasks                Task[]
   evidence             Evidence[]
+  transactionProfiles  TransactionProfile[]
 
   @@map("cases")
 }
@@ -469,3 +484,4 @@ model NotificationLog {
   @@index([user_id, read_at])
   @@map("notification_logs")
 }
+

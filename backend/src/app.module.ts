@@ -26,6 +26,7 @@ import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 import { CouchdbModule } from './couchdb/couchdb.module';
 import { EvidenceModule } from './evidence/evidence.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { EvidenceModule } from './evidence/evidence.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
+    ProfileModule,
   ],
   providers: [
     PrismaService,
