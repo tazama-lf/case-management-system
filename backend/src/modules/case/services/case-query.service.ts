@@ -207,6 +207,7 @@ export class CaseQueryService {
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           total_tasks: caseItem.tasks.length,
+          tasks: caseItem.tasks,
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert,

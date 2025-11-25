@@ -1,4 +1,4 @@
-import type { CaseWithTasksDto } from '../services/caseService';
+import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
 export type CaseRow = {
   id: string;
@@ -19,6 +19,7 @@ export type CaseRow = {
   alertMessage?: string;
   confidencePercent?: number;
   transaction?: unknown;
+  tasks?: TaskDTO[];
 };
 
 export const getStatusColor = (status: string): string => {
@@ -87,5 +88,6 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     alertMessage: backendCase.alert?.message,
     confidencePercent: backendCase.alert?.confidence_per,
     transaction: backendCase.alert?.transaction,
+    tasks: backendCase.tasks,
   };
 };

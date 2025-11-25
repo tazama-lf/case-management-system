@@ -19,6 +19,13 @@ export interface UserTaskDto {
   created_at: Date;
 }
 
+export interface TaskDTO {
+  task_id: string;
+  name: string;
+  status: string;
+  assigned_user_id: string;
+}
+
 export interface AlertInfoDto {
   alert_id: string;
   message: string;
@@ -37,6 +44,7 @@ export interface CaseWithTasksDto {
   user_tasks: UserTaskDto[];
   total_tasks: number;
   alert?: AlertInfoDto;
+  tasks?: TaskDTO[];
 }
 
 export interface PaginationDto {
