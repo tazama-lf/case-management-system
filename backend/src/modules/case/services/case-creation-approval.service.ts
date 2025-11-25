@@ -81,11 +81,6 @@ export class CaseCreationApprovalService {
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
-    this.logger.log(
-      `[ManualCase] Case will ${needsApproval ? 'require approval' : 'be auto-approved'}, status: ${caseStatus}`,
-      CaseCreationApprovalService.name,
-    );
-
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const caseDetail: CreateCaseDto = {
@@ -98,9 +93,8 @@ export class CaseCreationApprovalService {
           caseCreationType: CaseCreationType.MANUAL,
         };
 
+        // Step 1: Create case record in PostgreSQL database
         const createdCase = await this.caseRepository.createCase(caseDetail, tx);
-
-        this.logger.log(`[ManualCase] Case ${createdCase.case_id} created via repository`, CaseCreationApprovalService.name);
 
         const updatedAlert = await this.alertRepository.updateAlert(
           dto.alertId,
@@ -113,23 +107,30 @@ export class CaseCreationApprovalService {
           tx,
         );
 
-        this.logger.log(`[ManualCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseCreationApprovalService.name);
-
         return { case: createdCase, alert: updatedAlert };
       });
 
+      // Start BPMN workflow process for manual case
+      // This integrates manual cases with Flowable workflow engine for consistent task management
+      this.flowableService.handleCaseCreated({
+        caseId: result.case.case_id,
+        tenantId: tenantId,
+        creatorUserId: userId,
+        caseStatus: result.case.status,
+        creationType: CaseCreationType.MANUAL, // Routes to MANUAL path in BPMN
+        autocloseEligible: false,
+        isTriageAlert: false, // Manual cases are not from triage alerts
+      });
+
       this.logger.log(
-        `[ManualCase] About to create task for case ${result.case.case_id}. needsApproval: ${needsApproval}, role: ${role}`,
+        `[ManualCase] BPMN workflow started for case ${result.case.case_id} with creationType=MANUAL`,
         CaseCreationApprovalService.name,
       );
 
       let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       if (needsApproval) {
-        this.logger.log(
-          `[ManualCase] Creating APPROVAL task for investigator-created case ${result.case.case_id}`,
-          CaseCreationApprovalService.name,
-        );
+        this.logger.log(`[ManualCase] Creating APPROVAL task for investigator-created case ${result.case.case_id}`, CaseCreationApprovalService.name,);
         approvalTask = await this.taskService.createTask(
           {
             caseId: result.case.case_id,
@@ -141,10 +142,6 @@ export class CaseCreationApprovalService {
           userId,
         );
 
-        this.logger.log(
-          `[ManualCase] ✓ Approval task ${approvalTask.task_id} created for case ${result.case.case_id} → SUPERVISORS queue`,
-          CaseCreationApprovalService.name,
-        );
       } else {
         this.logger.log(
           `[ManualCase] Creating INVESTIGATION task for supervisor-created case ${result.case.case_id}`,
@@ -159,11 +156,6 @@ export class CaseCreationApprovalService {
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },
           userId,
-        );
-
-        this.logger.log(
-          `[ManualCase] Investigation task ${investigateTask.task_id} created for case ${result.case.case_id} → INVESTIGATIONS queue (auto-approved by supervisor)`,
-          CaseCreationApprovalService.name,
         );
       }
 
@@ -686,6 +678,8 @@ export class CaseCreationApprovalService {
       const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
       const isTriageAlert = triageType === 'DISABLED' ? false : true;
 
+      // Step 1: Create case record in PostgreSQL database
+      // This creates the case with initial status and metadata (priority, type, creator, etc.)
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
@@ -697,14 +691,18 @@ export class CaseCreationApprovalService {
         caseCreationType: createCaseDTO.caseCreationType,
       });
 
+      // Step 2: Start BPMN workflow process in Flowable
+      // This initiates the workflow engine which will:
+      // - Create a process instance with the case as business key
+      // - Route through gateways based on creationType (MANUAL vs AUTOMATIC_SYSTEM)
       this.flowableService.handleCaseCreated({
-        caseId: createdCase.case_id,
-        tenantId: createdCase.tenant_id,
+        caseId: createdCase.case_id,         
+        tenantId: createdCase.tenant_id,      
         creatorUserId: createdCase.case_creator_user_id,
-        caseStatus: createdCase.status,
-        creationType: createCaseDTO.caseCreationType,
-        autocloseEligible: false,
-        isTriageAlert,
+        caseStatus: createdCase.status,      
+        creationType: createCaseDTO.caseCreationType, 
+        autocloseEligible: false,             
+        isTriageAlert,                        
       });
 
       this.logger.log(
