@@ -106,10 +106,11 @@ const EditWorkQueueForm: React.FC<EditWorkQueueFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
               Status
             </label>
             <select
+              id="status"
               value={formData.status}
               onChange={(e) =>
                 setFormData({

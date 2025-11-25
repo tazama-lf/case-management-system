@@ -42,3 +42,6 @@ export const INITIAL_WORK_QUEUES: WorkQueue[] = [
     status: 'Active',
   },
 ];
+
+// Provide a convenient mock export used by tests
+export const mockWorkQueue: WorkQueue = INITIAL_WORK_QUEUES[0];
