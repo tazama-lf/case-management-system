@@ -41,16 +41,20 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       try {
         setLoading(true);
 
-     
+        // Reset state before fetching
+        setInvestigationNotes('');
+        setTaskId('');
+
+
         const details = await caseService.getCaseDetails(caseId);
         setCaseDetails(details);
 
-       
+
         const evidenceResponse = await evidenceService.getCaseEvidence(caseId);
-        
+
 
         const groupedByType = new Map<string, Evidence[]>();
-        
+
         if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
           evidenceResponse.evidence.forEach((evidence) => {
             const type = evidence.evidenceType || 'OTHER';
@@ -61,10 +65,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           });
         }
 
-   
+
         const categories: EvidenceCategory[] = Array.from(groupedByType.entries()).map(([type, items]) => {
           let displayLabel = '';
-          
+
           switch (type) {
             case 'ADVERSE_MEDIA':
               displayLabel = 'Adverse Media and Search Records';
@@ -93,11 +97,11 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         categories.sort((a, b) => b.count - a.count);
         setEvidenceCategories(categories);
 
-       
+
         const comments = await commentService.getCommentsByCase(caseId);
         setCaseComments(comments || []);
 
- 
+
         if (comments && comments.length > 0 && comments[0].user_id) {
           try {
             const userDetails = await userService.getUserDetailsById(comments[0].user_id);
@@ -110,7 +114,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           }
         }
 
-      
+
         try {
           const tasks = await taskService.getTasksByCaseId(caseId);
           const approvalTask = tasks.find(
@@ -184,8 +188,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     try {
       setDownloadingId(evidenceId);
       const blob = await evidenceService.downloadEvidence(evidenceId);
-      
-   
+
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -213,7 +217,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               <span className="text-sm font-medium text-gray-700">Case ID:</span>
               <span className="text-sm font-semibold text-gray-900 font-mono">{caseDetails?.case_id || 'N/A'}</span>
             </div>
-            
+
             {/* Other Details Row */}
             <div className="grid grid-cols-3 gap-6">
               <div>
@@ -227,8 +231,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               <div>
                 <p className="text-xs text-gray-600 font-medium mb-1">Submitted</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {caseComments?.[0]?.created_at 
-                    ? new Date(caseComments[0].created_at).toLocaleString() 
+                  {caseComments?.[0]?.created_at
+                    ? new Date(caseComments[0].created_at).toLocaleString()
                     : 'N/A'}
                 </p>
               </div>
@@ -258,150 +262,150 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           </div>
         </div>
 
-      {/* Investigation Notes Section */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">
-          Investigation Notes
-        </h3>
-        {investigationNotes ? (
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded border border-gray-200">
-            {investigationNotes}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
-            No investigation notes available.
-          </div>
-        )}
-      </div>
-
-      {/* Final Investigation Summary Section - Investigator Comments */}
-      {caseComments.length > 0 && (
+        {/* Investigation Notes Section */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            Final Investigation Summary
+            Investigation Notes
           </h3>
-          <div className="space-y-4">
-            {caseComments.map((comment, index) => (
-              <div key={comment.comment_id || index}>
-                {/* Notes */}
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {comment.note}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Supervisor Comments Section */}
-      {supervisorComments.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            Supervisor Approval
-          </h3>
-          <div className="space-y-4">
-            {supervisorComments.map((comment, index) => (
-              <div key={comment.comment_id || index}>
-                {/* Notes */}
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
-                  {comment.note}
-                </p>
-                
-                {/* Supervisor outcome only */}
-                <div className="p-3 bg-green-50 border border-green-200 rounded">
-                  <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
-                  <p className="text-sm font-semibold text-green-900">
-                    {caseDetails?.status || 'N/A'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Evidence Summary Section */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">
-          Evidence Summary
-        </h3>
-        <div className="space-y-2">
-          {evidenceCategories.length > 0 ? (
-            evidenceCategories.map((category, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
-                {/* Category Header */}
-                <button
-                  onClick={() => toggleCategory(category.type)}
-                  className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    {expandedCategories.has(category.type) ? (
-                      <ChevronDownIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
-                    ) : (
-                      <ChevronRightIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
-                    )}
-                    <DocumentTextIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">{category.type}</span>
-                      <span className="text-sm text-gray-500 ml-1">
-                        ({category.count} {category.description})
-                      </span>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Documents List */}
-                {expandedCategories.has(category.type) && (
-                  <div className="border-t border-gray-200 bg-gray-50">
-                    {category.evidence.map((doc, docIndex) => (
-                      <div
-                        key={docIndex}
-                        className="border-t border-gray-200 p-4 flex items-center justify-between hover:bg-gray-100 transition-colors first:border-t-0"
-                      >
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <DocumentTextIcon className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {doc.fileName || 'Untitled Document'}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                              <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
-                              <span>•</span>
-                              <span>{doc.evidenceType}</span>
-                              {doc.uploadedAt && (
-                                <>
-                                  <span>•</span>
-                                  <span>
-                                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            {doc.description && (
-                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                {doc.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleDownloadEvidence(doc.id || '', doc.fileName || 'document')}
-                          disabled={downloadingId === doc.id}
-                          className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                        >
-                          {downloadingId === doc.id ? 'Downloading...' : 'Download'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
+          {investigationNotes ? (
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded border border-gray-200">
+              {investigationNotes}
+            </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">No evidence uploaded yet for this case</p>
+            <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
+              No investigation notes available.
+            </div>
           )}
         </div>
-      </div>
+
+        {/* Final Investigation Summary Section - Investigator Comments */}
+        {caseComments.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">
+              Final Investigation Summary
+            </h3>
+            <div className="space-y-4">
+              {caseComments.map((comment, index) => (
+                <div key={comment.comment_id || index}>
+                  {/* Notes */}
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {comment.note}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Supervisor Comments Section */}
+        {supervisorComments.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">
+              Supervisor Approval
+            </h3>
+            <div className="space-y-4">
+              {supervisorComments.map((comment, index) => (
+                <div key={comment.comment_id || index}>
+                  {/* Notes */}
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
+                    {comment.note}
+                  </p>
+
+                  {/* Supervisor outcome only */}
+                  <div className="p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
+                    <p className="text-sm font-semibold text-green-900">
+                      {caseDetails?.status || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Evidence Summary Section */}
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+            Evidence Summary
+          </h3>
+          <div className="space-y-2">
+            {evidenceCategories.length > 0 ? (
+              evidenceCategories.map((category, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Category Header */}
+                  <button
+                    onClick={() => toggleCategory(category.type)}
+                    className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      {expandedCategories.has(category.type) ? (
+                        <ChevronDownIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                      ) : (
+                        <ChevronRightIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                      )}
+                      <DocumentTextIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-900">{category.type}</span>
+                        <span className="text-sm text-gray-500 ml-1">
+                          ({category.count} {category.description})
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Documents List */}
+                  {expandedCategories.has(category.type) && (
+                    <div className="border-t border-gray-200 bg-gray-50">
+                      {category.evidence.map((doc, docIndex) => (
+                        <div
+                          key={docIndex}
+                          className="border-t border-gray-200 p-4 flex items-center justify-between hover:bg-gray-100 transition-colors first:border-t-0"
+                        >
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <DocumentTextIcon className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {doc.fileName || 'Untitled Document'}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                                <span>•</span>
+                                <span>{doc.evidenceType}</span>
+                                {doc.uploadedAt && (
+                                  <>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(doc.uploadedAt).toLocaleDateString()}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              {doc.description && (
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                  {doc.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadEvidence(doc.id || '', doc.fileName || 'document')}
+                            disabled={downloadingId === doc.id}
+                            className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                          >
+                            {downloadingId === doc.id ? 'Downloading...' : 'Download'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 italic">No evidence uploaded yet for this case</p>
+            )}
+          </div>
+        </div>
 
         {/* Case Metadata */}
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">

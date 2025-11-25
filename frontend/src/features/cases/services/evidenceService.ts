@@ -11,10 +11,7 @@ import type {
 export class EvidenceService {
   private baseUrl = '/api/v1/evidence';
 
-  /**
-   * Normalize evidence data by extracting fileName and other properties from attachments array
-   * if they don't exist at root level (backward compatibility with new CouchDB structure)
-   */
+ 
   private normalizeEvidenceData(evidence: any): any {
     if (!evidence) return evidence;
 
@@ -33,10 +30,7 @@ export class EvidenceService {
     };
   }
 
-  /**
-   * Upload evidence file with metadata
-   * Maps to: POST /api/v1/evidence/upload
-   */
+ 
   async uploadEvidence(
     data: UploadEvidenceDto,
   ): Promise<UploadEvidenceResponse> {
@@ -58,7 +52,7 @@ export class EvidenceService {
         formData.append('comments', data.comments);
       }
 
-      // Sanctions specific fields
+     
       if (data.evidenceType === 'SANCTIONS') {
         if (data.screeningDate) {
           formData.append('screeningDate', data.screeningDate);
@@ -71,7 +65,7 @@ export class EvidenceService {
         }
       }
 
-      // Adverse Media specific fields
+    
       if (data.evidenceType === 'ADVERSE_MEDIA') {
         if (data.aggregator) {
           formData.append('aggregator', data.aggregator);
@@ -98,10 +92,7 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get all evidence for a specific task
-   * Maps to: GET /api/v1/evidence/task/:taskId
-   */
+  
   async getTaskEvidence(taskId: string): Promise<EvidenceListResponse> {
     try {
       const response = await apiClient.get<EvidenceListResponse>(
@@ -116,10 +107,6 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get all evidence for a specific case
-   * Maps to: GET /api/v1/evidence/case/:caseId
-   */
   async getCaseEvidence(caseId: string): Promise<EvidenceListResponse> {
     try {
       const response = await apiClient.get<EvidenceListResponse>(
@@ -134,10 +121,6 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get evidence by type
-   * Maps to: GET /api/v1/evidence/evidenceType/:evidenceType
-   */
   async getEvidenceByType(
     evidenceType: EvidenceType,
   ): Promise<EvidenceListResponse> {
@@ -145,7 +128,7 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
-      // Normalize evidence data to extract fileName from attachments if needed
+      
       if (response.evidence) {
         response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
       }
@@ -155,10 +138,7 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Get evidence details by ID
-   * Maps to: GET /api/v1/evidence/:id
-   */
+  
   async getEvidenceById(evidenceId: string): Promise<Evidence> {
     try {
       const response = await apiClient.get<Evidence>(
@@ -170,10 +150,7 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Verify evidence integrity using SHA-256 hash
-   * Maps to: GET /api/v1/evidence/:id/verify
-   */
+ 
   async verifyEvidence(
     evidenceId: string,
   ): Promise<VerifyEvidenceResponse> {
@@ -187,37 +164,26 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * View evidence file - uses the same download endpoint as downloadEvidence
-   * Just an alias to make the API clearer for view operations
-   */
+  
   async viewEvidence(evidenceId: string): Promise<Blob> {
-    console.log('[Evidence View] Using download endpoint to fetch file');
-    // Use the same download method - it decrypts the file on the backend
+ 
     return this.downloadEvidence(evidenceId);
   }
 
-  /**
-   * Download evidence file with robust error handling and proper headers
-   * Maps to: GET /api/v1/evidence/:id/download
-   */
+  
   async downloadEvidence(evidenceId: string): Promise<Blob> {
     const startTime = performance.now();
     
     try {
-      console.log('[Evidence Download] Starting download for:', evidenceId);
-      
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      // Build the full URL
+      
       const baseApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
       const url = `${baseApiUrl}${this.baseUrl}/${evidenceId}/download`;
-      
-      console.log('[Evidence Download] Fetching from:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -226,13 +192,6 @@ export class EvidenceService {
           'Accept': 'application/octet-stream, */*',
         },
         credentials: 'include',
-      });
-
-      console.log('[Evidence Download] Response status:', response.status);
-      console.log('[Evidence Download] Response headers:', {
-        contentType: response.headers.get('content-type'),
-        contentLength: response.headers.get('content-length'),
-        contentDisposition: response.headers.get('content-disposition'),
       });
 
       if (!response.ok) {
@@ -269,13 +228,6 @@ export class EvidenceService {
       const blob = await response.blob();
       const downloadTime = performance.now() - startTime;
 
-      console.log('[Evidence Download] Success!', {
-        size: blob.size,
-        type: blob.type,
-        timeMs: downloadTime.toFixed(2),
-        sizeMB: (blob.size / 1024 / 1024).toFixed(2),
-      });
-
       if (blob.size === 0) {
         throw new Error('Received empty file from server. The file may be corrupted or deleted.');
       }
@@ -283,7 +235,6 @@ export class EvidenceService {
       if (!blob.type || blob.type === 'application/octet-stream') {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType !== 'application/octet-stream') {
-          console.log('[Evidence Download] Using content-type from headers:', contentType);
           return new Blob([blob], { type: contentType });
         }
       }
@@ -296,9 +247,7 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Calculate client-side SHA-256 hash for verification
-   */
+  
   async calculateFileHash(file: File): Promise<string> {
     try {
       const buffer = await file.arrayBuffer();
@@ -314,14 +263,12 @@ export class EvidenceService {
     }
   }
 
-  /**
-   * Validate file before upload
-   */
+ 
   validateFile(
     file: File,
     maxSizeMB: number = 50,
   ): { valid: boolean; error?: string } {
-    // Check file size
+  
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
@@ -330,7 +277,7 @@ export class EvidenceService {
       };
     }
 
-    // Check file type (basic validation)
+
     const allowedTypes = [
       'application/pdf',
       'image/jpeg',
@@ -357,9 +304,7 @@ export class EvidenceService {
     return { valid: true };
   }
 
-  /**
-   * Format file size for display
-   */
+
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;

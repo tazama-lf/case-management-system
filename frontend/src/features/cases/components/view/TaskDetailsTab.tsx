@@ -41,7 +41,8 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(null);
   const [loadingUser, setLoadingUser] = React.useState(false);
 
-  // Fetch user details when task changes
+
+ 
   React.useEffect(() => {
     const fetchUserDetails = async () => {
       if (task?.assigned_user_id) {
@@ -63,26 +64,15 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     fetchUserDetails();
   }, [task?.assigned_user_id]);
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔍 TaskDetailsTab - Received data:', {
-      row,
-      tasks,
-      loadingTasks,
-      task,
-      assignedUser,
-    });
-  }, [row, tasks, loadingTasks, task, assignedUser]);
-
   const getTaskStatusColor = (status: string): string => {
-    // Map status to colors - matching TaskLogTable's approach
+    
     const statusConfig: Record<string, string> = {
       STATUS_01_UNASSIGNED: 'bg-gray-100 text-gray-800 ring-gray-200',
       STATUS_10_ASSIGNED: 'bg-blue-100 text-blue-800 ring-blue-200',
       STATUS_20_IN_PROGRESS: 'bg-yellow-100 text-yellow-800 ring-yellow-200',
       STATUS_21_BLOCKED: 'bg-red-100 text-red-800 ring-red-200',
       STATUS_30_COMPLETED: 'bg-green-100 text-green-800 ring-green-200',
-      // Also handle the simpler status names from UnifiedWorkQueueTask
+    
       UNASSIGNED: 'bg-gray-100 text-gray-800 ring-gray-200',
       ASSIGNED: 'bg-blue-100 text-blue-800 ring-blue-200',
       IN_PROGRESS: 'bg-yellow-100 text-yellow-800 ring-yellow-200',
@@ -99,7 +89,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
       STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
       STATUS_21_BLOCKED: 'STATUS_21_BLOCKED',
       STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
-      // Also handle the simpler status names
+ 
       UNASSIGNED: 'UNASSIGNED',
       ASSIGNED: 'ASSIGNED',
       IN_PROGRESS: 'IN_PROGRESS',
@@ -223,8 +213,8 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     {loadingUser ? (
                       <span className="text-gray-400">Loading...</span>
                     ) : assignedUser ? (
-                      `${assignedUser.firstName} ${assignedUser.lastName}`.trim() || 
-                      assignedUser.username || 
+                      `${assignedUser.firstName} ${assignedUser.lastName}`.trim() ||
+                      assignedUser.username ||
                       'Unknown'
                     ) : task.assigned_user_id ? (
                       task.assigned_user_id.substring(0, 8)

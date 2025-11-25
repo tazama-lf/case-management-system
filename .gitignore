@@ -142,5 +142,8 @@ vite.config.ts.timestamp-*
 
 /generated/prisma
 
+# Ignore Prisma migrations (local only)
+backend/prisma/migrations/
+
 # CouchDB configuration with sensitive credentials
 docker/couchdb/local.ini
