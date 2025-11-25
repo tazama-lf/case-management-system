@@ -112,11 +112,6 @@ export class CaseCreationApprovalService {
         return { case: createdCase, alert: updatedAlert };
       });
 
-      this.logger.log(
-        `[ManualCase] About to create task for case ${result.case.case_id}. needsApproval: ${needsApproval}, role: ${role}`,
-        CaseCreationApprovalService.name,
-      );
-
       let approvalTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       let investigateTask: Awaited<ReturnType<typeof this.taskService.createTask>> | null = null;
       if (needsApproval) {
