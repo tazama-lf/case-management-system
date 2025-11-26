@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import workQueueService from '../services/workQueueService';
 import type {
   WorkQueueResponseDto,
@@ -51,29 +51,32 @@ export const useWorkQueues = (
     };
   };
 
+  const isMountedRef = useRef(true);
+
   const fetchWorkQueues = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
+      if (isMountedRef.current) setLoading(true);
+      if (isMountedRef.current) setError(null);
 
       const response: WorkQueueListResponseDto =
         await workQueueService.getAllWorkQueues(filters);
 
       const transformedQueues = response.data.map(transformWorkQueue);
-      setWorkQueues(transformedQueues);
+      if (isMountedRef.current) setWorkQueues(transformedQueues);
 
-      setPagination({
-        totalPages: response.totalPages,
-        currentPage: response.page,
-        total: response.total,
-      });
+      if (isMountedRef.current)
+        setPagination({
+          totalPages: response.totalPages,
+          currentPage: response.page,
+          total: response.total,
+        });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch work queues';
-      setError(errorMessage);
+      if (isMountedRef.current) setError(errorMessage);
       console.error('Error fetching work queues:', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, [filters]);
 
@@ -82,7 +85,11 @@ export const useWorkQueues = (
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchWorkQueues();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [fetchWorkQueues]);
 
   return {

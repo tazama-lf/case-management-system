@@ -1,4 +1,5 @@
 import * as transformers from '../../utils/alertTransformers';
+import { describe, it, expect, vi } from 'vitest';
 
 describe('alertTransformers basic utilities', () => {
   it('maps severity to priority and UI status to backend status', () => {

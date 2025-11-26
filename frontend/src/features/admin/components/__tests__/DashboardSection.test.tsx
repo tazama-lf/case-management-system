@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import DashboardSection from '../DashboardSection';
+import { describe, it, expect, vi } from 'vitest';
+
 
 describe('DashboardSection', () => {
   it('should render the title and children', () => {
