@@ -37,4 +37,10 @@ export class CommentController {
     return this.commentService.getCommentsByCaseId(caseId);
   }
 
+  @Get('/task/:taskId/comment')
+  @RequireInvestigatorOrSupervisorRole()
+  async getCommentsByTaskId(@Param('taskId') caseId: string , @Req() req: AuthenticatedRequest) {
+    return this.commentService.getCommentsByTaskId(caseId);
+  }
+
 }

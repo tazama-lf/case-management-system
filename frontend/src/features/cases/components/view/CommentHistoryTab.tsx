@@ -40,13 +40,146 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
     </div>
   </div>;
 
-  return (
-    <div className="space-y-3">
-      <div className="text-sm font-semibold text-gray-700">Comments History</div>
+  // return (
+  //   <div className="space-y-3">
+  //     <div className="text-sm font-semibold text-gray-700">Comments History</div>
 
-      {tasks.map((c) => (
-        <div key={c.comment_id} className="space-y-3">
-          <SectionCard>
+  //     {tasks.map((c) => (
+  //       <div key={c.comment_id} className="space-y-3">
+  //         <SectionCard>
+  //           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+
+  //             {/* Comment ID */}
+  //             <div>
+  //               <div className="text-xs text-gray-500 uppercase">Comment ID</div>
+  //               <div className="font-medium text-gray-900 break-all">
+  //                 {c.comment_id}
+  //               </div>
+  //             </div>
+
+  //             {/* User ID */}
+  //             <div>
+  //               <div className="text-xs text-gray-500 uppercase">User ID</div>
+  //               <div className="font-medium text-gray-900 break-all">
+  //                 {c.user_id}
+  //               </div>
+  //             </div>
+
+  //             {/* Task ID */}
+  //             <div className="col-span-2">
+  //               <div className="text-xs text-gray-500 uppercase">Task ID</div>
+  //               <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+  //                 {c.task_id}
+  //               </div>
+  //             </div>
+
+  //             {/* Note*/}
+  //             <div className="col-span-2">
+  //               <div className="text-xs text-gray-500 uppercase">Note</div>
+  //               <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+  //                 {c.note}
+  //               </div>
+  //             </div>
+
+  //             {/* Created At */}
+  //             <div>
+  //               <div className="text-xs text-gray-500 uppercase">Created At</div>
+  //               <div className="font-medium text-gray-900">
+  //                 {new Date(c.created_at).toLocaleString()}
+  //               </div>
+  //             </div>
+
+  //             {/* Updated At */}
+  //             <div>
+  //               <div className="text-xs text-gray-500 uppercase">Updated At</div>
+  //               <div className="font-medium text-gray-900">
+  //                 {new Date(c.updated_at).toLocaleString()}
+  //               </div>
+  //             </div>
+
+  //           </div>
+  //         </SectionCard>
+  //       </div>
+  //     ))}
+  //   </div>
+
+
+
+
+
+  // );
+  const caseComments = tasks.filter(c => !c.task_id);
+  const taskComments = tasks.filter(c => c.task_id);
+
+  return (
+    <div className="space-y-6">
+      {/* <div className="text-sm font-semibold text-gray-700">Comments History</div> */}
+      {/* Case Based Comments */}
+      <div className="text-sm font-semibold text-gray-700">Case Comments</div>
+
+      {caseComments.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-sm text-gray-500">No case comments found.</div>
+        </div>
+      ) : (
+        caseComments
+          .map((c) => (
+            <SectionCard key={c.comment_id}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                {/* Comment ID */}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Comment ID</div>
+                  <div className="font-medium text-gray-900 break-all">
+                    {c.comment_id}
+                  </div>
+                </div>
+
+                {/* User ID */}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">User ID</div>
+                  <div className="font-medium text-gray-900 break-all">
+                    {c.user_id}
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div className="col-span-2">
+                  <div className="text-xs text-gray-500 uppercase">Note</div>
+                  <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                    {c.note}
+                  </div>
+                </div>
+
+                {/* Created At */}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Created At</div>
+                  <div className="font-medium text-gray-900">
+                    {new Date(c.created_at).toLocaleString()}
+                  </div>
+                </div>
+
+                {/* Updated At */}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Updated At</div>
+                  <div className="font-medium text-gray-900">
+                    {new Date(c.updated_at).toLocaleString()}
+                  </div>
+                </div>
+
+              </div>
+            </SectionCard>
+          ))
+      )}
+      {/* Tasks Based Comments */}
+      <div className="text-sm font-semibold text-gray-700">Tasks Comments</div>
+
+      {taskComments.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-sm text-gray-500">No tasks comments found.</div>
+        </div>
+      ) : (taskComments
+        .map((c) => (
+          <SectionCard key={c.comment_id}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
 
               {/* Comment ID */}
@@ -65,7 +198,15 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
                 </div>
               </div>
 
-              {/* Note*/}
+              {/* Task ID */}
+              <div className="col-span-2">
+                <div className="text-xs text-gray-500 uppercase">Task ID</div>
+                <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                  {c.task_id}
+                </div>
+              </div>
+
+              {/* Note */}
               <div className="col-span-2">
                 <div className="text-xs text-gray-500 uppercase">Note</div>
                 <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
@@ -91,8 +232,8 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
 
             </div>
           </SectionCard>
-        </div>
-      ))}
+        ))
+      )}
     </div>
 
 

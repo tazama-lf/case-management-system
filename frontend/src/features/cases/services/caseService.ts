@@ -97,6 +97,10 @@ export interface UpdateCaseDto {
   priority?: string;
   caseType?: string;
   caseOwnerUserId?: string;
+  confidence?: number;
+  predictionOutcome?: string; 
+  note?: string;
+  priorityScore?: number;
 }
 
 export interface AbandonCaseDto {

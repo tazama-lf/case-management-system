@@ -19,12 +19,12 @@ const Header: React.FC<HeaderComponentProps> = ({
     <header className="sticky top-0 z-40 bg-white">
       <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {}
-          <div className="flex items-center md:hidden">
+          { }
+          <div className="flex items-center lg:hidden">
             {setSidebarOpen && (
               <button
                 type="button"
-                className="-m-2.5 p-2.5 text-gray-700 hover:text-gray-900 md:hidden"
+                className="-m-2.5 p-2.5 text-gray-700 hover:text-gray-900 lg:hidden"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 <span className="sr-only">Toggle sidebar</span>
@@ -37,7 +37,7 @@ const Header: React.FC<HeaderComponentProps> = ({
             )}
           </div>
 
-          
+
           <div className="flex flex-1 items-center lg:ml-0">
             <div className="hidden lg:block">
               {title ? (
@@ -55,9 +55,9 @@ const Header: React.FC<HeaderComponentProps> = ({
             </div>
           </div>
 
-      
+
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-           
+
             <div className="hidden lg:flex lg:items-center lg:gap-x-3">
               <div className="h-9 w-9 bg-indigo-600 rounded-full flex items-center justify-center">
                 <span className="text-sm font-semibold text-white">
@@ -68,23 +68,23 @@ const Header: React.FC<HeaderComponentProps> = ({
               </div>
               <div className="text-sm leading-tight">
                 <div className="font-semibold text-gray-900">
-                  {user?.fullName || 
-                   (user?.firstName && user?.lastName 
-                     ? `${user.firstName} ${user.lastName}` 
-                     : user?.username || 'User')}
+                  {user?.fullName ||
+                    (user?.firstName && user?.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user?.username || 'User')}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {user?.email || 
-                   (user?.roles && user.roles.length > 0 
-                     ? user.roles[0].replace(/_/g, ' ').replace(/-/g, ' ')
-                     : 'User')}
+                  {user?.email ||
+                    (user?.roles && user.roles.length > 0
+                      ? user.roles[0].replace(/_/g, ' ').replace(/-/g, ' ')
+                      : 'User')}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {}
+        { }
         <div className="lg:hidden pb-4">
           {title && (
             <h1 className="text-xl font-semibold text-gray-900 mb-2">

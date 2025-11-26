@@ -1,13 +1,13 @@
 import React, { Suspense, lazy } from 'react';
 import { CreateCaseModal, ViewCaseModal } from '..';
-import { 
+import {
   caseService,
   type CloseCaseDto,
   type ApproveCaseClosureDto,
   type RejectCaseCreationDto
 } from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
-import type { Priority, AlertType } from '@/features/cases/components/CreateCaseModal';
+import type { Priority, AlertType, CaseStatus, PredictionOutcome } from '@/features/cases/components/CreateCaseModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 
@@ -196,15 +196,26 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
+    /*Added new fields*/
+    status: CaseStatus;
+    confidence: number;
+    predictionOutcome?: PredictionOutcome;
+    note: string;
   }) => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
     try {
       const updateCaseData = {
-        status: 'STATUS_02_READY_FOR_ASSIGNMENT' as const,
+        //status: 'STATUS_02_READY_FOR_ASSIGNMENT' as const,
         priority: payload.priority,
         caseType: payload.alertType,
+        /*Added new fields*/
+        confidence: payload.confidence,
+        predictionOutcome: payload.predictionOutcome,
+        note: payload.note,
+        status: payload.status,
+        priorityScore: payload.priorityScore,
         ...(payload.assignee && { caseOwnerUserId: payload.assignee }),
       };
 
@@ -266,10 +277,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
   const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
     if (!modalState.selectedRow) return;
-    
+
     const finalOutcome = data.finalOutcome as "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE";
     await caseActions.handleApproveClosureSubmit(
-      modalState.selectedRow.id, 
+      modalState.selectedRow.id,
       finalOutcome,
       data.supervisorComments
     );
@@ -437,6 +448,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           caseId={modalState.selectedRow?.id || ''}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           recommendedOutcome={modalState.selectedRow?.status || ''}
+          taskList={modalState.selectedRow?.tasks ?? []}
           onApprove={handleApproveSubmit}
           onReject={handleRejectSubmit}
         />

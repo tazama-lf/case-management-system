@@ -168,6 +168,42 @@ export class CommentService {
     }
   }
 
+  async getCommentsByTaskId(taskId: string,  userId?: string) {
+   this.logger.log('Retrieving comments by taskId: ', CommentService.name);
+
+  try {
+   const comments = await this.prisma.comment.findMany({
+      where: { task_id: taskId }
+    });
+
+    if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getCommentsByTaskId',
+          entityName: CommentService.name,
+          actionPerformed: `Successfully retrieved comments for task ID: ${taskId}`,
+          outcome: Outcome.SUCCESS,
+          performedAt: new Date(),
+        });
+      }
+
+      return comments;
+    } catch (error) {
+      this.logger.error('Error retrieving comments', error, CommentService.name);
+      if (userId) {
+        this.auditLogService.logAction({
+          userId,
+          operation: 'getCommentsByTaskId',
+          entityName: CommentService.name,
+          actionPerformed: `Error retrieving comments for task ID: ${taskId}`,
+          outcome: Outcome.FAILURE,
+          performedAt: new Date(),
+        });
+      }
+      throw error;
+    }
+  }
+
  
 
   

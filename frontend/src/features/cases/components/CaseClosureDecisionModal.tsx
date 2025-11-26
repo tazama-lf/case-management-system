@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { XMarkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import type { ApproveCaseClosureDto } from '../services/caseService';
+import type { ApproveCaseClosureDto, TaskDTO } from '../services/caseService';
+import { commentService } from '../services/commentService';
+import type { CommentsByCaseId } from '../services/commentService';
 
 interface CaseClosureDecisionModalProps {
   open: boolean;
@@ -9,6 +11,7 @@ interface CaseClosureDecisionModalProps {
   caseName?: string;
   recommendedOutcome?: string;
   finalNotes?: string;
+  taskList?: TaskDTO[] | '';
   recommendations?: string;
   onApprove: (data: ApproveCaseClosureDto) => Promise<void>;
   onReject: (rejectionReason: string) => Promise<void>;
@@ -23,11 +26,13 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   caseName,
   recommendedOutcome,
   finalNotes,
+  taskList,
   recommendations,
   onApprove,
   onReject
 }) => {
   const [decision, setDecision] = useState<DecisionType | null>(null);
+  const [tasks, setTasks] = useState<CommentsByCaseId[]>([]);
   const [formData, setFormData] = useState<{
     finalOutcome: ApproveCaseClosureDto['finalOutcome'];
     supervisorComments: string;
@@ -39,6 +44,29 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+
+    if (decision === 'approve' || decision === 'reject') return;
+
+    const approveClosureTask = Array.isArray(taskList)
+      ? taskList.find(t => t.name === "Approve Case Closure")
+      : undefined;
+
+    const taskId = approveClosureTask?.task_id || '';
+    if (!taskId) return;
+
+    async function loadTasks() {
+      try {
+        const data = await commentService.getCommentsByTaskId(taskId);
+        setTasks(data);
+      } catch (error) {
+        console.error('Failed to load comments', error);
+      }
+    }
+
+    loadTasks();
+  }, [decision, taskList]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -218,6 +246,28 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   </span>
                 </div>
               </div>
+              <div>
+                {/*Investigator's Notes*/}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Investigator's Notes
+                </label>
+                {!tasks.length ? (
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
+                  </div>
+                ) : (
+                  tasks.map((c) => (
+                    <div key={c.comment_id} className="space-y-3 mb-2">
+                      <div className="w-full rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-[80px] max-h-40 overflow-y-auto">
+                        <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                          {c.note}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
 
               {/* Final Outcome */}
               <div>
@@ -339,6 +389,27 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <strong>Important:</strong> When rejecting a case closure, provide detailed feedback explaining what additional investigation or information is required. The case will be returned to the investigator for further work.
                 </p>
               </div>
+              <div>
+                {/*Investigator's Notes*/}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Investigator's Notes
+                </label>
+                {!tasks.length ? (
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
+                  </div>
+                ) : (
+                  tasks.map((c) => (
+                    <div key={c.comment_id} className="space-y-3 mb-2">
+                      <div className="w-full rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-[80px] max-h-40 overflow-y-auto">
+                        <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                          {c.note}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
               {/* Rejection Reason */}
               <div>
@@ -396,7 +467,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || formData.rejectionReason.trim().length < 15}
+                  disabled={isSubmitting || formData.rejectionReason.trim().length < 20}
                   className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isSubmitting ? (

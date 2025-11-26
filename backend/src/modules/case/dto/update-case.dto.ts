@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CaseStatus, CaseType, Priority } from '@prisma/client';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { CaseStatus, CaseType, Priority, PredictionOutcome } from '@prisma/client';
+import { IsEnum, IsOptional, IsUUID, IsNumber,IsString, MaxLength } from 'class-validator';
 
 export class UpdateCaseDto {
   @ApiProperty({
@@ -34,4 +34,35 @@ export class UpdateCaseDto {
   @IsEnum(CaseType)
   @IsOptional()
   caseType?: CaseType;
+
+  @IsEnum(PredictionOutcome)
+  @ApiProperty({
+    description: 'Prediction outcome of the alert',
+    example: PredictionOutcome.TRUE_POSITIVE,
+  })
+  @IsOptional()
+  predictionOutcome?: PredictionOutcome;
+
+  @IsNumber()
+  @ApiProperty({
+    description: 'Confidence percentage of the alert',
+    example: 85,
+  })
+  confidence?: number;
+
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+
+  @ApiProperty({
+    description: 'Priority score for the case (0-1)',
+    example: 0.75,
+    type: 'number',
+    minimum: 0,
+    maximum: 1,
+  })
+  @IsNumber()
+  priorityScore?: number;
+
+     
 }

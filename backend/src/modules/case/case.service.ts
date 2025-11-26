@@ -15,6 +15,7 @@ import { CaseReopeningService } from './services/case-reopening.service';
 import { CaseClosureApprovalService } from './services/case-closure-approval.service';
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
+import { AlertRepository } from '../repository/alert.repository';
 import {
   CloseCaseDto,
   SystemCaseCreationDto,
@@ -39,6 +40,7 @@ export class CaseService {
     private readonly caseClosureApprovalService: CaseClosureApprovalService,
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
+    private readonly alertRepository: AlertRepository
   ) {}
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
@@ -388,6 +390,24 @@ export class CaseService {
 
         this.logger.log(
           `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
+          CaseService.name,
+        );
+      }
+
+
+      const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
+      if (getAlertIdByCaseId) {
+        const alertUpdateData = {
+          priority_score: updateData.priorityScore,
+          priority: updateData.priority,
+          alertType: updateData.caseType,
+          predictionOutcome: updateData.predictionOutcome,
+          confidencePer: updateData.confidence,
+          case_id: caseId, 
+        };
+        await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
+        this.logger.log(
+          `[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`,
           CaseService.name,
         );
       }

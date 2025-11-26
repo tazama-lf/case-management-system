@@ -49,6 +49,18 @@ export class AlertRepository {
     return alert;
   }
 
+  async getAlertByCaseId(caseId: string) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { case_id: caseId },
+    });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+    }
+
+    return alert.alert_id;
+  }
+
   async updateAlert(alertId: string, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
       if (!tx) {

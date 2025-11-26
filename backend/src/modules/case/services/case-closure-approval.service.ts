@@ -166,7 +166,7 @@ export class CaseClosureApprovalService {
               data: {
                 user_id: userId,
                 case_id: caseId,
-                note: `Supervisor Direct Closure:\n${dto.finalNotes || ''}\n\nFinal Outcome: ${dto.recommendedOutcome}`,
+                note: `Supervisor Direct Closure:\n${dto.finalNotes || ''}\nFinal Outcome: ${dto.recommendedOutcome}`,
               },
             });
           }
@@ -244,7 +244,7 @@ export class CaseClosureApprovalService {
           },
         });
 
-        await this.taskService.createTask({
+        const createTask = await this.taskService.createTask({
             caseId,
             status: TaskStatus.STATUS_01_UNASSIGNED,
             name: TASK_NAMES.APPROVE_CASE_CLOSURE,
@@ -258,6 +258,7 @@ export class CaseClosureApprovalService {
           await tx.comment.create({
             data: {
               user_id: userId,
+              task_id: createTask.task_id,
               case_id: caseId,
               note: `Final Investigation Summary:\n${dto.finalNotes || ''}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
             },

@@ -44,6 +44,11 @@ interface CreateCaseModalProps {
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
+    confidence: number;
+    predictionOutcome?: PredictionOutcome;
+    note: string;
+    status: CaseStatus;
+
   }) => void;
   onSaveDraft?: (payload: {
     alertId?: string;
@@ -91,7 +96,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
 
-  const [status, setStatus] = React.useState<CaseStatus>('STATUS_81_CLOSED_REFUTED');
+  const [status, setStatus] = React.useState<CaseStatus>('STATUS_02_READY_FOR_ASSIGNMENT');
   const [predictionOutcome, setPredictionOutcome] = React.useState<'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'>('FALSE_POSITIVE');
   const [note, setNote] = React.useState('');
   const [priority, setPriority] = React.useState<Priority>('NEW');
@@ -156,7 +161,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     setSelectedAlert(null);
     setPriorityScore(initial?.priorityScore || 0.33);
     setConfidence(initial?.confidence || 0);
-    setStatus('STATUS_81_CLOSED_REFUTED');
+    setStatus('STATUS_02_READY_FOR_ASSIGNMENT');
     setAlertType(initial?.alertType || 'FRAUD');
     setAssignee(initial?.assignee || '');
     setValidationErrors({});
@@ -343,6 +348,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         priority,
         priorityScore,
         alertType,
+        predictionOutcome,
+        confidence,
+        status,
+        note,
         assignee: assignee || undefined,
       });
     }
