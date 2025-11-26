@@ -8,11 +8,11 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus, WorkQueue } from '@prisma/client';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import {
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
-  TaskAssignedEvent,
-  TaskUnassignedEvent,
-  CaseStatusChangedEvent,
+	TaskCreatedEvent,
+	TaskStatusChangedEvent,
+	TaskAssignedEvent,
+	TaskUnassignedEvent,
+	CaseStatusChangedEvent,
 } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
@@ -20,421 +20,476 @@ import { FlowableService } from '../flowable/flowable.service';
 import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 
 export interface TaskWithCase extends Task {
-  case: {
-    case_id: string;
-    priority: string;
-    status: string;
-    created_at: Date;
-  };
+	case: {
+		case_id: string;
+		priority: string;
+		status: string;
+		created_at: Date;
+	};
 }
 
 @Injectable()
 export class TaskService {
-  constructor(
-    private readonly taskRepository: TaskRepository,
-    private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2,
-    private readonly notificationService: NotificationService,
-    private readonly lifecycle: TaskLifecycleService,
-    private readonly flowableService: FlowableService,
-    private readonly taskBridgeService: TaskBridgeService,
-  ) {}
+	constructor(
+		private readonly taskRepository: TaskRepository,
+		private readonly logger: LoggerService,
+		private readonly auditLogService: AuditLogService,
+		private readonly eventEmitter: EventEmitter2,
+		private readonly notificationService: NotificationService,
+		private readonly lifecycle: TaskLifecycleService,
+		private readonly flowableService: FlowableService,
+		private readonly taskBridgeService: TaskBridgeService,
+	) { }
 
-  async createTask(taskDTO: CreateTaskDto, userId: string) {
-    return this.taskBridgeService.createTask(taskDTO, userId);
-  }
-  async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
-    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId);
-  }
+	async createTask(taskDTO: CreateTaskDto, userId: string) {
+		return this.taskBridgeService.createTask(taskDTO, userId);
+	}
+	async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
+		return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId);
+	}
 
-  async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
-    this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
+	async updateTaskStatus(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
+		this.logger.log(`Start - Update Task Status: ${taskId}`, TaskService.name);
 
-    try {
-      const existingTask = await this.taskRepository.findTaskWithCase(taskId);
+		try {
+			const existingTask = await this.taskRepository.findTaskWithCase(taskId);
 
-      if (!existingTask) {
-        throw new NotFoundException(`Task ${taskId} not found`);
-      }
+			if (!existingTask) {
+				throw new NotFoundException(`Task ${taskId} not found`);
+			}
 
-      const updateInput: Prisma.TaskUpdateInput = {
-        status: updateData.status,
-        description: updateData.description,
-        assigned_user_id:
-          updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
-      };
+			const updateInput: Prisma.TaskUpdateInput = {
+				status: updateData.status,
+				description: updateData.description,
+				assigned_user_id:
+					updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+			};
 
-      const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
-      const shouldPromoteCaseToInProgress =
-        statusChanged && updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && existingTask.name === 'Investigate Case';
+			let updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
 
-      let updatedTask: Task;
-      let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;
-      if (shouldPromoteCaseToInProgress) {
-        const txResult = await this.taskRepository.transaction(async (tx) => {
-          const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
+			await this.flowableService.handleTaskCompleted({
+				caseId: updatedTask.case_id,
+				taskName: updatedTask.name!,
+				newStatus: updatedTask.status!,
+				completionVariables: {
+					// Add any variables needed for Flowable process upon task completion
+				},
+			});
 
-          const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tx);
-          if (!caseRecord) throw new NotFoundException(`Case ${taskRecord.case_id} not found`);
+			this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
-          if (this.isCaseEligibleForInProgress(caseRecord.status)) {
-            const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
-            const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
-            if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
-            await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+			this.auditLogService.logAction({
+				userId,
+				actionPerformed: `Updated task ${taskId}`,
+				entityName: TaskService.name,
+				operation: 'updateTask',
+				outcome: Outcome.SUCCESS,
+				performedAt: new Date(),
+			});
 
-            await this.flowableService.handleTaskAssigned({
-              taskId: taskRecord.task_id,
-              caseId: taskRecord.case_id,
-              assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
-              taskName: existingTask.name!,
-            });
+			return updatedTask;
+		} catch (error) {
+			this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
 
-            return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS };
-          }
+			this.auditLogService.logAction({
+				userId,
+				actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
+				entityName: TaskService.name,
+				operation: 'updateTask',
+				outcome: Outcome.FAILURE,
+				performedAt: new Date(),
+			});
+			throw error;
+		}
+	}
 
-          return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: caseRecord.status };
-        });
+	async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
+		this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
 
-        updatedTask = txResult.taskRecord;
-        if (txResult.updatedCaseStatus !== txResult.previousCaseStatus) {
-          caseStatusTransition = { previous: txResult.previousCaseStatus, next: txResult.updatedCaseStatus };
-        }
-      } else {
-        updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
+		try {
+			const existingTask = await this.taskRepository.findTaskWithCase(taskId);
 
-        await this.flowableService.handleTaskAssigned({
-          taskId: updatedTask.task_id,
-          caseId: updatedTask.case_id,
-          assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
-          taskName: existingTask.name!,
-        });
-      }
+			if (!existingTask) {
+				throw new NotFoundException(`Task ${taskId} not found`);
+			}
 
-      this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
+			const updateInput: Prisma.TaskUpdateInput = {
+				status: updateData.status,
+				description: updateData.description,
+				assigned_user_id:
+					updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+			};
 
-      this.auditLogService.logAction({
-        userId,
-        actionPerformed: `Updated task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'updateTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
+			const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
+			const shouldPromoteCaseToInProgress =
+				statusChanged && updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && existingTask.name === 'Investigate Case';
 
-      return updatedTask;
-    } catch (error) {
-      this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
+			let updatedTask: Task;
+			let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;
+			if (shouldPromoteCaseToInProgress) {
+				const txResult = await this.taskRepository.transaction(async (tx) => {
+					const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
 
-      this.auditLogService.logAction({
-        userId,
-        actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
-        entityName: TaskService.name,
-        operation: 'updateTask',
-        outcome: Outcome.FAILURE,
-        performedAt: new Date(),
-      });
-      throw error;
-    }
-  }
+					const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tx);
+					if (!caseRecord) throw new NotFoundException(`Case ${taskRecord.case_id} not found`);
 
-  async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
-    this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
+					if (this.isCaseEligibleForInProgress(caseRecord.status)) {
+						const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
+						const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
+						if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
+						await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
 
-    try {
-      const dbTasks = (await this.taskRepository.findTasks(
-        {
-          candidateGroup: candidateGroup,
-          status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
-        },
-        true,
-      )) as TaskWithCase[];
+						await this.flowableService.handleTaskAssigned({
+							taskId: taskRecord.task_id,
+							caseId: taskRecord.case_id,
+							assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
+							taskName: existingTask.name!,
+						});
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getTasksByCandidateGroup',
-        entityName: TaskService.name,
-        actionPerformed: `Successfully retrieved ${dbTasks.length} tasks for candidateGroup: ${candidateGroup}`,
-        outcome: Outcome.SUCCESS,
-      });
+						return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS };
+					}
 
-      return dbTasks;
-    } catch (error) {
-      this.logger.error(`Error retrieving tasks for candidateGroup: ${candidateGroup}`, error, TaskService.name);
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getTasksByCandidateGroup',
-        entityName: TaskService.name,
-        actionPerformed: `Error retrieving tasks for candidateGroup: ${candidateGroup}`,
-        outcome: Outcome.FAILURE,
-      });
-      throw error;
-    }
-  }
+					return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: caseRecord.status };
+				});
 
-  async getInvestigationQueue() {
-    try {
-      const dbTasks: TaskWithCase[] = (await this.taskRepository.findTasks(
-        { candidateGroup: 'investigations', status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED] } },
-        true,
-      )) as any;
+				updatedTask = txResult.taskRecord;
+				if (txResult.updatedCaseStatus !== txResult.previousCaseStatus) {
+					caseStatusTransition = { previous: txResult.previousCaseStatus, next: txResult.updatedCaseStatus };
+				}
+			} else {
+				updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
 
-      return dbTasks;
-    } catch (error) {
-      this.logger.error('Error retrieving investigation queue', error, TaskService.name);
-      throw error;
-    }
-  }
+				await this.flowableService.handleTaskAssigned({
+					taskId: updatedTask.task_id,
+					caseId: updatedTask.case_id,
+					assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
+					taskName: existingTask.name!,
+				});
+			}
 
-  async getTasksByCaseId(caseId: string, userId?: string) {
-    this.logger.log('Retrieving tasks by case', TaskService.name);
+			this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
-    try {
-      const tasks = await this.taskRepository.findTasks({ case_id: caseId }, true);
+			this.auditLogService.logAction({
+				userId,
+				actionPerformed: `Updated task ${taskId}`,
+				entityName: TaskService.name,
+				operation: 'updateTask',
+				outcome: Outcome.SUCCESS,
+				performedAt: new Date(),
+			});
 
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getTasksByCaseId',
-          entityName: TaskService.name,
-          actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
-          outcome: Outcome.SUCCESS,
-          performedAt: new Date(),
-        });
-      }
+			return updatedTask;
+		} catch (error) {
+			this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
 
-      return tasks;
-    } catch (error) {
-      this.logger.error('Error retrieving tasks', error, TaskService.name);
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getTasksByCaseId',
-          entityName: TaskService.name,
-          actionPerformed: `Error retrieving tasks for case: ${caseId}`,
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-      }
-      throw error;
-    }
-  }
+			this.auditLogService.logAction({
+				userId,
+				actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
+				entityName: TaskService.name,
+				operation: 'updateTask',
+				outcome: Outcome.FAILURE,
+				performedAt: new Date(),
+			});
+			throw error;
+		}
+	}
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
-    return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId);
-  }
+	async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
+		this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
 
-  async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {
-    return this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
-  }
+		try {
+			const dbTasks = (await this.taskRepository.findTasks(
+				{
+					candidateGroup: candidateGroup,
+					status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
+				},
+				true,
+			)) as TaskWithCase[];
 
-  async getTasks(status?: string) {
-    try {
-      const where = status ? { status: status as TaskStatus } : {};
-      return await this.taskRepository.findTasks(where, true);
-    } catch (error) {
-      this.logger.error('Error retrieving tasks', error, TaskService.name);
-      throw error;
-    }
-  }
+			this.auditLogService.logAction({
+				userId,
+				operation: 'getTasksByCandidateGroup',
+				entityName: TaskService.name,
+				actionPerformed: `Successfully retrieved ${dbTasks.length} tasks for candidateGroup: ${candidateGroup}`,
+				outcome: Outcome.SUCCESS,
+			});
 
-  async getTaskById(taskId: string) {
-    try {
-      return await this.taskRepository.findTaskWithCase(taskId);
-    } catch (error) {
-      this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
-      throw error;
-    }
-  }
+			return dbTasks;
+		} catch (error) {
+			this.logger.error(`Error retrieving tasks for candidateGroup: ${candidateGroup}`, error, TaskService.name);
+			this.auditLogService.logAction({
+				userId,
+				operation: 'getTasksByCandidateGroup',
+				entityName: TaskService.name,
+				actionPerformed: `Error retrieving tasks for candidateGroup: ${candidateGroup}`,
+				outcome: Outcome.FAILURE,
+			});
+			throw error;
+		}
+	}
 
-  async getWorkQueue(filters: {
-    role?: string;
-    candidateGroup?: string;
-    page?: number;
-    limit?: number;
-    unassignedOnly?: boolean;
-    assignedToMe?: string;
-  }) {
-    try {
-      const { candidateGroup, page = 1, limit = 20, unassignedOnly = false, assignedToMe } = filters;
+	async getInvestigationQueue() {
+		try {
+			const dbTasks: TaskWithCase[] = (await this.taskRepository.findTasks(
+				{ candidateGroup: 'investigations', status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED] } },
+				true,
+			)) as any;
 
-      const whereClause: any = {
-        status: {
-          in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
-        },
-      };
+			return dbTasks;
+		} catch (error) {
+			this.logger.error('Error retrieving investigation queue', error, TaskService.name);
+			throw error;
+		}
+	}
 
-      if (candidateGroup) {
-        whereClause.candidateGroup = candidateGroup;
-      }
+	async getTasksByCaseId(caseId: string, userId?: string) {
+		this.logger.log('Retrieving tasks by case', TaskService.name);
 
-      if (unassignedOnly) {
-        whereClause.assigned_user_id = null;
-      } else if (assignedToMe) {
-        whereClause.assigned_user_id = assignedToMe;
-      }
+		try {
+			const tasks = await this.taskRepository.findTasks({ case_id: caseId }, true);
 
-      const totalCount = await this.taskRepository.countTasks(whereClause);
+			if (userId) {
+				this.auditLogService.logAction({
+					userId,
+					operation: 'getTasksByCaseId',
+					entityName: TaskService.name,
+					actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
+					outcome: Outcome.SUCCESS,
+					performedAt: new Date(),
+				});
+			}
 
-      const start = (page - 1) * limit;
-      const dbTasks = (await this.taskRepository.findTasks(whereClause, true, start, limit)) as TaskWithCase[];
+			return tasks;
+		} catch (error) {
+			this.logger.error('Error retrieving tasks', error, TaskService.name);
+			if (userId) {
+				this.auditLogService.logAction({
+					userId,
+					operation: 'getTasksByCaseId',
+					entityName: TaskService.name,
+					actionPerformed: `Error retrieving tasks for case: ${caseId}`,
+					outcome: Outcome.FAILURE,
+					performedAt: new Date(),
+				});
+			}
+			throw error;
+		}
+	}
 
-      const tasks = dbTasks.map((task) => ({
-        taskId: task.task_id,
-        name: task.name,
-        description: task.description,
-        status: task.status,
-        assignedUser: task.assigned_user_id,
-        candidateGroup: task.candidateGroup,
-        case: task.case,
-        created: task.created_at,
-      }));
+	async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
+		return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId);
+	}
 
-      return {
-        tasks,
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit),
-      };
-    } catch (error) {
-      this.logger.error('Error retrieving work queue', error, TaskService.name);
-      throw error;
-    }
-  }
+	async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {
+		return this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
+	}
 
-  async getWorkQueueStatistics(userId: string) {
-    try {
-      const candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
-      const statistics: Record<string, any> = {};
+	async getTasks(status?: string) {
+		try {
+			const where = status ? { status: status as TaskStatus } : {};
+			return await this.taskRepository.findTasks(where, true);
+		} catch (error) {
+			this.logger.error('Error retrieving tasks', error, TaskService.name);
+			throw error;
+		}
+	}
 
-      for (const group of candidateGroups) {
-        const tasks = await this.taskRepository.findTasks(
-          {
-            candidateGroup: group,
-            status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
-          },
-          false,
-        );
+	async getTaskById(taskId: string) {
+		try {
+			return await this.taskRepository.findTaskWithCase(taskId);
+		} catch (error) {
+			this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
+			throw error;
+		}
+	}
 
-        statistics[group] = {
-          total: tasks.length,
-          unassigned: tasks.filter((t) => !t.assigned_user_id).length,
-          assigned: tasks.filter((t) => t.assigned_user_id).length,
-        };
-      }
+	async getWorkQueue(filters: {
+		role?: string;
+		candidateGroup?: string;
+		page?: number;
+		limit?: number;
+		unassignedOnly?: boolean;
+		assignedToMe?: string;
+	}) {
+		try {
+			const { candidateGroup, page = 1, limit = 20, unassignedOnly = false, assignedToMe } = filters;
 
-      const userTasks = await this.taskRepository.findTasks(
-        {
-          assigned_user_id: userId,
-          status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
-        },
-        false,
-      );
+			const whereClause: any = {
+				status: {
+					in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+				},
+			};
 
-      return {
-        queues: statistics,
-        userStats: {
-          totalAssigned: userTasks.length,
-          byStatus: userTasks.reduce((acc: any, task) => {
-            const status = task.status || 'unknown';
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-          }, {}),
-        },
-      };
-    } catch (error) {
-      this.logger.error('Error getting work queue statistics', error, TaskService.name);
-      throw error;
-    }
-  }
+			if (candidateGroup) {
+				whereClause.candidateGroup = candidateGroup;
+			}
 
-  async claimTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-    this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
+			if (unassignedOnly) {
+				whereClause.assigned_user_id = null;
+			} else if (assignedToMe) {
+				whereClause.assigned_user_id = assignedToMe;
+			}
 
-    try {
-      const existingTask = await this.taskRepository.findTaskById(taskId);
-      if (!existingTask) {
-        throw new NotFoundException(`Task ${taskId} not found`);
-      }
+			const totalCount = await this.taskRepository.countTasks(whereClause);
 
-      const previousAssignedUserId = existingTask.assigned_user_id;
+			const start = (page - 1) * limit;
+			const dbTasks = (await this.taskRepository.findTasks(whereClause, true, start, limit)) as TaskWithCase[];
 
-      const updatedTask = await this.taskRepository.updateTask(taskId, {
-        assigned_user_id: userId,
-        status: TaskStatus.STATUS_10_ASSIGNED,
-      });
+			const tasks = dbTasks.map((task) => ({
+				taskId: task.task_id,
+				name: task.name,
+				description: task.description,
+				status: task.status,
+				assignedUser: task.assigned_user_id,
+				candidateGroup: task.candidateGroup,
+				case: task.case,
+				created: task.created_at,
+			}));
 
-      this.eventEmitter.emit(
-        'task.assigned',
-        new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId || undefined),
-      );
+			return {
+				tasks,
+				total: totalCount,
+				page,
+				limit,
+				totalPages: Math.ceil(totalCount / limit),
+			};
+		} catch (error) {
+			this.logger.error('Error retrieving work queue', error, TaskService.name);
+			throw error;
+		}
+	}
 
-      const auditService = auditLogService || this.auditLogService;
-      auditService.logAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
+	async getWorkQueueStatistics(userId: string) {
+		try {
+			const candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
+			const statistics: Record<string, any> = {};
 
-      return updatedTask;
-    } catch (error) {
-      this.logger.error(`Error claiming task ${taskId}`, error, TaskService.name);
-      throw error;
-    }
-  }
+			for (const group of candidateGroups) {
+				const tasks = await this.taskRepository.findTasks(
+					{
+						candidateGroup: group,
+						status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
+					},
+					false,
+				);
 
-  async unassignTask(taskId: string, userId: string, tenantId: string, reason?: string) {
-    return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
-  }
+				statistics[group] = {
+					total: tasks.length,
+					unassigned: tasks.filter((t) => !t.assigned_user_id).length,
+					assigned: tasks.filter((t) => t.assigned_user_id).length,
+				};
+			}
 
-  async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-    return this.lifecycle.releaseTask(taskId, userId);
-  }
+			const userTasks = await this.taskRepository.findTasks(
+				{
+					assigned_user_id: userId,
+					status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
+				},
+				false,
+			);
 
-  async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-    return this.lifecycle.completeTask(taskId, userId);
-  }
+			return {
+				queues: statistics,
+				userStats: {
+					totalAssigned: userTasks.length,
+					byStatus: userTasks.reduce((acc: any, task) => {
+						const status = task.status || 'unknown';
+						acc[status] = (acc[status] || 0) + 1;
+						return acc;
+					}, {}),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Error getting work queue statistics', error, TaskService.name);
+			throw error;
+		}
+	}
 
-  async getUserTasks(userId: string, includeCompleted: boolean = false) {
-    try {
-      const statusFilter = includeCompleted
-        ? {}
-        : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+	async claimTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+		this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
-      return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
-    } catch (error) {
-      this.logger.error(`Error retrieving tasks for user ${userId}`, error, TaskService.name);
-      throw error;
-    }
-  }
+		try {
+			const existingTask = await this.taskRepository.findTaskById(taskId);
+			if (!existingTask) {
+				throw new NotFoundException(`Task ${taskId} not found`);
+			}
 
-  async reassignTaskToWorkQueue(
-    taskId: string,
-    targetWorkQueueId: string,
-    userId: string,
-    tenantId: string,
-    reason?: string,
-    assignedUserId?: string,
-  ) {
-    return this.lifecycle.reassignTaskToWorkQueue(taskId, targetWorkQueueId, userId, tenantId, reason, assignedUserId);
-  }
+			const previousAssignedUserId = existingTask.assigned_user_id;
 
-  private isCaseEligibleForInProgress(status: CaseStatus): boolean {
-    const eligibleStatuses: CaseStatus[] = [
-      CaseStatus.STATUS_10_ASSIGNED,
-      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      CaseStatus.STATUS_03_RETURNED,
-    ];
+			const updatedTask = await this.taskRepository.updateTask(taskId, {
+				assigned_user_id: userId,
+				status: TaskStatus.STATUS_10_ASSIGNED,
+			});
 
-    return eligibleStatuses.includes(status);
-  }
+			this.eventEmitter.emit(
+				'task.assigned',
+				new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId || undefined),
+			);
+
+			const auditService = auditLogService || this.auditLogService;
+			auditService.logAction({
+				userId,
+				actionPerformed: `Claimed task ${taskId}`,
+				entityName: TaskService.name,
+				operation: 'claimTask',
+				outcome: Outcome.SUCCESS,
+				performedAt: new Date(),
+			});
+
+			return updatedTask;
+		} catch (error) {
+			this.logger.error(`Error claiming task ${taskId}`, error, TaskService.name);
+			throw error;
+		}
+	}
+
+	async unassignTask(taskId: string, userId: string, tenantId: string, reason?: string) {
+		return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
+	}
+
+	async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+		return this.lifecycle.releaseTask(taskId, userId);
+	}
+
+	async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+		return this.lifecycle.completeTask(taskId, userId);
+	}
+
+	async getUserTasks(userId: string, includeCompleted: boolean = false) {
+		try {
+			const statusFilter = includeCompleted
+				? {}
+				: {
+					status: {
+						not: TaskStatus.STATUS_30_COMPLETED,
+					},
+				};
+
+			return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
+		} catch (error) {
+			this.logger.error(`Error retrieving tasks for user ${userId}`, error, TaskService.name);
+			throw error;
+		}
+	}
+
+	async reassignTaskToWorkQueue(
+		taskId: string,
+		targetWorkQueueId: string,
+		userId: string,
+		tenantId: string,
+		reason?: string,
+		assignedUserId?: string,
+	) {
+		return this.lifecycle.reassignTaskToWorkQueue(taskId, targetWorkQueueId, userId, tenantId, reason, assignedUserId);
+	}
+
+	private isCaseEligibleForInProgress(status: CaseStatus): boolean {
+		const eligibleStatuses: CaseStatus[] = [
+			CaseStatus.STATUS_10_ASSIGNED,
+			CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+			CaseStatus.STATUS_03_RETURNED,
+		];
+
+		return eligibleStatuses.includes(status);
+	}
 }

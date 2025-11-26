@@ -21,10 +21,26 @@
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="00_DRAFT"/>
                 <flowable:formProperty id="isTriageAlert" name="Is Triage Alert" type="boolean" default="false"/>
                 <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
+                <flowable:formProperty id="creatorUserId" name="Creator User ID" type="string"/>
             </extensionElements>
         </startEvent>
 
-        <!-- Creation Type Gateway -->
+        <!-- Complete New Case Task - PAUSES FLOW UNTIL MANUALLY COMPLETED -->
+        <userTask id="completeCaseCreation" name="Complete New Case"
+                  flowable:assignee="${creatorUserId}">
+            <documentation>Complete case creation - Flow pauses here until task is completed via API</documentation>
+            <extensionElements>
+                <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="medium">
+                    <flowable:value id="high" name="High"/>
+                    <flowable:value id="medium" name="Medium"/>
+                    <flowable:value id="low" name="Low"/>
+                </flowable:formProperty>
+                <flowable:formProperty id="readyForAssignment" name="Ready for Assignment" 
+                                       type="boolean" default="true"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Creation Type Gateway - AFTER task completion -->
         <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
 
         <!-- AUTOMATIC CREATION PATH -->
@@ -50,9 +66,6 @@
         <!-- MANUAL CREATION PATH -->
         <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
         
-        <!-- CASE STATUS GATEWAY -->
-        <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/>
-
         <!-- SUPERVISOR APPROVAL PATH -->
         <userTask id="approveCaseCreation" name="Approve Case Creation"
                   flowable:candidateGroups="supervisors">
@@ -68,43 +81,6 @@
         </userTask>
 
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
-
-        <!-- CASE ASSIGNMENT LOGIC -->
-        <userTask id="completeCaseCreation" name="Complete New Case"
-                  flowable:candidateGroups="investigations">
-            <documentation>Complete case creation and prepare for assignment</documentation>
-            <extensionElements>
-                <!-- <flowable:formProperty id="caseTitle" name="Case Title" type="string" required="true"/>
-                <flowable:formProperty id="caseDescription" name="Case Description" type="string" required="true"/> -->
-                <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="medium">
-                    <flowable:value id="high" name="High"/>
-                    <flowable:value id="medium" name="Medium"/>
-                    <flowable:value id="low" name="Low"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="readyForAssignment" name="Ready for Assignment" 
-                                       type="boolean" default="true"/>
-                <flowable:formProperty id="assignToSelf" name="Assign to Self" type="boolean" default="false"/>
-            </extensionElements>
-        </userTask>
-
-        <!-- Assignment Decision Gateway -->
-        <exclusiveGateway id="assignmentGateway" name="Assignment Required?"/>
-
-        <!-- Assignment Task -->
-        <userTask id="assignCase" name="Assign Case"
-                  flowable:candidateGroups="supervisors">
-            <documentation>Supervisor assigns the case to an investigator</documentation>
-            <extensionElements>
-                <flowable:formProperty id="assignedTo" name="Assign To" type="string" required="true"/>
-                <flowable:formProperty id="assignmentNotes" name="Assignment Notes" type="string"/>
-                <flowable:formProperty id="priority" name="Priority" type="enum" default="medium">
-                    <flowable:value id="high" name="High"/>
-                    <flowable:value id="medium" name="Medium"/>
-                    <flowable:value id="low" name="Low"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="dueDate" name="Due Date" type="date"/>
-            </extensionElements>
-        </userTask>
 
         <!-- INVESTIGATION TASK -->
         <userTask id="investigateCase" name="Investigate Case"
@@ -192,16 +168,20 @@
 
         <!-- SEQUENCE FLOWS -->
 
-        <!-- Initial routing -->
-        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="creationTypeGateway"/>
+        <!-- Initial flow: Start → Complete Case Creation (PAUSES HERE) -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="completeCaseCreation"/>
 
-        <!-- Automatic creation path -->
+        <!-- After task completion → Check creation type -->
+        <sequenceFlow id="flowAfterCompletion" sourceRef="completeCaseCreation" targetRef="creationTypeGateway"/>
+
+        <!-- Automatic creation path → Check autoclose -->
         <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway" targetRef="autocloseGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'AUTOMATIC_SYSTEM'}
             </conditionExpression>
         </sequenceFlow>
 
+        <!-- Autoclose eligible → Perform autoclose -->
         <sequenceFlow id="flowAutoclose" sourceRef="autocloseGateway" targetRef="performAutoclose">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autocloseEligible == true}
@@ -210,57 +190,37 @@
 
         <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
 
-        <!-- From autoclose to case creation for non-eligible cases -->
-        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autocloseGateway" targetRef="completeCaseCreation">
+        <!-- Autoclose NOT eligible → Go to role gateway -->
+        <sequenceFlow id="flowAutocloseToRoleGateway" sourceRef="autocloseGateway" targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autocloseEligible == false}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Manual creation path -->
-        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="caseStatusGateway">
+        <!-- Manual creation path → Go to role gateway -->
+        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'MANUAL'}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Case status routing for manual creation -->
-        <sequenceFlow id="flowDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
+        <!-- Role Gateway: Supervisor → Investigate directly -->
+        <sequenceFlow id="flowSupervisor" sourceRef="roleGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus == 'STATUS_00_DRAFT'}
+                ${creatorRole == 'SUPERVISOR'}
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowNonDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
+        <!-- Role Gateway: Investigator → Needs approval -->
+        <sequenceFlow id="flowInvestigator" sourceRef="roleGateway" targetRef="approveCaseCreation">
             <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus != 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- DRAFT cases: All roles go directly to case creation (no approval needed) -->
-        <sequenceFlow id="flowDraftCases" sourceRef="roleGateway" targetRef="completeCaseCreation">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus == 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- NON-DRAFT cases: Supervisor goes directly to investigation -->
-        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- NON-DRAFT cases: Investigator needs approval -->
-        <sequenceFlow id="flowInvestigatorNonDraft" sourceRef="roleGateway" targetRef="approveCaseCreation">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
+                ${creatorRole == 'INVESTIGATOR'}
             </conditionExpression>
         </sequenceFlow>
 
         <sequenceFlow id="flowFromApproval" sourceRef="approveCaseCreation" targetRef="creationApprovalGateway"/>
 
-        <!-- After approval for NON-DRAFT investigator cases - go directly to investigation -->
+        <!-- Approval approved → Investigate -->
         <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationApproval == 'approve'}
@@ -272,25 +232,6 @@
                 ${creationApproval == 'reject'}
             </conditionExpression>
         </sequenceFlow>
-
-        <!-- Direct to Investigation -->
-        <sequenceFlow id="flowToInvestigation" sourceRef="completeCaseCreation" targetRef="investigateCase"/>
-
-        <!-- Assignment required -->
-        <sequenceFlow id="flowRequiresAssignment" sourceRef="assignmentGateway" targetRef="assignCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${readyForAssignment == true &amp;&amp; assignToSelf == false}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Self-assigned or direct to investigation -->
-        <sequenceFlow id="flowDirectToInvestigation" sourceRef="assignmentGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${readyForAssignment == true}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <sequenceFlow id="flowFromAssignment" sourceRef="assignCase" targetRef="investigateCase"/>
 
         <!-- Investigation decision routing -->
         <sequenceFlow id="flowFromInvestigation" sourceRef="investigateCase" targetRef="investigationDecisionGateway"/>

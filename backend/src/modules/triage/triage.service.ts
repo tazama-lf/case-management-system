@@ -81,7 +81,7 @@ export class TriageService {
       const completeNewCaseTask = completeNewCaseTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
       if (completeNewCaseTask) {
-        await this.taskService.updateTask(completeNewCaseTask.task_id, { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED }, userId);
+        await this.taskService.updateTaskStatus(completeNewCaseTask.task_id, { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED }, userId);
 
         await this.commentService.addComment(
           { caseId: alert.case_id, taskId: completeNewCaseTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
@@ -112,8 +112,22 @@ export class TriageService {
         );
 
         if (updateAlertDto.alertType === AlertType.FRAUD_AND_AML) {
+          // For FRAUD_AND_AML, create child cases only (they will have their own investigation tasks)
           await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, alert.case_id, priority);
           await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, alert.case_id, priority);
+        } else {
+          // For single alert types (AML or FRAUD), create investigation task
+          await this.taskService.createTask(
+            {
+              caseId: alert.case_id,
+              assignedUserId: userId,
+              name: 'Investigate Case',
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              description: 'Created for investigating case',
+              candidateGroup: 'investigations',
+            },
+            userId,
+          );
         }
 
         this.logger.log(
@@ -488,22 +502,22 @@ export class TriageService {
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
-
-      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
-
-      await this.caseCreationService.updateCaseStatus(
-        caseId,
-        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      await this.taskService.createTask(
+        {
+          caseId: caseId,
+          assignedUserId: userId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate Case',
+          description: investigateTaskDesc,
+        },
         userId,
-        priority,
-        alertType as CaseType,
       );
 
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_TRIGGERED',
+        operation: 'INVESTIGATION_TASK_CREATED',
         entityName: 'Task',
-        actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
+        actionPerformed: `Investigation task created for case ${caseId}.`,
         outcome: 'SUCCESS',
       });
 
@@ -511,22 +525,22 @@ export class TriageService {
         where: { case_id: caseId },
       });
 
-      this.logger.log(`AI triage completed for case ${caseId}. BPMN will create investigation task automatically.`, TriageService.name);
+      this.logger.log(`Investigation task created for case ${caseId}.`, TriageService.name);
 
       return {
         case: updatedCase,
-        message: 'Triage completed. Investigation task will be created by workflow engine.',
+        message: 'Investigation task created for case.',
       };
     } catch (error) {
       this.logger.error(`Failed to complete triage for case ${caseId}. Error: ${error.message}`, error.stack);
       await this.audit.logAction({
         userId,
-        operation: 'INVESTIGATION_TASK_TRIGGER_FAILED',
+        operation: 'INVESTIGATION_TASK_CREATION_FAILED',
         entityName: 'Task',
-        actionPerformed: `Failed to complete triage for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to create investigation task for case ${caseId}: ${error.message}`,
         outcome: 'FAILURE',
       });
-      throw new InternalServerErrorException('Failed to complete triage');
+      throw new InternalServerErrorException('Failed to create investigation task');
     }
   }
 

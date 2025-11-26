@@ -75,8 +75,8 @@ export class AlertService {
       const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
       const caseDetail: CreateCaseDto = {
         tenantId,
-        caseCreatorUserId: userId,
-        caseOwnerUserId: systemUuid,
+        caseCreatorUserId: systemUuid,
+        caseOwnerUserId: userId,
         status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,

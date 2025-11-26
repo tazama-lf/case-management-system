@@ -30,6 +30,7 @@ export class CaseEventListener {
           caseStatus: event.caseStatus,
           isTriageAlert: String(event.isTriageAlert),
           creatorRole: event.creatorRole || 'SUPERVISOR',
+          creatorUserId: event.creatorUserId,
         },
         event.caseId,
         event.tenantId,
