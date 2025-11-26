@@ -19,9 +19,7 @@ export interface CreateCommentDto {
 export class CommentService {
   private baseUrl = '/api/v1/comment';
 
-  /**
-   * Add a comment to a case or task
-   */
+  
   async addComment(dto: CreateCommentDto): Promise<Comment> {
     try {
       const response = await apiClient.post<Comment>(this.baseUrl, dto);
@@ -33,9 +31,7 @@ export class CommentService {
     }
   }
 
-  /**
-   * Get a specific comment by ID
-   */
+
   async getComment(commentId: string): Promise<Comment> {
     try {
       const response = await apiClient.get<Comment>(`${this.baseUrl}/${commentId}`);
@@ -47,9 +43,7 @@ export class CommentService {
     }
   }
 
-  /**
-   * Get all comments for a case
-   */
+ 
   async getCommentsByCase(caseId: string): Promise<Comment[]> {
     try {
       const response = await apiClient.get<Comment[]>(`${this.baseUrl}?caseId=${caseId}`);

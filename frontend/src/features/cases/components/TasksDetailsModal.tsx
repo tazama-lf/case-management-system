@@ -152,11 +152,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
                   taskId={tasks[0]?.task_id || ''}
+                  caseId={row?.id}
                   onSaveRequest={(uploadFn) => {
                     uploadEvidenceRef.current = uploadFn;
                   }}
                   onUploadComplete={() => {
-                 
+
                   }}
                 />
               </div>
