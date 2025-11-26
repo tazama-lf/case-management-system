@@ -163,10 +163,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
               {}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="alert-type-filter"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Alert Type
                 </label>
                 <select
+                  id="alert-type-filter"
                   value={searchFilters.type || ''}
                   onChange={(e) => onFilterChange('type', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -185,10 +189,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
               {}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="priority-filter"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Priority
                 </label>
                 <select
+                  id="priority-filter"
                   value={searchFilters.priority}
                   onChange={(e) => onFilterChange('priority', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -204,10 +212,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
               {}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="source-filter"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Source
                 </label>
                 <select
+                  id="source-filter"
                   value={searchFilters.source || ''}
                   onChange={(e) => onFilterChange('source', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -223,10 +235,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
               {}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="time-range-filter"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Time Range
                 </label>
                 <select
+                  id="time-range-filter"
                   value={searchFilters.timeRange}
                   onChange={(e) => handleTimeRangeChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -253,10 +269,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
               </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="custom-start-date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Start Date
                   </label>
                   <input
+                    id="custom-start-date"
                     type="date"
                     value={customDateRange.startDate}
                     onChange={(e) =>
@@ -266,10 +286,14 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="custom-end-date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     End Date
                   </label>
                   <input
+                    id="custom-end-date"
                     type="date"
                     value={customDateRange.endDate}
                     onChange={(e) =>
