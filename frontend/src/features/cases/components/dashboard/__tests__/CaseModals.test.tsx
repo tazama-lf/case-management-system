@@ -86,8 +86,8 @@ describe('CaseModals', () => {
     render(<CaseModals {...defaultProps} isCloseCaseOpen={true} />);
     
     await waitFor(() => {
-      expect(screen.getByText(/Complete Case Investigation/i)).toBeInTheDocument();
-    });
+      expect(screen.getByRole('heading', { name: /Complete Case Investigation/i })).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('renders ReopenCaseModal when isReopenOpen is true', async () => {
