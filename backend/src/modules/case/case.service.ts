@@ -264,10 +264,6 @@ export class CaseService {
     return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
   }
 
-  async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
-    return this.caseCreationApprovalService.createCaseSystemTransmission(payload, clientId, tenantId);
-  }
-
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     return this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
   }

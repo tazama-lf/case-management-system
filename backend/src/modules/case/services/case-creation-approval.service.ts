@@ -38,24 +38,6 @@ export class CaseCreationApprovalService {
     return missing;
   }
 
-  async createCaseSystemTransmission(payload: SystemCaseCreationDto, clientId: string, tenantId: string) {
-    try {
-      this.logger.log('System-to-system case creation initiated', CaseCreationApprovalService.name);
-
-      await this.auditLogService.logAction({
-        userId: clientId,
-        operation: 'createCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: 'Case creation triggered via system transmission',
-        outcome: Outcome.SUCCESS,
-      });
-      return { message: 'Case creation triggered via system transmission' };
-    } catch (error) {
-      this.logger.error(`Error in system-to-system case creation: ${error.message}`, error.stack, CaseCreationApprovalService.name);
-      throw error;
-    }
-  }
-
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     this.logger.log(`Start - Manual Case Creation`, CaseCreationApprovalService.name);
 
