@@ -18,7 +18,7 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSupervisor, setIsSupervisor] = useState(false);
+  const [isSupervisor, setIsSupervisor] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();
@@ -55,36 +55,36 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                <PlayIcon className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Reopen Case
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Case ID: {caseData?.id}
-                </p>
-              </div>
+      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+              <PlayIcon className="h-5 w-5 text-green-600" />
             </div>
-            <button
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Reopen Case
+              </h3>
+              <p className="text-sm text-gray-600">
+                Case ID: {caseData?.id}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
 
-          <div className="px-6 pb-4">
-            <p className="text-sm text-gray-700 mb-4">
-              Request reopening of a previously closed case for further investigation or correction.
-            </p>
+        <div className="px-6 pb-4">
+          <p className="text-sm text-gray-700 mb-4">
+            Request reopening of a previously closed case for further investigation or correction.
+          </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Reopening Workflow</h4>
               <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
                 <li>Only closed cases are eligible for reopening</li>
@@ -93,55 +93,55 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
                 <li>Case will transition to "PENDING REOPENING APPROVAL"</li>
                 <li>All actions will be logged accordingly</li>
               </ul>
+            </div> */}
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for reopening <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                required
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                placeholder="Provide detailed justification for reopening this case (minimum 10 characters)..."
+              />
+              <div className="mt-1 flex justify-between">
+                <p className="text-xs text-gray-500">
+                  {reason.length}/10 characters minimum
+                </p>
+              </div>
+              {!isReasonValid && reason.length > 0 && (
+                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+              )}
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="mb-6">
-                <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for reopening <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  rows={4}
-                  required
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                  placeholder="Provide detailed justification for reopening this case (minimum 10 characters)..."
-                />
-                <div className="mt-1 flex justify-between">
-                  <p className="text-xs text-gray-500">
-                    {reason.length}/10 characters minimum
-                  </p>
-                </div>
-                {!isReasonValid && reason.length > 0 && (
-                  <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
-                )}
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !isReasonValid}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSupervisor 
-                ? (isSubmitting ? 'Reopening Case...' : 'Reopen Case')
-                : (isSubmitting ? 'Requesting Reopening...' : 'Request Case Reopening')}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !isReasonValid}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSupervisor
+                  ? (isSubmitting ? 'Reopening Case...' : 'Reopen Case')
+                  : (isSubmitting ? 'Requesting Reopening...' : 'Request Case Reopening')}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
+    </div>
   );
 };
 

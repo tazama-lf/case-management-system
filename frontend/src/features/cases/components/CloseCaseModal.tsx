@@ -88,7 +88,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -110,10 +110,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         <form onSubmit={handleSubmit} className="p-6">
-          {}
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+          { }
+          {/* <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">
               Case Closure Workflow
             </h4>
@@ -130,9 +130,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 All actions will be logged in audit, system, and structured logs
               </li>
             </ul>
-          </div>
+          </div> */}
 
-          {}
+          { }
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Recommended Outcome <span className="text-red-500">*</span>
@@ -164,7 +164,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             </p>
           </div>
 
-          {}
+          { }
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Final Investigation Notes <span className="text-red-500">*</span>
@@ -192,7 +192,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             )}
           </div>
 
-          {}
+          { }
           {/* <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Recommendations <span className="text-red-500">*</span>
@@ -213,14 +213,14 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             )}
           </div> */}
 
-          {}
+          { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
 
-          {}
+          { }
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -235,7 +235,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               disabled={isSubmitting}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSupervisor 
+              {isSupervisor
                 ? (isSubmitting ? 'Closing Case...' : 'Close Case')
                 : (isSubmitting ? 'Submitting for Approval...' : 'Submit for Approval')}
             </button>

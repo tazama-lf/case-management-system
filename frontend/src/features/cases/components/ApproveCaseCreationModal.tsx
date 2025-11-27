@@ -48,7 +48,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Approve Case Creation</h3>
@@ -68,10 +68,10 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         <form onSubmit={handleSubmit} className="p-6">
-          {}
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+          { }
+          {/* <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-green-800 mb-2">Supervisor Case Creation Approval Workflow</h4>
             <ul className="text-xs text-green-700 list-disc list-inside space-y-1">
               <li>Only cases in "PENDING CASE CREATION APPROVAL" can be acted on</li>
@@ -80,9 +80,9 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               <li>"Investigate Case" task will be created in Flowable investigations queue</li>
               <li>All approval actions must be logged</li>
             </ul>
-          </div>
+          </div> */}
 
-          {}
+          { }
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Case Details</h4>
             <div className="grid grid-cols-2 gap-4">
@@ -113,7 +113,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </div>
           </div>
 
-          {}
+          { }
           {caseData.alertId && (
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3">Associated Alert</h4>
@@ -138,7 +138,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </div>
           )}
 
-          {}
+          { }
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Approval Confirmation</h4>
             <p className="text-xs text-blue-700">
@@ -152,14 +152,14 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </ul>
           </div>
 
-          {}
+          { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
 
-          {}
+          { }
           <div className="flex justify-end gap-3">
             <button
               type="button"

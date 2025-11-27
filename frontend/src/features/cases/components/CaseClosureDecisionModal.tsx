@@ -218,7 +218,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               </button>
 
               {/* Workflow Info */}
-              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+              {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">Supervisor Case Closure Approval Workflow</h4>
                 <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
                   <li>Only cases in "PENDING FINAL APPROVAL" can be acted on</li>
@@ -227,7 +227,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <li>Rejection reopens the "Investigate Case" task for further work</li>
                   <li>All approval actions are logged for audit trails</li>
                 </ul>
-              </div>
+              </div> */}
             </div>
           )}
 
