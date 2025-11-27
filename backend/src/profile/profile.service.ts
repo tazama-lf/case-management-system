@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaDWHService } from '../../prismaDWH/prismaDWH.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto, DetectedAnomalyDto } from './dto/profile-response.dto';
@@ -9,49 +10,91 @@ import { v4 as uuidv4 } from 'uuid';
 export class ProfileService {
   constructor(
     private prisma: PrismaService,
+    private prismaDWH: PrismaDWHService,
     private auditLog: AuditLogService,
   ) {}
 
+  private formatTransactionForTable(tx: any) {
+    return {
+      date: tx.cre_dt_tm,
+      transactionId: tx.end_to_end_id,
+      type: tx.tx_tp,
+      account: tx.source,
+      counterparty: tx.destination,
+      role: tx.role,
+      amount: tx.amt?.toNumber() || 0,
+    };
+  }
+
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
     
-    const transactions = this.mockTransactions();
-    const peerBaseline = this.mockPeerBaseline();
+    const tenantId = dto.filters?.tenantId || 'T001';
 
-    
-    const filtered = this.applyFilters(transactions, dto.filters);
+    const filter: any = {
+      tenant_id: tenantId,
+    };
+    if (dto.filters?.type) {
+      filter.tx_tp = dto.filters.type;
+    }
+    if (dto.filters?.account) {
+     
+      filter.OR = [{ source: dto.filters.account }, { destination: dto.filters.account }];
+    }
+    if (dto.filters?.role) {
+      filter.role = dto.filters.role;
+    }
 
-    
-    const metrics = this.calculateMetrics(filtered);
-    const outliers = this.detectOutliers(filtered, peerBaseline);
-    const summaryTable = this.buildSummaryTable(metrics, outliers);
+    if (dto.filters?.dateFrom || dto.filters?.dateTo) {
+      filter.cre_dt_tm = {};
+      if (dto.filters?.dateFrom) filter.cre_dt_tm.gte = dto.filters.dateFrom;
+      if (dto.filters?.dateTo) filter.cre_dt_tm.lte = dto.filters.dateTo;
+    }
 
-    
-    const visualization = 'trend-chart-placeholder';
+    const transactions = await this.prismaDWH.transaction.findMany({
+      where: filter,
+    });
 
-    
-    const detectedAnomalies = outliers.map(tx => ({
-      date: tx.date,
-      type: tx.type,
-      amount: tx.value,
-      description: tx.value > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
-      risk: (tx.value > 5000 ? 'High' : tx.value > 2000 ? 'Medium' : 'Low') as 'High' | 'Medium' | 'Low',
-    }));
+    const transactionTable = transactions.map(this.formatTransactionForTable);
 
-    
-    await this.prisma.transactionProfile.create({
-      data: {
-        profile_id: uuidv4(),
-        case_id: dto.caseId,
-        generated_by: userId,
-        filters: dto.filters,
-        metrics,
-        outliers,
-        summary_table: summaryTable,
-        notes: dto.notes,
-        visualization,
-        detected_anomalies: detectedAnomalies,
+    const peerTransactions = await this.prismaDWH.transaction.findMany({
+      where: {
+        tenant_id: tenantId,
       },
     });
+
+    const getGeography = (tx: any) => tx.transaction?.geography || tx.transaction?.TxTp || '';
+
+    const peerBaseline = {
+      avgVolume: peerTransactions.length,
+      avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0) / (peerTransactions.length || 1),
+      avgCrossBorder: peerTransactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
+    };
+
+    const metrics = {
+      totalVolume: transactions.length,
+      totalValue: transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0),
+      avgTicketSize: transactions.length ? transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0) / transactions.length : 0,
+      crossBorderCount: transactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
+    };
+    const outliers = transactions.filter(
+      (tx) =>
+        (tx.amt?.toNumber() || 0) > peerBaseline.avgValue ||
+        (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() || 0) > peerBaseline.avgCrossBorder),
+    );
+    const summaryTable = {
+      totalVolume: metrics.totalVolume,
+      totalValue: metrics.totalValue,
+      avgTicketSize: metrics.avgTicketSize,
+      deviationPercent: outliers.length ? ((outliers.length / metrics.totalVolume) * 100).toFixed(2) : '0.00',
+    };
+    const visualization = 'trend-chart-placeholder';
+    const detectedAnomalies = outliers.map((tx) => ({
+      date: tx.cre_dt_tm || '',
+      type: tx.tx_tp,
+      amount: tx.amt?.toNumber() || 0,
+      description: (tx.amt?.toNumber() || 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
+      risk: (tx.amt?.toNumber() || 0) > 5000 ? 'High' : (tx.amt?.toNumber() || 0) > 2000 ? 'Medium' : 'Low',
+    }));
 
     await this.auditLog.logAction({
       userId,
@@ -69,7 +112,8 @@ export class ProfileService {
       summaryTable,
       notes: dto.notes,
       visualization,
-      detectedAnomalies,
+      detectedAnomalies: detectedAnomalies as DetectedAnomalyDto[],
+      transactionTable,
     };
   }
 
@@ -93,71 +137,6 @@ export class ProfileService {
       notes: typeof profile.notes === 'string' ? profile.notes : undefined,
       visualization: typeof profile.visualization === 'string' ? profile.visualization : undefined,
       detectedAnomalies: Array.isArray(profile.detected_anomalies) ? (profile.detected_anomalies as unknown as DetectedAnomalyDto[]) : [],
-    };
-  }
-
- 
-  private mockTransactions() {
-    
-    return [
-      { date: '2025-09-01', value: 1000, channel: 'ATM', geography: 'Local', type: 'Deposit' },
-      { date: '2025-09-15', value: 5000, channel: 'Online', geography: 'Cross-border', type: 'Transfer' },
-      { date: '2025-10-10', value: 200, channel: 'Branch', geography: 'Local', type: 'Withdrawal' },
-      { date: '2025-11-01', value: 8000, channel: 'Online', geography: 'Cross-border', type: 'Transfer' },
-      
-    ];
-  }
-
-  private mockPeerBaseline() {
-    
-    return {
-      avgVolume: 3000,
-      avgValue: 2500,
-      avgCrossBorder: 1000,
-    };
-  }
-
-  private applyFilters(transactions: any[], filters?: Record<string, any>) {
-    if (!filters) return transactions;
-    return transactions.filter(tx => {
-      let match = true;
-      if (filters.dateFrom && filters.dateTo) {
-        match = match && tx.date >= filters.dateFrom && tx.date <= filters.dateTo;
-      }
-      if (filters.channel) {
-        match = match && tx.channel === filters.channel;
-      }
-      if (filters.type) {
-        match = match && tx.type === filters.type;
-      }
-      return match;
-    });
-  }
-
-  private calculateMetrics(transactions: any[]) {
-    const totalVolume = transactions.length;
-    const totalValue = transactions.reduce((sum, tx) => sum + tx.value, 0);
-    const avgTicketSize = totalValue / (totalVolume || 1);
-    const crossBorderCount = transactions.filter(tx => tx.geography === 'Cross-border').length;
-    return {
-      totalVolume,
-      totalValue,
-      avgTicketSize,
-      crossBorderCount,
-    };
-  }
-
-  private detectOutliers(transactions: any[], peerBaseline: any) {
-    
-    return transactions.filter(tx => tx.value > peerBaseline.avgValue || (tx.geography === 'Cross-border' && tx.value > peerBaseline.avgCrossBorder));
-  }
-
-  private buildSummaryTable(metrics: any, outliers: any[]) {
-    return {
-      totalVolume: metrics.totalVolume,
-      totalValue: metrics.totalValue,
-      avgTicketSize: metrics.avgTicketSize,
-      deviationPercent: outliers.length ? ((outliers.length / metrics.totalVolume) * 100).toFixed(2) : '0.00',
     };
   }
 }

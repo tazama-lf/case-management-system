@@ -34,6 +34,7 @@ model transaction {
 
   source        String
   destination   String
+  role          String? 
 
   source_account      account @relation("TransactionSource", fields: [source, tenant_id], references: [id, tenant_id])
   destination_account account @relation("TransactionDestination", fields: [destination, tenant_id], references: [id, tenant_id])

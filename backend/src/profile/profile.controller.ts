@@ -15,7 +15,7 @@ export class ProfileController {
 
   @Post('generate')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Generate transaction profile for a case (mock data)' })
+  @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
   @ApiBody({
     type: GenerateProfileDto,
     examples: {
@@ -28,6 +28,8 @@ export class ProfileController {
             dateTo: '2025-11-30',
             channel: 'Online',
             type: 'Transfer',
+            geography: 'Cross-border',
+            tenantId: 'T001',
           },
           notes: 'Profile generated for peer comparison and anomaly detection.',
         },

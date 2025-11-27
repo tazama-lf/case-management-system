@@ -1,17 +1,3 @@
-model TransactionProfile {
-  profile_id      String   @id @default(uuid())
-  case_id         String   @db.Uuid
-  generated_by    String   @db.Uuid
-  generated_at    DateTime @default(now())
-  filters         Json?
-  metrics         Json?
-  outliers        Json?
-  summary_table   Json?
-  notes           String?  @db.Text
-  visualization   String?
-  detected_anomalies Json?
-  case            Case     @relation(fields: [case_id], references: [case_id])
-}
 generator client {
   provider = "prisma-client-js"
   output   = "../../node_modules/@prisma/client-cms"
@@ -226,6 +212,21 @@ model Report {
   task             Task       @relation(fields: [task_id], references: [task_id])
 
   @@map("reports")
+}
+
+model TransactionProfile {
+  profile_id      String   @id @default(uuid())
+  case_id         String   @db.Uuid
+  generated_by    String   @db.Uuid
+  generated_at    DateTime @default(now())
+  filters         Json?
+  metrics         Json?
+  outliers        Json?
+  summary_table   Json?
+  notes           String?  @db.Text
+  visualization   String?
+  detected_anomalies Json?
+  case            Case     @relation(fields: [case_id], references: [case_id])
 }
 
 enum Priority {
