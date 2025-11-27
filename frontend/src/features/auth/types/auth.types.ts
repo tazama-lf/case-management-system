@@ -20,6 +20,9 @@ export interface LoginCredentials {
 }
 
 export interface User {
+  user_id: string;
+  username: string;
+  roles: string[];
   userId: string;
   tenantId: string;
   email: string;
