@@ -1,8 +1,8 @@
 import React, { Suspense, useState } from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { formatDate } from '../../../shared/utils/dateUtils';
-import { EmptyState } from '../../../shared/components/ui';
-import type { UnifiedWorkQueueTask } from '../types/flowable.types';
+import { formatDate } from '../../../../shared/utils/dateUtils';
+import { EmptyState } from '../../../../shared/components/ui';
+import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 import { transformBackendAlertToUI, convertToTriageAlert } from '@/features/alerts/utils/alertTransformers';
 import triageService from '@/features/alerts/services/triageservice';
@@ -47,13 +47,30 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   const { performManualTriage } = useAlertOperations();
 
   const tableColumns = [
-    { key: 'taskName', label: 'Task Name', width: 'w-60' },
-    { key: 'description', label: 'Description', width: 'w-80' },
-    { key: 'assignee', label: 'Assignee', width: 'w-48' },
-    { key: 'createdTime', label: 'Created Time', width: 'w-40' },
-    { key: 'caseId', label: 'Case ID', width: 'w-48' },
-    // { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' }
+    { key: 'task', label: 'Task', width: 'w-80' },
+    { key: 'case', label: 'Case', width: 'w-72' },
+    { key: 'queue', label: 'Queue', width: 'w-32' },
+    { key: 'status', label: 'Status', width: 'w-32' },
+    { key: 'created', label: 'Created', width: 'w-40' },
+    { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
+    { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' }
   ];
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
+      ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
+      IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
+      COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
+      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
 
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
@@ -248,7 +265,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
               {tableColumns.map((col) => (
                 <th
                   key={col.key}
-                  className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-left"
+                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${col.align === 'right' ? 'text-right' : 'text-left'
+                  }`}
                 >
                   {col.label}
                 </th>
@@ -259,13 +277,34 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             {tasks.map((task, index) => (
               <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
-                  <div className="text-sm font-medium text-gray-900 break-words" title={task.name || 'No Name'}>
-                    {task.name || 'Unnamed Task'}
+                  <div className="flex flex-col">
+                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id || 'No ID'}>
+                      {task.id || 'No ID'}
+                    </div>
+                    {task.name && (
+                      <div className="text-xs text-gray-500 break-words mt-1" title={task.name}>
+                        {task.name}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-sm text-gray-700 break-words" title={task.description || 'No Description'}>
-                    {task.description || '-'}
+                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId || ''}>
+                    {task.caseId || ''}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="text-sm text-gray-900 break-words">
+                    {task.candidateGroup || '-'}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  {getStatusBadge(task.status)}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <ClockIcon className="h-4 w-4 mr-1" />
+                    {formatDate(task.createdAt)}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -277,22 +316,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4 mr-1" />
-                    {formatDate(task.createdAt)}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900 font-mono break-all" title={task.caseId || 'No Case ID'}>
-                    {task.caseId || '-'}
-                  </div>
-                </td>
-                {/* <td className="px-4 py-3 text-right text-sm font-medium">
+                <td className="px-4 py-3 text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
                     {getAvailableActions(task)}
                   </div>
-                </td> */}
+                </td>
               </tr>
             ))}
           </tbody>

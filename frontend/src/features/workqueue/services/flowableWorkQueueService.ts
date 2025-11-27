@@ -1,4 +1,5 @@
 import apiClient from '../../../shared/services/apiClient';
+import authService from '../../auth/services/authService';
 import type {
   FlowableTask,
   UnifiedWorkQueueTask,
@@ -14,11 +15,17 @@ import {
 
 export class FlowableWorkQueueService {
   private baseUrl = '/api/v1/task';
+  private workQueueUrl = '/api/v1/workqueue';
 
   async getWorkQueueByGroup(
     candidateGroup: WorkQueueCandidateGroupType,
   ): Promise<UnifiedWorkQueueTask[]> {
     try {
+      // For investigators queue, use the new assignee-based endpoint
+      if (candidateGroup === WorkQueueCandidateGroup.INVESTIGATORS) {
+        return this.getInvestigatorTasks();
+      }
+
       const response = await apiClient.get<{ data: { tasks: FlowableTask[] } }>(
         `${this.baseUrl}/work-queues/${candidateGroup}`,
       );
@@ -33,6 +40,32 @@ export class FlowableWorkQueueService {
       throw this.handleFlowableError(
         error,
         `get work queue for ${candidateGroup}`,
+      );
+    }
+  }
+
+  async getInvestigatorTasks(): Promise<UnifiedWorkQueueTask[]> {
+    try {
+      // Get current user from auth service
+      const currentUser = authService.getUser();
+      if (!currentUser || !currentUser.userId) {
+        throw new Error('User not authenticated or user ID not available');
+      }
+
+      const response = await apiClient.get<FlowableTask[]>(
+        `${this.workQueueUrl}/assignee/${currentUser.userId}/tasks`,
+      );
+
+      const tasks = Array.isArray(response) ? response : [];
+      const unifiedTasks = tasks.map((task) =>
+        this.transformFlowableTaskFromAPI(task),
+      );
+
+      return unifiedTasks;
+    } catch (error: any) {
+      throw this.handleFlowableError(
+        error,
+        'get investigator tasks by assignee',
       );
     }
   }
@@ -183,6 +216,37 @@ export class FlowableWorkQueueService {
 
       processInstanceId: flowableTask.processInstanceId || '',
       caseId: postgresCaseId,
+
+      flowableData: flowableTask,
+    };
+  }
+
+  private transformFlowableTaskFromAPI(
+    flowableTask: any,
+  ): UnifiedWorkQueueTask {
+    // For the new API response format
+    // Extract case ID from processInstanceId or other available fields
+    const caseId = flowableTask.processInstanceId || flowableTask.id;
+    
+    return {
+      id: flowableTask.id,
+      taskId: flowableTask.id,
+      flowableTaskId: flowableTask.id,
+      name: flowableTask.name,
+      description: flowableTask.description,
+
+      assignee: flowableTask.assignee,
+      assigneeName: flowableTask.assignee,
+      candidateGroup: 'investigators',
+
+      status: this.mapFlowableStatus(flowableTask),
+      priority: this.mapFlowablePriority(flowableTask.priority),
+
+      createdAt: flowableTask.createTime || new Date().toISOString(),
+      dueDate: flowableTask.dueDate,
+
+      processInstanceId: flowableTask.processInstanceId || '',
+      caseId: caseId,
 
       flowableData: flowableTask,
     };
