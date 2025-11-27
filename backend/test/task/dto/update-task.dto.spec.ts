@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { UpdateTaskDto } from '../../../src/task/dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import * as UpdateTaskDtoModule from '../../../src/task/dto/update-task.dto';
 
 describe('UpdateTaskDto', () => {

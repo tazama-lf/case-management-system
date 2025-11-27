@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { UpdateAlertDto } from '../../../src/triage/dto/update-alert.dto';
-import { Priority, AlertType, PredictionOutcome } from '@prisma/client';
+import { Priority, AlertType, PredictionOutcome } from '@prisma/client-cms';
 
 describe('UpdateAlertDto', () => {
   it('should be defined', () => {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationChannel, NotificationType, DeliveryStatus, NotificationLog } from '@prisma/client';
+import { NotificationChannel, NotificationType, DeliveryStatus, NotificationLog } from '@prisma/client-cms';
 import { NotificationHistoryDto, NotificationHistoryQueryDto } from '../notification-preferences/dto';
 
 @Injectable()

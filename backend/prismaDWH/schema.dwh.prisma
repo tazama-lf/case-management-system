@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-dwh"
+}
+
+datasource dwh {
+  provider = "postgresql"
+  url      = env("DWH_DATABASE_URL")
+}
+
+model account {
+  id       String
+  tenant_id String
+
+  transaction_source      transaction[] @relation("TransactionSource")
+  transaction_destination transaction[] @relation("TransactionDestination")
+
+  @@id([id, tenant_id])
+  @@map("account")
+}
+
+model transaction {
+  end_to_end_id String
+  tx_tp         String
+  tenant_id     String
+
+  transaction   Json
+
+  amt           Decimal?
+  ccy           String?
+  msg_id        String?
+  cre_dt_tm     String?
+  tx_sts        String?
+
+  source        String
+  destination   String
+
+  source_account      account @relation("TransactionSource", fields: [source, tenant_id], references: [id, tenant_id])
+  destination_account account @relation("TransactionDestination", fields: [destination, tenant_id], references: [id, tenant_id])
+
+  @@id([end_to_end_id, tx_tp, tenant_id])
+  @@unique([msg_id, tenant_id])
+  @@index([cre_dt_tm, tenant_id], name: "idx_tr_cre_dt_tm")
+  @@index([source, tx_tp, cre_dt_tm, tenant_id], name: "idx_tr_source_txtp_credttm")
+  @@map("transaction")
+}

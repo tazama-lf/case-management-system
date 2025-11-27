@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { IngestAlertDto } from '../../src/triage/dto/ingest-alert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client';
+import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client-cms';
 import { ConfigService } from '@nestjs/config';
 import { CaseService } from '../../src/case/case.service';
 import { TaskService } from '../../src/task/task.service';

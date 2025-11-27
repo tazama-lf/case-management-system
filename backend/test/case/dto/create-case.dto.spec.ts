@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 import { CreateCaseDto } from '../../../src/case/dto/create-case.dto';
-import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
+import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client-cms';
 
 describe('CreateCaseDto', () => {
   let dto: CreateCaseDto;

@@ -12,7 +12,7 @@ import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
 import { CaseCreationService } from '../case-creation/case-creation.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Priority, CaseCreationType, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client';
+import { Priority, CaseCreationType, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client-cms';
 import { Outcome } from 'src/audit/types/outcome';
 import { AIPrediction, Prediction } from './interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';

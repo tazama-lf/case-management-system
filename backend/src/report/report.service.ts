@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseStatus, TaskStatus, AlertType } from '@prisma/client';
+import { CaseStatus, TaskStatus, AlertType } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { UpdateCaseDto } from '../case/dto/update-case.dto';
 import { EvidenceService } from '../evidence/evidence.service';

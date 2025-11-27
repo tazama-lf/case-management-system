@@ -8,7 +8,7 @@ import { CloseCaseDto } from './dto/close-case.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from 'src/audit/auditLog.service';
-import { CaseStatus, TaskStatus, CaseCreationType, CaseType } from '@prisma/client';
+import { CaseStatus, TaskStatus, CaseCreationType, CaseType } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from './dto/get-user-cases.dto';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';

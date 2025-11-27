@@ -2,7 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { NotificationLogService } from './notification-log.service';
 import { NotificationService } from './notification.service';
-import { NotificationChannel, DeliveryStatus } from '@prisma/client';
+import { NotificationChannel, DeliveryStatus } from '@prisma/client-cms';
 import { UserService } from '../shared/user.service';
 
 interface RetryConfig {

@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsNumber, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Priority } from '@prisma/client';
+import { Priority } from '@prisma/client-cms';
 import { TransactionDTO } from './Transaction.dto';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';

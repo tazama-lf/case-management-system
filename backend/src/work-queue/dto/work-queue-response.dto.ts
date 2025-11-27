@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole, TaskType, AssignmentRuleType } from '@prisma/client';
+import { UserRole, TaskType, AssignmentRuleType } from '@prisma/client-cms';
 
 export class AssignmentRuleResponseDto {
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })

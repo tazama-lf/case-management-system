@@ -1,14 +1,14 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClient as PrismaClientCMS } from '@prisma/client-cms';
+import { PrismaClient as PrismaClientDWH } from '@prisma/client-dwh';
 
 @Injectable()
-export class PrismaService extends PrismaClientCMS implements OnModuleInit, OnModuleDestroy {
+export class PrismaDWHService extends PrismaClientDWH implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     super({
       datasources: {
-        db: {
-          url: configService.get<string>('DATABASE_URL'),
+        dwh: {
+          url: configService.get<string>('DWH_DATABASE_URL'),
         },
       },
     });

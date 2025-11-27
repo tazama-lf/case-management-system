@@ -1,4 +1,4 @@
-import { AlertType } from '@prisma/client';
+import { AlertType } from '@prisma/client-cms';
 
 export interface AIPrediction {
   priority: number;

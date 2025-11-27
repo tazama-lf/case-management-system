@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Priority } from '@prisma/client';
+import { Priority } from '@prisma/client-cms';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { AlertMessageDto } from '../../src/nats/dto/AlertMessageDto.dto';

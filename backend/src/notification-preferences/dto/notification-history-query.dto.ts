@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { NotificationType, DeliveryStatus, NotificationChannel } from '@prisma/client';
+import { NotificationType, DeliveryStatus, NotificationChannel } from '@prisma/client-cms';
 
 export class NotificationHistoryQueryDto {
   @ApiProperty({
