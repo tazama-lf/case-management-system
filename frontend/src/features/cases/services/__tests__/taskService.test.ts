@@ -215,10 +215,44 @@ describe('taskService', () => {
       });
       expect(result).toEqual(mockTask);
     });
+
+    it('validates task response has id', async () => {
+      (apiClient.post as vi.Mock).mockResolvedValue({ name: 'Task' });
+
+      await expect(
+        taskService.createTask({
+          name: 'New Task',
+          status: 'STATUS_01_UNASSIGNED',
+        }),
+      ).rejects.toThrow('Task ID is missing from response');
+    });
+
+    it('validates task response is an object', async () => {
+      (apiClient.post as vi.Mock).mockResolvedValue(null);
+
+      await expect(
+        taskService.createTask({
+          name: 'New Task',
+          status: 'STATUS_01_UNASSIGNED',
+        }),
+      ).rejects.toThrow('Invalid task data received');
+    });
+
+    it('handles errors gracefully', async () => {
+      const error = new Error('Failed to create task');
+      (apiClient.post as vi.Mock).mockRejectedValue(error);
+
+      await expect(
+        taskService.createTask({
+          name: 'New Task',
+          status: 'STATUS_01_UNASSIGNED',
+        }),
+      ).rejects.toThrow();
+    });
   });
 
   describe('getWorkQueue', () => {
-    it('gets work queue', async () => {
+    it('gets work queue without filters', async () => {
       const mockResponse = {
         tasks: [],
         total: 0,
@@ -246,8 +280,36 @@ describe('taskService', () => {
       });
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('role=investigator')
+        expect.stringContaining('role=investigator'),
       );
+    });
+
+    it('filters out undefined and null values', async () => {
+      const mockResponse = {
+        tasks: [],
+        total: 0,
+      };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      await taskService.getWorkQueue({
+        role: 'investigator',
+        candidateGroup: undefined,
+        page: null as any,
+        limit: 20,
+      });
+
+      const callUrl = (apiClient.get as vi.Mock).mock.calls[0][0] as string;
+      expect(callUrl).toContain('role=investigator');
+      expect(callUrl).toContain('limit=20');
+      expect(callUrl).not.toContain('candidateGroup');
+      expect(callUrl).not.toContain('page');
+    });
+
+    it('handles errors gracefully', async () => {
+      const error = new Error('Failed to fetch work queue');
+      (apiClient.get as vi.Mock).mockRejectedValue(error);
+
+      await expect(taskService.getWorkQueue()).rejects.toThrow();
     });
   });
 
@@ -350,7 +412,7 @@ describe('taskService', () => {
       ).rejects.toThrow();
     });
 
-    it('handles API error responses', async () => {
+    it('handles API error responses with message', async () => {
       const apiError = {
         response: {
           data: {
@@ -361,8 +423,43 @@ describe('taskService', () => {
       (apiClient.get as vi.Mock).mockRejectedValue(apiError);
 
       await expect(taskService.getTasksByCaseId('CASE-123')).rejects.toThrow(
-        'Custom error message'
+        'Custom error message',
       );
+    });
+
+    it('handles API error responses without message', async () => {
+      const apiError = {
+        response: {
+          data: {},
+        },
+      };
+      (apiClient.get as vi.Mock).mockRejectedValue(apiError);
+
+      await expect(taskService.getTasksByCaseId('CASE-123')).rejects.toThrow(
+        'Failed to get tasks by case ID',
+      );
+    });
+
+    it('handles errors without response', async () => {
+      const error = new Error('Network error');
+      (apiClient.get as vi.Mock).mockRejectedValue(error);
+
+      await expect(taskService.getTasksByCaseId('CASE-123')).rejects.toThrow(
+        'Failed to get tasks by case ID: Network error',
+      );
+    });
+
+    it('handles getInvestigationTaskForCase errors', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Failed to fetch');
+      (apiClient.get as vi.Mock).mockRejectedValue(error);
+
+      await expect(
+        taskService.getInvestigationTaskForCase('CASE-123'),
+      ).rejects.toThrow();
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
   });
 });

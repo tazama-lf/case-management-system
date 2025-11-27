@@ -178,9 +178,10 @@ describe('CaseModals', () => {
   it('renders ResumeCaseModal when isResumeOpen is true', async () => {
     render(<CaseModals {...defaultProps} isResumeOpen={true} />);
     
+    // Wait for Suspense to resolve and the modal to render
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Resume Case/i })).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it('renders ApproveCaseCreationModal when isApproveCreationOpen is true', async () => {
