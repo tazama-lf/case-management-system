@@ -6,12 +6,14 @@ import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
+import { FlowableService } from 'src/modules/flowable/flowable.service';
 
 @Injectable()
 export class TaskLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly flowableService: FlowableService,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly notificationService: NotificationService,
@@ -45,16 +47,29 @@ export class TaskLifecycleService {
         where: { case_id: existingTask.case_id },
         data: { status: CaseStatus.STATUS_10_ASSIGNED, case_owner_user_id: assignedUserId, updated_at: new Date() },
       });
+
+      await this.flowableService.handleCaseStatusChanged({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_10_ASSIGNED,
+        reason: `Case assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`,
+      });
+      await this.flowableService.handleTaskAssigned({
+        taskId,
+        caseId: existingTask.case_id,
+        taskName: existingTask.name!,
+        assignedUserId,
+      });
+
       return { updatedTask, updatedCase };
     });
 
-    this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
-    this.emitCaseStatusChange(
-      existingTask.case_id,
-      previousCaseStatus,
-      CaseStatus.STATUS_10_ASSIGNED,
-      `Case assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`,
-    );
+    // this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
+    // this.emitCaseStatusChange(
+    //   existingTask.case_id,
+    //   previousCaseStatus,
+    //   CaseStatus.STATUS_10_ASSIGNED,
+    //   `Case assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`,
+    // );
 
     await this.auditLogService.logAction({
       userId: supervisorId,
@@ -93,16 +108,27 @@ export class TaskLifecycleService {
         where: { case_id: existingTask.case_id },
         data: { status: CaseStatus.STATUS_10_ASSIGNED, case_owner_user_id: assignedUserId, updated_at: new Date() },
       });
+      await this.flowableService.handleCaseStatusChanged({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_10_ASSIGNED,
+        reason: `Case assigned to investigator ${assignedUserId}`,
+      });
+      await this.flowableService.handleTaskAssigned({
+        taskId,
+        caseId: existingTask.case_id,
+        taskName: existingTask.name!,
+        assignedUserId,
+      });
       return { updatedTask, updatedCase };
     });
 
-    this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
-    this.emitCaseStatusChange(
-      existingTask.case_id,
-      previousCaseStatus,
-      CaseStatus.STATUS_10_ASSIGNED,
-      `Case reassigned to investigator ${assignedUserId} by ${actorUserId}`,
-    );
+    // this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
+    // this.emitCaseStatusChange(
+    //   existingTask.case_id,
+    //   previousCaseStatus,
+    //   CaseStatus.STATUS_10_ASSIGNED,
+    //   `Case reassigned to investigator ${assignedUserId} by ${actorUserId}`,
+    // );
 
     await this.auditLogService.logAction({
       userId: actorUserId,
@@ -142,16 +168,27 @@ export class TaskLifecycleService {
         where: { case_id: existingTask.case_id },
         data: { status: CaseStatus.STATUS_10_ASSIGNED, case_owner_user_id: investigatorUserId, updated_at: new Date() },
       });
+      await this.flowableService.handleCaseStatusChanged({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_10_ASSIGNED,
+        reason: `Case self-assigned by investigator ${investigatorUserId}`,
+      });
+      await this.flowableService.handleTaskAssigned({
+        taskId,
+        caseId: existingTask.case_id,
+        taskName: existingTask.name!,
+        assignedUserId: investigatorUserId,
+      });
       return { updatedTask, updatedCase };
     });
 
-    this.emitAssignment(taskId, result.updatedTask.case_id, investigatorUserId, undefined);
-    this.emitCaseStatusChange(
-      existingTask.case_id,
-      previousCaseStatus,
-      CaseStatus.STATUS_10_ASSIGNED,
-      `Case self-assigned by investigator ${investigatorUserId}`,
-    );
+    // this.emitAssignment(taskId, result.updatedTask.case_id, investigatorUserId, undefined);
+    // this.emitCaseStatusChange(
+    //   existingTask.case_id,
+    //   previousCaseStatus,
+    //   CaseStatus.STATUS_10_ASSIGNED,
+    //   `Case self-assigned by investigator ${investigatorUserId}`,
+    // );
 
     await this.auditLogService.logAction({
       userId: investigatorUserId,
@@ -184,20 +221,31 @@ export class TaskLifecycleService {
         where: { case_id: existingTask.case_id },
         data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
       });
+      await this.flowableService.handleCaseStatusChanged({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        reason: `Task unassigned. Reason: ${reason}`,
+      });
+      await this.flowableService.handleTaskUnassigned({
+        taskId,
+        caseId: existingTask.case_id,
+        taskName: existingTask.name!,
+        assignedUser: null,
+      });
       return { updatedTask, updatedCase };
     });
 
-    const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
-    this.eventEmitter.emit(
-      'task.unassigned',
-      new TaskUnassignedEvent(taskId, result.updatedTask.case_id, existingTask.assigned_user_id || undefined, candidateGroup, reason),
-    );
-    this.emitCaseStatusChange(
-      existingTask.case_id,
-      previousCaseStatus,
-      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      `Task unassigned. Reason: ${reason}`,
-    );
+    // const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
+    // this.eventEmitter.emit(
+    //   'task.unassigned',
+    //   new TaskUnassignedEvent(taskId, result.updatedTask.case_id, existingTask.assigned_user_id || undefined, candidateGroup, reason),
+    // );
+    // this.emitCaseStatusChange(
+    //   existingTask.case_id,
+    //   previousCaseStatus,
+    //   CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+    //   `Task unassigned. Reason: ${reason}`,
+    // );
 
     try {
       if (existingTask.assigned_user_id) {
@@ -205,24 +253,24 @@ export class TaskLifecycleService {
           userId: existingTask.assigned_user_id,
           type: 'TASK_UNASSIGNED',
           message: `Task "${existingTask.name || taskId}" has been unassigned. Reason: ${reason}`,
-          metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason, candidateGroup },
+          metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason },
         });
       }
-      if (candidateGroup) {
-        await this.notificationService.sendGroupNotification({
-          candidateGroup,
-          type: 'TASK_AVAILABLE',
-          message: `Task "${existingTask.name || taskId}" is now available in the ${candidateGroup} work queue`,
-          metadata: { taskId, caseId: existingTask.case_id, unassignmentReason: reason },
-        });
-      }
+      // if (candidateGroup) {
+      //   await this.notificationService.sendGroupNotification({
+      //     candidateGroup,
+      //     type: 'TASK_AVAILABLE',
+      //     message: `Task "${existingTask.name || taskId}" is now available in the ${candidateGroup} work queue`,
+      //     metadata: { taskId, caseId: existingTask.case_id, unassignmentReason: reason },
+      //   });
+      // }
     } catch (e) {
       this.logger.warn(`Failed notifications for unassign: ${e.message}`, TaskLifecycleService.name);
     }
 
     await this.auditLogService.logAction({
       userId: actorUserId,
-      actionPerformed: `Unassigned task ${taskId} from user ${existingTask.assigned_user_id}. Task returned to ${candidateGroup}. Reason: ${reason}`,
+      actionPerformed: `Unassigned task ${taskId} from user ${existingTask.assigned_user_id}.`,
       entityName: 'TaskService',
       operation: 'unassignTask',
       outcome: 'SUCCESS',
@@ -231,34 +279,34 @@ export class TaskLifecycleService {
 
     return {
       ...result.updatedTask,
-      message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
-      candidateGroup,
+      // message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
+      // candidateGroup,
       unassignmentReason: reason,
     };
   }
 
-  async releaseTask(taskId: string, actorUserId: string) {
-    const existingTask = await this.getTaskOrThrow(taskId);
-    const previousAssignedUserId = existingTask.assigned_user_id;
-    const updatedTask = await this.prisma.task.update({
-      where: { task_id: taskId },
-      data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
-      include: { case: true },
-    });
-    this.eventEmitter.emit(
-      'task.unassigned',
-      new TaskUnassignedEvent(taskId, updatedTask.case_id, previousAssignedUserId || undefined, existingTask.candidateGroup || undefined),
-    );
-    await this.auditLogService.logAction({
-      userId: actorUserId,
-      actionPerformed: `Released task ${taskId}`,
-      entityName: 'TaskService',
-      operation: 'releaseTask',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
-    return updatedTask;
-  }
+  // async releaseTask(taskId: string, actorUserId: string) {
+  //   const existingTask = await this.getTaskOrThrow(taskId);
+  //   const previousAssignedUserId = existingTask.assigned_user_id;
+  //   const updatedTask = await this.prisma.task.update({
+  //     where: { task_id: taskId },
+  //     data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
+  //     include: { case: true },
+  //   });
+  //   this.eventEmitter.emit(
+  //     'task.unassigned',
+  //     new TaskUnassignedEvent(taskId, updatedTask.case_id, previousAssignedUserId || undefined, existingTask.candidateGroup || undefined),
+  //   );
+  //   await this.auditLogService.logAction({
+  //     userId: actorUserId,
+  //     actionPerformed: `Released task ${taskId}`,
+  //     entityName: 'TaskService',
+  //     operation: 'releaseTask',
+  //     outcome: 'SUCCESS',
+  //     performedAt: new Date(),
+  //   });
+  //   return updatedTask;
+  // }
 
   async completeTask(taskId: string, actorUserId: string) {
     const existingTask = await this.getTaskOrThrow(taskId);
@@ -267,16 +315,21 @@ export class TaskLifecycleService {
       data: { status: TaskStatus.STATUS_30_COMPLETED },
       include: { case: true },
     });
-    this.eventEmitter.emit(
-      'task.status.changed',
-      new TaskStatusChangedEvent(
-        taskId,
-        updatedTask.case_id,
-        updatedTask.name || '',
-        TaskStatus.STATUS_30_COMPLETED,
-        updatedTask.assigned_user_id || undefined,
-      ),
-    );
+    // await this.flowableService.handleTaskCompleted({
+    //   caseId: existingTask.case_id,
+    //   taskName: existingTask.name!,
+    //   newStatus: TaskStatus.STATUS_30_COMPLETED,
+    // });
+    // this.eventEmitter.emit(
+    //   'task.status.changed',
+    //   new TaskStatusChangedEvent(
+    //     taskId,
+    //     updatedTask.case_id,
+    //     updatedTask.name || '',
+    //     TaskStatus.STATUS_30_COMPLETED,
+    //     updatedTask.assigned_user_id || undefined,
+    //   ),
+    // );
     await this.auditLogService.logAction({
       userId: actorUserId,
       actionPerformed: `Completed task ${taskId}`,

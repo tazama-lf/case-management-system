@@ -310,6 +310,10 @@ export class FlowableService implements OnModuleInit {
     this.caseEventListener.handleSuspendCase(event);
   }
 
+  async handleGetTasksByAssignee(assignee: string) {
+    return this.identityService.getTasksAssignedToUser(assignee);
+  }
+
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

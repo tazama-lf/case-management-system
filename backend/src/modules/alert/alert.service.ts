@@ -72,11 +72,11 @@ export class AlertService {
       const createdNALT = await this.createNewAlert(data, tenantId, source, '');
       return createdNALT;
     } else {
-      const systemUuid = this.configService.get<string>('SYSTEM_UUID', userId);
+      const systemUUID = this.configService.get<string>('SYSTEM_UUID', userId);
       const caseDetail: CreateCaseDto = {
         tenantId,
-        caseCreatorUserId: userId,
-        caseOwnerUserId: systemUuid,
+        caseCreatorUserId: systemUUID,
+        // caseOwnerUserId: null,
         status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,

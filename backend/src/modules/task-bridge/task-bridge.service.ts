@@ -44,15 +44,15 @@ export class TaskBridgeService {
         assigned_user_id: taskDTO.assignedUserId,
       });
 
-      await this.flowableService.createTask({
-        name: taskDTO.name,
-        description: taskDTO.description,
-        variables: {
-          caseId: taskDTO.caseId,
-          postgresTaskId: createdTask.task_id,
-          status: taskDTO.status as string,
-        },
-      });
+      // await this.flowableService.createTask({
+      //   name: taskDTO.name,
+      //   description: taskDTO.description,
+      //   variables: {
+      //     caseId: taskDTO.caseId,
+      //     postgresTaskId: createdTask.task_id,
+      //     status: taskDTO.status as string,
+      //   },
+      // });
 
       this.auditLogService.logAction({
         userId,

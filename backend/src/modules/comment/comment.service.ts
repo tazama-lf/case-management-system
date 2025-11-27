@@ -20,16 +20,25 @@ export class CommentService {
         throw new BadRequestException('Either caseId or taskId must be provided');
       }
 
-      if (createCommentDto.caseId && createCommentDto.taskId) {
-        throw new BadRequestException('Cannot provide both caseId and taskId');
-      }
+      // if (createCommentDto.caseId && createCommentDto.taskId) {
+      //   throw new BadRequestException('Cannot provide both caseId and taskId');
+      // }
       const comment = await this.prisma.comment.create({
         data: {
           user_id: userId,
-          case_id: createCommentDto.caseId ?? null,
+          case_id: createCommentDto.caseId,
           task_id: createCommentDto.taskId ?? null,
           note: createCommentDto.note,
         },
+      });
+
+      this.auditLogService.logAction({
+        userId,
+        operation: 'addComment',
+        entityName: CommentService.name,
+        actionPerformed: `${createCommentDto.note}`,
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
       });
 
       return comment;
@@ -131,16 +140,15 @@ export class CommentService {
     }
   }
 
+  async getCommentsByCaseId(caseId: string, userId?: string) {
+    this.logger.log('Retrieving comments by caseId: ', CommentService.name);
 
-  async getCommentsByCaseId(caseId: string,  userId?: string) {
-   this.logger.log('Retrieving comments by caseId: ', CommentService.name);
+    try {
+      const comments = await this.prisma.comment.findMany({
+        where: { case_id: caseId },
+      });
 
-  try {
-   const comments = await this.prisma.comment.findMany({
-      where: { case_id: caseId }
-    });
-
-    if (userId) {
+      if (userId) {
         this.auditLogService.logAction({
           userId,
           operation: 'getCommentsByCaseId',
@@ -168,15 +176,15 @@ export class CommentService {
     }
   }
 
-  async getCommentsByTaskId(taskId: string,  userId?: string) {
-   this.logger.log('Retrieving comments by taskId: ', CommentService.name);
+  async getCommentsByTaskId(taskId: string, userId?: string) {
+    this.logger.log('Retrieving comments by taskId: ', CommentService.name);
 
-  try {
-   const comments = await this.prisma.comment.findMany({
-      where: { task_id: taskId }
-    });
+    try {
+      const comments = await this.prisma.comment.findMany({
+        where: { task_id: taskId },
+      });
 
-    if (userId) {
+      if (userId) {
         this.auditLogService.logAction({
           userId,
           operation: 'getCommentsByTaskId',
@@ -203,9 +211,4 @@ export class CommentService {
       throw error;
     }
   }
-
- 
-
-  
-
 }

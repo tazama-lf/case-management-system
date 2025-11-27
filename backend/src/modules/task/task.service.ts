@@ -392,9 +392,9 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-    return this.lifecycle.releaseTask(taskId, userId);
-  }
+  // async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+  //   return this.lifecycle.releaseTask(taskId, userId);
+  // }
 
   async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
     return this.lifecycle.completeTask(taskId, userId);

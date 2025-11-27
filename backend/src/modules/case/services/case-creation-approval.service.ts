@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { Outcome } from '../../audit/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority } from '@prisma/client';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case } from '@prisma/client';
 import { ManualCreateCaseDto, CreateCaseDto, UpdateCaseDto } from '../dto/index.dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { SystemCaseCreationDto } from '../dto/system-case-creation.dto';
@@ -71,10 +71,8 @@ export class CaseCreationApprovalService {
         await this.flowableService.handleCaseCreated({
           caseId: createdCase.case_id,
           tenantId,
-          creatorUserId: userId,
           caseStatus,
           creationType: CaseCreationType.MANUAL,
-          autocloseEligible: false,
           isTriageAlert: false,
           creatorRole: role,
         });
@@ -89,6 +87,16 @@ export class CaseCreationApprovalService {
           },
           tx,
         );
+        await this.flowableService.handleTaskCompleted({
+          caseId: createdCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: 'Complete New Case',
+          completionVariables: {
+            autoCloseEligible: false,
+            readyForAssignment: true,
+            casePriority: priority,
+          },
+        });
 
         return { case: createdCase, alert: updatedAlert };
       });
@@ -188,10 +196,8 @@ export class CaseCreationApprovalService {
       await this.flowableService.handleCaseCreated({
         caseId: result.case.case_id,
         tenantId,
-        creatorUserId: userId,
         caseStatus: CaseStatus.STATUS_00_DRAFT,
         creationType: CaseCreationType.MANUAL,
-        autocloseEligible: false,
         isTriageAlert: false,
         creatorRole: role,
       });
@@ -380,6 +386,11 @@ export class CaseCreationApprovalService {
         const updatedCase = await this.caseRepository.updateCase(caseId, {
           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         });
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          reason: 'Case creation approved by supervisor',
+        });
 
         const completedApprovalTask = await tx.task.update({
           where: { task_id: approvalTask.task_id },
@@ -389,27 +400,36 @@ export class CaseCreationApprovalService {
             updated_at: new Date(),
           },
         });
+        await this.flowableService.handleTaskCompleted({
+          caseId: caseId,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: 'Approve Case Creation',
+          completionVariables: {
+            creationApproval: 'approve',
+            creationComments: 'Case creation approved by supervisor',
+          },
+        });
 
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      this.flowableService.handleTaskStatusChanged({
-        taskId: result.approvedTask.task_id,
-        caseId: caseId,
-        taskName: 'Approve Case Creation',
-        newStatus: TaskStatus.STATUS_30_COMPLETED,
-        assignedUserId: supervisorId,
-        completionVariables: {
-          creationApproval: 'approve',
-          creationComments: 'Case creation approved by supervisor',
-        },
-      });
+      // this.flowableService.handleTaskStatusChanged({
+      //   taskId: result.approvedTask.task_id,
+      //   caseId: caseId,
+      //   taskName: 'Approve Case Creation',
+      //   newStatus: TaskStatus.STATUS_30_COMPLETED,
+      //   assignedUserId: supervisorId,
+      //   completionVariables: {
+      //     creationApproval: 'approve',
+      //     creationComments: 'Case creation approved by supervisor',
+      //   },
+      // });
 
-      this.flowableService.handleCaseStatusChanged({
-        caseId: caseId,
-        newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        reason: 'Case creation approved by supervisor',
-      });
+      // this.flowableService.handleCaseStatusChanged({
+      //   caseId: caseId,
+      //   newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      //   reason: 'Case creation approved by supervisor',
+      // });
 
       // Create investigation task after approval
       this.logger.log(`[ApproveCaseCreation] Creating Investigation task for approved case ${caseId}`, CaseCreationApprovalService.name);
@@ -444,8 +464,8 @@ export class CaseCreationApprovalService {
       return {
         success: true,
         case: result.case,
-        approvedTask: result.approvedTask,
-        investigationTask: investigationTask,
+        // approvedTask: result.approvedTask,
+        // investigationTask: investigationTask,
         message: 'Case creation approved. Investigation task created.',
       };
     } catch (error) {
@@ -596,6 +616,8 @@ export class CaseCreationApprovalService {
           taskName: updatedTask.name!,
           newStatus: updatedTask.status,
           completionVariables: {
+            autoCloseEligible: false,
+            casePriority: existingCase.priority!,
             readyForAssignment: 'true',
           },
         });
@@ -648,11 +670,10 @@ export class CaseCreationApprovalService {
       this.flowableService.handleCaseCreated({
         caseId: createdCase.case_id,
         tenantId: createdCase.tenant_id,
-        creatorUserId: createdCase.case_creator_user_id,
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
-        autocloseEligible: false,
         isTriageAlert,
+        creatorRole: 'SYSTEM',
       });
 
       this.logger.log(
@@ -676,7 +697,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async updateCaseStatus(caseId: string, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<void> {
+  async updateCaseStatus(caseId: string, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
     this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
       const updateData: Record<string, unknown> = {
@@ -687,16 +708,16 @@ export class CaseCreationApprovalService {
 
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
-          await this.flowableService.handleTaskCompleted({
-            caseId,
-            taskName: 'Complete New Case',
-            newStatus: TaskStatus.STATUS_30_COMPLETED as string,
-            completionVariables: {
-              priority,
-              readyForAssignment: 'true',
-              assignToSelf: 'false',
-            },
-          });
+          // await this.flowableService.handleTaskCompleted({
+          //   caseId,
+          //   taskName: 'Complete New Case',
+          //   newStatus: TaskStatus.STATUS_30_COMPLETED as string,
+          //   completionVariables: {
+          //     priority,
+          //     readyForAssignment: 'true',
+          //     assignToSelf: 'false',
+          //   },
+          // });
 
           await this.taskRepository.createTask(
             {
@@ -713,7 +734,7 @@ export class CaseCreationApprovalService {
         });
       }
 
-      await this.caseRepository.updateCase(caseId, updateData);
+      const updatedCase = await this.caseRepository.updateCase(caseId, updateData);
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -730,6 +751,7 @@ export class CaseCreationApprovalService {
       });
 
       this.logger.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
+      return updatedCase;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

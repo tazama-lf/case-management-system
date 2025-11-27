@@ -17,6 +17,9 @@ import { FeatureExtractionService } from 'src/modules/feature-extraction/feature
 import axios from 'axios';
 import { AlertService } from '../alert/alert.service';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
+import { CaseRepository } from '../repository/case.repository';
+import { AlertRepository } from '../repository/alert.repository';
+import { FlowableService } from '../flowable/flowable.service';
 
 @Injectable()
 export class TriageService {
@@ -28,7 +31,10 @@ export class TriageService {
 
   constructor(
     private readonly logger: LoggerService,
-    private prisma: PrismaService,
+    // private prisma: PrismaService,
+    private readonly caseRepository: CaseRepository,
+    private readonly alertRepository: AlertRepository,
+    private readonly flowableService: FlowableService,
     private readonly alertService: AlertService,
     private audit: AuditLogService,
     private readonly caseCreationService: CaseCreationApprovalService,
@@ -62,34 +68,42 @@ export class TriageService {
         throw new InternalServerErrorException('Alert case_id is missing.');
       }
 
-      const existingCase = await this.prisma.case.findUnique({
-        where: { case_id: alert.case_id },
-        include: { tasks: true },
-      });
+      const existingCase = await this.caseRepository.findCaseById(alert.case_id);
 
-      if (!existingCase) {
-        throw new NotFoundException(`Case ${alert.case_id} not found`);
+      // if (!existingCase) {
+      //   throw new NotFoundException(`Case ${alert.case_id} not found`);
+      // }
+
+      const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
+      // const completedTriageTask = completeNewCaseTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+
+      if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
+        throw new BadRequestException(`Triage Already Complete`);
       }
 
-      const completeNewCaseTasks = existingCase.tasks.filter((t) => t.name === 'Complete New Case');
-      const completedTriageTask = completeNewCaseTasks.find((t) => t.status === TaskStatus.STATUS_30_COMPLETED);
+      // const completeNewCaseTask = completeNewCaseTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
 
-      if (completedTriageTask) {
-        throw new BadRequestException(`Cannot update triage task ${completedTriageTask.task_id} as it is already completed`);
-      }
+      // if (completeNewCaseTask && completeNewCaseTask.status !== TaskStatus.STATUS_30_COMPLETED) {
+      await this.taskService.updateTask(
+        completeNewCaseTask.task_id,
+        { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED },
+        userId,
+      );
 
-      const completeNewCaseTask = completeNewCaseTasks.find((t) => t.status !== TaskStatus.STATUS_30_COMPLETED);
+      // await this.flowableService.handleTaskAssigned({
+      //   assignedUserId: userId,
+      //   caseId: existingCase.case_id,
+      //   taskId: completeNewCaseTask.task_id,
+      //   taskName: completeNewCaseTask.name!,
+      // });
 
-      if (completeNewCaseTask) {
-        await this.taskService.updateTask(completeNewCaseTask.task_id, { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED }, userId);
-
-        await this.commentService.addComment(
-          { caseId: alert.case_id, taskId: completeNewCaseTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
-          userId,
-        );
-      } else {
-        this.logger.log(`No active Complete New Case task found for case ${existingCase.case_id}`, TriageService.name);
-      }
+      await this.commentService.addComment(
+        { caseId: alert.case_id, taskId: completeNewCaseTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
+        userId,
+      );
+      // } else {
+      // this.logger.warn(`No active Complete New Case task found for case ${existingCase.case_id}`, TriageService.name);
+      // }
 
       if (this.closableStatuses.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
@@ -97,6 +111,27 @@ export class TriageService {
 
       if (updateAlertDto?.status && this.closableStatuses.includes(updateAlertDto.status)) {
         await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId);
+
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: true,
+            casePriority: alert.priority,
+            readyForAssignment: false,
+          },
+        });
+
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: 'Auto Close',
+          completionVariables: {
+            autoCloseType: updateAlertDto.status,
+            autoCloseReason: updateAlertDto.note,
+          },
+        });
 
         this.logger.log(
           `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
@@ -110,6 +145,17 @@ export class TriageService {
           priority,
           updateAlertDto.alertType as CaseType,
         );
+
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: false,
+            casePriority: alert.priority,
+            readyForAssignment: true,
+          },
+        });
 
         if (updateAlertDto.alertType === AlertType.FRAUD_AND_AML) {
           await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, alert.case_id, priority);
@@ -131,23 +177,7 @@ export class TriageService {
 
   async getAlertDetails(alertId: string, tenantId: string, userId: string) {
     try {
-      const alert = await this.prisma.alert.findUnique({
-        where: { alert_id: alertId },
-        select: {
-          alert_id: true,
-          txtp: true,
-          priority: true,
-          confidence_per: true,
-          created_at: true,
-          source: true,
-          message: true,
-          alert_data: true,
-          transaction: true,
-          network_map: true,
-          case_id: true,
-          tenant_id: true,
-        },
-      });
+      const alert = await this.alertRepository.getAlertById(alertId);
 
       if (!alert) {
         throw new NotFoundException(`Alert ${alertId} not found`);
@@ -170,12 +200,7 @@ export class TriageService {
   }
 
   async getAlertActionHistory(alertId: string, tenantId: string, userId: string) {
-    const alert = await this.prisma.alert.findFirst({
-      where: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
+    const alert = await this.alertRepository.getAlertById(alertId);
 
     if (!alert) {
       throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
@@ -301,12 +326,16 @@ export class TriageService {
             },
             userId,
           );
-          await this.prisma.case.update({
-            where: { case_id: caseId },
-            data: {
-              case_type: predictedAlertType,
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            },
+          // await this.prisma.case.update({
+          //   where: { case_id: caseId },
+          //   data: {
+          //     case_type: predictedAlertType,
+          //     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          //   },
+          // });
+          await this.caseRepository.updateCase(caseId, {
+            case_type: predictedAlertType,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           });
           await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, caseId, priority);
           await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, caseId, priority);
@@ -375,9 +404,7 @@ export class TriageService {
     customDescription?: string,
   ) {
     try {
-      const existingCase = await this.prisma.case.findUnique({
-        where: { case_id: caseId },
-      });
+      const existingCase = await this.caseRepository.findCaseById(caseId);
 
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -393,11 +420,11 @@ export class TriageService {
       );
 
       // await this.caseCreationService.updateCaseStatus(caseId, status, userId);
-      await this.caseCreationService.updateCaseStatus(caseId, status, userId, undefined, caseType);
+      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, undefined, caseType);
 
-      const updatedCase = await this.prisma.case.findUnique({
-        where: { case_id: caseId },
-      });
+      // const updatedCase = await this.prisma.case.findUnique({
+      // where: { case_id: caseId },
+      // });
 
       this.eventEmitter.emit(
         'case.status.changed',
@@ -481,9 +508,7 @@ export class TriageService {
     alertType?: AlertType,
   ): Promise<unknown> {
     try {
-      const existingCase = await this.prisma.case.findUnique({
-        where: { case_id: caseId },
-      });
+      const existingCase = await this.caseRepository.findCaseById(caseId);
 
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -491,7 +516,7 @@ export class TriageService {
 
       await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
 
-      await this.caseCreationService.updateCaseStatus(
+      const updatedCase = await this.caseCreationService.updateCaseStatus(
         caseId,
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         userId,
@@ -507,9 +532,9 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      const updatedCase = await this.prisma.case.findUnique({
-        where: { case_id: caseId },
-      });
+      // const updatedCase = await this.prisma.case.findUnique({
+      //   where: { case_id: caseId },
+      // });
 
       this.logger.log(`AI triage completed for case ${caseId}. BPMN will create investigation task automatically.`, TriageService.name);
 

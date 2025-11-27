@@ -87,6 +87,18 @@ export class WorkqueueService {
     }
   }
 
+  async getTasksByAssignee(assignee: string) {
+    try {
+      this.loggerService.log(`Getting tasks assigned to user: ${assignee}`, WorkqueueService.name);
+      const tasks = await this.flowableService.handleGetTasksByAssignee(assignee);
+      this.loggerService.log(`Retrieved ${tasks.length} tasks assigned to user: ${assignee}`, WorkqueueService.name);
+      return tasks;
+    } catch (error) {
+      this.loggerService.error(`Failed to get tasks for assignee ${assignee}: ${error.message}`, error.stack, WorkqueueService.name);
+      throw new HttpException('Failed to get tasks for assignee', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   /**
    * Get work queue statistics for a candidate group
    * @param groupId - Optional group identifier, if not provided returns stats for all groups

@@ -110,6 +110,23 @@ export class FlowableIdentityService {
   }
 
   /**
+   * Get all tasks assigned to a specific user
+   */
+  async getTasksAssignedToUser(assignee: string) {
+    try {
+      const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
+        params: {
+          assignee,
+        },
+      });
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to get tasks for assignee ${assignee}: ${error.message}`, error.stack, FlowableIdentityService.name);
+      throw new HttpException('Failed to get tasks for assignee', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Get work queue statistics for candidate groups
    *
    * @param flowableClient - Axios instance for Flowable API

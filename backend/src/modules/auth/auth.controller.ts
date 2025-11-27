@@ -39,9 +39,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials supplied.' })
   async login(@Body() body: LoginRequestDto): Promise<LoginResponseDto> {
     try {
-      this.logger.log(`Attempting login for user ${body.username}`);
       const result = await this.authService.login(body.username, body.password);
-      this.logger.log(`User ${body.username} logged in successfully`);
       await this.auditLogService.logAction({
         userId: 'unknown',
         operation: 'login',

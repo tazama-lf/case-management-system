@@ -402,6 +402,13 @@ export class FlowableTaskService {
       if (value === undefined) {
         throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
       }
+      if (typeof value === 'boolean') {
+        return {
+          name,
+          value: value,
+          type: 'boolean',
+        };
+      }
       return {
         name,
         value: String(value),

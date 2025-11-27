@@ -2,12 +2,10 @@ export class CaseCreatedEvent {
   constructor(
     public readonly caseId: string,
     public readonly tenantId: string,
-    public readonly creatorUserId: string,
     public readonly caseStatus: string,
-    public readonly creationType: string,
-    public readonly autocloseEligible: boolean,
     public readonly isTriageAlert: boolean = false,
-    public readonly creatorRole?: string,
+    public readonly creationType: string,
+    public readonly creatorRole: string,
   ) {}
 }
 
@@ -76,9 +74,8 @@ export class TaskUnassignedEvent {
   constructor(
     public readonly taskId: string,
     public readonly caseId: string,
-    public readonly previousAssignedUserId?: string,
-    public readonly candidateGroup?: string,
-    public readonly reason?: string,
+    public readonly assignedUser: null,
+    public readonly taskName?: string,
   ) {}
 }
 

@@ -11,6 +11,7 @@ import { RepositoryModule } from '../repository/repository.module';
 import { AlertModule } from '../alert/alert.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { CaseModule } from '../case/case.module';
+import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CaseModule } from '../case/case.module';
     CommentModule,
     FeatureExtractionModule,
     PrismaModule,
+    FlowableModule,
   ],
   controllers: [TriageController],
   providers: [TriageService, AuditLogService],

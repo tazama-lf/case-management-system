@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseStatus, TaskStatus, Prisma } from '@prisma/client';
+import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client';
 
 @Injectable()
 export class CaseRepository {
@@ -161,11 +161,17 @@ export class CaseRepository {
     });
   }
 
-  async findCaseById(caseId: string) {
-    return await this.prismaService.case.findUnique({
+  async findCaseById(caseId: string): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
+    const caseData = await this.prismaService.case.findUnique({
       where: { case_id: caseId },
       include: { alert: true, tasks: true },
     });
+
+    if (!caseData) {
+      throw new NotFoundException('Case Not Found');
+    }
+
+    return caseData;
   }
 
   async updateCase(caseId: string, data: Prisma.CaseUpdateInput) {

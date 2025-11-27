@@ -40,7 +40,7 @@ export class CaseService {
     private readonly caseClosureApprovalService: CaseClosureApprovalService,
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
-    private readonly alertRepository: AlertRepository
+    private readonly alertRepository: AlertRepository,
   ) {}
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
@@ -332,6 +332,11 @@ export class CaseService {
       const result = await this.prismaService.$transaction(async (prisma) => {
         // Update case with provided data and new status
         const updatedCase = await this.caseQueryService.updateCase(caseId, { ...updateData, status: targetStatus }, userId);
+        await this.flowableService.handleCaseStatusChanged({
+          caseId,
+          newStatus: targetStatus,
+          reason: `Case creation completed by ${role}`,
+        });
 
         // Find and complete the "Complete New Case" task
         const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
@@ -350,6 +355,16 @@ export class CaseService {
           { status: TaskStatus.STATUS_30_COMPLETED },
           userId,
         );
+        await this.flowableService.handleTaskCompleted({
+          caseId: completedTask.case_id,
+          taskName: completedTask.name!,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          completionVariables: {
+            autoCloseEligible: false,
+            casePriority: existingCase.priority!,
+            readyForAssignment: 'true',
+          },
+        });
 
         return { case: updatedCase, completedTask };
       });
@@ -394,7 +409,6 @@ export class CaseService {
         );
       }
 
-
       const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
       if (getAlertIdByCaseId) {
         const alertUpdateData = {
@@ -403,13 +417,10 @@ export class CaseService {
           alertType: updateData.caseType,
           predictionOutcome: updateData.predictionOutcome,
           confidencePer: updateData.confidence,
-          case_id: caseId, 
+          case_id: caseId,
         };
         await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
-        this.logger.log(
-          `[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`,
-          CaseService.name,
-        );
+        this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
 
       await this.auditLogService.logAction({

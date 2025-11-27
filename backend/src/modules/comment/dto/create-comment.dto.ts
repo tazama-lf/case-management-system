@@ -5,9 +5,8 @@ export class CreateCommentDto {
   @MaxLength(500)
   note: string;
 
-  @IsOptional()
   @IsUUID()
-  caseId?: string;
+  caseId: string;
 
   @IsOptional()
   @IsUUID()

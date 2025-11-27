@@ -122,6 +122,40 @@ export class WorkqueueController {
     return this.workqueueService.getCandidateGroupTasks(groupId, includeVariables ?? true);
   }
 
+  @Get('assignee/:assignee/tasks')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get tasks assigned to a user',
+    description: 'Retrieve all tasks assigned to a specific user',
+  })
+  @ApiParam({
+    name: 'assignee',
+    description: 'The user identifier',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tasks retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          assignee: { type: 'string' },
+          created: { type: 'string', format: 'date-time' },
+          priority: { type: 'number' },
+          variables: { type: 'object' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getTasksByAssignee(@Param('assignee') assignee: string) {
+    return this.workqueueService.getTasksByAssignee(assignee);
+  }
+
   @Get('statistics')
   @RequireAdminRole()
   @ApiOperation({
