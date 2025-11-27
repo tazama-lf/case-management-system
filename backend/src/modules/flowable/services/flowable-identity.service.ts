@@ -117,6 +117,8 @@ export class FlowableIdentityService {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
           assignee,
+          includeProcessVariables: true,
+          includeTaskLocalVariables: true,
         },
       });
       return response.data.data || [];
