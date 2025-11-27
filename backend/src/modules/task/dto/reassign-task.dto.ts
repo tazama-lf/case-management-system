@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ReassignTaskDto {
@@ -27,4 +27,14 @@ export class ReassignTaskDto {
   @IsString()
   @IsOptional()
   reason?: string;
+
+  @ApiProperty({
+      description: 'Update note explaining the changes',
+      example: 'Updated priority based on additional investigation',
+      type: 'string',
+      maxLength: 500,
+    })
+    @IsString()
+    @MaxLength(500)
+    note: string;
 }

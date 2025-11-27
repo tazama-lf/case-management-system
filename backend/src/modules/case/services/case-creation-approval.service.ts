@@ -542,6 +542,7 @@ export class CaseCreationApprovalService {
 
       await this.caseRepository.createComment({
         user_id: supervisorId,
+        case_id: caseId,
         task_id: completeNewCaseTask.task_id,
         note: `Case creation rejected. Reason: ${reason}`,
       });

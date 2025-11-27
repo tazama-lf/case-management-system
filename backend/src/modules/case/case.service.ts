@@ -210,8 +210,9 @@ export class CaseService {
           userId,
         );
         const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
+        //createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.note = reason;
+        createCommentDto.caseId = caseId;
         this.commentService.addComment(createCommentDto, userId);
 
         this.flowableService.handleCaseAbandoned({ caseId, reason });
@@ -254,7 +255,7 @@ export class CaseService {
     return this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
-  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
+  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string, supervisorId: string) {
     return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
   }
 
@@ -366,6 +367,12 @@ export class CaseService {
           },
         });
 
+        await this.commentService.addComment( 
+        { caseId: caseId,
+          taskId: completeNewCaseTask.task_id,
+          note: updateData.note } as CreateCommentDto,
+         userId,
+      );
         return { case: updatedCase, completedTask };
       });
 

@@ -44,8 +44,8 @@ export class TaskService {
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     return this.taskBridgeService.createTask(taskDTO, userId);
   }
-  async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string) {
-    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId);
+  async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string, notes: string) {
+    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
 
   async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
@@ -221,8 +221,8 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
-    return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId);
+  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
+    return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId, note);
   }
 
   async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {

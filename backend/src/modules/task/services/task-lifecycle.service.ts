@@ -8,6 +8,7 @@ import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 
+
 @Injectable()
 export class TaskLifecycleService {
   constructor(
@@ -31,13 +32,13 @@ export class TaskLifecycleService {
     return c;
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string) {
+  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     const previousAssignedUserId = existingTask.assigned_user_id;
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
     const previousCaseStatus = existingCase.status;
-
+    
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
         where: { task_id: taskId },
@@ -59,6 +60,16 @@ export class TaskLifecycleService {
         taskName: existingTask.name!,
         assignedUserId,
       });
+      if (note && note.trim().length > 0 ) {
+      await tx.comment.create({
+        data: {
+        user_id: assignedUserId,
+        case_id: existingTask.case_id,
+        task_id: taskId,
+        note: note,
+        },
+      });
+    }
 
       return { updatedTask, updatedCase };
     });
@@ -92,7 +103,7 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async reassignTask(taskId: string, actorUserId: string, tenantId: string, assignedUserId: string) {
+  async reassignTask(taskId: string, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     const previousAssignedUserId = existingTask.assigned_user_id;
@@ -119,6 +130,15 @@ export class TaskLifecycleService {
         taskName: existingTask.name!,
         assignedUserId,
       });
+    
+      await tx.comment.create({
+        data: {
+        user_id: actorUserId,
+        case_id: existingTask.case_id,
+        task_id: taskId,
+        note: note,
+        },
+      });
       return { updatedTask, updatedCase };
     });
 
@@ -129,6 +149,7 @@ export class TaskLifecycleService {
     //   CaseStatus.STATUS_10_ASSIGNED,
     //   `Case reassigned to investigator ${assignedUserId} by ${actorUserId}`,
     // );
+
 
     await this.auditLogService.logAction({
       userId: actorUserId,
@@ -232,6 +253,16 @@ export class TaskLifecycleService {
         taskName: existingTask.name!,
         assignedUser: null,
       });
+      
+      await tx.comment.create({
+        data: {
+        user_id: actorUserId,
+        case_id: existingTask.case_id,
+        task_id: taskId,
+        note: reason,
+        },
+      });
+
       return { updatedTask, updatedCase };
     });
 

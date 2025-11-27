@@ -125,7 +125,7 @@ export interface SuspendCaseDto {
 
 export interface ApproveCaseClosureDto {
   finalOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
-  supervisorComments?: string;
+  supervisorComments: string;
 }
 
 export interface ReturnCaseForReviewDto {

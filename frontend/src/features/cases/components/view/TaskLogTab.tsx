@@ -112,14 +112,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
     const filtered = tasks.filter((task) => {
       const candidateGroup = (task.candidateGroup || '').toLowerCase();
       const taskName = (task.name || '').toLowerCase();
-      
+
       // Define patterns that identify supervisor-only tasks
       // Only filter based on candidate group and specific task names, not descriptions
       const supervisorTaskPatterns = [
         // Candidate group patterns
         candidateGroup === 'supervisors',
         candidateGroup === 'supervisor',
-        
+
         // Specific supervisor task name patterns
         taskName.includes('approve case creation'),
         taskName.includes('approve case reopening'),
@@ -130,9 +130,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
         taskName === 'approve case reopening',
         taskName === 'approve case closure',
       ];
-      
+
       const isSupervisorTask = supervisorTaskPatterns.some(pattern => pattern === true);
-      
+
       return !isSupervisorTask;
     });
 
@@ -186,7 +186,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
 
   // Unified handler for all task operations with type checking
   type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus';
-  
+
   interface TaskOperationParams {
     task: UnifiedWorkQueueTask;
     assignee?: string;
@@ -200,7 +200,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
     operation: TaskOperation,
     params: TaskOperationParams
   ): Promise<void> => {
-    const { task, assignee, newStatus, reason } = params;
+    const { task, assignee, newStatus, reason, justification, notes } = params;
 
     try {
       // Validation based on operation type
@@ -225,10 +225,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
       // Execute the appropriate operation
       switch (operation) {
         case 'assign':
-          await taskService.assignTaskToInvestigator(task.id, assignee!);
+          await taskService.assignTaskToInvestigator(task.id, assignee!, notes);
           break;
         case 'reassign':
-          await taskService.reassignTask(task.id, assignee!);
+          await taskService.reassignTask(task.id, assignee!, justification!);
           break;
         case 'unassign':
           await taskService.unassignTask(task.id, { reason: reason! });

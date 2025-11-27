@@ -200,7 +200,7 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId);
+    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note); ;
   }
 
   @Patch(':taskId/unassign')
@@ -369,7 +369,7 @@ export class TaskController {
     const supervisorId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    const result = await this.taskService.assignTaskToInvestigator(taskId, assignTaskDto.assignedUserId, supervisorId, tenantId);
+    const result = await this.taskService.assignTaskToInvestigator(taskId, assignTaskDto.assignedUserId, supervisorId, tenantId, assignTaskDto.note);
 
     return {
       success: true,

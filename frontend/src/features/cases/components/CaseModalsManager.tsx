@@ -447,7 +447,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => modalActions.setIsCaseClosureDecisionOpen(false)}
           caseId={modalState.selectedRow?.id || ''}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
-          recommendedOutcome={modalState.selectedRow?.status || ''}
+          //recommendedOutcome={modalState.selectedRow?.status || ''} //Commented to fix dropdown issue (PENDING APPROVAL)
+          recommendedOutcome={'STATUS_83_CLOSED_INCONCLUSIVE'}
           taskList={modalState.selectedRow?.tasks ?? []}
           onApprove={handleApproveSubmit}
           onReject={handleRejectSubmit}

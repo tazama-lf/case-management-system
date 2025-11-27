@@ -31,6 +31,16 @@ export class CommentService {
     }
   }
 
+  async getCommentsByTaskId(taskId: string): Promise<CommentsByCaseId[]> {
+    try {
+      const response = await apiClient.get<CommentsByCaseId[]>(`${this.baseUrl}/task/${taskId}/comment`);
+      return Array.isArray(response) ? response : [];
+    } catch (error: any) {
+      console.error('CommentService: Failed to get tasks with comments for task:', taskId, error);
+      throw this.handleError(error, 'get tasks with comments by task ID');
+    }
+  }
+
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;

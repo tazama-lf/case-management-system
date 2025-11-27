@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AssignTaskDto {
   @ApiProperty({
@@ -19,4 +19,16 @@ export class AssignTaskDto {
   @IsOptional()
   @IsString()
   comments?: string;
+
+  @ApiPropertyOptional({
+    description: 'Update note explaining the changes',
+    example: 'Updated priority based on additional investigation',
+    type: 'string',
+    maxLength: 500,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  note?: string;
+
 }
