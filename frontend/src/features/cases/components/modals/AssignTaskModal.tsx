@@ -26,6 +26,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
+  const [isSupervisor, setIsSupervisor] = useState(false);
 
   useEffect(() => {
     setAssignee('');
@@ -34,7 +35,13 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      fetchInvestigators();
+      const user = authService.getUser();
+      const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+      setIsSupervisor(isSupervisor);
+      
+      if (isSupervisor) {
+        fetchInvestigators();
+      }
       fetchCurrentUserAsInvestigator();
     }
   }, [open]);
@@ -165,7 +172,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                     {currentUserInvestigator.firstName} {currentUserInvestigator.lastName} (Me)
                   </option>
                 )}
-                {investigators.map((investigator) => {
+                {isSupervisor && investigators.map((investigator) => {
                   return (
                     <option key={investigator.id} value={investigator.id}>
                       {investigator.firstName} {investigator.lastName} (

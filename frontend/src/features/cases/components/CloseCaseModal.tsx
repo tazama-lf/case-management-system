@@ -235,11 +235,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               disabled={isSubmitting}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting
-                ? 'Submitting for Approval...'
-                : isSupervisor
-                  ? 'Close Case'
-                  : 'Submit for Approval'}
+              {isSupervisor 
+                ? (isSubmitting ? 'Closing Case...' : 'Close Case')
+                : (isSubmitting ? 'Submitting for Approval...' : 'Submit for Approval')}
             </button>
           </div>
         </form>
