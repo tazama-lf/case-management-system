@@ -15,8 +15,8 @@ import {
   useSearchEvidence,
   useDownloadEvidence,
   useVerifyEvidence,
-} from '../../hooks/useEvidence';
-import { evidenceService } from '../../services/evidenceService';
+} from '../hooks/useEvidence';
+import { evidenceService } from '../services/evidenceService';
 import type {
   Evidence,
   EvidenceType,

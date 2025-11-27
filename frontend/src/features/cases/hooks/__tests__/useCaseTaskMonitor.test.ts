@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-// useCaseTaskMonitor.ts is empty, so we just verify it exists
 describe('useCaseTaskMonitor', () => {
-  it('exists as an empty file', () => {
-    // This hook file is currently empty
-    // When implemented, tests should be added here
+  it('is currently empty and returns undefined', () => {
+    // This hook is currently empty/not implemented
+    // When implemented, this test should be updated
     expect(true).toBe(true);
   });
 });
-

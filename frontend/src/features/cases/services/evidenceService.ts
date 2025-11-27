@@ -6,6 +6,7 @@ import type {
   VerifyEvidenceResponse,
   EvidenceListResponse,
   EvidenceType,
+  EvidenceSearchFilters,
 } from '../types/evidence.types';
 
 export class EvidenceService {
@@ -311,6 +312,36 @@ export class EvidenceService {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  async searchEvidence(
+    filters: EvidenceSearchFilters,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<EvidenceListResponse> {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+
+      if (filters.evidenceType) params.append('evidenceType', filters.evidenceType);
+      if (filters.taskId) params.append('taskId', filters.taskId);
+      if (filters.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
+      if (filters.verified !== undefined) params.append('verified', filters.verified.toString());
+      if (filters.search) params.append('search', filters.search);
+
+      const queryString = params.toString();
+      const response = await apiClient.get<EvidenceListResponse>(
+        `${this.baseUrl}/search?${queryString}`,
+      );
+      
+      if (response.evidence) {
+        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
+      }
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'search evidence');
+    }
   }
 
   private handleError(error: unknown, operation: string): Error {
