@@ -1,4 +1,4 @@
-import { CaseStatus, CaseType, Priority } from '@prisma/client';
+import { CaseStatus, CaseType, Priority } from '@prisma/client-cms';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 
 export class UpdateCaseDto {

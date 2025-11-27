@@ -5,7 +5,7 @@ import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
 import { SystemCaseCreationDto } from '../../src/case/dto/system-case-creation.dto';
 import { TazamaAuthGuard } from '../../src/auth/tazama-auth.guard';
-import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
+import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client-cms';
 import { AuthenticatedRequest } from '../../src/auth/auth.types';
 
 describe('CaseController', () => {

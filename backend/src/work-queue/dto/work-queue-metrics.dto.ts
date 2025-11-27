@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsUUID, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, Min } from 'class-validator';
-import { TaskStatus, TaskType, Priority } from '@prisma/client';
+import { TaskStatus, TaskType, Priority } from '@prisma/client-cms';
 
 /**
  * DTO for task filtering in monitoring dashboard

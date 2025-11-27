@@ -143,11 +143,11 @@ export const DefaultWorkQueueErrorFallback: React.FC<
 export const useWorkQueueErrorHandler = () => {
   const [error, setError] = React.useState<FlowableError | null>(null);
 
-  const handleError = React.useCallback((error: unknown) => {
-    if (error instanceof FlowableError) {
-      setError(error);
-    } else if (error instanceof Error) {
-      setError(new FlowableError(error.message, 'UNKNOWN_ERROR'));
+  const handleError = React.useCallback((err: unknown) => {
+    if (err instanceof FlowableError) {
+      setError(err);
+    } else if (err instanceof Error) {
+      setError(new FlowableError(err.message, 'UNKNOWN_ERROR'));
     } else {
       setError(
         new FlowableError('An unexpected error occurred', 'UNKNOWN_ERROR'),
@@ -158,6 +158,18 @@ export const useWorkQueueErrorHandler = () => {
   const clearError = React.useCallback(() => {
     setError(null);
   }, []);
+
+  // Backwards compatible helpers expected by existing tests/components
+  const triggerError = React.useCallback(
+    (err: unknown) => {
+      handleError(err);
+    },
+    [handleError],
+  );
+
+  const resetErrorBoundary = React.useCallback(() => {
+    clearError();
+  }, [clearError]);
 
   const getErrorDisplay = React.useCallback(() => {
     if (!error) return null;
@@ -170,6 +182,9 @@ export const useWorkQueueErrorHandler = () => {
     handleError,
     clearError,
     getErrorDisplay,
+    // Legacy-style API used in tests
+    triggerError,
+    resetErrorBoundary,
   };
 };
 
@@ -183,7 +198,9 @@ export function withWorkQueueErrorHandling<P extends object>(
     </WorkQueueErrorBoundary>
   );
 
-  WithErrorHandling.displayName = `withWorkQueueErrorHandling(${Component.displayName || Component.name})`;
+  WithErrorHandling.displayName = `WithWorkQueueErrorHandling(${
+    Component.displayName || Component.name || 'Component'
+  })`;
 
   return WithErrorHandling;
 }

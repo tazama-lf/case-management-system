@@ -1,7 +1,7 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CaseStatus, Priority } from '@prisma/client';
+import { CaseStatus, Priority } from '@prisma/client-cms';
 
 export class GetUserCasesQueryDto {
   @ApiProperty({

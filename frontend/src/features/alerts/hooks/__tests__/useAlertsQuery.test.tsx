@@ -6,6 +6,32 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationProvider } from '../../../../shared/providers/NotificationProvider';
 import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
+// Mocks for triage service used by the alerts hooks
+const mockGetAlerts = vi.fn();
+const mockGetAlertById = vi.fn();
+const mockGetAlertActionHistory = vi.fn();
+const mockPerformManualTriage = vi.fn();
+const mockUpdateAlert = vi.fn();
+const mockCloseAlert = vi.fn();
+const mockGetFilterOptions = vi.fn();
+const mockGetNALTAlerts = vi.fn();
+
+vi.mock('../../services/triageservice', () => ({
+  __esModule: true,
+  default: {
+    getAlerts: (...args: unknown[]) => mockGetAlerts(...args),
+    getAlertById: (...args: unknown[]) => mockGetAlertById(...args),
+    getAlertActionHistory: (...args: unknown[]) =>
+      mockGetAlertActionHistory(...args),
+    performManualTriage: (...args: unknown[]) =>
+      mockPerformManualTriage(...args),
+    updateAlert: (...args: unknown[]) => mockUpdateAlert(...args),
+    closeAlert: (...args: unknown[]) => mockCloseAlert(...args),
+    getFilterOptions: (...args: unknown[]) => mockGetFilterOptions(...args),
+    getNALTAlerts: (...args: unknown[]) => mockGetNALTAlerts(...args),
+  },
+}));
+
 const TestComponent = () => {
   const { alerts, isLoading, error, refetch } = useAlerts({
     search: '',
@@ -75,6 +101,43 @@ const renderWithProviders = (component: React.ReactElement) => {
 describe('useAlerts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    const baseAlerts = [
+      {
+        alert_id: 'ALERT-001',
+        message: 'First alert',
+      },
+      {
+        alert_id: 'ALERT-002',
+        message: 'Second alert',
+      },
+    ];
+
+    mockGetAlerts.mockImplementation(
+      async (filters: { search?: string } = {}) => {
+        const { search } = filters;
+        let alerts = baseAlerts;
+
+        if (search) {
+          const term = search.toLowerCase();
+          alerts = alerts.filter(
+            (a) =>
+              a.alert_id.toLowerCase().includes(term) ||
+              a.message.toLowerCase().includes(term),
+          );
+        }
+
+        return {
+          alerts,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: alerts.length,
+            pageSize: 10,
+          },
+        };
+      },
+    );
   });
 
   it('should fetch alerts successfully', async () => {
@@ -123,17 +186,7 @@ describe('useAlerts', () => {
   });
 
   it('should handle API errors', async () => {
-    const { server } = await import('../../../../test/mocks/server');
-    const { http, HttpResponse } = await import('msw');
-
-    server.use(
-      http.get('/api/v1/triage/alerts', () => {
-        return HttpResponse.json(
-          { error: 'Internal server error' },
-          { status: 500 },
-        );
-      }),
-    );
+    mockGetAlerts.mockRejectedValueOnce(new Error('Internal server error'));
 
     renderWithProviders(<TestComponent />);
 

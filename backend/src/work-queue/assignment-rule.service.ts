@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AssignmentRuleType } from '@prisma/client';
+import { AssignmentRuleType } from '@prisma/client-cms';
 
 interface RuleConfig {
   priorities?: string[];

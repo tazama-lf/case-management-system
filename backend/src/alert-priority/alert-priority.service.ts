@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Priority } from '@prisma/client';
+import { Priority } from '@prisma/client-cms';
 import { TriageService } from '../triage/triage.service';
 
 @Injectable()

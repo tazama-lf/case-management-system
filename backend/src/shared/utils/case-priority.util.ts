@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Priority } from '@prisma/client';
+import { Priority } from '@prisma/client-cms';
 
 @Injectable()
 export class CasePriorityUtil {

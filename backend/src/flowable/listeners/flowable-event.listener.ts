@@ -15,7 +15,7 @@ import {
   TaskUnassignedEvent,
   BpmnTaskCreatedEvent,
 } from '../../events/domain-events';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { AuditLogService } from '../../audit/auditLog.service';
 
 @Injectable()

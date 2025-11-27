@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { ManualTriageDto } from '../../../src/triage/dto/manual-triage.dto';
-import { CaseStatus, Priority, AlertType, PredictionOutcome } from '@prisma/client';
+import { CaseStatus, Priority, AlertType, PredictionOutcome } from '@prisma/client-cms';
 
 describe('ManualTriageDto', () => {
   // Helper function to create valid base data

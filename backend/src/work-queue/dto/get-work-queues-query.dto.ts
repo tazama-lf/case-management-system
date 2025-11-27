@@ -1,7 +1,7 @@
 import { IsOptional, IsEnum, IsString, IsBoolean, IsInt, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-cms';
 
 export class GetWorkQueuesQueryDto {
   @ApiProperty({

@@ -7,7 +7,7 @@ import { FlowableService } from '../../src/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from '../../src/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/case/dto/update-case.dto';
-import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client';
+import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client-cms';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Outcome } from '../../src/audit/types/outcome';
 
