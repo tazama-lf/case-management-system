@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/audit/auditLog.service';
 import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
 import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../src/audit/types/outcome';
 jest.mock('axios');

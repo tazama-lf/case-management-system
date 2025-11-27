@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID, IsArray, IsEnum, IsOptional, ArrayMinSize } from 'class-validator';
-import { AssignmentType } from '@prisma/client';
+import { AssignmentType } from '@prisma/client-cms';
 
 /**
  * DTO for assigning users to a work queue

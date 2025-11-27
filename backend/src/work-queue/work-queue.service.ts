@@ -30,7 +30,7 @@ import {
   UpdateAssignmentRuleDto,
   DetailedAssignmentRuleDto,
 } from './dto';
-import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client';
+import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client-cms';
 import { RuleEngineService } from './rule-engine.service';
 
 @Injectable()

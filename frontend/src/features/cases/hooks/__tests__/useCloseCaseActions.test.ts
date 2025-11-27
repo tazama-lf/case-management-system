@@ -46,7 +46,7 @@ describe('useCloseCaseActions', () => {
     });
   });
 
-  it('handles error when case cannot be closed', async () => {
+  it('handles investigation task not completed error', async () => {
     const error = new Error('Investigation task is not completed');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
@@ -63,7 +63,178 @@ describe('useCloseCaseActions', () => {
     ).rejects.toThrow();
 
     await waitFor(() => {
-      expect(mockError).toHaveBeenCalled();
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Investigation task must be completed first'),
+      );
+    });
+  });
+
+  it('handles not in a closeable state error', async () => {
+    const error = new Error('not in a closeable state');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Unable to close this case right now'),
+      );
+    });
+  });
+
+  it('handles unauthorized error', async () => {
+    const error = new Error('Unauthorized');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles 403 error', async () => {
+    const error = new Error('403');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles not found error', async () => {
+    const error = new Error('Case not found');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Case not found'),
+      );
+    });
+  });
+
+  it('handles 404 error', async () => {
+    const error = new Error('404');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Case not found'),
+      );
+    });
+  });
+
+  it('handles generic error with message', async () => {
+    const error = new Error('Generic error message');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Generic error message'),
+      );
+    });
+  });
+
+  it('handles error without message', async () => {
+    const error = new Error('');
+    (caseService.closeCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useCloseCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleCloseCaseSubmit('CASE-123', {
+        investigationSummary: 'Test',
+        recommendations: 'Test',
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+      }),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Close Case Failed',
+        expect.stringContaining('Something went wrong'),
+      );
     });
   });
 });

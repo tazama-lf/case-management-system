@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Task, WorkQueueAssignmentRule, Case } from '@prisma/client';
+import { Task, WorkQueueAssignmentRule, Case } from '@prisma/client-cms';
 import {
   RuleAttribute,
   RuleOperator,

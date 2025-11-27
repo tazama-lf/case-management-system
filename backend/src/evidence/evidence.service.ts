@@ -210,7 +210,6 @@ export class EvidenceService {
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;
-    console.log("targets: ", targets);
 
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 

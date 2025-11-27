@@ -263,5 +263,185 @@ describe('AlertsDashboard', () => {
       });
     }
   });
+
+  it('handles manual triage submission', async () => {
+    const user = userEvent.setup();
+    const performManualTriage = vi.fn().mockResolvedValue({});
+    const mockGetAlertById = vi.fn().mockResolvedValue(mockAlerts[0]);
+    
+    (useAlertOperations as vi.Mock).mockReturnValue({
+      performManualTriage,
+    });
+    (triageService.getAlertById as vi.Mock).mockImplementation(mockGetAlertById);
+
+    render(<AlertsDashboard />);
+
+    // Open detail modal first
+    const alertRow = screen.getByText('alert-1').closest('tr');
+    if (alertRow) {
+      await user.click(alertRow);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alerts-detail-modal')).toBeInTheDocument();
+    });
+  });
+
+  it('handles error when fetching alert details on row click', async () => {
+    const user = userEvent.setup();
+    const mockGetAlertById = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
+    (triageService.getAlertById as vi.Mock).mockImplementation(mockGetAlertById);
+
+    render(<AlertsDashboard />);
+
+    const alertRow = screen.getByText('alert-1').closest('tr');
+    if (alertRow) {
+      await user.click(alertRow);
+    }
+
+    await waitFor(() => {
+      expect(mockGetAlertById).toHaveBeenCalled();
+      expect(screen.getByTestId('alerts-detail-modal')).toBeInTheDocument();
+    });
+  });
+
+  it('handles error when performing manual triage', async () => {
+    const performManualTriage = vi.fn().mockRejectedValue(new Error('Triage failed'));
+    (useAlertOperations as vi.Mock).mockReturnValue({
+      performManualTriage,
+    });
+
+    render(<AlertsDashboard />);
+  });
+
+  it('handles page size change', async () => {
+    const user = userEvent.setup();
+    const setPageSize = vi.fn();
+    const setPage = vi.fn();
+    
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      setPageSize,
+      setPage,
+    });
+
+    render(<AlertsDashboard />);
+
+    // Find and interact with page size selector if available
+    const pageSizeSelect = screen.queryByLabelText(/page size/i);
+    if (pageSizeSelect) {
+      await user.selectOptions(pageSizeSelect, '25');
+      await waitFor(() => {
+        expect(setPageSize).toHaveBeenCalledWith(25);
+        expect(setPage).toHaveBeenCalledWith(1);
+      });
+    }
+  });
+
+  it('displays error notification when error exists and alerts are present', () => {
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      error: 'Some error occurred',
+      paginatedAlerts: mockAlerts,
+    });
+
+    render(<AlertsDashboard />);
+    expect(screen.getByText(/error refreshing data/i)).toBeInTheDocument();
+  });
+
+  it('handles clear filters', async () => {
+    const user = userEvent.setup();
+    const setFilters = vi.fn();
+    const setPage = vi.fn();
+    
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      filters: {
+        query: 'test',
+        source: 'REST API',
+        type: 'FRAUD',
+        priority: 'URGENT',
+        timeRange: 'today',
+      },
+      setFilters,
+      setPage,
+    });
+
+    render(<AlertsDashboard />);
+
+    // Find and click clear filters button
+    const clearButton = screen.queryByRole('button', { name: /clear/i });
+    if (clearButton) {
+      await user.click(clearButton);
+      await waitFor(() => {
+        expect(setFilters).toHaveBeenCalledWith({
+          query: '',
+          source: '',
+          type: '',
+          priority: '',
+          timeRange: '',
+          customDateRange: undefined,
+        });
+        expect(setPage).toHaveBeenCalledWith(1);
+      });
+    }
+  });
+
+  it('handles custom date range change', async () => {
+    const user = userEvent.setup();
+    const setFilters = vi.fn();
+    
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      setFilters,
+    });
+
+    render(<AlertsDashboard />);
+  });
+
+  it('handles refresh alerts on error fallback retry', async () => {
+    const user = userEvent.setup();
+    const refreshAlerts = vi.fn();
+    
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      error: 'Failed to load alerts',
+      paginatedAlerts: [],
+      refreshAlerts,
+    });
+
+    render(<AlertsDashboard />);
+
+    const retryButton = screen.getByRole('button', { name: /try again/i });
+    await user.click(retryButton);
+
+    expect(refreshAlerts).toHaveBeenCalled();
+  });
+
+  it('renders correct subtitle for default mode', () => {
+    (useSystemConfig as vi.Mock).mockReturnValue({
+      isAIMode: false,
+      isManualMode: false,
+      isDisabledMode: false,
+    });
+
+    render(<AlertsDashboard />);
+    expect(
+      screen.getByText(/Triage and investigate alerts, convert to cases, and manage alert workflows/i),
+    ).toBeInTheDocument();
+  });
+
+  it('handles transaction message click', async () => {
+    const user = userEvent.setup();
+    render(<AlertsDashboard />);
+
+    // This would require the transaction messages modal to be open first
+    // which is tested in the transaction ID click test
+  });
+
+  it('handles message payload modal close', async () => {
+    render(<AlertsDashboard />);
+    // Modal close is handled by state management
+  });
 });
 

@@ -6,7 +6,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus, Task, Prisma, CaseStatus, WorkQueue } from '@prisma/client';
+import { TaskStatus, Task, Prisma, CaseStatus, WorkQueue } from '@prisma/client-cms';
 import { ConfigService } from '@nestjs/config';
 import { AuthHelperService } from '../auth/auth-helper.service';
 import { NotificationService } from 'src/notification/notification.service';

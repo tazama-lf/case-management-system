@@ -4,7 +4,7 @@ import { TaskController } from '../../src/task/task.controller';
 import { TaskService } from '../../src/task/task.service';
 import { CreateTaskDto } from '../../src/task/dto/create-task.dto';
 import { UpdateTaskDto } from '../../src/task/dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { AuthenticatedRequest } from '../../src/auth/auth.types';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LogCallback } from '@tazama-lf/frms-coe-lib/lib/helpers/logUtilities';

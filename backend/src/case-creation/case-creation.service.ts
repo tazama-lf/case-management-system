@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { Outcome } from '../audit/types/outcome';
 import { CaseCreatedEvent, CaseStatusChangedEvent } from '../events/domain-events';
-import { CaseStatus, CaseType, Priority } from '@prisma/client';
+import { CaseStatus, CaseType, Priority } from '@prisma/client-cms';
 
 @Injectable()
 export class CaseCreationService {

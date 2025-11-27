@@ -38,7 +38,23 @@ describe('useReopenCaseActions', () => {
     });
   });
 
-  it('handles error when case cannot be reopened', async () => {
+  it('trims reason before sending', async () => {
+    (caseService.reopenCase as vi.Mock).mockResolvedValue({});
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await result.current.handleReopenSubmit('CASE-123', '  Test reason  ');
+
+    await waitFor(() => {
+      expect(caseService.reopenCase).toHaveBeenCalledWith('CASE-123', {
+        reason: 'Test reason',
+      });
+    });
+  });
+
+  it('handles not in a reopenable state error', async () => {
     const error = new Error('not in a reopenable state');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
@@ -51,7 +67,130 @@ describe('useReopenCaseActions', () => {
     ).rejects.toThrow();
 
     await waitFor(() => {
-      expect(mockError).toHaveBeenCalled();
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Unable to request reopening for this case'),
+      );
+    });
+  });
+
+  it('handles unauthorized error', async () => {
+    const error = new Error('Unauthorized');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles 403 error', async () => {
+    const error = new Error('403');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles not found error', async () => {
+    const error = new Error('Case not found');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Case not found'),
+      );
+    });
+  });
+
+  it('handles 404 error', async () => {
+    const error = new Error('404');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Case not found'),
+      );
+    });
+  });
+
+  it('handles generic error with message', async () => {
+    const error = new Error('Generic error message');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Generic error message'),
+      );
+    });
+  });
+
+  it('handles error without message', async () => {
+    const error = new Error('');
+    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useReopenCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleReopenSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Reopen Case Failed',
+        expect.stringContaining('Something went wrong'),
+      );
     });
   });
 });
