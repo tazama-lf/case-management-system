@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
+import { authService } from '@/features/auth';
 
 interface ReopenCaseModalProps {
   open: boolean;
@@ -17,6 +18,13 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSupervisor, setIsSupervisor] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getUser();
+    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+    setIsSupervisor(isSupervisor);
+  }, []);
 
   const isReasonValid = reason.trim().length >= 10;
 
@@ -125,7 +133,9 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
                   disabled={isSubmitting || !isReasonValid}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Requesting Reopening...' : 'Request Case Reopening'}
+                  {isSupervisor 
+                ? (isSubmitting ? 'Reopening Case...' : 'Reopen Case')
+                : (isSubmitting ? 'Requesting Reopening...' : 'Request Case Reopening')}
                 </button>
               </div>
             </form>
