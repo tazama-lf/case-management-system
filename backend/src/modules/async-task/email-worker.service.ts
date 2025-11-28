@@ -26,7 +26,6 @@ export class EmailWorkerService {
             this.logger.warn('Please configure SMTP settings in .env file');
         }
 
-        console.log('SMTP Config:', { smtpHost, smtpPort, smtpUser });
         this.transporter = nodemailer.createTransport({
             host: smtpHost || 'localhost',
             port: parseInt(smtpPort),
@@ -37,21 +36,6 @@ export class EmailWorkerService {
             } : undefined,
         });
 
-    //      this.transporter = nodemailer.createTransport({
-    //   host: this.config.get<string>('SMTP_HOST'),
-    //   port: parseInt(this.config.get<string>('SMTP_PORT', '587')),
-    //   secure: false,
-    //   auth: {
-    //     user: this.config.get<string>('SMTP_USER'),
-    //     pass: this.config.get<string>('SMTP_PASS'),
-    //   },
-    // });
-    //     await this.transporter.sendMail({
-    //       from: this.fromEmail,
-    //       to,
-    //       subject: template.subject,
-    //       html: template.html,
-    //     });
 
         this.logger.log(`Email Worker Service initialized - SMTP: ${smtpHost || 'NOT CONFIGURED'}:${smtpPort}`);
     }
@@ -97,7 +81,7 @@ export class EmailWorkerService {
             const { to, subject, html } = payload;
 
             this.logger.debug(`Attempting to send email: ${task.task_id} to ${to}`);
-console.log('formEmail:', this.fromEmail);
+
             // Send email
             const info = await this.transporter.sendMail({
                 from: this.fromEmail,
@@ -111,9 +95,9 @@ console.log('formEmail:', this.fromEmail);
             // Mark as completed
             await this.asyncTaskService.markAsCompleted(task.task_id);
 
-            this.logger.log(`✓ Email sent successfully: ${task.task_id} to ${to} - ${subject}`);
+            this.logger.log(`Email sent successfully: ${task.task_id} to ${to} - ${subject}`);
         } catch (error) {
-            this.logger.error(`✗ Email send failed for ${task.task_id}: ${error.message}`, error.stack);
+            this.logger.error(`Email send failed for ${task.task_id}: ${error.message}`, error.stack);
             await this.handleTaskFailure(task, error);
         }
     }
