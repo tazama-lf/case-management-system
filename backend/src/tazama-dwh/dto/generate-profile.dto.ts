@@ -2,12 +2,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsObject } from 'class-validator';
 
 export class GenerateProfileDto {
-  @ApiProperty({ description: 'Case ID for which to generate the transaction profile' })
+  @ApiProperty({ description: 'Tenant ID for which to generate the transaction profile' })
   @IsString()
-  caseId: string;
+  tenantId: string;
 
   @ApiProperty({
-    description: 'Filters for transaction profile (date range, channel, transaction type, geography, tenantId)',
+    description: 'Filters for transaction profile (date range, channel, transaction type, geography, account, role)',
     required: false,
     type: Object,
     example: {
@@ -16,7 +16,8 @@ export class GenerateProfileDto {
       channel: 'Online',
       type: 'Transfer',
       geography: 'Cross-border',
-      tenantId: 'T001',
+      account: 'ACC-1234',
+      role: 'Creditor',
     },
   })
   @IsOptional()
@@ -27,9 +28,10 @@ export class GenerateProfileDto {
     channel?: string;
     type?: string;
     geography?: string;
-    tenantId?: string;
     account?: string;
     role?: string;
+    creditorId?: string;
+    debtorId?: string;
   };
 
   @ApiProperty({ description: 'Investigator interpretation notes', required: false })

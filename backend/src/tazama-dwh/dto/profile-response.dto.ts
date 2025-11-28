@@ -23,9 +23,9 @@ export class DetectedAnomalyDto {
 }
 
 export class ProfileResponseDto {
-  @ApiProperty({ description: 'Case ID for this transaction profile' })
+  @ApiProperty({ description: 'Tenant ID for this transaction profile' })
   @IsString()
-  caseId: string;
+  tenantId: string;
 
   @ApiProperty({ description: 'Filters used for profile generation', required: false, type: Object })
   @IsOptional()

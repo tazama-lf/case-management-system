@@ -28,7 +28,6 @@ import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 import { CouchdbModule } from './couchdb/couchdb.module';
 import { EvidenceModule } from './evidence/evidence.module';
-import { ProfileModule } from './profile/profile.module';
 import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
 
 @Module({
@@ -61,7 +60,6 @@ import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
-    ProfileModule,
     TazamaDwhModule
   ],
   providers: [
