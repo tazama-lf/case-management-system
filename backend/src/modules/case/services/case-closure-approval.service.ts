@@ -12,6 +12,8 @@ import { NotificationService } from 'src/modules/notification/notification.servi
 import { validateClosureData } from '../utils/helpers/case-validation.helper';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
+import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
+import { CommentService } from 'src/modules/comment/comment.service';
 
 @Injectable()
 export class CaseClosureApprovalService {
@@ -23,6 +25,7 @@ export class CaseClosureApprovalService {
         private readonly taskService: TaskService,
         private readonly notificationService: NotificationService,
         private readonly flowableService: FlowableService,
+        private readonly commentService: CommentService,
     ) { }
 
     async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
@@ -200,7 +203,7 @@ export class CaseClosureApprovalService {
         }
     }
 
-    async approveCaseClosure(caseId: string, finalOutcome: string, comments: string | undefined, supervisorId: string) {
+    async approveCaseClosure(caseId: string, finalOutcome: string, comments: string, supervisorId: string) {
         try {
             if (!finalOutcome || !CASE_CLOSURE_OUTCOMES.includes(finalOutcome as any)) {
                 throw new BadRequestException({
@@ -263,6 +266,13 @@ export class CaseClosureApprovalService {
                     supervisorComments: comments,
                 },
             });
+
+            await this.commentService.addComment(
+            { caseId: caseId, 
+              taskId: approvalTask.task_id, 
+              note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}` } as CreateCommentDto,
+              supervisorId,
+            );
 
 
             const investigationTask = caseDetails.tasks.find(

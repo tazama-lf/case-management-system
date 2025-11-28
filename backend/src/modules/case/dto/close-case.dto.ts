@@ -91,8 +91,8 @@ export class ApproveCaseClosureDto {
     required: false,
   })
   @IsString()
-  @IsOptional()
-  supervisorComments?: string;
+ @IsNotEmpty()
+  supervisorComments: string;
 }
 
 export class RejectCaseClosureDto {

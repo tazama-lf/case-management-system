@@ -59,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full mx-4">
-        {}
+        { }
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
             <LockClosedIcon className="h-8 w-8 text-blue-600" />
@@ -70,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <p className="text-sm text-gray-600">Investigation Platform</p>
         </div>
 
-        {}
+        { }
         <div className="card">
           <div className="card-body">
             <p className="text-base font-normal text-gray-900 mb-6 text-center">
@@ -84,7 +84,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {}
+              { }
               <div>
                 <label htmlFor="username" className="form-label">
                   Login ID
@@ -105,7 +105,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {}
+              { }
               <div>
                 <label htmlFor="password" className="form-label">
                   Password
@@ -138,7 +138,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {}
+              { }
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -166,7 +166,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </a>
               </div>
 
-              {}
+              { }
               <button
                 type="submit"
                 disabled={
@@ -185,8 +185,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </button>
             </form>
 
-            {}
-            {process.env.NODE_ENV === 'development' && (
+            { }
+            {/* {process.env.NODE_ENV === 'development' && (
               <div className="mt-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <p className="text-yellow-800 text-xs font-medium mb-2">
                   Development Mode - Test Users
@@ -250,11 +250,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         </div>
 
-        {}
+        { }
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
             © 2025 Tazama. All rights reserved.

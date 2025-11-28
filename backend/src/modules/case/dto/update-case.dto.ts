@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CaseStatus, CaseType, Priority, PredictionOutcome } from '@prisma/client';
-import { IsEnum, IsOptional, IsUUID, IsNumber,IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID, IsNumber,IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateCaseDto {
   @ApiProperty({
@@ -50,7 +50,14 @@ export class UpdateCaseDto {
   })
   confidence?: number;
 
+  @ApiProperty({
+    description: 'Update note explaining the changes',
+    example: 'Updated priority based on additional investigation',
+    type: 'string',
+    maxLength: 500,
+    })
   @IsString()
+  @MinLength(4)
   @MaxLength(500)
   note?: string;
 

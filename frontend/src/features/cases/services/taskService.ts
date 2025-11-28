@@ -153,11 +153,13 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string): Promise<TaskForSupervisor> {
+  async assignTaskToInvestigator(taskId: string, assignedUserId: string, note?:string): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(
         `${this.baseUrl}/${taskId}/assign`,
-        { assignedUserId }
+        { assignedUserId,
+          note
+         }
       );
 
       return response;
@@ -167,11 +169,13 @@ export class TaskService {
     }
   }
 
-  async reassignTask(taskId: string, assignedUserId: string): Promise<{ success: boolean; message: string }> {
+  async reassignTask(taskId: string, assignedUserId: string, note:string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.patch<{ success: boolean; message: string }>(
         `${this.baseUrl}/${taskId}/reassign`,
-        { assignedUserId }
+        { assignedUserId,
+          note
+         }
       );
 
       return response;

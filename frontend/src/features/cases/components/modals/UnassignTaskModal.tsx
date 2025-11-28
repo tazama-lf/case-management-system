@@ -89,7 +89,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
             This task will be unassigned and returned to the work queue. The current assignee will be notified of the unassignment.
           </p>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <div className="text-sm text-blue-800">
               <strong>Workflow:</strong> Upon unassignment:
             </div>
@@ -99,7 +99,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
               <li>Task will remain available in the candidate group/work queue</li>
               <li>Action will be logged in the audit trail</li>
             </ul>
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">

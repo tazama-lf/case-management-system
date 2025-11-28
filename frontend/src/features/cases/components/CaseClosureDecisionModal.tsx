@@ -72,10 +72,16 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (decision === 'reject') {
-      if (formData.rejectionReason.trim().length < 15) {
-        newErrors.rejectionReason = 'Rejection reason must be at least 15 characters';
+      if (formData.rejectionReason.trim().length < 20) {
+        newErrors.rejectionReason = 'Rejection reason must be at least 20 characters';
       }
     }
+    if (decision === 'approve') {
+      if (formData.supervisorComments.trim().length < 20) {
+        newErrors.supervisorComments = 'Supervisor comment must be at least 20 characters';
+      }
+    }
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -212,7 +218,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               </button>
 
               {/* Workflow Info */}
-              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+              {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">Supervisor Case Closure Approval Workflow</h4>
                 <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
                   <li>Only cases in "PENDING FINAL APPROVAL" can be acted on</li>
@@ -221,7 +227,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <li>Rejection reopens the "Investigate Case" task for further work</li>
                   <li>All approval actions are logged for audit trails</li>
                 </ul>
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -319,7 +325,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               {/* Supervisor Comments */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Supervisor Comments
+                  Supervisor Comments <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={formData.supervisorComments || ''}
@@ -332,6 +338,17 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   placeholder="Provide any additional comments about your approval decision..."
                   disabled={isSubmitting}
                 />
+                <div className="mt-1 flex justify-between">
+                  <p className="text-xs text-gray-500">
+                    {formData.supervisorComments.length}/20 characters minimum
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formData.supervisorComments.length}/1000 characters
+                  </p>
+                </div>
+                {errors.supervisorComments && (
+                  <p className="mt-1 text-sm text-red-600">{errors.supervisorComments}</p>
+                )}
               </div>
 
               {/* Error */}

@@ -1,5 +1,5 @@
 import { Priority, AlertType, PredictionOutcome, CaseStatus } from '@prisma/client';
-import { IsOptional, IsEnum, IsNumber, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsEnum, IsNumber, IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ManualAlertUpdateDTO {
@@ -67,6 +67,7 @@ export class ManualAlertUpdateDTO {
     maxLength: 500,
   })
   @IsString()
+  @MinLength(4)
   @MaxLength(500)
   note: string;
 

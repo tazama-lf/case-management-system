@@ -248,8 +248,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
     if (!note.trim() && mode === 'edit') {
       errors.note = 'Note is required for manual triage';
-    } else if (note.trim().length < 10 && mode === 'edit') {
-      errors.note = 'Note must be at least 10 characters long';
+    } else if (note.trim().length < 4 && mode === 'edit') {
+      errors.note = 'Note must be at least 4 characters long';
     }
 
     return errors;
@@ -711,7 +711,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Notes
                   <span className="text-red-500 ml-1">*</span>
-                  <span className="text-xs text-gray-500 ml-2">(minimum 10 characters)</span>
+                  <span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
                 </label>
                 <textarea
                   value={note}
