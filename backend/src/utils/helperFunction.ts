@@ -1,4 +1,4 @@
-import { AuthenticatedRequest } from '../../modules/auth/auth.types';
+import { AuthenticatedRequest } from '../modules/auth/auth.types';
 
 /**
  * Simple function to extract common user data from request
