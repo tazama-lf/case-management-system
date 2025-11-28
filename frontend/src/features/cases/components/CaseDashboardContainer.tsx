@@ -28,17 +28,6 @@ const CaseDashboardContainer: React.FC = () => {
         onPageSizeChange={setPageSize}
         onCreateNew={dashboardActions.handleCreateNew}
         onView={dashboardActions.handleView}
-        onComplete={dashboardActions.handleComplete}
-        onCloseCase={dashboardActions.handleCloseCase}
-        onReopenCase={dashboardActions.handleReopenCase}
-        onAbandonCase={dashboardActions.handleAbandonCase}
-        onSuspendCase={dashboardActions.handleSuspendCase}
-        onResumeCase={dashboardActions.handleResumeCase}
-        onApproveCase={dashboardActions.handleApproveCase}
-        onApproveCaseCreation={dashboardActions.handleApproveCaseCreation}
-        onRejectCaseCreation={dashboardActions.handleRejectCaseCreation}
-        onApproveCaseReopen={dashboardActions.handleApproveCaseReopen}
-        onRejectCaseReopen={dashboardActions.handleRejectCaseReopen}
       />
       
       <CaseModalsManager
@@ -46,6 +35,7 @@ const CaseDashboardContainer: React.FC = () => {
         modalActions={modalActions}
         onRefreshCases={refreshCases}
         caseActions={caseActions}
+        permissions={dashboardState.permissions}
       />
     </>
   );

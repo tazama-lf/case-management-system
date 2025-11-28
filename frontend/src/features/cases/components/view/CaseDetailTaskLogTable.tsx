@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
@@ -27,6 +27,12 @@ interface WorkQueueTableProps {
     onPageChange: (page: number) => void;
   };
   onRefreshCases?: () => void;
+  canManageSupervisorActions?: boolean;
+  caseData?: any;
+  onApproveCase?: (caseData: any) => void;
+  onApproveCaseCreation?: (caseData: any) => void;
+  onRejectCaseCreation?: (caseData: any) => void;
+  onAbandonCase?: (caseData: any) => void;
 }
 
 const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
@@ -38,7 +44,13 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   onComplete,
   onUpdateStatus,
   pagination,
-  onRefreshCases
+  onRefreshCases,
+  canManageSupervisorActions = false,
+  caseData,
+  onApproveCase,
+  onApproveCaseCreation,
+  onRejectCaseCreation,
+  onAbandonCase
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
@@ -196,6 +208,79 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         </button>
       );
     }
+
+    // Task-specific case actions based on task name
+    const taskName = task.name || '';
+    
+    // Add case actions based on task name
+    if (taskName === 'Approve Case Closure' && canManageSupervisorActions && onApproveCase && caseData) {
+      actions.push(
+        <button
+          key="approve-closure"
+          onClick={() => onApproveCase(caseData)}
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          title="Review Case Closure"
+        >
+          <CheckIcon className="h-3 w-3" />
+          Review
+        </button>
+      );
+    }
+    
+    if (taskName === 'Approve Case Creation' && canManageSupervisorActions && onApproveCaseCreation && caseData) {
+      actions.push(
+        <button
+          key="approve-creation"
+          onClick={() => onApproveCaseCreation(caseData)}
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          title="Approve Case Creation"
+        >
+          <CheckIcon className="h-3 w-3" />
+          Approve
+        </button>
+      );
+      
+      if (onRejectCaseCreation) {
+        actions.push(
+          <button
+            key="reject-creation"
+            onClick={() => onRejectCaseCreation(caseData)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            title="Reject Case Creation"
+          >
+            <XCircleIcon className="h-3 w-3" />
+            Reject
+          </button>
+        );
+      }
+    }
+    
+    // if (taskName === 'Complete New Case' && onAbandonCase && caseData) {
+    //   actions.push(
+    //     <button
+    //       key="abandon"
+    //       onClick={() => onAbandonCase(caseData)}
+    //       className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+    //       title="Abandon Case"
+    //     >
+    //       <TrashIcon className="h-3 w-3" />
+    //       Abandon
+    //     </button>
+    //   );
+    //   if (onComplete) {
+    //     actions.push(
+    //       <button
+    //         key="complete"
+    //         onClick={() => onComplete(caseData)}
+    //         className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    //       >
+    //         <CheckIcon className="h-4 w-4" />
+    //         Complete Case
+    //       </button>
+    //     );
+    //   }
+    // }
+    
 
     if (task.assignee && onUpdateStatus) {
       if (task.name === 'Complete New Case') {

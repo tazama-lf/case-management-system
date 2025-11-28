@@ -68,6 +68,10 @@ interface CaseModalsManagerProps {
   modalState: CaseModalState;
   modalActions: CaseModalActions;
   onRefreshCases: () => Promise<void>;
+  permissions: {
+    canManageSupervisorActions: boolean;
+    isInvestigatorOnly: boolean;
+  };
   caseActions: {
     handleCloseCaseSubmit: (caseId: string, data: CloseCaseDto) => Promise<void>;
     handleAbandonSubmit: (caseId: string, reason: string) => Promise<void>;
@@ -85,6 +89,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   modalState,
   modalActions,
   onRefreshCases,
+  permissions,
   caseActions
 }) => {
   const { success, error } = useToast();
@@ -393,6 +398,64 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         }}
         row={modalState.selectedRow}
         onRefreshCases={onRefreshCases}
+        canManageSupervisorActions={permissions.canManageSupervisorActions}
+        onComplete={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsCreateOpen(true);
+          modalActions.setCreateModalMode('edit');
+          modalActions.setEditingCaseId(row.id);
+          modalActions.setIsViewOpen(false);
+        }}
+        onCloseCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsCloseCaseOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onReopenCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsReopenOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onAbandonCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsAbandonOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onSuspendCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsSuspendOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onResumeCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsResumeOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onApproveCase={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsCaseClosureDecisionOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onApproveCaseReopen={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsApproveReopenOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onRejectCaseReopen={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsRejectReopenOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onApproveCaseCreation={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsApproveCreationOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
+        onRejectCaseCreation={(row) => {
+          modalActions.setSelectedRow(row);
+          modalActions.setIsRejectCreationOpen(true);
+          modalActions.setIsViewOpen(false);
+        }}
       />
 
       <Suspense fallback={<div>Loading modal...</div>}>

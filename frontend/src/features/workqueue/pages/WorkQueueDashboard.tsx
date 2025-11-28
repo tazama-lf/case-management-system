@@ -318,7 +318,7 @@ const WorkQueueDashboard: React.FC = () => {
             </div>
 
             {}
-            <div className="relative w-full lg:max-w-[160px]">
+            {/* <div className="relative w-full lg:max-w-[160px]">
               <select
                 aria-label="Status filter"
                 value={statusFilter}
@@ -334,7 +334,7 @@ const WorkQueueDashboard: React.FC = () => {
               <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                 <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
               </div>
-            </div>
+            </div> */}
 
             {}
             <div className="relative w-full">

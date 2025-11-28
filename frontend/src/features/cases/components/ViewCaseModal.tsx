@@ -17,9 +17,38 @@ interface ViewCaseModalProps {
   onClose: () => void;
   row?: CaseRow | null;
   onRefreshCases?: () => Promise<void>;
+  canManageSupervisorActions?: boolean;
+  onComplete?: (row: CaseRow) => void;
+  onCloseCase?: (row: CaseRow) => void;
+  onReopenCase?: (row: CaseRow) => void;
+  onAbandonCase?: (row: CaseRow) => void;
+  onSuspendCase?: (row: CaseRow) => void;
+  onResumeCase?: (row: CaseRow) => void;
+  onApproveCase?: (row: CaseRow) => void;
+  onApproveCaseReopen?: (row: CaseRow) => void;
+  onRejectCaseReopen?: (row: CaseRow) => void;
+  onApproveCaseCreation?: (row: CaseRow) => void;
+  onRejectCaseCreation?: (row: CaseRow) => void;
 }
 
-const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row, onRefreshCases }) => {
+const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ 
+  open, 
+  onClose, 
+  row, 
+  onRefreshCases,
+  canManageSupervisorActions = false,
+  onComplete,
+  onCloseCase,
+  onReopenCase,
+  onAbandonCase,
+  onSuspendCase,
+  onResumeCase,
+  onApproveCase,
+  onApproveCaseReopen,
+  onRejectCaseReopen,
+  onApproveCaseCreation,
+  onRejectCaseCreation
+}) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
 
@@ -90,10 +119,38 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row, onRef
             <CollaboratePanel />
           ) : (
             <>
-              {tab === 'details' && <CaseDetailsTab row={row} />}
+              {tab === 'details' && (
+                <CaseDetailsTab 
+                  row={row} 
+                  canManageSupervisorActions={canManageSupervisorActions}
+                  onComplete={onComplete}
+                  onCloseCase={onCloseCase}
+                  onReopenCase={onReopenCase}
+                  onAbandonCase={onAbandonCase}
+                  onSuspendCase={onSuspendCase}
+                  onResumeCase={onResumeCase}
+                  onApproveCase={onApproveCase}
+                  onApproveCaseReopen={onApproveCaseReopen}
+                  onRejectCaseReopen={onRejectCaseReopen}
+                  onApproveCaseCreation={onApproveCaseCreation}
+                  onRejectCaseCreation={onRejectCaseCreation}
+                />
+              )}
               {tab === 'evidence' && <EvidenceDocumentsTab />}
               {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'tasks' && <TaskLogTab caseId={row.id} alertId={row.alertId} onRefreshCases={onRefreshCases} />}
+              {tab === 'tasks' && (
+                <TaskLogTab 
+                  caseId={row.id} 
+                  alertId={row.alertId} 
+                  onRefreshCases={onRefreshCases}
+                  canManageSupervisorActions={canManageSupervisorActions}
+                  caseData={row}
+                  onApproveCase={onApproveCase}
+                  onApproveCaseCreation={onApproveCaseCreation}
+                  onRejectCaseCreation={onRejectCaseCreation}
+                  onAbandonCase={onAbandonCase}
+                />
+              )}
               {/* {tab === 'notes' && <InvestigationNotesTab />} */}
               {tab === 'comments' && <CommentHistoryTab caseId={row.id} />}
             </>

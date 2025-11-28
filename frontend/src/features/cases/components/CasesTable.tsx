@@ -1,5 +1,5 @@
 import React from 'react';
-import { EyeIcon, CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import { getScoreColor } from './casesTable.utils';
 
@@ -14,39 +14,14 @@ interface PaginationInfo {
 interface CasesTableProps {
   rows: CaseRow[];
   onView: (row: CaseRow) => void;
-  onComplete: (row: CaseRow) => void;
-  onCloseCase?: (row: CaseRow) => void;
-  onReopenCase?: (row: CaseRow) => void;
-  onAbandonCase?: (row: CaseRow) => void;
-  onSuspendCase?: (row: CaseRow) => void;
-  onResumeCase?: (row: CaseRow) => void;
-  onApproveCase?: (row: CaseRow) => void;
-  onApproveCaseReopen?: (row: CaseRow) => void;
-  onRejectCaseReopen?: (row: CaseRow) => void;
-  onApproveCaseCreation?: (row: CaseRow) => void;
-  onRejectCaseCreation?: (row: CaseRow) => void;
   pagination?: PaginationInfo;
-  canManageSupervisorActions: boolean;
 }
 
 const CasesTable: React.FC<CasesTableProps> = ({ 
   rows, 
   onView, 
-  onComplete, 
-  onCloseCase,
-  onReopenCase,
-  onAbandonCase,
-  onSuspendCase,
-  onResumeCase,
-  onApproveCase,
-  onApproveCaseReopen,
-  onRejectCaseReopen,
-  onApproveCaseCreation,
-  onRejectCaseCreation,
-  pagination,
-  canManageSupervisorActions
+  pagination
 }) => {
-  const showSupervisorControls = canManageSupervisorActions;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -68,7 +43,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
               <span className="sm:hidden">%</span>
             </th>
             <th scope="col" className="hidden md:table-cell w-24 px-0.5 py-1 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Created</th>
-            <th scope="col" className="w-32 px-0.5 py-1 text-right text-xs font-semibold text-gray-700 whitespace-nowrap">Actions</th>
+            <th scope="col" className="w-32 px-0.5 py-1 text-right text-xs font-semibold text-gray-700 whitespace-nowrap">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 bg-white">
@@ -108,163 +83,6 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     <EyeIcon className="h-2.5 w-2.5" />
                     <span className="hidden sm:inline">View</span>
                   </button>
-                  
-                  {c.action === 'Complete' && (
-                    <button
-                      onClick={() => onComplete(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
-                    >
-                      <CheckIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Complete</span>
-                    </button>
-                  )}
-                  
-                  {/* Close Case button - show for in-progress cases */}
-                  {onCloseCase && (
-                    c.status === 'STATUS_20_IN_PROGRESS' ||
-                    c.status.includes('IN PROGRESS')
-                  ) 
-                  && (c?.tasks && c.tasks.length > 0 && c.tasks.find((t) => t.name === 'Investigate Case' && t.status === 'STATUS_30_COMPLETED')) 
-                  && (
-                    <button
-                      onClick={() => onCloseCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
-                    >
-                      <XCircleIcon className="h-2.5 w-2.5" />
-                      <span className="hidden lg:inline">Close Case</span>
-                      <span className="lg:hidden">Close</span>
-                    </button>
-                  )}
-                  
-                  {/* Case Closure Decision button - show for cases pending final approval */}
-                  {showSupervisorControls &&
-                    onApproveCase &&
-                    (c.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-                      c.status.includes('PENDING FINAL APPROVAL')) && (
-                    <button
-                      onClick={() => onApproveCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-indigo-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 whitespace-nowrap"
-                    >
-                      <CheckIcon className="h-2.5 w-2.5" />
-                      <span className="hidden xl:inline">Review Case Closure</span>
-                      <span className="xl:hidden">Review</span>
-                    </button>
-                  )}
-                  
-                  {/* Approve Case Creation button - show for cases pending creation approval */}
-                  {showSupervisorControls &&
-                    onApproveCaseCreation &&
-                    (c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-                      c.status.includes('PENDING CASE CREATION APPROVAL')) && (
-                    <button
-                      onClick={() => onApproveCaseCreation(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
-                    >
-                      <CheckIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Approve</span>
-                    </button>
-                  )}
-                  
-                  {/* Reject Case Creation button - show for cases pending creation approval */}
-                  {showSupervisorControls &&
-                    onRejectCaseCreation &&
-                    (c.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-                      c.status.includes('PENDING CASE CREATION APPROVAL')) && (
-                    <button
-                      onClick={() => onRejectCaseCreation(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
-                    >
-                      <XCircleIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Reject</span>
-                    </button>
-                  )}
-                  
-                  {/* Approve Case Reopening button - show for cases pending reopening approval */}
-                  {showSupervisorControls &&
-                    onApproveCaseReopen &&
-                    (c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-                      c.status.includes('PENDING CASE REOPENING APPROVAL')) && (
-                    <button
-                      onClick={() => onApproveCaseReopen(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
-                    >
-                      <CheckIcon className="h-2.5 w-2.5" />
-                      <span className="hidden lg:inline">Approve Reopen</span>
-                      <span className="lg:hidden">Approve</span>
-                    </button>
-                  )}
-                  
-                  {/* Reject Case Reopening button - show for cases pending reopening approval */}
-                  {showSupervisorControls &&
-                    onRejectCaseReopen &&
-                    (c.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-                      c.status.includes('PENDING CASE REOPENING APPROVAL')) && (
-                    <button
-                      onClick={() => onRejectCaseReopen(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
-                    >
-                      <XCircleIcon className="h-2.5 w-2.5" />
-                      <span className="hidden lg:inline">Reject Reopen</span>
-                      <span className="lg:hidden">Reject</span>
-                    </button>
-                  )}
-                  
-                  {/* Reopen Case button - show for closed cases */}
-                  {onReopenCase && (
-                    c.status === 'STATUS_81_CLOSED_REFUTED' ||
-                    c.status === 'STATUS_82_CLOSED_CONFIRMED' ||
-                    c.status === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
-                    c.status.includes('CLOSED')
-                  ) && (
-                    <button
-                      onClick={() => onReopenCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
-                    >
-                      <PlayIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Reopen</span>
-                    </button>
-                  )}
-                  
-                  {/* Abandon Case button - show for draft cases only */}
-                  {onAbandonCase && (
-                    c.status === 'STATUS_00_DRAFT'
-                  ) && (
-                    <button
-                      onClick={() => onAbandonCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 whitespace-nowrap"
-                    >
-                      <TrashIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Abandon</span>
-                    </button>
-                  )}
-                  
-                  {/* Suspend Case button - show for in-progress cases */}
-                  {onSuspendCase && (
-                    c.status === 'STATUS_20_IN_PROGRESS' ||
-                    c.status.includes('IN PROGRESS')
-                  ) && (c?.tasks && c.tasks.length > 0 && c.tasks.some((t) => t.status === 'STATUS_20_IN_PROGRESS')) && (
-                    <button
-                      onClick={() => onSuspendCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-yellow-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-1 focus:ring-yellow-500 whitespace-nowrap"
-                    >
-                      <PauseIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Suspend</span>
-                    </button>
-                  )}
-                  
-                  {/* Resume Case button - show for suspended cases */}
-                  {onResumeCase && (
-                    c.status === 'STATUS_21_SUSPENDED' ||
-                    c.status.includes('SUSPENDED')
-                  ) && (
-                    <button
-                      onClick={() => onResumeCase(c)}
-                      className="inline-flex items-center gap-0.5 rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 whitespace-nowrap"
-                    >
-                      <PlayIcon className="h-2.5 w-2.5" />
-                      <span className="hidden sm:inline">Resume</span>
-                    </button>
-                  )}
                 </div>
               </td>
             </tr>

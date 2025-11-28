@@ -1,9 +1,21 @@
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
-
+import CaseActionsPanel from './CaseActionsPanel';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
+  canManageSupervisorActions?: boolean;
+  onComplete?: (row: CaseRow) => void;
+  onCloseCase?: (row: CaseRow) => void;
+  onReopenCase?: (row: CaseRow) => void;
+  onAbandonCase?: (row: CaseRow) => void;
+  onSuspendCase?: (row: CaseRow) => void;
+  onResumeCase?: (row: CaseRow) => void;
+  onApproveCase?: (row: CaseRow) => void;
+  onApproveCaseReopen?: (row: CaseRow) => void;
+  onRejectCaseReopen?: (row: CaseRow) => void;
+  onApproveCaseCreation?: (row: CaseRow) => void;
+  onRejectCaseCreation?: (row: CaseRow) => void;
 }
 
 const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -31,7 +43,21 @@ const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
-const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
+const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ 
+  row, 
+  canManageSupervisorActions = false,
+  onComplete,
+  onCloseCase,
+  onReopenCase,
+  onAbandonCase,
+  onSuspendCase,
+  onResumeCase,
+  onApproveCase,
+  onApproveCaseReopen,
+  onRejectCaseReopen,
+  onApproveCaseCreation,
+  onRejectCaseCreation
+}) => {
   // Extract transaction data
   const getTransactionData = () => {
     if (!row.transaction) return null;
@@ -155,7 +181,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
       
 
       {/* Debtor Information */}
-      <div className="space-y-3 md:col-span-2">
+      <div className="space-y-3 col-span-full">
         <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
@@ -165,8 +191,26 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ row }) => {
         </SectionCard>
       </div>
 
+      {/* Actions Panel */}
+      <div className="col-span-full">
+        <CaseActionsPanel
+          caseData={row}
+          canManageSupervisorActions={canManageSupervisorActions}
+          onComplete={onComplete}
+          onCloseCase={onCloseCase}
+          onReopenCase={onReopenCase}
+          onAbandonCase={onAbandonCase}
+          onSuspendCase={onSuspendCase}
+          onResumeCase={onResumeCase}
+          onApproveCase={onApproveCase}
+          onApproveCaseReopen={onApproveCaseReopen}
+          onRejectCaseReopen={onRejectCaseReopen}
+          onApproveCaseCreation={onApproveCaseCreation}
+          onRejectCaseCreation={onRejectCaseCreation}
+        />
+      </div>
+
     </div>
   );
 };
-
 export default CaseDetailsTab;

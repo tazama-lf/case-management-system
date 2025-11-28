@@ -18,17 +18,6 @@ interface CaseDashboardContentProps {
   onPageSizeChange: (size: number) => void;
   onCreateNew: () => void;
   onView: (row: CaseRow) => void;
-  onComplete: (row: CaseRow) => void;
-  onCloseCase: (row: CaseRow) => void;
-  onReopenCase: (row: CaseRow) => void;
-  onAbandonCase: (row: CaseRow) => void;
-  onSuspendCase: (row: CaseRow) => void;
-  onResumeCase: (row: CaseRow) => void;
-  onApproveCase: (row: CaseRow) => void;
-  onApproveCaseCreation: (row: CaseRow) => void;
-  onRejectCaseCreation: (row: CaseRow) => void;
-  onApproveCaseReopen: (row: CaseRow) => void;
-  onRejectCaseReopen: (row: CaseRow) => void;
 }
 
 const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
@@ -40,18 +29,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onPageChange,
   onPageSizeChange,
   onCreateNew,
-  onView,
-  onComplete,
-  onCloseCase,
-  onReopenCase,
-  onAbandonCase,
-  onSuspendCase,
-  onResumeCase,
-  onApproveCase,
-  onApproveCaseCreation,
-  onRejectCaseCreation,
-  onApproveCaseReopen,
-  onRejectCaseReopen
+  onView
 }) => {
   const { cases, loading, errorState, filters, pagination, permissions } = dashboardState;
 
@@ -112,18 +90,6 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
             <CasesTable
               rows={cases}
               onView={onView}
-              onComplete={onComplete}
-              onCloseCase={onCloseCase}
-              onReopenCase={onReopenCase}
-              onAbandonCase={onAbandonCase}
-              onSuspendCase={onSuspendCase}
-              onResumeCase={onResumeCase}
-              onApproveCase={onApproveCase}
-              onApproveCaseCreation={onApproveCaseCreation}
-              onRejectCaseCreation={onRejectCaseCreation}
-              onApproveCaseReopen={onApproveCaseReopen}
-              onRejectCaseReopen={onRejectCaseReopen}
-              canManageSupervisorActions={permissions.canManageSupervisorActions}
               pagination={{
                 currentPage: pagination.currentPage,
                 pageSize: pagination.pageSize,
