@@ -67,32 +67,6 @@ export class AsyncTaskService {
     }
 
     /**
-     * Get pending tasks count
-     */
-    async getPendingCount(): Promise<number> {
-        return this.prisma.asyncTask.count({
-            where: {
-                status: AsyncTaskStatus.PENDING,
-                task_type: 'EMAIL',
-            },
-        });
-    }
-
-    /**
-     * Get task statistics
-     */
-    async getStats() {
-        const [pending, processing, completed, failed] = await Promise.all([
-            this.prisma.asyncTask.count({ where: { status: AsyncTaskStatus.PENDING } }),
-            this.prisma.asyncTask.count({ where: { status: AsyncTaskStatus.PROCESSING } }),
-            this.prisma.asyncTask.count({ where: { status: AsyncTaskStatus.COMPLETED } }),
-            this.prisma.asyncTask.count({ where: { status: AsyncTaskStatus.FAILED } }),
-        ]);
-
-        return { pending, processing, completed, failed };
-    }
-
-    /**
      * Retry a failed task
      */
     async retryFailedTask(taskId: string): Promise<void> {

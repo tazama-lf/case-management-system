@@ -149,9 +149,7 @@ export class EmailWorkerService {
      * Get worker statistics
      */
     async getWorkerStats() {
-        const stats = await this.asyncTaskService.getStats();
         return {
-            ...stats,
             isProcessing: this.isProcessing,
             cronSchedule: 'Every 5 seconds',
         };
