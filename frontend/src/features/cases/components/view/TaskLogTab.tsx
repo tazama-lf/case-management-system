@@ -16,8 +16,24 @@ interface TaskLogTabProps {
   caseId: string;
   onRefreshCases?: () => Promise<void>;
   alertId?: string;
+  canManageSupervisorActions?: boolean;
+  caseData?: any;
+  onApproveCase?: (caseData: any) => void;
+  onApproveCaseCreation?: (caseData: any) => void;
+  onRejectCaseCreation?: (caseData: any) => void;
+  onAbandonCase?: (caseData: any) => void;
 }
-const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId }) => {
+const TaskLogTab: React.FC<TaskLogTabProps> = ({ 
+  caseId, 
+  onRefreshCases, 
+  alertId, 
+  canManageSupervisorActions = false, 
+  caseData, 
+  onApproveCase, 
+  onApproveCaseCreation, 
+  onRejectCaseCreation, 
+  onAbandonCase 
+}) => {
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
@@ -385,6 +401,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, onRefreshCases, alertId
           onUpdateStatus={handleUpdateStatus}
           onComplete={handleCompleteTask}
           onRefreshCases={onRefreshCases}
+          canManageSupervisorActions={canManageSupervisorActions}
+          caseData={caseData}
+          onApproveCase={onApproveCase}
+          onApproveCaseCreation={onApproveCaseCreation}
+          onRejectCaseCreation={onRejectCaseCreation}
+          onAbandonCase={onAbandonCase}
         />
       )}
 
