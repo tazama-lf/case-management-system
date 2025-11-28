@@ -11,6 +11,7 @@ import {
 } from '../../../src/modules/auth/auth.decorator';
 import { AuthenticatedRequest } from '../../../src/modules/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { extractUserData } from '../../shared/utils/extract-user';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -114,9 +115,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async suspendCase(@Param('caseId') caseId: string, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    return this.caseService.suspendCase(caseId, body.reason, clientId, tenantId);
+    const { userId, tenantId, userInfo } = extractUserData(req);
+    return this.caseService.suspendCase(caseId, body.reason, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/resume')
@@ -133,9 +133,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async resumeCase(@Param('caseId') caseId: string, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    return this.caseService.resumeCase(caseId, body.reason, clientId, tenantId);
+    const { userId, tenantId, userInfo } = extractUserData(req);
+    return this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/complete')
