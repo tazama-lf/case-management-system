@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
-
+//interface
 interface CaseActionsPanelProps {
   caseData: CaseRow;
   canManageSupervisorActions: boolean;
