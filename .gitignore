@@ -1,3 +1,5 @@
+# Ignore DWH seed file
+seed-dwh.sql
 # Logs
 logs
 *.log

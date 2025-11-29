@@ -5,10 +5,15 @@ export interface GenerateProfileFilters {
   dateTo?: string;
   channel?: string;
   type?: string;
+  geography?: string;
+  account?: string;
+  role?: string;
+  creditorId?: string;
+  debtorId?: string;
 }
 
 export interface GenerateProfileRequest {
-  caseId: string;
+  tenantId: string;
   filters?: GenerateProfileFilters;
   notes?: string;
 }
@@ -36,14 +41,15 @@ export interface SummaryTable {
 }
 
 export interface TransactionProfile {
-  caseId: string;
-  filters?: Record<string, string | number>;
-  metrics: ProfileMetrics;
-  outliers?: Record<string, unknown>;
-  summaryTable?: SummaryTable;
+  tenantId: string;
+  filters?: Record<string, any>;
+  metrics: Record<string, any>;
+  outliers?: Record<string, any>;
+  summaryTable?: Record<string, any>;
   notes?: string;
   visualization?: string;
   detectedAnomalies?: DetectedAnomaly[];
+  transactionTable?: Array<Record<string, any>>;
 }
 
 export interface GenerateProfileResponse extends TransactionProfile {}
@@ -51,12 +57,12 @@ export interface GenerateProfileResponse extends TransactionProfile {}
 export interface GetProfileResponse extends TransactionProfile {}
 
 export class ProfileService {
-  private baseUrl = '/api/v1/profile';
+  private baseUrl = '/api/v1/dwh';
 
   async generateProfile(request: GenerateProfileRequest): Promise<GenerateProfileResponse> {
     try {
       const response = await apiClient.post<GenerateProfileResponse>(
-         `${this.baseUrl}/generate`,
+         `${this.baseUrl}/profile/generate`,
         request,
       );
       return response;
@@ -65,10 +71,10 @@ export class ProfileService {
     }
   }
 
-  async getProfile(caseId: string): Promise<GetProfileResponse> {
+  async getProfile(tenantId: string): Promise<GetProfileResponse> {
     try {
       const response = await apiClient.get<GetProfileResponse>(
-        `${this.baseUrl}/${caseId}`,
+        `${this.baseUrl}/profile/${tenantId}`,
       );
       return response;
     } catch (error: any) {
