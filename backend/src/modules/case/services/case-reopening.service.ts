@@ -123,7 +123,8 @@ export class CaseReopeningService {
         await tx.comment.create({
           data: {
             user_id: userId,
-            task_id: approvalTask.task_id,
+          //  task_id: approvalTask.task_id,
+            case_id: caseId,
             note: JSON.stringify({
               requestedBy: userId,
               requesterRole: role || 'UNKNOWN',
@@ -250,7 +251,8 @@ export class CaseReopeningService {
         await tx.comment.create({
           data: {
             user_id: supervisorId,
-            task_id: reopeningTask.task_id,
+            case_id: caseId,
+           // task_id: reopeningTask.task_id,
             note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
           },
         });
@@ -413,7 +415,8 @@ export class CaseReopeningService {
         await tx.comment.create({
           data: {
             user_id: supervisorId,
-            task_id: reopeningTask.task_id,
+            case_id: caseId,
+          //  task_id: reopeningTask.task_id,
             note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
           },
         });

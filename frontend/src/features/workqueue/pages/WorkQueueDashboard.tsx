@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { MagnifyingGlassIcon, ChevronDownIcon, QueueListIcon } from '@heroicons/react/24/outline';
-import { PageContainer, Card } from '@/shared/components/ui';
+import { MagnifyingGlassIcon, QueueListIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PageContainer } from '@/shared/components/ui';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import WorkQueueTable from '@/features/workqueue/components/WorkQueueTable';
 import WorkQueueTableSkeleton from '@/features/workqueue/components/WorkQueueTableSkeleton';
@@ -49,6 +49,7 @@ const WorkQueueDashboard: React.FC = () => {
   const [closeTaskModalOpen, setCloseTaskModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Check if user is investigator only (no supervisor or admin role)
   const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
@@ -153,7 +154,7 @@ const WorkQueueDashboard: React.FC = () => {
 
   // Unified handler for all task operations with type checking
   type TaskOperation = 'assign' | 'reassign' | 'unassign' | 'updateStatus' | 'complete';
-  
+
   interface TaskOperationParams {
     task: UnifiedWorkQueueTask;
     assignee?: string;
@@ -230,7 +231,7 @@ const WorkQueueDashboard: React.FC = () => {
       setUpdateStatusModalOpen(false);
       setCloseTaskModalOpen(false);
       setSelectedTask(null);
-      
+
       // Clear task ID from URL if present
       if (params.taskId) {
         navigate('/work-queue', { replace: true });
@@ -285,26 +286,74 @@ const WorkQueueDashboard: React.FC = () => {
     await handleTaskOperation('updateStatus', { task, newStatus, notes });
   };
 
+  const hasActiveFilters =
+    candidateGroupFilter !== 'investigations';
+
+
   return (
     <PageContainer
       title="Work Queue"
       subtitle="View and manage tasks in various work queues"
     >
-      {}
-      <Card className="mb-4">
-        <div className="p-4">
-          <div className="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
-            {}
-            <div className="flex items-center space-x-2">
-              <QueueListIcon className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Queue:</span>
-            </div>
-            <div className="relative w-full lg:max-w-[200px]">
+      { }
+      <div className="bg-white rounded-lg shadow mb-6">
+        {/* Top Bar: Search + Filters Button + Clear */}
+        <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+
+          {/* Search */}
+          <div className="flex-1 relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks, cases, descriptions..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Filters button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <FunnelIcon className="h-5 w-5 mr-2" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Active
+              </span>
+            )}
+          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={() => {
+                setCandidateGroupFilter('investigations');
+              }}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <XMarkIcon className="h-5 w-5 mr-2" />
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="p-4 bg-gray-50 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            {/* Queue Filter */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Queue
+              </label>
               <select
                 aria-label="Select queue"
                 value={candidateGroupFilter}
-                onChange={(e) => setCandidateGroupFilter(e.target.value as WorkQueueCandidateGroupType)}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                onChange={(e) =>
+                  setCandidateGroupFilter(e.target.value as WorkQueueCandidateGroupType)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {candidateGroups.map((group) => (
                   <option key={group.value} value={group.value}>
@@ -312,123 +361,86 @@ const WorkQueueDashboard: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-              </div>
             </div>
+          </div>
+        )}
+      </div>
 
-            {}
-            {/* <div className="relative w-full lg:max-w-[160px]">
-              <select
-                aria-label="Status filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+
+
+
+      { }
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-red-600 text-sm font-medium">
+                {getErrorDisplay()?.message || 'Error loading work queue'}
+              </p>
+              {getErrorDisplay()?.actionSuggestion && (
+                <p className="text-red-500 text-xs mt-1">
+                  {getErrorDisplay()?.actionSuggestion}
+                </p>
+              )}
+            </div>
+            {getErrorDisplay()?.canRetry && (
+              <button
+                onClick={() => {
+                  clearError();
+                  const loadWorkQueue = async () => {
+                    setIsLoading(true);
+                    try {
+                      const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
+                      setTasks(workQueueTasks);
+                    } catch (err) {
+                      handleError(err);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  };
+                  loadWorkQueue();
+                }}
+                className="ml-4 px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 transition-colors"
               >
-                {statusOptions.map((option) => (
-                  <option key={option.value || 'all'} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-              </div>
-            </div> */}
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
-            {}
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search tasks, cases, descriptions..."
-                className="w-full rounded-md border border-gray-300 bg-white px-10 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                <MagnifyingGlassIcon className="h-5 w-5" aria-hidden="true" />
-              </div>
+      {isLoading ? (
+        <WorkQueueTableSkeleton rows={10} />
+      ) : filteredTasks.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <QueueListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <div className="text-sm text-gray-500">
+              No tasks found in {candidateGroups.find(g => g.value === candidateGroupFilter)?.label}
             </div>
           </div>
         </div>
-      </Card>
-
-
-
-      {}
-      <Card>
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-red-600 text-sm font-medium">
-                  {getErrorDisplay()?.message || 'Error loading work queue'}
-                </p>
-                {getErrorDisplay()?.actionSuggestion && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {getErrorDisplay()?.actionSuggestion}
-                  </p>
-                )}
-              </div>
-              {getErrorDisplay()?.canRetry && (
-                <button
-                  onClick={() => {
-                    clearError();
-                    const loadWorkQueue = async () => {
-                      setIsLoading(true);
-                      try {
-                        const workQueueTasks = await flowableWorkQueueService.getWorkQueueByGroup(candidateGroupFilter);
-                        setTasks(workQueueTasks);
-                      } catch (err) {
-                        handleError(err);
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    };
-                    loadWorkQueue();
-                  }}
-                  className="ml-4 px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 transition-colors"
-                >
-                  Retry
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {isLoading ? (
-          <WorkQueueTableSkeleton rows={10} />
-        ) : filteredTasks.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <QueueListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <div className="text-sm text-gray-500">
-                No tasks found in {candidateGroups.find(g => g.value === candidateGroupFilter)?.label}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <ResultsSummary
-              pagination={pagination}
-              loading={isLoading}
-              lastUpdated={null}
-              onPageSizeChange={setPageSize}
-              sort={{ column: 'id', direction: 'asc' }}
-              itemType="work queue tasks"
-            />
-            <WorkQueueTable
-              tasks={paginatedTasks}
-              pagination={pagination}
-              onAssign={handleAssignTask}
-              onReassign={handleReassignTask}
-              onUnassign={handleUnassignTask}
-              onComplete={handleCompleteTask}
-              onUpdateStatus={handleUpdateTaskStatus}
-            />
-          </>
-        )}
-      </Card>
+      ) : (
+        <>
+          <ResultsSummary
+            pagination={pagination}
+            loading={isLoading}
+            lastUpdated={null}
+            onPageSizeChange={setPageSize}
+            sort={{ column: 'id', direction: 'asc' }}
+            itemType="work queue tasks"
+          />
+          <WorkQueueTable
+            tasks={paginatedTasks}
+            pagination={pagination}
+            onAssign={handleAssignTask}
+            onReassign={handleReassignTask}
+            onUnassign={handleUnassignTask}
+            onComplete={handleCompleteTask}
+            onUpdateStatus={handleUpdateTaskStatus}
+          />
+        </>
+      )}
 
       {/* Task Modals */}
       <Suspense fallback={<div>Loading modal...</div>}>

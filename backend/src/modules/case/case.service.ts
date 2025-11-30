@@ -67,7 +67,8 @@ export class CaseService {
         const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
 
         const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
+      //  createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.caseId = updatedCase.case_id;
         createCommentDto.note = `Case suspended: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
 
@@ -146,7 +147,8 @@ export class CaseService {
         );
 
         const createCommentDto = new CreateCommentDto();
-        createCommentDto.taskId = updatedTask.task_id;
+       // createCommentDto.taskId = updatedTask.task_id;
+        createCommentDto.caseId = caseId;
         createCommentDto.note = `Case resumed: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
 

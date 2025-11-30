@@ -16,13 +16,22 @@ interface ResultsSummaryProps {
   itemType?: string;
 }
 
-const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, lastUpdated, onPageSizeChange, sort, itemType = 'alerts' }) => {
-  const { currentPage, pageSize, totalItems } = pagination;
+const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
+  //loading, 
+  //lastUpdated, 
+  onPageSizeChange, sort,
+  //itemType = 'alerts' 
+}) => {
+  const {
+    //currentPage, 
+    pageSize,
+    //  totalItems
+  } = pagination;
 
   return (
     <div className="mb-4 flex items-center justify-between">
-      <div className="text-sm text-gray-600">
-        Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} {itemType}
+      {<div className="text-sm text-gray-600">
+        {/* Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} {itemType}
         {loading && (
           <span className="ml-2">
             <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
@@ -32,8 +41,8 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
           <span className="ml-4 text-xs text-gray-500">
             Last updated: {lastUpdated.toLocaleTimeString()}
           </span>
-        )}
-      </div>
+        )} */}
+      </div>}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <label htmlFor="pageSize" className="text-sm text-gray-600">
@@ -55,7 +64,7 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
           <span className="text-sm text-gray-600">per page</span>
         </div>
         <div className="text-sm text-gray-600">
-          Sorted by {sort.column} ({sort.direction === 'asc' ? 'ascending' : 'descending'})
+          Sorted by {sort.column} ({sort.direction === 'asc' ? 'Ascending' : 'Descending'})
         </div>
       </div>
     </div>
