@@ -16,7 +16,7 @@ export class UserService {
 
     async getUsersByRole(token: string, role: string, tenantName: string): Promise<UserGroupDetails[]> {
         this.logger.log(`Fetching users with role: ${role}`);
-        const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/auth/user/${role}?groupName=${tenantName}`, {
+        const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}?groupName=${tenantName}`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
