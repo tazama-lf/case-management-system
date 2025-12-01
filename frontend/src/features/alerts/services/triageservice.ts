@@ -60,8 +60,7 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
-    if (filters.reportStatus)
-      params.append('reportStatus', filters.reportStatus);
+    params.append('reportStatus', filters.reportStatus || 'ALRT');
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -178,20 +177,34 @@ class TriageService {
     }
   }
 
-  async getNALTAlerts(search?: string): Promise<Alert[]> {
+  async getNALTAlerts(
+    search?: string,
+    pagination?: { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }
+  ): Promise<{
+    alerts: Alert[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      pageSize: number;
+    };
+  }> {
     try {
       const filters: AlertsFilter = {
         reportStatus: 'NALT',
-        limit: 100,
-        page: 1,
+        limit: pagination?.limit || 10,
+        page: pagination?.page || 1,
+        sortBy: pagination?.sortBy || 'created_at',
+        sortOrder: pagination?.sortOrder || 'desc',
       };
 
       if (search) {
         filters.search = search;
       }
 
+      // Call getAlerts, which will use reportStatus=NALT from filters
       const response = await this.getAlerts(filters);
-      return response.alerts;
+      return response;
     } catch (error) {
       throw this.handleError(error, 'fetch NALT alerts');
     }

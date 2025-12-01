@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
@@ -19,6 +19,12 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [availableAlerts, setAvailableAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    pageSize: 10,
+  });
 
   useEffect(() => {
     if (onAlertsSelected) {
@@ -32,8 +38,14 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     const loadNALTAlerts = async () => {
       setIsLoading(true);
       try {
-        const alerts = await triageService.getNALTAlerts(searchTerm);
-        setAvailableAlerts(alerts);
+        const response = await triageService.getNALTAlerts(searchTerm || undefined, {
+          page: 1, // Always start from page 1 when search term changes
+          limit: pagination.pageSize,
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        });
+        setAvailableAlerts(response.alerts);
+        setPagination(response.pagination);
       } catch (error) {
         console.error('Failed to load NALT alerts:', error);
       } finally {
@@ -43,7 +55,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
 
     const timeoutId = setTimeout(loadNALTAlerts, 300);
     return () => clearTimeout(timeoutId);
-  }, [isVisible, searchTerm]);
+  }, [isVisible, searchTerm, pagination.pageSize]);
 
   const handleAlertToggle = (alert: Alert) => {
     const isSelected = selectedAlerts.some(a => a.alert_id === alert.alert_id);
@@ -54,49 +66,41 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     }
   };
 
+  const handlePageChange = useCallback((newPage: number) => {
+    setPagination(prev => ({ ...prev, currentPage: newPage }));
+    loadAlertsWithPagination(newPage, pagination.pageSize);
+  }, [pagination.pageSize]);
+
+  const handlePageSizeChange = useCallback((newPageSize: number) => {
+    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }));
+    loadAlertsWithPagination(1, newPageSize);
+  }, []);
+
+  const loadAlertsWithPagination = useCallback(async (page: number, limit: number) => {
+    setIsLoading(true);
+    try {
+      const response = await triageService.getNALTAlerts(searchTerm || undefined, {
+        page,
+        limit,
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      });
+      setAvailableAlerts(response.alerts);
+      setPagination(response.pagination);
+    } catch (error) {
+      console.error('Failed to load NALT alerts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchTerm]);
+
   const isAlertSelected = (alert: Alert) => {
     return selectedAlerts.some(a => a.alert_id === alert.alert_id);
   };
 
   const filteredAlerts = React.useMemo(() => {
-    if (!searchTerm || searchTerm.length < 1) {
-      return availableAlerts.slice(0, 50);
-    }
-
-    const searchTermLower = searchTerm.toLowerCase();
-
-    return availableAlerts.filter(alert => {
-      const alertIdMatch = alert.alert_id.toLowerCase().includes(searchTermLower);
-
-      const typeMatch = (alert.txtp && alert.txtp.toLowerCase().includes(searchTermLower)) ||
-                       (alert.alert_type && alert.alert_type.toLowerCase().includes(searchTermLower)) ||
-                       (searchTermLower === 'fraud' && (alert.txtp?.toLowerCase().includes('fraud') || alert.alert_type?.toLowerCase().includes('fraud'))) ||
-                       (searchTermLower === 'aml' && (alert.txtp?.toLowerCase().includes('aml') || alert.alert_type?.toLowerCase().includes('aml'))) ||
-                       (searchTermLower.includes('fraud') && searchTermLower.includes('aml') &&
-                        ((alert.txtp?.toLowerCase().includes('fraud') && alert.txtp?.toLowerCase().includes('aml')) ||
-                         (alert.alert_type?.toLowerCase().includes('fraud') && alert.alert_type?.toLowerCase().includes('aml'))));
-
-      const descriptionMatch = alert.description &&
-                              typeof alert.description === 'string' &&
-                              alert.description.toLowerCase().includes(searchTermLower);
-
-      const sourceMatch = alert.source && alert.source.toLowerCase().includes(searchTermLower);
-
-      return alertIdMatch || typeMatch || descriptionMatch || sourceMatch;
-    }).sort((a, b) => {
-      const aId = a.alert_id.toLowerCase();
-      const bId = b.alert_id.toLowerCase();
-      const search = searchTermLower;
-
-      const aIdStartsWith = aId.startsWith(search);
-      const bIdStartsWith = bId.startsWith(search);
-
-      if (aIdStartsWith && !bIdStartsWith) return -1;
-      if (!aIdStartsWith && bIdStartsWith) return 1;
-
-      return aId.localeCompare(bId);
-    }).slice(0, 50);
-  }, [availableAlerts, searchTerm]);
+    return availableAlerts;
+  }, [availableAlerts]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -135,7 +139,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   };
 
   if (!isVisible) return null;
-
+  
   return (
     <div className="space-y-4">
       {}
@@ -184,6 +188,29 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Page Size and Sorting Info */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 ml-auto">
+                  <label className="text-sm text-gray-600">Show:</label>
+                  <select
+                    value={pagination.pageSize}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-600">per page</span>
+                </div>
+                
+                <div className="text-sm text-gray-600">
+                  Sorted by Date Created (Descending)
+                </div>
+              </div>
 
       {}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -264,6 +291,108 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls - Using same pattern as AlertsTable */}
+        {!isLoading && pagination.totalItems > 0 && (
+          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div className="flex flex-1 items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className="font-medium">
+                    {Math.min(
+                      (pagination.currentPage - 1) * pagination.pageSize + 1,
+                      pagination.totalItems,
+                    )}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-medium">
+                    {Math.min(
+                      pagination.currentPage * pagination.pageSize,
+                      pagination.totalItems,
+                    )}
+                  </span>{' '}
+                  of <span className="font-medium">{pagination.totalItems}</span>{' '}
+                  results
+                </p>
+              </div>
+              
+              {/* Page Navigation - Always show if pagination exists */}
+              {pagination.totalPages > 0 && (
+                <div>
+                  <nav
+                    className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                    aria-label="Pagination"
+                  >
+                    <button
+                      onClick={() => handlePageChange(Math.max(1, pagination.currentPage - 1))}
+                      disabled={pagination.currentPage <= 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers with Ellipsis Logic */}
+                    {(() => {
+                      const { currentPage, totalPages } = pagination;
+                      const pages: (number | 'ellipsis')[] = [];
+                      const windowSize = 5;
+                      const half = Math.floor(windowSize / 2);
+
+                      const addPage = (p: number) => pages.push(p);
+                      const addEllipsis = () => pages.push('ellipsis');
+
+                      if (totalPages <= windowSize + 2) {
+                        for (let p = 1; p <= totalPages; p++) addPage(p);
+                      } else {
+                        const start = Math.max(2, currentPage - half);
+                        const end = Math.min(totalPages - 1, currentPage + half);
+
+                        addPage(1);
+                        if (start > 2) addEllipsis();
+                        for (let p = start; p <= end; p++) addPage(p);
+                        if (end < totalPages - 1) addEllipsis();
+                        addPage(totalPages);
+                      }
+
+                      return pages.map((p, idx) =>
+                        p === 'ellipsis' ? (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => handlePageChange(p)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              pagination.currentPage === p
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                            aria-current={pagination.currentPage === p ? 'page' : undefined}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      );
+                    })()}
+                    
+                    <button
+                      onClick={() => handlePageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+                      disabled={pagination.currentPage >= pagination.totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {}
