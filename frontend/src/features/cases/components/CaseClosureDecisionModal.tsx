@@ -31,7 +31,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   onApprove,
   onReject
 }) => {
-  const [decision, setDecision] = useState<DecisionType | null>(null);
+  const [activeTab, setActiveTab] = useState<DecisionType>('approve');
   const [tasks, setTasks] = useState<CommentsByCaseId[]>([]);
   const [formData, setFormData] = useState<{
     finalOutcome: ApproveCaseClosureDto['finalOutcome'];
@@ -46,9 +46,6 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
-
-    if (decision === 'approve' || decision === 'reject') return;
-
     const approveClosureTask = Array.isArray(taskList)
       ? taskList.find(t => t.name === "Approve Case Closure")
       : undefined;
@@ -66,22 +63,21 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     }
 
     loadTasks();
-  }, [decision, taskList]);
+  }, [taskList]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (decision === 'reject') {
+    if (activeTab === 'reject') {
       if (formData.rejectionReason.trim().length < 20) {
         newErrors.rejectionReason = 'Rejection reason must be at least 20 characters';
       }
     }
-    if (decision === 'approve') {
+    if (activeTab === 'approve') {
       if (formData.supervisorComments.trim().length < 20) {
         newErrors.supervisorComments = 'Supervisor comment must be at least 20 characters';
       }
     }
-
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -133,7 +129,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       onClose();
-      setDecision(null);
+      setActiveTab('approve');
       setFormData({
         finalOutcome: (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) || 'STATUS_83_CLOSED_INCONCLUSIVE',
         supervisorComments: '',
@@ -154,17 +150,15 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-4xl max-h-[90vh] rounded-lg bg-white shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              {decision === 'approve' && 'Approve Case Closure'}
-              {decision === 'reject' && 'Reject Case Closure'}
-              {!decision && 'Case Closure Review'}
+              Case Closure Review
             </h3>
             <p className="text-sm text-gray-500">
-              Case ID: {caseId} {caseName && `• ${caseName}`}
+              Case ID: {caseId} {caseName && caseName !== 'NONE' ? `• ${caseName}` : ''}
             </p>
           </div>
           <button
@@ -176,63 +170,40 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6">
-          {/* Decision Selection Step */}
-          {!decision && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 mb-6">
-                Select how you would like to proceed with this case closure:
-              </p>
-
-              {/* Approve Option */}
-              <button
-                onClick={() => setDecision('approve')}
-                className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left"
-              >
-                <div className="flex items-start gap-3">
-                  <CheckCircleIcon className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Approve Case Closure</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Finalize the case with the investigator's recommended or modified outcome. Case will be moved to CLOSED status.
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Reject Option */}
-              <button
-                onClick={() => setDecision('reject')}
-                className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors text-left"
-              >
-                <div className="flex items-start gap-3">
-                  <XCircleIcon className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Reject Case Closure</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Send the case back for additional investigation. The investigator will need to provide more information.
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Workflow Info */}
-              {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">Supervisor Case Closure Approval Workflow</h4>
-                <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                  <li>Only cases in "PENDING FINAL APPROVAL" can be acted on</li>
-                  <li>Supervisor may approve or reject with comments/reason</li>
-                  <li>Approval transitions case to "CLOSED [Confirmed/Refuted/Inconclusive]"</li>
-                  <li>Rejection reopens the "Investigate Case" task for further work</li>
-                  <li>All approval actions are logged for audit trails</li>
-                </ul>
-              </div> */}
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-200 px-6 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('approve')}
+            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'approve'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircleIcon className="h-4 w-4" />
+              Approve Case Closure
             </div>
-          )}
+          </button>
+          <button
+            onClick={() => setActiveTab('reject')}
+            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'reject'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <XCircleIcon className="h-4 w-4" />
+              Reject Case Closure
+            </div>
+          </button>
+        </div>
 
-          {/* Approve Form */}
-          {decision === 'approve' && (
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Approve Tab Content */}
+          {activeTab === 'approve' && (
             <form onSubmit={handleApproveSubmit} className="space-y-6">
               {/* Info Box */}
               <div className="bg-green-50 border border-green-200 rounded-md p-4">
@@ -252,8 +223,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* Investigator's Notes */}
               <div>
-                {/*Investigator's Notes*/}
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Investigator's Notes
                 </label>
@@ -262,15 +234,15 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
                   </div>
                 ) : (
-                  tasks.map((c) => (
-                    <div key={c.comment_id} className="space-y-3 mb-2">
-                      <div className="w-full rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-[80px] max-h-40 overflow-y-auto">
-                        <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                    {tasks.map((c) => (
+                      <div key={c.comment_id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div className="font-medium text-gray-900 whitespace-pre-line">
                           {c.note}
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -357,48 +329,11 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <p className="text-sm text-red-600">{errors.submit}</p>
                 </div>
               )}
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDecision(null)}
-                  disabled={isSubmitting}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircleIcon className="h-4 w-4" />
-                      Approve Case Closure
-                    </>
-                  )}
-                </button>
-              </div>
             </form>
           )}
 
-          {/* Reject Form */}
-          {decision === 'reject' && (
+          {/* Reject Tab Content */}
+          {activeTab === 'reject' && (
             <form onSubmit={handleRejectSubmit} className="space-y-6">
               {/* Info Box */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -406,8 +341,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <strong>Important:</strong> When rejecting a case closure, provide detailed feedback explaining what additional investigation or information is required. The case will be returned to the investigator for further work.
                 </p>
               </div>
+
+              {/* Investigator's Notes */}
               <div>
-                {/*Investigator's Notes*/}
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Investigator's Notes
                 </label>
@@ -416,15 +352,15 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
                   </div>
                 ) : (
-                  tasks.map((c) => (
-                    <div key={c.comment_id} className="space-y-3 mb-2">
-                      <div className="w-full rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-[80px] max-h-40 overflow-y-auto">
-                        <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
+                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                    {tasks.map((c) => (
+                      <div key={c.comment_id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div className="font-medium text-gray-900 whitespace-pre-line">
                           {c.note}
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -441,7 +377,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   }))}
                   rows={6}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                  placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required (minimum 15 characters)..."
+                  placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required (minimum 20 characters)..."
                   disabled={isSubmitting}
                 />
                 <div className="mt-1 flex justify-between">
@@ -463,44 +399,61 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <p className="text-sm text-red-600">{errors.submit}</p>
                 </div>
               )}
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDecision(null)}
-                  disabled={isSubmitting}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || formData.rejectionReason.trim().length < 20}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      Rejecting...
-                    </>
-                  ) : (
-                    <>
-                      <XCircleIcon className="h-4 w-4" />
-                      Reject Case Closure
-                    </>
-                  )}
-                </button>
-              </div>
             </form>
+          )}
+        </div>
+
+        {/* Footer with Action Buttons */}
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          
+          {activeTab === 'approve' && (
+            <button
+              type="button"
+              onClick={handleApproveSubmit}
+              disabled={isSubmitting}
+              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon className="h-4 w-4" />
+                  Approve Case Closure
+                </>
+              )}
+            </button>
+          )}
+
+          {activeTab === 'reject' && (
+            <button
+              type="button"
+              onClick={handleRejectSubmit}
+              disabled={isSubmitting || formData.rejectionReason.trim().length < 20}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <XCircleIcon className="h-4 w-4" />
+                  Reject Case Closure
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
