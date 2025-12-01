@@ -2,6 +2,7 @@ import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.typ
 import React, { useEffect, useState } from 'react';
 import authService from '../../../auth/services/authService';
 import type { Investigator } from '../../../auth/types/auth.types';
+import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
 
 interface AssignTaskModalProps {
   open: boolean;
@@ -22,8 +23,8 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
 }) => {
   const [assignee, setAssignee] = React.useState('');
   const [notes, setNotes] = React.useState('');
-  const [investigators, setInvestigators] = useState<Investigator[]>([]);
-  const [loading, setLoading] = useState(false);
+  // const [investigators, setInvestigators] = useState<Investigator[]>([]);
+  // const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
@@ -38,13 +39,15 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       const user = authService.getUser();
       const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
       setIsSupervisor(isSupervisor);
-      
+
       if (isSupervisor) {
-        fetchInvestigators();
+        fetchInvestigatorsList();
       }
       fetchCurrentUserAsInvestigator();
     }
   }, [open]);
+
+  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
 
   const fetchCurrentUserAsInvestigator = async () => {
     try {
@@ -65,22 +68,22 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   };
 
-  const fetchInvestigators = async () => {
-    setLoading(true);
-    try {
-      const data = await authService.fetchAllInvestigators();
+  // const fetchInvestigators = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const data = await authService.fetchAllInvestigators();
 
-      if (data && data.length > 0) {
-        setInvestigators(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch investigators:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (data && data.length > 0) {
+  //       setInvestigators(data);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch investigators:', error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  
+
 
   const handleAssign = async () => {
     if (!canConfirm) {
@@ -106,9 +109,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     setSubmitting(true);
     try {
       await onAssign(task, assignee, notes);
-    
+
     } catch (error) {
-      
+
     } finally {
       setSubmitting(false);
     }
@@ -156,7 +159,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Assign To
             </label>
-            {loading ? (
+            {loadingInvestigators ? (
               <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                 Loading investigators...
               </div>
@@ -176,7 +179,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                   return (
                     <option key={investigator.id} value={investigator.id}>
                       {investigator.firstName} {investigator.lastName} (
-                      {investigator.username})
+                      {investigator.name})
                     </option>
                   );
                 })}

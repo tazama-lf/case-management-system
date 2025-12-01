@@ -10,6 +10,7 @@ import type { Alert } from '@/features/alerts/types/alertsdashboard.types';
 import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
 import { useToast } from '@/shared/providers/ToastProvider';
 import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface WorkQueueTableProps {
   alertId?: string;
@@ -65,7 +66,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     { key: 'status', label: 'Status', width: 'w-32' },
     { key: 'created', label: 'Created', width: 'w-40' },
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
-    { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' }
+    { key: 'actions', label: 'Actions', width: 'w-40', align: 'left' }
   ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -75,6 +76,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
       SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
     };
+
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
     return (
@@ -124,11 +126,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <button
             key="reassign"
             onClick={() => onReassign(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
             title="Reassign task"
           >
-            <ArrowPathIcon className="h-3 w-3 mr-1" />
-            Reassign
+            <ArrowPathIcon className="h-4 w-4 mr-1" />
+            {/* Reassign */}
           </button>
         );
       }
@@ -138,11 +140,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <button
             key="unassign"
             onClick={() => onUnassign(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
             title="Unassign task"
           >
-            <UserMinusIcon className="h-3 w-3 mr-1" />
-            Unassign
+            <UserMinusIcon className="h-4 w-4 mr-1" />
+            {/* Unassign */}
           </button>
         );
       }
@@ -152,11 +154,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <button
             key="complete"
             onClick={() => onComplete(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             title="Mark complete"
           >
-            <CheckIcon className="h-3 w-3 mr-1" />
-            Complete
+            <CheckIcon className="h-4 w-4 mr-1" />
+            {/* Complete */}
           </button>
         );
       }
@@ -170,11 +172,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         <button
           key="assign"
           onClick={() => onAssign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           title="Assign task"
         >
-          <UserPlusIcon className="h-3 w-3 mr-1" />
-          Assign
+          <UserPlusIcon className="h-4 w-4 mr-1" />
+          {/* Assign */}
         </button>
       );
     }
@@ -184,11 +186,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         <button
           key="reassign"
           onClick={() => onReassign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
           title="Reassign task"
         >
-          <ArrowPathIcon className="h-3 w-3 mr-1" />
-          Reassign
+          <ArrowPathIcon className="h-4 w-4 mr-1" />
+          {/* Reassign */}
         </button>
       );
     }
@@ -200,61 +202,61 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         <button
           key="unassign"
           onClick={() => onUnassign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           title="Unassign task"
         >
-          <UserMinusIcon className="h-3 w-3 mr-1" />
-          Unassign
+          <UserMinusIcon className="h-4 w-4 mr-1" />
+          {/* Unassign */}
         </button>
       );
     }
 
     // Task-specific case actions based on task name
     const taskName = task.name || '';
-    
+
     // Add case actions based on task name
     if (taskName === 'Approve Case Closure' && canManageSupervisorActions && onApproveCase && caseData) {
       actions.push(
         <button
           key="approve-closure"
           onClick={() => onApproveCase(caseData)}
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center gap-1 px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           title="Review Case Closure"
         >
-          <CheckIcon className="h-3 w-3" />
-          Review
+          <CheckIcon className="h-4 w-4 mr-1" />
+          {/* Review */}
         </button>
       );
     }
-    
+
     if (taskName === 'Approve Case Creation' && canManageSupervisorActions && onApproveCaseCreation && caseData) {
       actions.push(
         <button
           key="approve-creation"
           onClick={() => onApproveCaseCreation(caseData)}
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          className="inline-flex items-center gap-1 px-3 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           title="Approve Case Creation"
         >
-          <CheckIcon className="h-3 w-3" />
-          Approve
+          <CheckIcon className="h-4 w-4 mr-1" />
+          {/* Approve */}
         </button>
       );
-      
+
       if (onRejectCaseCreation) {
         actions.push(
           <button
             key="reject-creation"
             onClick={() => onRejectCaseCreation(caseData)}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            className="inline-flex items-center gap-1 px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             title="Reject Case Creation"
           >
-            <XCircleIcon className="h-3 w-3" />
-            Reject
+            <XCircleIcon className="h-4 w-4 mr-1" />
+            {/* Reject */}
           </button>
         );
       }
     }
-    
+
     // if (taskName === 'Complete New Case' && onAbandonCase && caseData) {
     //   actions.push(
     //     <button
@@ -280,7 +282,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     //     );
     //   }
     // }
-    
+
 
     if (task.assignee && onUpdateStatus) {
       if (task.name === 'Complete New Case') {
@@ -302,7 +304,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
               }
             }}
             disabled={loadingAlertForTask === task.id}
-            className="inline-flex items-center px-1 py-1 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Complete triage"
           >
             {loadingAlertForTask === task.id ? (
@@ -312,8 +314,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
               </>
             ) : (
               <>
-                <CheckIcon className="h-3 w-3 mr-1" />
-                Complete
+                <CheckIcon className="h-4 w-4 mr-1" />
+                {/* Complete */}
               </>
             )}
           </button>
@@ -323,17 +325,37 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           <button
             key="update-status"
             onClick={() => onUpdateStatus(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             title="Update status"
           >
-            <Cog6ToothIcon className="h-3 w-3 mr-1" />
-            Status
+            <Cog6ToothIcon className="h-4 w-4 mr-1" />
+            {/* Status */}
           </button>
         );
       }
     }
 
     return actions;
+  };
+  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+
+  const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
+
+    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return assigneeName || assignee;
   };
 
   return (
@@ -351,7 +373,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 <th
                   key={col.key}
                   className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${col.align === 'right' ? 'text-right' : 'text-left'
-                  }`}
+                    }`}
                 >
                   {col.label}
                 </th>
@@ -388,14 +410,17 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4 mr-1" />
+                    {/* <ClockIcon className="h-4 w-4 mr-1" /> */}
                     {formatDate(task.createdAt)}
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900">
                     {task.assignee ? (
-                      <span className="text-blue-600 break-words">{task.assigneeName || task.assignee}</span>
+                      <span className="text-blue-600 break-words">
+                        {/* {task.assigneeName || task.assignee} */}
+                        {getAssigneeFullName(task.assignee, task.assigneeName)}
+                      </span>
                     ) : (
                       <span className="text-gray-400">Unassigned</span>
                     )}

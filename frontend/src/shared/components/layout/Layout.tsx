@@ -5,12 +5,16 @@ import Header from './Header';
 import { NAVIGATION_ITEMS } from '@/shared/constants/navigation';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import type { LayoutProps } from '@/shared/types/navigation.types';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
 
+  const { clearCache } = useInvestigatorSupervisorList();
+
   const handleLogout = () => {
+    clearCache();
     logout();
   };
 
@@ -19,7 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
 
   return (
     <div className="h-screen flex bg-gray-50">
-      {}
+      { }
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-50 lg:hidden"
@@ -29,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
         </div>
       )}
 
-      {}
+      { }
       <div
         className={`
         fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
@@ -43,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
         />
       </div>
 
-      {}
+      { }
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           user={user as any}
@@ -53,7 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
           setSidebarOpen={setSidebarOpen}
         />
 
-        {}
+        { }
         <main className="flex-1 overflow-auto">
           <div className="h-full">{children || <Outlet />}</div>
         </main>

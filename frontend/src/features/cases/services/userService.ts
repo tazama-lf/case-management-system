@@ -4,6 +4,8 @@ export interface UserOption {
   id: string;
   name: string;
   role?: string;
+  firstName: string;
+  lastName: string;
 }
 
 class UserService {
@@ -18,6 +20,8 @@ class UserService {
         id: user.userId || user.id || '',
         name: user.displayName || user.username || user.name || 'Unknown',
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
       })).filter(user => user.id); // Filter out users without IDs
     } catch (error) {
       console.error(`Failed to fetch users with role ${role}:`, error);
