@@ -4,58 +4,6 @@ import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
 
-const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
-  const date = new Date(dateString);
-  const now = new Date();
-
-  switch (timeRange) {
-    case 'today': {
-      return date.toDateString() === now.toDateString();
-    }
-    case 'yesterday': {
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      return date.toDateString() === yesterday.toDateString();
-    }
-    case 'last7days': {
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      return date >= sevenDaysAgo;
-    }
-    case 'last30days': {
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return date >= thirtyDaysAgo;
-    }
-    case 'last90days': {
-      const ninetyDaysAgo = new Date(now);
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      return date >= ninetyDaysAgo;
-    }
-    case 'thisWeek': {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      return date >= startOfWeek;
-    }
-    case 'thisMonth': {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return date >= startOfMonth;
-    }
-    case 'custom': {
-      if (customDateRange?.startDate && customDateRange?.endDate) {
-        const startDate = new Date(customDateRange.startDate);
-        const endDate = new Date(customDateRange.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        return date >= startDate && date <= endDate;
-      }
-      return true;
-    }
-    default:
-      return true;
-  }
-};
-
 interface AlertsSearchFilters extends UIAlertsSearchFilters {
     customDateRange?: { startDate: string; endDate: string };
 }
@@ -86,8 +34,7 @@ type Action =
   | { type: 'SET_FILTERS'; payload: Partial<AlertsSearchFilters> }
   | { type: 'SET_SORT'; payload: { column: keyof Alert | string; direction: 'asc' | 'desc' } }
   | { type: 'SET_PAGE'; payload: number }
-  | { type: 'SET_PAGE_SIZE'; payload: number }
-  | { type: 'APPLY_FILTERS_AND_SORT' };
+  | { type: 'SET_PAGE_SIZE'; payload: number };
 
 const initialState: AlertsState = {
   allAlerts: [],
@@ -106,7 +53,7 @@ const initialState: AlertsState = {
     timeRange: '',
   },
   sort: {
-    column: 'lastUpdated',
+    column: 'created_at',
     direction: 'desc',
   },
   loading: true,
@@ -123,6 +70,7 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         ...state,
         loading: false,
         allAlerts: action.payload.alerts,
+        filteredAlerts: action.payload.alerts, // Backend already filtered, so allAlerts = filteredAlerts
         pagination: {
           ...state.pagination,
           totalItems: action.payload.totalItems,
@@ -140,72 +88,6 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
       return { ...state, pagination: { ...state.pagination, currentPage: action.payload } };
     case 'SET_PAGE_SIZE':
         return { ...state, pagination: { ...state.pagination, pageSize: action.payload, currentPage: 1 } };
-    case 'APPLY_FILTERS_AND_SORT': {
-      let filtered = [...state.allAlerts];
-
-      if (state.filters.query && state.filters.query.trim() !== '') {
-        const q = state.filters.query.trim().toLowerCase();
-        filtered = filtered.filter((a: Alert) => {
-          const alertId = String(a.alert_id || '').toLowerCase();
-          const message = String(a.message || '').toLowerCase();
-          const txId = String(a.txtp || '').toLowerCase();
-          const source = String(a.source || '').toLowerCase();
-          const type = String(a.alert_type || '').toLowerCase();
-          const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
-          const networkMap = a.network_map ? JSON.stringify(a.network_map).toLowerCase() : '';
-
-          return (
-            alertId.includes(q) ||
-            message.includes(q) ||
-            txId.includes(q) ||
-            source.includes(q) ||
-            type.includes(q) ||
-            transactionJson.includes(q) ||
-            networkMap.includes(q)
-          );
-        });
-      }
-
-      if (state.filters.source) {
-        filtered = filtered.filter(a => (a.source || '').toLowerCase() === state.filters.source.toLowerCase());
-      }
-
-      if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
-      }
-
-      if (state.filters.priority) {
-        filtered = filtered.filter(a => (a.priority || '').toLowerCase() === state.filters.priority.toLowerCase());
-      }
-
-      if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
-      }
-
-      if (state.filters.timeRange) {
-        filtered = filtered.filter((alert: Alert) => isDateInRange(alert.created_at as string, state.filters.timeRange, state.filters.customDateRange));
-      }
-
-      const getValue = (item: Alert, key: string) => {
-        const v = item[key as keyof Alert] as unknown;
-        if (v === undefined || v === null) return '';
-        if (typeof v === 'string') return v.toLowerCase();
-        if (typeof v === 'number') return v;
-        if (v instanceof Date) return v.getTime();
-        return String(v);
-      };
-
-      filtered.sort((a: Alert, b: Alert) => {
-        const aVal = getValue(a, state.sort.column as string);
-        const bVal = getValue(b, state.sort.column as string);
-
-        if (aVal < bVal) return state.sort.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return state.sort.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      return { ...state, filteredAlerts: filtered, pagination: { ...state.pagination, totalItems: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / state.pagination.pageSize)) } };
-    }
     default:
       return state;
   }
@@ -217,7 +99,19 @@ export const useAlerts = () => {
   const fetchAlerts = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
     try {
-      const response = await triageService.getAlerts({ limit: 1000 });
+      // Build the filters object with proper pagination and sorting
+      const filters = {
+        page: state.pagination.currentPage,
+        limit: state.pagination.pageSize,
+        sortBy: String(state.sort.column),
+        sortOrder: state.sort.direction,
+        ...(state.filters.query && { search: state.filters.query }),
+        ...(state.filters.source && { source: state.filters.source }),
+        ...(state.filters.type && { alertType: state.filters.type }),
+        ...(state.filters.priority && { priority: state.filters.priority }),
+      };
+
+      const response = await triageService.getAlerts(filters);
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -231,15 +125,11 @@ export const useAlerts = () => {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
-  }, []);
+  }, [state.pagination.currentPage, state.pagination.pageSize, state.sort.column, state.sort.direction, state.filters]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
-
-  useEffect(() => {
-    dispatch({ type: 'APPLY_FILTERS_AND_SORT' });
-  }, [state.allAlerts, state.filters, state.sort]);
 
   const setFilters = (filters: Partial<AlertsSearchFilters>) => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
@@ -258,11 +148,9 @@ export const useAlerts = () => {
   };
 
   const paginatedAlerts = useMemo(() => {
-    const { currentPage, pageSize } = state.pagination;
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return state.filteredAlerts.slice(start, end);
-  }, [state.filteredAlerts, state.pagination]);
+    // Backend already returns paginated results, so we just return filteredAlerts directly
+    return state.filteredAlerts;
+  }, [state.filteredAlerts]);
 
 
   return {
