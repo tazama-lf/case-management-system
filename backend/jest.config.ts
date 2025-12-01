@@ -6,7 +6,7 @@ const config: Config.InitialOptions = {
   // Set test environment to Node.js
   testEnvironment: 'node',
   // Glob pattern to detect test files
-  testMatch: ['**/test/**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts'],
   // Stop running tests after 1 failure (from reference)
   // bail: 1,
   // Automatically clear mock calls and instances between tests (from reference)

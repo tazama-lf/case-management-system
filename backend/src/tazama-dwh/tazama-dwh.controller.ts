@@ -4,6 +4,8 @@ import { TazamaDwhService } from './tazama-dwh.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
+import { GenerateProfileDto } from './dto/generate-profile.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')
@@ -17,10 +19,38 @@ export class TazamaDWHController {
   async getTransactionsByCreditor(
     @Req() req: AuthenticatedRequest,
     @Param('creditorId') creditorId: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
   ) {
     const tenantId = req.user.token.tenantId;
-    return this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId, startDate, endDate);
+    return this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId);
   }
+
+  @Post('profile/generate')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
+  @ApiBody({
+    type: GenerateProfileDto,
+    examples: {
+      default: {
+        summary: 'Typical profile generation',
+        value: {
+          caseId: '123e4567-e89b-12d3-a456-426614174000',
+          filters: {
+            dateFrom: '2025-09-01',
+            dateTo: '2025-11-30',
+            channel: 'Online',
+            type: 'Transfer',
+            geography: 'Cross-border',
+            tenantId: 'T001',
+          },
+          notes: 'Profile generated for peer comparison and anomaly detection.',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Profile generated', type: ProfileResponseDto })
+  async generateProfile(@Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
+    const userId = req.user?.token?.clientId ;
+    return this.tazamaDwhService.generateProfile(dto, userId);
+  }
+
 }

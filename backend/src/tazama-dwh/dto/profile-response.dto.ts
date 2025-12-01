@@ -23,9 +23,9 @@ export class DetectedAnomalyDto {
 }
 
 export class ProfileResponseDto {
-  @ApiProperty({ description: 'Case ID for this transaction profile' })
+  @ApiProperty({ description: 'Tenant ID for this transaction profile' })
   @IsString()
-  caseId: string;
+  tenantId: string;
 
   @ApiProperty({ description: 'Filters used for profile generation', required: false, type: Object })
   @IsOptional()
@@ -63,4 +63,24 @@ export class ProfileResponseDto {
   @IsOptional()
   @IsArray()
   detectedAnomalies?: DetectedAnomalyDto[];
+
+  @ApiProperty({
+    description: 'Formatted transaction list for table display',
+    required: false,
+    type: [Object],
+    example: [
+      {
+        Date: '2025-09-01',
+        'Transaction ID': 'TX10001',
+        Type: 'TRANSFER',
+        Account: 'A1001',
+        Counterparty: 'A1002',
+        Role: 'Debtor',
+        Amount: '1000.00',
+      }
+    ]
+  })
+  @IsOptional()
+  @IsArray()
+  transactionTable?: Array<Record<string, any>>;
 }
