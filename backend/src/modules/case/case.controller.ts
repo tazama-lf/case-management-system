@@ -2,15 +2,13 @@ import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, Http
 import { CaseService } from './case.service';
 import { TazamaAuthGuard } from '../../../src/modules/auth/tazama-auth.guard';
 import {
-  RequireAlertTriageRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
-  RequireAnyValidRole,
   RequireSupervisorRole,
-  TazamaClaims,
 } from '../../../src/modules/auth/auth.decorator';
 import { AuthenticatedRequest } from '../../../src/modules/auth/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { extractUserData } from '../../utils/helperFunction';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -73,10 +71,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to abandon cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async abandonCase(@Param('caseId') caseId: string, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
-    return this.caseService.abandonCase(caseId, body.reason, clientId, tenantId);
+    const { userId, tenantId } = extractUserData(req);
+    return this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
   }
 
   @Put(':caseId/reopen')
@@ -93,11 +89,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async reopenCase(@Param('caseId') caseId: string, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.caseService.reopenCase(caseId, body.reason, clientId, tenantId, role);
+    const { userId, tenantId, role } = extractUserData(req);
+    return this.caseService.reopenCase(caseId, body.reason, userId, tenantId, role);
   }
 
   @Put(':caseId/suspend')
@@ -114,9 +107,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async suspendCase(@Param('caseId') caseId: string, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    return this.caseService.suspendCase(caseId, body.reason, clientId, tenantId);
+    const { userId, tenantId, userInfo } = extractUserData(req);
+    return this.caseService.suspendCase(caseId, body.reason, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/resume')
@@ -133,9 +125,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async resumeCase(@Param('caseId') caseId: string, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    return this.caseService.resumeCase(caseId, body.reason, clientId, tenantId);
+    const { userId, tenantId, userInfo } = extractUserData(req);
+    return this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/complete')
@@ -152,11 +143,8 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   @ApiResponse({ status: 409, description: 'Conflict - Case is not in DRAFT state' })
   async completeCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId } = req.user.token;
-    if (!clientId || !tenantId) {
-      throw new BadRequestException('Missing clientId or tenantId in auth token');
-    }
-    return this.caseService.completeCase(caseId, clientId, tenantId);
+    const { userId, tenantId } = extractUserData(req);
+    return this.caseService.completeCase(caseId, userId, tenantId);
   }
 
   @Post('manual')
@@ -176,12 +164,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
-
-    return this.caseService.manualCaseCreate(dto, clientId, tenantId, role);
+    const { userId, tenantId, role } = extractUserData(req);
+    return this.caseService.manualCaseCreate(dto, userId, tenantId, role);
   }
 
   @Put(':caseId/close')
@@ -233,11 +217,8 @@ export class CaseController {
     type: CaseErrorResponseDto,
   })
   async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.caseService.closeCase(caseId, dto, clientId, tenantId, role);
+    const { userId, tenantId, role } = extractUserData(req);
+    return this.caseService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
   @Get('all')
@@ -255,13 +236,10 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires investigator or supervisor role' })
   async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
-    const tenantId = req.user.token.tenantId;
-    const userId = req.user.token.clientId;
-    const userClaims = req.user.token.claims || [];
-
+    const { userId, tenantId, claims } = extractUserData(req);
+    
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = claims.includes('CMS_INVESTIGATOR') && !claims.includes('CMS_SUPERVISOR') && !claims.includes('CMS_ADMIN');
 
     return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
   }
@@ -280,7 +258,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserCases(@Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
+    const { userId } = extractUserData(req);
     return this.caseService.getUserCases(userId, query);
   }
 
@@ -309,7 +287,7 @@ export class CaseController {
     @Query() query: GetUserCasesQueryDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    const requestingUserId = req.user.token.clientId;
+    const { userId: requestingUserId } = extractUserData(req);
     if (requestingUserId !== targetUserId) {
       /* empty */
     }
@@ -322,7 +300,7 @@ export class CaseController {
   @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
+    const { userId } = extractUserData(req);
     return this.caseService.getUserWorkloadStats(userId);
   }
 
@@ -348,7 +326,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
+    const { userId } = extractUserData(req);
     return this.caseService.updateCase(caseId, dto, userId);
   }
 
@@ -365,9 +343,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async completeCaseCreation(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const { claims } = req.user.token;
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
+    const { userId, role } = extractUserData(req);
     return this.caseService.completeCaseCreation(caseId, dto, userId, role);
   }
 
@@ -444,10 +420,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
-    const supervisorId = req.user.token.clientId;
-    if (!supervisorId) {
-      throw new BadRequestException('Missing supervisor ID in auth token');
-    }
+    const { userId: supervisorId } = extractUserData(req);
     return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
   }
 
@@ -512,10 +485,7 @@ export class CaseController {
     description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL state',
   })
   async rejectCaseClosure(@Param('caseId') caseId: string, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
-    const supervisorId = req.user.token.clientId;
-    if (!supervisorId) {
-      throw new BadRequestException('Missing supervisor ID in auth token');
-    }
+    const { userId: supervisorId } = extractUserData(req);
     return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
   }
 
@@ -555,11 +525,7 @@ export class CaseController {
     type: CaseCreationConflictResponseDto,
   })
   async approveCaseCreation(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
-    const { clientId: supervisorId, tenantId } = req.user.token;
-
-    if (!supervisorId || !tenantId) {
-      throw new BadRequestException('Missing supervisor ID or tenant ID in auth token');
-    }
+    const { userId: supervisorId, tenantId } = extractUserData(req);
 
     return this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
@@ -600,12 +566,7 @@ export class CaseController {
     type: CaseCreationConflictResponseDto,
   })
   async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
-    const { clientId: supervisorId, tenantId } = req.user.token;
-
-    if (!supervisorId || !tenantId) {
-      throw new BadRequestException('Missing supervisor ID or tenant ID in auth token');
-    }
-
+    const { userId: supervisorId, tenantId } = extractUserData(req);
     return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
   }
 
@@ -654,12 +615,7 @@ export class CaseController {
     type: CaseReopeningConflictResponseDto,
   })
   async approveCaseReopening(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
-    const { clientId: supervisorId, tenantId } = req.user.token;
-
-    if (!supervisorId || !tenantId) {
-      throw new BadRequestException('Missing supervisor ID or tenant ID in auth token');
-    }
-
+    const { userId: supervisorId, tenantId } = extractUserData(req);
     return this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
@@ -724,12 +680,8 @@ export class CaseController {
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
   })
   async rejectCaseReopening(@Param('caseId') caseId: string, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
-    const { clientId: supervisorId, tenantId } = req.user.token;
-
-    if (!supervisorId || !tenantId) {
-      throw new BadRequestException('Missing supervisor ID or tenant ID in auth token');
-    }
-
+    const { userId: supervisorId, tenantId } = extractUserData(req);
+    
     if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
       throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
     }
@@ -769,10 +721,7 @@ export class CaseController {
     description: 'Not Found - Case or approval task not found',
   })
   async returnCaseForReview(@Param('caseId') caseId: string, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
-    const supervisorId = req.user.token.clientId;
-    if (!supervisorId) {
-      throw new BadRequestException('Missing supervisor ID in auth token');
-    }
+    const { userId: supervisorId } = extractUserData(req);
     return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
   }
 
@@ -793,9 +742,7 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async saveCaseAsDraft(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims } = req.user.token;
-    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'SUPERVISOR' : 'INVESTIGATOR';
-    return this.caseService.saveCaseAsDraft(dto, clientId, tenantId, role);
+    const { userId, tenantId, role } = extractUserData(req);
+    return this.caseService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
 }

@@ -24,6 +24,7 @@ import {
   GetUserCasesQueryDto,
   UpdateCaseDto,
 } from './dto/index.dto';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class CaseService {
@@ -41,9 +42,10 @@ export class CaseService {
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
+    private readonly userService: UserService,
   ) {}
 
-  async suspendCase(caseId: string, reason: string, userId: string, tenantId: string) {
+  async suspendCase(caseId: string, reason: string, userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
@@ -90,9 +92,9 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          const emailTo = assigneeUserDetail.email;
-          const suspendedBy = assigneeUserDetail.username;
+          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.role, authDetails.tenantName, caseAssignee);
+          const emailTo = assigneeUserDetail?.email || '';
+          const suspendedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
         }
       } catch (notificationError) {
@@ -114,7 +116,7 @@ export class CaseService {
     }
   }
 
-  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string) {
+  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string, authDetails: any) {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -166,9 +168,9 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.authHelperService.getUserDetailsFromAuthService(caseAssignee);
-          const emailTo = assigneeUserDetail.email;
-          const resumedBy = assigneeUserDetail.username;
+          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.role, authDetails.tenantName, caseAssignee);
+          const emailTo = assigneeUserDetail?.email || '';
+          const resumedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
         }
       } catch (notificationError) {

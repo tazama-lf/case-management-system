@@ -1,8 +1,8 @@
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../shared/user.service';
+import { AsyncTaskService } from '../async-task/async-task.service';
 
 export type NotificationType =
   | 'TASK_ASSIGNED'
@@ -40,25 +40,12 @@ export interface GroupNotificationPayload {
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
-  private readonly fromEmail: string;
-  private readonly transporter: nodemailer.Transporter;
 
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
+    private readonly asyncTaskService: AsyncTaskService,
     @Optional() private readonly userService?: UserService,
-  ) {
-    this.fromEmail = this.config.get<string>('MAIL_FROM') || '"CMS Notifications" <no-reply@cms.local>';
-
-    this.transporter = nodemailer.createTransport({
-      host: this.config.get<string>('SMTP_HOST'),
-      port: parseInt(this.config.get<string>('SMTP_PORT', '587')),
-      secure: false,
-      auth: {
-        user: this.config.get<string>('SMTP_USER'),
-        pass: this.config.get<string>('SMTP_PASS'),
-      },
-    });
-  }
+  ) {}
 
   async sendNotification(payload: NotificationPayload): Promise<void> {
     this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
@@ -67,8 +54,19 @@ export class NotificationService {
     // Get user email from UserService
     const userEmail = this.userService ? await this.userService.getUserEmail(payload.userId) : null;
     const email = userEmail || `user-${payload.userId}@example.com`;
+console.log(template.subject, "<---subject")
 
-    await this.safeSendEmail(email, template);
+    // Queue email instead of sending directly
+    await this.asyncTaskService.createEmailTask(
+      email,
+      template.subject,
+      template.html,
+      {
+        ...payload.metadata,
+        notificationType: payload.type,
+        userId: payload.userId,
+      },
+    );
   }
 
   async sendGroupNotification(payload: GroupNotificationPayload): Promise<void> {
@@ -76,8 +74,18 @@ export class NotificationService {
     const template = this.getTemplate(payload.type, payload.metadata);
     const groupEmails: string[] = payload.metadata?.groupEmails || [];
 
+    // Queue all emails
     for (const email of groupEmails) {
-      await this.safeSendEmail(email, template);
+      await this.asyncTaskService.createEmailTask(
+        email,
+        template.subject,
+        template.html,
+        {
+          ...payload.metadata,
+          notificationType: payload.type,
+          candidateGroup: payload.candidateGroup,
+        },
+      );
     }
   }
 
@@ -87,7 +95,7 @@ export class NotificationService {
       actionBy: suspendedBy,
       reason,
     });
-    await this.safeSendEmail(to, template);
+    await this.asyncTaskService.createEmailTask(to, template.subject, template.html, { caseId, suspendedBy, reason });
   }
 
   async sendCaseResumptionEmail(to: string, caseId: string, resumedBy: string, reason: string): Promise<void> {
@@ -96,7 +104,7 @@ export class NotificationService {
       actionBy: resumedBy,
       reason,
     });
-    await this.safeSendEmail(to, template);
+    await this.asyncTaskService.createEmailTask(to, template.subject, template.html, { caseId, resumedBy, reason });
   }
 
   /**
@@ -121,14 +129,14 @@ export class NotificationService {
     const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
     if (supervisorEmail) {
       const template = this.getTemplate('TASK_SLA_WARNING', payload);
-      await this.safeSendEmail(supervisorEmail, template);
+      await this.asyncTaskService.createEmailTask(supervisorEmail, template.subject, template.html, payload);
     }
 
     if (payload.assignedUserId) {
       const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
       const email = userEmail || `user-${payload.assignedUserId}@example.com`;
       const template = this.getTemplate('TASK_SLA_WARNING', payload);
-      await this.safeSendEmail(email, template);
+      await this.asyncTaskService.createEmailTask(email, template.subject, template.html, payload);
     }
   }
 
@@ -155,14 +163,14 @@ export class NotificationService {
     const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
     if (supervisorEmail) {
       const template = this.getTemplate('TASK_SLA_BREACH', payload);
-      await this.safeSendEmail(supervisorEmail, template);
+      await this.asyncTaskService.createEmailTask(supervisorEmail, template.subject, template.html, payload);
     }
 
     if (payload.severity === 'CRITICAL') {
       const managementEmail = this.config.get<string>('MANAGEMENT_EMAIL');
       if (managementEmail) {
         const template = this.getTemplate('TASK_SLA_BREACH', payload);
-        await this.safeSendEmail(managementEmail, template);
+        await this.asyncTaskService.createEmailTask(managementEmail, template.subject, template.html, payload);
       }
     }
 
@@ -170,7 +178,7 @@ export class NotificationService {
       const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
       const email = userEmail || `user-${payload.assignedUserId}@example.com`;
       const template = this.getTemplate('TASK_SLA_BREACH', payload);
-      await this.safeSendEmail(email, template);
+      await this.asyncTaskService.createEmailTask(email, template.subject, template.html, payload);
     }
   }
 
@@ -196,14 +204,14 @@ export class NotificationService {
     const supervisorEmail = this.config.get<string>('SUPERVISOR_EMAIL');
     if (supervisorEmail) {
       const template = this.getTemplate('TASK_OVERDUE', payload);
-      await this.safeSendEmail(supervisorEmail, template);
+      await this.asyncTaskService.createEmailTask(supervisorEmail, template.subject, template.html, payload);
     }
 
     if (payload.assignedUserId) {
       const userEmail = this.userService ? await this.userService.getUserEmail(payload.assignedUserId) : null;
       const email = userEmail || `user-${payload.assignedUserId}@example.com`;
       const template = this.getTemplate('TASK_OVERDUE', payload);
-      await this.safeSendEmail(email, template);
+      await this.asyncTaskService.createEmailTask(email, template.subject, template.html, payload);
     }
   }
 
@@ -238,8 +246,8 @@ export class NotificationService {
       workQueue: payload.workQueueName,
       assignedBy: payload.assignedBy || 'System',
     });
-
-    await this.safeSendEmail(email, template);
+console.log(template.subject, "<---subject")
+    await this.asyncTaskService.createEmailTask(email, template.subject, template.html, payload);
   }
 
   /**
@@ -279,7 +287,7 @@ export class NotificationService {
       reassignedBy: payload.reassignedBy || 'System',
       reason: payload.reason || 'No reason provided',
     });
-    await this.safeSendEmail(newEmail, newUserTemplate);
+    await this.asyncTaskService.createEmailTask(newEmail, newUserTemplate.subject, newUserTemplate.html, payload);
 
     // Optionally notify previous assignee about unassignment
     const prevUserEmail = this.userService ? await this.userService.getUserEmail(payload.previousAssignedUserId) : null;
@@ -288,32 +296,7 @@ export class NotificationService {
       taskTitle: payload.taskName,
       reason: payload.reason || 'Task was reassigned to another user',
     });
-    await this.safeSendEmail(prevEmail, prevUserTemplate);
-  }
-
-  private async safeSendEmail(to: string, template: { subject: string; html: string }, maxRetries = 5, delayMs = 1000): Promise<void> {
-    let attempt = 0;
-
-    while (attempt < maxRetries) {
-      try {
-        await this.transporter.sendMail({
-          from: this.fromEmail,
-          to,
-          subject: template.subject,
-          html: template.html,
-        });
-        this.logger.log(`Email sent to ${to}: ${template.subject}`);
-        return;
-      } catch (error) {
-        attempt++;
-        this.logger.warn(`Attempt ${attempt} failed to send email to ${to}: ${error.message}`);
-        if (attempt >= maxRetries) {
-          this.logger.error(`All ${maxRetries} attempts failed for sending email to ${to}`);
-          return;
-        }
-        await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, attempt - 1)));
-      }
-    }
+    await this.asyncTaskService.createEmailTask(prevEmail, prevUserTemplate.subject, prevUserTemplate.html, payload);
   }
 
   private getTemplate(type: NotificationType, data: Record<string, any> = {}): { subject: string; html: string } {

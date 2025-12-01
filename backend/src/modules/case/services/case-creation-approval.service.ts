@@ -413,24 +413,6 @@ export class CaseCreationApprovalService {
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      // this.flowableService.handleTaskStatusChanged({
-      //   taskId: result.approvedTask.task_id,
-      //   caseId: caseId,
-      //   taskName: 'Approve Case Creation',
-      //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-      //   assignedUserId: supervisorId,
-      //   completionVariables: {
-      //     creationApproval: 'approve',
-      //     creationComments: 'Case creation approved by supervisor',
-      //   },
-      // });
-
-      // this.flowableService.handleCaseStatusChanged({
-      //   caseId: caseId,
-      //   newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      //   reason: 'Case creation approved by supervisor',
-      // });
-
       // Create investigation task after approval
       this.logger.log(`[ApproveCaseCreation] Creating Investigation task for approved case ${caseId}`, CaseCreationApprovalService.name);
       const investigationTask = await this.taskService.createTask(

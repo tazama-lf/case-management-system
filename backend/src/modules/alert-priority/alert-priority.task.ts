@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { AlertPriorityService } from './alert-priority.service';
@@ -6,6 +6,8 @@ import { CronJob } from 'cron';
 
 @Injectable()
 export class AlertPriorityTask implements OnModuleInit {
+  private readonly logger = new Logger(AlertPriorityTask.name);
+
   constructor(
     private readonly priorityService: AlertPriorityService,
     private readonly configService: ConfigService,
@@ -22,8 +24,8 @@ export class AlertPriorityTask implements OnModuleInit {
   }
 
   async handleAlertPriorityUpdate() {
-    console.log('Running alert priority update task...');
+    this.logger.log('Running alert priority update task...');
     await this.priorityService.runRecalculation();
-    console.log('Alert priority update task completed.');
+    this.logger.log('Alert priority update task completed.');
   }
 }
