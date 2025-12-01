@@ -76,7 +76,6 @@ export class AlertService {
       const caseDetail: CreateCaseDto = {
         tenantId,
         caseCreatorUserId: systemUUID,
-        // caseOwnerUserId: null,
         status: CaseStatus.STATUS_00_DRAFT,
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,

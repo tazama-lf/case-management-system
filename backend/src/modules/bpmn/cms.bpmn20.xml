@@ -89,27 +89,6 @@
         </userTask>
 
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
-<!-- 
-        <exclusiveGateway id="caseTypeGateway" name="Case Type Check"/> -->
-
-        <!-- Assignment Decision Gateway -->
-        <!-- <exclusiveGateway id="assignmentGateway" name="Assignment Required?"/> -->
-
-        <!-- Assignment Task -->
-        <!-- <userTask id="assignCase" name="Assign Case"
-                  flowable:candidateGroups="supervisors">
-            <documentation>Supervisor assigns the case to an investigator</documentation>
-            <extensionElements>
-                <flowable:formProperty id="assignedTo" name="Assign To" type="string" required="true"/>
-                <flowable:formProperty id="assignmentNotes" name="Assignment Notes" type="string"/>
-                <flowable:formProperty id="priority" name="Priority" type="enum" default="medium">
-                    <flowable:value id="high" name="High"/>
-                    <flowable:value id="medium" name="Medium"/>
-                    <flowable:value id="low" name="Low"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="dueDate" name="Due Date" type="date"/>
-            </extensionElements>
-        </userTask> -->
 
         <!-- CASE TYPE ROUTING -->
         <exclusiveGateway id="investigationRoutingGateway" name="Investigation Type Routing"/>
@@ -225,16 +204,6 @@
             </extensionElements>
         </userTask>
 
-        <!-- System Tasks for Status Updates (Completed via NestJS APIs) -->
-        <!-- <userTask id="updateCaseStatus" name="System: Update Case Status"
-                  flowable:assignee="system">
-            <documentation>System task to update case status - auto-completed by NestJS</documentation>
-            <extensionElements>
-                <flowable:formProperty id="newStatus" name="New Status" type="string"/>
-                <flowable:formProperty id="statusReason" name="Status Change Reason" type="string"/>
-            </extensionElements>
-        </userTask> -->
-
         <!-- End Events -->
         <endEvent id="endSuccess" name="Case Workflow Complete"/>
         <endEvent id="endApproved" name="Case Closed"/>
@@ -327,29 +296,6 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Direct to Investigation -->
-        <!-- <sequenceFlow id="flowToInvestigation" sourceRef="completeCaseCreation" targetRef="investigateCase">
-        <conditionExpression xsi:type="tFormalExpression">
-            ${readyForAssignment == true}
-        </conditionExpression>
-        </sequenceFlow> -->
-
-        <!-- Assignment required -->
-        <!-- <sequenceFlow id="flowRequiresAssignment" sourceRef="assignmentGateway" targetRef="assignCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${readyForAssignment == true &amp;&amp; assignToSelf == false}
-            </conditionExpression>
-        </sequenceFlow> -->
-
-        <!-- Self-assigned or direct to investigation -->
-        <!-- <sequenceFlow id="flowDirectToInvestigation" sourceRef="assignmentGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${readyForAssignment == true}
-            </conditionExpression>
-        </sequenceFlow> -->
-
-        <!-- <sequenceFlow id="flowFromAssignment" sourceRef="assignCase" targetRef="investigateCase"/> -->
-
         <!-- Investigation routing based on case type -->
         <sequenceFlow id="flowSingleTypeInvestigation" sourceRef="investigationRoutingGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
@@ -412,13 +358,6 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Escalate -->
-        <!-- <sequenceFlow id="flowEscalate" sourceRef="investigationDecisionGateway" targetRef="supervisorApproval">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'escalate'}
-            </conditionExpression>
-        </sequenceFlow> -->
-
         <!-- Closure approval workflow -->
         <sequenceFlow id="flowFromSupervisorApproval" sourceRef="supervisorApproval" targetRef="approvalDecisionGateway"/>
 
@@ -433,13 +372,6 @@
                 ${approvalDecision == 'reject'}
             </conditionExpression>
         </sequenceFlow>
-
-        <!-- Return for review - back to investigation -->
-        <!-- <sequenceFlow id="flowReturnForReview" sourceRef="approvalDecisionGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${approvalDecision == 'returnForReview'}
-            </conditionExpression>
-        </sequenceFlow> -->
 
     </process>
 

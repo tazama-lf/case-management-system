@@ -8,12 +8,6 @@ import { TaskRepository } from '../repository/task.repository';
 import { CreateTaskDto } from '../task/dto/create-task.dto';
 import { FlowableService } from '../flowable/flowable.service';
 
-/**
- * TaskBridgeService - Provides task creation without circular dependencies
- *
- * This service handles core task creation logic without depending on
- * FlowableService or TaskService, breaking the circular dependency chain.
- */
 @Injectable()
 export class TaskBridgeService {
   constructor(
@@ -23,11 +17,6 @@ export class TaskBridgeService {
     private readonly flowableService: FlowableService,
   ) {}
 
-  /**
-   * Create a new task in PostgreSQL
-   * This is a streamlined version used by FlowableUtilitiesService
-   * Note: Does NOT sync with Flowable - that's handled separately to avoid circular deps
-   */
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Creating task', TaskBridgeService.name);
     try {
@@ -43,16 +32,6 @@ export class TaskBridgeService {
         status: taskDTO.status,
         assigned_user_id: taskDTO.assignedUserId,
       });
-
-      // await this.flowableService.createTask({
-      //   name: taskDTO.name,
-      //   description: taskDTO.description,
-      //   variables: {
-      //     caseId: taskDTO.caseId,
-      //     postgresTaskId: createdTask.task_id,
-      //     status: taskDTO.status as string,
-      //   },
-      // });
 
       this.auditLogService.logAction({
         userId,

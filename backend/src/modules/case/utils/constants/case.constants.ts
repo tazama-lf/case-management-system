@@ -3,11 +3,7 @@ import { CaseStatus } from '@prisma/client';
 /**
  * Valid case closure outcomes
  */
-export const CASE_CLOSURE_OUTCOMES = [
-  'STATUS_81_CLOSED_REFUTED',
-  'STATUS_82_CLOSED_CONFIRMED',
-  'STATUS_83_CLOSED_INCONCLUSIVE',
-] as const;
+export const CASE_CLOSURE_OUTCOMES = ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'] as const;
 
 /**
  * Closed case statuses (final states)
@@ -47,7 +43,9 @@ export const INACTIVE_CASE_STATUSES: CaseStatus[] = [
 export const TASK_NAMES = {
   INVESTIGATE_CASE: 'Investigate Case',
   INVESTIGATE_CASE_LOWER: 'Investigate case',
-  INVESTIGATE_CASE_VARIANTS: ['Investigate Case', 'Investigate case', 'investigate case'],
+  INVESTIGATE_CASE_VARIANTS: ['Investigate Case', 'Investigate Fraud', 'Investigate AML'],
+  INVESTIGATE_FRAUD: 'Investigate Fraud',
+  INVESTIGATE_AML: 'Investigate AML',
   APPROVE_CASE_CREATION: 'Approve Case Creation',
   APPROVE_CASE_CLOSURE: 'Approve Case Closure',
   APPROVE_CASE_CLOSURE_LOWER: 'Approve case closure',

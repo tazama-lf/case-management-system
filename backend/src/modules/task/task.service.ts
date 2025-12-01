@@ -67,7 +67,9 @@ export class TaskService {
 
       const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
       const shouldPromoteCaseToInProgress =
-        statusChanged && updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && existingTask.name === 'Investigate Case';
+        statusChanged &&
+        updateData.status === TaskStatus.STATUS_20_IN_PROGRESS &&
+        (existingTask.name === 'Investigate Case' || existingTask.name === 'Investigate Fraud' || existingTask.name === 'Investigate AML');
 
       let updatedTask: Task;
       let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;

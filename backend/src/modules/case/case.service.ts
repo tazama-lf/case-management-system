@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../audit/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseStatus, TaskStatus } from '@prisma/client';
+import { CaseStatus, CaseType, TaskStatus } from '@prisma/client';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../../../src/modules/comment/dto/create-comment.dto';
@@ -69,7 +69,7 @@ export class CaseService {
         const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
 
         const createCommentDto = new CreateCommentDto();
-      //  createCommentDto.taskId = updatedTask.task_id;
+        //  createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.caseId = updatedCase.case_id;
         createCommentDto.note = `Case suspended: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
@@ -92,7 +92,12 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.validateClaim, authDetails.tenantName, caseAssignee);
+          const assigneeUserDetail = await this.userService.getUser(
+            authDetails.token,
+            authDetails.validateClaim,
+            authDetails.tenantName,
+            caseAssignee,
+          );
           const emailTo = assigneeUserDetail?.email || '';
           const suspendedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
@@ -149,7 +154,7 @@ export class CaseService {
         );
 
         const createCommentDto = new CreateCommentDto();
-       // createCommentDto.taskId = updatedTask.task_id;
+        // createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.caseId = caseId;
         createCommentDto.note = `Case resumed: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
@@ -168,7 +173,12 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.validateClaim, authDetails.tenantName, caseAssignee);
+          const assigneeUserDetail = await this.userService.getUser(
+            authDetails.token,
+            authDetails.validateClaim,
+            authDetails.tenantName,
+            caseAssignee,
+          );
           const emailTo = assigneeUserDetail?.email || '';
           const resumedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
@@ -365,18 +375,17 @@ export class CaseService {
           taskName: completedTask.name!,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
-            autoCloseEligible: false,
-            casePriority: existingCase.priority!,
-            readyForAssignment: 'true',
+            autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
+            caseType: updateData.caseType || existingCase.case_type!,
+            casePriority: updateData.priority || existingCase.priority!,
+            readyForAssignment: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? true : false,
           },
         });
 
-        await this.commentService.addComment( 
-        { caseId: caseId,
-          taskId: completeNewCaseTask.task_id,
-          note: updateData.note } as CreateCommentDto,
-         userId,
-      );
+        await this.commentService.addComment(
+          { caseId: caseId, taskId: completeNewCaseTask.task_id, note: updateData.note } as CreateCommentDto,
+          userId,
+        );
         return { case: updatedCase, completedTask };
       });
 
@@ -403,21 +412,45 @@ export class CaseService {
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
       } else {
         // Supervisor: Create investigation task directly
-        nextTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: TASK_NAMES.INVESTIGATE_CASE,
-            description: `Task to investigate: ${caseId}`,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          },
-          userId,
-        );
+        if (result.case.case_type === CaseType.FRAUD_AND_AML) {
+          const fraudInvestigationTask = await this.taskService.createTask(
+            {
+              caseId,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: TASK_NAMES.INVESTIGATE_FRAUD,
+              description: `Task to investigate fraud: ${caseId}`,
+              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            },
+            userId,
+          );
 
-        this.logger.log(
-          `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
-          CaseService.name,
-        );
+          const amlInvestigationTask = await this.taskService.createTask(
+            {
+              caseId,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: TASK_NAMES.INVESTIGATE_AML,
+              description: `Task to investigate AML: ${caseId}`,
+              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            },
+            userId,
+          );
+        } else {
+          nextTask = await this.taskService.createTask(
+            {
+              caseId,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: TASK_NAMES.INVESTIGATE_CASE,
+              description: `Task to investigate: ${caseId}`,
+              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            },
+            userId,
+          );
+        }
+
+        // this.logger.log(
+        //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
+        //   CaseService.name,
+        // );
       }
 
       const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
@@ -446,7 +479,7 @@ export class CaseService {
         success: true,
         case: result.case,
         completedTask: result.completedTask,
-        nextTask,
+        // nextTask,
         message: needsApproval
           ? 'Case creation completed and pending supervisor approval'
           : 'Case creation completed and ready for investigation',

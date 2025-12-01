@@ -8,7 +8,6 @@ import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 
-
 @Injectable()
 export class TaskLifecycleService {
   constructor(
@@ -35,20 +34,20 @@ export class TaskLifecycleService {
   async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
-    const previousAssignedUserId = existingTask.assigned_user_id;
+    // const previousAssignedUserId = existingTask.assigned_user_id;
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
-    const previousCaseStatus = existingCase.status;
-    
+    // const previousCaseStatus = existingCase.status;
+
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
     const isInvestigationTask = investigationTasks.includes(existingTask.name || '');
-    
+
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
         where: { task_id: taskId },
         data: { assigned_user_id: assignedUserId, status: TaskStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
       });
-      
+
       let updatedCase = existingCase;
       if (isInvestigationTask) {
         updatedCase = await tx.case.update({
@@ -68,16 +67,16 @@ export class TaskLifecycleService {
         taskName: existingTask.name!,
         assignedUserId,
       });
-      if (note && note.trim().length > 0 ) {
-      await tx.comment.create({
-        data: {
-        user_id: assignedUserId,
-        case_id: existingTask.case_id,
-        task_id: taskId,
-        note: note,
-        },
-      });
-    }
+      if (note && note.trim().length > 0) {
+        await tx.comment.create({
+          data: {
+            user_id: assignedUserId,
+            case_id: existingTask.case_id,
+            task_id: taskId,
+            note: note,
+          },
+        });
+      }
 
       return { updatedTask, updatedCase };
     });
@@ -92,7 +91,7 @@ export class TaskLifecycleService {
 
     await this.auditLogService.logAction({
       userId: supervisorId,
-      actionPerformed: isInvestigationTask 
+      actionPerformed: isInvestigationTask
         ? `Assigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
         : `Assigned task ${taskId} to user ${assignedUserId}`,
       entityName: 'TaskService',
@@ -129,34 +128,34 @@ export class TaskLifecycleService {
         where: { task_id: taskId },
         data: { assigned_user_id: assignedUserId, status: TaskStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
       });
-      
+
       let updatedCase = existingCase;
       if (isInvestigationTask) {
         updatedCase = await tx.case.update({
           where: { case_id: existingTask.case_id },
           data: { status: CaseStatus.STATUS_10_ASSIGNED, case_owner_user_id: assignedUserId, updated_at: new Date() },
         });
-        
+
         await this.flowableService.handleCaseStatusChanged({
           caseId: existingTask.case_id,
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
           reason: `Case assigned to investigator ${assignedUserId}`,
         });
       }
-      
+
       await this.flowableService.handleTaskAssigned({
         taskId,
         caseId: existingTask.case_id,
         taskName: existingTask.name!,
         assignedUserId,
       });
-    
+
       await tx.comment.create({
         data: {
-        user_id: actorUserId,
-        case_id: existingTask.case_id,
-        task_id: taskId,
-        note: note,
+          user_id: actorUserId,
+          case_id: existingTask.case_id,
+          task_id: taskId,
+          note: note,
         },
       });
       return { updatedTask, updatedCase };
@@ -170,10 +169,9 @@ export class TaskLifecycleService {
     //   `Case reassigned to investigator ${assignedUserId} by ${actorUserId}`,
     // );
 
-
     await this.auditLogService.logAction({
       userId: actorUserId,
-      actionPerformed: isInvestigationTask 
+      actionPerformed: isInvestigationTask
         ? `Reassigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
         : `Reassigned task ${taskId} to user ${assignedUserId}`,
       entityName: 'TaskService',
@@ -211,7 +209,7 @@ export class TaskLifecycleService {
         where: { task_id: taskId },
         data: { assigned_user_id: investigatorUserId, status: TaskStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
       });
-      
+
       let updatedCase = existingCase;
       if (isInvestigationTask) {
         updatedCase = await tx.case.update({
@@ -225,7 +223,7 @@ export class TaskLifecycleService {
           reason: `Case self-assigned by investigator ${investigatorUserId}`,
         });
       }
-      
+
       await this.flowableService.handleTaskAssigned({
         taskId,
         caseId: existingTask.case_id,
@@ -245,7 +243,7 @@ export class TaskLifecycleService {
 
     await this.auditLogService.logAction({
       userId: investigatorUserId,
-      actionPerformed: isInvestigationTask 
+      actionPerformed: isInvestigationTask
         ? `Self-assigned task ${taskId} and updated case ${existingTask.case_id} to ASSIGNED`
         : `Self-assigned task ${taskId}`,
       entityName: 'TaskService',
@@ -287,13 +285,13 @@ export class TaskLifecycleService {
         taskName: existingTask.name!,
         assignedUser: null,
       });
-      
+
       await tx.comment.create({
         data: {
-        user_id: actorUserId,
-        case_id: existingTask.case_id,
-        task_id: taskId,
-        note: reason,
+          user_id: actorUserId,
+          case_id: existingTask.case_id,
+          task_id: taskId,
+          note: reason,
         },
       });
 

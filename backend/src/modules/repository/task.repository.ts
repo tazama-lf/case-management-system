@@ -56,7 +56,9 @@ export class TaskRepository {
 
   async createTask(data: Prisma.TaskCreateInput, tx?: Prisma.TransactionClient) {
     if (tx) return tx.task.create({ data });
-    return this.prisma.task.create({ data });
+    const createdTask = await this.prisma.task.create({ data });
+    if (!createdTask) throw new Error('Failed to create task');
+    return createdTask;
   }
 
   async updateTask(taskId: string, data: Prisma.TaskUpdateInput, tx?: Prisma.TransactionClient, includeCase = false) {

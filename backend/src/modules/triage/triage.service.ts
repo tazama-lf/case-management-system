@@ -20,6 +20,7 @@ import { CaseCreationApprovalService } from '../case/services/case-creation-appr
 import { CaseRepository } from '../repository/case.repository';
 import { AlertRepository } from '../repository/alert.repository';
 import { FlowableService } from '../flowable/flowable.service';
+import { Outcome } from '../audit/types/outcome';
 
 @Injectable()
 export class TriageService {
@@ -86,9 +87,6 @@ export class TriageService {
         { caseId: alert.case_id, taskId: completeNewCaseTask?.task_id, note: updateAlertDto.note } as CreateCommentDto,
         userId,
       );
-      // } else {
-      // this.logger.warn(`No active Complete New Case task found for case ${existingCase.case_id}`, TriageService.name);
-      // }
 
       if (this.closableStatuses.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
@@ -103,6 +101,7 @@ export class TriageService {
           taskName: completeNewCaseTask.name!,
           completionVariables: {
             autoCloseEligible: true,
+            caseType: updateAlertDto.alertType,
             casePriority: alert.priority,
             readyForAssignment: false,
           },
@@ -137,6 +136,7 @@ export class TriageService {
           taskName: completeNewCaseTask.name!,
           completionVariables: {
             autoCloseEligible: false,
+            caseType: updateAlertDto.alertType,
             casePriority: alert.priority,
             readyForAssignment: true,
           },
@@ -196,25 +196,22 @@ export class TriageService {
   }
 
   async handleAITriage(alertId: string, caseId: string, dto: IngestAlertDto, userId: string, tenantId: string) {
+    this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
     try {
       const triageTask = await this.taskService.createTask(
         {
           caseId: caseId,
           assignedUserId: userId,
           status: TaskStatus.STATUS_10_ASSIGNED,
-          name: 'Triage Alert',
+          name: 'Complete New Case',
           description: `Created for triaging alert for case:${caseId}`,
-          candidateGroup: 'Investigator',
+          candidateGroup: 'investigator',
         },
         userId,
       );
 
       const triageTaskId = triageTask.task_id;
-      this.logger.log(`Task created: ${triageTaskId}`, TriageService.name);
-
       const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
-      this.logger.log(`Using confidence threshold: ${confidenceThreshold} for alert ${alertId}`);
-
       const interdictionEnabled = this.configService.get<string>('CLIENT_SYSTEM_INTERDICTION_ENABLED', 'true').toLowerCase() === 'true';
       let transactionOccurred = true;
 
@@ -246,11 +243,6 @@ export class TriageService {
         priorityScore: predictedPriorityScore,
       } = prediction;
 
-      this.logger.log(
-        `AI prediction for alert ${alertId}: confidence=${predictedConfidence}, type=${predictedAlertType}, isTruePositive=${predictedTruePositive}`,
-        TriageService.name,
-      );
-
       const finalPriorityScore = predictedPriorityScore ?? 0.5;
       const priority = this.casePriorityUtil.determinePriority(finalPriorityScore);
 
@@ -263,18 +255,24 @@ export class TriageService {
         priority,
         predictedTruePositive,
         userId,
-        tenantId,
       );
 
       if (predictedConfidence < confidenceThreshold) {
-        this.logger.log(
-          `Confidence ${predictedConfidence} below threshold ${confidenceThreshold} for alert ${alertId}. Creating investigation task for case ${caseId}.`,
-        );
+        await this.flowableService.handleTaskCompleted({
+          caseId: caseId,
+          taskName: triageTask.name!,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          completionVariables: {
+            autoCloseEligible: false,
+            caseType: predictedAlertType,
+            casePriority: priority,
+            readyForAssignment: true,
+          },
+        });
         return await this.createInvestigationTask(
           caseId,
           userId,
           triageTaskId,
-          'Investigate Case as confidence is below threshold',
           'Triage complete - confidence percentage below threshold manual investigation needed',
           priority,
           predictedAlertType,
@@ -282,9 +280,17 @@ export class TriageService {
       }
 
       if (predictedConfidence >= confidenceThreshold && !predictedTruePositive) {
-        this.logger.log(
-          `High confidence (${predictedConfidence} >= ${confidenceThreshold}) but False Positive. Auto-closing case ${caseId} as AUTOCLOSED_REFUTED.`,
-        );
+        await this.flowableService.handleTaskCompleted({
+          caseId: caseId,
+          taskName: triageTask.name!,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          completionVariables: {
+            autoCloseEligible: true,
+            caseType: predictedAlertType,
+            casePriority: priority,
+            readyForAssignment: false,
+          },
+        });
         return await this.autoCloseCase(
           caseId,
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
@@ -297,7 +303,6 @@ export class TriageService {
 
       if (predictedTruePositive) {
         if (predictedAlertType === AlertType.FRAUD_AND_AML) {
-          this.logger.log(`Case predicted with both aml and fraud creating child FRAUD & AML cases for case ${caseId}`);
           await this.taskService.updateTask(
             triageTaskId,
             {
@@ -306,6 +311,17 @@ export class TriageService {
             },
             userId,
           );
+          await this.flowableService.handleTaskCompleted({
+            caseId: caseId,
+            taskName: triageTask.name!,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            completionVariables: {
+              autoCloseEligible: false,
+              caseType: predictedAlertType,
+              casePriority: priority,
+              readyForAssignment: true,
+            },
+          });
           // await this.prisma.case.update({
           //   where: { case_id: caseId },
           //   data: {
@@ -313,22 +329,39 @@ export class TriageService {
           //     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           //   },
           // });
-          await this.caseRepository.updateCase(caseId, {
-            case_type: predictedAlertType,
-            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          });
-          await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, caseId, priority);
-          await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, caseId, priority);
+
+          //   await this.caseRepository.updateCase(caseId, {
+          //     case_type: predictedAlertType,
+          //     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          //   });
+          await this.caseCreationService.updateCaseStatus(
+            caseId,
+            CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            userId,
+            priority,
+            predictedAlertType,
+          );
+          //   await this.createCaseWithInvestigationTask(AlertType.FRAUD, userId, tenantId, caseId, priority);
+          //   await this.createCaseWithInvestigationTask(AlertType.AML, userId, tenantId, caseId, priority);
           return;
         }
 
         if (predictedAlertType === AlertType.AML) {
-          this.logger.log(`True positive AML for alert ${alertId}. Creating AML investigation task for case: ${caseId}.`);
+          await this.flowableService.handleTaskCompleted({
+            caseId: caseId,
+            taskName: triageTask.name!,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            completionVariables: {
+              autoCloseEligible: false,
+              caseType: predictedAlertType,
+              casePriority: priority,
+              readyForAssignment: true,
+            },
+          });
           return await this.createInvestigationTask(
             caseId,
             userId,
             triageTaskId,
-            'Investigate Case for AML',
             'Triage complete - confidence percentage above threshold and true positive with case type aml',
             priority,
             predictedAlertType,
@@ -337,9 +370,17 @@ export class TriageService {
 
         if (predictedAlertType === AlertType.FRAUD) {
           if (!transactionOccurred) {
-            this.logger.log(
-              `True positive FRAUD but interdiction indicates no transaction occurred for alert ${alertId}. Auto-closing as AUTOCLOSED_CONFIRMED.`,
-            );
+            await this.flowableService.handleTaskCompleted({
+              caseId: caseId,
+              taskName: triageTask.name!,
+              newStatus: TaskStatus.STATUS_30_COMPLETED,
+              completionVariables: {
+                autoCloseEligible: true,
+                caseType: predictedAlertType,
+                casePriority: priority,
+                readyForAssignment: false,
+              },
+            });
             return await this.autoCloseCase(
               caseId,
               CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -350,12 +391,21 @@ export class TriageService {
             );
           }
 
-          this.logger.log(`True positive FRAUD for alert ${alertId}. Creating FRAUD investigation task for case: ${caseId}.`);
+          await this.flowableService.handleTaskCompleted({
+            caseId: caseId,
+            taskName: triageTask.name!,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            completionVariables: {
+              autoCloseEligible: false,
+              caseType: predictedAlertType,
+              casePriority: priority,
+              readyForAssignment: true,
+            },
+          });
           return await this.createInvestigationTask(
             caseId,
             userId,
             triageTaskId,
-            'Investigate Case for fraud',
             'Triage complete - confidence percentage above threshold and true positive with case type fraud and transaction occured',
             priority,
             predictedAlertType,
@@ -433,63 +483,62 @@ export class TriageService {
     }
   }
 
-  async createCaseWithInvestigationTask(
-    alertType: AlertType,
-    userId: string,
-    tenantId: string,
-    parentCaseId: string,
-    priority: Priority,
-  ): Promise<unknown> {
-    try {
-      const newCase = await this.caseCreationService.createCase(
-        {
-          caseCreatorUserId: userId,
-          caseOwnerUserId: userId,
-          tenantId,
-          priority: priority,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          parentId: parentCaseId,
-          caseType: alertType as CaseType,
-          caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-        },
-        userId,
-      );
+  //   async createCaseWithInvestigationTask(
+  //     alertType: AlertType,
+  //     userId: string,
+  //     tenantId: string,
+  //     parentCaseId: string,
+  //     priority: Priority,
+  //   ): Promise<unknown> {
+  //     try {
+  //       const newCase = await this.caseCreationService.createCase(
+  //         {
+  //           caseCreatorUserId: userId,
+  //           caseOwnerUserId: userId,
+  //           tenantId,
+  //           priority: priority,
+  //           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+  //           parentId: parentCaseId,
+  //           caseType: alertType as CaseType,
+  //           caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
+  //         },
+  //         userId,
+  //       );
 
-      await this.audit.logAction({
-        userId,
-        operation: 'ADDITIONAL_CASE_CREATED',
-        entityName: 'Case',
-        actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,
-        outcome: 'SUCCESS',
-      });
+  //       await this.audit.logAction({
+  //         userId,
+  //         operation: 'ADDITIONAL_CASE_CREATED',
+  //         entityName: 'Case',
+  //         actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,
+  //         outcome: 'SUCCESS',
+  //       });
 
-      this.logger.log(
-        `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
-        TriageService.name,
-      );
+  //       this.logger.log(
+  //         `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
+  //         TriageService.name,
+  //       );
 
-      return {
-        caseId: newCase.case_id,
-        message: 'Child case created, BPMN will create investigation task',
-      };
-    } catch (error) {
-      this.logger.error(`Failed to create ${alertType} case. Error: ${error.message}`, error.stack);
-      throw new InternalServerErrorException(`Failed to create ${alertType} case`);
-    }
-  }
+  //       return {
+  //         caseId: newCase.case_id,
+  //         message: 'Child case created, BPMN will create investigation task',
+  //       };
+  //     } catch (error) {
+  //       this.logger.error(`Failed to create ${alertType} case. Error: ${error.message}`, error.stack);
+  //       throw new InternalServerErrorException(`Failed to create ${alertType} case`);
+  //     }
+  //   }
 
   async createInvestigationTask(
     caseId: string,
     userId: string,
     taskId: string,
-    investigateTaskDesc: string,
     triageTaskDesc: string,
     priority: Priority,
     alertType?: AlertType,
   ): Promise<unknown> {
     try {
+      this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
       const existingCase = await this.caseRepository.findCaseById(caseId);
-
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
@@ -512,7 +561,7 @@ export class TriageService {
         outcome: 'SUCCESS',
       });
 
-      this.logger.log(`AI triage completed for case ${caseId}. BPMN will create investigation task automatically.`, TriageService.name);
+      this.logger.log(`End - AI triage completed for case ${caseId}`, TriageService.name);
 
       return {
         case: updatedCase,
@@ -540,9 +589,9 @@ export class TriageService {
     priority: Priority,
     predictedTruePositive: boolean,
     userId: string,
-    tenantId: string,
   ): Promise<void> {
     try {
+      this.logger.log(`Start - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
       const updateDto = new ManualAlertUpdateDTO();
 
       updateDto.predictionOutcome = predictedTruePositive ? 'TRUE_POSITIVE' : 'FALSE_POSITIVE';
@@ -568,10 +617,10 @@ export class TriageService {
         operation: 'TRIAGE_ALERT_UPDATED',
         entityName: 'Alert & Task',
         actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
-        outcome: 'SUCCESS',
+        outcome: Outcome.SUCCESS,
       });
 
-      this.logger.log(`Alert ${alertId} updated and triage task ${taskId} annotated successfully.`, TriageService.name);
+      this.logger.log(`End - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
     } catch (error) {
       this.logger.error(`Failed to update alert ${alertId} and triage task ${taskId}. Error: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to update alert and triage task');
@@ -579,11 +628,11 @@ export class TriageService {
   }
 
   public async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
-    {
+    this.logger.log(`Start - AI Prediction`, TriageService.name);
+    try {
       const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
       const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);
       const confidence = predictedResult.data.confidence * 100;
-      this.logger.log(`Prediction for alert ${alert.report.evaluationID}: ${JSON.stringify(predictedResult.data)}`, TriageService.name);
 
       return {
         priorityScore: predictedResult.data.priority,
@@ -591,6 +640,9 @@ export class TriageService {
         confidence_per: confidence,
         isTruePositive: true,
       };
+    } catch (error) {
+      this.logger.error(`AI prediction failed: ${error.message}`, error.stack, TriageService.name);
+      throw new InternalServerErrorException('AI prediction failed');
     }
   }
 }
