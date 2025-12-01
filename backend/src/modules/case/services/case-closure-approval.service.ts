@@ -404,19 +404,6 @@ export class CaseClosureApprovalService {
                 },
             });
 
-            // Notify workflow engine about new investigation task creation
-            await this.taskService.createTask(
-                {
-                    caseId,
-                    status: TaskStatus.STATUS_10_ASSIGNED,
-                    name: TASK_NAMES.INVESTIGATE_CASE,
-                    assignedUserId: originalInvestigatorId,
-                    description: `In case ${caseId}`,
-                    candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-                },
-                originalInvestigatorId,
-            );
-
             try {
                 await this.notificationService.sendNotification({
                     userId: originalInvestigatorId,
