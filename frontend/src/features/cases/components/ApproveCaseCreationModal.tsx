@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
+import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 
 interface ApproveCaseCreationModalProps {
   open: boolean;
@@ -95,7 +96,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
                 <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm break-words">{caseData.status}</span>
+                  <span className="text-sm break-words">{getCaseStatusBadge(caseData.status)}</span>
                 </div>
               </div>
               <div>

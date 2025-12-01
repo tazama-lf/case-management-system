@@ -113,16 +113,39 @@ export class CaseCreationApprovalService {
                     userId,
                 );
             } else {
-                await this.taskService.createTask(
-                    {
-                        caseId: result.case.case_id,
-                        status: TaskStatus.STATUS_01_UNASSIGNED,
-                        name: 'Investigate Case',
-                        description: `Investigation task for manually created case ${result.case.case_id}`,
-                        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-                    },
-                    userId,
-                );
+                if (caseType === AlertType.FRAUD_AND_AML) {
+                    await this.taskService.createTask(
+                        {
+                            caseId: result.case.case_id,
+                            status: TaskStatus.STATUS_01_UNASSIGNED,
+                            name: 'Investigate Fraud',
+                            description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
+                            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                        },
+                        userId,
+                    );
+                    await this.taskService.createTask(
+                        {
+                            caseId: result.case.case_id,
+                            status: TaskStatus.STATUS_01_UNASSIGNED,
+                            name: 'Investigate AML',
+                            description: `AML Investigation task for manually created case ${result.case.case_id}`,
+                            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                        },
+                        userId,
+                    );
+                } else {
+                    await this.taskService.createTask(
+                        {
+                            caseId: result.case.case_id,
+                            status: TaskStatus.STATUS_01_UNASSIGNED,
+                            name: 'Investigate Case',
+                            description: `Investigation task for manually created case ${result.case.case_id}`,
+                            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                        },
+                        userId,
+                    );
+                }
             }
 
             this.logger.log(
