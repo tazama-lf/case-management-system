@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
+import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -110,7 +111,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
               <div>
                 <div className="text-xs text-gray-500 uppercase">Status</div>
                 <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}>
-                  {row.status}
+                  {getCaseStatusBadge(row.status)}
                 </span>
               </div>
               <div>
