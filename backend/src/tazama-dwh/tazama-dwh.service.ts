@@ -111,15 +111,15 @@ export class TazamaDwhService {
     tenantId: string,
     debtorId: string,
   ) {
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const where: any = {
+      tenant_id: tenantId,
+      source: debtorId,
+      cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    };
     try {
-      const now = new Date();
-      const dateTo = now.toISOString().slice(0, 10);
-      const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const where: any = {
-        tenant_id: tenantId,
-        source: debtorId,
-        cre_dt_tm: { gte: dateFrom, lte: dateTo },
-      };
       const transactions = await this.prismaDwh.transaction.findMany({
         where,
         orderBy: { cre_dt_tm: 'desc' },
@@ -128,9 +128,12 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for debtorId=${debtorId}`);
       }
       return transactions;
-    } catch (err) {
-      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw err;
+        }
+        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 
@@ -138,15 +141,15 @@ export class TazamaDwhService {
     tenantId: string,
     creditorId: string,
   ) {
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const where: any = {
+      tenant_id: tenantId,
+      destination: creditorId,
+      cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    };
     try {
-      const now = new Date();
-      const dateTo = now.toISOString().slice(0, 10);
-      const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const where: any = {
-        tenant_id: tenantId,
-        destination: creditorId,
-        cre_dt_tm: { gte: dateFrom, lte: dateTo },
-      };
       const transactions = await this.prismaDwh.transaction.findMany({
         where,
         orderBy: { cre_dt_tm: 'desc' },
@@ -155,9 +158,12 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for creditorId=${creditorId}`);
       }
       return transactions;
-    } catch (err) {
-      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw err;
+        }
+        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 }
