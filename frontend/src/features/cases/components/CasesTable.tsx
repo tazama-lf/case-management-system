@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CaseRow } from './casesTable.utils';
 import { getScoreColor } from './casesTable.utils';
+import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 
 interface PaginationInfo {
   currentPage: number;
@@ -375,7 +376,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                     <span
                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-gray-200 ${c.statusColor}`}
                     >
-                      {c.status}
+                      {getCaseStatusBadge(c.status)}
                     </span>
                   </td>
 
