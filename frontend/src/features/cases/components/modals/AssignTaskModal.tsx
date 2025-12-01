@@ -26,8 +26,16 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   // const [investigators, setInvestigators] = useState<Investigator[]>([]);
   // const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
+  const [currentUserInvestigator, setCurrentUserInvestigator] =
+    useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
+
+  const {
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+    loadingInvestigators,
+    investigators,
+  } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     setAssignee('');
@@ -41,17 +49,19 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       setIsSupervisor(isSupervisor);
 
       if (isSupervisor) {
-        if (task && (task.name === 'Approve Case Closure' || task.name === 'Approve Case Creation')) {
-          fetchSupervisors();
+        if (
+          task &&
+          (task.name === 'Approve Case Closure' ||
+            task.name === 'Approve Case Creation')
+        ) {
+          fetchSupervisorsList();
         } else {
-          fetchInvestigators();
+          fetchInvestigatorsList();
         }
       }
       fetchCurrentUserAsInvestigator();
     }
   }, [open]);
-
-  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
 
   const fetchCurrentUserAsInvestigator = async () => {
     try {
@@ -87,8 +97,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   //   }
   // };
 
-
-
   const handleAssign = async () => {
     if (!canConfirm) {
       console.warn('Cannot assign task: assignee not selected');
@@ -113,9 +121,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     setSubmitting(true);
     try {
       await onAssign(task, assignee, notes);
-
     } catch (error) {
-
     } finally {
       setSubmitting(false);
     }
@@ -175,18 +181,23 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
               >
                 <option value="">Select</option>
                 {currentUserInvestigator && (
-                  <option key={`me-${currentUserInvestigator.id}`} value={currentUserInvestigator.id}>
-                    {currentUserInvestigator.firstName} {currentUserInvestigator.lastName} (Me)
+                  <option
+                    key={`me-${currentUserInvestigator.id}`}
+                    value={currentUserInvestigator.id}
+                  >
+                    {currentUserInvestigator.firstName}{' '}
+                    {currentUserInvestigator.lastName} (Me)
                   </option>
                 )}
-                {isSupervisor && investigators.map((investigator) => {
-                  return (
-                    <option key={investigator.id} value={investigator.id}>
-                      {investigator.firstName} {investigator.lastName} (
-                      {investigator.name})
-                    </option>
-                  );
-                })}
+                {isSupervisor &&
+                  investigators.map((investigator) => {
+                    return (
+                      <option key={investigator.id} value={investigator.id}>
+                        {investigator.firstName} {investigator.lastName} (
+                        {investigator.name})
+                      </option>
+                    );
+                  })}
               </select>
             )}
           </div>
