@@ -29,13 +29,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const [currentUserInvestigator, setCurrentUserInvestigator] =
     useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
-
-  const {
-    fetchInvestigatorsList,
-    fetchSupervisorsList,
-    loadingInvestigators,
-    investigators,
-  } = useInvestigatorSupervisorList();
+  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     setAssignee('');
@@ -49,15 +43,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       setIsSupervisor(isSupervisor);
 
       if (isSupervisor) {
-        if (
-          task &&
-          (task.name === 'Approve Case Closure' ||
-            task.name === 'Approve Case Creation')
-        ) {
-          fetchSupervisorsList();
-        } else {
           fetchInvestigatorsList();
-        }
       }
       fetchCurrentUserAsInvestigator();
     }

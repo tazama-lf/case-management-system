@@ -56,7 +56,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     if (onCloseCase && (
       caseData.status === 'STATUS_20_IN_PROGRESS' ||
       caseData.status.includes('IN PROGRESS')
-    ) && (caseData?.tasks && caseData.tasks.length > 0 && caseData.tasks.find((t) => t.name === 'Investigate Case' && t.status === 'STATUS_30_COMPLETED'))) {
+    ) && (caseData?.tasks && caseData.tasks.length > 0 && caseData.tasks.filter((t) => t.name === 'Investigate Case' && t.status === 'STATUS_30_COMPLETED'))) {
       actions.push(
         <button
           key="close"
