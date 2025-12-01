@@ -229,7 +229,7 @@ const AlertsDashboard: React.FC = () => {
     },
     {
       key: 'created_at',
-      header: 'Last Updated',
+      header: 'Date Created',
       sortable: true,
       render: (value) => (
         <div className="text-sm text-gray-600">

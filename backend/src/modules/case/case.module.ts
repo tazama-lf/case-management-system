@@ -14,9 +14,10 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { CaseReopeningService } from './services/case-reopening.service';
 import { FlowableModule } from '../flowable/flowable.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
-	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule],
+	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule],
 	providers: [
 		CaseService,
 		CaseQueryService,

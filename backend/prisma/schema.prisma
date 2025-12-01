@@ -458,3 +458,32 @@ model NotificationLog {
   @@index([user_id, read_at])
   @@map("notification_logs")
 }
+
+model AsyncTask {
+  task_id        String          @id @default(uuid()) @db.Uuid
+  task_type      String          @db.VarChar(50) // 'EMAIL', 'SMS', 'WEBHOOK', etc.
+  status         AsyncTaskStatus @default(PENDING)
+  payload        Json            // Email details: {to, subject, html, metadata}
+  max_retries    Int             @default(5)
+  retry_count    Int             @default(0)
+  next_retry_at  DateTime?       @db.Timestamp(6)
+  last_error     String?         @db.Text
+  created_at     DateTime        @default(now()) @db.Timestamp(6)
+  updated_at     DateTime        @updatedAt @db.Timestamp(6)
+  created_by     String?         @db.VarChar(100) // User ID or 'SYSTEM'
+
+  @@index([status])
+  @@index([task_type])
+  @@index([next_retry_at])
+  @@index([created_at])
+  @@index([status, task_type, next_retry_at])
+  @@map("async_tasks")
+}
+
+enum AsyncTaskStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}

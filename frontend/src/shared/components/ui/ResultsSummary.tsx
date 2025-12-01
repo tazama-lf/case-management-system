@@ -1,5 +1,24 @@
 import React from 'react';
 
+// Utility function to map frontend column names to user-friendly display names
+const getColumnDisplayName = (column: string): string => {
+  const columnDisplayNames: Record<string, string> = {
+    'lastUpdated': 'Date Created',
+    'created_at': 'Date Created',
+    'updated_at': 'Last Updated', 
+    'priority': 'Priority',
+    'confidence_per': 'Confidence %',
+    'source': 'Source',
+    'alert_type': 'Alert Type',
+    'txtp': 'Transaction Type',
+    'alert_id': 'Alert ID',
+    'case_id': 'Case ID',
+    'status': 'Status'
+  };
+  
+  return columnDisplayNames[column] || column.charAt(0).toUpperCase() + column.slice(1);
+};
+
 interface ResultsSummaryProps {
   pagination: {
     currentPage: number;
@@ -64,7 +83,7 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
           <span className="text-sm text-gray-600">per page</span>
         </div>
         <div className="text-sm text-gray-600">
-          Sorted by {sort.column} ({sort.direction === 'asc' ? 'Ascending' : 'Descending'})
+          Sorted by {getColumnDisplayName(sort.column)} ({sort.direction === 'asc' ? 'Ascending' : 'Descending'})
         </div>
       </div>
     </div>

@@ -69,6 +69,13 @@ export interface Investigator {
   firstName: string;
   lastName: string;
 }
+export interface Supervisor {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
 
 export interface AuthState {
   isAuthenticated: boolean;

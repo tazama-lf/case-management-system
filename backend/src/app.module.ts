@@ -16,6 +16,7 @@ import { NatsModule } from './modules/nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './modules/flowable/flowable.module';
 import { WorkQueueModule } from './modules/work-queue/work-queue.module';
+import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
 import { ReportsModule } from './modules/report/report.module';
@@ -51,6 +52,7 @@ import { WorkqueueModule } from './modules/workqueue/workqueue.module';
     SystemConfigModule,
     WorkQueueModule,
     WorkqueueModule,
+    AsyncTaskModule,
     NotificationModule,
     NotificationPreferencesModule,
     ReportsModule,

@@ -286,14 +286,6 @@ export class FlowableService implements OnModuleInit {
     return this.caseEventListener.handleCaseAbandoned(event);
   }
 
-  async handleTaskCreated(event: TaskCreatedEvent) {
-    return this.taskEventListener.handleTaskCreated(event);
-  }
-
-  async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
-    return this.taskEventListener.handleTaskStatusChanged(event);
-  }
-
   async handleTaskCompleted(event: TaskCompletedEvent) {
     return this.taskEventListener.handleTaskCompleted(event);
   }

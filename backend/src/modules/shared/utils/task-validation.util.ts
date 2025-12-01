@@ -60,7 +60,7 @@ export class TaskValidationUtil {
   ): TaskValidationResult & { approvalTask?: Task } {
     const errors: string[] = [];
     const approvalTask = TaskValidationUtil.findApprovalTask(tasks);
-console.log(approvalTask, "<=======APPROVAL TASK");
+
     if (!approvalTask) {
       errors.push('Approval task not found');
     } else {
