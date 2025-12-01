@@ -92,7 +92,7 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.role, authDetails.tenantName, caseAssignee);
+          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.validateClaim, authDetails.tenantName, caseAssignee);
           const emailTo = assigneeUserDetail?.email || '';
           const suspendedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
@@ -168,7 +168,7 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.role, authDetails.tenantName, caseAssignee);
+          const assigneeUserDetail = await this.userService.getUser(authDetails.token, authDetails.validateClaim, authDetails.tenantName, caseAssignee);
           const emailTo = assigneeUserDetail?.email || '';
           const resumedBy = assigneeUserDetail?.username || '';
           await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
