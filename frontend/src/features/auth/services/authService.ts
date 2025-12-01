@@ -4,6 +4,7 @@ import type {
   User,
   DecodedToken,
   Investigator,
+  Supervisor,
 } from '../types/auth.types';
 
 const API_BASE_URL =
@@ -314,6 +315,37 @@ class AuthService {
     try {
       const response = await fetch(
         `${API_BASE_URL}/v1/user/list-by-role/CMS_INVESTIGATOR`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeader(),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch investigators: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data: Investigator[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching investigators:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches all users with the CMS_SUPERVISOR role from the backend.
+   * Uses the backend's /v1/auth/user/:roleName endpoint.
+   */
+  async fetchAllSupervisors(): Promise<Supervisor[]> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/v1/user/list-by-role/CMS_SUPERVISOR`,
         {
           method: 'GET',
           headers: {

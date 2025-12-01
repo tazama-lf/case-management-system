@@ -38,9 +38,13 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       const user = authService.getUser();
       const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
       setIsSupervisor(isSupervisor);
-      
+
       if (isSupervisor) {
-        fetchInvestigators();
+        if (task && (task.name === 'Approve Case Closure' || task.name === 'Approve Case Creation')) {
+          fetchSupervisors();
+        } else {
+          fetchInvestigators();
+        }
       }
       fetchCurrentUserAsInvestigator();
     }
@@ -80,7 +84,22 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   };
 
-  
+  const fetchSupervisors = async () => {
+    setLoading(true);
+    try {
+      const data = await authService.fetchAllSupervisors();
+
+      if (data && data.length > 0) {
+        setInvestigators(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch investigators:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   const handleAssign = async () => {
     if (!canConfirm) {
@@ -158,7 +177,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
             </label>
             {loading ? (
               <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                Loading investigators...
+                Loading...
               </div>
             ) : (
               <select
@@ -166,7 +185,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                 onChange={(e) => setAssignee(e.target.value)}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">Select Investigator</option>
+                <option value="">Select</option>
                 {currentUserInvestigator && (
                   <option key={`me-${currentUserInvestigator.id}`} value={currentUserInvestigator.id}>
                     {currentUserInvestigator.firstName} {currentUserInvestigator.lastName} (Me)
