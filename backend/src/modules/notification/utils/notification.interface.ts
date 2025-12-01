@@ -38,48 +38,48 @@ export interface EmailTemplate {
 
 
 export interface SlaEventPayload {
-  taskId: string;
-  taskName: string;
-  caseId: string;
-  casePriority: string;
-  workQueueId: string;
-  workQueueName: string;
-  assignedUserId?: string;
-  deadline?: string;
-  tenantId: string;
+    taskId: string;
+    taskName: string;
+    caseId: string;
+    casePriority: string;
+    workQueueId: string;
+    workQueueName: string;
+    assignedUserId?: string;
+    deadline?: string;
+    tenantId: string;
 }
 
 export interface SlaWarningPayload extends SlaEventPayload {
-  timeUntilDeadline: number;
+    timeUntilDeadline: number;
 }
 
 export interface SlaBreachPayload extends SlaEventPayload {
-  breachDuration: number;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+    breachDuration: number;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 }
 
 export interface TaskEventPayload {
-  taskId: string;
-  taskName: string;
-  taskType: string;
-  caseId: string;
-  caseNumber: string;
-  casePriority: string;
-  assignedUserId: string;
-  assignedBy?: string;
-  slaDeadline?: string;
-  workQueueName: string;
-  tenantId: string;
+    taskId: string;
+    taskName: string;
+    taskType: string;
+    caseId: string;
+    caseNumber: string;
+    casePriority: string;
+    assignedUserId: string;
+    assignedBy?: string;
+    slaDeadline?: string;
+    workQueueName: string;
+    tenantId: string;
 }
 
 export interface TaskReassignedPayload extends Omit<TaskEventPayload, 'assignedUserId'> {
-  previousAssignedUserId: string;
-  newAssignedUserId: string;
-  reassignedBy?: string;
-  reason?: string;
+    previousAssignedUserId: string;
+    newAssignedUserId: string;
+    reassignedBy?: string;
+    reason?: string;
 }
 
 export interface OverdueTaskPayload extends Omit<SlaEventPayload, 'deadline'> {
-  createdAt: string;
-  hoursSinceCreation: number;
+    createdAt: string;
+    hoursSinceCreation: number;
 }

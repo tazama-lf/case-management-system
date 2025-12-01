@@ -1,5 +1,5 @@
-import React, { Suspense, useState } from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import React, { Suspense, useEffect, useState } from 'react';
+import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
@@ -10,6 +10,8 @@ import type { Alert } from '@/features/alerts/types/alertsdashboard.types';
 import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
 import { useToast } from '@/shared/providers/ToastProvider';
 import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
+import authService from '@/features/auth/services/authService';
+import type { User } from '@/shared/interfaces/user.interface';
 
 interface WorkQueueTableProps {
   alertId?: string;
@@ -50,13 +52,18 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   onApproveCase,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  onAbandonCase
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
   const [loadingAlertForTask, setLoadingAlertForTask] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
+
+ useEffect(() => {
+    const user = authService.getUser();
+    if (user) setCurrentUser(user);
+  }, []);
 
   const tableColumns = [
     { key: 'task', label: 'Task', width: 'w-80' },
@@ -320,6 +327,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         );
       } else {
         actions.push(
+          task.assignee === currentUser?.userId && (
           <button
             key="update-status"
             onClick={() => onUpdateStatus(task)}
@@ -328,7 +336,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           >
             <Cog6ToothIcon className="h-3 w-3 mr-1" />
             Status
-          </button>
+          </button>)
         );
       }
     }
