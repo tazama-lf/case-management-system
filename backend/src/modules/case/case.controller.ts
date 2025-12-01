@@ -89,8 +89,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async reopenCase(@Param('caseId') caseId: string, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
-    const { userId, tenantId, role } = extractUserData(req);
-    return this.caseService.reopenCase(caseId, body.reason, userId, tenantId, role);
+    const { userId, tenantId, validateClaim } = extractUserData(req);
+    return this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
   }
 
   @Put(':caseId/suspend')
@@ -217,8 +217,8 @@ export class CaseController {
     type: CaseErrorResponseDto,
   })
   async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
-    const { userId, tenantId, role } = extractUserData(req);
-    return this.caseService.closeCase(caseId, dto, userId, tenantId, role);
+    const { userId, tenantId, validateClaim } = extractUserData(req);
+    return this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
   }
 
   @Get('all')

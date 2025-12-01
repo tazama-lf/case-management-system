@@ -1,7 +1,8 @@
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
 import React, { useEffect, useState } from 'react';
-import authService from '../../../auth/services/authService';
-import type { Investigator } from '../../../auth/types/auth.types';
+// import authService from '../../../auth/services/authService';
+import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
+// import type { Investigator } from '../../../auth/types/auth.types';
 
 interface ReassignTaskModalProps {
   open: boolean;
@@ -13,8 +14,8 @@ interface ReassignTaskModalProps {
 const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, onReassign, task }) => {
   const [assignee, setAssignee] = React.useState('');
   const [justification, setJustification] = React.useState('');
-  const [investigators, setInvestigators] = useState<Investigator[]>([]);
-  const [loading, setLoading] = useState(false);
+  // const [investigators, setInvestigators] = useState<Investigator[]>([]);
+  // const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -22,40 +23,47 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
     setJustification('');
   }, [task, open]);
 
+  // useEffect(() => {
+  //   if (open) {
+  //     fetchInvestigators();
+  //   }
+  // }, [open]);
+
+  // const fetchInvestigators = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const data = await authService.fetchAllInvestigators();
+
+  //     if (data && data.length > 0) {
+  //       setInvestigators(data);
+  //     } else {
+  //       useMockData();
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch investigators:', error);
+  //     useMockData();
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
+
   useEffect(() => {
     if (open) {
-      fetchInvestigators();
+      fetchInvestigatorsList();
     }
   }, [open]);
 
-  const fetchInvestigators = async () => {
-    setLoading(true);
-    try {
-      const data = await authService.fetchAllInvestigators();
-
-      if (data && data.length > 0) {
-        setInvestigators(data);
-      } else {
-        useMockData();
-      }
-    } catch (error) {
-      console.error('Failed to fetch investigators:', error);
-      useMockData();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const useMockData = () => {
-    const mockInvestigators: Investigator[] = [
-      { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
-      { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
-      { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', email: 'investigator3@example.com', firstName: 'Bob', lastName: 'Wilson' },
-      { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
-      { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
-    ];
-    setInvestigators(mockInvestigators);
-  };
+  // const useMockData = () => {
+  //   const mockInvestigators: Investigator[] = [
+  //     { id: 'c0eb00c7-6f7c-444c-ab74-1c4223dbee02', username: 'cms_investigator_1', email: 'investigator1@example.com', firstName: 'John', lastName: 'Smith' },
+  //     { id: 'd9c5a0a0-1395-4d81-ba8f-99efaa7dfaf5', username: 'cms_investigator_2', email: 'investigator2@example.com', firstName: 'Jane', lastName: 'Doe' },
+  //     { id: '875e1911-fe1b-451d-877f-4f771ef85f58', username: 'cms_investigator_3', email: 'investigator3@example.com', firstName: 'Bob', lastName: 'Wilson' },
+  //     { id: '36febe5b-49fe-4abd-b294-f7afc995574e', username: 'cms_investigator_4', email: 'investigator4@example.com', firstName: 'Alice', lastName: 'Johnson' },
+  //     { id: 'acf06a8d-8cd1-4285-97a8-c4d16f7c8348', username: 'cms_investigator_5', email: 'investigator5@example.com', firstName: 'Charlie', lastName: 'Brown' },
+  //   ];
+  //   setInvestigators(mockInvestigators);
+  // };
 
   if (!open || !task) return null;
 
@@ -121,7 +129,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Reassign To</label>
-            {loading ? (
+            {loadingInvestigators ? (
               <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                 Loading investigators...
               </div>
@@ -142,7 +150,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                       .map((investigator) => {
                         return (
                           <option key={investigator.id} value={investigator.id}>
-                            {investigator.firstName} {investigator.lastName} ({investigator.username})
+                            {investigator.firstName} {investigator.lastName} ({investigator.name})
                           </option>
                         );
                       })}

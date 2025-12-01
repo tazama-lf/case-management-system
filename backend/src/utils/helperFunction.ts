@@ -10,8 +10,9 @@ export function extractUserData(req: AuthenticatedRequest) {
     if (!clientId || !tenantId || !claims) {
         throw new Error('Missing clientId, tenantId or claims in auth token');
     }
-    const role = req.user.validatedClaims.CMS_SUPERVISOR ? 'SUPERVISOR' : 'INVESTIGATOR';
-    const validateClaim = req.user.validatedClaims.CMS_SUPERVISOR ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+
+    const role = claims.includes('CMS_SUPERVISOR') ? 'SUPERVISOR' : 'INVESTIGATOR';
+    const validateClaim = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
 
     return {
         userId: clientId,
