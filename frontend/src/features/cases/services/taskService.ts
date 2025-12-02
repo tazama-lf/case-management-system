@@ -218,7 +218,7 @@ export class TaskService {
     }
   }
 
-  async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string }): Promise<TaskForSupervisor> {
+  async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string; recommendedOutcome?: string }): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
       return response;

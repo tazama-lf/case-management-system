@@ -95,6 +95,12 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [_isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
   const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
   const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
+  const [alertsPagination, setAlertsPagination] = React.useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    pageSize: 10,
+  });
 
   const [status, setStatus] = React.useState<CaseStatus>('STATUS_02_READY_FOR_ASSIGNMENT');
   const [predictionOutcome, setPredictionOutcome] = React.useState<'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'>('FALSE_POSITIVE');
@@ -127,8 +133,14 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       setIsLoadingAlerts(true);
       setAlertSearchError('');
       try {
-        const alerts = await triageService.getNALTAlerts();
-        setAvailableAlerts(alerts);
+        const response = await triageService.getNALTAlerts(undefined, {
+          page: alertsPagination.currentPage,
+          limit: alertsPagination.pageSize,
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        });
+        setAvailableAlerts(response.alerts);
+        setAlertsPagination(response.pagination);
       } catch (error) {
         console.error('Failed to load NALT alerts:', error);
         setAlertSearchError('Failed to load available alerts');
@@ -186,8 +198,14 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       if (alertSearchTerm.length === 0) {
         setIsLoadingAlerts(true);
         try {
-          const alerts = await triageService.getNALTAlerts();
-          setAvailableAlerts(alerts);
+          const response = await triageService.getNALTAlerts(undefined, {
+            page: 1,
+            limit: alertsPagination.pageSize,
+            sortBy: 'created_at',
+            sortOrder: 'desc'
+          });
+          setAvailableAlerts(response.alerts);
+          setAlertsPagination(response.pagination);
         } catch (error) {
           console.error('Failed to load alerts:', error);
           setAlertSearchError('Failed to load alerts');
@@ -198,8 +216,14 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         setIsLoadingAlerts(true);
         setAlertSearchError('');
         try {
-          const alerts = await triageService.getNALTAlerts(alertSearchTerm);
-          setAvailableAlerts(alerts);
+          const response = await triageService.getNALTAlerts(alertSearchTerm, {
+            page: 1,
+            limit: alertsPagination.pageSize,
+            sortBy: 'created_at',
+            sortOrder: 'desc'
+          });
+          setAvailableAlerts(response.alerts);
+          setAlertsPagination(response.pagination);
         } catch (error) {
           console.error('Failed to search alerts:', error);
           setAlertSearchError('Failed to search alerts');
