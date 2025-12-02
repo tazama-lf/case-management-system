@@ -177,7 +177,7 @@ export class CaseClosureApprovalService {
         } else {
           await this.flowableService.handleTaskCompleted({
             caseId,
-            taskName: primaryTask.name || 'Investigate Case',
+            taskName: 'Investigate Case',
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               investigationAction: 'complete',
@@ -257,7 +257,7 @@ export class CaseClosureApprovalService {
       } else {
         await this.flowableService.handleTaskCompleted({
           caseId,
-          taskName: primaryTask.name || 'Investigate Case',
+          taskName: 'Investigate Case',
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             investigationAction: 'requestClosure',
