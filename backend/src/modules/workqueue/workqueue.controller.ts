@@ -27,10 +27,7 @@ export class WorkqueueController {
       required: ['groupId', 'groupName'],
     },
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Candidate group created successfully',
-  })
+  @ApiResponse({status: 201, description: 'Candidate group created successfully'})
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createCandidateGroup(@Body() body: { groupId: string; groupName: string; groupType?: string }) {

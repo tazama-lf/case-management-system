@@ -1,5 +1,5 @@
 import { validate } from 'class-validator';
-import { TransactionDTO } from '../../../src/dtos/Transaction.dto';
+import { TransactionDTO } from '../../../src/modules/alert/dto/Transaction.dto';
 
 describe('TransactionDTO', () => {
   let dto: TransactionDTO;

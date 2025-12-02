@@ -4,143 +4,117 @@ import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { AlertListResponseDto, AlertServiceResponseDto } from './dto';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
 export class AlertController {
-  constructor(private readonly alertStatisticsService: AlertStatisticsService) {}
+    constructor(private readonly alertStatisticsService: AlertStatisticsService) { }
 
-  @Get()
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get all alerts for current user',
-    description: 'Retrieve paginated list of alerts with optional filtering',
-  })
-  @ApiQuery({
-    name: 'priority',
-    required: false,
-    type: 'string',
-    description: 'Filter by priority',
-    example: 'URGENT',
-  })
-  @ApiQuery({
-    name: 'type',
-    required: false,
-    type: 'string',
-    description: 'Filter by type',
-  })
-  @ApiQuery({
-    name: 'alertType',
-    required: false,
-    type: 'string',
-    description: 'Filter by alert type',
-  })
-  @ApiQuery({
-    name: 'search',
-    required: false,
-    type: 'string',
-    description: 'Search term',
-  })
-  @ApiQuery({
-    name: 'source',
-    required: false,
-    type: 'string',
-    description: 'Filter by source',
-  })
-  @ApiQuery({
-    name: 'reportStatus',
-    required: false,
-    type: 'string',
-    description: 'Filter by report status',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: 'number',
-    description: 'Page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'number',
-    description: 'Items per page',
-    example: 10,
-  })
-  @ApiQuery({
-    name: 'sortBy',
-    required: false,
-    type: 'string',
-    description: 'Field to sort by',
-    example: 'created_at',
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    required: false,
-    enum: ['asc', 'desc'],
-    description: 'Sort order',
-    example: 'desc',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Alerts retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        alerts: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              alert_id: { type: 'string', format: 'uuid' },
-              message: { type: 'string' },
-              priority: { type: 'string' },
-              alert_type: { type: 'string' },
-              confidence_per: { type: 'number' },
-              created_at: { type: 'string', format: 'date-time' },
-            },
-          },
-        },
-        pagination: {
-          type: 'object',
-          properties: {
-            total: { type: 'number' },
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            totalPages: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserAlerts(
-    @Req() req: AuthenticatedRequest,
-    @Query('priority') priority?: string,
-    @Query('type') type?: string,
-    @Query('alertType') alertType?: string,
-    @Query('search') search?: string,
-    @Query('source') source?: string,
-    @Query('reportStatus') reportStatus?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
-  ) {
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    return this.alertStatisticsService.getAlertsForUser({
-      tenantId,
-      priority,
-      type,
-      alertType,
-      search,
-      source,
-      reportStatus,
-      page: Number(page),
-      limit: Number(limit),
-      sortBy,
-      sortOrder,
-    });
-  }
+    @Get()
+    @RequireInvestigatorOrSupervisorRole()
+    @ApiOperation({
+        summary: 'Get all alerts for current user',
+        description: 'Retrieve paginated list of alerts with optional filtering',
+    })
+    @ApiQuery({
+        name: 'priority',
+        required: false,
+        type: 'string',
+        description: 'Filter by priority',
+        example: 'URGENT',
+    })
+    @ApiQuery({
+        name: 'type',
+        required: false,
+        type: 'string',
+        description: 'Filter by type',
+    })
+    @ApiQuery({
+        name: 'alertType',
+        required: false,
+        type: 'string',
+        description: 'Filter by alert type',
+    })
+    @ApiQuery({
+        name: 'search',
+        required: false,
+        type: 'string',
+        description: 'Search term',
+    })
+    @ApiQuery({
+        name: 'source',
+        required: false,
+        type: 'string',
+        description: 'Filter by source',
+    })
+    @ApiQuery({
+        name: 'reportStatus',
+        required: false,
+        type: 'string',
+        description: 'Filter by report status',
+    })
+    @ApiQuery({
+        name: 'page',
+        required: false,
+        type: 'number',
+        description: 'Page number',
+        example: 1,
+    })
+    @ApiQuery({
+        name: 'limit',
+        required: false,
+        type: 'number',
+        description: 'Items per page',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'sortBy',
+        required: false,
+        type: 'string',
+        description: 'Field to sort by',
+        example: 'created_at',
+    })
+    @ApiQuery({
+        name: 'sortOrder',
+        required: false,
+        enum: ['asc', 'desc'],
+        description: 'Sort order',
+        example: 'desc',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Alerts retrieved successfully',
+        type: AlertListResponseDto,
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getUserAlerts(
+        @Req() req: AuthenticatedRequest,
+        @Query('priority') priority?: string,
+        @Query('type') type?: string,
+        @Query('alertType') alertType?: string,
+        @Query('search') search?: string,
+        @Query('source') source?: string,
+        @Query('reportStatus') reportStatus?: string,
+        @Query('page') page = 1,
+        @Query('limit') limit = 10,
+        @Query('sortBy') sortBy = 'created_at',
+        @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+    ): Promise<AlertServiceResponseDto> {
+        const tenantId = req.user.token.tenantId;
+        if (!tenantId) throw new BadRequestException('Missing tenantId');
+        return this.alertStatisticsService.getAlertsForUser({
+            tenantId,
+            priority,
+            type,
+            alertType,
+            search,
+            source,
+            reportStatus,
+            page: Number(page),
+            limit: Number(limit),
+            sortBy,
+            sortOrder,
+        });
+    }
 }

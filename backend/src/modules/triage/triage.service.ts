@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
-import { IngestAlertDto } from 'src/dtos';
+import { IngestAlertDto } from 'src/modules/alert/dto/IngestAlert.dto';
 import { ManualAlertUpdateDTO } from './dto/update-alert.dto';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';

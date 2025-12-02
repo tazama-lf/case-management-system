@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
 import { ProcessAlertService } from '../process-alert/process-alert.service';
-import { IngestAlertDto } from 'src/dtos';
+import { IngestAlertDto } from 'src/modules/alert/dto/IngestAlert.dto';
 
 @Injectable()
 export class NatsStartupService implements OnModuleInit {
