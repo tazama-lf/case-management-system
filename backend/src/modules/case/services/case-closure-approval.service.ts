@@ -167,6 +167,7 @@ export class CaseClosureApprovalService {
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               fraudInvestigationAction: 'complete',
+              amlInvestigationAction: 'complete',
               fraudRecommendedOutcome: dto.recommendedOutcome,
               fraudInvestigationNotes: dto.finalNotes,
             },
@@ -177,6 +178,7 @@ export class CaseClosureApprovalService {
             taskName: 'Investigate AML',
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
+              fraudInvestigationAction: 'complete',
               amlInvestigationAction: 'complete',
               amlRecommendedOutcome: dto.recommendedOutcome,
               amlInvestigationNotes: dto.finalNotes,
@@ -189,6 +191,8 @@ export class CaseClosureApprovalService {
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               investigationAction: 'complete',
+              fraudInvestigationAction: 'complete',
+              amlInvestigationAction: 'complete',
               recommendedOutcome: dto.recommendedOutcome,
               investigationNotes: dto.finalNotes,
             },
@@ -247,6 +251,7 @@ export class CaseClosureApprovalService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             fraudInvestigationAction: 'requestClosure',
+            amlInvestigationAction: 'requestClosure',
             fraudRecommendedOutcome: dto.recommendedOutcome,
             fraudInvestigationNotes: dto.finalNotes,
           },
@@ -257,6 +262,7 @@ export class CaseClosureApprovalService {
           taskName: 'Investigate AML',
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
+            fraudInvestigationAction: 'requestClosure',
             amlInvestigationAction: 'requestClosure',
             amlRecommendedOutcome: dto.recommendedOutcome,
             amlInvestigationNotes: dto.finalNotes,
@@ -269,6 +275,8 @@ export class CaseClosureApprovalService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             investigationAction: 'requestClosure',
+            fraudInvestigationAction: 'requestClosure',
+            amlInvestigationAction: 'requestClosure',
             recommendedOutcome: dto.recommendedOutcome,
             investigationNotes: dto.finalNotes,
           },
