@@ -19,7 +19,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const isReasonValid = reason.trim().length >= 10;
+  const isReasonValid = reason.trim().length >= 4;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +93,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
             </div>
           </div>
 
-          {}
+          { }
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
             <p className="text-sm text-yellow-800">
               <strong>Note:</strong> Only cases in DRAFT status can be abandoned. The case must have a "Complete New Case" task associated with it.
@@ -103,7 +103,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for abandoning <span className="text-red-500">*</span>
+                Reason for abandoning <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
               </label>
               <textarea
                 id="reason"
@@ -115,24 +115,25 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
                   }
                 }}
                 rows={3}
+                maxLength={500}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                placeholder="Provide a detailed reason for abandoning this case (minimum 10 characters)..."
+                placeholder="Provide a detailed reason for abandoning this case (minimum 4 characters)..."
               />
               <div className="mt-1 flex justify-between">
                 <p className="text-xs text-gray-500">
-                  {reason.length}/10 characters minimum
+                  {reason.length}/4 characters minimum
                 </p>
               </div>
               {errors.reason && (
                 <p className="mt-1 text-sm text-red-600">{errors.reason}</p>
               )}
               {!isReasonValid && reason.length > 0 && (
-                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+                <p className="mt-1 text-sm text-red-600">Reason must be at least 4 characters</p>
               )}
             </div>
 
-            {}
+            { }
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>

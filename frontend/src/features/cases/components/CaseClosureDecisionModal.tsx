@@ -69,13 +69,13 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (activeTab === 'reject') {
-      if (formData.rejectionReason.trim().length < 20) {
-        newErrors.rejectionReason = 'Rejection reason must be at least 20 characters';
+      if (formData.rejectionReason.trim().length < 4) {
+        newErrors.rejectionReason = 'Rejection reason must be at least 4 characters';
       }
     }
     if (activeTab === 'approve') {
-      if (formData.supervisorComments.trim().length < 20) {
-        newErrors.supervisorComments = 'Supervisor comment must be at least 20 characters';
+      if (formData.supervisorComments.trim().length < 4) {
+        newErrors.supervisorComments = 'Supervisor comment must be at least 4 characters';
       }
     }
 
@@ -174,11 +174,10 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
         <div className="flex border-b border-gray-200 px-6 flex-shrink-0">
           <button
             onClick={() => setActiveTab('approve')}
-            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'approve'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'approve'
+              ? 'border-green-500 text-green-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             <div className="flex items-center gap-2">
               <CheckCircleIcon className="h-4 w-4" />
@@ -187,11 +186,10 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('reject')}
-            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'reject'
-                ? 'border-red-500 text-red-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'reject'
+              ? 'border-red-500 text-red-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             <div className="flex items-center gap-2">
               <XCircleIcon className="h-4 w-4" />
@@ -297,7 +295,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               {/* Supervisor Comments */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Supervisor Comments <span className="text-red-500">*</span>
+                  Supervisor Comments <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
                 </label>
                 <textarea
                   value={formData.supervisorComments || ''}
@@ -306,16 +304,17 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     supervisorComments: e.target.value
                   }))}
                   rows={4}
+                  maxLength={500}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                   placeholder="Provide any additional comments about your approval decision..."
                   disabled={isSubmitting}
                 />
                 <div className="mt-1 flex justify-between">
                   <p className="text-xs text-gray-500">
-                    {formData.supervisorComments.length}/20 characters minimum
+                    {formData.supervisorComments.length}/4 characters minimum
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formData.supervisorComments.length}/1000 characters
+                    {formData.supervisorComments.length}/500 characters
                   </p>
                 </div>
                 {errors.supervisorComments && (
@@ -367,7 +366,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               {/* Rejection Reason */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rejection Reason <span className="text-red-500">*</span>
+                  Rejection Reason <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
                 </label>
                 <textarea
                   value={formData.rejectionReason}
@@ -375,17 +374,18 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     ...prev,
                     rejectionReason: e.target.value
                   }))}
-                  rows={6}
+                  rows={4}
+                  maxLength={500}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                   placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required (minimum 20 characters)..."
                   disabled={isSubmitting}
                 />
                 <div className="mt-1 flex justify-between">
                   <p className="text-xs text-gray-500">
-                    {formData.rejectionReason.length}/20 characters minimum
+                    {formData.rejectionReason.length}/4 characters minimum
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formData.rejectionReason.length}/1000 characters
+                    {formData.rejectionReason.length}/500 characters
                   </p>
                 </div>
                 {errors.rejectionReason && (
@@ -413,7 +413,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           >
             Cancel
           </button>
-          
+
           {activeTab === 'approve' && (
             <button
               type="button"

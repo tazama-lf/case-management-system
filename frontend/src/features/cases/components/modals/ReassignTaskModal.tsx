@@ -181,7 +181,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
             <p className="text-xs text-blue-800">
               <strong>Note:</strong> Upon reassignment:
             </p>
@@ -191,7 +191,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               <li>Both the original and new assignee will be notified</li>
               <li>The reassignment will be logged in the audit trail</li>
             </ul>
-          </div>
+          </div> */}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
