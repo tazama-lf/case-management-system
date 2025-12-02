@@ -139,7 +139,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   };
 
   if (!isVisible) return null;
-  
+
   return (
     <div className="space-y-4">
       {}
@@ -190,6 +190,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
       )}
 
       {/* Page Size and Sorting Info */}
+      {!isLoading && pagination.totalItems > 0 && (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2 ml-auto">
                   <label className="text-sm text-gray-600">Show:</label>
@@ -211,7 +212,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                   Sorted by Date Created (Descending)
                 </div>
               </div>
-
+      )}
       {}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
