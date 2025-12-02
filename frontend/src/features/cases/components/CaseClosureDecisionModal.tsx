@@ -211,7 +211,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               </div>
 
               {/* Recommended Outcome */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Investigator's Recommended Outcome
                 </label>
@@ -220,7 +220,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     {recommendedOutcome ? formatOutcome(recommendedOutcome) : 'Not provided'}
                   </span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Investigator's Notes */}
               <div>

@@ -25,6 +25,7 @@ import {
   UpdateCaseDto,
 } from './dto/index.dto';
 import { UserService } from '../user/user.service';
+import { CacheService } from '../shared/cache.service';
 
 @Injectable()
 export class CaseService {
@@ -35,7 +36,7 @@ export class CaseService {
     private readonly taskService: TaskService,
     private readonly commentService: CommentService,
     private readonly notificationService: NotificationService,
-    private readonly authHelperService: AuthHelperService,
+    private readonly cacheService: CacheService,
     private readonly caseQueryService: CaseQueryService,
     private readonly caseReopeningService: CaseReopeningService,
     private readonly caseClosureApprovalService: CaseClosureApprovalService,
@@ -43,7 +44,7 @@ export class CaseService {
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   async suspendCase(caseId: string, reason: string, userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -103,15 +104,17 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(
-            authDetails.token,
-            authDetails.validateClaim,
-            authDetails.tenantName,
-            caseAssignee,
-          );
-          const emailTo = assigneeUserDetail?.email || '';
-          const suspendedBy = assigneeUserDetail?.username || '';
-          await this.notificationService.sendCaseSuspensionEmail(`${emailTo}`, caseId, suspendedBy, reason);
+          const suspendedBy = await this.cacheService.getUserFromCache(userId);
+          await this.notificationService.sendNotification({
+            userId: caseAssignee,
+            type: 'CASE_SUSPENDED',
+            message: `Case ${caseId} has been suspended by ${caseAssignee}`,
+            metadata: {
+              caseId,
+              actionBy: suspendedBy?.username || suspendedBy?.fullName,
+              reason,
+            },
+          })
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
@@ -184,15 +187,16 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
-          const assigneeUserDetail = await this.userService.getUser(
-            authDetails.token,
-            authDetails.validateClaim,
-            authDetails.tenantName,
-            caseAssignee,
-          );
-          const emailTo = assigneeUserDetail?.email || '';
-          const resumedBy = assigneeUserDetail?.username || '';
-          await this.notificationService.sendCaseResumptionEmail(`${emailTo}`, caseId, resumedBy, reason);
+          await this.notificationService.sendNotification({
+            userId: caseAssignee,
+            type: 'CASE_RESUMED',
+            message: `Case ${caseId} has been resumed by ${caseAssignee}`,
+            metadata: {
+              caseId,
+              resumedBy: caseAssignee,
+              reason,
+            },
+          })
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);

@@ -40,4 +40,22 @@ export class UpdateTaskDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({
+    description: 'Recommended outcome for the investigation',
+    example: 'STATUS_83_CLOSED_INCONCLUSIVE',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  recommendedOutcome?: string;
+
+  @ApiProperty({
+    description: 'Final investigation notes',
+    example: 'Investigation completed successfully',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  finalNotes?: string;
 }

@@ -319,15 +319,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
     handleTaskOperation('updateStatus', { task, newStatus, notes });
 
-  const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, _notes?: string, recommendedOutcome?: string) => {
+  const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, notes?: string, recommendedOutcome?: string) => {
     try {
-      const updateData: { status: TaskStatusType; recommendedOutcome?: string } = { 
+      const updateData: { status: TaskStatusType; recommendedOutcome?: string; finalNotes?: string } = { 
         status: TaskStatus.STATUS_30_COMPLETED 
       };
       
       // Add recommended outcome if provided (for AML/Fraud investigation tasks)
       if (recommendedOutcome) {
         updateData.recommendedOutcome = recommendedOutcome;
+      }
+
+      // Add final notes if provided
+      if (notes && notes.trim()) {
+        updateData.finalNotes = notes.trim();
       }
 
       await taskService.updateTaskForSupervisor(task.id, updateData);

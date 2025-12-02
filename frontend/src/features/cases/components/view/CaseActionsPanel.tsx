@@ -52,11 +52,14 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       );
     }
 
-    // Close Case button - show for in-progress cases
+    // Close Case button - show for in-progress cases when ALL investigation tasks are completed
+    const investigateTasks = caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
+    const completedInvestigateTasks = investigateTasks.filter((t) => t.status === 'STATUS_30_COMPLETED');
+    
     if (onCloseCase && (
       caseData.status === 'STATUS_20_IN_PROGRESS' ||
       caseData.status.includes('IN PROGRESS')
-    ) && (caseData?.tasks && caseData.tasks.length > 0 && caseData.tasks.filter((t) => t.name === 'Investigate Case' && t.status === 'STATUS_30_COMPLETED'))) {
+    ) && investigateTasks.length > 0 && investigateTasks.length === completedInvestigateTasks.length) {
       actions.push(
         <button
           key="close"

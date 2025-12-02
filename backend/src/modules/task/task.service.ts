@@ -5,7 +5,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../audit/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus, Task, Prisma, CaseStatus, WorkQueue } from '@prisma/client';
+import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import {
   TaskCreatedEvent,
@@ -104,16 +104,45 @@ export class TaskService {
           caseStatusTransition = { previous: txResult.previousCaseStatus, next: txResult.updatedCaseStatus };
         }
       } else {
+        // update task in db
         updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
 
-        await this.flowableService.handleTaskAssigned({
-          taskId: updatedTask.task_id,
-          caseId: updatedTask.case_id,
-          assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
-          taskName: existingTask.name!,
-        });
-      }
+        // Check if task is being completed and is fraud/AML investigation
+        if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
+          if (existingTask.name === 'Investigate Fraud') {
+            await this.flowableService.handleTaskCompleted({
+              caseId: updatedTask.case_id,
+              taskName: 'Investigate Fraud',
+              newStatus: TaskStatus.STATUS_30_COMPLETED,
+              completionVariables: {
+                fraudInvestigationAction: 'complete',
+                fraudRecommendedOutcome: updateData.recommendedOutcome,
+                fraudInvestigationNotes: updateData.finalNotes,
+              },
+            });
+          }
 
+          if (existingTask.name === 'Investigate AML') {
+            await this.flowableService.handleTaskCompleted({
+              caseId: updatedTask.case_id,
+              taskName: 'Investigate AML',
+              newStatus: TaskStatus.STATUS_30_COMPLETED,
+              completionVariables: {
+                amlInvestigationAction: 'complete',
+                amlRecommendedOutcome: updateData.recommendedOutcome,
+                amlInvestigationNotes: updateData.finalNotes,
+              },
+            });
+          }
+        } else {
+          await this.flowableService.handleTaskAssigned({
+            taskId: updatedTask.task_id,
+            caseId: updatedTask.case_id,
+            assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
+            taskName: existingTask.name!,
+          });
+        }
+      }
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
       this.auditLogService.logAction({
@@ -407,10 +436,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+          status: {
+            not: TaskStatus.STATUS_30_COMPLETED,
+          },
+        };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {

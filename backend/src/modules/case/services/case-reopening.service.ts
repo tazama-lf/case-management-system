@@ -289,6 +289,7 @@ export class CaseReopeningService {
               taskId: investigationTask.task_id,
               approvedBy: supervisorId,
               reason: reopeningMetadata.reason,
+              taskTitle: investigationTask.name,
             },
           });
         } catch (notificationError) {
@@ -441,7 +442,8 @@ export class CaseReopeningService {
               rejectionReason,
               rejectedBy: supervisorId,
               restoredStatus: originalClosedStatus,
-            },
+              taskTitle: reopeningTask.name,
+            }
           });
         } catch (notificationError) {
           this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseReopeningService.name);
