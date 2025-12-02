@@ -316,7 +316,7 @@ export class TaskLifecycleService {
           userId: existingTask.assigned_user_id,
           type: 'TASK_UNASSIGNED',
           message: `Task "${existingTask.name || taskId}" has been unassigned. Reason: ${reason}`,
-          metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason },
+          metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason, taskTitle: existingTask.name },
         });
       }
       // if (candidateGroup) {
