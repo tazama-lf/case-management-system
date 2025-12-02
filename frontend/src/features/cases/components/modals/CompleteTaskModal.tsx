@@ -5,7 +5,7 @@ import { CheckIcon } from '@heroicons/react/24/outline';
 interface CompleteTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onCompleteTask: (task: UnifiedWorkQueueTask, notes?: string) => void;
+  onCompleteTask: (task: UnifiedWorkQueueTask, notes?: string, recommendedOutcome?: string) => void;
   task?: UnifiedWorkQueueTask | null;
   loading?: boolean;
 }
@@ -18,16 +18,34 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
   loading = false 
 }) => {
   const [notes, setNotes] = React.useState('');
+  const [recommendedOutcome, setRecommendedOutcome] = React.useState('STATUS_83_CLOSED_INCONCLUSIVE');
 
   React.useEffect(() => {
     setNotes('');
+    setRecommendedOutcome('STATUS_83_CLOSED_INCONCLUSIVE');
   }, [task, open]);
+
+  // Helper function to format outcome display text
+  const formatOutcome = (outcome: string): string => {
+    return outcome
+      .replace('STATUS_', '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Check if task requires recommended outcome dropdown
+  const requiresOutcomeDropdown = task?.name === 'Investigate AML' || task?.name === 'Investigate Fraud';
 
   if (!open || !task) return null;
 
   const handleComplete = () => {
-    onCompleteTask(task, notes || undefined);
+    const completionData = {
+      notes: notes || undefined,
+      ...(requiresOutcomeDropdown && { recommendedOutcome })
+    };
+    onCompleteTask(task, completionData.notes, completionData.recommendedOutcome);
     setNotes('');
+    setRecommendedOutcome('STATUS_83_CLOSED_INCONCLUSIVE');
   };
 
   return (
@@ -63,6 +81,28 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Conditional Recommended Outcome Dropdown */}
+          {requiresOutcomeDropdown && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Recommended Outcome <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={recommendedOutcome}
+                onChange={(e) => setRecommendedOutcome(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                disabled={loading}
+              >
+                <option value="STATUS_83_CLOSED_INCONCLUSIVE">{formatOutcome("STATUS_83_CLOSED_INCONCLUSIVE")}</option>
+                <option value="STATUS_81_CLOSED_REFUTED">{formatOutcome("STATUS_81_CLOSED_REFUTED")}</option>
+                <option value="STATUS_82_CLOSED_CONFIRMED">{formatOutcome("STATUS_82_CLOSED_CONFIRMED")}</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Select the outcome based on your investigation findings
+              </p>
+            </div>
+          )}
 
           <div className="rounded-md bg-green-50 p-3">
             <div className="text-sm text-green-800">

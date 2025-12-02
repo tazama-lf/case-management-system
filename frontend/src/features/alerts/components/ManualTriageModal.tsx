@@ -322,20 +322,27 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   maxLength={500}
                   aria-describedby={validationErrors.note ? 'note-error' : 'note-help'}
                 />
-                <div className="flex justify-between items-center mt-1">
-                  <div>
-                    {validationErrors.note && (
-                      <p id="note-error" className="text-red-500 text-xs">{validationErrors.note}</p>
-                    )}
-                    {!validationErrors.note && (
+                <div className="mt-1">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-gray-500">
+                      {note.length}/4 characters minimum
+                    </p>
+
+                    <span className={`text-xs ${note.length >= 500 ? "text-red-500" : "text-gray-500"}`}>
+                      {note.length}/500
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    {validationErrors.note ? (
+                      <p id="note-error" className="text-red-500 text-xs">
+                        {validationErrors.note}
+                      </p>
+                    ) : (
                       <p id="note-help" className="text-gray-500 text-xs">
                         Detailed notes help with case investigation and audit trails
                       </p>
                     )}
                   </div>
-                  <span className={`text-xs ${note.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
-                    {note.length}/500
-                  </span>
                 </div>
               </div>
 

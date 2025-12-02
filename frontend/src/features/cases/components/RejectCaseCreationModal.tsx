@@ -150,45 +150,45 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
           {/* Rejection Reason */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rejection Reason <span className="text-red-500">*</span>
+              Rejection Reason <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
             </label>
             <textarea
               value={reason}
               onChange={(e) => {
                 setReason(e.target.value);
-                if (e.target.value.trim().length >= 10) {
+                if (e.target.value.trim().length >= 4) {
                   setErrors({});
                 }
               }}
               rows={3}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-              placeholder="Provide feedback on what needs to be corrected (minimum 10 characters)..."
+              placeholder="Provide feedback on what needs to be corrected..."
               disabled={isSubmitting}
             />
             <div className="mt-1 flex justify-between">
               <p className="text-xs text-gray-500">
-                {reason.length}/10 characters minimum
+                {reason.length}/4 characters minimum
               </p>
               <p className="text-xs text-gray-500">
-                {reason.length}/1000 characters
+                {reason.length}/500 characters
               </p>
             </div>
             {errors.reason && (
               <p className="mt-1 text-sm text-red-600">{errors.reason}</p>
             )}
             {!isReasonValid && reason.length > 0 && (
-              <p className="mt-1 text-sm text-red-600">Rejection reason must be at least 10 characters</p>
+              <p className="mt-1 text-sm text-red-600">Rejection reason must be at least 4 characters</p>
             )}
           </div>
 
-          {}
+          { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
 
-          {}
+          { }
           <div className="flex justify-end gap-3">
             <button
               type="button"

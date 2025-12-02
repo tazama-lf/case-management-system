@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean, MinLength, MaxLength, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CaseClosureOutcome } from '../utils/enums/case-enum';
 
@@ -18,8 +18,9 @@ export class CloseCaseDto {
     required: false,
   })
   @IsString()
-  @IsOptional()
-  finalNotes?: string;
+  @MinLength(4)
+  @MaxLength(500)
+  finalNotes: string;
 }
 
 export class ApproveCaseClosureTaskDto {
@@ -63,8 +64,10 @@ export class ApproveCaseClosureTaskDto {
     required: false,
   })
   @IsString()
-  @IsOptional()
-  finalNotes?: string;
+  // @IsOptional()
+  @MinLength(4)
+  @MaxLength(500)
+  finalNotes: string;
 
   @ApiProperty({
     description: 'Recommendations from investigator',
@@ -92,6 +95,8 @@ export class ApproveCaseClosureDto {
   })
   @IsString()
  @IsNotEmpty()
+ @MinLength(4)
+ @MaxLength(500)
   supervisorComments: string;
 }
 
@@ -103,6 +108,8 @@ export class RejectCaseClosureDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MinLength(4)
+  @MaxLength(500)
   rejectionReason: string;
 }
 

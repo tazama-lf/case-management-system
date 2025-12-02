@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RequestResumeCaseDto {
     @ApiProperty({
@@ -7,5 +7,7 @@ export class RequestResumeCaseDto {
         example: 'The case is being resumed after suspension.',
     })
     @IsString()
+    @MinLength(4)
+    @MaxLength(500)
     reason: string;
 }

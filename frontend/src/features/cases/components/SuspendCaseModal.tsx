@@ -18,7 +18,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isReasonValid = reason.trim().length >= 10;
+  const isReasonValid = reason.trim().length >= 4;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,24 +89,30 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for suspension <span className="text-red-500">*</span>
+                Reason for suspension <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
               </label>
               <textarea
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={4}
+                maxLength={500}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                placeholder="Explain why this case needs to be suspended (minimum 10 characters)..."
+                placeholder="Explain why this case needs to be suspended..."
               />
               <div className="mt-1 flex justify-between">
                 <p className="text-xs text-gray-500">
-                  {reason.length}/10 characters minimum
+                  {reason.length}/4 characters minimum
                 </p>
+                <span className={`text-xs ${reason.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {reason.length}/500
+                </span>
+
               </div>
+
               {!isReasonValid && reason.length > 0 && (
-                <p className="mt-1 text-sm text-red-600">Reason must be at least 10 characters</p>
+                <p className="mt-1 text-sm text-red-600">Reason must be at least 4 characters</p>
               )}
             </div>
 

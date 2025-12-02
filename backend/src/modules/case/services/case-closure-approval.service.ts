@@ -135,6 +135,14 @@ export class CaseClosureApprovalService {
         });
       }
 
+      await this.commentService.addComment(
+        {
+          caseId: caseId,
+          note: dto.finalNotes,
+        } as CreateCommentDto,
+        userId,
+      );
+
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
         const finalStatus = dto.recommendedOutcome as CaseStatus;

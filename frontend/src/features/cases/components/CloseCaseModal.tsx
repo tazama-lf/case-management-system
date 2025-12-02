@@ -35,12 +35,12 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    const trimmed = formData.finalNotes?.trim() ?? '';
+    const trimmed = formData.finalNotes.trim() ?? '';
 
     if (!trimmed) {
       newErrors.finalNotes = 'Final investigation notes are required';
-    } else if (trimmed.length < 5) {
-      newErrors.finalNotes = 'Final notes must be at least 5 characters';
+    } else if (trimmed.length < 4) {
+      newErrors.finalNotes = 'Final notes must be at least 4 characters';
     }
 
     setErrors(newErrors);
@@ -167,7 +167,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           { }
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Final Investigation Notes <span className="text-red-500">*</span>
+              Final Investigation Notes <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
             </label>
             <textarea
               value={formData.finalNotes || ''}
@@ -178,14 +178,18 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 }))
               }
               rows={4}
+              maxLength={500}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Provide detailed notes about your investigation findings..."
               disabled={isSubmitting}
             />
             <div className="mt-1 flex justify-between">
               <p className="text-xs text-gray-500">
-                {formData.finalNotes?.length}/5 characters minimum
+                {formData.finalNotes.length}/4 characters minimum
               </p>
+              <span className={`text-xs ${formData.finalNotes.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                {formData.finalNotes.length}/500
+              </span>
             </div>
             {errors.finalNotes && (
               <p className="mt-1 text-sm text-red-600">{errors.finalNotes}</p>

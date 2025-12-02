@@ -139,7 +139,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </div>
           )}
 
-          { }
+          {/* { }
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Approval Confirmation</h4>
             <p className="text-xs text-blue-700">
@@ -151,7 +151,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               <li>The case priority is appropriate</li>
               <li>The case will be assigned to an investigator</li>
             </ul>
-          </div>
+          </div> */}
 
           { }
           {errors.submit && (
