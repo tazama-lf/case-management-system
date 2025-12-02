@@ -1,14 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RejectCaseCreationBodyDto {
   @ApiProperty({
     type: 'string',
-    description: 'Reason for rejecting the case creation (minimum 10 characters)',
+    description: 'Reason for rejecting the case creation (minimum 4 characters)',
     example: 'Missing critical information about the alert source and transaction details',
-    minLength: 10,
+    minLength: 4,
   })
   @IsString()
-  @MinLength(10, { message: 'Rejection reason must be at least 10 characters' })
+  @MinLength(4, { message: 'Rejection reason must be at least 4 characters' })
+  @MaxLength(500)
   reason: string;
 }

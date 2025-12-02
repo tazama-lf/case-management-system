@@ -1,15 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, Min, Max, MaxLength } from 'class-validator';
 
 export class RejectCaseReopeningDto {
   @ApiProperty({
-    description: 'Detailed reason for rejecting the case reopening request (minimum 20 characters)',
+    description: 'Detailed reason for rejecting the case reopening request (minimum 4 characters)',
     example: 'The new evidence provided does not warrant reopening this case. The information was already considered during the original investigation.',
-    minLength: 20,
+    minLength: 4,
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(20, { message: 'Rejection reason must be at least 20 characters' })
+  @MinLength(4, { message: 'Rejection reason must be at least 4 characters' })
   rejectionReason: string;
 }
 
@@ -20,5 +20,7 @@ export class RequestReopenCaseDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MinLength(4)
+  @MaxLength(500)
   reason: string;
 }

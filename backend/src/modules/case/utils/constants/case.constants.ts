@@ -66,9 +66,9 @@ export const CANDIDATE_GROUPS = {
  * Minimum length requirements
  */
 export const VALIDATION_LENGTHS = {
-  MIN_FINAL_NOTES: 5,
-  MIN_REJECTION_REASON: 20,
-  MIN_REOPENING_REASON: 10,
+  MIN_FINAL_NOTES: 4,
+  MIN_REJECTION_REASON: 4,
+  MIN_REOPENING_REASON: 4,
 } as const;
 
 /**

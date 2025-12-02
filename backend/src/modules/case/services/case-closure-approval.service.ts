@@ -135,6 +135,14 @@ export class CaseClosureApprovalService {
         });
       }
 
+      await this.commentService.addComment(
+        {
+          caseId: caseId,
+          note: dto.finalNotes,
+        } as CreateCommentDto,
+        userId,
+      );
+
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
         const finalStatus = dto.recommendedOutcome as CaseStatus;
@@ -177,7 +185,7 @@ export class CaseClosureApprovalService {
         } else {
           await this.flowableService.handleTaskCompleted({
             caseId,
-            taskName: primaryTask.name || 'Investigate Case',
+            taskName: 'Investigate Case',
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               investigationAction: 'complete',
@@ -257,7 +265,7 @@ export class CaseClosureApprovalService {
       } else {
         await this.flowableService.handleTaskCompleted({
           caseId,
-          taskName: primaryTask.name || 'Investigate Case',
+          taskName: 'Investigate Case',
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             investigationAction: 'requestClosure',

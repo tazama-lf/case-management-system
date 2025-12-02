@@ -357,7 +357,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             }
           }}
           disabled={isLoading}
-          className="inline-flex items-center px-1 py-1 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Complete triage"
         >
           {/* Show loading spinner or normal icon based on state */}
@@ -392,7 +392,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'update-status',
           () => onUpdateStatus(task),
-          <Cog6ToothIcon className="h-3 w-3 mr-1" />,
+          <Cog6ToothIcon className="h-4 w-4 mr-1" />,
           // 'Status',
           'Update status',
           'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500'
@@ -519,7 +519,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4 mr-1" />
+                    {/* <ClockIcon className="h-4 w-4 mr-1" /> */}
                     {formatDate(task.createdAt)}
                   </div>
                 </td>
