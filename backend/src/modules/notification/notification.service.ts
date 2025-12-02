@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from '../shared/user.service';
+import { CacheService } from '../shared/cache.service';
 import { AsyncTaskService } from '../async-task/async-task.service';
 import { EMAIL_TEMPLATES } from './utils/notification.constants';
 import {
@@ -96,7 +96,7 @@ export class NotificationService {
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         private readonly asyncTaskService: AsyncTaskService,
-        @Optional() private readonly userService?: UserService,
+        @Optional() private readonly cacheService: CacheService,
     ) { }
 
     async sendNotification(payload: NotificationPayload): Promise<void> {
@@ -249,12 +249,8 @@ export class NotificationService {
      * Resolve user email from UserService or generate fallback
      */
     private async resolveUserEmail(userId: string): Promise<string> {
-        if (!this.userService) {
-            return `user-${userId}@example.com`;
-        }
-
         try {
-            const userEmail = await this.userService.getUserEmail(userId);
+            const userEmail = await this.cacheService.getUserEmailFromCache(userId);
             return userEmail || `user-${userId}@example.com`;
         } catch (error) {
             this.logger.warn(`Failed to resolve email for user ${userId}: ${error.message}`);

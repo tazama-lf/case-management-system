@@ -15,9 +15,10 @@ import { CaseCreationApprovalService } from './services/case-creation-approval.s
 import { CaseReopeningService } from './services/case-reopening.service';
 import { FlowableModule } from '../flowable/flowable.module';
 import { UserModule } from '../user/user.module';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
-	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule],
+	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule],
 	providers: [
 		CaseService,
 		CaseQueryService,

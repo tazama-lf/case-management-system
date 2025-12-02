@@ -255,7 +255,7 @@ export class AuthHelperService {
     }
     // Remove /v1/auth/login suffix if present and replace with base path
     const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/, '');
-    return `${baseUrl}/v1/auth`;
+    return `${baseUrl}`;
   }
 
   private handleAuthServiceError(operation: string, error: unknown, context?: string): never {
