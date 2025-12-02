@@ -144,7 +144,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     key: string,
     onClick: () => void,
     icon: React.ReactNode,
-    label: string,
+    // label: string,
     title: string,
     colorClasses: string,
     disabled = false
@@ -153,11 +153,11 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       key={key}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded ${colorClasses} focus:outline-none focus:ring-2 focus:ring-offset-2 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md ${colorClasses} focus:outline-none focus:ring-2 focus:ring-offset-2 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={title}
     >
       {icon}
-      {label}
+      {/* {label} */}
     </button>
   );
 
@@ -205,8 +205,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'assign',
           () => onAssign(task),
-          <UserPlusIcon className="h-3 w-3 mr-1" />,
-          'Assign',
+          <UserPlusIcon className="h-4 w-4 mr-1" />,
+          // 'Assign',
           'Assign task',
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
         )
@@ -224,8 +224,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'reassign',
           () => onReassign!(task),
-          <ArrowPathIcon className="h-3 w-3 mr-1" />,
-          'Reassign',
+          <ArrowPathIcon className="h-4 w-4 mr-1" />,
+          // 'Reassign',
           'Reassign task',
           'text-purple-700 bg-purple-100 hover:bg-purple-200 focus:ring-purple-500'
         )
@@ -243,8 +243,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'unassign',
           () => onUnassign!(task),
-          <UserMinusIcon className="h-3 w-3 mr-1" />,
-          'Unassign',
+          <UserMinusIcon className="h-4 w-4 mr-1" />,
+          // 'Unassign',
           'Unassign task',
           'text-orange-700 bg-orange-100 hover:bg-orange-200 focus:ring-orange-500'
         )
@@ -262,8 +262,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'complete',
           () => onComplete!(task),
-          <CheckIcon className="h-3 w-3 mr-1" />,
-          'Complete',
+          <CheckIcon className="h-4 w-4 mr-1" />,
+          // 'Complete',
           'Mark complete',
           'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
         )
@@ -288,8 +288,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'approve-creation',
           () => onApproveCaseCreation(caseData),
-          <CheckIcon className="h-3 w-3 mr-1" />,
-          'Approve',
+          <CheckIcon className="h-4 w-4 mr-1" />,
+          // 'Approve',
           'Approve Case Creation',
           'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
         )
@@ -301,8 +301,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           createActionButton(
             'reject-creation',
             () => onRejectCaseCreation(caseData),
-            <XCircleIcon className="h-3 w-3 mr-1" />,
-            'Reject',
+            <XCircleIcon className="h-4 w-4 mr-1" />,
+            // 'Reject',
             'Reject Case Creation',
             'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500'
           )
@@ -316,8 +316,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         createActionButton(
           'approve-closure',
           () => onApproveCase(caseData),
-          <CheckIcon className="h-3 w-3 mr-1" />,
-          'Review',
+          <CheckIcon className="h-4 w-4 mr-1" />,
+          // 'Review',
           'Review Case Closure',
           'text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500'
         )
@@ -368,8 +368,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             </>
           ) : (
             <>
-              <CheckIcon className="h-3 w-3 mr-1" />
-              Complete
+              <CheckIcon className="h-4 w-4 mr-1" />
+              {/* Complete */}
             </>
           )}
         </button>);
@@ -393,7 +393,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'update-status',
           () => onUpdateStatus(task),
           <Cog6ToothIcon className="h-3 w-3 mr-1" />,
-          'Status',
+          // 'Status',
           'Update status',
           'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500'
         )
@@ -535,8 +535,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right text-sm font-medium">
-                  <div className="flex justify-end space-x-2">
+                <td className="px-4 py-3 text-sm font-medium">
+                  <div className="flex justify-start space-x-2 items-center">
                     {getAvailableActions(task)}
                   </div>
                 </td>
