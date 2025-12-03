@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import type { AxiosError, AxiosResponse } from 'axios';
 
-interface AuthLoginResponse {
+export interface AuthLoginResponse {
   token?: string;
   access_token?: string;
   jwt?: string;
