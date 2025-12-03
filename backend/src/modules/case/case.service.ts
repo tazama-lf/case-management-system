@@ -187,13 +187,14 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.assigned_user_id;
         if (caseAssignee) {
+          const resumedBy = await this.cacheService.getUserFromCache(userId);
           await this.notificationService.sendNotification({
             userId: caseAssignee,
             type: 'CASE_RESUMED',
             message: `Case ${caseId} has been resumed by ${caseAssignee}`,
             metadata: {
               caseId,
-              resumedBy: caseAssignee,
+              resumedBy: resumedBy?.username || resumedBy?.email,
               reason,
             },
           })
