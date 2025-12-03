@@ -109,6 +109,13 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    await this.notificationService.sendNotification({
+      userId: assignedUserId,
+      type: 'TASK_ASSIGNED',
+      message: `You have been assigned to task "${existingTask.name || taskId}"`,
+      metadata: { taskId, caseId: existingTask.case_id, assignedBy: supervisorId || assignedUserId, taskTitle: existingTask.name },
+    });
+
     return result.updatedTask;
   }
 

@@ -22,8 +22,8 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (reason.trim().length < 10) {
-      setError('Reason must be at least 10 characters');
+    if (reason.trim().length < 4) {
+      setError('Reason must be at least 4 characters');
       return;
     }
     setIsSubmitting(true);

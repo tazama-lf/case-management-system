@@ -91,5 +91,7 @@ export class CaseEventListener {
   }
 
   @OnEvent('case.suspended')
-  async handleSuspendCase(event: CaseSuspendedEvent) {}
+  async handleSuspendCase(event: CaseSuspendedEvent) {
+    // Empty handler for future use
+  }
 }

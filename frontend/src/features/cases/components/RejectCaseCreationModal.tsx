@@ -20,7 +20,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const isReasonValid = reason.trim().length >= 10;
+  const isReasonValid = reason.trim().length >= 4;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +28,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
     if (!caseData) return;
 
     if (!isReasonValid) {
-      setErrors({ reason: 'Rejection reason must be at least 10 characters' });
+      setErrors({ reason: 'Rejection reason must be at least 4 characters' });
       return;
     }
 
@@ -161,6 +161,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
                 }
               }}
               rows={3}
+              maxLength={500}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
               placeholder="Provide feedback on what needs to be corrected..."
               disabled={isSubmitting}

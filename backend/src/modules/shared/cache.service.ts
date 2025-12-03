@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
-import { AuthHelperService } from '../auth/auth-helper.service';
 import { AuthService } from '../auth/auth.service';
+import axios from 'axios';
+import { UserGroupDetails } from '../user/types/UserList';
 
 export interface UserDetails {
     id: string;
@@ -11,7 +12,7 @@ export interface UserDetails {
     lastName: string;
     email: string;
     fullName: string;
-    roles: string[];
+    roles?: string[];
 }
 
 /**
@@ -25,33 +26,59 @@ export class CacheService implements OnModuleInit {
     private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR'];
     private readonly CACHE_KEY_PREFIX = 'cms:users:';
     private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
+    private readonly AuthBaseUrl: string;
 
     constructor(
         private readonly redisService: RedisService,
-        private readonly authHelperService: AuthHelperService,
-        private readonly authService: AuthService,
         private readonly configService: ConfigService,
-    ) { }
+        @Inject(forwardRef(() => AuthService))
+        private readonly authService: AuthService
+    ) {
+        console.log('CacheService constructor called');
+        this.AuthBaseUrl = this.configService.get<string>('TAZAMA_AUTH_URL')!;
+    }
 
     /**
      * Initialize user cache on module startup
      */
     async onModuleInit() {
+        console.log('CacheService onModuleInit called!');
         this.logger.log('Initializing CMS cache...', CacheService.name);
-        // Don't await to avoid blocking startup - let it run in background
-        this.initializeUserCache().catch(error => {
-            this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
-        });
+
+        // Add delay to ensure all services (especially Redis) are initialized
+        setTimeout(() => {
+            this.initializeUserCache().catch(error => {
+                console.error(' Cache initialization error:', error);
+                this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
+            });
+        }, 2000); // Wait 2 seconds before initializing cache
     }
 
     /**
      * Initialize cache with CMS_INVESTIGATOR and CMS_SUPERVISOR users
      */
-    private async initializeUserCache(): Promise<void> {
+    private async initializeUserCache(retryCount: number = 0): Promise<void> {
+        const maxRetries = 3;
+        console.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
         try {
+            console.log('Redis connection status:', this.redisService.isConnected());
             if (!this.redisService.isConnected()) {
-                this.logger.warn('Redis not connected, skipping cache initialization', CacheService.name);
-                return;
+                console.log('Redis not connected');
+
+                if (retryCount < maxRetries) {
+                    console.log(`Retrying in 3 seconds... (${retryCount + 1}/${maxRetries})`);
+                    setTimeout(() => {
+                        this.initializeUserCache(retryCount + 1).catch(error => {
+                            console.error('Retry failed:', error);
+                        });
+                    }, 3000);
+                    return;
+                } else {
+                    console.log('Max retries reached, skipping cache initialization');
+                    this.logger.warn('Redis not connected after retries, skipping cache initialization', CacheService.name);
+                    return;
+                }
             }
 
             const cacheData: Record<string, UserDetails> = {};
@@ -59,15 +86,19 @@ export class CacheService implements OnModuleInit {
 
             for (const role of this.CACHE_ROLES) {
                 try {
+                    console.log(`Fetching users with role: ${role}`);
                     this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
 
                     // Get admin token for API calls
-                    const adminData = await this.authService.login(
-                        this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') || '',
-                        this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') || '',
-                    );
+                    const adminUsername = this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') || '';
+                    const adminPassword = this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') || '';
+                    console.log(`Attempting admin login with username: ${adminUsername} ${adminPassword}`);
 
-                    const users = await this.authHelperService.getAllUsersWithRole(role, adminData.token);
+                    const adminData = await this.authService.login(adminUsername, adminPassword);
+                    console.log(`Admin login successful, token received`, adminData);
+
+                    const users = await this.getUsersByRole(adminData.token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') || '');
+                    console.log(`Found ${users.length} users with role ${role}`);
 
                     for (const user of users) {
                         const userDetails: UserDetails = {
@@ -77,7 +108,6 @@ export class CacheService implements OnModuleInit {
                             lastName: user.lastName,
                             fullName: `${user.firstName} ${user.lastName}`.trim(),
                             email: user.email,
-                            roles: user.roles,
                         };
 
                         cacheData[this.getCacheKey(user.id)] = userDetails;
@@ -102,6 +132,18 @@ export class CacheService implements OnModuleInit {
             this.logger.warn(`Failed to initialize user cache (will fall back to API): ${error.message}`, CacheService.name);
             this.cacheInitialized = false;
         }
+    }
+
+
+    async getUsersByRole(token: string, role: string, tenantName: string): Promise<UserGroupDetails[]> {
+        this.logger.log(`Fetching users with role: ${role}`);
+        const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}?groupName=${tenantName}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        return users.data;
     }
 
     /**
@@ -134,6 +176,7 @@ export class CacheService implements OnModuleInit {
             const cachedUser = await this.redisService.get<UserDetails>(this.getCacheKey(userId), true);
             if (cachedUser) {
                 this.logger.debug(`User ${userId} found in Redis cache`, CacheService.name);
+                console.log('cache user:', cachedUser);
                 return cachedUser;
             }
 
@@ -152,6 +195,7 @@ export class CacheService implements OnModuleInit {
      */
     async getUserEmailFromCache(userId: string): Promise<string | null> {
         const user = await this.getUserFromCache(userId);
+        console.log('cache all user:', user);
         return user?.email || null;
     }
 

@@ -56,9 +56,16 @@ export class CaseService {
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
+    // const investigateTask = allTasks.find(
+    //   (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
+    // );
+    const investigateTask = allTasks
+      .filter(
+        (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
+      )
+      .find((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
 
-    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+    if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
 
     if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
       throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
@@ -88,7 +95,11 @@ export class CaseService {
 
       await new Promise((res) => setTimeout(res, 1000));
 
-      this.flowableService.handleSuspendCase({ caseId, reason });
+      this.flowableService.handleCaseStatusChanged({
+        caseId: caseId,
+        newStatus: CaseStatus.STATUS_21_SUSPENDED,
+        reason: `Case suspended: ${reason}`,
+      });
 
       try {
         const caseAssignee = investigateTask.assigned_user_id;
