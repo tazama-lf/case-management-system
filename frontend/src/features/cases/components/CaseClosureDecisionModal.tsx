@@ -8,7 +8,7 @@ interface CaseClosureDecisionModalProps {
   open: boolean;
   onClose: () => void;
   caseId: string;
-  caseName?: string; 
+  caseName?: string;
   recommendedOutcome?: string;
   finalNotes?: string;
   taskList?: TaskDTO[] | '';
@@ -439,7 +439,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
             <button
               type="button"
               onClick={handleRejectSubmit}
-              disabled={isSubmitting || formData.rejectionReason.trim().length < 20}
+              disabled={isSubmitting || formData.rejectionReason.trim().length < 4}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting ? (

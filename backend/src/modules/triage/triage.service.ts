@@ -637,9 +637,9 @@ export class TriageService {
 
       return {
         priorityScore: predictedResult.data.priority,
-        alertType: AlertType.FRAUD_AND_AML,
+        alertType: AlertType.FRAUD,
         confidence_per: confidence,
-        isTruePositive: true,
+        isTruePositive: false,
       };
     } catch (error) {
       this.logger.error(`AI prediction failed: ${error.message}`, error.stack, TriageService.name);
