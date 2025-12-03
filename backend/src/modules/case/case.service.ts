@@ -194,7 +194,7 @@ export class CaseService {
             message: `Case ${caseId} has been resumed by ${caseAssignee}`,
             metadata: {
               caseId,
-              resumedBy: resumedBy?.username || resumedBy?.email,
+              actionBy: resumedBy?.username || resumedBy?.email,
               reason,
             },
           })
