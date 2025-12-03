@@ -102,6 +102,7 @@ export class NotificationService {
     async sendNotification(payload: NotificationPayload): Promise<void> {
         this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
         const email = await this.resolveUserEmail(payload.userId);
+        console.log('Resolved email:', email);
         await this.dispatchNotification(email, payload.type, payload.metadata || {}, {
             notificationType: payload.type,
             userId: payload.userId,
@@ -251,6 +252,7 @@ export class NotificationService {
     private async resolveUserEmail(userId: string): Promise<string> {
         try {
             const userEmail = await this.cacheService.getUserEmailFromCache(userId);
+            console.log('Resolved email:', userEmail);
             return userEmail || `user-${userId}@example.com`;
         } catch (error) {
             this.logger.warn(`Failed to resolve email for user ${userId}: ${error.message}`);

@@ -134,6 +134,7 @@ export class CacheService implements OnModuleInit {
             const cachedUser = await this.redisService.get<UserDetails>(this.getCacheKey(userId), true);
             if (cachedUser) {
                 this.logger.debug(`User ${userId} found in Redis cache`, CacheService.name);
+                console.log('cache user:', cachedUser);
                 return cachedUser;
             }
 
@@ -152,6 +153,7 @@ export class CacheService implements OnModuleInit {
      */
     async getUserEmailFromCache(userId: string): Promise<string | null> {
         const user = await this.getUserFromCache(userId);
+        console.log('cache all user:', user);
         return user?.email || null;
     }
 
