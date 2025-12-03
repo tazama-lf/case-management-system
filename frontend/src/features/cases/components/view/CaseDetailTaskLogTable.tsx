@@ -466,6 +466,13 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     return assigneeName || assignee;
   };
 
+  const getCandidateGroup = (candidateGroup?: string, taskName?: string) => {
+    const containsInvestigate = taskName?.toLowerCase().includes("investigate") ?? false;
+    if (containsInvestigate) return "Investigators";
+    if (!candidateGroup) return "-";
+    return candidateGroup.charAt(0).toUpperCase() + candidateGroup.slice(1);
+  };
+
 
   return (
     <div className="bg-white shadow rounded-lg">
@@ -511,7 +518,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900 break-words">
-                    {task.candidateGroup || '-'}
+                    {getCandidateGroup(task.candidateGroup, task.name)}
+                    {/* {task.candidateGroup || '-'}  */}
                   </div>
                 </td>
                 <td className="px-4 py-3">
