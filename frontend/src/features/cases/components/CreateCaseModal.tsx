@@ -812,7 +812,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML</option>
                   <option value="FRAUD_AND_AML">Fraud & AML</option>
-                  <option value="NONE">None</option>
+                  {/* <option value="NONE">None</option> */}
                 </select>
                 {validationErrors.alertType && (
                   <p className="text-sm text-red-600 mt-1">{validationErrors.alertType}</p>
