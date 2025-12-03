@@ -22,7 +22,7 @@ export class EmailWorkerService {
         const smtpUser = this.config.get<string>('SMTP_USER');
 
         if (!smtpHost) {
-            this.logger.warn('⚠️  SMTP_HOST not configured - emails will fail to send!');
+            this.logger.warn('SMTP_HOST not configured - emails will fail to send!');
             this.logger.warn('Please configure SMTP settings in .env file');
         }
 

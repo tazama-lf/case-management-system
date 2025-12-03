@@ -418,6 +418,7 @@ export class CaseClosureApprovalService {
               finalOutcome,
               approvedBy: supervisorId,
               supervisorComments: comments,
+              taskTitle: investigationTask.name,
             },
           });
         } catch (notificationError) {
@@ -536,6 +537,7 @@ export class CaseClosureApprovalService {
             taskId: result.newInvestigationTask.task_id,
             supervisorComments: comments,
             rejectedBy: supervisorId,
+            taskTitle: originalInvestigationTask.name,
           },
         });
       } catch (notificationError) {
