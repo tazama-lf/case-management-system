@@ -105,7 +105,7 @@ export const useAlertOperations = () => {
     mutationFn: ({ alertId, status, notes }: { alertId: string; status: AlertStatus; notes: string }) =>
       triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
-      showSuccess('Alert closed successfully');
+      // showSuccess('Alert closed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
@@ -127,7 +127,7 @@ export const useAlertOperations = () => {
     mutationFn: ({ alertId, data }: { alertId: string; data: Record<string, unknown> }) =>
       triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
-      showSuccess('Alert updated successfully');
+      // showSuccess('Alert updated successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
@@ -149,7 +149,7 @@ export const useAlertOperations = () => {
     mutationFn: ({ alertId, data }: { alertId: string; data: ManualTriageDto }) =>
       triageService.performManualTriage(alertId, data),
     onSuccess: (data, variables) => {
-      showSuccess('Manual triage completed successfully');
+      // showSuccess('Manual triage completed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),

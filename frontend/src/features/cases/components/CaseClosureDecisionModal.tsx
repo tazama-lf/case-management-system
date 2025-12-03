@@ -8,7 +8,7 @@ interface CaseClosureDecisionModalProps {
   open: boolean;
   onClose: () => void;
   caseId: string;
-  caseName?: string;
+  caseName?: string; 
   recommendedOutcome?: string;
   finalNotes?: string;
   taskList?: TaskDTO[] | '';
