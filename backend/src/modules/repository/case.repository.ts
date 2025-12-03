@@ -495,13 +495,14 @@ export class CaseRepository {
                 },
             });
 
-            await tx.comment.create({
-                data: {
-                    user_id: supervisorId,
-                    task_id: approvalTask.task_id,
-                    note: `Case closure rejected by supervisor: ${comments}`,
-                },
-            });
+            // await tx.comment.create({
+            //     data: {
+            //         user_id: supervisorId,
+            //         task_id: approvalTask.task_id,
+            //         case_id: caseId,
+            //         note: `Case closure rejected by supervisor: ${comments}`,
+            //     },
+            // });
 
             // Create new investigation task assigned to the user who requested approval
             const newInvestigationTask = await tx.task.create({
@@ -520,6 +521,7 @@ export class CaseRepository {
             await tx.comment.create({
                 data: {
                     user_id: supervisorId,
+                    case_id: caseId,
                     task_id: newInvestigationTask.task_id,
                     note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
                 },
