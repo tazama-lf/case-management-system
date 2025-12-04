@@ -34,7 +34,6 @@ export class CacheService implements OnModuleInit {
         @Inject(forwardRef(() => AuthService))
         private readonly authService: AuthService
     ) {
-        console.log('CacheService constructor called');
         this.AuthBaseUrl = this.configService.get<string>('TAZAMA_AUTH_URL')!;
     }
 
@@ -42,13 +41,12 @@ export class CacheService implements OnModuleInit {
      * Initialize user cache on module startup
      */
     async onModuleInit() {
-        console.log('CacheService onModuleInit called!');
         this.logger.log('Initializing CMS cache...', CacheService.name);
 
         // Add delay to ensure all services (especially Redis) are initialized
         setTimeout(() => {
             this.initializeUserCache().catch(error => {
-                console.error(' Cache initialization error:', error);
+                this.logger.error('Cache initialization error:', error);
                 this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
             });
         }, 2000); // Wait 2 seconds before initializing cache
@@ -59,23 +57,21 @@ export class CacheService implements OnModuleInit {
      */
     private async initializeUserCache(retryCount: number = 0): Promise<void> {
         const maxRetries = 3;
-        console.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`, CacheService.name);
 
         try {
-            console.log('Redis connection status:', this.redisService.isConnected());
+            this.logger.log('Redis connection status:', CacheService.name);
             if (!this.redisService.isConnected()) {
-                console.log('Redis not connected');
+                this.logger.log('Redis not connected', CacheService.name);
 
                 if (retryCount < maxRetries) {
-                    console.log(`Retrying in 3 seconds... (${retryCount + 1}/${maxRetries})`);
                     setTimeout(() => {
                         this.initializeUserCache(retryCount + 1).catch(error => {
-                            console.error('Retry failed:', error);
+                            this.logger.error('Retry failed:', error);
                         });
                     }, 3000);
                     return;
                 } else {
-                    console.log('Max retries reached, skipping cache initialization');
                     this.logger.warn('Redis not connected after retries, skipping cache initialization', CacheService.name);
                     return;
                 }
@@ -86,19 +82,14 @@ export class CacheService implements OnModuleInit {
 
             for (const role of this.CACHE_ROLES) {
                 try {
-                    console.log(`Fetching users with role: ${role}`);
                     this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
 
                     // Get admin token for API calls
                     const adminUsername = this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') || '';
                     const adminPassword = this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') || '';
-                    console.log(`Attempting admin login with username: ${adminUsername} ${adminPassword}`);
-
                     const adminData = await this.authService.login(adminUsername, adminPassword);
-                    console.log(`Admin login successful, token received`, adminData);
 
                     const users = await this.getUsersByRole(adminData.token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') || '');
-                    console.log(`Found ${users.length} users with role ${role}`);
 
                     for (const user of users) {
                         const userDetails: UserDetails = {
@@ -176,7 +167,6 @@ export class CacheService implements OnModuleInit {
             const cachedUser = await this.redisService.get<UserDetails>(this.getCacheKey(userId), true);
             if (cachedUser) {
                 this.logger.debug(`User ${userId} found in Redis cache`, CacheService.name);
-                console.log('cache user:', cachedUser);
                 return cachedUser;
             }
 
@@ -195,7 +185,6 @@ export class CacheService implements OnModuleInit {
      */
     async getUserEmailFromCache(userId: string): Promise<string | null> {
         const user = await this.getUserFromCache(userId);
-        console.log('cache all user:', user);
         return user?.email || null;
     }
 
