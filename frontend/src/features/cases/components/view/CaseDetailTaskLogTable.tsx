@@ -257,7 +257,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
    * Excludes special approval tasks that have their own completion flow
    */
   const addCompleteAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (canCompleteTask(task)) {
+    if (canCompleteTask(task) && isCurrentUserAssigned(task)) {
       actions.push(
         createActionButton(
           'complete',
