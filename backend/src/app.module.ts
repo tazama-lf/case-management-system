@@ -6,7 +6,7 @@ import { AuditLogModule } from './modules/audit/auditLog.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
-import { TokenExpiryInterceptor } from './modules/auth/token-expiry.interceptor';
+import { TokenExpiryInterceptor } from './interpectors/token-expiry.interceptor';
 import { SharedModule } from './modules/shared/shared.module';
 import { TriageModule } from './modules/triage/triage.module';
 import { CaseModule } from './modules/case/case.module';

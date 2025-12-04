@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
 import { AuthService } from '../auth/auth.service';
 import axios from 'axios';
-import { UserGroupDetails } from '../user/types/UserList';
+import { UserGroupDetails } from '../../utils/types/UserList';
 
 export interface UserDetails {
     id: string;

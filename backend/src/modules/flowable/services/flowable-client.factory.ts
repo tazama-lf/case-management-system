@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
-import { FlowableDefaults } from '../constants/flowable-api.constants';
+import { FlowableDefaults } from '../../../constants/flowable-api.constants';
 
 /**
  * Factory service for creating and managing Flowable REST API client

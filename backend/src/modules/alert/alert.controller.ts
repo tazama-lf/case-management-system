@@ -1,10 +1,10 @@
 import { Controller, Get, Query, Req, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
-import { AuthenticatedRequest } from '../auth/auth.types';
+import { RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decorator';
+import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { AlertListResponseDto, AlertServiceResponseDto } from './dto';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
+import { AlertResponseDto } from 'src/dtos';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
@@ -85,7 +85,7 @@ export class AlertController {
     @ApiResponse({
         status: 200,
         description: 'Alerts retrieved successfully',
-        type: AlertListResponseDto,
+        type: AlertResponseDto,
     })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
     async getUserAlerts(
@@ -100,7 +100,7 @@ export class AlertController {
         @Query('limit') limit = 10,
         @Query('sortBy') sortBy = 'created_at',
         @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
-    ): Promise<AlertServiceResponseDto> {
+    ) {
         const tenantId = req.user.token.tenantId;
         if (!tenantId) throw new BadRequestException('Missing tenantId');
         return this.alertStatisticsService.getAlertsForUser({

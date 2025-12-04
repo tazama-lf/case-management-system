@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { BpmnSyncService } from '../services/bpmn-sync.service';
-import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
+import { FlowableUtilitiesService } from '../services/flowable-utilities.service';
 import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
 import { FlowableProcessService } from '../services/flowable-process.service';
 

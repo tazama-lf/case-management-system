@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../shared/cache.service';
 import { AsyncTaskService } from '../async-task/async-task.service';
-import { EMAIL_TEMPLATES } from './utils/notification.constants';
+import { EMAIL_TEMPLATES } from '../../constants/notification.constants';
 import {
     NotificationPayload,
     GroupNotificationPayload,
@@ -15,7 +15,7 @@ import {
     SlaWarningPayload,
     TaskEventPayload,
     TaskReassignedPayload
-} from './utils/notification.interface';
+} from '../../utils/interfaces/notification.interface';
 
 @Injectable()
 export class NotificationService {

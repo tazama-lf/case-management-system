@@ -1,10 +1,10 @@
 import { BadRequestException, Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ProcessAlertService } from './process-alert.service';
-import { RequireAuthenticated } from '../auth/auth.decorator';
+import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { CreateAlertDTO } from '../alert/dto/CreateAlert.dto';
-import { AuthenticatedRequest } from '../auth/auth.types';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { CreateAlertDTO } from '../../dtos';
+import { AuthenticatedRequest } from '../../utils/types/auth.types';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 
 @Controller('ingest-alert')
 @UseGuards(TazamaAuthGuard)

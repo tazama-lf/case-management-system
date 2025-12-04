@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { UserGroupDetails } from './types/UserList';
+import { UserGroupDetails } from '../../utils/types/UserList';
 
 @Injectable()
 export class UserService {
@@ -23,10 +23,5 @@ export class UserService {
             },
         });
         return users.data;
-    }
-
-    async getUser(token: string, role: string, tenantName: string, userId: string): Promise<UserGroupDetails | undefined> {
-        const users = await this.getUsersByRole(token, role, tenantName);
-        return users.find(user => user.id === userId);
     }
 }

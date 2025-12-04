@@ -29,7 +29,7 @@ import {
   CreateAssignmentRuleDto,
   UpdateAssignmentRuleDto,
   DetailedAssignmentRuleDto,
-} from './dto';
+} from '../../dtos';
 import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client';
 import { RuleEngineService } from './rule-engine.service';
 

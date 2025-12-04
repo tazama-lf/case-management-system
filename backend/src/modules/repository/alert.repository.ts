@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Alert, Priority, Prisma } from '@prisma/client';
-import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
+import { CreateAlertDTO, UpdateAlertDTO } from '../../dtos';
 
 @Injectable()
 export class AlertRepository {

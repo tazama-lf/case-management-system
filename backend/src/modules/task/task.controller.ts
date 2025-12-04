@@ -15,19 +15,19 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { TaskService } from './task.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
-import { AssignTaskDto } from './dto/assign-task.dto';
-import { ReassignTaskDto } from './dto/reassign-task.dto';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { UnassignTaskDto } from './dto/unassign-task-dto';
+import { CreateTaskDto } from '../../dtos/task/create-task.dto';
+import { UpdateTaskDto } from '../../dtos/task/update-task.dto';
+import { AssignTaskDto } from '../../dtos/task/assign-task.dto';
+import { ReassignTaskDto } from '../../dtos/task/reassign-task.dto';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
+import { UnassignTaskDto } from '../../dtos/task/unassign-task-dto';
 import {
   RequireAlertTriageRole,
   RequireAnyValidRole,
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
-} from '../auth/auth.decorator';
+} from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';

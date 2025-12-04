@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
-import { CreateCommentDto } from './dto/create-comment.dto';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { CreateCommentDto } from '../../dtos';
 import { CommentService } from './comment.service';
-import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
-import { RequireInvestigatorOrSupervisorRole } from 'src/modules/auth/auth.decorator';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 
 @Controller('api/v1/comment')
 @UseGuards(TazamaAuthGuard)

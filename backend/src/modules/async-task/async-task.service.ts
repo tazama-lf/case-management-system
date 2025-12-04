@@ -1,156 +1,59 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { AsyncTaskStatus } from '@prisma/client';
-
-export interface EmailPayload {
-    to: string;
-    subject: string;
-    html: string;
-    metadata?: Record<string, any>;
-}
+import { AsyncTaskRepository } from '../repository/async-task.repository';
 
 @Injectable()
 export class AsyncTaskService {
     private readonly logger = new Logger(AsyncTaskService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly asyncTaskRepository: AsyncTaskRepository) { }
 
-    /**
-     * Create a new email task in the queue
-     */
     async createEmailTask(
         to: string,
         subject: string,
         html: string,
         metadata?: Record<string, any>,
     ): Promise<string> {
-        const task = await this.prisma.asyncTask.create({
-            data: {
-                task_type: 'EMAIL',
-                status: AsyncTaskStatus.PENDING,
-                payload: {
-                    to,
-                    subject,
-                    html,
-                    metadata,
-                },
-                max_retries: 5,
-                retry_count: 0,
-                next_retry_at: new Date(), // Send immediately
-                created_by: metadata?.userId || 'SYSTEM',
+        const task = await this.asyncTaskRepository.createEmailTask(
+            to,
+            subject,
+            html,
+            metadata,
+        );
 
-            },
-        });
-
-        this.logger.log(`Email task created: ${task.task_id} for ${to} - Subject: ${subject}`);
-        return task.task_id;
+        this.logger.log(`Email task created: ${task} for ${to} - Subject: ${subject}`);
+        return task.id;
     }
 
-    /**
-     * Get task by ID
-     */
     async getTaskById(taskId: string) {
-        return this.prisma.asyncTask.findUnique({
-            where: { task_id: taskId },
-        });
+        return this.asyncTaskRepository.getTaskById(taskId);
     }
 
-    /**
-     * Get all failed tasks
-     */
     async getFailedTasks(limit = 100) {
-        return this.prisma.asyncTask.findMany({
-            where: { status: AsyncTaskStatus.FAILED },
-            orderBy: { created_at: 'desc' },
-            take: limit,
-        });
+        return this.asyncTaskRepository.getFailedTasks(limit);
     }
 
-    /**
-     * Retry a failed task
-     */
     async retryFailedTask(taskId: string): Promise<void> {
-        await this.prisma.asyncTask.update({
-            where: { task_id: taskId },
-            data: {
-                status: AsyncTaskStatus.PENDING,
-                retry_count: 0,
-                next_retry_at: new Date(),
-                updated_at: new Date(),
-            },
-        });
-
+        await this.asyncTaskRepository.retryFailedTask(taskId);
         this.logger.log(`Task ${taskId} reset for retry`);
     }
 
-    /**
-     * Mark task as processing
-     */
     async markAsProcessing(taskId: string): Promise<void> {
-        await this.prisma.asyncTask.update({
-            where: { task_id: taskId },
-            data: {
-                status: AsyncTaskStatus.PROCESSING,
-                updated_at: new Date(),
-            },
-        });
+        await this.asyncTaskRepository.markAsProcessing(taskId);
     }
 
-    /**
-     * Mark task as completed
-     */
     async markAsCompleted(taskId: string): Promise<void> {
-        await this.prisma.asyncTask.update({
-            where: { task_id: taskId },
-            data: {
-                status: AsyncTaskStatus.COMPLETED,
-                updated_at: new Date(),
-            },
-        });
+        await this.asyncTaskRepository.markAsCompleted(taskId);
     }
 
-    /**
-     * Mark task as failed
-     */
     async markAsFailed(taskId: string, retryCount: number): Promise<void> {
-        await this.prisma.asyncTask.update({
-            where: { task_id: taskId },
-            data: {
-                status: AsyncTaskStatus.FAILED,
-                retry_count: retryCount,
-                updated_at: new Date(),
-            },
-        });
+        await this.asyncTaskRepository.markAsFailed(taskId, retryCount);
     }
 
-    /**
-     * Schedule retry for a task
-     */
     async scheduleRetry(taskId: string, retryCount: number, nextRetryAt: Date): Promise<void> {
-        await this.prisma.asyncTask.update({
-            where: { task_id: taskId },
-            data: {
-                status: AsyncTaskStatus.PENDING,
-                retry_count: retryCount,
-                next_retry_at: nextRetryAt,
-                updated_at: new Date(),
-            },
-        });
+        await this.asyncTaskRepository.scheduleRetry(taskId, retryCount, nextRetryAt);
     }
 
-    /**
-     * Get pending tasks ready for processing
-     */
     async getPendingTasksForProcessing(limit: number = 10) {
-        // Using raw query with FOR UPDATE SKIP LOCKED for safe concurrent processing
-        return this.prisma.$queryRaw<any[]>`
-      SELECT * FROM async_tasks
-      WHERE status = 'PENDING'
-        AND task_type = 'EMAIL'
-        AND next_retry_at <= NOW()
-      ORDER BY created_at ASC
-      LIMIT ${limit}
-      FOR UPDATE SKIP LOCKED
-    `;
+        return this.asyncTaskRepository.getPendingTasksForProcessing(limit);
     }
 }

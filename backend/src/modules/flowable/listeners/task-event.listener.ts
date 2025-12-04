@@ -11,7 +11,7 @@ import {
   TaskCompletedEvent,
 } from '../../events/domain-events';
 import { TaskStatus } from '@prisma/client';
-import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
+import { FlowableUtilitiesService } from '../services/flowable-utilities.service';
 import { FlowableTaskService } from '../services/flowable-task.service';
 import { FlowableProcessService } from '../services/flowable-process.service';
 

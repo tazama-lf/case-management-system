@@ -1,13 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client';
 
 @Injectable()
 export class CaseRepository {
     constructor(
         private readonly prismaService: PrismaService,
-        private readonly logger: LoggerService,
     ) { }
 
     async findAlert(alertId: string) {
@@ -379,8 +377,6 @@ export class CaseRepository {
                 },
             });
 
-            this.logger.log(`[DraftCase] Draft case ${createdCase.case_id} created in PostgreSQL only (no BPMN)`, CaseRepository.name);
-
             // Update alert within the same transaction
             const updatedAlert = await prisma.alert.update({
                 where: { alert_id: dto.alertId },
@@ -391,8 +387,6 @@ export class CaseRepository {
                     case_id: createdCase.case_id,
                 },
             });
-
-            this.logger.log(`[DraftCase] Alert ${dto.alertId} linked to case ${createdCase.case_id}`, CaseRepository.name);
 
             return { case: createdCase, alert: updatedAlert };
         });

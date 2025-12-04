@@ -12,8 +12,8 @@ import { FlowableModule } from '../flowable/flowable.module';
  * FlowableModule or TaskModule, allowing both to use it without circular dependencies.
  */
 @Module({
-  imports: [LoggerModule, RepositoryModule, FlowableModule, AuditLogModule],
-  providers: [TaskBridgeService],
-  exports: [TaskBridgeService],
+    imports: [LoggerModule, RepositoryModule, FlowableModule, AuditLogModule],
+    providers: [TaskBridgeService],
+    exports: [TaskBridgeService],
 })
-export class TaskBridgeModule {}
+export class TaskBridgeModule { }

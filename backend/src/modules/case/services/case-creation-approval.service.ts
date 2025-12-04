@@ -1,13 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { PrismaService } from '../../../../prisma/prisma.service';
-import { Outcome } from '../../audit/types/outcome';
+import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, AlertType } from '@prisma/client';
-import { ManualCreateCaseDto, CreateCaseDto, UpdateCaseDto } from '../dto/index.dto';
+import { ManualCreateCaseDto, CreateCaseDto } from '../../../dtos';
 import { TaskService } from 'src/modules/task/task.service';
-import { SystemCaseCreationDto } from '../dto/system-case-creation.dto';
-import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../utils/constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';

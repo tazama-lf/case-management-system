@@ -3,7 +3,7 @@ import { FlowableService } from './flowable.service';
 import { FlowableWorkQueueListener } from './listeners/work-queue.listener';
 import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
-import { FlowableUtilitiesService } from './utils/flowable-utilities.service';
+import { FlowableUtilitiesService } from './services/flowable-utilities.service';
 import { BpmnSyncService } from './services/bpmn-sync.service';
 import { FlowableProcessService } from './services/flowable-process.service';
 import { FlowableTaskService } from './services/flowable-task.service';

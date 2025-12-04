@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AuthHelperService } from '../auth/auth-helper.service';
+import { AuthService } from '../auth/auth.service';
 
 export interface UserDetails {
   id: string;
@@ -18,7 +18,7 @@ export interface UserDetails {
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly authHelperService: AuthHelperService) {}
+  constructor(private readonly authService: AuthService) {}
 
   /**
    * Get user email address by user ID from Tazama auth-service
@@ -27,7 +27,7 @@ export class UserService {
    */
   async getUserEmail(userId: string): Promise<string | null> {
     try {
-      const userDetails = await this.authHelperService.getUserDetailsFromAuthService(userId);
+      const userDetails = await this.authService.getUserDetailsFromAuthService(userId);
       return userDetails.email;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -43,7 +43,7 @@ export class UserService {
    */
   async getUserDetails(userId: string): Promise<UserDetails | null> {
     try {
-      const userDetails = await this.authHelperService.getUserDetailsFromAuthService(userId);
+      const userDetails = await this.authService.getUserDetailsFromAuthService(userId);
 
       return {
         id: userDetails.id,
@@ -67,7 +67,7 @@ export class UserService {
    */
   async getUserFullName(userId: string): Promise<string | null> {
     try {
-      const userDetails = await this.authHelperService.getUserDetailsFromAuthService(userId);
+      const userDetails = await this.authService.getUserDetailsFromAuthService(userId);
       return `${userDetails.firstName} ${userDetails.lastName}`.trim();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -83,7 +83,7 @@ export class UserService {
    * @returns
    */
   async userExists(userId: string): Promise<boolean> {
-    return this.authHelperService.userExists(userId);
+    return this.authService.userExists(userId);
   }
 
   /**

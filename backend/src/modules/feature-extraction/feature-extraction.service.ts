@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ExtractedFeatures, DetailedFeatureExtraction, FeatureExtractionDetails } from './interfaces/ExtractedFeatures';
-import { IngestAlertDto } from 'src/modules/alert/dto/IngestAlert.dto';
+import { ExtractedFeatures } from '../../utils/interfaces/ExtractedFeatures';
+import { IngestAlertDto } from 'src/dtos/alerts/IngestAlert.dto';
 
 @Injectable()
 export class FeatureExtractionService {

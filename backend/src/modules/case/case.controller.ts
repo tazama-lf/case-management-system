@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { CaseService } from './case.service';
-import { TazamaAuthGuard } from '../../../src/modules/auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import {
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
   RequireSupervisorRole,
-} from '../../../src/modules/auth/auth.decorator';
-import { AuthenticatedRequest } from '../../../src/modules/auth/auth.types';
+} from '../../decorators/auth.decorator';
+import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
 import {
@@ -15,7 +15,6 @@ import {
   GetAllCasesQueryDto,
   GetAllCasesResponseDto,
   ManualCreateCaseDto,
-  SystemCaseCreationDto,
   RejectCaseReopeningDto,
   RequestReopenCaseDto,
   RequestAbandonCaseDto,
@@ -26,8 +25,6 @@ import {
   RejectCaseClosureDto,
   ReturnCaseForReviewDto,
   RequestResumeCaseDto,
-  // Response DTOs
-  SystemCaseCreatedResponseDto,
   ManualCaseCreatedResponseDto,
   CloseCaseValidationErrorResponseDto,
   CaseNotFoundResponseDto,
@@ -48,7 +45,7 @@ import {
   RejectReopeningBadRequestResponseDto,
   ReturnCaseForReviewResponseDto,
   UserWorkloadResponseDto,
-} from './dto/index.dto';
+} from '../../dtos';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')

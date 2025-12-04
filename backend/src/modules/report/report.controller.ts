@@ -1,9 +1,9 @@
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
-import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from 'src/modules/auth/auth.decorator';
-import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
