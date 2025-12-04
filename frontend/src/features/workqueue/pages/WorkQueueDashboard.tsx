@@ -27,18 +27,9 @@ const WorkQueueDashboard: React.FC = () => {
   const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [candidateGroupFilter, setCandidateGroupFilter] = useState<WorkQueueCandidateGroupType>('investigations');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter] = useState<string>('');
 
   const [tasks, setTasks] = useState<UnifiedWorkQueueTask[]>([]);
-
-  const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'UNASSIGNED', label: 'Unassigned' },
-    { value: 'ASSIGNED', label: 'Assigned' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'COMPLETED', label: 'Completed' },
-    { value: 'SUSPENDED', label: 'Suspended' },
-  ];
   const [isLoading, setIsLoading] = useState(true);
 
   const { error, handleError, clearError, getErrorDisplay } = useWorkQueueErrorHandler();
