@@ -10,11 +10,9 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
         reason: reason.trim()
       };
 
-      const rejectedCase = await caseService.rejectCaseCreation(caseId, rejectCaseData);
+      await caseService.rejectCaseCreation(caseId, rejectCaseData);
 
-  success('Case Creation Rejected', `Case ${caseId} creation rejected. Reason: ${reason}`);
-
-      await refreshCases();
+      success('Case Creation Rejected', `Case ${caseId} creation rejected. Reason: ${reason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case creation.';
       const backendError = err instanceof Error ? err.message : '';
@@ -38,11 +36,9 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
         rejectionReason: rejectionReason.trim()
       };
 
-      const rejectedCase = await caseService.rejectCase(caseId, rejectCaseData);
+      await caseService.rejectCase(caseId, rejectCaseData);
 
-  success('Case Rejected', `Case ${caseId} rejected. Reason: ${rejectionReason}`);
-
-      await refreshCases();
+      success('Case Rejected', `Case ${caseId} rejected. Reason: ${rejectionReason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case.';
       const backendError = err instanceof Error ? err.message : '';
@@ -62,11 +58,9 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
 
   const handleRejectReopening = async (caseId: string, rejectionReason: string) => {
     try {
-      const result = await caseService.rejectCaseReopening(caseId, rejectionReason);
+      await caseService.rejectCaseReopening(caseId, rejectionReason);
 
-  success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`);
-
-      await refreshCases();
+      success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case reopening.';
       const backendError = err instanceof Error ? err.message : '';

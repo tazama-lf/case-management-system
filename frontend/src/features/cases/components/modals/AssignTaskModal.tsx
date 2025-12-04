@@ -108,6 +108,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     try {
       await onAssign(task, assignee, notes);
     } catch (error) {
+      console.error('Failed to assign task:', error);
     } finally {
       setSubmitting(false);
     }

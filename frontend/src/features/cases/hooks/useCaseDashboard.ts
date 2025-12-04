@@ -80,10 +80,6 @@ export const useCaseDashboard = () => {
     setErrorState(null);
 
     try {
-      let response;
-      const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
-      const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
-    
       // if (investigatorOnly) {
        
       //   response = await caseService.getUserAssignedCases({
@@ -98,7 +94,7 @@ export const useCaseDashboard = () => {
       //   });
       // } else {
         // Fetch all cases for supervisors and admins
-        response = await caseService.getAllCases({
+  const response = await caseService.getAllCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           sortBy: 'updated_at',

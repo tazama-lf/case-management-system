@@ -27,11 +27,8 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   onAbandonCase,
   onSuspendCase,
   onResumeCase,
-  onApproveCase,
   onApproveCaseReopen,
-  onRejectCaseReopen,
-  onApproveCaseCreation,
-  onRejectCaseCreation
+  onRejectCaseReopen
 }) => {
   const showSupervisorControls = canManageSupervisorActions;
 

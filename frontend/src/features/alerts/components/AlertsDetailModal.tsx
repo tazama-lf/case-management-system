@@ -95,7 +95,9 @@ const getRiskBreakdown = (alert: TriageAlert) => {
         }
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('Error parsing risk components:', error);
+  }
 
   const totalScore = getRiskScore(alert);
   const components = [
@@ -156,7 +158,9 @@ const extractTypologyInfo = (alert: TriageAlert) => {
         }
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('Error parsing risk type:', error);
+  }
   return { id: undefined, label: undefined, result: undefined };
 };
 

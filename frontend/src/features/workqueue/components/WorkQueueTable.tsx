@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ClockIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ClockIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../types/flowable.types';
@@ -12,7 +12,6 @@ import { useToast } from '@/shared/providers/ToastProvider';
 import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
 
 interface WorkQueueTableProps {
-  alertId?: string;
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;
   onUnassign?: (task: UnifiedWorkQueueTask) => void;
@@ -30,19 +29,17 @@ interface WorkQueueTableProps {
 }
 
 const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
-  alertId,
   tasks,
-  onAssign,
-  onUnassign,
-  onReassign,
-  onComplete,
-  onUpdateStatus,
+  onAssign: _onAssign,
+  onUnassign: _onUnassign,
+  onReassign: _onReassign,
+  onComplete: _onComplete,
+  onUpdateStatus: _onUpdateStatus,
   pagination,
   onRefreshCases
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
-  const [loadingAlertForTask, setLoadingAlertForTask] = useState<string | null>(null);
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
 
@@ -79,161 +76,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       throw error;
     }
   };
-
-  const getAvailableActions = (task: UnifiedWorkQueueTask) => {
-    const actions: React.ReactNode[] = [];
-
-    // Don't show action buttons for completed tasks
-    if (task.status === 'COMPLETED') {
-      return actions;
-    }
-
-    if (task.status === 'IN_PROGRESS') {
-      // Add Reassign and Unassign actions for IN_PROGRESS tasks
-      if (task.assignee && onReassign) {
-        actions.push(
-          <button
-            key="reassign"
-            onClick={() => onReassign(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-            title="Reassign task"
-          >
-            <ArrowPathIcon className="h-3 w-3 mr-1" />
-            Reassign
-          </button>
-        );
-      }
-
-      if (task.assignee && onUnassign) {
-        actions.push(
-          <button
-            key="unassign"
-            onClick={() => onUnassign(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-            title="Unassign task"
-          >
-            <UserMinusIcon className="h-3 w-3 mr-1" />
-            Unassign
-          </button>
-        );
-      }
-
-      if (task.assignee && onComplete) {
-        actions.push(
-          <button
-            key="complete"
-            onClick={() => onComplete(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            title="Mark complete"
-          >
-            <CheckIcon className="h-3 w-3 mr-1" />
-            Complete
-          </button>
-        );
-      }
-
-
-      return actions;
-    }
-
-    if (!task.assignee) {
-      actions.push(
-        <button
-          key="assign"
-          onClick={() => onAssign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          title="Assign task"
-        >
-          <UserPlusIcon className="h-3 w-3 mr-1" />
-          Assign
-        </button>
-      );
-    }
-
-    if (task.assignee && onReassign) {
-      actions.push(
-        <button
-          key="reassign"
-          onClick={() => onReassign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          title="Reassign task"
-        >
-          <ArrowPathIcon className="h-3 w-3 mr-1" />
-          Reassign
-        </button>
-      );
-    }
-
-
-
-    if (task.assignee && onUnassign) {
-      actions.push(
-        <button
-          key="unassign"
-          onClick={() => onUnassign(task)}
-          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-          title="Unassign task"
-        >
-          <UserMinusIcon className="h-3 w-3 mr-1" />
-          Unassign
-        </button>
-      );
-    }
-
-    if (task.assignee && onUpdateStatus) {
-      if (task.name === 'Complete New Case') {
-        actions.push(
-          <button
-            key="complete-triage"
-            onClick={async () => {
-              try {
-                // Fetch alert details using the cached or newly fetched alert ID
-                const alertDetails = await triageService.getAlertById(alertId || '');
-                setSelectedAlert(transformBackendAlertToUI(alertDetails));
-                setShowManualTriageModal(true);
-              } catch (error) {
-                console.error('Failed to load alert for triage:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Failed to load alert details';
-                showError('Error', errorMessage);
-              } finally {
-                setLoadingAlertForTask(null);
-              }
-            }}
-            disabled={loadingAlertForTask === task.id}
-            className="inline-flex items-center px-1 py-1 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Complete triage"
-          >
-            {loadingAlertForTask === task.id ? (
-              <>
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-1" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <CheckIcon className="h-3 w-3 mr-1" />
-                Complete
-              </>
-            )}
-          </button>
-        );
-      } else {
-        actions.push(
-          <button
-            key="update-status"
-            onClick={() => onUpdateStatus(task)}
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            title="Update status"
-          >
-            <Cog6ToothIcon className="h-3 w-3 mr-1" />
-            Status
-          </button>
-        );
-      }
-    }
-
-    return actions;
-  };
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">

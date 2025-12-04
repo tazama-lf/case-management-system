@@ -99,7 +99,7 @@ export const useAlertActionHistory = (alertId: string | null) => {
 
 export const useAlertOperations = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showError } = useNotifications();
+  const { showError } = useNotifications();
 
   const closeAlertMutation = useMutation({
     mutationFn: ({ alertId, status, notes }: { alertId: string; status: AlertStatus; notes: string }) =>

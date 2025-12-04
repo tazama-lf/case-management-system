@@ -139,13 +139,6 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     }
   };
 
-  const formatOutcome = (outcome: string): string => {
-    return outcome
-      .replace('STATUS_', '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-  };
-
   if (!open) return null;
 
   return (

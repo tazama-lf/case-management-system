@@ -10,11 +10,9 @@ export const useSuspendCaseActions = (refreshCases: () => Promise<void>) => {
         reason: reason.trim()
       };
 
-      const suspendedCase = await caseService.suspendCase(caseId, suspendCaseData);
+      await caseService.suspendCase(caseId, suspendCaseData);
 
-  success('Case Suspended', `Case ${caseId} suspended. Reason: ${reason}`);
-
-      await refreshCases();
+      success('Case Suspended', `Case ${caseId} suspended. Reason: ${reason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not suspend case.';
       const backendError = err instanceof Error ? err.message : '';

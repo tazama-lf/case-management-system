@@ -15,7 +15,7 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
         supervisorComments: (supervisorComments ?? '').trim()
       };
 
-      const approvedCase = await caseService.approveCaseClosure(caseId, approveCaseData);
+      await caseService.approveCaseClosure(caseId, approveCaseData);
 
       success('Case Closure Approved', `Case ${caseId} closure approved. Outcome: ${finalOutcome}`);
 
@@ -39,11 +39,9 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
 
   const handleApproveCreation = async (caseId: string) => {
     try {
-      const approvedCase = await caseService.approveCaseCreation(caseId);
+      await caseService.approveCaseCreation(caseId);
 
-  success('Case Creation Approved', `Case ${caseId} creation approved.`);
-
-      await refreshCases();
+      success('Case Creation Approved', `Case ${caseId} creation approved.`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not approve case creation.';
       const backendError = err instanceof Error ? err.message : '';
@@ -63,11 +61,9 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
 
   const handleApproveReopening = async (caseId: string) => {
     try {
-      const result = await caseService.approveCaseReopening(caseId);
+      await caseService.approveCaseReopening(caseId);
 
-  success('Case Reopening Approved', `Case ${caseId} reopening approved.`);
-
-      await refreshCases();
+      success('Case Reopening Approved', `Case ${caseId} reopening approved.`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not approve case reopening.';
       const backendError = err instanceof Error ? err.message : '';

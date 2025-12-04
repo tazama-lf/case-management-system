@@ -10,11 +10,9 @@ export const useReturnCaseActions = (refreshCases: () => Promise<void>) => {
         reviewComments: reviewComments.trim()
       };
 
-      const returnedCase = await caseService.returnCaseForReview(caseId, returnCaseData);
+      await caseService.returnCaseForReview(caseId, returnCaseData);
 
-  success('Case Returned for Review', `Case ${caseId} returned for review. Comments: ${reviewComments}`);
-
-      await refreshCases();
+      success('Case Returned for Review', `Case ${caseId} returned for review. Comments: ${reviewComments}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not return case for review.';
       const backendError = err instanceof Error ? err.message : '';

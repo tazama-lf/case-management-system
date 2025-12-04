@@ -7,7 +7,7 @@ export const useCloseCaseActions = (refreshCases: () => Promise<void>) => {
 
   const handleCloseCaseSubmit = async (caseId: string, data: CloseCaseDto) => {
     try {
-      const response = await caseService.closeCase(caseId, data);
+      await caseService.closeCase(caseId, data);
       success('Investigation Complete', 'Case submitted for review.');
       await refreshCases();
     } catch (err) {

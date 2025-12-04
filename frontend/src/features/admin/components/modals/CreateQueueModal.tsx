@@ -38,7 +38,7 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({
     setIsLoading(true);
     
     try {
-      const result = await workQueueService.createCandidateGroup({
+        await workQueueService.createCandidateGroup({
         groupId: id.trim(),
         groupName: name.trim(),
         groupType: type

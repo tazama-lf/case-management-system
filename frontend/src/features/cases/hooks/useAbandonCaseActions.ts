@@ -10,11 +10,9 @@ export const useAbandonCaseActions = (refreshCases: () => Promise<void>) => {
         reason: reason.trim()
       };
 
-      const abandonedCase = await caseService.abandonCase(caseId, abandonCaseData);
+      await caseService.abandonCase(caseId, abandonCaseData);
 
-  success('Case Abandoned', `Case ${caseId} abandoned. Reason: ${reason}`);
-
-      await refreshCases();
+      success('Case Abandoned', `Case ${caseId} abandoned. Reason: ${reason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not abandon case.';
       const backendError = err instanceof Error ? err.message : '';

@@ -10,11 +10,9 @@ export const useResumeCaseActions = (refreshCases: () => Promise<void>) => {
         reason: reason.trim()
       };
 
-      const resumedCase = await caseService.resumeCase(caseId, resumeCaseData);
+      await caseService.resumeCase(caseId, resumeCaseData);
 
-  success('Case Resumed', `Case ${caseId} resumed. Reason: ${reason}`);
-
-      await refreshCases();
+      success('Case Resumed', `Case ${caseId} resumed. Reason: ${reason}`);      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not resume case.';
       const backendError = err instanceof Error ? err.message : '';
