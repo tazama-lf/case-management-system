@@ -63,11 +63,12 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
+              maxLength={500}
               required
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-              placeholder="Provide a clear reason for rejecting the reopening (minimum 10 characters)"
+              placeholder="Provide a clear reason for rejecting the reopening..."
             />
-            <p className="mt-1 text-xs text-gray-500">{reason.length}/10 characters minimum</p>
+            <p className="mt-1 text-xs text-gray-500">{reason.length}/4 characters minimum</p>
           </div>
 
           {error && (

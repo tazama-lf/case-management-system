@@ -157,8 +157,14 @@ export class CaseRepository {
     async findCaseForReview(caseId: string) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
-            include: { tasks: true },
-        });
+            include: {
+             tasks: {
+                orderBy: {
+                created_at: 'desc',
+            },
+        },
+        },
+    });
     }
 
     async findCaseById(caseId: string): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {

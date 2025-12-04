@@ -449,7 +449,7 @@ export class CaseController {
   })
   @ApiBody({
     type: RejectCaseClosureDto,
-    description: 'Rejection details with supervisor feedback (minimum 20 characters)',
+    description: 'Rejection details with supervisor feedback (minimum 4 characters)',
     examples: {
       example1: {
         summary: 'Incomplete investigation',
@@ -635,7 +635,7 @@ export class CaseController {
   })
   @ApiBody({
     type: RejectCaseReopeningDto,
-    description: 'Rejection details including mandatory reason (minimum 20 characters)',
+    description: 'Rejection details including mandatory reason (minimum 4 characters)',
     examples: {
       example1: {
         summary: 'Insufficient evidence',

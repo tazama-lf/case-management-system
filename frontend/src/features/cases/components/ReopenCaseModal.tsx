@@ -108,7 +108,7 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
                 maxLength={500}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                placeholder="Provide detailed justification for reopening this case (minimum 10 characters)..."
+                placeholder="Provide detailed justification for reopening this case..."
               />
               <div className="mt-1 flex justify-between">
                 <p className="text-xs text-gray-500">
