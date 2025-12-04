@@ -3,6 +3,7 @@ import { XMarkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/out
 import type { ApproveCaseClosureDto, TaskDTO } from '../services/caseService';
 import { commentService } from '../services/commentService';
 import type { CommentsByCaseId } from '../services/commentService';
+import { TaskStatus } from '../services/taskService';
 
 interface CaseClosureDecisionModalProps {
   open: boolean;
@@ -47,7 +48,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
   React.useEffect(() => {
     const approveClosureTask = Array.isArray(taskList)
-      ? taskList.find(t => t.name === "Approve Case Closure")
+      ? taskList.find(t => t.name === "Approve Case Closure" && t.status === TaskStatus.STATUS_01_UNASSIGNED)
       : undefined;
 
     const taskId = approveClosureTask?.task_id || '';
@@ -377,7 +378,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   rows={4}
                   maxLength={500}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                  placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required (minimum 20 characters)..."
+                  placeholder="Explain in detail why this case closure is being rejected and what additional investigation is required..."
                   disabled={isSubmitting}
                 />
                 <div className="mt-1 flex justify-between">
