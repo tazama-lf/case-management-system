@@ -21,6 +21,7 @@ import { CaseRepository } from '../repository/case.repository';
 import { AlertRepository } from '../repository/alert.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { Outcome } from '../audit/types/outcome';
+import { UpdateAlertDTO } from '../alert/dto';
 
 @Injectable()
 export class TriageService {
@@ -592,17 +593,17 @@ export class TriageService {
   ): Promise<void> {
     try {
       this.logger.log(`Start - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
-      const updateDto = new ManualAlertUpdateDTO();
+      const updateDto = new UpdateAlertDTO();
 
       updateDto.predictionOutcome = predictedTruePositive ? 'TRUE_POSITIVE' : 'FALSE_POSITIVE';
       updateDto.priority = priority;
       updateDto.alertType = predictedAlertType;
-      updateDto.confidence_per = predictedConfidence;
-      updateDto.priorityScore = predictedPriorityScore;
-      updateDto.note = 'Updated alert data with outcome';
+      updateDto.confidencePer = predictedConfidence;
+      updateDto.priority_score = predictedPriorityScore;
+      // updateDto. = 'Updated alert data with outcome';
 
       const alert = await this.alertService.updateAlert(alertId, userId, updateDto);
-      this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
+      // this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
 
       await this.taskService.updateTask(
         taskId,
@@ -636,9 +637,9 @@ export class TriageService {
 
       return {
         priorityScore: predictedResult.data.priority,
-        alertType: AlertType.FRAUD_AND_AML,
+        alertType: AlertType.FRAUD,
         confidence_per: confidence,
-        isTruePositive: true,
+        isTruePositive: false,
       };
     } catch (error) {
       this.logger.error(`AI prediction failed: ${error.message}`, error.stack, TriageService.name);

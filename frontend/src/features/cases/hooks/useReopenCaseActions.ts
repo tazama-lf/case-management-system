@@ -12,41 +12,21 @@ export const useReopenCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.reopenCase(caseId, reopenCaseData);
 
-      success('Reopening Request Submitted', `Your request to reopen case ${caseId} has been submitted.
-
-Reason: ${reason}
-
-Your request will be reviewed by a supervisor and you'll be notified of the decision.`);
+  success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
 
       await refreshCases();
     } catch (err) {
-      let errorMessage = 'Something went wrong while submitting the reopening request. Please try again.';
+      let errorMessage = 'Could not submit reopen request.';
       const backendError = err instanceof Error ? err.message : '';
-      
       if (backendError.includes('not in a reopenable state')) {
-        errorMessage = `Unable to request reopening for this case.
-
-This case needs to be in closed status and not already pending reopening. Please check the case status.
-
-Technical details: ${backendError}`;
+        errorMessage = `Cannot reopen case (not closed). (${backendError})`;
       } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
-        errorMessage = `Access denied.
-
-You don't have permission to request case reopening. Please check that you have the right access level.
-
-Technical details: ${backendError}`;
+        errorMessage = `Access denied. (${backendError})`;
       } else if (backendError.includes('not found') || backendError.includes('404')) {
-        errorMessage = `Case not found.
-
-This case may have been moved, deleted, or you may not have access to it.
-
-Technical details: ${backendError}`;
+        errorMessage = `Case not found. (${backendError})`;
       } else if (backendError) {
-        errorMessage = `${backendError}
-
-If this problem persists, please contact support.`;
+        errorMessage = `${backendError}`;
       }
-
       error('Reopen Case Failed', errorMessage);
       throw err;
     }
