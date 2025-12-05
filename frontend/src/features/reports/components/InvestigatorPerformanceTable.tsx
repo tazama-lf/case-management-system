@@ -1,7 +1,8 @@
 import React from 'react';
 import type { InvestigatorPerformance } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
-import PaginationControls from '../../../shared/components/PaginationControls';
+import TablePagination from '../../../shared/components/TablePagination';
+import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
 
 interface InvestigatorPerformanceTableProps {
   data: InvestigatorPerformance[];
@@ -20,20 +21,22 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
 }) => {
   const {
     currentPage,
-    itemsPerPage,
     totalPages,
     paginatedData,
     setCurrentPage,
-    setItemsPerPage,
-    goToNextPage,
-    goToPreviousPage,
-    canGoNext,
-    canGoPrevious,
-    pageRange,
   } = usePagination({
     data,
     defaultItemsPerPage: 10,
   });
+
+  // Create pagination object for TablePagination
+  const pagination: TablePaginationInfo = {
+    currentPage,
+    pageSize: 10, // Fixed page size
+    totalItems: data.length,
+    totalPages,
+    onPageChange: setCurrentPage
+  };
 
   const getTrendColor = (trend: string | undefined) => {
     if (!trend) return 'text-gray-600';
@@ -179,19 +182,7 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
         </table>
       </div>
 
-      <PaginationControls
-        currentPage={currentPage}
-        totalPages={totalPages}
-        itemsPerPage={itemsPerPage}
-        totalItems={data.length}
-        pageRange={pageRange}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        onNext={goToNextPage}
-        onPrevious={goToPreviousPage}
-      />
+      <TablePagination pagination={pagination} itemLabel="performance records" />
     </div>
   );
 };

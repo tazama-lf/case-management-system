@@ -27,18 +27,6 @@ export interface User {
   tenantName: string;
   validatedClaims: Record<string, boolean>;
 }
-// export interface User {
-//   user_id: string;
-//   username: string;
-//   email: string;
-//   firstName: string;
-//   lastName: string;
-//   fullName: string;
-//   tenantId: string;
-//   roles: string[];
-//   permissions: string[];
-//   backendClaims: string[];
-// }
 
 export interface LoginResponse {
   message: string;
@@ -90,8 +78,6 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   clearError: () => void;
   hasBackendClaim: (claim: string) => boolean;
-  // hasCMSTestRole: () => boolean;
-  // hasAlertTriageRole: () => boolean;
   hasInvestigatorRole: () => boolean;
   hasSupervisorRole: () => boolean;
   hasCMSAdminRole: () => boolean;

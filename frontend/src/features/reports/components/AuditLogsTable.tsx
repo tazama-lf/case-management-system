@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import TablePagination from '../../../shared/components/TablePagination';
+import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
 import type { AuditLog } from '../types/reports.types';
 
 interface AuditLogsTableProps {
@@ -38,6 +39,15 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
+  // Create pagination object for TablePagination
+  const pagination: TablePaginationInfo = {
+    currentPage,
+    pageSize: itemsPerPage,
+    totalItems: filteredData.length,
+    totalPages,
+    onPageChange: setCurrentPage
+  };
+
   const uniqueOutcomes = Array.from(new Set(data.map(log => log.outcome).filter(Boolean)));
   const uniqueEntities = Array.from(new Set(data.map(log => log.entity_name).filter(Boolean)));
   const uniqueTypes = Array.from(new Set(data.map(log => log.type).filter(Boolean)));
@@ -64,10 +74,6 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
     } catch {
       return dateString;
     }
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
   };
 
   const handleItemsPerPageChange = (items: number) => {
@@ -317,65 +323,7 @@ const AuditLogsTable: React.FC<AuditLogsTableProps> = ({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center text-sm text-gray-700">
-            <span>
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of{' '}
-              {filteredData.length} results
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeftIcon className="h-4 w-4 mr-1" />
-              Previous
-            </button>
-
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                let pageNumber;
-                if (totalPages <= 7) {
-                  pageNumber = i + 1;
-                } else if (currentPage <= 4) {
-                  pageNumber = i + 1;
-                } else if (currentPage >= totalPages - 3) {
-                  pageNumber = totalPages - 6 + i;
-                } else {
-                  pageNumber = currentPage - 3 + i;
-                }
-
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() => handlePageChange(pageNumber)}
-                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      currentPage === pageNumber
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-              <ChevronRightIcon className="h-4 w-4 ml-1" />
-            </button>
-          </div>
-        </div>
-      )}
+      {totalPages > 1 && <TablePagination pagination={pagination} itemLabel="audit logs" />}
     </div>
   );
 };

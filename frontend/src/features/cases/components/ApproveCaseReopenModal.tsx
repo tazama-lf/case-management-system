@@ -58,15 +58,6 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
-          {/* <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Reopening Workflow</h4>
-            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-              <li>Case must be in "PENDING CASE REOPENING APPROVAL" status</li>
-              <li>On approval, an "Investigate Case" task will be created</li>
-              <li>Assignment depends on requester: Analyst → assigned to analyst; Supervisor → investigations group</li>
-              <li>All actions are audit logged and notifications sent</li>
-            </ul>
-          </div> */}
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Supervisor Comments (optional)</label>

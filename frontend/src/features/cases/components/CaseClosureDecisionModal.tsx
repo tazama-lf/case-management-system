@@ -204,18 +204,6 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </p>
               </div>
 
-              {/* Recommended Outcome */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Investigator's Recommended Outcome
-                </label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="font-medium">
-                    {recommendedOutcome ? formatOutcome(recommendedOutcome) : 'Not provided'}
-                  </span>
-                </div>
-              </div> */}
-
               {/* Investigator's Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -159,32 +159,6 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
 
           {/* User profile section and logout */}
           <li className="mt-auto border-t border-gray-200 pt-4">
-            {/* User info */}
-            {/* <div className="mb-3 px-2">
-              <div className="flex items-center gap-x-3">
-                <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold text-white">
-                    {user?.firstName && user?.lastName
-                      ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                      : user?.username?.slice(0, 2).toUpperCase() || 'U'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user?.fullName || 
-                     (user?.firstName && user?.lastName 
-                       ? `${user.firstName} ${user.lastName}` 
-                       : user?.username || 'User')}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {user?.email || 
-                     (user?.roles && user.roles.length > 0 
-                       ? user.roles[0].replace(/_/g, ' ').replace(/-/g, ' ')
-                       : 'User')}
-                  </p>
-                </div>
-              </div>
-            </div> */}
 
             {/* Logout button */}
             {onLogout && (

@@ -113,24 +113,6 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
         { }
         <form onSubmit={handleSubmit} className="p-6">
           { }
-          {/* <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">
-              Case Closure Workflow
-            </h4>
-            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-              <li>"Investigate Case" task will be marked as "COMPLETED"</li>
-              <li>
-                Outcome will be recorded: Confirmed, Refuted, or Inconclusive
-              </li>
-              <li>
-                A closure task will be created and routed to the supervisor
-              </li>
-              <li>Case will transition to "PENDING FINAL APPROVAL"</li>
-              <li>
-                All actions will be logged in audit, system, and structured logs
-              </li>
-            </ul>
-          </div> */}
 
           { }
           <div className="mb-6">
@@ -197,26 +179,6 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           </div>
 
           { }
-          {/* <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Recommendations <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={formData.recommendations || ''}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                recommendations: e.target.value
-              }))}
-              rows={4}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Provide recommendations based on your investigation..."
-              disabled={isSubmitting}
-            />
-            {errors.recommendations && (
-              <p className="mt-1 text-sm text-red-600">{errors.recommendations}</p>
-            )}
-          </div> */}
-
           { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">

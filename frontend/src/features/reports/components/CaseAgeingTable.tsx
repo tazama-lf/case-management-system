@@ -1,7 +1,8 @@
 import React from 'react';
 import type { CaseAgeingDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
-import PaginationControls from '../../../shared/components/PaginationControls';
+import TablePagination from '../../../shared/components/TablePagination';
+import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
 
 interface CaseAgeingTableProps {
   data: CaseAgeingDetail[];
@@ -20,20 +21,22 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
 }) => {
   const {
     currentPage,
-    itemsPerPage,
     totalPages,
     paginatedData,
     setCurrentPage,
-    setItemsPerPage,
-    goToNextPage,
-    goToPreviousPage,
-    canGoNext,
-    canGoPrevious,
-    pageRange,
   } = usePagination({
     data,
     defaultItemsPerPage: 10,
   });
+
+  // Create pagination object for TablePagination
+  const pagination: TablePaginationInfo = {
+    currentPage,
+    pageSize: 10, // Fixed page size since usePagination doesn't expose itemsPerPage in a way we need
+    totalItems: data.length,
+    totalPages,
+    onPageChange: setCurrentPage
+  };
 
   const getAgeColor = (age: number) => {
     if (age <= 7) return 'text-green-600';
@@ -171,19 +174,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
         </table>
       </div>
 
-      <PaginationControls
-        currentPage={currentPage}
-        totalPages={totalPages}
-        itemsPerPage={itemsPerPage}
-        totalItems={data.length}
-        pageRange={pageRange}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        onNext={goToNextPage}
-        onPrevious={goToPreviousPage}
-      />
+      <TablePagination pagination={pagination} itemLabel="case ageing records" />
     </div>
   );
 };

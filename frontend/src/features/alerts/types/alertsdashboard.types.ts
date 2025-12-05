@@ -20,6 +20,8 @@ export interface AlertsSearchFilters {
   endDate?: string;
 }
 
+import type { TablePaginationInfo } from '@/shared/types/pagination.types';
+
 export interface AlertsTableColumn<T> {
   key: keyof T | string;
   header: string;
@@ -43,13 +45,7 @@ export interface AlertsTableProps<T> {
   actions?: AlertsTableAction<T>[];
   loading?: boolean;
   emptyMessage?: string;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    pageSize: number;
-    totalItems: number;
-    onPageChange: (page: number) => void;
-  };
+  pagination?: TablePaginationInfo;
   onSort?: (column: keyof T | string, direction: 'asc' | 'desc') => void;
   sortColumn?: keyof T | string;
   sortDirection?: 'asc' | 'desc';

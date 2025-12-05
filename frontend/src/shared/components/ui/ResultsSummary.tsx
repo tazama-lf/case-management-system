@@ -36,31 +36,15 @@ interface ResultsSummaryProps {
 }
 
 const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
-  //loading, 
-  //lastUpdated, 
   onPageSizeChange, sort,
-  //itemType = 'alerts' 
 }) => {
   const {
-    //currentPage, 
     pageSize,
-    //  totalItems
   } = pagination;
 
   return (
     <div className="mb-4 flex items-center justify-between">
       {<div className="text-sm text-gray-600">
-        {/* Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} {itemType}
-        {loading && (
-          <span className="ml-2">
-            <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
-          </span>
-        )}
-        {lastUpdated && !loading && (
-          <span className="ml-4 text-xs text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </span>
-        )} */}
       </div>}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">

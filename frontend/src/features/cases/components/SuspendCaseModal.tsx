@@ -76,16 +76,6 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
             Temporarily pause a case due to blocked progress or pending information.
           </p>
 
-          {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Suspension Workflow</h4>
-            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-              <li>Task status becomes "BLOCKED", case status becomes "SUSPENDED"</li>
-              <li>User must provide a reason for suspension (minimum 10 characters)</li>
-              <li>Notifications will be sent to the supervisor</li>
-              <li>Suspension will be recorded in event, system, and audit logs</li>
-            </ul>
-          </div> */}
-
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">

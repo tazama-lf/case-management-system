@@ -80,20 +80,6 @@ export const useCaseDashboard = () => {
     setErrorState(null);
 
     try {
-      // if (investigatorOnly) {
-       
-      //   response = await caseService.getUserAssignedCases({
-      //     status: statusFilter || undefined,
-      //     priority: priorityFilter || undefined,
-      //     includeTaskAssignments: true,
-      //     includeOwnedCases: true,
-      //     sortBy: 'updated_at',
-      //     sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
-      //     page: currentPage,
-      //     limit: pageSize
-      //   });
-      // } else {
-        // Fetch all cases for supervisors and admins
   const response = await caseService.getAllCases({
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
@@ -102,7 +88,6 @@ export const useCaseDashboard = () => {
           page: currentPage,
           limit: pageSize
         });
-      // }
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);

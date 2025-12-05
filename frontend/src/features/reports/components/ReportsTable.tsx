@@ -1,8 +1,8 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import type { CaseStatusDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
-
-const PaginationControls = React.lazy(() => import('../../../shared/components/PaginationControls'));
+import TablePagination from '../../../shared/components/TablePagination';
+import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
 
 interface ReportsTableProps {
   data: CaseStatusDetail[];
@@ -21,20 +21,22 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
 }) => {
   const {
     currentPage,
-    itemsPerPage,
     totalPages,
     paginatedData,
     setCurrentPage,
-    setItemsPerPage,
-    goToNextPage,
-    goToPreviousPage,
-    canGoNext,
-    canGoPrevious,
-    pageRange,
   } = usePagination({
     data,
     defaultItemsPerPage: 10,
   });
+
+  // Create pagination object for TablePagination
+  const pagination: TablePaginationInfo = {
+    currentPage,
+    pageSize: 10, // Fixed page size
+    totalItems: data.length,
+    totalPages,
+    onPageChange: setCurrentPage
+  };
 
   const exportActions = [
     { label: 'Export as Excel', onClick: onExportExcel, key: 'excel' },
@@ -135,21 +137,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
         </table>
       </div>
 
-      <Suspense fallback={<div className="bg-gray-200 h-16 rounded-lg animate-pulse"></div>}>
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={data.length}
-          pageRange={pageRange}
-          canGoNext={canGoNext}
-          canGoPrevious={canGoPrevious}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
-          onNext={goToNextPage}
-          onPrevious={goToPreviousPage}
-        />
-      </Suspense>
+      <TablePagination pagination={pagination} itemLabel="case status records" />
     </div>
   );
 };

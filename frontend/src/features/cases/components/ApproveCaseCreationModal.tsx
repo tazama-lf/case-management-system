@@ -107,16 +107,6 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         {}
         <form onSubmit={handleSubmit} className="p-6">
           {}
-          {/* <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-green-800 mb-2">Supervisor Case Creation Approval Workflow</h4>
-            <ul className="text-xs text-green-700 list-disc list-inside space-y-1">
-              <li>Only cases in "PENDING CASE CREATION APPROVAL" can be acted on</li>
-              <li>Supervisor may approve or reject with a detailed reason</li>
-              <li>Approval transitions case to "READY FOR ASSIGNMENT"</li>
-              <li>"Investigate Case" task will be created in Flowable investigations queue</li>
-              <li>All approval actions must be logged</li>
-            </ul>
-          </div> */}
 
           {}
           <div className="mb-6">
@@ -281,20 +271,6 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               )}
             </div>
           )}
-
-          {/* { }
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Approval Confirmation</h4>
-            <p className="text-xs text-blue-700">
-              By approving this case creation request, you confirm that:
-            </p>
-            <ul className="text-xs text-blue-700 list-disc list-inside space-y-1 mt-2">
-              <li>The case information is complete and accurate</li>
-              <li>The associated alert information is valid</li>
-              <li>The case priority is appropriate</li>
-              <li>The case will be assigned to an investigator</li>
-            </ul>
-          </div> */}
 
           {}
           {errors.submit && (
