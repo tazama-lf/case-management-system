@@ -3,7 +3,7 @@ import { FlowableDefaults, CandidateGroups, FlowableApiEndpoints } from '../../.
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
 import { FlowableClientFactory } from './flowable-client.factory';
-import { CreateTaskDto } from 'src/dtos/task/create-task.dto';
+import { CreateTaskDto } from 'src/modules/task/dto/create-task.dto';
 import { TaskBridgeService } from 'src/modules/task-bridge/task-bridge.service';
 
 /**

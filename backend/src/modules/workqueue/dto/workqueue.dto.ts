@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsString } from "class-validator";
 
-export class RequestCandidateGroupDTO {
+export class CreateCandidateGroupDto {
     @ApiProperty({
         description: 'Unique identifier for the candidate group',
         example: 'team_alpha',

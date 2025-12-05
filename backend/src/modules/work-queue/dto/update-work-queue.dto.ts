@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsArray, IsEnum, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole, TaskType } from '@prisma/client';
-import { CreateAssignmentRuleDto } from '../assignment-rule.dto';
+import { CreateAssignmentRuleDto } from './assignment-rule.dto';
 
 export class UpdateWorkQueueDto {
   @ApiProperty({

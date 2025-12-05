@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CreateCommentDto } from '../../dtos/comments/create-comment.dto';
+import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
@@ -18,8 +18,8 @@ import { CaseRepository } from '../repository/case.repository';
 import { AlertRepository } from '../repository/alert.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { Outcome } from '../../utils/types/outcome';
-import { UpdateAlertDTO, IngestAlertDto } from '../../dtos';
-import { ManualAlertUpdateDTO } from '../../dtos/alerts/alert.dto';
+import { ManualAlertUpdateDTO, IngestAlertDto } from '../alert/dto';
+import { UpdateAlertDTO } from '../alert/dto';
 
 @Injectable()
 export class TriageService {

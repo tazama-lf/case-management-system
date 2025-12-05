@@ -3,8 +3,8 @@ import { ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiTags } from 
 import { WorkqueueService } from './workqueue.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { RequireAdminRole, RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decorator';
-import { CreateCandidateGroupDto } from '../../dtos';
 import { TaskResponseDTO, WorkQueueStatisticsDTO } from './dto/workqueue.dto';
+import { CreateCandidateGroupDto } from './dto/workqueue.dto';
 
 @ApiTags('workqueue')
 @Controller('api/v1/workqueue')

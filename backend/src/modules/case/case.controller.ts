@@ -34,7 +34,6 @@ import {
   RejectCaseClosureResponseDto,
   ApproveCaseCreationResponseDto,
   CaseMissingFieldsResponseDto,
-  SimpleMessageResponseDto,
   CaseCreationConflictResponseDto,
   RejectCaseCreationBodyDto,
   RejectCaseCreationResponseDto,
@@ -44,8 +43,9 @@ import {
   RejectCaseReopeningResponseDto,
   RejectReopeningBadRequestResponseDto,
   ReturnCaseForReviewResponseDto,
-  UserWorkloadResponseDto,
-} from '../../dtos';
+} from './dto';
+import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
+import { UserWorkloadResponseDto } from 'src/modules/work-queue/dto/user-workload-response.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')

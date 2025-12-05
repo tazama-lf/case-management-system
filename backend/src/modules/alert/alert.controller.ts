@@ -4,7 +4,7 @@ import { RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decor
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
-import { AlertResponseDto } from 'src/dtos';
+import { AlertResponseDto } from './dto';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)

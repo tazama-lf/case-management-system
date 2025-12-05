@@ -24,7 +24,7 @@ import {
     IntegrationTestResultDto,
     Verify2FADto,
     ConfigurationChangeLogDto,
-} from '../../dtos';
+} from './dto/config.dto';
 
 @ApiTags('System Configuration')
 @Controller('api/v1/config')

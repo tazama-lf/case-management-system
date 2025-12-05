@@ -9,8 +9,8 @@ import {
   WorkQueueDetailResponseDto,
   WorkQueueListResponseDto,
   TaskFilterDto,
-} from '../../dtos';
-import { AssignUsersDto, RemoveUsersDto, UserAssignmentResponseDto, WorkQueueMemberDto } from '../../dtos/users/assign-user.dto';
+} from './dto';
+import { AssignUsersDto, RemoveUsersDto, UserAssignmentResponseDto, WorkQueueMemberDto } from '../user/dto/assign-user.dto';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from '../../decorators/auth.decorator';

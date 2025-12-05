@@ -16,9 +16,9 @@ import { User } from '../../decorators/user.decorator';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { Outcome } from 'src/utils/types/outcome';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
-import { AuthMeResponseDto } from 'src/dtos/auth/AuthMeResponse.dto';
-import { LoginRequestDto } from 'src/dtos/auth/LoginRequest.dto';
-import { LoginResponseDto } from 'src/dtos/auth/LoginResponse.dto';
+import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
+import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
+import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')

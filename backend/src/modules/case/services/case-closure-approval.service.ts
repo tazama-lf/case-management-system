@@ -7,12 +7,12 @@ import { CaseStatus, Task, TaskStatus } from '@prisma/client';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../../../constants/case.constants';
-import { CloseCaseDto } from 'src/dtos';
+import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { validateClosureData } from 'src/utils/helperFunction';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
-import { CreateCommentDto } from 'src/dtos/comments/create-comment.dto';
+import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
 
 @Injectable()

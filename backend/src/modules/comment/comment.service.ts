@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { CreateCommentDto } from '../../dtos/comments/create-comment.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../utils/types/outcome';
 import { CommentRepository } from '../repository/comment.repository';

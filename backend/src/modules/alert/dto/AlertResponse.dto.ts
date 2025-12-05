@@ -137,7 +137,7 @@ export class AlertServiceResponseDto {
  * Complete response structure for alert list endpoint
  * (with 'alerts' field and nested pagination - for API documentation)
  */
-export class AlertListResponseDto {
+export class AlertResponseDto {
   @ApiProperty({
     description: 'Array of alert objects',
     type: [AlertDto]

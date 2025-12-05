@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { IngestAlertDto } from 'src/dtos/alerts/IngestAlert.dto';
+import { IngestAlertDto } from 'src/modules/alert/dto/IngestAlert.dto';
 import { TaskService } from '../task/task.service';
 import { TriageService } from '../triage/triage.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';

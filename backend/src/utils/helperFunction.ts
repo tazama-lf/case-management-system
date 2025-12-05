@@ -1,7 +1,7 @@
 import { AuthenticatedRequest } from './types/auth.types';
 import { CaseStatus } from '@prisma/client';
 import { CASE_CLOSURE_OUTCOMES, CLOSED_CASE_STATUSES, VALIDATION_LENGTHS } from '../constants/case.constants';
-import { CloseCaseDto } from 'src/dtos/cases/close-case.dto';
+import { CloseCaseDto } from 'src/modules/case/dto/close-case.dto';
 
 /**
  * Simple function to extract common user data from request

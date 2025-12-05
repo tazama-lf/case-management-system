@@ -13,8 +13,8 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { ManualAlertUpdateDTO } from '../../dtos/alerts/alert.dto';
-import { HealthCheckResponseDTO, AlertTriageResponseDTO, AlertActionHistoryDTO, AlertDetailsResponseDTO } from '../../dtos/triage/triage.dto';
+import { ManualAlertUpdateDTO } from '../alert/dto/alert.dto';
+import { HealthCheckResponseDTO, AlertTriageResponseDTO, AlertActionHistoryDTO, AlertDetailsResponseDTO } from './dto/triage.dto';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';

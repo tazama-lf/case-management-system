@@ -6,7 +6,7 @@ import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
 import { CaseStatus, CaseType, TaskStatus } from '@prisma/client';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
-import { CreateCommentDto } from '../../dtos/comments/create-comment.dto';
+import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { CommentService } from '../../../src/modules/comment/comment.service';
 import { NotificationService } from '../notification/notification.service';
 import { TASK_NAMES, CANDIDATE_GROUPS } from '../../constants/case.constants';
@@ -21,7 +21,7 @@ import {
   GetAllCasesQueryDto,
   GetUserCasesQueryDto,
   UpdateCaseDto,
-} from 'src/dtos';
+} from './dto';
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
 

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { NotificationChannel, NotificationType, UserNotificationPreference } from '@prisma/client';
-import { CreateNotificationPreferenceDto, UpdateNotificationPreferenceDto, NotificationPreferenceResponseDto } from '../../dtos';
+import { CreateNotificationPreferenceDto, UpdateNotificationPreferenceDto, NotificationPreferenceResponseDto } from './dto';
 
 @Injectable()
 export class NotificationPreferencesService {

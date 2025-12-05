@@ -15,9 +15,9 @@ import {
     NotificationPreferenceResponseDto,
     NotificationHistoryDto,
     NotificationHistoryQueryDto,
-} from '../../dtos';
+} from './dto';
 import { JwtUser } from 'src/utils/interfaces/Auth.interface';
-import { NotificationResponseDto } from 'src/dtos/notifications/notification-preference-response.dto';
+import { NotificationResponseDto } from 'src/modules/notification-preferences/dto/notification-preference-response.dto';
 
 @ApiTags('Notification Preferences')
 @Controller('api/v1/users/me/notification-preferences')

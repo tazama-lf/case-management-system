@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import FormData = require('form-data');
 import { FlowableApiEndpoints, FlowableDefaults } from '../../constants/flowable-api.constants';
-import { CreateFlowableTaskDto } from '../../dtos/flowable/flowable.dto';
+import { CreateFlowableTaskDto } from './dto/flowable.dto';
 import { FlowableProcessService } from './services/flowable-process.service';
 import { FlowableTaskService } from './services/flowable-task.service';
 import { FlowableIdentityService } from './services/flowable-identity.service';

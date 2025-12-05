@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { GetUserCasesQueryDto } from '../../../dtos/cases/get-user-cases.dto';
-import { GetAllCasesQueryDto } from '../../../dtos/cases/get-all-cases.dto';
+import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
+import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
 import { CaseStatus, TaskStatus } from '@prisma/client';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { AuditLogService } from '../../audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
-import { UpdateCaseDto } from '../../../dtos/cases/update-case.dto';
+import { UpdateCaseDto } from '../dto';
 
 @Injectable()
 export class CaseQueryService {

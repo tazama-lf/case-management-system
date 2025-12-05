@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { TaskRepository } from '../repository/task.repository';
-import { CreateTaskDto } from '../../dtos/task/create-task.dto';
+import { CreateTaskDto } from '../task/dto/create-task.dto';
 import { FlowableService } from '../flowable/flowable.service';
 
 @Injectable()

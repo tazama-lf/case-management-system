@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Post, Req, UseGuards } from '@ne
 import { ProcessAlertService } from './process-alert.service';
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { CreateAlertDTO } from '../../dtos';
+import { CreateAlertDTO } from '../alert/dto';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 

@@ -9,7 +9,7 @@ import {
   RuleActionDto,
   CreateAssignmentRuleDto,
   RuleValidationResultDto,
-} from '../../dtos/assignment-rule.dto';
+} from './dto/assignment-rule.dto';
 
 /**
  * Service for evaluating and applying assignment rules with conditional logic
