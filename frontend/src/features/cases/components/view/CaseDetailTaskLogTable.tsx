@@ -191,7 +191,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   };
 
   const addCompleteAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (canCompleteTask(task)) {
+    if (canCompleteTask(task) && isCurrentUserAssigned(task)) {
       actions.push(
         createActionButton(
           'complete',
