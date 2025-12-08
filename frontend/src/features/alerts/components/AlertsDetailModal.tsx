@@ -147,7 +147,7 @@ const extractTypologyInfo = (alert: TriageAlert) => {
           typeof typologyResult[0] === 'object'
         ) {
           const typ = typologyResult[0] as Record<string, unknown>;
-          const id = typ['id'] as string | undefined;
+          const id = typ['cfg'] as string | undefined;
           const label =
             (typ['label'] as string) || (typ['name'] as string) || id;
           const result =
