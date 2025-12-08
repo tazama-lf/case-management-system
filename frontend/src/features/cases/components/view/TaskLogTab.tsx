@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
-import WorkQueueTable from './CaseDetailTaskLogTable';
+import CaseDetailTaskLogTable from './CaseDetailTaskLogTable';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { TaskForSupervisor } from '../../services/taskService';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
@@ -406,7 +406,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           </div>
         </div>
       ) : (
-        <WorkQueueTable
+        <CaseDetailTaskLogTable
           alertId={alertId}
           tasks={transformedTasks}
           onAssign={handleAssign}

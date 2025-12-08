@@ -7,14 +7,5 @@ export { default as WorkQueueManagement } from './components/WorkQueueManagement
 export { default as AdminDashboard } from './pages/AdminDashboard';
 
 export type {
-  // AdminDashboardStats,
-  // SystemStatus,
-  // CaseSummary,
-  // DashboardData,
   WorkQueue,
-  // WorkQueueRole,
-  // WorkQueueTaskType,
-  // User,
-  // UserRole,
-  // Permission
 } from './types/admindashboard.types';

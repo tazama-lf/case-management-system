@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { PageContainer } from '@/shared/components/ui';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
-import WorkQueuesTable from '@/features/admin/components/WorkQueuesTable';
+import AdminWorkQueuesTable from '@/features/admin/components/AdminWorkQueuesTable';
 import SearchInput from './SearchInput';
 import CreateQueueModal from './modals/CreateQueueModal';
 import { useWorkQueueFilter } from '../hooks/useWorkQueueFilter';
@@ -93,7 +93,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             sort={{ column: 'name', direction: 'asc' }}
             itemType="work queues"
           />
-          <WorkQueuesTable 
+          <AdminWorkQueuesTable
             queues={filteredQueues}
             pagination={{
               ...pagination,

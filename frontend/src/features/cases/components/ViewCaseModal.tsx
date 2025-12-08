@@ -1,12 +1,10 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
-// import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
 import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import TaskLogTab from './view/TaskLogTab';
-//import InvestigationNotesTab from './view/InvestigationNotesTab';
 import CommentHistoryTab from './view/CommentHistoryTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 
@@ -68,21 +66,6 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
-            {/* <CollaborateButton onClick={() => setShowCollaborate(true)} />
-            {showCollaborate && (
-              <button
-                onClick={() => setShowCollaborate(false)}
-                className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-                title="Back to Details"
-              >
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back
-              </button>
-            )} */}
-            {/* <button className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Download
-            </button> */}
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
             <XMarkIcon className="h-5 w-5" />
@@ -98,7 +81,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 { key: 'evidence', label: 'Evidence & Documents' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'tasks', label: 'Task Log' },
-                { key: 'comments', label: 'Comments History' }, //Changing to comment History
+                { key: 'comments', label: 'Comments History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button

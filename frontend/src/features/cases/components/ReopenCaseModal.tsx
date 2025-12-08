@@ -84,17 +84,6 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
             Request reopening of a previously closed case for further investigation or correction.
           </p>
 
-          {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">Reopening Workflow</h4>
-              <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                <li>Only closed cases are eligible for reopening</li>
-                <li>Justification must be provided</li>
-                <li>A new "Approve Case Reopening" task will be generated</li>
-                <li>Case will transition to "PENDING REOPENING APPROVAL"</li>
-                <li>All actions will be logged accordingly</li>
-              </ul>
-            </div> */}
-
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">

@@ -14,7 +14,7 @@ import authService from '@/features/auth/services/authService';
 import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
-interface WorkQueueTableProps {
+interface CaseDetailTaskLogTableProps {
   alertId?: string;
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;
@@ -22,13 +22,6 @@ interface WorkQueueTableProps {
   onReassign?: (task: UnifiedWorkQueueTask) => void;
   onComplete?: (task: UnifiedWorkQueueTask) => void;
   onUpdateStatus?: (task: UnifiedWorkQueueTask) => void;
-  pagination?: {
-    currentPage: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-  };
   onRefreshCases?: () => void;
   canManageSupervisorActions?: boolean;
   caseData?: any;
@@ -38,7 +31,7 @@ interface WorkQueueTableProps {
   onAbandonCase?: (caseData: any) => void;
 }
 
-const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
+const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   alertId,
   tasks,
   onAssign,
@@ -46,7 +39,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   onReassign,
   onComplete,
   onUpdateStatus,
-  pagination,
   onRefreshCases,
   canManageSupervisorActions = false,
   caseData,
@@ -118,33 +110,10 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * TASK ACTION BUTTON UTILITIES
-   * 
-   * These functions handle the creation and management of task action buttons
-   * in the work queue table. Each task can have different actions based on:
-   * - Task status (UNASSIGNED, ASSIGNED, IN_PROGRESS, COMPLETED)
-   * - User permissions (supervisor vs regular user)
-   * - Task type (investigation, approval, triage)
-   * - Current assignment state
-   */
-  /**
-     * Creates a standardized action button with consistent styling
-     * 
-     * @param key - Unique identifier for React key prop
-     * @param onClick - Click handler function
-     * @param icon - React icon component (from Heroicons)
-     * @param label - Button text label
-     * @param title - Tooltip text on hover
-     * @param colorClasses - Tailwind CSS color classes for styling
-     * @param disabled - Whether button should be disabled
-     * @returns JSX button element with consistent styling
-     */
   const createActionButton = (
     key: string,
     onClick: () => void,
     icon: React.ReactNode,
-    // label: string,
     title: string,
     colorClasses: string,
     disabled = false
@@ -157,17 +126,8 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       title={title}
     >
       {icon}
-      {/* {label} */}
     </button>
   );
-
-
-  /**
-      * PERMISSION CHECK UTILITIES
-      * 
-      * These functions determine what actions are available for a given task
-      * based on current state, user permissions, and business rules
-      */
 
   /** Check if the current logged-in user is assigned to this task */
   const isCurrentUserAssigned = (task: UnifiedWorkQueueTask) => task.assignee === currentUser?.userId;
@@ -188,17 +148,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     onComplete &&
     !['Approve Case Creation', 'Approve Case Closure'].includes(task.name || '');
 
-  /**
-       * ACTION BUTTON BUILDERS
-       * 
-       * These functions add specific action buttons to the actions array
-       * Each function handles one type of action with its own business logic
-       */
-
-  /**
-   * Adds an "Assign" button for unassigned tasks
-   * Only shows for tasks that are unassigned and not special approval tasks
-   */
   const addAssignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canAssignTask(task)) {
       actions.push(
@@ -206,7 +155,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'assign',
           () => onAssign(task),
           <UserPlusIcon className="h-4 w-4 mr-1" />,
-          // 'Assign',
           'Assign task',
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
         )
@@ -214,10 +162,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds a "Reassign" button for assigned tasks
-   * Allows supervisors to reassign tasks to different users
-   */
   const addReassignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canReassignTask(task)) {
       actions.push(
@@ -225,7 +169,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'reassign',
           () => onReassign!(task),
           <ArrowPathIcon className="h-4 w-4 mr-1" />,
-          // 'Reassign',
           'Reassign task',
           'text-purple-700 bg-purple-100 hover:bg-purple-200 focus:ring-purple-500'
         )
@@ -233,10 +176,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds an "Unassign" button for assigned tasks
-   * Returns the task to unassigned state, making it available in work queue
-   */
   const addUnassignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canUnassignTask(task)) {
       actions.push(
@@ -244,7 +183,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'unassign',
           () => onUnassign!(task),
           <UserMinusIcon className="h-4 w-4 mr-1" />,
-          // 'Unassign',
           'Unassign task',
           'text-orange-700 bg-orange-100 hover:bg-orange-200 focus:ring-orange-500'
         )
@@ -252,10 +190,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds a "Complete" button for regular tasks
-   * Excludes special approval tasks that have their own completion flow
-   */
   const addCompleteAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canCompleteTask(task) && isCurrentUserAssigned(task)) {
       actions.push(
@@ -263,7 +197,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'complete',
           () => onComplete!(task),
           <CheckIcon className="h-4 w-4 mr-1" />,
-          // 'Complete',
           'Mark complete',
           'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
         )
@@ -271,16 +204,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds approval/rejection buttons for supervisor-level tasks
-   * Handles both case creation and case closure approval workflows
-   * 
-   * Business Rules:
-   * - Only supervisors can see these actions (canManageSupervisorActions)
-   * - Requires valid case data to perform actions
-   * - Case Creation: Shows Approve + optional Reject buttons
-   * - Case Closure: Shows Review button for final approval
-   */
   const addApprovalActions = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     // Handle "Approve Case Creation" tasks - supervisor approval for new cases
     if (task.name === 'Approve Case Creation' && canManageSupervisorActions && onApproveCaseCreation && caseData) {
@@ -289,7 +212,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'approve-creation',
           () => onApproveCaseCreation(caseData),
           <CheckIcon className="h-4 w-4 mr-1" />,
-          // 'Approve',
           'Approve Case Creation',
           'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
         )
@@ -302,7 +224,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
             'reject-creation',
             () => onRejectCaseCreation(caseData),
             <XCircleIcon className="h-4 w-4 mr-1" />,
-            // 'Reject',
             'Reject Case Creation',
             'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500'
           )
@@ -325,17 +246,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds a special "Complete" button for triage tasks
-   * 
-   * This handles the "Complete New Case" task type which requires:
-   * 1. Loading alert details from the triage service
-   * 2. Opening a manual triage modal for detailed analysis
-   * 3. Handling loading states and error conditions
-   * 
-   * Note: This is different from regular task completion as it requires
-   * additional user input through the triage modal interface.
-   */
   const addTriageAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (task.name === 'Complete New Case' && task.assignee && onUpdateStatus) {
       const isLoading = loadingAlertForTask === task.id;
@@ -376,16 +286,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * Adds a "Status" button for task status updates
-   * 
-   * This allows users to update task status (e.g., from ASSIGNED to IN_PROGRESS)
-   * 
-   * Restrictions:
-   * - Only the assigned user can update their own task status
-   * - Excludes "Complete New Case" tasks (handled by triage action)
-   * - Requires onUpdateStatus callback to be provided
-   */
   const addStatusAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (task.assignee && onUpdateStatus && task.name !== 'Complete New Case' && isCurrentUserAssigned(task) && task.status.toUpperCase() !== 'SUSPENDED') {
       actions.push(
@@ -393,7 +293,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
           'update-status',
           () => onUpdateStatus(task),
           <Cog6ToothIcon className="h-4 w-4 mr-1" />,
-          // 'Status',
           'Update status',
           'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500'
         )
@@ -401,22 +300,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     }
   };
 
-  /**
-   * MAIN ACTION ORCHESTRATOR
-   * 
-   * Determines which action buttons to show for a given task based on:
-   * - Task status (COMPLETED, IN_PROGRESS, ASSIGNED, UNASSIGNED)
-   * - User permissions (current user vs assignee, supervisor privileges)
-   * - Task type and business rules
-   * 
-   * Flow:
-   * 1. Return empty for COMPLETED tasks (no actions allowed)
-   * 2. For IN_PROGRESS tasks: Show management actions (reassign, unassign, complete, approve)
-   * 3. For other statuses: Show assignment and workflow actions
-   * 
-   * @param task - The task object containing status, assignee, and metadata
-   * @returns Array of React button elements for available actions
-   */
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions: React.ReactNode[] = [];
 
@@ -425,22 +308,20 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
       return actions;
     }
 
-    // IN_PROGRESS tasks show workflow management actions
     if (task.status === 'IN_PROGRESS') {
-      addReassignAction(actions, task);  // Allow reassignment to different user
-      addUnassignAction(actions, task);  // Allow returning to unassigned state
-      addCompleteAction(actions, task);  // Allow marking as complete
-      addApprovalActions(actions, task); // Show approval buttons for supervisor tasks
+      addReassignAction(actions, task);  
+      addUnassignAction(actions, task);  
+      addCompleteAction(actions, task);  
+      addApprovalActions(actions, task);
       return actions;
     }
 
-    // Handle ASSIGNED, UNASSIGNED, and other statuses
-    addAssignAction(actions, task);        // Show assign button for unassigned tasks
-    addReassignAction(actions, task);     // Allow reassigning already assigned tasks
-    addUnassignAction(actions, task);     // Allow unassigning tasks
-    addApprovalActions(actions, task);    // Show approval workflow buttons
-    addTriageAction(actions, task);       // Show triage completion for investigation tasks
-    addStatusAction(actions, task);       // Show status update for assigned user
+    addAssignAction(actions, task);       
+    addReassignAction(actions, task);    
+    addUnassignAction(actions, task);    
+    addApprovalActions(actions, task);   
+    addTriageAction(actions, task);       
+    addStatusAction(actions, task);       
 
     return actions;
   };
@@ -519,7 +400,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900 break-words">
                     {getCandidateGroup(task.candidateGroup, task.name)}
-                    {/* {task.candidateGroup || '-'}  */}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -527,7 +407,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
-                    {/* <ClockIcon className="h-4 w-4 mr-1" /> */}
                     {formatDate(task.createdAt)}
                   </div>
                 </td>
@@ -535,7 +414,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                   <div className="text-sm text-gray-900">
                     {task.assignee ? (
                       <span className="text-blue-600 break-words">
-                        {/* {task.assigneeName || task.assignee} */}
                         {getAssigneeFullName(task.assignee, task.assigneeName)}
                       </span>
                     ) : (
@@ -562,104 +440,6 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
         />
       )}
 
-      {/* Pagination Controls */}
-      {pagination && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    (pagination.currentPage - 1) * pagination.pageSize + 1,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    pagination.currentPage * pagination.pageSize,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{pagination.totalItems}</span>{' '}
-                tasks
-              </p>
-            </div>
-            <div>
-              <nav
-                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                aria-label="Pagination"
-              >
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
-                  }
-                  disabled={pagination.currentPage <= 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                { }
-                {(() => {
-                  const { currentPage, totalPages } = pagination;
-                  const pages: (number | 'ellipsis')[] = [];
-                  const windowSize = 5;
-                  const half = Math.floor(windowSize / 2);
-
-                  const addPage = (p: number) => pages.push(p);
-                  const addEllipsis = () => pages.push('ellipsis');
-
-                  if (totalPages <= windowSize + 2) {
-                    for (let p = 1; p <= totalPages; p++) addPage(p);
-                  } else {
-                    const start = Math.max(2, currentPage - half);
-                    const end = Math.min(totalPages - 1, currentPage + half);
-
-                    addPage(1);
-                    if (start > 2) addEllipsis();
-                    for (let p = start; p <= end; p++) addPage(p);
-                    if (end < totalPages - 1) addEllipsis();
-                    addPage(totalPages);
-                  }
-
-                  return pages.map((p, idx) =>
-                    p === 'ellipsis' ? (
-                      <span
-                        key={`ellipsis-${idx}`}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => pagination.onPageChange(p)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.currentPage === p
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        aria-current={pagination.currentPage === p ? 'page' : undefined}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  );
-                })()}
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
-                  }
-                  disabled={pagination.currentPage >= pagination.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Manual Triage Modal */}
       {selectedAlert && (
         <Suspense fallback={<div>Loading modal...</div>}>
@@ -677,4 +457,4 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
     </div>)
 };
 
-export default WorkQueueTable;
+export default CaseDetailTaskLogTable;

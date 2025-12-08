@@ -49,11 +49,4 @@ export interface HeaderProps {
   onLogout?: () => void;
   breadcrumbs?: BreadcrumbItem[];
   title?: string;
-}
-
-export type NavigationContextType = {
-  currentPath: string;
-  navigate: (path: string) => void;
-  user: User | null;
-  setUser: (user: User | null) => void;
 };

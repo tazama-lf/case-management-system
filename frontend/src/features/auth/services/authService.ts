@@ -45,12 +45,6 @@ class AuthService {
             'Failed to fetch user profile, falling back to token decode:',
             error,
           );
-          // Fallback to decoding from token if /me endpoint fails
-          // const user = this.decodeToken(data.token);
-          // if (user) {
-          //   this.setUser(user);
-          //   data.user = user;
-          // }
         }
       }
 
@@ -60,11 +54,6 @@ class AuthService {
       throw error;
     }
   }
-
-  /**
-   * Fetches the authenticated user's profile from the backend /v1/auth/me endpoint.
-   * This provides the most accurate and up-to-date user information.
-   */
   async fetchUserProfile(token?: string): Promise<User | null> {
     try {
       const authToken = token || this.getToken();
@@ -132,74 +121,6 @@ class AuthService {
     return token ? !this.isTokenExpired(token) : false;
   }
 
-  // decodeToken(token: string): User | null {
-  //   const decoded = this.getDecodedToken(token);
-  //   if (!decoded) {
-  //     return null;
-  //   }
-
-  //   try {
-  //     const user: User = {
-  //       userId: decoded.clientId,
-  //       tenantId: decoded.tenantId,
-  //       email: decoded.email,
-  //       fullName: decoded.fullName,
-  //       tenantName: decoded.tenantName,
-  //       validatedClaims: decoded,
-  //     };
-
-  //     return user;
-  //   } catch (error) {
-  //     console.error('Error extracting user info from decoded token:', error);
-  //     return null;
-  //   }
-  // }
-
-  // private extractRoles(payload: DecodedToken): string[] {
-  //   const roles: string[] = [];
-
-  //   if (payload.resource_access?.CMS?.roles) {
-  //     roles.push(...payload.resource_access.CMS.roles);
-  //   }
-
-  //   if (roles.length === 0 && payload.resource_access) {
-  //     Object.values(payload.resource_access).forEach(
-  //       (resource: { roles: string[] }) => {
-  //         if (resource.roles) {
-  //           roles.push(...resource.roles);
-  //         }
-  //       },
-  //     );
-  //   }
-
-  //   return roles;
-  // }
-
-  // private extractBackendClaims(payload: DecodedToken): string[] {
-  //   const claims: string[] = [];
-
-  //   if (payload.claims && Array.isArray(payload.claims)) {
-  //     claims.push(...payload.claims);
-  //   }
-
-  //   if (payload.realm_access?.roles) {
-  //     claims.push(...payload.realm_access.roles);
-  //   }
-
-  //   if (payload.resource_access) {
-  //     Object.entries(payload.resource_access).forEach(([, access]) => {
-  //       if (access.roles) {
-  //         access.roles.forEach((role) => {
-  //           claims.push(role);
-  //         });
-  //       }
-  //     });
-  //   }
-
-  //   const finalClaims = [...new Set(claims)];
-
-  //   return finalClaims;
-  // }
 
   private getDecodedToken(token: string): DecodedToken | null {
     try {

@@ -119,8 +119,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     clearError,
     hasBackendClaim: authService.hasBackendClaim.bind(authService),
-    // hasCMSTestRole: authService.hasCMSTestRole.bind(authService),
-    // hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
     hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
     hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
     hasCMSAdminRole: authService.hasCMSAdminRole.bind(authService),
