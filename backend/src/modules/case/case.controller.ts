@@ -55,7 +55,7 @@ import {
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(private readonly caseService: CaseService) { }
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -108,7 +108,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async suspendCase(@Param('caseId') caseId: string, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, userInfo } = extractUserData(req);
-    return this.caseService.suspendCase(caseId, body.reason, userId, tenantId, userInfo);
+    return this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/resume')
@@ -237,7 +237,7 @@ export class CaseController {
   @ApiResponse({ status: 403, description: 'Forbidden - Requires investigator or supervisor role' })
   async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, claims } = extractUserData(req);
-    
+
     // Check if user is investigator (not supervisor/admin)
     const isInvestigator = claims.includes('CMS_INVESTIGATOR') && !claims.includes('CMS_SUPERVISOR') && !claims.includes('CMS_ADMIN');
 
@@ -681,7 +681,7 @@ export class CaseController {
   })
   async rejectCaseReopening(@Param('caseId') caseId: string, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    
+
     if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
       throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
     }

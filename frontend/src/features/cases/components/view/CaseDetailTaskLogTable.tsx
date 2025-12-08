@@ -387,7 +387,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
    * - Requires onUpdateStatus callback to be provided
    */
   const addStatusAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (task.assignee && onUpdateStatus && task.name !== 'Complete New Case' && isCurrentUserAssigned(task)) {
+    if (task.assignee && onUpdateStatus && task.name !== 'Complete New Case' && isCurrentUserAssigned(task) && task.status.toUpperCase() !== 'SUSPENDED') {
       actions.push(
         createActionButton(
           'update-status',

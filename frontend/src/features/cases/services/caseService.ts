@@ -98,7 +98,7 @@ export interface UpdateCaseDto {
   caseType?: string;
   caseOwnerUserId?: string;
   confidence?: number;
-  predictionOutcome?: string; 
+  predictionOutcome?: string;
   note?: string;
   priorityScore?: number;
 }
@@ -121,6 +121,7 @@ export interface ReopenCaseDto {
 
 export interface SuspendCaseDto {
   reason: string;
+  taskIds: string[];
 }
 
 export interface ApproveCaseClosureDto {
@@ -234,8 +235,7 @@ export class CaseService {
   }
 
   async SaveCaseAsDraft(manualCreateCaseData: ManualCreateCaseDto)
-  : Promise<Case> 
-  {
+    : Promise<Case> {
     console.log('Saving case as draft with data:', manualCreateCaseData);
     try {
       const response = await apiClient.post<Case>(`${this.baseUrl}/save-as-draft`, manualCreateCaseData);

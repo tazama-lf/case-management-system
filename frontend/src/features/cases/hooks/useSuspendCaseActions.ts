@@ -4,15 +4,16 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useSuspendCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleSuspendSubmit = async (caseId: string, reason: string) => {
+  const handleSuspendSubmit = async (caseId: string, reason: string, taskIds: string[]) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
-        reason: reason.trim()
+        reason: reason.trim(),
+        taskIds: taskIds
       };
 
       await caseService.suspendCase(caseId, suspendCaseData);
 
-      success('Case Suspended', `Case ${caseId} suspended. Reason: ${reason}`);      await refreshCases();
+      success('Case Suspended', `Case ${caseId} suspended. Reason: ${reason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not suspend case.';
       const backendError = err instanceof Error ? err.message : '';

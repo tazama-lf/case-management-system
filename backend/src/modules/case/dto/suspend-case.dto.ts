@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsArray, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RequestSuspendCaseDto {
     @ApiProperty({
@@ -10,4 +10,12 @@ export class RequestSuspendCaseDto {
     @MinLength(4)
     @MaxLength(500)
     reason: string;
+
+    @ApiProperty({
+        description: 'TaskIds for suspension',
+        example: 'User selects if there are more than one tasks to be suspended.',
+    })
+    @IsArray()
+    taskIds: string[];
+
 }

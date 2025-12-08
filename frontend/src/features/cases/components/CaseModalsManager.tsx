@@ -75,7 +75,7 @@ interface CaseModalsManagerProps {
   caseActions: {
     handleCloseCaseSubmit: (caseId: string, data: CloseCaseDto) => Promise<void>;
     handleAbandonSubmit: (caseId: string, reason: string) => Promise<void>;
-    handleSuspendSubmit: (caseId: string, reason: string) => Promise<void>;
+    handleSuspendSubmit: (caseId: string, reason: string, taskIds: string[]) => Promise<void>;
     handleResumeSubmit: (caseId: string, reason: string) => Promise<void>;
     handleApproveClosureSubmit: (caseId: string, finalOutcome: "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE", supervisorComments?: string) => Promise<void>;
     handleApproveCreation: (caseId: string) => Promise<void>;
@@ -261,8 +261,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleSuspendSubmit = async (caseId: string, reason: string) => {
-    await caseActions.handleSuspendSubmit(caseId, reason);
+  const handleSuspendSubmit = async (caseId: string, reason: string, taskIds: string[]) => {
+    await caseActions.handleSuspendSubmit(caseId, reason, taskIds);
     modalActions.setIsSuspendOpen(false);
     modalActions.setSelectedRow(null);
   };

@@ -5,9 +5,10 @@ import type { CaseRow } from './casesTable.utils';
 interface SuspendCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onSuspend: (caseId: string, reason: string) => void;
+  onSuspend: (caseId: string, reason: string, selectedTaskIds: string[]) => void;
   caseData: CaseRow | null;
 }
+
 
 const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   open,
@@ -17,8 +18,14 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
 
   const isReasonValid = reason.trim().length >= 4;
+  const inProgressTasks = caseData?.tasks?.filter(
+    (t) => t.status === 'STATUS_20_IN_PROGRESS' && investigationTasks.includes(t.name)
+  ) || [];
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +33,9 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSuspend(caseData.id, reason.trim());
+      await onSuspend(caseData.id, reason.trim(), selectedTaskIds);
       setReason('');
+      setSelectedTaskIds([]);
       onClose();
     } catch (error) {
       console.error('Failed to suspend case:', error);
@@ -39,6 +47,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       setReason('');
+      setSelectedTaskIds([]);
       onClose();
     }
   };
@@ -85,6 +94,48 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
               <li>Suspension will be recorded in event, system, and audit logs</li>
             </ul>
           </div> */}
+          {inProgressTasks.length > 0 && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {inProgressTasks.length > 1 ? 'Select task(s) to suspend' : 'Task to suspend'}
+              </label>
+              {inProgressTasks.length === 1 && selectedTaskIds.length === 0 && (
+                <input
+                  type="hidden"
+                  value={inProgressTasks[0].task_id}
+                  ref={() => setSelectedTaskIds([inProgressTasks[0].task_id])}
+                />
+              )}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                {inProgressTasks.map((task) => (
+                  <label
+                    key={task.task_id}
+                    className="flex items-center gap-2 block text-sm font-medium text-gray-600 mb-2"
+                  >
+                    <input
+                      type="checkbox"
+                      value={task.task_id}
+                      checked={
+                        selectedTaskIds.includes(task.task_id) || inProgressTasks.length === 1
+                      }
+                      disabled={inProgressTasks.length === 1}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedTaskIds((prev) =>
+                          prev.includes(id)
+                            ? prev.filter((tid) => tid !== id)
+                            : [...prev, id]
+                        );
+                      }}
+                      className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                    />
+                    <span>{task.name} ({task.task_id})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">

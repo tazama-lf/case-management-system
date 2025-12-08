@@ -46,7 +46,7 @@ export class CaseService {
     private readonly userService: UserService,
   ) { }
 
-  async suspendCase(caseId: string, reason: string, userId: string, tenantId: string, authDetails: any) {
+  async suspendCase(caseId: string, reason: string, tasksIds: string[], userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
@@ -59,23 +59,36 @@ export class CaseService {
     // const investigateTask = allTasks.find(
     //   (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
     // );
-    const investigateTask = allTasks
-      .filter(
-        (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
-      )
-      .find((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
+    // const investigateTask = allTasks
+    //   .filter(
+    //     (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
+    //   )
+    //   .filter((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
+
+
+    const investigateTask = allTasks.filter((task) =>
+      tasksIds.includes(task.task_id)
+    );
+
 
     if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
-
-    if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
-      throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
+    // if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
+    //   throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
-        const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
-
+        // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
+        const updatedTask = await Promise.all(
+          investigateTask.map((task) =>
+            this.taskService.updateTask(
+              task.task_id,
+              { status: TaskStatus.STATUS_21_BLOCKED },
+              userId
+            )
+          )
+        );
         const createCommentDto = new CreateCommentDto();
         //  createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.caseId = updatedCase.case_id;
@@ -102,19 +115,37 @@ export class CaseService {
       });
 
       try {
-        const caseAssignee = investigateTask.assigned_user_id;
+        const caseAssignee = investigateTask
+          .map((t) => t.assigned_user_id?.trim())
+          .filter((id): id is string => !!id);
+        this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
-          await this.notificationService.sendNotification({
-            userId: caseAssignee,
-            type: 'CASE_SUSPENDED',
-            message: `Case ${caseId} has been suspended by ${caseAssignee}`,
-            metadata: {
-              caseId,
-              actionBy: suspendedBy?.username || suspendedBy?.fullName,
-              reason,
-            },
-          })
+          await Promise.all(
+            caseAssignee.map((id) =>
+              this.notificationService.sendNotification({
+                userId: id,
+                type: 'CASE_SUSPENDED',
+                message: `Case ${caseId} has been suspended by ${caseAssignee}`,
+                metadata: {
+                  caseId,
+                  actionBy: suspendedBy?.username || suspendedBy?.fullName,
+                  reason,
+                },
+              })
+            )
+          );
+
+          // await this.notificationService.sendNotification({
+          //   userId: caseAssignee,
+          //   type: 'CASE_SUSPENDED',
+          //   message: `Case ${caseId} has been suspended by ${caseAssignee}`,
+          //   metadata: {
+          //     caseId,
+          //     actionBy: suspendedBy?.username || suspendedBy?.fullName,
+          //     reason,
+          //   },
+          // })
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
@@ -145,12 +176,20 @@ export class CaseService {
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    const investigateTask = allTasks.find((t) => t.name === TASK_NAMES.INVESTIGATE_CASE);
-
+    this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
+    // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
+    const investigateTask = allTasks.filter((t) => t.name !== null && (
+      t.name === TASK_NAMES.INVESTIGATE_CASE ||
+      t.name === TASK_NAMES.INVESTIGATE_AML ||
+      t.name === TASK_NAMES.INVESTIGATE_FRAUD
+    ) &&
+      t.status === TaskStatus.STATUS_21_BLOCKED
+    );
+    this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
-    if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
-      throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
+    // if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
+    //   throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
 
     try {
       this.flowableService.handleCaseStatusChanged({
@@ -161,12 +200,20 @@ export class CaseService {
 
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        const updatedTask = await this.taskService.updateTask(
-          investigateTask.task_id,
-          { status: TaskStatus.STATUS_20_IN_PROGRESS },
-          userId,
+        // const updatedTask = await this.taskService.updateTask(
+        //   investigateTask.task_id,
+        //   { status: TaskStatus.STATUS_20_IN_PROGRESS },
+        //   userId,
+        // );
+        const updatedTask = await Promise.all(
+          investigateTask.map((t) =>
+            this.taskService.updateTask(
+              t.task_id,
+              { status: TaskStatus.STATUS_20_IN_PROGRESS },
+              userId
+            )
+          )
         );
-
         const createCommentDto = new CreateCommentDto();
         // createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.caseId = caseId;
@@ -185,19 +232,27 @@ export class CaseService {
       });
 
       try {
-        const caseAssignee = investigateTask.assigned_user_id;
+        // const caseAssignee = investigateTask.assigned_user_id;
+        const caseAssignee = investigateTask
+          .map((t) => t.assigned_user_id?.trim())
+          .filter((id): id is string => !!id);
+        this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
-          await this.notificationService.sendNotification({
-            userId: caseAssignee,
-            type: 'CASE_RESUMED',
-            message: `Case ${caseId} has been resumed by ${caseAssignee}`,
-            metadata: {
-              caseId,
-              actionBy: resumedBy?.username || resumedBy?.email,
-              reason,
-            },
-          })
+          await Promise.all(
+            caseAssignee.map((id) =>
+              this.notificationService.sendNotification({
+                userId: id,
+                type: 'CASE_RESUMED',
+                message: `Case ${caseId} has been resumed by ${caseAssignee}`,
+                metadata: {
+                  caseId,
+                  actionBy: resumedBy?.username || resumedBy?.email,
+                  reason,
+                },
+              })
+            )
+          );
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);

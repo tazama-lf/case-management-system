@@ -287,10 +287,11 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleSuspendSubmit = async (caseId: string, reason: string) => {
+  const handleSuspendSubmit = async (caseId: string, reason: string, tasksIds: string[]) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),
+        taskIds: tasksIds
       };
 
       const suspendedCase = await caseService.suspendCase(
