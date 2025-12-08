@@ -1,8 +1,8 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TazamaToken, validateTokenAndClaims } from '@tazama-lf/auth-lib';
-import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from './auth.types';
-import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } from './auth.decorator';
+import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from '../utils/types/auth.types';
+import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } from '../decorators/auth.decorator';
 import { decode } from 'punycode';
 
 @Injectable()

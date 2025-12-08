@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { Outcome } from '../audit/types/outcome';
+import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
 import { NotificationService } from 'src/modules/notification/notification.service';

@@ -1,6 +1,6 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean, MinLength, MaxLength, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { CaseClosureOutcome } from '../utils/enums/case-enum';
+import { CaseClosureOutcome } from '../../../utils/enums/case-enum';
 
 export class CloseCaseDto {
   @ApiProperty({

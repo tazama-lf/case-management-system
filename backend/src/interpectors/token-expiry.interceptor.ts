@@ -1,7 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, UnauthorizedException } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AuthService } from './auth.service';
+import { AuthService } from '../modules/auth/auth.service';
 
 @Injectable()
 export class TokenExpiryInterceptor implements NestInterceptor {

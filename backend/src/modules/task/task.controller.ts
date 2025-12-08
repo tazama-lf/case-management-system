@@ -19,7 +19,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { ReassignTaskDto } from './dto/reassign-task.dto';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { UnassignTaskDto } from './dto/unassign-task-dto';
 import {
   RequireAlertTriageRole,
@@ -27,7 +27,7 @@ import {
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
-} from '../auth/auth.decorator';
+} from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';

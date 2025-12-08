@@ -13,11 +13,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { IngestAlertDto } from '../../dtos/IngestAlert.dto';
-import { ManualAlertUpdateDTO } from './dto/update-alert.dto';
-import { TazamaAuthGuard } from 'src/modules/auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from 'src/modules/auth/auth.decorator';
-import { AuthenticatedRequest } from 'src/modules/auth/auth.types';
+import { ManualAlertUpdateDTO } from '../alert/dto/alert.dto';
+import { HealthCheckResponseDTO, AlertTriageResponseDTO, AlertActionHistoryDTO, AlertDetailsResponseDTO } from './dto/triage.dto';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Alert Triage')
@@ -35,12 +35,7 @@ export class TriageController {
   @ApiResponse({
     status: 200,
     description: 'Service is healthy',
-    schema: {
-      type: 'object',
-      properties: {
-        status: { type: 'string', example: 'ok' },
-      },
-    },
+    type: HealthCheckResponseDTO,
   })
   getTest() {
     return { status: 'ok' };
@@ -63,16 +58,7 @@ export class TriageController {
   @ApiResponse({
     status: 200,
     description: 'Alert triaged successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        alert_id: { type: 'string', format: 'uuid' },
-        status: { type: 'string' },
-        priority: { type: 'string' },
-        confidence_per: { type: 'number' },
-        updated_at: { type: 'string', format: 'date-time' },
-      },
-    },
+    type: AlertTriageResponseDTO,
   })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -100,19 +86,7 @@ export class TriageController {
   @ApiResponse({
     status: 200,
     description: 'Action history retrieved successfully',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          action_id: { type: 'string', format: 'uuid' },
-          action_type: { type: 'string' },
-          user_id: { type: 'string', format: 'uuid' },
-          note: { type: 'string' },
-          created_at: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
+    type: [AlertActionHistoryDTO],
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
@@ -139,22 +113,7 @@ export class TriageController {
   @ApiResponse({
     status: 200,
     description: 'Alert details retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        alert_id: { type: 'string', format: 'uuid' },
-        message: { type: 'string' },
-        priority: { type: 'string' },
-        alert_type: { type: 'string' },
-        confidence_per: { type: 'number' },
-        case_id: { type: 'string', format: 'uuid', nullable: true },
-        alert_data: { type: 'object' },
-        transaction_data: { type: 'object' },
-        network_map: { type: 'object' },
-        created_at: { type: 'string', format: 'date-time' },
-        updated_at: { type: 'string', format: 'date-time' },
-      },
-    },
+    type: AlertDetailsResponseDTO,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })

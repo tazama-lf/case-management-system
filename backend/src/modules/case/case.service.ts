@@ -1,16 +1,15 @@
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Outcome } from '../audit/types/outcome';
+import { Outcome } from '../../utils/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
 import { CaseStatus, CaseType, TaskStatus } from '@prisma/client';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
-import { CreateCommentDto } from '../../../src/modules/comment/dto/create-comment.dto';
+import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { CommentService } from '../../../src/modules/comment/comment.service';
 import { NotificationService } from '../notification/notification.service';
-import { AuthHelperService } from '../../../src/modules/auth/auth-helper.service';
-import { TASK_NAMES, CANDIDATE_GROUPS } from './utils/constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS } from '../../constants/case.constants';
 import { CaseReopeningService } from './services/case-reopening.service';
 import { CaseClosureApprovalService } from './services/case-closure-approval.service';
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
@@ -18,12 +17,11 @@ import { FlowableService } from '../../../src/modules/flowable/flowable.service'
 import { AlertRepository } from '../repository/alert.repository';
 import {
   CloseCaseDto,
-  SystemCaseCreationDto,
   ManualCreateCaseDto,
   GetAllCasesQueryDto,
   GetUserCasesQueryDto,
   UpdateCaseDto,
-} from './dto/index.dto';
+} from './dto';
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
 
@@ -43,7 +41,6 @@ export class CaseService {
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
-    private readonly userService: UserService,
   ) { }
 
   async suspendCase(caseId: string, reason: string, tasksIds: string[], userId: string, tenantId: string, authDetails: any) {

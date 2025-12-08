@@ -3,12 +3,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AsyncTaskService } from './async-task.service';
 import { EmailWorkerService } from './email-worker.service';
 import { AsyncTaskController } from './async-task.controller';
-import { PrismaModule } from '../../../prisma/prisma.module';
+import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), PrismaModule],
-  controllers: [AsyncTaskController],
-  providers: [AsyncTaskService, EmailWorkerService],
-  exports: [AsyncTaskService],
+    imports: [ScheduleModule.forRoot(), RepositoryModule],
+    controllers: [AsyncTaskController],
+    providers: [AsyncTaskService, EmailWorkerService],
+    exports: [AsyncTaskService],
 })
-export class AsyncTaskModule {}
+export class AsyncTaskModule { }

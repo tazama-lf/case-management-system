@@ -1,9 +1,9 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableApiEndpoints, FlowableDefaults, FlowableTaskActions } from '../constants/flowable-api.constants';
+import { FlowableApiEndpoints, FlowableDefaults, FlowableTaskActions } from '../../../constants/flowable-api.constants';
 import { CreateFlowableTaskDto, FlowableVariable } from '../dto/flowable.dto';
-import { FlowableUtilitiesService } from '../utils/flowable-utilities.service';
+import { FlowableUtilitiesService } from './flowable-utilities.service';
 import { FlowableClientFactory } from './flowable-client.factory';
 
 /**

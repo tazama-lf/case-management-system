@@ -1,14 +1,16 @@
 import { Controller, Post, Get, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiTags } from '@nestjs/swagger';
 import { WorkqueueService } from './workqueue.service';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireAdminRole, RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
+import { RequireAdminRole, RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decorator';
+import { TaskResponseDTO, WorkQueueStatisticsDTO } from './dto/workqueue.dto';
+import { CreateCandidateGroupDto } from './dto/workqueue.dto';
 
 @ApiTags('workqueue')
 @Controller('api/v1/workqueue')
 @UseGuards(TazamaAuthGuard)
 export class WorkqueueController {
-  constructor(private readonly workqueueService: WorkqueueService) {}
+  constructor(private readonly workqueueService: WorkqueueService) { }
 
   @Post('candidate-group')
   @RequireAdminRole()
@@ -16,24 +18,14 @@ export class WorkqueueController {
     summary: 'Create a candidate group',
     description: 'Create a new candidate group (workqueue) in Flowable',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        groupId: { type: 'string', description: 'Unique identifier for the group' },
-        groupName: { type: 'string', description: 'Display name for the group' },
-        groupType: { type: 'string', description: 'Type of group', default: 'candidate' },
-      },
-      required: ['groupId', 'groupName'],
-    },
-  })
+  @ApiBody({ type: CreateCandidateGroupDto })
   @ApiResponse({
     status: 201,
     description: 'Candidate group created successfully',
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async createCandidateGroup(@Body() body: { groupId: string; groupName: string; groupType?: string }) {
+  async createCandidateGroup(@Body() body: CreateCandidateGroupDto) {
     return this.workqueueService.createCandidateGroup(body.groupId, body.groupName, body.groupType);
   }
 
@@ -48,10 +40,7 @@ export class WorkqueueController {
     description: 'The group identifier',
     type: 'string',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Candidate group retrieved successfully',
-  })
+  @ApiResponse({ status: 200, description: 'Candidate group retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Candidate group not found' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getCandidateGroup(@Param('groupId') groupId: string) {
@@ -102,20 +91,7 @@ export class WorkqueueController {
   @ApiResponse({
     status: 200,
     description: 'Tasks retrieved successfully',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' },
-          assignee: { type: 'string' },
-          created: { type: 'string', format: 'date-time' },
-          priority: { type: 'number' },
-          variables: { type: 'object' },
-        },
-      },
-    },
+    type: [TaskResponseDTO],
   })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getCandidateGroupTasks(@Param('groupId') groupId: string, @Query('includeVariables') includeVariables?: boolean) {
@@ -136,20 +112,7 @@ export class WorkqueueController {
   @ApiResponse({
     status: 200,
     description: 'Tasks retrieved successfully',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' },
-          assignee: { type: 'string' },
-          created: { type: 'string', format: 'date-time' },
-          priority: { type: 'number' },
-          variables: { type: 'object' },
-        },
-      },
-    },
+    type: [TaskResponseDTO],
   })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getTasksByAssignee(@Param('assignee') assignee: string) {
@@ -171,24 +134,7 @@ export class WorkqueueController {
   @ApiResponse({
     status: 200,
     description: 'Statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        totalTasks: { type: 'number' },
-        assignedTasks: { type: 'number' },
-        unassignedTasks: { type: 'number' },
-        groups: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              groupId: { type: 'string' },
-              taskCount: { type: 'number' },
-            },
-          },
-        },
-      },
-    },
+    type: WorkQueueStatisticsDTO,
   })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getWorkQueueStatistics(@Query('groupId') groupId?: string) {

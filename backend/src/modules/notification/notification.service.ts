@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../shared/cache.service';
 import { AsyncTaskService } from '../async-task/async-task.service';
-import { EMAIL_TEMPLATES } from './utils/notification.constants';
+import { EMAIL_TEMPLATES } from '../../constants/notification.constants';
 import {
     NotificationPayload,
     GroupNotificationPayload,
@@ -15,7 +15,7 @@ import {
     SlaWarningPayload,
     TaskEventPayload,
     TaskReassignedPayload
-} from './utils/notification.interface';
+} from '../../utils/interfaces/notification.interface';
 
 @Injectable()
 export class NotificationService {
@@ -102,7 +102,6 @@ export class NotificationService {
     async sendNotification(payload: NotificationPayload): Promise<void> {
         this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
         const email = await this.resolveUserEmail(payload.userId);
-        console.log('Resolved email:', email);
         await this.dispatchNotification(email, payload.type, payload.metadata || {}, {
             notificationType: payload.type,
             userId: payload.userId,
@@ -252,7 +251,6 @@ export class NotificationService {
     private async resolveUserEmail(userId: string): Promise<string> {
         try {
             const userEmail = await this.cacheService.getUserEmailFromCache(userId);
-            console.log('Resolved email:', userEmail);
             return userEmail || `user-${userId}@example.com`;
         } catch (error) {
             this.logger.warn(`Failed to resolve email for user ${userId}: ${error.message}`);

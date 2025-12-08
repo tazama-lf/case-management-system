@@ -2,14 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { Outcome } from '../../audit/types/outcome';
+import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, Task, TaskStatus } from '@prisma/client';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../utils/constants/case.constants';
-import { CloseCaseDto } from '../dto/index.dto';
+import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../../../constants/case.constants';
+import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { validateClosureData } from '../utils/helpers/case-validation.helper';
+import { validateClosureData } from 'src/utils/helperFunction';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';

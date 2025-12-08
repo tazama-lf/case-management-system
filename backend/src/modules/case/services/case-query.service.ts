@@ -7,8 +7,8 @@ import { CaseStatus, TaskStatus } from '@prisma/client';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { AuditLogService } from '../../audit/auditLog.service';
-import { Outcome } from '../../audit/types/outcome';
-import { UpdateCaseDto } from '../dto/update-case.dto';
+import { Outcome } from '../../../utils/types/outcome';
+import { UpdateCaseDto } from '../dto';
 
 @Injectable()
 export class CaseQueryService {

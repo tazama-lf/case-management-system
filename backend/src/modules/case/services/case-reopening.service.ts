@@ -5,12 +5,12 @@ import { NotificationService } from 'src/modules/notification/notification.servi
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from 'src/modules/task/task.service';
 import { CaseStatus, TaskStatus } from '@prisma/client';
-import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../utils/constants/case.constants';
+import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
-import { determineOriginalClosedStatus, isInvestigatorRole } from '../utils/helpers/case-validation.helper';
+import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';
 import { PrismaService } from 'prisma/prisma.service';
 import { CaseQueryService } from './case-query.service';
-import { Outcome } from '../../audit/types/outcome';
+import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 
 @Injectable()

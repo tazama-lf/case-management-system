@@ -13,25 +13,9 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditLogService } from '../audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import {
-  CreateWorkQueueDto,
-  UpdateWorkQueueDto,
-  GetWorkQueuesQueryDto,
-  WorkQueueResponseDto,
-  WorkQueueDetailResponseDto,
-  WorkQueueListResponseDto,
-  TaskFilterDto,
-  WorkQueueMetricsDto,
-  SupervisorDashboardDto,
-  TaskListResponseDto,
-  OverdueTaskDto,
-  SLABreachTaskDto,
-  CreateAssignmentRuleDto,
-  UpdateAssignmentRuleDto,
-  DetailedAssignmentRuleDto,
-} from './dto';
 import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client';
 import { RuleEngineService } from './rule-engine.service';
+import { CreateAssignmentRuleDto, CreateWorkQueueDto, DetailedAssignmentRuleDto, GetWorkQueuesQueryDto, OverdueTaskDto, SLABreachTaskDto, SupervisorDashboardDto, TaskFilterDto, UpdateAssignmentRuleDto, UpdateWorkQueueDto, WorkQueueDetailResponseDto, WorkQueueListResponseDto, WorkQueueResponseDto, WorkQueueMetricsDto, TaskListResponseDto  } from './dto';
 
 @Injectable()
 export class WorkQueueService implements OnModuleInit {

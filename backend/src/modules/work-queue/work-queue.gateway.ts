@@ -10,7 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 
 interface SubscriptionRequest {
   workQueueId?: string;

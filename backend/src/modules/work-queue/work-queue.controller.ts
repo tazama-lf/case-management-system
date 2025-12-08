@@ -9,14 +9,11 @@ import {
   WorkQueueDetailResponseDto,
   WorkQueueListResponseDto,
   TaskFilterDto,
-  CreateAssignmentRuleDto,
-  UpdateAssignmentRuleDto,
-  DetailedAssignmentRuleDto,
 } from './dto';
-import { AssignUsersDto, RemoveUsersDto, UserAssignmentResponseDto, WorkQueueMemberDto } from './dto/assign-user.dto';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { AuthenticatedRequest } from '../auth/auth.types';
-import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from '../auth/auth.decorator';
+import { AssignUsersDto, RemoveUsersDto, UserAssignmentResponseDto, WorkQueueMemberDto } from '../user/dto/assign-user.dto';
+import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
+import { AuthenticatedRequest } from '../../utils/types/auth.types';
+import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from '../../decorators/auth.decorator';
 
 @ApiTags('Work Queue Management')
 @ApiBearerAuth('jwt')

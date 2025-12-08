@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { AsyncTaskService, type EmailPayload } from './async-task.service';
-
+import { EmailPayload } from 'src/utils/interfaces/AsyncTask.interface';
+import { AsyncTaskService } from './async-task.service';
 @Injectable()
 export class EmailWorkerService {
     private readonly logger = new Logger(EmailWorkerService.name);
@@ -16,7 +16,7 @@ export class EmailWorkerService {
         private readonly config: ConfigService,
     ) {
         this.fromEmail = this.config.get<string>('MAIL_FROM') || '"CMS Notifications" <no-reply@cms.local>';
-
+        
         const smtpHost = this.config.get<string>('SMTP_HOST');
         const smtpPort = this.config.get<string>('SMTP_PORT', '587');
         const smtpUser = this.config.get<string>('SMTP_USER');

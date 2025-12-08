@@ -3,7 +3,6 @@ import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RejectCaseCreationBodyDto {
   @ApiProperty({
-    type: 'string',
     description: 'Reason for rejecting the case creation (minimum 4 characters)',
     example: 'Missing critical information about the alert source and transaction details',
     minLength: 4,

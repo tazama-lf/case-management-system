@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TriageService } from '../../src/modules/triage/triage.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/modules/audit/auditLog.service';
-import { IngestAlertDto } from '../../src/dtos/IngestAlert.dto';
+import { IngestAlertDto } from '../../src/modules/alert/dto/IngestAlert.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Priority, AlertType, CaseStatus, CaseType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';

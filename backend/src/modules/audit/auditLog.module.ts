@@ -7,4 +7,4 @@ import { PrismaModule } from '../../../prisma/prisma.module';
   providers: [AuditLogService],
   exports: [AuditLogService],
 })
-export class AuditLogModule {}
+export class AuditLogModule { }

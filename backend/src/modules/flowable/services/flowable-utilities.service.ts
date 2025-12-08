@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { FlowableDefaults, CandidateGroups, FlowableApiEndpoints } from '../constants/flowable-api.constants';
+import { FlowableDefaults, CandidateGroups, FlowableApiEndpoints } from '../../../constants/flowable-api.constants';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
-import { FlowableClientFactory } from '../services/flowable-client.factory';
+import { FlowableClientFactory } from './flowable-client.factory';
 import { CreateTaskDto } from 'src/modules/task/dto/create-task.dto';
 import { TaskBridgeService } from 'src/modules/task-bridge/task-bridge.service';
 

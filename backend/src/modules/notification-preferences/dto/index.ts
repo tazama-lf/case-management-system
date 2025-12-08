@@ -1,5 +1,13 @@
-export * from './create-notification-preference.dto';
-export * from './update-notification-preference.dto';
-export * from './notification-preference-response.dto';
-export * from './notification-history.dto';
-export * from './notification-history-query.dto';
+import { CreateNotificationPreferenceDto } from './create-notification-preference.dto';
+import { NotificationPreferenceResponseDto } from './notification-preference-response.dto';
+import { UpdateNotificationPreferenceDto } from './update-notification-preference.dto';
+import { NotificationHistoryDto } from './notification-history.dto';
+import { NotificationHistoryQueryDto } from './notification-history-query.dto';
+
+export {
+    CreateNotificationPreferenceDto,
+    NotificationPreferenceResponseDto,
+    UpdateNotificationPreferenceDto,
+    NotificationHistoryDto,
+    NotificationHistoryQueryDto,
+};

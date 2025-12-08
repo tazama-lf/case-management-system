@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-class CaseDetails {
+export class CaseDetails {
   @ApiProperty({ type: 'string', format: 'uuid' })
   case_id: string;
 
@@ -10,8 +10,8 @@ class CaseDetails {
   @ApiProperty({ type: 'string', format: 'date-time' })
   updated_at: string;
 }
-
-class CompletedTask {
+  
+export class CompletedTask {
   @ApiProperty({ type: 'string', format: 'uuid' })
   task_id: string;
 
@@ -22,7 +22,7 @@ class CompletedTask {
   status: string;
 }
 
-class NewTask {
+export class NewTask {
   @ApiProperty({ type: 'string', format: 'uuid' })
   task_id: string;
 

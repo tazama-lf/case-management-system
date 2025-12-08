@@ -8,7 +8,6 @@ import { LoggerModule } from '../../logger/logger.module';
 import { TaskModule } from 'src/modules/task/task.module';
 import { CommentModule } from '../comment/comment.module';
 import { NotificationModule } from 'src/modules/notification/notification.module';
-import { AuthModule } from 'src/modules/auth/auth.module';
 import { RepositoryModule } from '../repository/repository.module';
 import { CaseClosureApprovalService } from './services/case-closure-approval.service';
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
@@ -18,7 +17,7 @@ import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
 
 @Module({
-	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, AuthModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule],
+	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule],
 	providers: [
 		CaseService,
 		CaseQueryService,
