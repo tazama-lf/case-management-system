@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { caseService } from '../../services/caseService';
 import triageService from '@/features/alerts/services/triageservice';
+import AlertsDetailModal from '@/features/alerts/components/AlertsDetailModal';
 
 interface LinkedItemsTabProps {
   caseId: string;
@@ -30,6 +31,18 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
   const [linkedCases, setLinkedCases] = useState<LinkedCase[]>([]);
   const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
   const [linkedTransactions, setLinkedTransactions] = useState<LinkedTransaction[]>([]);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+
+  const handleAlertClick = (alertId: string) => {
+    setSelectedAlertId(alertId);
+    setIsAlertModalOpen(true);
+  };
+
+  const handleCloseAlertModal = () => {
+    setIsAlertModalOpen(false);
+    setSelectedAlertId(null);
+  };
 
   useEffect(() => {
     const fetchLinkedItems = async () => {
@@ -165,14 +178,14 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         <div className="space-y-2">
           {linkedAlerts.length > 0 ? (
             linkedAlerts.map((item) => (
-              <a
+              <button
                 key={item.id}
-                href={`#/alerts/${item.id}`}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                onClick={() => handleAlertClick(item.id)}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm text-left"
               >
                 <LinkIcon className="h-4 w-4 flex-shrink-0" />
                 <span>{item.id} - {item.label}</span>
-              </a>
+              </button>
             ))
           ) : (
             <p className="text-sm text-gray-500">No related alerts found</p>
@@ -200,6 +213,13 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
           )}
         </div>
       </div>
+
+      {/* Alert Detail Modal */}
+      <AlertsDetailModal
+        alertId={selectedAlertId}
+        isOpen={isAlertModalOpen}
+        onClose={handleCloseAlertModal}
+      />
     </div>
   );
 };

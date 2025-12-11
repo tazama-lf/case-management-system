@@ -571,7 +571,7 @@ export class TaskController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
-    description: 'Retrieves all tasks associated with a given case ID. Any authenticated user can access this endpoint.',
+    description: 'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
   })
   @ApiParam({
     name: 'caseId',
@@ -616,7 +616,8 @@ export class TaskController {
   })
   async getTasksByCaseId(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.getTasksByCaseId(caseId, userId);
+    const userClaims = req.user.token.claims || [];
+    return this.taskService.getTasksByCaseId(caseId, userId, userClaims);
   }
 
   @Get('work-queues/:candidateGroup')

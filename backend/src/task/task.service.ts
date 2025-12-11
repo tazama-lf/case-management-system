@@ -139,7 +139,7 @@ export class TaskService {
         return { task, tenantId: caseData.tenant_id, caseData, workQueueId, matchingQueue, derivedFlowableGroupId };
       });
 
-      let updatedTask = result.task;
+      const updatedTask = result.task;
 
       this.eventEmitter.emit(
         'task.created',
@@ -564,7 +564,7 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: string, userId?: string) {
+  async getTasksByCaseId(caseId: string, userId?: string, userClaims: string[] = []) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
     try {
@@ -579,18 +579,33 @@ export class TaskService {
               case_type: true,
             },
           },
+          workQueue: {
+            include: {
+              roles: true,
+            },
+          },
         },
         orderBy: { created_at: 'desc' },
       });
 
-      // Enrich tasks with assigned user information
+      const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+
+      const filteredTasks = tasks.filter((task) => {
+        const isComplianceTask = task.candidateGroup?.toLowerCase() === 'compliance';
+
+        if (isComplianceOfficer) {
+          return isComplianceTask;
+        }
+
+        return !isComplianceTask;
+      });
+
       const enrichedTasks = await Promise.all(
-        tasks.map(async (task) => {
+        filteredTasks.map(async (task) => {
           let assignedUser: { user_id: string; username: string; role?: string } | null = null;
-          
+
           if (task.assigned_user_id) {
             try {
-              // Fetch user info from auth service
               const userInfo = await this.authHelperService.getUserDetailsFromAuthService(task.assigned_user_id);
               assignedUser = {
                 user_id: task.assigned_user_id,

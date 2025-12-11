@@ -6,11 +6,12 @@ import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
+import InvestigationSummaryTab from './view/InvestigationSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import CustomerProfileTab from './view/CustomerProfileTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer';
+type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
 interface TaskDetailsModalProps {
   open: boolean;
@@ -120,6 +121,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'customer', label: 'Customer Profile' },
                 { key: 'evidence', label: 'Evidence' },
                 { key: 'notes', label: 'Investigation Notes' },
+                { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -168,6 +170,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <InvestigationNotesTab
                   taskId={tasks[0]?.task_id}
                 />
+              </div>
+              <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
+                {row?.id && <InvestigationSummaryTab caseId={row.id} row={row} />}
               </div>
             </>
           )}

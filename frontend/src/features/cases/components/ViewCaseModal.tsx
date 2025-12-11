@@ -6,9 +6,8 @@ import CollaboratePanel from './view/CollaboratePanel';
 import TaskLogTab from './view/TaskLogTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 import CaseHistoryTab from './view/CaseHistoryTab';
-import InvestigationSummaryTab from './view/InvestigationSummaryTab';
 
-type ViewTabKey = 'details' | 'summary' | 'tasks' | 'history';
+type ViewTabKey = 'details' | 'tasks' | 'history';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -25,23 +24,13 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
-  const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     if (open) {
       setTab('details');
       setShowCollaborate(false);
-      setSummaryRefreshKey(0);
     }
   }, [open]);
-
-  // Refresh Investigation Summary when switching to that tab
-  const handleTabChange = (newTab: ViewTabKey) => {
-    if (newTab === 'summary' && tab !== 'summary') {
-      setSummaryRefreshKey(prev => prev + 1);
-    }
-    setTab(newTab);
-  };
 
   if (!open || !row) return null;
 
@@ -85,14 +74,13 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Case Details' },
-                { key: 'summary', label: 'Investigation Summary' },
                 { key: 'tasks', label: 'Task Log' },
                 { key: 'history', label: 'Case History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
                 key={t.key}
-                onClick={() => handleTabChange(t.key)}
+                onClick={() => setTab(t.key)}
                 className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
                   tab === t.key
                     ? 'border-b-2 border-indigo-600 text-indigo-700'
@@ -112,9 +100,6 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           ) : (
             <>
               {tab === 'details' && <CaseDetailsTab row={row} />}
-              {tab === 'summary' && (
-                <InvestigationSummaryTab key={summaryRefreshKey} caseId={row.id} row={row} />
-              )}
               {tab === 'tasks' && (
                 <TaskLogTab 
                   caseId={row.id} 
