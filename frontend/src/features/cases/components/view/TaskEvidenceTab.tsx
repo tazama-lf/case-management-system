@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpTrayIcon, ChartBarIcon} from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfileModal';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
@@ -98,6 +98,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
         setUploadedEvidence(grouped);
       } catch (error) {
+        console.error('Failed to load evidence:', error);
       } finally {
         setLoading(false);
       }
@@ -169,6 +170,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         onUploadComplete();
       }
     } catch (error) {
+      console.error('Failed to upload evidence:', error);
       throw error;
     } finally {
       setUploading({});
@@ -190,8 +192,10 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       try {
         input.click();
       } catch (error) {
+        console.error('Error clicking input:', error);
       }
     } else {
+      console.error('Input element not found for section:', sectionKey);
     }
   };
 

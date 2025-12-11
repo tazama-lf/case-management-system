@@ -1,122 +1,12 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { profileService, type TransactionProfile, type GenerateProfileRequest } from '../../services/profileService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-interface TransactionVolumeChartProps {
-  transactions: Array<Record<string, any>>;
-}
-
-const TransactionVolumeChart: React.FC<TransactionVolumeChartProps> = ({ transactions }) => {
-  const [isReady, setIsReady] = React.useState(false);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsReady(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const chartData = React.useMemo(() => {
-    const grouped = transactions.reduce((acc: Record<string, number>, tx: any) => {
-      const date = tx.date || tx.Date || '';
-      const amount = typeof tx.amount === 'number' ? tx.amount : parseFloat(tx.Amount || tx.amount || 0);
-
-      if (date) {
-        acc[date] = (acc[date] || 0) + amount;
-      }
-      return acc;
-    }, {});
-
-    const dailyData = Object.entries(grouped)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const total = dailyData.reduce((sum, d) => sum + d.amount, 0);
-    const peerAverage = dailyData.length > 0 ? total / dailyData.length : 0;
-
-    return dailyData.map(d => ({
-      date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      'Daily Amount': d.amount,
-      'Peer Average': peerAverage,
-      isAnomaly: d.amount > peerAverage * 2,
-    }));
-  }, [transactions]);
-
-  const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props;
-    if (payload.isAnomaly) {
-      return (
-        <circle cx={cx} cy={cy} r={4} fill="#ef4444" stroke="#fff" strokeWidth={1} />
-      );
-    }
-    return null;
-  };
-
-  if (!isReady) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading chart...</div>
-      </div>
-    );
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart
-        data={chartData}
-        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="date"
-          tick={{ fontSize: 11, fill: '#6b7280' }}
-          interval="preserveStartEnd"
-          tickFormatter={(value, index) => {
-            return index % 10 === 0 ? value : '';
-          }}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: '#6b7280' }}
-          tickFormatter={(value) => `${value.toFixed(0)}`}
-        />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '12px'
-          }}
-          formatter={(value: any) => `$${value.toLocaleString()}`}
-          labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
-        />
-        <Legend
-          wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-          iconType="line"
-        />
-        <Line
-          type="monotone"
-          dataKey="Daily Amount"
-          stroke="#3b82f6"
-          strokeWidth={2}
-          dot={<CustomDot />}
-        />
-        <Line
-          type="monotone"
-          dataKey="Peer Average"
-          stroke="#10b981"
-          strokeWidth={2}
-          strokeDasharray="5 5"
-          dot={false}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-};
 
 interface GenerateTransactionProfileModalProps {
   open: boolean;
   onClose: () => void;
   caseId?: string;
-  tenantId?: string;
   onSaveProfile?: (profileData: {
     generatedAt: string;
     totalVolume: string;
@@ -133,109 +23,137 @@ interface GenerateTransactionProfileModalProps {
   } | null;
 }
 
+const volumeTrendData = [
+  { date: 'Week 1', volume: 25000 },
+  { date: 'Week 2', volume: 28000 },
+  { date: 'Week 3', volume: 31000 },
+  { date: 'Week 4', volume: 27000 },
+  { date: 'Week 5', volume: 35000 },
+  { date: 'Week 6', volume: 38000 },
+  { date: 'Week 7', volume: 42000 },
+  { date: 'Week 8', volume: 39000 },
+  { date: 'Week 9', volume: 45000 },
+  { date: 'Week 10', volume: 48000 },
+  { date: 'Week 11', volume: 43000 },
+  { date: 'Week 12', volume: 51380 },
+];
 
-const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalProps> = ({ open, onClose,  tenantId: initialTenantId, onSaveProfile, initialProfile }) => {
+const transactionCountData = [
+  { day: 'Mon', count: 52 },
+  { day: 'Tue', count: 48 },
+  { day: 'Wed', count: 61 },
+  { day: 'Thu', count: 55 },
+  { day: 'Fri', count: 73 },
+  { day: 'Sat', count: 39 },
+  { day: 'Sun', count: 28 },
+];
+
+const anomaliesData = [
+  {
+    id: 1,
+    date: '2024-11-10',
+    type: 'Large Transfer',
+    amount: '$45,000',
+    description: 'Single transaction exceeds 90-day average by 600%',
+    risk: 'High',
+  },
+  {
+    id: 2,
+    date: '2024-11-08',
+    type: 'Rapid Succession',
+    amount: '$12,300',
+    description: '7 transactions within 15 minutes',
+    risk: 'Medium',
+  },
+  {
+    id: 3,
+    date: '2024-11-05',
+    type: 'Unusual Pattern',
+    amount: '$8,750',
+    description: 'Transaction time outside normal hours (3:42 AM)',
+    risk: 'Medium',
+  },
+  {
+    id: 4,
+    date: '2024-11-03',
+    type: 'Round Amount',
+    amount: '$10,000',
+    description: 'Exact round amount transaction',
+    risk: 'Low',
+  },
+  {
+    id: 5,
+    date: '2024-10-28',
+    type: 'New Recipient',
+    amount: '$15,200',
+    description: 'Large transfer to previously unknown recipient',
+    risk: 'Medium',
+  },
+];
+
+const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalProps> = ({ open, onClose, caseId, onSaveProfile, initialProfile }) => {
   const [saving, setSaving] = React.useState(false);
-  const [loading] = React.useState(false);
-  const [notes] = React.useState(initialProfile?.notes || '');
+  const [loading, setLoading] = React.useState(false);
+  const [notes, setNotes] = React.useState(initialProfile?.notes || '');
   const [profileData, setProfileData] = React.useState<TransactionProfile | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [step, setStep] = React.useState<'initial' | 'generated'>('initial');
-  const [showFilters, setShowFilters] = React.useState(false);
-  const tenantId = initialTenantId || 'T001';
-
-  const [filters, setFilters] = React.useState({
-    transactionTypes: {
-      wireTransfer: true,
-      transfer: true,
-      withdrawal: true,
-      payment: true,
-      deposit: true,
-    },
-    accounts: {
-      'A1001': true,
-      'A1002': true,
-      'A1003': true,
-      'A1004': true,
-    },
-    entityRoles: {
-      debtor: true,
-      creditor: true,
-    },
-  });
-
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const itemsPerPage = 10;
-
-  const allTransactions = profileData?.transactionTable || [];
-
-  const filteredTransactions = allTransactions.filter((tx: any) => {
-    const txType = (tx.Type || tx.type || '').toLowerCase();
-    const txRole = (tx.Role || tx.role || '').toLowerCase();
-    const txAccount = tx.Account || tx.account || '';
-
-    const typeMatch =
-      (filters.transactionTypes.wireTransfer && txType.includes('wire')) ||
-      (filters.transactionTypes.transfer && txType.includes('transfer') && !txType.includes('wire')) ||
-      (filters.transactionTypes.payment && txType.includes('payment')) ||
-      (filters.transactionTypes.deposit && txType.includes('deposit')) ||
-      (filters.transactionTypes.withdrawal && txType.includes('withdrawal'));
-
-    const accountMatch = Object.entries(filters.accounts).some(([account, enabled]) =>
-      enabled && txAccount === account
-    );
-
-    const roleMatch =
-      (filters.entityRoles.debtor && txRole.includes('debtor')) ||
-      (filters.entityRoles.creditor && txRole.includes('creditor'));
-
-    return typeMatch && accountMatch && roleMatch;
-  });
-
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayTransactions = filteredTransactions.slice(startIndex, endIndex);
-
-  const displayMetrics = profileData?.metrics || {};
 
   React.useEffect(() => {
-    if (open && !initialProfile) {
+    if (open && caseId && !initialProfile) {
+      setLoading(true);
+      setError(null);
       setStep('initial');
       setProfileData(null);
-      setError(null);
-      setCurrentPage(1);
+      profileService
+        .getProfile(caseId)
+        .then((data) => {
+          setProfileData(data);
+          setNotes(data.notes || '');
+          setStep('generated');
+        })
+        .catch(() => {
+          setProfileData(null);
+          setStep('initial');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
-  }, [open, initialProfile]);
-
-  React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [filteredTransactions.length, currentPage, totalPages]);
+  }, [open, caseId, initialProfile]);
 
   if (!open) return null;
 
+  const isViewMode = !!initialProfile || !!profileData;
+
   const handleGenerateProfile = async () => {
+    if (!caseId) {
+      setError('Case ID is required to generate profile');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
-      let filters: any = {};
-
-      if (filters && Object.keys(filters).length === 0) {
-        filters = undefined;
-      }
-
       const request: GenerateProfileRequest = {
-        tenantId: tenantId,
-        ...(filters ? { filters } : {}),
+        caseId,
         notes,
       };
 
       const response = await profileService.generateProfile(request);
       setProfileData(response);
       setStep('generated');
+
+      if (onSaveProfile) {
+        onSaveProfile({
+          generatedAt: new Date().toLocaleString(),
+          totalVolume: '$' + (response.metrics?.totalValue?.toLocaleString() || '0'),
+          anomalies: response.detectedAnomalies?.length || 0,
+          riskLevel: determineRiskLevel(response.detectedAnomalies || []),
+          notes: response.notes,
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate profile');
     } finally {
@@ -267,18 +185,23 @@ const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalP
     onClose();
   };
 
+  const displayData = profileData || {
+    metrics: {
+      totalVolume: 4,
+      totalValue: 14200,
+      avgTicketSize: 3550,
+      crossBorderCount: 2,
+    },
+    detectedAnomalies: anomaliesData,
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-6xl rounded-lg bg-white shadow-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Generate Transaction Profile
-            </h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              90-Day Behavioral Analysis
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {isViewMode ? 'Transaction Profile' : 'Generate Transaction Profile'}
+          </h2>
           <button
             onClick={onClose}
             className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
@@ -340,410 +263,200 @@ const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalP
                   <span className="text-sm text-gray-900">Investigator Notes</span>
                 </div>
               </div>
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-6 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateProfile}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 text-base font-semibold text-white shadow-sm hover:bg-blue-700"
+                  disabled={saving}
+                >
+                  {saving ? 'Generating...' : 'Generate Profile'}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
               <div className="grid grid-cols-4 gap-4">
-                {/* Total Volume Card */}
-                <div className="rounded-lg border border-gray-200 bg-blue-50 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Total Volume</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">
-                        ${(displayMetrics.totalVolume || displayMetrics.totalValue || 0).toLocaleString()}
-                      </p>
-                      <p className="mt-1 text-xs text-green-600">
-                        {displayMetrics.volumeChangePercent || '+8.5%'} vs prior
-                      </p>
-                    </div>
-                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h3 className="text-xs font-medium text-gray-500">Total Value</h3>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                    ${displayData.metrics?.totalValue?.toLocaleString() || '0'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">Transaction sum</p>
                 </div>
 
-                {/* Avg Daily Amount Card */}
-                <div className="rounded-lg border border-gray-200 bg-green-50 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Avg Daily Amount</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">
-                        ${(displayMetrics.avgDailyAmount || displayMetrics.avgTicketSize || 0).toLocaleString()}
-                      </p>
-                      <p className="mt-1 text-xs text-green-600">
-                        {displayMetrics.avgDailyChangePercent || '+18.9%'} vs prior avg
-                      </p>
-                    </div>
-                    <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                  </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h3 className="text-xs font-medium text-gray-500">Total Transactions</h3>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                    {displayData.metrics?.totalVolume?.toLocaleString() || '0'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">Transaction count</p>
                 </div>
 
-                {/* Total Transactions Card */}
-                <div className="rounded-lg border border-gray-200 bg-purple-50 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Total Transactions</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">
-                        {displayMetrics.totalTransactions || displayMetrics.transactionCount || 0}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {displayMetrics.avgTransactionRange || 'Avg 12-14'}
-                      </p>
-                    </div>
-                    <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
+                {/* Avg Ticket Size Card */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h3 className="text-xs font-medium text-gray-500">Avg Ticket Size</h3>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                    ${displayData.metrics?.avgTicketSize?.toLocaleString() || '0'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cross-border: {displayData.metrics?.crossBorderCount || 0}
+                  </p>
                 </div>
 
-                {/* High Value Txns Card */}
-                <div className="rounded-lg border border-gray-200 bg-orange-50 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Anomalies Detected</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">
-                        {profileData?.detectedAnomalies?.length || 0}
-                      </p>
-                      <p className="mt-1 text-xs text-orange-600">
-                        {profileData?.detectedAnomalies?.filter((a: any) => a.risk === 'High').length || 0} High Risk
-                      </p>
-                    </div>
-                    <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
+                {/* Anomalies Detected Card */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h3 className="text-xs font-medium text-gray-500">Anomalies Detected</h3>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                    {displayData.detectedAnomalies?.length || 0}
+                  </p>
+                  <p className="mt-1 text-xs text-orange-600">
+                    Risk Level: {determineRiskLevel(displayData.detectedAnomalies || [])}
+                  </p>
                 </div>
               </div>
 
-              {/* Transaction Volume Trend Chart */}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">
-                  Transaction Volume Trend (90 Days)
-                </h3>
-                <div style={{ width: '100%', height: 256 }}>
-                  {profileData?.transactionTable && profileData.transactionTable.length > 0 ? (
-                    <TransactionVolumeChart transactions={profileData.transactionTable} />
-                  ) : (
-                    <div className="h-full flex items-center justify-center bg-gray-50 rounded border border-gray-200">
-                      <p className="text-sm text-gray-500">No data available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            {/* Transaction List */}
+            {/* Transaction Volume Trend Chart */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Transaction List ({displayTransactions.length} of {allTransactions.length} transactions)
-                </h3>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                  </svg>
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
-                </button>
-              </div>
+              <h3 className="mb-4 text-sm font-semibold text-gray-900">Transaction Volume Trend (90 Days)</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={volumeTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="volume" stroke="#3b82f6" fill="#93c5fd" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
 
-              {/* Filters Section */}
-              {showFilters && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                  <div className="grid grid-cols-3 gap-6">
-                    {/* Transaction Type Filters */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2">Transaction Type</h4>
-                      <div className="space-y-2">
-                        {Object.entries(filters.transactionTypes).map(([key, value]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={value}
-                              onChange={(e) => setFilters({
-                                ...filters,
-                                transactionTypes: {
-                                  ...filters.transactionTypes,
-                                  [key]: e.target.checked
-                                }
-                              })}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="capitalize">{key === 'wireTransfer' ? 'Wire Transfer' : key}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
+            {/* Daily Transaction Count Chart */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily Transaction Count</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={transactionCountData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-                    {/* Account Filters */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2">Account</h4>
-                      <div className="space-y-2">
-                        {Object.entries(filters.accounts).map(([key, value]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={value}
-                              onChange={(e) => setFilters({
-                                ...filters,
-                                accounts: {
-                                  ...filters.accounts,
-                                  [key]: e.target.checked
-                                }
-                              })}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span>{key}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Entity Role Filters */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-700 mb-2">Entity Role</h4>
-                      <div className="space-y-2">
-                        {Object.entries(filters.entityRoles).map(([key, value]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={value}
-                              onChange={(e) => setFilters({
-                                ...filters,
-                                entityRoles: {
-                                  ...filters.entityRoles,
-                                  [key]: e.target.checked
-                                }
-                              })}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="capitalize">{key} ({key === 'debtor' ? 'Outgoing' : 'Incoming'})</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                      onClick={() => setShowFilters(false)}
-                    >
-                      Apply Filters
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Transaction Table */}
+            {/* Detected Anomalies Table */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-gray-900">Detected Anomalies &amp; Flagged Patterns</h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                         Date
                       </th>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                        Transaction ID
-                      </th>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                         Type
                       </th>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                        Account
-                      </th>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                        Counterparty
-                      </th>
-                      <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                        Role
-                      </th>
-                      <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                         Amount
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Description
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Risk
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {displayTransactions.map((transaction: any, index: number) => {
-                      const date = transaction.Date || transaction.date;
-                      const transactionId = transaction['Transaction ID'] || transaction.transactionId;
-                      const type = transaction.Type || transaction.type;
-                      const account = transaction.Account || transaction.account;
-                      const counterparty = transaction.Counterparty || transaction.counterparty;
-                      const role = transaction.Role || transaction.role;
-                      const amount = transaction.Amount || transaction.amount;
-
-                      return (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-900">
-                            {date}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-900">
-                            {transactionId}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-900">
-                            {type}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-900">
-                            {account}
-                          </td>
-                          <td className="px-3 py-3 text-xs text-gray-900">
-                            {counterparty}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs">
-                            <div className="flex items-center gap-1">
-                              <span className={role === 'Creditor' ? 'text-green-600' : 'text-gray-600'}>
-                                {role === 'Creditor' ? '↑' : '↓'}
-                              </span>
-                              <span className="text-gray-900">{role}</span>
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-right font-medium text-gray-900">
-                            {typeof amount === 'number'
-                              ? `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : amount
-                            }
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {(displayData.detectedAnomalies || []).map((anomaly, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{anomaly.date}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{anomaly.type}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                          ${typeof anomaly.amount === 'number' ? anomaly.amount.toLocaleString() : anomaly.amount}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{anomaly.description}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                              anomaly.risk === 'High'
+                                ? 'bg-red-100 text-red-800'
+                                : anomaly.risk === 'Medium'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {anomaly.risk}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              {filteredTransactions.length > 0 && (
-                <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
-                  <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(endIndex, filteredTransactions.length)}</span> of{' '}
-                    <span className="font-medium">{filteredTransactions.length}</span> transactions
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
-                        const showPage =
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= currentPage - 1 && page <= currentPage + 1);
-
-                        const showEllipsis =
-                          (page === 2 && currentPage > 3) ||
-                          (page === totalPages - 1 && currentPage < totalPages - 2);
-
-                        if (showEllipsis) {
-                          return <span key={page} className="px-2 text-gray-500">...</span>;
-                        }
-
-                        if (!showPage) {
-                          return null;
-                        }
-
-                        return (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`min-w-[2rem] px-3 py-1.5 text-sm font-medium rounded-md ${
-                              currentPage === page
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
+            {/* Investigator Analysis & Notes */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-gray-900">Investigator Analysis &amp; Notes</h3>
+              {isViewMode ? (
+                <div className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded p-3 border border-gray-100 min-h-[80px]">
+                  {notes ? notes : <span className="italic text-gray-400">No notes provided.</span>}
                 </div>
-              )}
-
-              <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                <div className="flex items-start gap-2">
-                  <svg className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-yellow-800 mb-2">Key Observations</h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
-                      <li>High frequency of large transactions suggests potential structuring activity</li>
-                      <li>Review transaction patterns and counterparties for correlation with suspicious activities</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Investigator Analysis & Notes</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Add your observations, analysis, and conclusions about the transaction patterns. This narrative will be included in the profile and visible to supervisors.
-                </p>
+              ) : (
                 <textarea
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your analysis of the transaction patterns, any correlations with other evidence, and recommendations for further investigation..."
+                  rows={6}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Add your analysis, observations, and notes about the transaction profile..."
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-              </div>
+              )}
             </div>
           </div>
           )}
         </div>
 
+        {/* Footer */}
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          {step === 'initial' ? (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerateProfile}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-                disabled={saving || !tenantId}
-              >
-                {saving ? 'Generating...' : 'Generate Profile'}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-                disabled={saving}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg>
-                {saving ? 'Saving...' : 'Save Profile to Case'}
-              </button>
-            </>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            disabled={saving}
+          >
+            {step === 'initial' ? 'Cancel' : 'Close'}
+          </button>
+          {step === 'initial' && (
+            <button
+              type="button"
+              onClick={handleGenerateProfile}
+              className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+              disabled={saving || !caseId}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              {saving ? 'Generating...' : 'Generate Profile'}
+            </button>
+          )}
+          {isViewMode && (
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Profile to Case'}
+            </button>
           )}
         </div>
       </div>

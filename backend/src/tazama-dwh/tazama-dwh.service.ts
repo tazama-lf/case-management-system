@@ -25,27 +25,30 @@ export class TazamaDwhService {
   }
 
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
+    // Default date range: last 90 days
     const now = new Date();
-    const dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    dateFrom.setHours(0, 0, 0, 0);
-
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const filter: any = {
       cre_dt_tm: { gte: dateFrom, lte: dateTo },
     };
+    // Apply creditorId or debtorId filter if present
     if (dto.filters?.creditorId) {
       filter.destination = dto.filters.creditorId;
     }
     if (dto.filters?.debtorId) {
       filter.source = dto.filters.debtorId;
     }
+    // Apply other filters if present
     if (dto.filters?.type) filter.tx_tp = dto.filters.type;
     if (dto.filters?.account) filter.OR = [{ source: dto.filters.account }, { destination: dto.filters.account }];
     if (dto.filters?.role) filter.role = dto.filters.role;
+    // Always ignore tenantId for filtering
     const transactions = await this.prismaDwh.transaction.findMany({
       where: filter,
     });
     const transactionTable = transactions.map(this.formatTransactionForTable);
+    // Peer baseline: all transactions in last 90 days
     const peerTransactions = await this.prismaDwh.transaction.findMany({
       where: {
         cre_dt_tm: { gte: dateFrom, lte: dateTo },
@@ -108,17 +111,15 @@ export class TazamaDwhService {
     tenantId: string,
     debtorId: string,
   ) {
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const where: any = {
+      tenant_id: tenantId,
+      source: debtorId,
+      cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    };
     try {
-      const now = new Date();
-      const dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-      const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      dateFrom.setHours(0, 0, 0, 0);
-
-      const where: any = {
-        tenant_id: tenantId,
-        source: debtorId,
-        cre_dt_tm: { gte: dateFrom, lte: dateTo },
-      };
       const transactions = await this.prismaDwh.transaction.findMany({
         where,
         orderBy: { cre_dt_tm: 'desc' },
@@ -127,9 +128,12 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for debtorId=${debtorId}`);
       }
       return transactions;
-    } catch (err) {
-      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw err;
+        }
+        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 
@@ -137,17 +141,15 @@ export class TazamaDwhService {
     tenantId: string,
     creditorId: string,
   ) {
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const where: any = {
+      tenant_id: tenantId,
+      destination: creditorId,
+      cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    };
     try {
-      const now = new Date();
-      const dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-      const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      dateFrom.setHours(0, 0, 0, 0);
-
-      const where: any = {
-        tenant_id: tenantId,
-        destination: creditorId,
-        cre_dt_tm: { gte: dateFrom, lte: dateTo },
-      };
       const transactions = await this.prismaDwh.transaction.findMany({
         where,
         orderBy: { cre_dt_tm: 'desc' },
@@ -156,9 +158,12 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for creditorId=${creditorId}`);
       }
       return transactions;
-    } catch (err) {
-      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw err;
+        }
+        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 }

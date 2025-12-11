@@ -27,7 +27,7 @@ describe('ProfileService', () => {
     });
 
     expect(apiClient.post).toHaveBeenCalledWith(
-      '/api/v1/dwh/profile/generate',
+      '/api/v1/profile/generate',
       {
         caseId: 'CASE-123',
         notes: 'Test notes',
@@ -50,7 +50,7 @@ describe('ProfileService', () => {
 
     const result = await profileService.getProfile('CASE-123');
 
-    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/dwh/profile/CASE-123');
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/profile/CASE-123');
     expect(result).toEqual(mockProfile);
   });
 

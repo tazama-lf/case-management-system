@@ -29,12 +29,12 @@ model transaction {
   amt           Decimal?
   ccy           String?
   msg_id        String?
-  cre_dt_tm     DateTime?
+  cre_dt_tm     String?
   tx_sts        String?
 
   source        String
   destination   String
-  role          String?
+  role          String? 
   geography     String? @dwh.VarChar
   channel       String? @dwh.VarChar
 

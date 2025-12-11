@@ -61,7 +61,7 @@ describe('GenerateTransactionProfileModal', () => {
     );
 
     // The heading can be either "Transaction Profile" or "Generate Transaction Profile"
-    expect(screen.getAllByText(/Transaction Profile/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Transaction Profile/i)).toBeInTheDocument();
   });
 
   it('closes modal when close button is clicked', async () => {
