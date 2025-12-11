@@ -24,7 +24,7 @@ export class AsyncTaskService {
         return task.id;
     }
 
-    async getTaskById(taskId: string) {
+    async getTaskById(taskId: number) {
         return this.asyncTaskRepository.getTaskById(taskId);
     }
 
@@ -32,24 +32,24 @@ export class AsyncTaskService {
         return this.asyncTaskRepository.getFailedTasks(limit);
     }
 
-    async retryFailedTask(taskId: string): Promise<void> {
+    async retryFailedTask(taskId: number): Promise<void> {
         await this.asyncTaskRepository.retryFailedTask(taskId);
         this.logger.log(`Task ${taskId} reset for retry`);
     }
 
-    async markAsProcessing(taskId: string): Promise<void> {
+    async markAsProcessing(taskId: number): Promise<void> {
         await this.asyncTaskRepository.markAsProcessing(taskId);
     }
 
-    async markAsCompleted(taskId: string): Promise<void> {
+    async markAsCompleted(taskId: number): Promise<void> {
         await this.asyncTaskRepository.markAsCompleted(taskId);
     }
 
-    async markAsFailed(taskId: string, retryCount: number): Promise<void> {
+    async markAsFailed(taskId: number, retryCount: number): Promise<void> {
         await this.asyncTaskRepository.markAsFailed(taskId, retryCount);
     }
 
-    async scheduleRetry(taskId: string, retryCount: number, nextRetryAt: Date): Promise<void> {
+    async scheduleRetry(taskId: number, retryCount: number, nextRetryAt: Date): Promise<void> {
         await this.asyncTaskRepository.scheduleRetry(taskId, retryCount, nextRetryAt);
     }
 

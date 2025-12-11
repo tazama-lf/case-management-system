@@ -19,7 +19,7 @@ export class AlertService {
         private readonly caseCreationService: CaseCreationApprovalService,
     ) { }
 
-    async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: string) {
+    async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
         this.loggerService.log(`Start - Alert Creation`, AlertService.name);
         const txtp = alert.transaction.TxTp;
         alert.message = alert.message ?? 'Suspicious activity detected';
@@ -45,7 +45,7 @@ export class AlertService {
         }
     }
 
-    async updateAlert(alertId: string, userId: string, updateData: UpdateAlertDTO): Promise<Alert> {
+    async updateAlert(alertId: number, userId: string, updateData: UpdateAlertDTO): Promise<Alert> {
         this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
         try {
             const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData);
@@ -68,7 +68,7 @@ export class AlertService {
 
     async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string) {
         if (data.report.status === 'NALT') {
-            const createdNALT = await this.createNewAlert(data, tenantId, source, '');
+            const createdNALT = await this.createNewAlert(data, tenantId, source, 0);
             return createdNALT;
         } else {
             const systemUUID = this.configService.get<string>('SYSTEM_UUID', userId);

@@ -8,7 +8,7 @@ datasource db {
 }
 
 model SystemConfiguration {
-  id           String   @id @default(uuid())
+  id           Int      @id @default(autoincrement())
   config_key   String   @unique
   config_value Json
   config_type  String
@@ -24,8 +24,8 @@ model SystemConfiguration {
 }
 
 model ConfigurationChangeLog {
-  id            String    @id @default(uuid())
-  config_id     String
+  id            Int       @id @default(autoincrement())
+  config_id     Int
   config_key    String
   old_value     Json?
   new_value     Json
@@ -44,7 +44,7 @@ model ConfigurationChangeLog {
 }
 
 model RolePermission {
-  id             String   @id @default(uuid())
+  id             Int      @id @default(autoincrement())
   role_name      String   @unique
   permissions    Json
   description    String?
@@ -59,7 +59,7 @@ model RolePermission {
 }
 
 model IntegrationConfig {
-  id             String    @id @default(uuid())
+  id             Int       @id @default(autoincrement())
   system_name    String    @unique
   endpoint_url   String?
   api_key        String?
@@ -78,7 +78,7 @@ model IntegrationConfig {
 }
 
 model AuditLog {
-  audit_log_id     String   @id @default(uuid()) @db.Uuid
+  audit_log_id     Int      @id @default(autoincrement())
   user_id          String   @db.Uuid
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
@@ -90,8 +90,8 @@ model AuditLog {
 }
 
 model Alert {
-  alert_id           String             @id @default(uuid()) @db.Uuid
-  tenant_id          String             
+  alert_id           Int                @id @default(autoincrement())
+  tenant_id          String
   priority           Priority?          @default(NEW)
   priority_score     Float?
   alert_type         AlertType?
@@ -104,22 +104,22 @@ model Alert {
   network_map        Json
   confidence_per     Int
   created_at         DateTime           @default(now()) @db.Timestamp(6)
-  case_id            String?            @unique @db.Uuid
+  case_id            Int?               @unique
   case               Case?              @relation(fields: [case_id], references: [case_id])
 
   @@map("alerts")
 }
 
 model Case {
-  case_id              String           @id @default(uuid()) @db.Uuid
+  case_id              Int              @id @default(autoincrement())
   case_creator_user_id String           @db.Uuid
   case_owner_user_id   String?          @db.Uuid
-  tenant_id            String           
+  tenant_id            String
   status               CaseStatus
   priority             Priority         @default(NEW)
   created_at           DateTime         @default(now()) @db.Timestamp(6)
   updated_at           DateTime         @updatedAt @db.Timestamp(6)
-  parent_id            String?          @db.Uuid
+  parent_id            Int?
   case_type            CaseType?
   case_creation_type   CaseCreationType
   alert                Alert?
@@ -130,15 +130,15 @@ model Case {
 }
 
 model Task {
-  task_id            String     @id @default(uuid()) @db.Uuid
-  case_id            String     @db.Uuid
+  task_id            Int        @id @default(autoincrement())
+  case_id            Int
   status             TaskStatus @default(STATUS_01_UNASSIGNED)
   assigned_user_id   String?    @db.Uuid
   name               String?
   description        String?
   task_type          TaskType?
   candidateGroup     String?    @db.VarChar(50)
-  work_queue_id      String?    @db.Uuid
+  work_queue_id      Int?
   sla_deadline       DateTime?  @db.Timestamp(6)
   sla_duration_hours Int?
   completed_at       DateTime?  @db.Timestamp(6)
@@ -158,13 +158,13 @@ model Task {
 }
 
 model Comment {
-  comment_id String   @id @default(uuid()) @db.Uuid
+  comment_id Int      @id @default(autoincrement())
   user_id    String   @db.Uuid
   note       String
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @updatedAt @db.Timestamp(6)
-  case_id    String?  @db.Uuid
-  task_id    String?  @db.Uuid
+  case_id    Int?
+  task_id    Int?
   case       Case?    @relation(fields: [case_id], references: [case_id])
   task       Task?    @relation(fields: [task_id], references: [task_id])
 
@@ -172,10 +172,10 @@ model Comment {
 }
 
 model Evidence {
-  evidence_id      String   @id @default(uuid()) @db.Uuid
-  task_id          String   @db.Uuid
+  evidence_id      Int      @id @default(autoincrement())
+  task_id          Int
   uploader_user_id String   @db.Uuid
-  tenant_id        String   
+  tenant_id        String
   name             String   @db.VarChar(30)
   description      String   @db.VarChar(100)
   type             String   @db.VarChar(30)
@@ -188,8 +188,8 @@ model Evidence {
 }
 
 model Report {
-  report_id        String     @id @default(uuid()) @db.Uuid
-  task_id          String     @db.Uuid
+  report_id        Int        @id @default(autoincrement())
+  task_id          Int
   name             String
   report_type      ReportType
   report_file_path String
@@ -293,10 +293,10 @@ enum AssignmentRuleType {
 }
 
 model WorkQueue {
-  work_queue_id      String                    @id @default(uuid()) @db.Uuid
+  work_queue_id      Int                       @id @default(autoincrement())
   name               String                    @db.VarChar(100)
   description        String?                   @db.Text
-  tenant_id          String                    
+  tenant_id          String
   is_active          Boolean                   @default(true)
   created_by_user_id String                    @db.Uuid
   created_at         DateTime                  @default(now()) @db.Timestamp(6)
@@ -314,8 +314,8 @@ model WorkQueue {
 }
 
 model WorkQueueRole {
-  work_queue_role_id String    @id @default(uuid()) @db.Uuid
-  work_queue_id      String    @db.Uuid
+  work_queue_role_id Int       @id @default(autoincrement())
+  work_queue_id      Int
   role               UserRole
   created_at         DateTime  @default(now()) @db.Timestamp(6)
   workQueue          WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
@@ -326,8 +326,8 @@ model WorkQueueRole {
 }
 
 model WorkQueueTaskType {
-  work_queue_task_type_id String    @id @default(uuid()) @db.Uuid
-  work_queue_id           String    @db.Uuid
+  work_queue_task_type_id Int       @id @default(autoincrement())
+  work_queue_id           Int
   task_type               TaskType
   created_at              DateTime  @default(now()) @db.Timestamp(6)
   workQueue               WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
@@ -338,8 +338,8 @@ model WorkQueueTaskType {
 }
 
 model WorkQueueAssignmentRule {
-  assignment_rule_id String             @id @default(uuid()) @db.Uuid
-  work_queue_id      String             @db.Uuid
+  assignment_rule_id Int                @id @default(autoincrement())
+  work_queue_id      Int
   rule_name          String             @default("Legacy Rule") @db.VarChar(255)
   rule_type          AssignmentRuleType
   rule_config        Json
@@ -365,8 +365,8 @@ model WorkQueueAssignmentRule {
 }
 
 model WorkQueueMember {
-  work_queue_member_id String         @id @default(uuid()) @db.Uuid
-  work_queue_id        String         @db.Uuid
+  work_queue_member_id Int            @id @default(autoincrement())
+  work_queue_id        Int
   user_id              String         @db.Uuid
   assignment_type      AssignmentType @default(MANUAL)
   assigned_by_user_id  String?        @db.Uuid
@@ -414,9 +414,9 @@ enum DeliveryStatus {
 }
 
 model UserNotificationPreference {
-  preference_id        String              @id @default(uuid()) @db.Uuid
+  preference_id        Int                 @id @default(autoincrement())
   user_id              String              @unique @db.Uuid
-  tenant_id            String              
+  tenant_id            String
   email_enabled        Boolean             @default(true)
   in_app_enabled       Boolean             @default(true)
   sms_enabled          Boolean             @default(false)
@@ -433,11 +433,11 @@ model UserNotificationPreference {
 }
 
 model NotificationLog {
-  notification_log_id String              @id @default(uuid()) @db.Uuid
+  notification_log_id Int                 @id @default(autoincrement())
   user_id             String              @db.Uuid
-  tenant_id           String              
-  task_id             String?             @db.Uuid
-  case_id             String?             @db.Uuid
+  tenant_id           String
+  task_id             Int?
+  case_id             Int?
   notification_type   NotificationType
   channel             NotificationChannel
   delivery_status     DeliveryStatus      @default(PENDING)
@@ -460,7 +460,7 @@ model NotificationLog {
 }
 
 model AsyncTask {
-  task_id        String          @id @default(uuid()) @db.Uuid
+  task_id        Int             @id @default(autoincrement())
   task_type      String          @db.VarChar(50) // 'EMAIL', 'SMS', 'WEBHOOK', etc.
   status         AsyncTaskStatus @default(PENDING)
   payload        Json            // Email details: {to, subject, html, metadata}

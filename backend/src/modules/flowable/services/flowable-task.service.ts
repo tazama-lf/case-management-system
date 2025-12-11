@@ -51,7 +51,7 @@ export class FlowableTaskService {
   /**
    * Get a task by ID
    */
-  async getTask(taskId: string) {
+  async getTask(taskId: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASK(taskId));
       return response.data;
@@ -118,7 +118,7 @@ export class FlowableTaskService {
   /**
    * Complete a task
    */
-  async completeTask(taskId: string, variables?: Record<string, string>) {
+  async completeTask(taskId: number, variables?: Record<string, string>) {
     try {
       const payload: Record<string, unknown> = {
         action: FlowableTaskActions.COMPLETE,
@@ -137,7 +137,7 @@ export class FlowableTaskService {
   /**
    * Claim a task for a user
    */
-  async claimTask(taskId: string, userId: string): Promise<void> {
+  async claimTask(taskId: number, userId: string): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.CLAIM,
@@ -156,7 +156,7 @@ export class FlowableTaskService {
   /**
    * Unclaim a task (remove assignee)
    */
-  async unclaimTask(taskId: string): Promise<void> {
+  async unclaimTask(taskId: number): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.CLAIM,
@@ -175,7 +175,7 @@ export class FlowableTaskService {
   /**
    * Delegate a task to another user
    */
-  async delegateTask(taskId: string, userId: string): Promise<void> {
+  async delegateTask(taskId: number, userId: string): Promise<void> {
     try {
       const payload = {
         action: FlowableTaskActions.DELEGATE,
@@ -194,7 +194,7 @@ export class FlowableTaskService {
   /**
    * Assign a task to a candidate group
    */
-  async assignTaskToCandidateGroup(taskId: string, group: string) {
+  async assignTaskToCandidateGroup(taskId: number, group: string) {
     try {
       const response = await this.flowableClient.post(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId), {
         type: 'candidate',
@@ -216,7 +216,7 @@ export class FlowableTaskService {
   /**
    * Get identity links for a task (assignees, candidates, etc.)
    */
-  async getTaskIdentityLinks(taskId: string) {
+  async getTaskIdentityLinks(taskId: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASK_IDENTITY_LINKS(taskId));
       return response.data;
@@ -246,7 +246,7 @@ export class FlowableTaskService {
           tasks.map(async (task: unknown) => {
             const taskObj = task as Record<string, unknown>;
             try {
-              const variables = await this.utilityService.getTaskVariables(taskObj.id as string);
+              const variables = await this.utilityService.getTaskVariables(taskObj.id as number);
               return { ...taskObj, variables };
             } catch (error) {
               this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
@@ -284,7 +284,7 @@ export class FlowableTaskService {
           tasks.map(async (task: unknown) => {
             const taskObj = task as Record<string, unknown>;
             try {
-              const variables = await this.utilityService.getTaskVariables(taskObj.id as string);
+              const variables = await this.utilityService.getTaskVariables(taskObj.id as number);
               return { ...taskObj, variables };
             } catch (error) {
               this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
@@ -341,7 +341,7 @@ export class FlowableTaskService {
   /**
    * Set multiple task variables
    */
-  async setTaskVariables(taskId: string, variables: Record<string, string>) {
+  async setTaskVariables(taskId: number, variables: Record<string, string>) {
     try {
       const formattedVariables = this.formatVariables(variables);
 
@@ -365,7 +365,7 @@ export class FlowableTaskService {
   /**
    * Update a single task variable
    */
-  async updateTaskVariable(taskId: string, variableName: string, value: string) {
+  async updateTaskVariable(taskId: number, variableName: string, value: string) {
     try {
       const response = await this.flowableClient.put(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName), {
         name: variableName,
@@ -384,7 +384,7 @@ export class FlowableTaskService {
   /**
    * Delete a task variable
    */
-  async deleteTaskVariable(taskId: string, variableName: string) {
+  async deleteTaskVariable(taskId: number, variableName: string) {
     try {
       await this.flowableClient.delete(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName));
       this.logger.log(`Variable ${variableName} deleted from task ${taskId}`, FlowableTaskService.name);

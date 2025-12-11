@@ -19,19 +19,19 @@ export class TaskLifecycleService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  private async getTaskOrThrow(taskId: string) {
+  private async getTaskOrThrow(taskId: number) {
     const task = await this.prisma.task.findUnique({ where: { task_id: taskId } });
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return task;
   }
 
-  private async getCaseOrThrow(caseId: string) {
+  private async getCaseOrThrow(caseId: number) {
     const c = await this.prisma.case.findUnique({ where: { case_id: caseId } });
     if (!c) throw new NotFoundException(`Case ${caseId} not found`);
     return c;
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
+  async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     // const previousAssignedUserId = existingTask.assigned_user_id;
@@ -119,7 +119,7 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async reassignTask(taskId: string, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
+  async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     const previousAssignedUserId = existingTask.assigned_user_id;
@@ -199,7 +199,7 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {
+  async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
     const existingTask = await this.getTaskOrThrow(taskId);
     if (existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already assigned.`);
     if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED)
@@ -262,7 +262,7 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async unassignTask(taskId: string, actorUserId: string, tenantId: string, reason: string) {
+  async unassignTask(taskId: number, actorUserId: string, tenantId: string, reason: string) {
     if (!reason || !reason.trim()) throw new BadRequestException('Reason for unassigning task is required');
     const existingTask = await this.getTaskOrThrow(taskId);
     if (existingTask.status === TaskStatus.STATUS_30_COMPLETED)
@@ -378,7 +378,7 @@ export class TaskLifecycleService {
   //   return updatedTask;
   // }
 
-  async completeTask(taskId: string, actorUserId: string) {
+  async completeTask(taskId: number, actorUserId: string) {
     const existingTask = await this.getTaskOrThrow(taskId);
     const updatedTask = await this.prisma.task.update({
       where: { task_id: taskId },
@@ -412,8 +412,8 @@ export class TaskLifecycleService {
   }
 
   async reassignTaskToWorkQueue(
-    taskId: string,
-    targetWorkQueueId: string,
+    taskId: number,
+    targetWorkQueueId: number,
     userId: string,
     tenantId: string,
     reason?: string,
@@ -507,11 +507,11 @@ export class TaskLifecycleService {
     });
   }
 
-  private emitAssignment(taskId: string, caseId: string, assignedUserId: string, previousAssignedUserId?: string) {
+  private emitAssignment(taskId: number, caseId: number, assignedUserId: string, previousAssignedUserId?: string) {
     this.eventEmitter.emit('task.assigned', new TaskAssignedEvent(taskId, caseId, assignedUserId, previousAssignedUserId || undefined));
   }
 
-  private emitCaseStatusChange(caseId: string, prev: CaseStatus, next: CaseStatus, reason: string) {
+  private emitCaseStatusChange(caseId: number, prev: CaseStatus, next: CaseStatus, reason: string) {
     this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, next, reason));
   }
 

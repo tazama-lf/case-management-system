@@ -228,7 +228,7 @@ export class CaseQueryService {
       const casesByType = typeStats.reduce((acc, item) => { if (item.case_type) acc[item.case_type] = item._count.case_id; return acc; }, {} as Record<string, number>);
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
-      let oldestUnassignedCase: { case_id: string; created_at: Date; days_old: number } | undefined;
+      let oldestUnassignedCase: { case_id: number; created_at: Date; days_old: number } | undefined;
       if (unassignedCount > 0) {
         const oldestUnassigned = await this.prismaService.case.findFirst({
           where: { case_owner_user_id: null },
@@ -279,7 +279,7 @@ export class CaseQueryService {
         }),
       ]);
       const now = new Date();
-      let oldestCase: { case_id: string; created_at: Date; days_old: number } | null = null;
+      let oldestCase: { case_id: number; created_at: Date; days_old: number } | null = null;
       let totalAge = 0;
       if (allUserCases.length > 0) {
         const oldest = allUserCases[0];
@@ -320,13 +320,13 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: string) {
+  async retrieveCase(caseId: number) {
     const retrievedCase = await this.caseRepository.findCaseById(caseId);
     if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
     return retrievedCase;
   }
 
-  async updateCase(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string) {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
     try {
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,

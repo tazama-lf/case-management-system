@@ -205,9 +205,9 @@ export class RuleEngineService {
     task: Task,
   ): {
     success: boolean;
-    ruleId: string;
+    ruleId: number;
     ruleName?: string;
-    workQueueId?: string;
+    workQueueId?: number;
     assignedUserId?: string;
     slaDurationHours?: number;
     updates?: Partial<Task>;

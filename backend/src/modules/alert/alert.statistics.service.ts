@@ -15,7 +15,7 @@ export class AlertStatisticsService {
         priority?: string;
         type?: string;
         alertType?: string;
-        search?: string;
+        search?: unknown;
         source?: string;
         reportStatus?: string;
         page: number;
@@ -77,21 +77,21 @@ export class AlertStatisticsService {
 
         if (search) {
             const searchConditions: Prisma.AlertWhereInput[] = [
-                { txtp: { contains: search, mode: 'insensitive' } },
-                { source: { contains: search, mode: 'insensitive' } },
+                { txtp: { contains: search as string, mode: 'insensitive' } },
+                { source: { contains: search as string, mode: 'insensitive' } },
             ];
 
-            if (search.length === 36) {
-                searchConditions.push({ alert_id: { equals: search } });
-                searchConditions.push({ case_id: { equals: search } });
+            if (!isNaN(Number(search))) {
+                searchConditions.push({ alert_id: { equals: Number(search) } });
+                searchConditions.push({ case_id: { equals: Number(search) } });
             }
 
-            if (Object.values(Priority).includes(search.toUpperCase() as Priority)) {
+            if (typeof search === 'string' && Object.values(Priority).includes(search.toUpperCase() as Priority)) {
                 searchConditions.push({
                     priority: { equals: search.toUpperCase() as Priority },
                 });
             }
-            if (Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
+            if (typeof search === 'string' && Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
                 searchConditions.push({
                     alert_type: { equals: search.toUpperCase() as AlertType },
                 });

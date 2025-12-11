@@ -25,7 +25,7 @@ export class FlowableProcessService {
   /**
    * Start a new process instance
    */
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey: number, tenantId?: string) {
     this.logger.log(`Start - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
     try {
       const formattedVariables = this.formatVariables(variables);
@@ -63,7 +63,7 @@ export class FlowableProcessService {
   /**
    * Get a process instance by business key
    */
-  async getProcessInstanceByBusinessKey(businessKey: string) {
+  async getProcessInstanceByBusinessKey(businessKey: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
         params: {

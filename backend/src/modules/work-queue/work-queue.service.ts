@@ -244,7 +244,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get work queue by ID with full details
    */
-  async getWorkQueueById(workQueueId: string, tenantId?: string): Promise<WorkQueueDetailResponseDto> {
+  async getWorkQueueById(workQueueId: number, tenantId?: string): Promise<WorkQueueDetailResponseDto> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -299,7 +299,7 @@ export class WorkQueueService implements OnModuleInit {
    * Update work queue
    */
   async updateWorkQueue(
-    workQueueId: string,
+    workQueueId: number,
     dto: UpdateWorkQueueDto,
     tenantId: string,
     userId: string,
@@ -421,7 +421,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Deactivate work queue (soft delete)
    */
-  async deactivateWorkQueue(workQueueId: string, tenantId: string, userId: string): Promise<void> {
+  async deactivateWorkQueue(workQueueId: number, tenantId: string, userId: string): Promise<void> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -453,7 +453,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Delete work queue (hard delete with safeguards)
    */
-  async deleteWorkQueue(workQueueId: string, tenantId: string, userId: string, reassignQueueId?: string): Promise<void> {
+  async deleteWorkQueue(workQueueId: number, tenantId: string, userId: string, reassignQueueId?: number): Promise<void> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -504,7 +504,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get work queue statistics
    */
-  async getWorkQueueStatistics(workQueueId: string, tenantId?: string) {
+  async getWorkQueueStatistics(workQueueId: number, tenantId?: string) {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -629,7 +629,7 @@ export class WorkQueueService implements OnModuleInit {
    * Assign users to a work queue
    */
   async assignUsers(
-    workQueueId: string,
+    workQueueId: number,
     userIds: string[],
     tenantId: string,
     assignedByUserId: string,
@@ -719,7 +719,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Remove users from a work queue
    */
-  async removeUsers(workQueueId: string, userIds: string[], tenantId: string, removedByUserId: string): Promise<number> {
+  async removeUsers(workQueueId: number, userIds: string[], tenantId: string, removedByUserId: string): Promise<number> {
     const workQueue = await this.getWorkQueueById(workQueueId, tenantId);
 
     let removedCount = 0;
@@ -776,7 +776,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get all members of a work queue
    */
-  async getWorkQueueMembers(workQueueId: string, tenantId: string): Promise<any[]> {
+  async getWorkQueueMembers(workQueueId: number, tenantId: string): Promise<any[]> {
     await this.getWorkQueueById(workQueueId, tenantId);
 
     const members = await this.prisma.workQueueMember.findMany({
@@ -947,7 +947,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get work queue metrics including task counts and SLA metrics
    */
-  async getWorkQueueMetrics(workQueueId: string, tenantId: string, userId?: string): Promise<WorkQueueMetricsDto> {
+  async getWorkQueueMetrics(workQueueId: number, tenantId: string, userId?: string): Promise<WorkQueueMetricsDto> {
     const startTime = Date.now();
 
     const workQueue = await this.prisma.workQueue.findFirst({
@@ -1095,7 +1095,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get filtered tasks for a work queue with pagination
    */
-  async getTasksByWorkQueue(workQueueId: string, filters: TaskFilterDto, tenantId: string): Promise<TaskListResponseDto> {
+  async getTasksByWorkQueue(workQueueId: number, filters: TaskFilterDto, tenantId: string): Promise<TaskListResponseDto> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1391,7 +1391,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get overdue tasks for a work queue
    */
-  async getOverdueTasks(workQueueId: string, tenantId: string): Promise<OverdueTaskDto[]> {
+  async getOverdueTasks(workQueueId: number, tenantId: string): Promise<OverdueTaskDto[]> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1459,7 +1459,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get SLA breach tasks for a work queue
    */
-  async getSLABreachTasks(workQueueId: string, tenantId: string): Promise<SLABreachTaskDto[]> {
+  async getSLABreachTasks(workQueueId: number, tenantId: string): Promise<SLABreachTaskDto[]> {
     const overdueTasks = await this.getOverdueTasks(workQueueId, tenantId);
 
     return overdueTasks.map((task) => {
@@ -1487,7 +1487,7 @@ export class WorkQueueService implements OnModuleInit {
    * Create a new assignment rule for a work queue
    */
   async createAssignmentRule(
-    workQueueId: string,
+    workQueueId: number,
     dto: CreateAssignmentRuleDto,
     userId: string,
     tenantId: string,
@@ -1569,7 +1569,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get all assignment rules for a work queue
    */
-  async getAssignmentRules(workQueueId: string, tenantId: string, activeOnly = false): Promise<DetailedAssignmentRuleDto[]> {
+  async getAssignmentRules(workQueueId: number, tenantId: string, activeOnly = false): Promise<DetailedAssignmentRuleDto[]> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1597,7 +1597,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Get a specific assignment rule by ID
    */
-  async getAssignmentRuleById(workQueueId: string, ruleId: string, tenantId: string): Promise<DetailedAssignmentRuleDto> {
+  async getAssignmentRuleById(workQueueId: number, ruleId: number, tenantId: string): Promise<DetailedAssignmentRuleDto> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1627,8 +1627,8 @@ export class WorkQueueService implements OnModuleInit {
    * Update an assignment rule
    */
   async updateAssignmentRule(
-    workQueueId: string,
-    ruleId: string,
+    workQueueId: number,
+    ruleId: number,
     dto: UpdateAssignmentRuleDto,
     userId: string,
     tenantId: string,
@@ -1731,7 +1731,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Delete an assignment rule
    */
-  async deleteAssignmentRule(workQueueId: string, ruleId: string, userId: string, tenantId: string): Promise<void> {
+  async deleteAssignmentRule(workQueueId: number, ruleId: number, userId: string, tenantId: string): Promise<void> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1771,7 +1771,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Activate an assignment rule
    */
-  async activateRule(workQueueId: string, ruleId: string, userId: string, tenantId: string): Promise<DetailedAssignmentRuleDto> {
+  async activateRule(workQueueId: number, ruleId: number, userId: string, tenantId: string): Promise<DetailedAssignmentRuleDto> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,
@@ -1817,7 +1817,7 @@ export class WorkQueueService implements OnModuleInit {
   /**
    * Deactivate an assignment rule
    */
-  async deactivateRule(workQueueId: string, ruleId: string, userId: string, tenantId: string): Promise<DetailedAssignmentRuleDto> {
+  async deactivateRule(workQueueId: number, ruleId: number, userId: string, tenantId: string): Promise<DetailedAssignmentRuleDto> {
     const workQueue = await this.prisma.workQueue.findFirst({
       where: {
         work_queue_id: workQueueId,

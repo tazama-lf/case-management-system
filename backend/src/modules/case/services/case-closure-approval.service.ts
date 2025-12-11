@@ -28,7 +28,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
   ) {}
 
-  async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
+  async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     try {
       const caseData = await this.caseRepository.findCaseWithPermissionCheck(caseId, userId);
       if (!caseData) {
@@ -320,7 +320,7 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string, supervisorId: string) {
+  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string) {
     try {
       if (!finalOutcome || !CASE_CLOSURE_OUTCOMES.includes(finalOutcome as any)) {
         throw new BadRequestException({
@@ -474,7 +474,7 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
+  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseClosureApprovalService.name);
 
@@ -582,7 +582,7 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
+  async returnCaseForReview(caseId: number, comments: string, supervisorId: string) {
     try {
       await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
 
@@ -643,7 +643,7 @@ export class CaseClosureApprovalService {
     }
   }
 
-  private async validateApprovalPreconditions(caseId: string, supervisorId?: string, options: { autoClaimApprovalTask?: boolean } = {}) {
+  private async validateApprovalPreconditions(caseId: number, supervisorId?: string, options: { autoClaimApprovalTask?: boolean } = {}) {
     const caseData = await this.caseRepository.findCaseForReview(caseId);
 
     if (!caseData) {

@@ -12,7 +12,7 @@ interface RuleConfig {
 }
 
 interface TaskForAssignment {
-  task_id: string;
+  task_id: number;
   task_type?: string;
   priority?: string;
   case_type?: string;
@@ -32,7 +32,7 @@ export class AssignmentRuleService {
    * Automatically assigns a task to the most appropriate work queue
    * based on active assignment rules
    */
-  async autoAssignTask(taskId: string, tenantId: string): Promise<{ workQueueId: string; ruleName: string } | null> {
+  async autoAssignTask(taskId: number, tenantId: string): Promise<{ workQueueId: number; ruleName: string } | null> {
     if (this.configService.get('AUTO_ASSIGNMENT_ENABLED') !== 'true') {
       this.logger.log('Auto-assignment is disabled by configuration.');
       return null;
@@ -215,7 +215,7 @@ export class AssignmentRuleService {
   /**
    * Finds the best work queue for a task based on all available rules
    */
-  async findBestQueue(taskId: string, tenantId: string): Promise<string | null> {
+  async findBestQueue(taskId: number, tenantId: string): Promise<number | null> {
     const result = await this.autoAssignTask(taskId, tenantId);
     return result?.workQueueId || null;
   }
@@ -223,7 +223,7 @@ export class AssignmentRuleService {
   /**
    * Re-evaluates and reassigns tasks if rules have changed
    */
-  async rebalanceTasks(workQueueId: string, tenantId: string): Promise<number> {
+  async rebalanceTasks(workQueueId: number, tenantId: string): Promise<number> {
     this.logger.log(`Rebalancing tasks for work queue ${workQueueId}`);
 
     const tasks = await this.prisma.task.findMany({
@@ -259,7 +259,7 @@ export class AssignmentRuleService {
    * Gets statistics about rule effectiveness
    */
   async getRuleStatistics(
-    workQueueId: string,
+    workQueueId: number,
     tenantId: string,
   ): Promise<{
     totalRules: number;

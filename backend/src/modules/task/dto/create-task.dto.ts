@@ -1,15 +1,14 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { TaskStatus } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTaskDto {
   @ApiProperty({
     description: 'UUID of the case to create the task for',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-    format: 'uuid',
+    example: 12345,
   })
-  @IsUUID()
-  caseId: string;
+  @IsNumber()
+  caseId: number;
 
   @ApiProperty({
     description: 'Initial status of the task',

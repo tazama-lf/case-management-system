@@ -181,11 +181,11 @@ export class FlowableUtilitiesService {
    * @param taskId Flowable task ID
    * @returns Record of variable names to values
    */
-  async getTaskVariables(taskId: string): Promise<Record<string, string>> {
+  async getTaskVariables(taskId: number): Promise<Record<string, unknown>> {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(taskId));
 
-      const variables: Record<string, string> = {};
+      const variables: Record<string, unknown> = {};
       if (Array.isArray(response.data)) {
         response.data.forEach((variable: unknown) => {
           const varObj = variable as Record<string, unknown>;

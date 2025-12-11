@@ -43,7 +43,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
   ) { }
 
-  async suspendCase(caseId: string, reason: string, tasksIds: string[], userId: string, tenantId: string, authDetails: any) {
+  async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
@@ -163,7 +163,7 @@ export class CaseService {
     }
   }
 
-  async resumeCase(caseId: string, reason: string, userId: string, tenantId: string, authDetails: any) {
+  async resumeCase(caseId: number, reason: string, userId: string, tenantId: string, authDetails: any) {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -270,7 +270,7 @@ export class CaseService {
     }
   }
 
-  async abandonCase(caseId: string, reason: string, userId: string, tenantId: string) {
+  async abandonCase(caseId: number, reason: string, userId: string, tenantId: string) {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
@@ -321,46 +321,46 @@ export class CaseService {
     return this.caseCreationApprovalService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
 
-  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
+  async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
     return this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
   }
 
-  async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
+  async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     return this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
-  async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
+  async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
     return this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
   }
 
-  async closeCase(caseId: string, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
+  async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     return this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
-  async approveCaseClosure(caseId: string, finalOutcome: string, comments: string, supervisorId: string) {
+  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string) {
     return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
   }
 
-  async rejectCaseClosure(caseId: string, comments: string, supervisorId: string) {
+  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string) {
     return this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
   }
 
-  async returnCaseForReview(caseId: string, comments: string, supervisorId: string) {
+  async returnCaseForReview(caseId: number, comments: string, supervisorId: string) {
     return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     return this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
   }
-  async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
+  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
     return this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
-  async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
+  async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
     return this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
   }
 
-  async completeCase(caseId: string, userId: string, tenantId: string) {
+  async completeCase(caseId: number, userId: string, tenantId: string) {
     return this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
@@ -376,11 +376,11 @@ export class CaseService {
     return this.caseQueryService.getUserWorkloadStats(userId);
   }
 
-  async updateCase(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string) {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
     return this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 
-  async completeCaseCreation(caseId: string, updateData: Partial<UpdateCaseDto>, userId: string, role: string) {
+  async completeCaseCreation(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
 
@@ -567,7 +567,7 @@ export class CaseService {
       throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
     }
   }
-  async retrieveCase(caseId: string) {
+  async retrieveCase(caseId: number) {
     return this.caseQueryService.retrieveCase(caseId);
   }
 }

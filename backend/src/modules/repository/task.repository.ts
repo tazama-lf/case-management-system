@@ -12,11 +12,11 @@ export class TaskRepository {
   }
 
   /* ------------------------------ Task Queries ------------------------------ */
-  async findTaskById(taskId: string) {
+  async findTaskById(taskId: number) {
     return this.prisma.task.findUnique({ where: { task_id: taskId } });
   }
 
-  async findTaskWithCase(taskId: string) {
+  async findTaskWithCase(taskId: number) {
     return this.prisma.task.findUnique({
       where: { task_id: taskId },
       include: {
@@ -61,7 +61,7 @@ export class TaskRepository {
     return createdTask;
   }
 
-  async updateTask(taskId: string, data: Prisma.TaskUpdateInput, tx?: Prisma.TransactionClient, includeCase = false) {
+  async updateTask(taskId: number, data: Prisma.TaskUpdateInput, tx?: Prisma.TransactionClient, includeCase = false) {
     if (tx)
       return tx.task.update({
         where: { task_id: taskId },
@@ -80,12 +80,12 @@ export class TaskRepository {
     });
   }
 
-  async findCaseStatus(caseId: string, tx?: Prisma.TransactionClient) {
+  async findCaseStatus(caseId: number, tx?: Prisma.TransactionClient) {
     const client: any = tx || this.prisma;
     return client.case.findUnique({ where: { case_id: caseId }, select: { status: true, case_owner_user_id: true } });
   }
 
-  async updateCase(caseId: string, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
+  async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
     const client: any = tx || this.prisma;
     return client.case.update({ where: { case_id: caseId }, data });
   }
@@ -111,7 +111,7 @@ export class TaskRepository {
     });
   }
 
-  async findWorkQueue(queueId: string, tx?: Prisma.TransactionClient) {
+  async findWorkQueue(queueId: number, tx?: Prisma.TransactionClient) {
     const client: any = tx || this.prisma;
     return client.workQueue.findUnique({
       where: { work_queue_id: queueId },
@@ -119,7 +119,7 @@ export class TaskRepository {
     });
   }
 
-  async findWorkQueueMember(workQueueId: string, userId: string, tx?: Prisma.TransactionClient) {
+  async findWorkQueueMember(workQueueId: number, userId: string, tx?: Prisma.TransactionClient) {
     const client: any = tx || this.prisma;
     return client.workQueueMember.findUnique({
       where: { work_queue_id_user_id: { work_queue_id: workQueueId, user_id: userId } },
@@ -127,7 +127,7 @@ export class TaskRepository {
   }
 
   /* -------------------------- Lifecycle Transactions ------------------------ */
-  async assignTaskAndUpdateCase(taskId: string, assignedUserId: string) {
+  async assignTaskAndUpdateCase(taskId: number, assignedUserId: string) {
     return this.transaction(async (tx) => {
       const task = await this.findTaskById(taskId);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
@@ -147,7 +147,7 @@ export class TaskRepository {
     });
   }
 
-  async unassignTaskAndUpdateCase(taskId: string) {
+  async unassignTaskAndUpdateCase(taskId: number) {
     return this.transaction(async (tx) => {
       const task = await this.findTaskById(taskId);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
@@ -165,19 +165,19 @@ export class TaskRepository {
     });
   }
 
-  async releaseTask(taskId: string) {
+  async releaseTask(taskId: number) {
     const task = await this.findTaskById(taskId);
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return this.updateTask(taskId, { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED }, undefined, true);
   }
 
-  async completeTask(taskId: string) {
+  async completeTask(taskId: number) {
     const task = await this.findTaskById(taskId);
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return this.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, undefined, true);
   }
 
-  async reassignToWorkQueue(taskId: string, targetWorkQueueId: string, tenantId: string, reason?: string, assignedUserId?: string) {
+  async reassignToWorkQueue(taskId: number, targetWorkQueueId: number, tenantId: string, reason?: string, assignedUserId?: string) {
     return this.transaction(async (tx) => {
       const task = await tx.task.findUnique({
         where: { task_id: taskId },

@@ -23,7 +23,7 @@ export class AlertRepository {
           alert_data,
           transaction,
           network_map,
-          case_id: alertData.caseId === '' ? null : alertData.caseId,
+          case_id: !alertData.caseId ? null : alertData.caseId,
         },
       });
 
@@ -37,7 +37,7 @@ export class AlertRepository {
     }
   }
 
-  async getAlertById(alertId: string) {
+  async getAlertById(alertId: number) {
     const alert = await this.prisma.alert.findUnique({
       where: { alert_id: alertId },
     });
@@ -49,7 +49,7 @@ export class AlertRepository {
     return alert;
   }
 
-  async getAlertByCaseId(caseId: string) {
+  async getAlertByCaseId(caseId: number) {
     const alert = await this.prisma.alert.findUnique({
       where: { case_id: caseId },
     });
@@ -61,7 +61,7 @@ export class AlertRepository {
     return alert.alert_id;
   }
 
-  async updateAlert(alertId: string, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
+  async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
       if (!tx) {
         tx = this.prisma;

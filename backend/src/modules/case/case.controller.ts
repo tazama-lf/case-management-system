@@ -67,7 +67,7 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to abandon cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async abandonCase(@Param('caseId') caseId: string, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
+  async abandonCase(@Param('caseId') caseId: number, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId } = extractUserData(req);
     return this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
   }
@@ -85,7 +85,7 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async reopenCase(@Param('caseId') caseId: string, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
+  async reopenCase(@Param('caseId') caseId: number, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, validateClaim } = extractUserData(req);
     return this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
   }
@@ -103,7 +103,7 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async suspendCase(@Param('caseId') caseId: string, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
+  async suspendCase(@Param('caseId') caseId: number, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, userInfo } = extractUserData(req);
     return this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo);
   }
@@ -121,7 +121,7 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async resumeCase(@Param('caseId') caseId: string, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
+  async resumeCase(@Param('caseId') caseId: number, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, userInfo } = extractUserData(req);
     return this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
   }
@@ -139,7 +139,7 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to complete cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   @ApiResponse({ status: 409, description: 'Conflict - Case is not in DRAFT state' })
-  async completeCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+  async completeCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId } = extractUserData(req);
     return this.caseService.completeCase(caseId, userId, tenantId);
   }
@@ -213,7 +213,7 @@ export class CaseController {
     description: 'Internal Server Error - System error during closure',
     type: CaseErrorResponseDto,
   })
-  async closeCase(@Param('caseId') caseId: string, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
+  async closeCase(@Param('caseId') caseId: number, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, validateClaim } = extractUserData(req);
     return this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
   }
@@ -306,7 +306,7 @@ export class CaseController {
   @ApiOperation({ summary: 'Retrieve case by ID', description: 'Get detailed information about a specific case' })
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async getCase(@Param('caseId') caseId: string) {
+  async getCase(@Param('caseId') caseId: number) {
     return this.caseService.retrieveCase(caseId);
   }
 
@@ -322,7 +322,7 @@ export class CaseController {
     description: 'Case updated successfully',
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async updateCase(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
+  async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId } = extractUserData(req);
     return this.caseService.updateCase(caseId, dto, userId);
   }
@@ -339,7 +339,7 @@ export class CaseController {
     description: 'Case creation completed successfully',
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async completeCaseCreation(@Param('caseId') caseId: string, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
+  async completeCaseCreation(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, role } = extractUserData(req);
     return this.caseService.completeCaseCreation(caseId, dto, userId, role);
   }
@@ -416,7 +416,7 @@ export class CaseController {
     type: CaseConflictResponseDto,
   })
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
-  async approveCaseClosure(@Param('caseId') caseId: string, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
+  async approveCaseClosure(@Param('caseId') caseId: number, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
     return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
   }
@@ -481,7 +481,7 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL state',
   })
-  async rejectCaseClosure(@Param('caseId') caseId: string, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseClosure(@Param('caseId') caseId: number, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
     return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
   }
@@ -521,7 +521,7 @@ export class CaseController {
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
     type: CaseCreationConflictResponseDto,
   })
-  async approveCaseCreation(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+  async approveCaseCreation(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
     return this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
@@ -562,7 +562,7 @@ export class CaseController {
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
     type: CaseCreationConflictResponseDto,
   })
-  async rejectCaseCreation(@Param('caseId') caseId: string, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseCreation(@Param('caseId') caseId: number, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
   }
@@ -611,7 +611,7 @@ export class CaseController {
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
     type: CaseReopeningConflictResponseDto,
   })
-  async approveCaseReopening(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+  async approveCaseReopening(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
@@ -676,7 +676,7 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
   })
-  async rejectCaseReopening(@Param('caseId') caseId: string, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseReopening(@Param('caseId') caseId: number, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
     if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
@@ -717,7 +717,7 @@ export class CaseController {
     status: 404,
     description: 'Not Found - Case or approval task not found',
   })
-  async returnCaseForReview(@Param('caseId') caseId: string, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
+  async returnCaseForReview(@Param('caseId') caseId: number, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
     return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
   }

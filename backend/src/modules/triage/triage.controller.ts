@@ -63,7 +63,7 @@ export class TriageController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async manualTriage(@Param('alertId') alertId: string, @Body() dto: ManualAlertUpdateDTO, @Req() req: AuthenticatedRequest) {
+  async manualTriage(@Param('alertId') alertId: number, @Body() dto: ManualAlertUpdateDTO, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -90,7 +90,7 @@ export class TriageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getAlertActionHistory(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
+  async getAlertActionHistory(@Param('alertId') alertId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -117,7 +117,7 @@ export class TriageController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getAlertDetails(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest) {
+  async getAlertDetails(@Param('alertId') alertId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

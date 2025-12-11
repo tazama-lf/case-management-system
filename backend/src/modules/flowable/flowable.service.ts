@@ -51,6 +51,16 @@ export class FlowableService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    // Check if Flowable is enabled
+    const flowableEnabled = this.configService.get<boolean>('FLOWABLE_ENABLED', true);
+    
+    if (!flowableEnabled) {
+      this.logger.log('Flowable is disabled via configuration, skipping initialization', FlowableService.name);
+      return;
+    }
+
+    this.logger.log(`Attempting to connect to Flowable at: ${this.flowableUrl}`, FlowableService.name);
+
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         this.logger.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
@@ -68,8 +78,19 @@ export class FlowableService implements OnModuleInit {
         );
 
         if (attempt === this.maxRetries) {
-          this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', error.stack, FlowableService.name);
-          throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${error.message}`);
+          // Make this a warning instead of error to allow application to start
+          const skipOnFailure = this.configService.get<boolean>('FLOWABLE_SKIP_ON_FAILURE', false);
+          
+          if (skipOnFailure) {
+            this.logger.warn(
+              `Flowable initialization failed after ${this.maxRetries} attempts. Continuing without Flowable as FLOWABLE_SKIP_ON_FAILURE=true`,
+              FlowableService.name
+            );
+            return;
+          } else {
+            this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', error.stack, FlowableService.name);
+            throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${error.message}`);
+          }
         }
 
         this.logger.log(`Retrying Flowable initialization in ${this.retryDelayMs / 1000} seconds...`, FlowableService.name);
@@ -138,7 +159,7 @@ export class FlowableService implements OnModuleInit {
     return this.identityService.getGroup(groupId);
   }
 
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: string, tenantId?: string) {
+  async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: number, tenantId?: string) {
     return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
   }
 
@@ -146,7 +167,7 @@ export class FlowableService implements OnModuleInit {
     return this.processService.getProcessInstance(processInstanceId);
   }
 
-  async getProcessInstanceByBusinessKey(businessKey: string) {
+  async getProcessInstanceByBusinessKey(businessKey: number) {
     return this.processService.getProcessInstanceByBusinessKey(businessKey);
   }
 
@@ -158,27 +179,27 @@ export class FlowableService implements OnModuleInit {
     return this.taskService.createTask(taskData);
   }
 
-  async completeTask(taskId: string, variables?: Record<string, string>) {
+  async completeTask(taskId: number, variables?: Record<string, string>) {
     return this.taskService.completeTask(taskId, variables);
   }
 
-  async claimTask(taskId: string, userId: string): Promise<void> {
+  async claimTask(taskId: number, userId: string): Promise<void> {
     return this.taskService.claimTask(taskId, userId);
   }
 
-  async unclaimTask(taskId: string): Promise<void> {
+  async unclaimTask(taskId: number): Promise<void> {
     return this.taskService.unclaimTask(taskId);
   }
 
-  async delegateTask(taskId: string, userId: string): Promise<void> {
+  async delegateTask(taskId: number, userId: string): Promise<void> {
     return this.taskService.delegateTask(taskId, userId);
   }
 
-  async assignTaskToCandidateGroup(taskId: string, group: string) {
+  async assignTaskToCandidateGroup(taskId: number, group: string) {
     return this.taskService.assignTaskToCandidateGroup(taskId, group);
   }
 
-  async getTaskIdentityLinks(taskId: string) {
+  async getTaskIdentityLinks(taskId: number) {
     return this.taskService.getTaskIdentityLinks(taskId);
   }
 
@@ -209,23 +230,23 @@ export class FlowableService implements OnModuleInit {
   //   return this.taskService.getTenantTasks(filters);
   // }
 
-  async getTask(taskId: string) {
+  async getTask(taskId: number) {
     return this.taskService.getTask(taskId);
   }
 
-  async setTaskVariables(taskId: string, variables: Record<string, string>) {
+  async setTaskVariables(taskId: number, variables: Record<string, string>) {
     return this.taskService.setTaskVariables(taskId, variables);
   }
 
-  async getTaskVariables(taskId: string): Promise<Record<string, string>> {
+  async getTaskVariables(taskId: number): Promise<Record<string, unknown>> {
     return this.utilitiesService.getTaskVariables(taskId);
   }
 
-  async updateTaskVariable(taskId: string, variableName: string, value: string) {
+  async updateTaskVariable(taskId: number, variableName: string, value: string) {
     return this.taskService.updateTaskVariable(taskId, variableName, value);
   }
 
-  async deleteTaskVariable(taskId: string, variableName: string) {
+  async deleteTaskVariable(taskId: number, variableName: string) {
     return this.taskService.deleteTaskVariable(taskId, variableName);
   }
 
@@ -255,12 +276,27 @@ export class FlowableService implements OnModuleInit {
 
   async healthCheck(): Promise<{ status: string; message?: string }> {
     try {
-      await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
+      this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
+      
+      const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
         params: { size: 1 },
       });
+      
+      this.logger.log('Flowable health check passed', FlowableService.name);
       return { status: 'healthy' };
     } catch (error) {
-      throw new Error(`Flowable connection failed: ${error.message}`);
+      let errorMessage = `Flowable connection failed: ${error.message}`;
+      
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = `Cannot connect to Flowable server at ${this.flowableUrl} - server may not be running`;
+      } else if (error.code === 'ECONNRESET') {
+        errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
+      } else if (error.response?.status === 401) {
+        errorMessage = `Authentication failed for Flowable server - check FLOWABLE_USERNAME and FLOWABLE_PASSWORD`;
+      }
+      
+      this.logger.error(`Health check failed: ${errorMessage}`, error.stack, FlowableService.name);
+      throw new Error(errorMessage);
     }
   }
 

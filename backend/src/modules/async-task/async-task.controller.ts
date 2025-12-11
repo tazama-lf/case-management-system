@@ -11,7 +11,7 @@ export class AsyncTaskController {
      * Get task by ID
      */
     @Get(':taskId')
-    async getTask(@Param('taskId') taskId: string) {
+    async getTask(@Param('taskId') taskId: number) {
         return this.asyncTaskService.getTaskById(taskId);
     }
 
@@ -27,7 +27,7 @@ export class AsyncTaskController {
      * Retry a failed task
      */
     @Post(':taskId/retry')
-    async retryTask(@Param('taskId') taskId: string) {
+    async retryTask(@Param('taskId') taskId: number) {
         await this.asyncTaskService.retryFailedTask(taskId);
         return {
             success: true,

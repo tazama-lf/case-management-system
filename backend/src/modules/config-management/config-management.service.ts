@@ -80,7 +80,7 @@ export class ConfigManagementService {
 
             const changeLog = await this.prisma.configurationChangeLog.create({
                 data: {
-                    config_id: existingRole?.id || crypto.randomUUID(),
+                    config_id: existingRole?.id as number,
                     config_key: `role:${roleName}`,
                     old_value: existingRole ? (existingRole.permissions as any) : undefined,
                     new_value: permissions as any,
@@ -244,7 +244,7 @@ export class ConfigManagementService {
 
             await this.prisma.configurationChangeLog.create({
                 data: {
-                    config_id: existingConfig?.id || crypto.randomUUID(),
+                    config_id: existingConfig?.id as number,
                     config_key: `integration:${systemName}`,
                     old_value: existingConfig
                         ? ({
@@ -491,7 +491,7 @@ export class ConfigManagementService {
         }
     }
 
-    async verify2FAAndApplyChange(changeId: string, twoFactorCode: string, userId: string) {
+    async verify2FAAndApplyChange(changeId: number, twoFactorCode: string, userId: string) {
         const changeLog = await this.prisma.configurationChangeLog.findUnique({
             where: { id: changeId },
         });
@@ -657,7 +657,7 @@ export class ConfigManagementService {
         // Log the change
         await this.prisma.configurationChangeLog.create({
             data: {
-                config_id: existingConfig?.id || crypto.randomUUID(),
+                config_id: existingConfig?.id as number,
                 config_key: `system:${configKey}`,
                 old_value: existingConfig?.config_value as any,
                 new_value: configValue,

@@ -120,11 +120,11 @@ export class RuleConditionDto {
 export class RuleActionDto {
   @ApiProperty({
     description: 'Target work queue ID to assign task to',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 1,
   })
   @IsUUID()
   @IsNotEmpty()
-  targetWorkQueueId: string;
+  targetWorkQueueId: number;
 
   @ApiPropertyOptional({
     description: 'Optional user ID to assign task to within the queue',

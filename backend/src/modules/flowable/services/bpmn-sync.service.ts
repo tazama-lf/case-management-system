@@ -28,7 +28,7 @@ export class BpmnSyncService {
    * @param caseId Case ID to sync tasks for
    * @param processInstanceId Flowable process instance ID
    */
-  async syncAllTasksForCase(caseId: string, processInstanceId: string): Promise<void> {
+  async syncAllTasksForCase(caseId: number, processInstanceId: string): Promise<void> {
     try {
       const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstanceId);
 
@@ -51,7 +51,7 @@ export class BpmnSyncService {
    * @param flowableTask Flowable task object
    * @param caseId Case ID the task belongs to
    */
-  async syncSingleTask(flowableTask: any, caseId: string): Promise<void> {
+  async syncSingleTask(flowableTask: any, caseId: number): Promise<void> {
     const taskId = flowableTask.id;
 
     try {
@@ -59,7 +59,7 @@ export class BpmnSyncService {
       const taskVariables = await this.utilitiesService.getTaskVariables(taskId);
 
       if (taskVariables.postgres_task_id) {
-        const dbTask = await this.taskRepository.findTaskById(taskVariables.postgres_task_id);
+        const dbTask = await this.taskRepository.findTaskById(taskVariables.postgres_task_id as number);
 
         if (dbTask) {
           this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, BpmnSyncService.name);

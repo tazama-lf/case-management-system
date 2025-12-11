@@ -5,9 +5,9 @@ import { IsString } from 'class-validator';
 export class NotificationPreferenceResponseDto {
     @ApiProperty({
         description: 'Unique identifier for the preference record',
-        example: '123e4567-e89b-12d3-a456-426614174000',
+        example: 123,
     })
-    preference_id: string;
+    preference_id: number;
 
     @ApiProperty({
         description: 'User ID who owns these preferences',

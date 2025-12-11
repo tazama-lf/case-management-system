@@ -1,6 +1,6 @@
 export class CaseCreatedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly tenantId: string,
     public readonly caseStatus: string,
     public readonly isTriageAlert: boolean = false,
@@ -11,7 +11,7 @@ export class CaseCreatedEvent {
 
 export class CaseStatusChangedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly newStatus: string,
     public readonly reason?: string,
   ) {}
@@ -19,29 +19,29 @@ export class CaseStatusChangedEvent {
 
 export class CaseAbandonedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly reason: string,
   ) {}
 }
 
 export class CaseSuspendedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly reason: string,
   ) {}
 }
 
 export class CaseResumedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly reason: string,
   ) {}
 }
 
 export class TaskCreatedEvent {
   constructor(
-    public readonly taskId: string,
-    public readonly caseId: string,
+    public readonly taskId: number,
+    public readonly caseId: number,
     public readonly taskName: string,
     public readonly description: string,
     public readonly candidateGroup: string,
@@ -52,8 +52,8 @@ export class TaskCreatedEvent {
 
 export class TaskStatusChangedEvent {
   constructor(
-    public readonly taskId: string,
-    public readonly caseId: string,
+    public readonly taskId: number,
+    public readonly caseId: number,
     public readonly taskName: string,
     public readonly newStatus: string,
     public readonly assignedUserId?: string | null,
@@ -63,8 +63,8 @@ export class TaskStatusChangedEvent {
 
 export class TaskAssignedEvent {
   constructor(
-    public readonly taskId: string,
-    public readonly caseId: string,
+    public readonly taskId: number,
+    public readonly caseId: number,
     public readonly assignedUserId: string,
     public readonly taskName?: string,
   ) {}
@@ -72,8 +72,8 @@ export class TaskAssignedEvent {
 
 export class TaskUnassignedEvent {
   constructor(
-    public readonly taskId: string,
-    public readonly caseId: string,
+    public readonly taskId: number,
+    public readonly caseId: number,
     public readonly assignedUser: null,
     public readonly taskName?: string,
   ) {}
@@ -81,7 +81,7 @@ export class TaskUnassignedEvent {
 
 export class TaskCompletedEvent {
   constructor(
-    public readonly caseId: string,
+    public readonly caseId: number,
     public readonly taskName: string,
     public readonly newStatus: string,
     public readonly completionVariables?: Record<string, any>,
@@ -92,7 +92,7 @@ export class BpmnTaskCreatedEvent {
   constructor(
     public readonly flowableTaskId: string,
     public readonly caseId: string,
-    public readonly taskName: string,
+    public readonly taskName: number,
     public readonly description: string,
     public readonly candidateGroup: string,
   ) {}
@@ -100,8 +100,8 @@ export class BpmnTaskCreatedEvent {
 
 export class TaskReassignedEvent {
   constructor(
-    public readonly taskId: string,
-    public readonly caseId: string,
+    public readonly taskId: number,
+    public readonly caseId: number,
     public readonly taskName: string,
     public readonly oldWorkQueueId: string | null,
     public readonly newWorkQueueId: string,

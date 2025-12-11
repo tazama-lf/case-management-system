@@ -2,12 +2,12 @@ import { BadRequestException } from '@nestjs/common';
 import { TaskStatus } from '@prisma/client';
 
 interface Task {
-  task_id: string;
+  task_id: number;
   name: string | null;
   status: TaskStatus;
   assigned_user_id: string | null;
   created_at?: Date;
-  case_id?: string;
+  case_id?: number;
 }
 
 export interface TaskValidationResult {
@@ -22,7 +22,7 @@ export interface ApprovalTaskValidationOptions {
 }
 
 export interface TaskFilterOptions {
-  excludeTaskIds?: string[];
+  excludeTaskIds?: number[];
   excludeStatuses?: TaskStatus[];
 }
 
@@ -94,7 +94,7 @@ export class TaskValidationUtil {
     };
   }
 
-  static validateOtherTasksCompleted(tasks: Task[], excludeTaskIds: string[] = []): TaskValidationResult {
+  static validateOtherTasksCompleted(tasks: Task[], excludeTaskIds: number[] = []): TaskValidationResult {
     const errors: string[] = [];
     const incompleteTasks = TaskValidationUtil.filterTasks(tasks, {
       excludeTaskIds,

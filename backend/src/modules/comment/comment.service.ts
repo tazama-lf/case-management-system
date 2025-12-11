@@ -45,7 +45,7 @@ export class CommentService {
         }
     }
 
-    async getComment(commentId: string, userId: string) {
+    async getComment(commentId: number, userId: string) {
         this.logger.log('Retrieving comment', CommentService.name);
         try {
             const comment = await this.commentRepository.getCommentsByCommentId(commentId);
@@ -78,7 +78,7 @@ export class CommentService {
         }
     }
 
-    async getCommentsByCaseOrTask(caseId?: string, taskId?: string, userId?: string) {
+    async getCommentsByCaseOrTask(caseId?: number, taskId?: number, userId?: string) {
         this.logger.log('Retrieving comments by case or task', CommentService.name);
         try {
             if (!caseId && !taskId) {
@@ -121,7 +121,7 @@ export class CommentService {
         }
     }
 
-    async getCommentsByCaseId(caseId: string, userId?: string) {
+    async getCommentsByCaseId(caseId: number, userId?: string) {
         this.logger.log('Retrieving comments by caseId: ', CommentService.name);
 
         try {
@@ -155,7 +155,7 @@ export class CommentService {
         }
     }
 
-    async getCommentsByTaskId(taskId: string, userId?: string) {
+    async getCommentsByTaskId(taskId: number, userId?: string) {
         this.logger.log('Retrieving comments by taskId: ', CommentService.name);
 
         try {

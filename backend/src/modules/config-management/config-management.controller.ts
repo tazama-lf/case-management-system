@@ -167,7 +167,7 @@ export class ConfigManagementController {
         format: 'uuid',
     })
     @ApiBody({ type: Verify2FADto })
-    async verify2FA(@Param('changeId') changeId: string, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest) {
+    async verify2FA(@Param('changeId') changeId: number, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest) {
         const userId = req.user.token.clientId;
 
         if (!userId) {

@@ -62,7 +62,7 @@ export class WorkQueueController {
     status: 404,
     description: 'Work queue not found',
   })
-  async getWorkQueueById(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<WorkQueueDetailResponseDto> {
+  async getWorkQueueById(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<WorkQueueDetailResponseDto> {
     const { tenantId } = req.user.token;
     return this.workQueueService.getWorkQueueById(workQueueId, tenantId);
   }
@@ -145,7 +145,7 @@ export class WorkQueueController {
     description: 'Work queue name already exists',
   })
   async updateWorkQueue(
-    @Param('workQueueId') workQueueId: string,
+    @Param('workQueueId') workQueueId: number,
     @Body() updateDto: UpdateWorkQueueDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<WorkQueueDetailResponseDto> {
@@ -172,7 +172,7 @@ export class WorkQueueController {
     status: 404,
     description: 'Work queue not found',
   })
-  async deactivateWorkQueue(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<void> {
+  async deactivateWorkQueue(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<void> {
     const { tenantId, clientId } = req.user.token;
     await this.workQueueService.deactivateWorkQueue(workQueueId, tenantId, clientId);
   }
@@ -201,8 +201,8 @@ export class WorkQueueController {
     description: 'Work queue not found',
   })
   async deleteWorkQueue(
-    @Param('workQueueId') workQueueId: string,
-    @Query('reassignQueueId') reassignQueueId: string | undefined,
+    @Param('workQueueId') workQueueId: number,
+    @Query('reassignQueueId') reassignQueueId: number | undefined,
     @Req() req: AuthenticatedRequest,
   ): Promise<void> {
     const { tenantId, clientId } = req.user.token;
@@ -227,7 +227,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 403, description: 'Forbidden - Requires CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async assignUsers(
-    @Param('workQueueId') workQueueId: string,
+    @Param('workQueueId') workQueueId: number,
     @Body() dto: AssignUsersDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<UserAssignmentResponseDto[]> {
@@ -258,7 +258,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 403, description: 'Forbidden - Requires CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async removeUsers(
-    @Param('workQueueId') workQueueId: string,
+    @Param('workQueueId') workQueueId: number,
     @Body() dto: RemoveUsersDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string; removedCount: number }> {
@@ -282,7 +282,7 @@ export class WorkQueueController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
-  async getWorkQueueMembers(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<WorkQueueMemberDto[]> {
+  async getWorkQueueMembers(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<WorkQueueMemberDto[]> {
     const { tenantId } = req.user.token;
     return this.workQueueService.getWorkQueueMembers(workQueueId, tenantId);
   }
@@ -400,7 +400,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token.' })
   @ApiResponse({ status: 403, description: 'Forbidden - User does not have CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
-  async getWorkQueueMetrics(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any> {
+  async getWorkQueueMetrics(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<any> {
     const { tenantId } = req.user.token;
     return this.workQueueService.getWorkQueueMetrics(workQueueId, tenantId);
   }
@@ -432,7 +432,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 403, description: 'Forbidden - User does not have CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
   async getTasksByWorkQueue(
-    @Param('workQueueId') workQueueId: string,
+    @Param('workQueueId') workQueueId: number,
     @Query() filters: TaskFilterDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<any> {
@@ -455,7 +455,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token.' })
   @ApiResponse({ status: 403, description: 'Forbidden - User does not have CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
-  async getOverdueTasks(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
+  async getOverdueTasks(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<any[]> {
     const { tenantId } = req.user.token;
     return this.workQueueService.getOverdueTasks(workQueueId, tenantId);
   }
@@ -475,7 +475,7 @@ export class WorkQueueController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token.' })
   @ApiResponse({ status: 403, description: 'Forbidden - User does not have CMS_SUPERVISOR role.' })
   @ApiResponse({ status: 404, description: 'Work queue not found.' })
-  async getSLABreachTasks(@Param('workQueueId') workQueueId: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
+  async getSLABreachTasks(@Param('workQueueId') workQueueId: number, @Req() req: AuthenticatedRequest): Promise<any[]> {
     const { tenantId } = req.user.token;
     return this.workQueueService.getSLABreachTasks(workQueueId, tenantId);
   }

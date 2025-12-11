@@ -46,7 +46,7 @@ export class AuditLogService {
         });
     }
 
-    async getActionHistoryForAlert(alertId: string) {
+    async getActionHistoryForAlert(alertId: number) {
         return await this.prisma.auditLog.findMany({
             where: {
                 operation: 'ALERT_UPDATED',

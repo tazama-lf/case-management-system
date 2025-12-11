@@ -91,7 +91,7 @@ export class TaskEventListener {
       // Check if task already synced
       for (const ft of flowableTasks) {
         const task = ft as Record<string, unknown>;
-        const taskVars = await this.utilityService.getTaskVariables(task.id as string);
+        const taskVars = await this.utilityService.getTaskVariables(task.id as number);
 
         this.logger.log(
           `[TaskEventListener] Checking Flowable task ${task.id} (${task.name}): postgres_task_id=${taskVars.postgres_task_id}`,
@@ -149,7 +149,7 @@ export class TaskEventListener {
 
       for (const t of flowableTasks) {
         const task = t as Record<string, unknown>;
-        const taskVars = await this.utilityService.getTaskVariables(task.id as string);
+        const taskVars = await this.utilityService.getTaskVariables(task.id as number);
 
         this.logger.log(
           `[TaskEventListener] Checking Flowable task ${task.id} (${task.name}) - postgres_task_id: ${taskVars.postgres_task_id}`,
@@ -193,7 +193,7 @@ export class TaskEventListener {
         );
 
         try {
-          await this.flowableTaskService.completeTask(taskObj.id as string, completionVars);
+          await this.flowableTaskService.completeTask(taskObj.id as number, completionVars);
 
           this.logger.log(
             `[TaskEventListener] Successfully completed Flowable task ${taskObj.id}. BPMN should now progress.`,
@@ -260,7 +260,7 @@ export class TaskEventListener {
           TaskEventListener.name,
         );
 
-        await this.flowableTaskService.updateTaskVariable(taskObj.id as string, 'task_status', event.newStatus);
+        await this.flowableTaskService.updateTaskVariable(taskObj.id as number, 'task_status', event.newStatus);
 
         this.logger.log(`[TaskEventListener] Updated Flowable task ${taskObj.id} status variable`, TaskEventListener.name);
       }
@@ -297,7 +297,7 @@ export class TaskEventListener {
         });
       }
 
-      await this.flowableTaskService.completeTask(task.id as string, completionVars);
+      await this.flowableTaskService.completeTask(task.id as number, completionVars);
 
       this.logger.log(`Completed Flowable task ${task.id}`, TaskEventListener.name);
     } catch (error) {
@@ -323,7 +323,7 @@ export class TaskEventListener {
         throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
       }
 
-      await this.flowableTaskService.claimTask(task.id as string, event.assignedUserId);
+      await this.flowableTaskService.claimTask(task.id as number, event.assignedUserId);
 
       // const variablesToUpdate = {
       //   assignedUserId: event.assignedUserId,
@@ -356,7 +356,7 @@ export class TaskEventListener {
       if (!task) {
         throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
       }
-      await this.flowableTaskService.unclaimTask(task.id as string);
+      await this.flowableTaskService.unclaimTask(task.id as number);
 
       this.logger.log(`End - Successfully unassigned Flowable task ${task.id}`, TaskEventListener.name);
     } catch (error) {

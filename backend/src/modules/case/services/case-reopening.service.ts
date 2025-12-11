@@ -30,7 +30,7 @@ export class CaseReopeningService {
     return determineOriginalClosedStatus(caseData);
   }
 
-  async reopenCase(caseId: string, reason: string, userId: string, tenantId: string, role: string) {
+  async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
 
@@ -173,7 +173,7 @@ export class CaseReopeningService {
     }
   }
 
-  async approveCaseReopening(caseId: string, supervisorId: string, tenantId: string) {
+  async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
 
@@ -358,7 +358,7 @@ export class CaseReopeningService {
     }
   }
 
-  async rejectCaseReopening(caseId: string, rejectionReason: string, supervisorId: string, tenantId: string) {
+  async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
 
@@ -489,7 +489,7 @@ export class CaseReopeningService {
     }
   }
 
-  private async validateReopeningPreconditions(caseId: string): Promise<any> {
+  private async validateReopeningPreconditions(caseId: number): Promise<any> {
     const caseData = await this.caseRepository.findCaseForReopening(caseId);
 
     if (!caseData) {

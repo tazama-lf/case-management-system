@@ -97,10 +97,9 @@ export class CreateAlertDTO {
   })
   confidencePer: number;
 
-  @IsString()
   @ApiProperty({
     description: 'Case ID associated with the alert',
-    example: 'a8b7cd6c-7caf-4c4e-9a09-23bffa944160',
+    example: 12345,
   })
-  caseId: string;
+  caseId: number;
 }

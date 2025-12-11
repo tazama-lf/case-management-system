@@ -45,7 +45,7 @@ export class TriageService {
         private readonly featureExtractionService: FeatureExtractionService,
     ) { }
 
-    async handleManualTriage(alertId: string, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
+    async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
         const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
         if (triageType !== 'MANUAL') {
             throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
@@ -153,7 +153,7 @@ export class TriageService {
         }
     }
 
-    async getAlertDetails(alertId: string, tenantId: string, userId: string) {
+    async getAlertDetails(alertId: number, tenantId: string, userId: string) {
         try {
             const alert = await this.alertRepository.getAlertById(alertId);
 
@@ -177,7 +177,7 @@ export class TriageService {
         }
     }
 
-    async getAlertActionHistory(alertId: string, tenantId: string, userId: string) {
+    async getAlertActionHistory(alertId: number, tenantId: string, userId: string) {
         const alert = await this.alertRepository.getAlertById(alertId);
 
         if (!alert) {
@@ -193,7 +193,7 @@ export class TriageService {
         };
     }
 
-    async handleAITriage(alertId: string, caseId: string, dto: IngestAlertDto, userId: string, tenantId: string) {
+    async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string) {
         this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
         try {
             const triageTask = await this.taskService.createTask(
@@ -411,10 +411,10 @@ export class TriageService {
     }
 
     private async autoCloseCase(
-        caseId: string,
+        caseId: number,
         status: CaseStatus,
         userId: string,
-        taskId: string,
+        taskId: number,
         caseType?: CaseType,
         customDescription?: string,
     ) {
@@ -464,9 +464,9 @@ export class TriageService {
     }
 
     async createInvestigationTask(
-        caseId: string,
+        caseId: number,
         userId: string,
-        taskId: string,
+        taskId: number,
         triageTaskDesc: string,
         priority: Priority,
         alertType?: AlertType,
@@ -516,8 +516,8 @@ export class TriageService {
     }
 
     private async updateAlertAndUpdateTriageTask(
-        alertId: string,
-        taskId: string,
+        alertId: number,
+        taskId: number,
         predictedAlertType: AlertType,
         predictedConfidence: number,
         predictedPriorityScore: number,

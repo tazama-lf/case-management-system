@@ -16,6 +16,6 @@ export class RequestSuspendCaseDto {
         example: 'User selects if there are more than one tasks to be suspended.',
     })
     @IsArray()
-    taskIds: string[];
+    taskIds: number[];
 
 }

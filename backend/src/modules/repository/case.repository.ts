@@ -8,7 +8,7 @@ export class CaseRepository {
         private readonly prismaService: PrismaService,
     ) { }
 
-    async findAlert(alertId: string) {
+    async findAlert(alertId: number) {
         return await this.prismaService.alert.findUnique({
             where: { alert_id: alertId },
         });
@@ -26,7 +26,7 @@ export class CaseRepository {
         });
     }
 
-    async findCaseWithApprovalTask(caseId: string) {
+    async findCaseWithApprovalTask(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
@@ -45,7 +45,7 @@ export class CaseRepository {
         });
     }
 
-    async findCaseBasicInfo(caseId: string) {
+    async findCaseBasicInfo(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             select: {
@@ -59,7 +59,7 @@ export class CaseRepository {
     }
 
     // Task finder methods - using specific implementations for type safety
-    async findTaskByNameAndStatus(caseId: string, taskName: string, status: TaskStatus) {
+    async findTaskByNameAndStatus(caseId: number, taskName: string, status: TaskStatus) {
         return await this.prismaService.task.findFirst({
             where: {
                 case_id: caseId,
@@ -69,7 +69,7 @@ export class CaseRepository {
         });
     }
 
-    async findTaskByNames(caseId: string, names: string[], status: TaskStatus) {
+    async findTaskByNames(caseId: number, names: string[], status: TaskStatus) {
         return await this.prismaService.task.findFirst({
             where: {
                 case_id: caseId,
@@ -80,7 +80,7 @@ export class CaseRepository {
     }
 
     // Reopening task queries - all return task with comments
-    async findReopeningTaskWithComments(caseId: string) {
+    async findReopeningTaskWithComments(caseId: number) {
         return await this.prismaService.task.findFirst({
             where: {
                 case_id: caseId,
@@ -96,15 +96,15 @@ export class CaseRepository {
         });
     }
 
-    async findUnassignedTaskForReopening(caseId: string) {
+    async findUnassignedTaskForReopening(caseId: number) {
         return this.findReopeningTaskWithComments(caseId);
     }
 
-    async findReopeningTaskForRejection(caseId: string) {
+    async findReopeningTaskForRejection(caseId: number) {
         return this.findReopeningTaskWithComments(caseId);
     }
 
-    async findCaseWithPermissionCheck(caseId: string, userId: string) {
+    async findCaseWithPermissionCheck(caseId: number, userId: string) {
         return await this.prismaService.case.findFirst({
             where: {
                 case_id: caseId,
@@ -121,11 +121,11 @@ export class CaseRepository {
         });
     }
 
-    async createComment(data: { user_id: string; task_id?: string; case_id?: string; note: string }) {
+    async createComment(data: { user_id: string; task_id?: number; case_id?: number; note: string }) {
         return await this.prismaService.comment.create({ data });
     }
 
-    async findCaseForReopening(caseId: string) {
+    async findCaseForReopening(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
@@ -138,7 +138,7 @@ export class CaseRepository {
         });
     }
 
-    async findCaseForClosureApproval(caseId: string) {
+    async findCaseForClosureApproval(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
@@ -152,7 +152,7 @@ export class CaseRepository {
         });
     }
 
-    async findCaseForReview(caseId: string) {
+    async findCaseForReview(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
@@ -165,7 +165,7 @@ export class CaseRepository {
     });
     }
 
-    async findCaseById(caseId: string): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
+    async findCaseById(caseId: number): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
         const caseData = await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: { alert: true, tasks: true },
@@ -178,7 +178,7 @@ export class CaseRepository {
         return caseData;
     }
 
-    async updateCase(caseId: string, data: Prisma.CaseUpdateInput) {
+    async updateCase(caseId: number, data: Prisma.CaseUpdateInput) {
         return await this.prismaService.case.update({
             where: { case_id: caseId },
             data,
@@ -292,7 +292,7 @@ export class CaseRepository {
         return this.groupCasesBy('case_type', whereClause);
     }
 
-    async findCaseWithCompletedInvestigation(caseId: string) {
+    async findCaseWithCompletedInvestigation(caseId: number) {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
@@ -393,11 +393,11 @@ export class CaseRepository {
     }
 
     async updateCaseStatusAndCompleteTask(
-        caseId: string,
+        caseId: number,
         status: CaseStatus,
-        investigationTaskId: string,
+        investigationTaskId: number,
         userId: string,
-        comment?: { note: string; taskId?: string },
+        comment?: { note: string; taskId?: number },
     ) {
         return await this.prismaService.$transaction(async (tx) => {
             const updatedCase = await tx.case.update({
@@ -426,8 +426,8 @@ export class CaseRepository {
     }
 
     async approveClosureTask(
-        caseId: string,
-        taskId: string,
+        caseId: number,
+        taskId: number,
         status: CaseStatus,
         supervisorId: string,
         comments?: string,
@@ -462,7 +462,7 @@ export class CaseRepository {
     }
 
     async rejectClosureTask(
-        caseId: string,
+        caseId: number,
         supervisorId: string,
         originalInvestigatorId: string,
         comments: string,

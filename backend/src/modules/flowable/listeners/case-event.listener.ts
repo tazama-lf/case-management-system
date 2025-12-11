@@ -29,6 +29,22 @@ export class CaseEventListener {
           caseStatus: event.caseStatus,
           isTriageAlert: String(event.isTriageAlert),
           creatorRole: event.creatorRole,
+          // Required BPMN variables with safe defaults
+          caseType: (event as any).caseType || 'FRAUD',
+          casePriority: (event as any).priority || 'NEW', 
+          autoCloseEligible: String((event as any).autoCloseEligible || false),
+          readyForAssignment: 'true',
+          // Investigation action variables with defaults
+          investigationAction: 'pending',
+          fraudInvestigationAction: 'pending',
+          amlInvestigationAction: 'pending',
+          // Additional required variables
+          investigationNotes: '',
+          fraudInvestigationNotes: '',
+          amlInvestigationNotes: '',
+          recommendedOutcome: 'PENDING_INVESTIGATION',
+          fraudRecommendedOutcome: 'PENDING_INVESTIGATION',
+          amlRecommendedOutcome: 'PENDING_INVESTIGATION'
         },
         event.caseId,
         event.tenantId,

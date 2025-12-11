@@ -146,9 +146,8 @@ export class Verify2FADto {
 export class ConfigurationChangeLogDto {
     @ApiProperty({
         description: 'Change log ID',
-        format: 'uuid',
     })
-    id: string;
+    id: number;
 
     @ApiProperty({
         description: 'Configuration key that was changed',

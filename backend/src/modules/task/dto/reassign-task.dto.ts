@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ReassignTaskDto {
@@ -13,12 +13,11 @@ export class ReassignTaskDto {
 
   @ApiPropertyOptional({
     description: 'UUID of the target work queue for reassignment',
-    example: '1e8d70a0-8e5c-42c5-bee2-60447fb7030g',
-    format: 'uuid',
+    example: 42,
   })
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  targetWorkQueueId?: string;
+  targetWorkQueueId?: number;
 
   @ApiPropertyOptional({
     description: 'Optional reason for task reassignment',

@@ -41,7 +41,7 @@ export class AsyncTaskRepository {
     /**
      * Get task by ID
      */
-    async getTaskById(taskId: string) {
+    async getTaskById(taskId: number) {
         return this.prisma.asyncTask.findUnique({
             where: { task_id: taskId },
         });
@@ -61,7 +61,7 @@ export class AsyncTaskRepository {
     /**
      * Retry a failed task
      */
-    async retryFailedTask(taskId: string): Promise<void> {
+    async retryFailedTask(taskId: number): Promise<void> {
         await this.prisma.asyncTask.update({
             where: { task_id: taskId },
             data: {
@@ -76,7 +76,7 @@ export class AsyncTaskRepository {
     /**
      * Mark task as processing
      */
-    async markAsProcessing(taskId: string): Promise<void> {
+    async markAsProcessing(taskId: number): Promise<void> {
         await this.prisma.asyncTask.update({
             where: { task_id: taskId },
             data: {
@@ -89,7 +89,7 @@ export class AsyncTaskRepository {
     /**
      * Mark task as completed
      */
-    async markAsCompleted(taskId: string): Promise<void> {
+    async markAsCompleted(taskId: number): Promise<void> {
         await this.prisma.asyncTask.update({
             where: { task_id: taskId },
             data: {
@@ -102,7 +102,7 @@ export class AsyncTaskRepository {
     /**
      * Mark task as failed
      */
-    async markAsFailed(taskId: string, retryCount: number): Promise<void> {
+    async markAsFailed(taskId: number, retryCount: number): Promise<void> {
         await this.prisma.asyncTask.update({
             where: { task_id: taskId },
             data: {
@@ -116,7 +116,7 @@ export class AsyncTaskRepository {
     /**
      * Schedule retry for a task
      */
-    async scheduleRetry(taskId: string, retryCount: number, nextRetryAt: Date): Promise<void> {
+    async scheduleRetry(taskId: number, retryCount: number, nextRetryAt: Date): Promise<void> {
         await this.prisma.asyncTask.update({
             where: { task_id: taskId },
             data: {

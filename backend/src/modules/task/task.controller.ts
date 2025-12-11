@@ -196,7 +196,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async reassignTask(@Param('taskId') taskId: string, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async reassignTask(@Param('taskId') taskId: number, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
@@ -283,7 +283,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async unassignTask(@Param('taskId') taskId: string, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async unassignTask(@Param('taskId') taskId: number, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
@@ -365,7 +365,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task or investigator does not exist',
   })
-  async assignTaskToInvestigator(@Param('taskId') taskId: string, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
+  async assignTaskToInvestigator(@Param('taskId') taskId: number, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
@@ -428,7 +428,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async selfAssignTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest) {
+  async selfAssignTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
@@ -512,7 +512,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
+  async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.updateTask(taskId, dto, userId);
   }
@@ -615,7 +615,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Case does not exist',
   })
-  async getTasksByCaseId(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+  async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.taskService.getTasksByCaseId(caseId, userId);
   }
@@ -843,7 +843,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async getTaskById(@Param('taskId') taskId: string) {
+  async getTaskById(@Param('taskId') taskId: number) {
     return this.taskService.getTaskById(taskId);
   }
 
@@ -885,7 +885,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task or target work queue not found.',
   })
-  async reassignTaskToWorkQueue(@Param('taskId') taskId: string, @Body() dto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async reassignTaskToWorkQueue(@Param('taskId') taskId: number, @Body() dto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 

@@ -19,28 +19,28 @@ export class CommentController {
 
   @Get(':commentId')
   @RequireInvestigatorOrSupervisorRole()
-  async getComment(@Param('commentId') commentId: string, @Req() req: AuthenticatedRequest) {
+  async getComment(@Param('commentId') commentId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.commentService.getComment(commentId, userId);
   }
 
   @Get()
   @RequireInvestigatorOrSupervisorRole()
-  async getCommentsByCaseOrTask(@Req() req: AuthenticatedRequest, @Query('caseId') caseId?: string, @Query('taskId') taskId?: string) {
+  async getCommentsByCaseOrTask(@Req() req: AuthenticatedRequest, @Query('caseId') caseId?: number, @Query('taskId') taskId?: number) {
     const userId = req?.user.token.clientId;
     return this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
   }
 
  @Get('/case/:caseId/comment')
  @RequireInvestigatorOrSupervisorRole()
-  async getCommentsByCaseId(@Param('caseId') caseId: string , @Req() req: AuthenticatedRequest) {
+  async getCommentsByCaseId(@Param('caseId') caseId: number , @Req() req: AuthenticatedRequest) {
     return this.commentService.getCommentsByCaseId(caseId);
   }
 
   @Get('/task/:taskId/comment')
   @RequireInvestigatorOrSupervisorRole()
-  async getCommentsByTaskId(@Param('taskId') caseId: string , @Req() req: AuthenticatedRequest) {
-    return this.commentService.getCommentsByTaskId(caseId);
+  async getCommentsByTaskId(@Param('taskId') taskId: number , @Req() req: AuthenticatedRequest) {
+    return this.commentService.getCommentsByTaskId(taskId);
   }
 
 }

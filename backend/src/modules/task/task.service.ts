@@ -44,11 +44,11 @@ export class TaskService {
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     return this.taskBridgeService.createTask(taskDTO, userId);
   }
-  async reassignTask(taskId: string, userId: string, tenantId: string, assignedUserId: string, notes: string) {
+  async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
     return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
 
-  async updateTask(taskId: string, updateData: Partial<UpdateTaskDto>, userId: string) {
+  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string) {
     this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
 
     try {
@@ -218,7 +218,7 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: string, userId?: string) {
+  async getTasksByCaseId(caseId: number, userId?: string) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
     try {
@@ -252,11 +252,11 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
+  async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId, note);
   }
 
-  async selfAssignTask(taskId: string, investigatorUserId: string, tenantId: string) {
+  async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
     return this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
   }
 
@@ -270,7 +270,7 @@ export class TaskService {
     }
   }
 
-  async getTaskById(taskId: string) {
+  async getTaskById(taskId: number) {
     try {
       return await this.taskRepository.findTaskWithCase(taskId);
     } catch (error) {
@@ -381,7 +381,7 @@ export class TaskService {
     }
   }
 
-  async claimTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+  async claimTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
     try {
@@ -419,7 +419,7 @@ export class TaskService {
     }
   }
 
-  async unassignTask(taskId: string, userId: string, tenantId: string, reason?: string) {
+  async unassignTask(taskId: number, userId: string, tenantId: string, reason?: string) {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
@@ -427,7 +427,7 @@ export class TaskService {
   //   return this.lifecycle.releaseTask(taskId, userId);
   // }
 
-  async completeTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
+  async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
     return this.lifecycle.completeTask(taskId, userId);
   }
 
@@ -449,8 +449,8 @@ export class TaskService {
   }
 
   async reassignTaskToWorkQueue(
-    taskId: string,
-    targetWorkQueueId: string,
+    taskId: number,
+    targetWorkQueueId: number,
     userId: string,
     tenantId: string,
     reason?: string,

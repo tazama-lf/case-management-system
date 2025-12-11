@@ -172,9 +172,9 @@ export class SLAMetricsDto {
 export class WorkQueueMetricsDto {
   @ApiProperty({
     description: 'Work queue ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 1,
   })
-  workQueueId: string;
+  workQueueId: number;
 
   @ApiProperty({
     description: 'Work queue name',
@@ -225,15 +225,15 @@ export class WorkQueueMetricsDto {
 export class TaskSummaryDto {
   @ApiProperty({
     description: 'Task ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 1,
   })
-  taskId: string;
+  taskId: number;
 
   @ApiProperty({
     description: 'Case ID associated with the task',
-    example: '123e4567-e89b-12d3-a456-426614174001',
+    example: 1,
   })
-  caseId: string;
+  caseId: number;
 
   @ApiProperty({
     description: 'Task name',
@@ -278,10 +278,10 @@ export class TaskSummaryDto {
 
   @ApiProperty({
     description: 'Work queue ID',
-    example: '123e4567-e89b-12d3-a456-426614174003',
+    example: 1,
     nullable: true,
   })
-  workQueueId: string | null;
+  workQueueId: number | null;
 
   @ApiProperty({
     description: 'Task creation timestamp',

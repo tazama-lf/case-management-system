@@ -17,7 +17,7 @@ export class CommentRepository {
         });
     }
 
-    async getCommentsByCommentId(commentId: string) {
+    async getCommentsByCommentId(commentId: number) {
         return await this.prisma.comment.findUnique({
             where: {
                 comment_id: commentId,
@@ -25,7 +25,7 @@ export class CommentRepository {
         });
     }
 
-    async getCommentsByCaseId(caseId?: string) {
+    async getCommentsByCaseId(caseId?: number) {
         return await this.prisma.comment.findMany({
             where: { case_id: caseId },
             orderBy: {
@@ -34,7 +34,7 @@ export class CommentRepository {
         });
     }
 
-    async getCommentsByTaskId(taskId?: string) {
+    async getCommentsByTaskId(taskId?: number) {
         return await this.prisma.comment.findMany({
             where: { task_id: taskId },
             orderBy: {

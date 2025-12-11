@@ -66,7 +66,7 @@ export class CaseCreationApprovalService {
         };
 
         const createdCase = await this.caseRepository.createCase(caseDetail, tx);
-        await this.flowableService.handleCaseCreated({
+        const resultFlowable = await this.flowableService.handleCaseCreated({
           caseId: createdCase.case_id,
           tenantId,
           caseStatus,
@@ -279,7 +279,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  private async validateCaseCreationApprovalPreconditions(caseId: string): Promise<void> {
+  private async validateCaseCreationApprovalPreconditions(caseId: number): Promise<void> {
     const caseData = await this.caseRepository.findCaseWithApprovalTask(caseId);
 
     if (!caseData) {
@@ -320,7 +320,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async approveCaseCreation(caseId: string, supervisorId: string, tenantId: string) {
+  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(
         `[ApproveCaseCreation] Supervisor ${supervisorId} approving case creation for case ${caseId}`,
@@ -493,7 +493,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async rejectCaseCreation(caseId: string, supervisorId: string, tenantId: string, reason: string) {
+  async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case creation for case ${caseId}`, CaseCreationApprovalService.name);
       await this.validateCaseCreationApprovalPreconditions(caseId);
@@ -585,7 +585,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async completeCase(caseId: string, userId: string, tenantId: string) {
+  async completeCase(caseId: number, userId: string, tenantId: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Only cases in DRAFT status can be completed');
@@ -705,7 +705,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async updateCaseStatus(caseId: string, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
+  async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
     this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
       const updateData: Record<string, unknown> = {
