@@ -59,4 +59,18 @@ export class AuditLogService {
       orderBy: { performed_at: 'asc' },
     });
   }
+
+  async getActionHistoryForCase(caseId: string) {
+    return this.prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { action_performed: { contains: caseId } },
+          { action_performed: { contains: `case ${caseId}` } },
+          { action_performed: { contains: `Case ${caseId}` } },
+        ],
+        entity_name: { in: ['Alert', 'Case'] },
+      },
+      orderBy: { performed_at: 'asc' },
+    });
+  }
 }

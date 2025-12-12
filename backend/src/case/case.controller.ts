@@ -27,6 +27,45 @@ import { RejectCaseReopeningDto } from './dto/reopen-case.dto';
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
 
+  @Get(':caseId/action-history')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get case action history',
+    description: 'Retrieve all actions taken on a specific case',
+  })
+  @ApiParam({
+    name: 'caseId',
+    type: 'string',
+    description: 'UUID of the case',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Action history retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          action_id: { type: 'string', format: 'uuid' },
+          action_type: { type: 'string' },
+          user_id: { type: 'string', format: 'uuid' },
+          note: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Alert not found' })
+  async getCaseActionHistory(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return this.caseService.getCaseActionHistory(caseId, tenantId, userId);
+  }
+
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.OK)
@@ -294,7 +333,8 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get all cases',
-    description: 'Retrieves cases based on user role. Investigators see unassigned or assigned to them. Supervisors see all cases. Compliance officers see only STATUS_82_CLOSED_CONFIRMED cases.',
+    description:
+      'Retrieves cases based on user role. Investigators see unassigned or assigned to them. Supervisors see all cases. Compliance officers see only STATUS_82_CLOSED_CONFIRMED cases.',
   })
   @ApiQuery({ type: GetAllCasesQueryDto })
   @ApiResponse({
@@ -314,24 +354,20 @@ export class CaseController {
 
     // Check if user is investigator (not supervisor/admin/compliance officer)
     const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && 
-      !userClaims.includes('CMS_SUPERVISOR') && 
+      userClaims.includes('CMS_INVESTIGATOR') &&
+      !userClaims.includes('CMS_SUPERVISOR') &&
       !userClaims.includes('CMS_ADMIN') &&
       !userClaims.includes('CMS_COMPLIANCE_OFFICER');
 
-    return this.caseService.getAllCases(
-      query, 
-      tenantId, 
-      isInvestigator ? userId : undefined,
-      isComplianceOfficer
-    );
+    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined, isComplianceOfficer);
   }
 
   @Get('user/assigned')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get cases assigned to current user',
-    description: 'Retrieves all cases where the user is either the owner or has assigned tasks. Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases.',
+    description:
+      'Retrieves all cases where the user is either the owner or has assigned tasks. Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases.',
   })
   @ApiQuery({ type: GetUserCasesQueryDto })
   @ApiResponse({
@@ -384,7 +420,8 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get case workload statistics',
-    description: "Get summary statistics of user's case workload. Compliance officers only see statistics for STATUS_82_CLOSED_CONFIRMED cases.",
+    description:
+      "Get summary statistics of user's case workload. Compliance officers only see statistics for STATUS_82_CLOSED_CONFIRMED cases.",
   })
   @ApiResponse({
     status: 200,

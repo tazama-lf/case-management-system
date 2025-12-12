@@ -2867,4 +2867,25 @@ export class CaseService {
       throw error;
     }
   }
+
+  async getCaseActionHistory(caseId: string, tenantId: string, userId: string) {
+      const caseHistory = await this.prismaService.case.findFirst({
+        where: {
+          case_id: caseId,
+          tenant_id: tenantId,
+        },
+      });
+  
+      if (!caseHistory) {
+        throw new NotFoundException(`Case with ID ${caseId} was not found for tenant ${tenantId}.`);
+      }
+  
+      const history = await this.auditLogService.getActionHistoryForCase(caseId);
+      return {
+        caseId,
+        tenantId,
+        userId,
+        history,
+      };
+    }
 }
