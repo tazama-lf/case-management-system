@@ -34,6 +34,7 @@ This is a NestJS + TypeScript service for managing financial crime cases and inv
 - [2. System Architecture](#2-system-architecture)
   - [2.1 Authentication Flow](#21-authentication-flow)
 - [3. Configuration](#3-configuration)
+- [4. Data Warehouse (DWH) Setup](#4-data-warehouse-dwh-setup)
 - [5. Running the Service](#5-running-the-service)
 - [6. Testing](#6-testing)
 - [7. Coding Standards](#7-coding-standards)
@@ -97,9 +98,70 @@ Application settings are configured primarily via environment variables. See `.e
 
 ---
 
+## **_4. Data Warehouse (DWH) Setup_**
+
+The system includes a separate Data Warehouse database with customer profile data that is linked to alerts via transaction IDs.
+
+### **4.1 DWH Test Data**
+
+The file `prismaDWH/setup-five-customers.sql` contains test data with:
+- **10 Customers**: 2 per tenant (CUST-001 & CUST-001B, CUST-002 & CUST-002B, etc.)
+- **10 Accounts**: Different FSP accounts per customer (fsp001, fsp001b, fsp002, fsp002b, etc.)
+- **15 Transactions**: With distinct sender/receiver relationships
+
+### **4.2 Loading DWH Test Data**
+
+**Windows (PowerShell):**
+```powershell
+Get-Content prismaDWH\setup-five-customers.sql | npx prisma db execute --schema=prismaDWH/schema.dwh.prisma --stdin
+```
+
+**macOS/Linux (Bash):**
+```bash
+cat prismaDWH/setup-five-customers.sql | npx prisma db execute --schema=prismaDWH/schema.dwh.prisma --stdin
+```
+
+**Alternative (All Platforms):**
+```bash
+npx prisma db execute --file=prismaDWH/setup-five-customers.sql --schema=prismaDWH/schema.dwh.prisma
+```
+
+### **4.3 Test Alert Payloads**
+
+The file `test-alerts/alert-payloads.json` contains 10 pre-configured alert payloads:
+- **5 NALT Alerts** (IDs 1-5): `report.status = "NALT"` → Creates alert only (no case/task)
+- **5 ALRT Alerts** (IDs 6-10): `report.status = "ALRT"` → Creates alert + case + task
+
+**Note**: The CMS reads the `report.status` field from incoming alerts. The upstream Tazama system determines whether an alert is NALT or ALRT based on typology scoring.
+
+**Important:** Alert payloads reference DWH transactions via `OrgnlEndToEndId`:
+- Alert 1 → Transaction `TXN-001-01` (fsp001 → fsp001b, John Smith → Alice Cooper)
+- Alert 2 → Transaction `TXN-002-01` (fsp002b → fsp002, Tom Harris → Jane Doe)
+- Alert 6 → Transaction `TXN-001-02` (fsp001b → fsp001, Alice Cooper → John Smith)
+- And so on...
+
+### **4.4 Workflow Integration**
+
+When working with customer profiles in the UI:
+1. User receives a task linked to a case
+2. Case contains alert with transaction details
+3. Transaction `OrgnlEndToEndId` (e.g., `TXN-001-01`) links to DWH
+4. Customer profile endpoint: `GET /api/v1/dwh/customer/profile/{transactionId}`
+5. Returns sender and receiver customer details with account information
+
+**Example API Call:**
+```bash
+GET /api/v1/dwh/customer/profile/TXN-001-01
+```
+
+**Response includes:**
+- **Sender**: John Smith (fsp001, $25,000 balance, personal account)
+- **Receiver**: Alice Cooper (fsp001b, $18,000 balance, personal account)
+- Transaction amount, date, type, and risk ratings
+
 ---
 
-## **_4. Running the Service_**
+## **_5. Running the Service_**
 
 ### Project setup
 
