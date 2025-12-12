@@ -248,15 +248,21 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         {/* Divider */}
         <div className="border-t border-gray-200"></div>
 
-        {/* Recommended Outcome Section */}
-        <div className="rounded-lg border border-gray-200 bg-blue-50 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            Recommended Outcome
-          </h3>
-          <div className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status || '')}`}>
-            {getOutcomeLabel(caseDetails?.status || '')}
+        {/* Recommended Outcome Section - Only show when case is closed */}
+        {caseDetails?.status && (
+          caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
+          caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
+          caseDetails.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
+        ) && (
+          <div className="rounded-lg border border-gray-200 bg-blue-50 p-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Recommended Outcome
+            </h3>
+            <div className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status || '')}`}>
+              {getOutcomeLabel(caseDetails?.status || '')}
+            </div>
           </div>
-        </div>
+        )}
 
       {/* Investigation Notes Section */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
