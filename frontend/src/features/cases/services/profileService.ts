@@ -8,7 +8,7 @@ export interface GenerateProfileFilters {
 }
 
 export interface GenerateProfileRequest {
-  caseId: string;
+  tenantId: string;
   filters?: GenerateProfileFilters;
   notes?: string;
 }
@@ -51,13 +51,21 @@ export interface GenerateProfileResponse extends TransactionProfile {}
 export interface GetProfileResponse extends TransactionProfile {}
 
 export class ProfileService {
-  private baseUrl = '/api/v1/profile';
+  private baseUrl = '/api/v1/dwh/profile';
 
   async generateProfile(request: GenerateProfileRequest): Promise<GenerateProfileResponse> {
     try {
+      const user = localStorage.getItem('user');
+      let tenantId = request.tenantId;
+      if (user) {
+        try {
+          const userData = JSON.parse(user);
+          tenantId = userData.tenantId || request.tenantId;
+        } catch {}
+      }
       const response = await apiClient.post<GenerateProfileResponse>(
          `${this.baseUrl}/generate`,
-        request,
+        { ...request, tenantId },
       );
       return response;
     } catch (error: any) {

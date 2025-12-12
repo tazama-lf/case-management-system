@@ -136,8 +136,23 @@ const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalP
     setError(null);
 
     try {
+      const user = localStorage.getItem('user');
+      let tenantId = '';
+      if (user) {
+        try {
+          const userData = JSON.parse(user);
+          tenantId = userData.tenantId || '';
+        } catch {}
+      }
+
+      if (!tenantId) {
+        setError('Tenant ID is required to generate profile');
+        setSaving(false);
+        return;
+      }
+
       const request: GenerateProfileRequest = {
-        caseId,
+        tenantId,
         notes,
       };
 
