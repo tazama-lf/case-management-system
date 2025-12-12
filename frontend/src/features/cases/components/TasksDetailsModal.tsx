@@ -34,6 +34,45 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
 
+  // Extract transaction ID from transaction data
+  const transactionId = React.useMemo(() => {
+    
+    if (!row?.transaction) {
+      return undefined;
+    }
+
+    let transactionData = row.transaction;
+    
+    // Check if transaction is a string that needs parsing
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+    
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
+    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | undefined;
+    
+    
+    // Try multiple possible field locations
+    const extractedId = (
+      txInfAndSts?.OrgnlEndToEndId ||
+      txInfAndSts?.EndToEndId ||
+      transaction?.transaction_id ||
+      transaction?.transactionId
+    );
+    
+    if (extractedId && typeof extractedId === 'string') {
+      return extractedId;
+    }
+    
+    return undefined;
+  }, [row]);
+
   React.useEffect(() => {
     if (open) {
       setTab('details');
@@ -62,7 +101,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
   const handleSaveTask = async () => {
     if (!tasks[0]?.task_id) {
-      console.error('No task ID available');
       return;
     }
 
@@ -82,7 +120,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         setTimeout(() => setSaveSuccess(false), 2000);
       }
     } catch (error) {
-      console.error('Failed to save task:', error);
       alert('Failed to upload evidence. Please try again.');
     } finally {
       setSaving(false);
@@ -149,7 +186,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <TaskDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
               </div>
               <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
-                <CustomerProfileTab />
+                <CustomerProfileTab key={transactionId || 'no-txn'} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab

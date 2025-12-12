@@ -14,6 +14,8 @@ import TaskDetailsModal from '../TasksDetailsModal';
 import SarStrFilingModal from '../modals/SarStrFilingModal';
 import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
+import { caseService, type CaseWithTasksDto } from '../../services/caseService';
+import { transformBackendCaseToUI } from '../casesTable.utils';
 
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
@@ -32,6 +34,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCa
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
+  const [caseData, setCaseData] = useState<CaseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,14 +52,28 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCa
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchTasksAndCaseData = async () => {
       if (!caseId) return;
 
       try {
         setLoading(true);
         setError(null);
-        const fetchedTasks = await taskService.getTasksByCaseId(caseId);
+        
+        // Fetch tasks and case data in parallel
+        const [fetchedTasks, fetchedCase] = await Promise.all([
+          taskService.getTasksByCaseId(caseId),
+          caseService.getUserCases({ limit: 1000 }).then(response => 
+            response.cases.find(c => c.case_id === caseId)
+          )
+        ]);
+        
         setTasks(fetchedTasks);
+        
+        // Transform backend case data to CaseRow format if found
+        if (fetchedCase) {
+          const transformedCase = transformBackendCaseToUI(fetchedCase);
+          setCaseData(transformedCase);
+        }
 
         // Fetch all investigators to build name mapping
         try {
@@ -78,7 +95,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCa
       }
     };
 
-    fetchTasks();
+    fetchTasksAndCaseData();
   }, [caseId]);
 
   const transformBackendTaskToWorkQueue = (
@@ -560,20 +577,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCa
               setTaskDetailsModalOpen(false);
               setSelectedTask(null);
             }}
-            row={
-              {
-                id: selectedTask.caseId,
-                caseName: selectedTask.name || 'Untitled Task',
-                status: selectedTask.status || 'Unknown',
-                assignee:
-                  selectedTask.assigneeName ||
-                  selectedTask.assignee ||
-                  'Unassigned',
-                priority: selectedTask.priority || 'Normal',
-                dueDate: selectedTask.dueDate || null,
-                description: selectedTask.description || '',
-              } as unknown as CaseRow
-            }
+            row={caseData || undefined}
             onRefreshCases={onRefreshCases}
           />
         </Suspense>
