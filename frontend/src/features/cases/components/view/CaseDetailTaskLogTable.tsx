@@ -388,7 +388,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
                     <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
-                      {task.id || 'No ID'}
+                      TASK-{task.id || 'No ID'}
                     </div>
                     {task.name && (
                       <div className="text-xs text-gray-500 break-words mt-1" title={task.name}>
@@ -399,7 +399,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId?.toString() || ''}>
-                    {task.caseId || ''}
+                    CASE-{task.caseId || ''}
                   </div>
                 </td>
                 <td className="px-4 py-3">
