@@ -39,7 +39,7 @@ export interface CaseModalState {
   isRejectReopenOpen: boolean;
   selectedRow: CaseRow | null;
   createModalMode: 'create' | 'edit';
-  editingCaseId: string | null;
+  editingCaseId: number | null;
   createCaseLoading: boolean;
   createCaseError: string;
 }
@@ -59,7 +59,7 @@ export interface CaseModalActions {
   setIsRejectReopenOpen: (open: boolean) => void;
   setSelectedRow: (row: CaseRow | null) => void;
   setCreateModalMode: (mode: 'create' | 'edit') => void;
-  setEditingCaseId: (id: string | null) => void;
+  setEditingCaseId: (id: number | null) => void;
   setCreateCaseLoading: (loading: boolean) => void;
   setCreateCaseError: (error: string) => void;
 }
@@ -73,15 +73,15 @@ interface CaseModalsManagerProps {
     isInvestigatorOnly: boolean;
   };
   caseActions: {
-    handleCloseCaseSubmit: (caseId: string, data: CloseCaseDto) => Promise<void>;
-    handleAbandonSubmit: (caseId: string, reason: string) => Promise<void>;
-    handleSuspendSubmit: (caseId: string, reason: string, taskIds: string[]) => Promise<void>;
-    handleResumeSubmit: (caseId: string, reason: string) => Promise<void>;
-    handleApproveClosureSubmit: (caseId: string, finalOutcome: "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE", supervisorComments?: string) => Promise<void>;
-    handleApproveCreation: (caseId: string) => Promise<void>;
-    handleRejectCaseCreation: (caseId: string, reason: string) => Promise<void>;
-    handleRejectCase: (caseId: string, reason: string) => Promise<void>;
-    handleReopenSubmit: (caseId: string, reason: string) => Promise<void>;
+    handleCloseCaseSubmit: (caseId: number, data: CloseCaseDto) => Promise<void>;
+    handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
+    handleSuspendSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
+    handleResumeSubmit: (caseId: number, reason: string) => Promise<void>;
+    handleApproveClosureSubmit: (caseId: number, finalOutcome: "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE", supervisorComments?: string) => Promise<void>;
+    handleApproveCreation: (caseId: number) => Promise<void>;
+    handleRejectCaseCreation: (caseId: number, reason: string) => Promise<void>;
+    handleRejectCase: (caseId: number, reason: string) => Promise<void>;
+    handleReopenSubmit: (caseId: number, reason: string) => Promise<void>;
   };
 }
 
@@ -96,7 +96,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const { params, navigate } = useDynamicRoute();
 
   const handleCreate = async (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -129,7 +129,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
   const handleSaveDraft = async (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -162,7 +162,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleUpdate = async (caseId: string, payload: {
+  const handleUpdate = async (caseId: number, payload: {
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -196,7 +196,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       modalActions.setCreateCaseLoading(false);
     }
   };
-  const handleCompleteCase = async (caseId: string, payload: {
+  const handleCompleteCase = async (caseId: number, payload: {
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -249,25 +249,25 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleReopenSubmit = async (caseId: string, reason: string) => {
+  const handleReopenSubmit = async (caseId: number, reason: string) => {
     await caseActions.handleReopenSubmit(caseId, reason);
     modalActions.setIsReopenOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleAbandonSubmit = async (caseId: string, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string) => {
     await caseActions.handleAbandonSubmit(caseId, reason);
     modalActions.setIsAbandonOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleSuspendSubmit = async (caseId: string, reason: string, taskIds: string[]) => {
+  const handleSuspendSubmit = async (caseId: number, reason: string, taskIds: number[]) => {
     await caseActions.handleSuspendSubmit(caseId, reason, taskIds);
     modalActions.setIsSuspendOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleResumeSubmit = async (caseId: string, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string) => {
     await caseActions.handleResumeSubmit(caseId, reason);
     modalActions.setIsResumeOpen(false);
     modalActions.setSelectedRow(null);
@@ -293,19 +293,19 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveCreationSubmit = async (caseId: string) => {
+  const handleApproveCreationSubmit = async (caseId: number) => {
     await caseActions.handleApproveCreation(caseId);
     modalActions.setIsApproveCreationOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleRejectCreationSubmit = async (caseId: string, data: RejectCaseCreationDto) => {
+  const handleRejectCreationSubmit = async (caseId: number, data: RejectCaseCreationDto) => {
     await caseActions.handleRejectCaseCreation(caseId, data.reason);
     modalActions.setIsRejectCreationOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveReopenSubmit = async (caseId: string, comments?: string) => {
+  const handleApproveReopenSubmit = async (caseId: number, comments?: string) => {
     try {
       const resp = await caseService.approveCaseReopening(caseId);
 
@@ -333,7 +333,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleRejectReopenSubmit = async (caseId: string, reason: string) => {
+  const handleRejectReopenSubmit = async (caseId: number, reason: string) => {
     try {
       const resp = await caseService.rejectCaseReopening(caseId, reason);
 
@@ -462,7 +462,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         <CloseCaseModal
           open={modalState.isCloseCaseOpen}
           onClose={() => modalActions.setIsCloseCaseOpen(false)}
-          caseId={modalState.selectedRow?.id || ''}
+          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id.toString() : ''}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           onSubmit={handleCloseCaseSubmit}
         />
@@ -508,7 +508,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         <CaseClosureDecisionModal
           open={modalState.isCaseClosureDecisionOpen}
           onClose={() => modalActions.setIsCaseClosureDecisionOpen(false)}
-          caseId={modalState.selectedRow?.id || ''}
+          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           //recommendedOutcome={modalState.selectedRow?.status || ''} //Commented to fix dropdown issue (PENDING APPROVAL)
           recommendedOutcome={'STATUS_83_CLOSED_INCONCLUSIVE'}
@@ -540,7 +540,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         <ApproveCaseReopenModal
           open={modalState.isApproveReopenOpen}
           onClose={() => modalActions.setIsApproveReopenOpen(false)}
-          caseId={modalState.selectedRow?.id || ''}
+          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
           requesterRole={undefined}
           onApprove={handleApproveReopenSubmit}
         />
@@ -550,7 +550,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         <RejectCaseReopenModal
           open={modalState.isRejectReopenOpen}
           onClose={() => modalActions.setIsRejectReopenOpen(false)}
-          caseId={modalState.selectedRow?.id || ''}
+          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
           onReject={handleRejectReopenSubmit}
         />
       </Suspense>

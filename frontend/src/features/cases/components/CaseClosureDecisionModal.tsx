@@ -8,7 +8,7 @@ import { TaskStatus } from '../services/taskService';
 interface CaseClosureDecisionModalProps {
   open: boolean;
   onClose: () => void;
-  caseId: string;
+  caseId: number | null;
   caseName?: string;
   recommendedOutcome?: string;
   finalNotes?: string;
@@ -51,11 +51,15 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       ? taskList.find(t => t.name === "Approve Case Closure" && t.status === TaskStatus.STATUS_01_UNASSIGNED)
       : undefined;
 
-    const taskId = approveClosureTask?.task_id || '';
+    const taskId = approveClosureTask?.task_id || null;
     if (!taskId) return;
 
     async function loadTasks() {
       try {
+        if (taskId == null) {
+          console.error('TaskId is missing');
+          return;
+        }
         const data = await commentService.getCommentsByTaskId(taskId);
         setTasks(data);
       } catch (error) {

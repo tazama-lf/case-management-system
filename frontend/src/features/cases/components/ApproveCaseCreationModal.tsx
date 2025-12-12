@@ -9,7 +9,7 @@ interface ApproveCaseCreationModalProps {
   open: boolean;
   onClose: () => void;
   caseData: CaseRow | null;
-  onSubmit: (caseId: string) => Promise<void>;
+  onSubmit: (caseId: number) => Promise<void>;
 }
 
 const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
@@ -72,8 +72,8 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
   const transactionData =
     alertDetails?.transaction &&
-    typeof alertDetails.transaction === 'object' &&
-    alertDetails.transaction !== null
+      typeof alertDetails.transaction === 'object' &&
+      alertDetails.transaction !== null
       ? alertDetails.transaction
       : null;
 
@@ -82,7 +82,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -104,11 +104,11 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         <form onSubmit={handleSubmit} className="p-6">
-          {}
+          { }
 
-          {}
+          { }
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-700 mb-3">
               Case Details
@@ -151,7 +151,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </div>
           </div>
 
-          {}
+          { }
           {caseData.alertId && (
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
@@ -272,14 +272,14 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
             </div>
           )}
 
-          {}
+          { }
           {errors.submit && (
             <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
 
-          {}
+          { }
           <div className="flex justify-end gap-3">
             <button
               type="button"

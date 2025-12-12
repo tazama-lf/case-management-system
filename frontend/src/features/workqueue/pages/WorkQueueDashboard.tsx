@@ -71,7 +71,7 @@ const WorkQueueDashboard: React.FC = () => {
   useEffect(() => {
     const taskId = params.taskId;
     if (taskId && tasks.length > 0) {
-      const taskToView = tasks.find(t => t.id === taskId);
+      const taskToView = tasks.find(t => String(t.id) === taskId);
       if (taskToView) {
         setSelectedTask(taskToView);
         // Auto-open the most relevant modal based on task status

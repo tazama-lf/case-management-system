@@ -15,7 +15,7 @@ import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface CaseDetailTaskLogTableProps {
-  alertId?: string;
+  alertId?: number;
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;
   onUnassign?: (task: UnifiedWorkQueueTask) => void;
@@ -48,7 +48,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
-  const [loadingAlertForTask, setLoadingAlertForTask] = useState<string | null>(null);
+  const [loadingAlertForTask, setLoadingAlertForTask] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
@@ -88,14 +88,14 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
       await performManualTriage({
-        alertId: alert.alert_id as string,
+        alertId: alert.alert_id,
         data: triageData,
       });
       success('Triage Complete', 'Alert triage completed successfully');
 
       // Refresh the alert details and keep the modal open
       try {
-        const updatedAlert = await triageService.getAlertById(alert.alert_id as string);
+        const updatedAlert = await triageService.getAlertById(alert.alert_id);
         setSelectedAlert(transformBackendAlertToUI(updatedAlert));
         setShowManualTriageModal(false);
       } catch (error) {
@@ -254,8 +254,13 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           key="complete-triage"
           onClick={async () => {
             try {
+              if (alertId == null || alertId == undefined) {
+                console.error('alert Id is undefined');
+                showError('Error', 'AlertId is undefined');
+                return;
+              }
               // Fetch alert details for triage analysis
-              const alertDetails = await triageService.getAlertById(alertId || '');
+              const alertDetails = await triageService.getAlertById(alertId);
               setSelectedAlert(transformBackendAlertToUI(alertDetails));
               setShowManualTriageModal(true);
             } catch (error) {
@@ -309,19 +314,19 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
 
     if (task.status === 'IN_PROGRESS') {
-      addReassignAction(actions, task);  
-      addUnassignAction(actions, task);  
-      addCompleteAction(actions, task);  
+      addReassignAction(actions, task);
+      addUnassignAction(actions, task);
+      addCompleteAction(actions, task);
       addApprovalActions(actions, task);
       return actions;
     }
 
-    addAssignAction(actions, task);       
-    addReassignAction(actions, task);    
-    addUnassignAction(actions, task);    
-    addApprovalActions(actions, task);   
-    addTriageAction(actions, task);       
-    addStatusAction(actions, task);       
+    addAssignAction(actions, task);
+    addReassignAction(actions, task);
+    addUnassignAction(actions, task);
+    addApprovalActions(actions, task);
+    addTriageAction(actions, task);
+    addStatusAction(actions, task);
 
     return actions;
   };
@@ -382,7 +387,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
               <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id || 'No ID'}>
+                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
                       {task.id || 'No ID'}
                     </div>
                     {task.name && (
@@ -393,7 +398,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId || ''}>
+                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId?.toString() || ''}>
                     {task.caseId || ''}
                   </div>
                 </td>

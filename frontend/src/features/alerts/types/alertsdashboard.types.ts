@@ -3,7 +3,7 @@ import React from 'react';
 export type { Alert, Priority, AlertType } from './triage.types';
 
 export interface TransactionMessage {
-  id: string;
+  id: number;
   type: string;
   description: string;
   timestamp: string;

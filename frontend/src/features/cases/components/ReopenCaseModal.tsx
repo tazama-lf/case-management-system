@@ -6,7 +6,7 @@ import { authService } from '@/features/auth';
 interface ReopenCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onReopen: (caseId: string, reason: string) => void;
+  onReopen: (caseId: number, reason: string) => void;
   caseData: CaseRow | null;
 }
 

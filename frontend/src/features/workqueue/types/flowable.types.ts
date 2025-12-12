@@ -1,7 +1,7 @@
 
 
 export interface FlowableTask {
-  id: string;
+  id: number;
   name: string;
   description?: string;
   assignee?: string;
@@ -84,8 +84,8 @@ export interface FlowableWorkQueueFilters {
 
 
 export interface UnifiedWorkQueueTask {
-  id: string;
-  taskId: string;
+  id: number;
+  taskId: number;
   flowableTaskId?: string; // Flowable engine task ID (different from PostgreSQL task ID)
   name: string;
   description?: string;
@@ -101,12 +101,12 @@ export interface UnifiedWorkQueueTask {
   dueDate?: string;
 
   processInstanceId: string;
-  caseId?: string;
+  caseId: number;
 
   flowableData?: FlowableTask;
 
   case?: {
-    case_id: string;
+    case_id: number;
     priority: string;
     status: string;
     created_at: string;
@@ -137,13 +137,13 @@ export interface FlowableTaskCompletionRequest {
 
 
 export interface CaseProcessVariables {
-  caseId: string;
+  caseId: number;
   caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
   priority: 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
   assignedInvestigator?: string;
   supervisorId?: string;
   createdBy: string;
-  alertIds?: string[];
+  alertIds?: number[];
   investigationNotes?: string;
   riskScore?: number;
   complianceFlags?: string[];

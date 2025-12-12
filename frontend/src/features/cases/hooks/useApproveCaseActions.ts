@@ -5,7 +5,7 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
   const handleApproveClosureSubmit = async (
-    caseId: string, 
+    caseId: number,
     finalOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE',
     supervisorComments?: string
   ) => {
@@ -37,11 +37,11 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
     }
   };
 
-  const handleApproveCreation = async (caseId: string) => {
+  const handleApproveCreation = async (caseId: number) => {
     try {
       await caseService.approveCaseCreation(caseId);
 
-      success('Case Creation Approved', `Case ${caseId} creation approved.`);      await refreshCases();
+      success('Case Creation Approved', `Case ${caseId} creation approved.`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not approve case creation.';
       const backendError = err instanceof Error ? err.message : '';
@@ -59,11 +59,11 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
     }
   };
 
-  const handleApproveReopening = async (caseId: string) => {
+  const handleApproveReopening = async (caseId: number) => {
     try {
       await caseService.approveCaseReopening(caseId);
 
-      success('Case Reopening Approved', `Case ${caseId} reopening approved.`);      await refreshCases();
+      success('Case Reopening Approved', `Case ${caseId} reopening approved.`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not approve case reopening.';
       const backendError = err instanceof Error ? err.message : '';

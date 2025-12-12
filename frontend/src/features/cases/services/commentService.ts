@@ -4,7 +4,7 @@ import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 
 export interface TaskComment {
-  comment_id: string;
+  comment_id: number;
   user_id: string;
   note: string;
   created_at: string;
@@ -21,7 +21,7 @@ export interface CommentsByCaseId extends TaskComment {
 export class CommentService {
   private baseUrl = '/api/v1/comment';
 
-  async getCommentsByCaseId(caseId: string): Promise<CommentsByCaseId[]> {
+  async getCommentsByCaseId(caseId: number): Promise<CommentsByCaseId[]> {
     try {
       const response = await apiClient.get<CommentsByCaseId[]>(`${this.baseUrl}/case/${caseId}/comment`);
       return Array.isArray(response) ? response : [];
@@ -31,7 +31,7 @@ export class CommentService {
     }
   }
 
-  async getCommentsByTaskId(taskId: string): Promise<CommentsByCaseId[]> {
+  async getCommentsByTaskId(taskId: number): Promise<CommentsByCaseId[]> {
     try {
       const response = await apiClient.get<CommentsByCaseId[]>(`${this.baseUrl}/task/${taskId}/comment`);
       return Array.isArray(response) ? response : [];

@@ -5,7 +5,7 @@ import type { CaseRow } from './casesTable.utils';
 interface SuspendCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onSuspend: (caseId: string, reason: string, selectedTaskIds: string[]) => void;
+  onSuspend: (caseId: number, reason: string, selectedTaskIds: number[]) => void;
   caseData: CaseRow | null;
 }
 
@@ -18,7 +18,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
   const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
 
   const isReasonValid = reason.trim().length >= 4;
@@ -121,10 +121,10 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                       disabled={inProgressTasks.length === 1}
                       onChange={(e) => {
                         const id = e.target.value;
-                        setSelectedTaskIds((prev) =>
-                          prev.includes(id)
-                            ? prev.filter((tid) => tid !== id)
-                            : [...prev, id]
+                        setSelectedTaskIds(prev =>
+                          prev.includes(Number(id))
+                            ? prev.filter(tid => tid !== Number(id))
+                            : [...prev, Number(id)]
                         );
                       }}
                       className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"

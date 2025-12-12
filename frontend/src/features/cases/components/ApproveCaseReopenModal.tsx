@@ -4,9 +4,9 @@ import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 interface ApproveCaseReopenModalProps {
   open: boolean;
   onClose: () => void;
-  caseId: string;
+  caseId: number | null;
   requesterRole?: 'ANALYST' | 'SUPERVISOR';
-  onApprove: (caseId: string, comments?: string) => Promise<void>;
+  onApprove: (caseId: number, comments?: string) => Promise<void>;
 }
 
 const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
@@ -27,6 +27,11 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
     setIsSubmitting(true);
     setError(null);
     try {
+      if (caseId == null) {
+        setError("Case ID is missing");
+        setIsSubmitting(false);
+        return;
+      }
       await onApprove(caseId, comments.trim() || undefined);
       onClose();
       setComments('');

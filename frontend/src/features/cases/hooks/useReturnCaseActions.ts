@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useReturnCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleReturnForReview = async (caseId: string, reviewComments: string) => {
+  const handleReturnForReview = async (caseId: number, reviewComments: string) => {
     try {
       const returnCaseData: ReturnCaseForReviewDto = {
         reviewComments: reviewComments.trim()
@@ -12,7 +12,7 @@ export const useReturnCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.returnCaseForReview(caseId, returnCaseData);
 
-      success('Case Returned for Review', `Case ${caseId} returned for review. Comments: ${reviewComments}`);      await refreshCases();
+      success('Case Returned for Review', `Case ${caseId} returned for review. Comments: ${reviewComments}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not return case for review.';
       const backendError = err instanceof Error ? err.message : '';

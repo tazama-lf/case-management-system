@@ -13,28 +13,28 @@ export interface GetUserCasesQueryDto {
 }
 
 export interface UserTaskDto {
-  task_id: string;
+  task_id: number;
   name: string;
   status: string;
   created_at: Date;
 }
 
 export interface TaskDTO {
-  task_id: string;
+  task_id: number;
   name: string;
   status: string;
   assigned_user_id: string;
 }
 
 export interface AlertInfoDto {
-  alert_id: string;
+  alert_id: number;
   message: string;
   confidence_per: number;
   transaction?: unknown;
 }
 
 export interface CaseWithTasksDto {
-  case_id: string;
+  case_id: number;
   status: string;
   priority: string;
   case_type: string;
@@ -73,7 +73,7 @@ export interface UserWorkloadStatsDto {
   casesByStatus: Record<string, number>;
   casesByPriority: Record<string, number>;
   oldestCase?: {
-    case_id: string;
+    case_id: number;
     created_at: string;
     days_old: number;
   };
@@ -87,7 +87,7 @@ export interface CloseCaseDto {
 }
 
 export interface ManualCreateCaseDto {
-  alertId?: string;
+  alertId?: number;
   priorityScore?: number;
   alertType: string;
 }
@@ -121,7 +121,7 @@ export interface ReopenCaseDto {
 
 export interface SuspendCaseDto {
   reason: string;
-  taskIds: string[];
+  taskIds: number[];
 }
 
 export interface ApproveCaseClosureDto {
@@ -141,27 +141,27 @@ export interface ApproveReopenResponseDto {
   success: boolean;
   message: string;
   case: Case;
-  completed_approval_task?: { task_id: string; status: string };
-  investigation_task?: { task_id: string; name: string; status: string; assigned_to?: string; candidateGroup?: string };
+  completed_approval_task?: { task_id: number; status: string };
+  investigation_task?: { task_id: number; name: string; status: string; assigned_to?: string; candidateGroup?: string };
 }
 
 export interface RejectReopenResponseDto {
   success: boolean;
   message: string;
   case: Case;
-  completed_task?: { task_id: string; status: string };
+  completed_task?: { task_id: number; status: string };
   rejection_reason: string;
 }
 
 export interface CloseCaseResponseDto {
   message: string;
   closed_case: {
-    case_id: string;
+    case_id: number;
     status: string;
     updated_at: string;
   };
   approval_task: {
-    task_id: string;
+    task_id: number;
     name: string;
     status: string;
     assigned_to: string;
@@ -207,7 +207,7 @@ export class CaseService {
     }
   }
 
-  async getCaseDetails(caseId: string): Promise<Case> {
+  async getCaseDetails(caseId: number): Promise<Case> {
     try {
       const response = await apiClient.get<Case>(`${this.baseUrl}/${caseId}`);
       return this.validateCaseResponse(response);
@@ -216,7 +216,7 @@ export class CaseService {
     }
   }
 
-  async closeCase(caseId: string, closeCaseData: CloseCaseDto): Promise<CloseCaseResponseDto> {
+  async closeCase(caseId: number, closeCaseData: CloseCaseDto): Promise<CloseCaseResponseDto> {
     try {
       const response = await apiClient.put<CloseCaseResponseDto>(`${this.baseUrl}/${caseId}/close`, closeCaseData);
       return response;
@@ -245,7 +245,7 @@ export class CaseService {
     }
   }
 
-  async updateCase(caseId: string, updateCaseData: UpdateCaseDto): Promise<Case> {
+  async updateCase(caseId: number, updateCaseData: UpdateCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}`, updateCaseData);
       return this.validateCaseResponse(response);
@@ -254,7 +254,7 @@ export class CaseService {
     }
   }
 
-  async completeCase(caseId: string, completeCaseData: UpdateCaseDto): Promise<Case> {
+  async completeCase(caseId: number, completeCaseData: UpdateCaseDto): Promise<Case> {
     try {
       const response = await apiClient.post<Case>(`${this.baseUrl}/${caseId}/complete-case-creation`, completeCaseData);
       return this.validateCaseResponse(response);
@@ -263,7 +263,7 @@ export class CaseService {
     }
   }
 
-  async abandonCase(caseId: string, abandonCaseData: AbandonCaseDto): Promise<Case> {
+  async abandonCase(caseId: number, abandonCaseData: AbandonCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/abandon`, abandonCaseData);
       if (response && typeof response === 'object' && 'case' in response) {
@@ -275,7 +275,7 @@ export class CaseService {
     }
   }
 
-  async resumeCase(caseId: string, resumeCaseData: ResumeCaseDto): Promise<Case> {
+  async resumeCase(caseId: number, resumeCaseData: ResumeCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/resume`, resumeCaseData);
       return this.validateCaseResponse(response);
@@ -284,7 +284,7 @@ export class CaseService {
     }
   }
 
-  async rejectCase(caseId: string, rejectCaseData: RejectCaseDto): Promise<Case> {
+  async rejectCase(caseId: number, rejectCaseData: RejectCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject`, rejectCaseData);
       return this.validateCaseResponse(response);
@@ -293,7 +293,7 @@ export class CaseService {
     }
   }
 
-  async reopenCase(caseId: string, reopenCaseData: ReopenCaseDto): Promise<Case> {
+  async reopenCase(caseId: number, reopenCaseData: ReopenCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reopen`, reopenCaseData);
       return this.validateCaseResponse(response);
@@ -302,7 +302,7 @@ export class CaseService {
     }
   }
 
-  async approveCaseReopening(caseId: string): Promise<ApproveReopenResponseDto> {
+  async approveCaseReopening(caseId: number): Promise<ApproveReopenResponseDto> {
     try {
       const response = await apiClient.put<ApproveReopenResponseDto>(`${this.baseUrl}/${caseId}/approve-reopening`, {});
       if (response && (response as any).case) {
@@ -314,7 +314,7 @@ export class CaseService {
     }
   }
 
-  async rejectCaseReopening(caseId: string, rejectionReason: string): Promise<RejectReopenResponseDto> {
+  async rejectCaseReopening(caseId: number, rejectionReason: string): Promise<RejectReopenResponseDto> {
     try {
       const response = await apiClient.put<RejectReopenResponseDto>(`${this.baseUrl}/${caseId}/reject-reopening`, { rejectionReason });
       if (response && (response as any).case) {
@@ -326,7 +326,7 @@ export class CaseService {
     }
   }
 
-  async suspendCase(caseId: string, suspendCaseData: SuspendCaseDto): Promise<Case> {
+  async suspendCase(caseId: number, suspendCaseData: SuspendCaseDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/suspend`, suspendCaseData);
       return this.validateCaseResponse(response);
@@ -335,7 +335,7 @@ export class CaseService {
     }
   }
 
-  async approveCaseClosure(caseId: string, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
+  async approveCaseClosure(caseId: number, approveCaseData: ApproveCaseClosureDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve`, approveCaseData);
       return this.validateCaseResponse(response);
@@ -344,7 +344,7 @@ export class CaseService {
     }
   }
 
-  async returnCaseForReview(caseId: string, returnCaseData: ReturnCaseForReviewDto): Promise<Case> {
+  async returnCaseForReview(caseId: number, returnCaseData: ReturnCaseForReviewDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/return-for-review`, returnCaseData);
       return this.validateCaseResponse(response);
@@ -353,7 +353,7 @@ export class CaseService {
     }
   }
 
-  async approveCaseCreation(caseId: string): Promise<Case> {
+  async approveCaseCreation(caseId: number): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/approve-creation`, {});
       return this.validateCaseResponse(response);
@@ -362,7 +362,7 @@ export class CaseService {
     }
   }
 
-  async rejectCaseCreation(caseId: string, rejectCaseData: RejectCaseCreationDto): Promise<Case> {
+  async rejectCaseCreation(caseId: number, rejectCaseData: RejectCaseCreationDto): Promise<Case> {
     try {
       const response = await apiClient.put<Case>(`${this.baseUrl}/${caseId}/reject-creation`, rejectCaseData);
       return this.validateCaseResponse(response);

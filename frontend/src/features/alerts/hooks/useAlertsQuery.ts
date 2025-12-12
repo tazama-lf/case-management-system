@@ -12,8 +12,8 @@ export const alertsQueryKeys = {
   lists: () => [...alertsQueryKeys.all, 'list'] as const,
   list: (filters: AlertsFilter) => [...alertsQueryKeys.lists(), filters] as const,
   details: () => [...alertsQueryKeys.all, 'detail'] as const,
-  detail: (id: string) => [...alertsQueryKeys.details(), id] as const,
-  actionHistory: (id: string) => [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
+  detail: (id: number) => [...alertsQueryKeys.details(), id] as const,
+  actionHistory: (id: number) => [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
@@ -57,7 +57,7 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
   };
 };
 
-export const useAlertDetails = (alertId: string | null) => {
+export const useAlertDetails = (alertId: number | null) => {
   const {
     data: alert,
     isLoading,
@@ -78,7 +78,7 @@ export const useAlertDetails = (alertId: string | null) => {
   };
 };
 
-export const useAlertActionHistory = (alertId: string | null) => {
+export const useAlertActionHistory = (alertId: number | null) => {
   const {
     data: actionHistory,
     isLoading,
@@ -102,7 +102,7 @@ export const useAlertOperations = () => {
   const { showError } = useNotifications();
 
   const closeAlertMutation = useMutation({
-    mutationFn: ({ alertId, status, notes }: { alertId: string; status: AlertStatus; notes: string }) =>
+    mutationFn: ({ alertId, status, notes }: { alertId: number; status: AlertStatus; notes: string }) =>
       triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
       // showSuccess('Alert closed successfully');
@@ -124,7 +124,7 @@ export const useAlertOperations = () => {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: Record<string, unknown> }) =>
+    mutationFn: ({ alertId, data }: { alertId: number; data: Record<string, unknown> }) =>
       triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
       // showSuccess('Alert updated successfully');
@@ -146,7 +146,7 @@ export const useAlertOperations = () => {
   });
 
   const manualTriageMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: ManualTriageDto }) =>
+    mutationFn: ({ alertId, data }: { alertId: number; data: ManualTriageDto }) =>
       triageService.performManualTriage(alertId, data),
     onSuccess: (data, variables) => {
       // showSuccess('Manual triage completed successfully');

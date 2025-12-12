@@ -22,14 +22,14 @@ interface CreateCaseModalProps {
   open: boolean;
   onClose: () => void;
   onCreate: (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
   }) => void;
-  onUpdate?: (caseId: string, payload: {
+  onUpdate?: (caseId: number, payload: {
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -39,7 +39,7 @@ interface CreateCaseModalProps {
     note: string;
     status: CaseStatus;
   }) => void;
-  onCompleteCase: (caseId: string, payload: {
+  onCompleteCase: (caseId: number, payload: {
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -51,7 +51,7 @@ interface CreateCaseModalProps {
 
   }) => void;
   onSaveDraft?: (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -61,9 +61,9 @@ interface CreateCaseModalProps {
   loading?: boolean;
   error?: string;
   mode?: 'create' | 'edit';
-  existingCaseId?: string;
+  existingCaseId?: number;
   initial?: {
-    alertId?: string;
+    alertId?: number;
     priority?: Priority;
     priorityScore?: number;
     alertType?: AlertType;
@@ -172,7 +172,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       const alert = availableAlerts.find(a => a.alert_id === initial.alertId);
       if (alert) {
         setSelectedAlert(alert);
-        setAlertSearchTerm(alert.alert_id);
+        setAlertSearchTerm(alert.alert_id.toString());
       }
     }
   }, [availableAlerts, initial?.alertId, selectedAlert, open]);

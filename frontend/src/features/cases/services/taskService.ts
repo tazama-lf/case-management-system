@@ -13,8 +13,8 @@ export const TaskStatus = {
 export type TaskStatusType = typeof TaskStatus[keyof typeof TaskStatus];
 
 export interface TaskForSupervisor {
-  task_id: string;
-  case_id: string;
+  task_id: number;
+  case_id: number;
   status: TaskStatusType;
   assigned_user_id?: string;
   name?: string;
@@ -29,7 +29,7 @@ export interface TaskForSupervisor {
     role?: string;
   };
   case?: {
-    case_id: string;
+    case_id: number;
     case_type?: string;
     priority?: string;
   };
@@ -37,14 +37,14 @@ export interface TaskForSupervisor {
 
 
 export interface Task {
-  id: string;
+  id: number;
   name: string;
   description?: string;
   status: string;
   priority?: string;
   assignedUserId?: string;
   assignedUserName?: string;
-  caseId?: string;
+  caseId?: number;
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
@@ -66,7 +66,7 @@ export interface CloseTaskData {
 export interface TaskFilters {
   status?: string;
   assignedUserId?: string;
-  caseId?: string;
+  caseId?: number;
   priority?: string;
   page?: number;
   limit?: number;
@@ -144,7 +144,7 @@ export class TaskService {
     }
   }
 
-  async getTaskDetails(taskId: string): Promise<Task> {
+  async getTaskDetails(taskId: number): Promise<Task> {
     try {
       const response = await apiClient.get<Task>(`${this.baseUrl}/${taskId}`);
       return this.validateTaskResponse(response);
@@ -153,13 +153,14 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: string, assignedUserId: string, note?:string): Promise<TaskForSupervisor> {
+  async assignTaskToInvestigator(taskId: number, assignedUserId: string, note?: string): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(
         `${this.baseUrl}/${taskId}/assign`,
-        { assignedUserId,
+        {
+          assignedUserId,
           note
-         }
+        }
       );
 
       return response;
@@ -169,13 +170,14 @@ export class TaskService {
     }
   }
 
-  async reassignTask(taskId: string, assignedUserId: string, note:string): Promise<{ success: boolean; message: string }> {
+  async reassignTask(taskId: number, assignedUserId: string, note: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.patch<{ success: boolean; message: string }>(
         `${this.baseUrl}/${taskId}/reassign`,
-        { assignedUserId,
+        {
+          assignedUserId,
           note
-         }
+        }
       );
 
       return response;
@@ -185,7 +187,7 @@ export class TaskService {
     }
   }
 
-  async assignTask(taskId: string, data: AssignTaskData): Promise<{ success: boolean; message: string }> {
+  async assignTask(taskId: number, data: AssignTaskData): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.post<{ success: boolean; message: string }>(
         `${this.baseUrl}/${taskId}/assign`,
@@ -197,7 +199,7 @@ export class TaskService {
     }
   }
 
-  async unassignTask(taskId: string, data: UnassignTaskData): Promise<{ success: boolean; message: string }> {
+  async unassignTask(taskId: number, data: UnassignTaskData): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.patch<{ success: boolean; message: string }>(
         `${this.baseUrl}/${taskId}/unassign`,
@@ -209,7 +211,7 @@ export class TaskService {
     }
   }
 
-  async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
+  async updateTask(taskId: number, data: Partial<Task>): Promise<Task> {
     try {
       const response = await apiClient.patch<Task>(`${this.baseUrl}/${taskId}`, data);
       return this.validateTaskResponse(response);
@@ -218,7 +220,7 @@ export class TaskService {
     }
   }
 
-  async updateTaskForSupervisor(taskId: string, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string; recommendedOutcome?: string; finalNotes?: string }): Promise<TaskForSupervisor> {
+  async updateTaskForSupervisor(taskId: number, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string; recommendedOutcome?: string; finalNotes?: string }): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
       return response;
@@ -254,7 +256,7 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: string): Promise<TaskForSupervisor[]> {
+  async getTasksByCaseId(caseId: number): Promise<TaskForSupervisor[]> {
     try {
       const url = `${this.baseUrl}/case/${caseId}`;
 
@@ -266,7 +268,7 @@ export class TaskService {
     }
   }
 
-  async completeTask(taskId: string): Promise<{ success: boolean; message: string }> {
+  async completeTask(taskId: number): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
         status: TaskStatus.STATUS_30_COMPLETED
@@ -283,7 +285,7 @@ export class TaskService {
     }
   }
 
-  async closeTask(taskId: string, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
+  async closeTask(taskId: number, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
         status: TaskStatus.STATUS_30_COMPLETED
@@ -300,15 +302,15 @@ export class TaskService {
     }
   }
 
-  async startTask(taskId: string): Promise<TaskForSupervisor> {
+  async startTask(taskId: number): Promise<TaskForSupervisor> {
     return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_20_IN_PROGRESS });
   }
 
-  async blockTask(taskId: string): Promise<TaskForSupervisor> {
+  async blockTask(taskId: number): Promise<TaskForSupervisor> {
     return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_21_BLOCKED });
   }
 
-  async completeTaskForSupervisor(taskId: string): Promise<TaskForSupervisor> {
+  async completeTaskForSupervisor(taskId: number): Promise<TaskForSupervisor> {
     return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
   }
 

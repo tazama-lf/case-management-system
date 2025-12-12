@@ -10,13 +10,13 @@ export const useDynamicRoute = () => {
     params,
     navigate,
     location,
-   
-    goToCaseDetail: (caseId: string) => navigate(`/cases/${caseId}`),
-    goToAlertDetail: (alertId: string) => navigate(`/alerts/${alertId}`),
-    goToWorkQueueTask: (taskId: string) => navigate(`/work-queue/${taskId}`),
+
+    goToCaseDetail: (caseId: number) => navigate(`/cases/${caseId}`),
+    goToAlertDetail: (alertId: number) => navigate(`/alerts/${alertId}`),
+    goToWorkQueueTask: (taskId: number) => navigate(`/work-queue/${taskId}`),
     goToReport: (reportType: string) => navigate(`/reports/${reportType}`),
     goBack: () => navigate(-1),
-    
+
     getCurrentRoute: () => ({
       pathname: location.pathname,
       search: location.search,
@@ -37,7 +37,7 @@ export const useUrlParams = () => {
 
   const updateParams = (newParams: Record<string, string | null>) => {
     const updatedParams = new URLSearchParams(searchParams);
-    
+
     Object.entries(newParams).forEach(([key, value]) => {
       if (value === null) {
         updatedParams.delete(key);
@@ -70,7 +70,7 @@ export const useUrlParams = () => {
     setParam,
     removeParam,
     updateParams,
-   
+
     getAllParams: () => Object.fromEntries(searchParams.entries())
   };
 };

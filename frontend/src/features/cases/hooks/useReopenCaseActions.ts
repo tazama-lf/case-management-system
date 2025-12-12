@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useReopenCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleReopenSubmit = async (caseId: string, reason: string) => {
+  const handleReopenSubmit = async (caseId: number, reason: string) => {
     try {
       const reopenCaseData = {
         reason: reason.trim()
@@ -12,7 +12,7 @@ export const useReopenCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.reopenCase(caseId, reopenCaseData);
 
-  success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
+      success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
 
       await refreshCases();
     } catch (err) {

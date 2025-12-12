@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useAbandonCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleAbandonSubmit = async (caseId: string, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string) => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim()
@@ -12,7 +12,7 @@ export const useAbandonCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.abandonCase(caseId, abandonCaseData);
 
-      success('Case Abandoned', `Case ${caseId} abandoned. Reason: ${reason}`);      await refreshCases();
+      success('Case Abandoned', `Case ${caseId} abandoned. Reason: ${reason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not abandon case.';
       const backendError = err instanceof Error ? err.message : '';

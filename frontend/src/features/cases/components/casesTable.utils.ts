@@ -1,7 +1,7 @@
 import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
 export type CaseRow = {
-  id: string;
+  id: number;
   type: string;
   typeColor: string;
   status: string;
@@ -15,7 +15,7 @@ export type CaseRow = {
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
-  alertId?: string;
+  alertId?: number;
   alertMessage?: string;
   confidencePercent?: number;
   transaction?: unknown;
@@ -75,7 +75,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typeColor: getTypeColor(backendCase.case_type),
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
-    typologyId: backendCase.alert?.alert_id?.substring(0, 8) || 'N/A',
+    typologyId: backendCase.alert?.alert_id?.toString().substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
     pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',

@@ -113,7 +113,7 @@ class TriageService {
     }
   }
 
-  async getAlertById(alertId: string): Promise<Alert> {
+  async getAlertById(alertId: number): Promise<Alert> {
     try {
       const response = await apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
       return this.validateAlertResponse(response);
@@ -122,7 +122,7 @@ class TriageService {
     }
   }
 
-  async getAlertActionHistory(alertId: string): Promise<ActionHistory[]> {
+  async getAlertActionHistory(alertId: number): Promise<ActionHistory[]> {
     try {
       const response = await apiClient.get<{ history: ActionHistory[] }>(
         `${this.baseUrl}/${alertId}/action-history`,
@@ -134,7 +134,7 @@ class TriageService {
   }
 
   async performManualTriage(
-    alertId: string,
+    alertId: number,
     data: ManualTriageDto,
   ): Promise<Alert> {
     try {
@@ -148,7 +148,7 @@ class TriageService {
     }
   }
 
-  async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
+  async updateAlert(alertId: number, data: UpdateAlertDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
         `${this.baseUrl}/${alertId}`,
@@ -161,7 +161,7 @@ class TriageService {
   }
 
   async closeAlert(
-    alertId: string,
+    alertId: number,
     status: AlertStatus,
     notes: string,
   ): Promise<Alert> {

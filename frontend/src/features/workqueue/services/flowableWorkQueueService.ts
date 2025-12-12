@@ -94,7 +94,7 @@ export class FlowableWorkQueueService {
   }
 
   async assignTask(
-    taskId: string,
+    taskId: number,
     assigneeUserId: string,
     options?: {
       currentUserId?: string;
@@ -134,7 +134,7 @@ export class FlowableWorkQueueService {
     }
   }
 
-  async unassignTask(taskId: string): Promise<UnifiedWorkQueueTask> {
+  async unassignTask(taskId: number): Promise<UnifiedWorkQueueTask> {
     try {
       const assignmentRequest: FlowableTaskAssignmentRequest = {
         assignedUserId: '',
@@ -151,7 +151,7 @@ export class FlowableWorkQueueService {
     }
   }
 
-  async completeTask(taskId: string, data: { notes?: string }): Promise<void> {
+  async completeTask(taskId: number, data: { notes?: string }): Promise<void> {
     try {
       const completionRequest: FlowableTaskCompletionRequest = {
         variables: {
@@ -168,7 +168,7 @@ export class FlowableWorkQueueService {
     }
   }
 
-  async getTaskDetails(taskId: string): Promise<UnifiedWorkQueueTask> {
+  async getTaskDetails(taskId: number): Promise<UnifiedWorkQueueTask> {
     try {
       const response = await apiClient.get<FlowableTask>(
         `${this.baseUrl}/${taskId}`,
@@ -227,7 +227,7 @@ export class FlowableWorkQueueService {
     // For the new API response format
     // Extract case ID from processInstanceId or other available fields
     const caseId = flowableTask.processInstanceId || flowableTask.id;
-    
+
     return {
       id: flowableTask.id,
       taskId: flowableTask.id,

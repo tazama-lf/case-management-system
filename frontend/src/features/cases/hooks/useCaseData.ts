@@ -106,7 +106,7 @@ export const useCaseActions = (
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
   const handleCreate = async (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
@@ -149,7 +149,7 @@ export const useCaseActions = (
   };
 
   const handleUpdate = async (
-    caseId: string,
+    caseId: number,
     payload: {
       priority: Priority;
       priorityScore: number;
@@ -187,7 +187,7 @@ export const useCaseActions = (
     }
   };
 
-  const handleReopenSubmit = async (caseId: string, reason: string) => {
+  const handleReopenSubmit = async (caseId: number, reason: string) => {
     try {
       const reopenCaseData = {
         reason: reason.trim(),
@@ -233,7 +233,7 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleAbandonSubmit = async (caseId: string, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string) => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),
@@ -287,7 +287,7 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleSuspendSubmit = async (caseId: string, reason: string, tasksIds: string[]) => {
+  const handleSuspendSubmit = async (caseId: number, reason: string, tasksIds: number[]) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),
@@ -345,7 +345,7 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleResumeSubmit = async (caseId: string, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string) => {
     try {
       const resumeCaseData = {
         reason: reason.trim(),
@@ -540,7 +540,7 @@ Please verify that:
     }
   };
 
-  const handleApproveCreationSubmit = async (caseId: string) => {
+  const handleApproveCreationSubmit = async (caseId: number) => {
     try {
       const approvedCase = await caseService.approveCaseCreation(caseId);
 
@@ -587,7 +587,7 @@ The case may have been deleted or moved.`;
   };
 
   const handleRejectCreationSubmit = async (
-    caseId: string,
+    caseId: number,
     data: RejectCaseCreationDto,
   ) => {
     try {
@@ -637,7 +637,7 @@ The case may have been deleted or moved.`;
   };
 
   const handleReturnForReviewSubmit = async (
-    caseId: string,
+    caseId: number,
     data: ReturnCaseForReviewDto,
   ) => {
     try {

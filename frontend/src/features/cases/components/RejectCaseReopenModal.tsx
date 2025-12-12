@@ -4,8 +4,8 @@ import { XMarkIcon, XCircleIcon } from '@heroicons/react/24/outline';
 interface RejectCaseReopenModalProps {
   open: boolean;
   onClose: () => void;
-  caseId: string;
-  onReject: (caseId: string, reason: string) => Promise<void>;
+  caseId: number | null;
+  onReject: (caseId: number, reason: string) => Promise<void>;
 }
 
 const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
@@ -29,6 +29,11 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
     setIsSubmitting(true);
     setError(null);
     try {
+      if (caseId == null) {
+        setError("Case ID is missing");
+        setIsSubmitting(false);
+        return;
+      }
       await onReject(caseId, reason.trim());
       onClose();
       setReason('');

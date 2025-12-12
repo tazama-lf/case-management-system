@@ -50,14 +50,14 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
       await performManualTriage({
-        alertId: alert.alert_id as string,
+        alertId: alert.alert_ids as number,
         data: triageData,
       });
       success('Triage Complete', 'Alert triage completed successfully');
 
       // Refresh the alert details and keep the modal open
       try {
-        const updatedAlert = await triageService.getAlertById(alert.alert_id as string);
+        const updatedAlert = await triageService.getAlertById(alert.alert_id);
         setSelectedAlert(transformBackendAlertToUI(updatedAlert));
         setShowManualTriageModal(false);
       } catch (error) {
@@ -121,7 +121,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900 font-mono break-all" title={task.caseId || 'No Case ID'}>
+                  <div className="text-sm text-gray-900 font-mono break-all" title={task.caseId?.toString() || 'No Case ID'}>
                     {task.caseId || '-'}
                   </div>
                 </td>

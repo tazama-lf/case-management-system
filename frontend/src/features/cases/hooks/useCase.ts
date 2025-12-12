@@ -3,7 +3,7 @@ import { caseService } from '../services/caseService';
 import type { Case } from '../../alerts/types/triage.types';
 import type { GetUserCasesQueryDto, GetUserCasesResponseDto, UserWorkloadStatsDto } from '../services/caseService';
 
-export const useCase = (caseId: string | undefined) => {
+export const useCase = (caseId: number | undefined) => {
   return useQuery<Case, Error>({
     queryKey: ['case', caseId],
     queryFn: () => {

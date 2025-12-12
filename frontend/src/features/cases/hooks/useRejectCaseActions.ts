@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleRejectCaseCreation = async (caseId: string, reason: string) => {
+  const handleRejectCaseCreation = async (caseId: number, reason: string) => {
     try {
       const rejectCaseData: RejectCaseCreationDto = {
         reason: reason.trim()
@@ -12,7 +12,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.rejectCaseCreation(caseId, rejectCaseData);
 
-      success('Case Creation Rejected', `Case ${caseId} creation rejected. Reason: ${reason}`);      await refreshCases();
+      success('Case Creation Rejected', `Case ${caseId} creation rejected. Reason: ${reason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case creation.';
       const backendError = err instanceof Error ? err.message : '';
@@ -30,7 +30,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
     }
   };
 
-  const handleRejectCase = async (caseId: string, rejectionReason: string) => {
+  const handleRejectCase = async (caseId: number, rejectionReason: string) => {
     try {
       const rejectCaseData: RejectCaseDto = {
         rejectionReason: rejectionReason.trim()
@@ -38,7 +38,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.rejectCase(caseId, rejectCaseData);
 
-      success('Case Rejected', `Case ${caseId} rejected. Reason: ${rejectionReason}`);      await refreshCases();
+      success('Case Rejected', `Case ${caseId} rejected. Reason: ${rejectionReason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case.';
       const backendError = err instanceof Error ? err.message : '';
@@ -56,11 +56,11 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
     }
   };
 
-  const handleRejectReopening = async (caseId: string, rejectionReason: string) => {
+  const handleRejectReopening = async (caseId: number, rejectionReason: string) => {
     try {
       await caseService.rejectCaseReopening(caseId, rejectionReason);
 
-      success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`);      await refreshCases();
+      success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case reopening.';
       const backendError = err instanceof Error ? err.message : '';

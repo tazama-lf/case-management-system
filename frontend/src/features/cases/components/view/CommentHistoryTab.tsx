@@ -3,7 +3,7 @@ import { commentService } from '../../services/commentService';
 import type { CommentsByCaseId } from '../../services/commentService';
 
 interface CommentsHistoryTabProps {
-  caseId: string;
+  caseId: number;
 }
 
 const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {

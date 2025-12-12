@@ -13,9 +13,9 @@ const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 interface TaskLogTabProps {
-  caseId: string;
+  caseId: number;
   onRefreshCases?: () => Promise<void>;
-  alertId?: string;
+  alertId?: number;
   canManageSupervisorActions?: boolean;
   caseData?: any;
   onApproveCase?: (caseData: any) => void;
@@ -23,16 +23,16 @@ interface TaskLogTabProps {
   onRejectCaseCreation?: (caseData: any) => void;
   onAbandonCase?: (caseData: any) => void;
 }
-const TaskLogTab: React.FC<TaskLogTabProps> = ({ 
-  caseId, 
-  onRefreshCases, 
-  alertId, 
-  canManageSupervisorActions = false, 
-  caseData, 
-  onApproveCase, 
-  onApproveCaseCreation, 
-  onRejectCaseCreation, 
-  onAbandonCase 
+const TaskLogTab: React.FC<TaskLogTabProps> = ({
+  caseId,
+  onRefreshCases,
+  alertId,
+  canManageSupervisorActions = false,
+  caseData,
+  onApproveCase,
+  onApproveCaseCreation,
+  onRejectCaseCreation,
+  onAbandonCase
 }) => {
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole } = useAuth();
@@ -90,7 +90,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       createdAt: backendTask.created_at,
       dueDate: undefined,
       processInstanceId: '',
-      caseId: backendTask.case_id || '',
+      caseId: backendTask.case_id,
       flowableData: undefined
     };
   };
@@ -163,7 +163,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     const matchesSearch = !searchTerm ||
       taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       taskDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      taskId.toLowerCase().includes(searchTerm.toLowerCase());
+      taskId.toString().toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
 
@@ -321,10 +321,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 
   const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, notes?: string, recommendedOutcome?: string) => {
     try {
-      const updateData: { status: TaskStatusType; recommendedOutcome?: string; finalNotes?: string } = { 
-        status: TaskStatus.STATUS_30_COMPLETED 
+      const updateData: { status: TaskStatusType; recommendedOutcome?: string; finalNotes?: string } = {
+        status: TaskStatus.STATUS_30_COMPLETED
       };
-      
+
       // Add recommended outcome if provided (for AML/Fraud investigation tasks)
       if (recommendedOutcome) {
         updateData.recommendedOutcome = recommendedOutcome;

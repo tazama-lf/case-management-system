@@ -5,7 +5,7 @@ import type { CaseRow } from './casesTable.utils';
 interface AbandonCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onAbandon: (caseId: string, reason: string) => void;
+  onAbandon: (caseId: number, reason: string) => void;
   caseData: CaseRow | null;
 }
 

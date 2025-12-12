@@ -44,13 +44,13 @@ export const useCaseDashboard = () => {
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [backendTotalItems, setBackendTotalItems] = useState(0);
   const [backendTotalPages, setBackendTotalPages] = useState(1);
- 
+
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -71,7 +71,7 @@ export const useCaseDashboard = () => {
   const [isRejectReopenOpen, setIsRejectReopenOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
   const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
-  const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
+  const [editingCaseId, setEditingCaseId] = useState<number | null>(null);
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
@@ -80,24 +80,24 @@ export const useCaseDashboard = () => {
     setErrorState(null);
 
     try {
-  const response = await caseService.getAllCases({
-          status: statusFilter || undefined,
-          priority: priorityFilter || undefined,
-          sortBy: 'updated_at',
-          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
-          page: currentPage,
-          limit: pageSize
-        });
+      const response = await caseService.getAllCases({
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
+        sortBy: 'updated_at',
+        sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
+        page: currentPage,
+        limit: pageSize
+      });
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);
-      
+
       // Update pagination state from backend response
       if (response.pagination) {
         setBackendTotalItems(response.pagination.total);
         setBackendTotalPages(response.pagination.totalPages);
       }
-  } catch {
+    } catch {
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
@@ -112,16 +112,16 @@ export const useCaseDashboard = () => {
     fetchCases();
   }, [fetchCases]);
 
- 
+
   useEffect(() => {
-    const caseId = params.caseId;
+    const caseId = Number(params.caseId);
     if (caseId && cases.length > 0) {
       const caseToView = cases.find(c => c.id === caseId);
       if (caseToView) {
         setSelectedRow(caseToView);
         setIsViewOpen(true);
       } else {
-       
+
         navigate('/cases');
         error('Case Not Found', `Case with ID ${caseId} was not found or you don't have permission to view it.`);
       }
@@ -152,7 +152,7 @@ export const useCaseDashboard = () => {
   // Use backend pagination data when available, otherwise calculate from filtered results
   const totalItems = search === '' ? backendTotalItems : filteredCases.length;
   const totalPages = search === '' ? backendTotalPages : Math.max(1, Math.ceil(filteredCases.length / pageSize));
-  
+
   // Reset to page 1 if current page exceeds total pages and we're doing client-side pagination
   useEffect(() => {
     if (search !== '' && currentPage > totalPages && totalPages > 0) {
@@ -180,12 +180,12 @@ export const useCaseDashboard = () => {
     totalPages
   };
 
-  
+
   const dashboardActions = {
     handleView: (row: CaseRow) => {
       setSelectedRow(row);
       setIsViewOpen(true);
-     
+
       navigate(`/cases/${row.id}`);
     },
 
@@ -307,7 +307,7 @@ export const useCaseDashboard = () => {
     setCreateCaseError
   };
 
-  
+
   const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
   const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
 
@@ -329,16 +329,16 @@ export const useCaseDashboard = () => {
   };
 
   return {
-   
+
     dashboardState,
     modalState,
-    
-  
+
+
     dashboardActions,
     filterActions,
     modalActions,
     caseActions,
-    
+
     // Pagination actions
     setCurrentPage: (page: number) => {
       setCurrentPage(page);

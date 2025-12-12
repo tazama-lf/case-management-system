@@ -20,8 +20,8 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
   });
 
   const handleCloseAlert = useCallback(async (alert: Alert, status: AlertStatus, notes: string) => {
-    const alertId = alert.alert_id as string;
-    setOperationStates(prev => ({ ...prev, closingAlert: new Set(prev.closingAlert).add(alertId) }));
+    const alertId = alert.alert_id;
+    setOperationStates(prev => ({ ...prev, closingAlert: new Set(prev.closingAlert).add(alertId.toString()) }));
     try {
       await triageService.closeAlert(alertId, status, notes);
       refreshAlerts();
@@ -31,7 +31,7 @@ export const useAlertOperations = (refreshAlerts: () => void) => {
     } finally {
       setOperationStates(prev => {
         const newSet = new Set(prev.closingAlert);
-        newSet.delete(alertId);
+        newSet.delete(alertId.toString());
         return { ...prev, closingAlert: newSet };
       });
     }

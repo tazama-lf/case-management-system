@@ -5,7 +5,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useCloseCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleCloseCaseSubmit = async (caseId: string, data: CloseCaseDto) => {
+  const handleCloseCaseSubmit = async (caseId: number, data: CloseCaseDto) => {
     try {
       await caseService.closeCase(caseId, data);
       success('Investigation Complete', 'Case submitted for review.');

@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useSuspendCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleSuspendSubmit = async (caseId: string, reason: string, taskIds: string[]) => {
+  const handleSuspendSubmit = async (caseId: number, reason: string, taskIds: number[]) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),

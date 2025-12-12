@@ -34,7 +34,7 @@ interface CaseModalsProps {
   isReturnForReviewOpen: boolean;
   isApproveReopenOpen: boolean;
   isRejectReopenOpen: boolean;
-  
+
   setIsCloseCaseOpen: (open: boolean) => void;
   setIsReopenOpen: (open: boolean) => void;
   setIsAbandonOpen: (open: boolean) => void;
@@ -47,36 +47,36 @@ interface CaseModalsProps {
   setIsReturnForReviewOpen: (open: boolean) => void;
   setIsApproveReopenOpen: (open: boolean) => void;
   setIsRejectReopenOpen: (open: boolean) => void;
-  
+
   selectedRow: CaseRow | null;
-  
+
 
   handleCreate: (payload: {
-    alertId?: string;
+    alertId?: number;
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
   }) => Promise<void>;
-  handleUpdate: (caseId: string, payload: {
+  handleUpdate: (caseId: number, payload: {
     priority: Priority;
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
   }) => Promise<void>;
   handleCloseCaseSubmit: (data: CloseCaseDto) => Promise<void>;
-  handleReopenSubmit: (caseId: string, reason: string) => Promise<void>;
-  handleAbandonSubmit: (caseId: string, reason: string) => Promise<void>;
-  handleSuspendSubmit: (caseId: string, reason: string) => Promise<void>;
-  handleResumeSubmit: (caseId: string, reason: string) => Promise<void>;
+  handleReopenSubmit: (caseId: number, reason: string) => Promise<void>;
+  handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
+  handleSuspendSubmit: (caseId: number, reason: string) => Promise<void>;
+  handleResumeSubmit: (caseId: number, reason: string) => Promise<void>;
   handleRejectSubmit: (rejectionReason: string) => Promise<void>;
   handleApproveSubmit: (data: ApproveCaseClosureDto) => Promise<void>;
-  handleApproveCreationSubmit: (caseId: string) => Promise<void>;
-  handleRejectCreationSubmit: (caseId: string, data: RejectCaseCreationDto) => Promise<void>;
-  handleReturnForReviewSubmit: (caseId: string, data: ReturnCaseForReviewDto) => Promise<void>;
-  handleApproveReopenSubmit: (caseId: string) => Promise<void>;
-  handleRejectReopenSubmit: (caseId: string, reason: string) => Promise<void>;
+  handleApproveCreationSubmit: (caseId: number) => Promise<void>;
+  handleRejectCreationSubmit: (caseId: number, data: RejectCaseCreationDto) => Promise<void>;
+  handleReturnForReviewSubmit: (caseId: number, data: ReturnCaseForReviewDto) => Promise<void>;
+  handleApproveReopenSubmit: (caseId: number) => Promise<void>;
+  handleRejectReopenSubmit: (caseId: number, reason: string) => Promise<void>;
 }
 
 const CaseModals: React.FC<CaseModalsProps> = ({
@@ -141,13 +141,13 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           <CloseCaseModal
             open={isCloseCaseOpen}
             onClose={() => setIsCloseCaseOpen(false)}
-            caseId={selectedRow?.id || ''}
+            caseId={selectedRow?.id != null ? selectedRow.id.toString() : ''}
             caseName={selectedRow ? `${selectedRow.type} Case` : ''}
             onSubmit={handleCloseCaseSubmit}
           />
         </Suspense>
       )}
-      
+
       {isReopenOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <ReopenCaseModal
@@ -158,7 +158,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {isAbandonOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <AbandonCaseModal
@@ -169,7 +169,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {isSuspendOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <SuspendCaseModal
@@ -180,7 +180,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {isResumeOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <ResumeCaseModal
@@ -191,7 +191,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {/* {isRejectOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <RejectCaseModal
@@ -216,7 +216,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )} */}
-      
+
       {isApproveCreationOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <ApproveCaseCreationModal
@@ -227,7 +227,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {isRejectCreationOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <RejectCaseCreationModal
@@ -238,7 +238,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-      
+
       {/* {isReturnForReviewOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <ReturnCaseForReviewModal
@@ -255,7 +255,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           <ApproveCaseReopenModal
             open={isApproveReopenOpen}
             onClose={() => setIsApproveReopenOpen(false)}
-            caseId={selectedRow?.id || ''}
+            caseId={selectedRow?.id != null ? selectedRow.id : null}
             requesterRole={undefined}
             onApprove={handleApproveReopenSubmit}
           />
@@ -267,7 +267,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           <RejectCaseReopenModal
             open={isRejectReopenOpen}
             onClose={() => setIsRejectReopenOpen(false)}
-            caseId={selectedRow?.id || ''}
+            caseId={selectedRow?.id != null ? selectedRow.id : null}
             onReject={handleRejectReopenSubmit}
           />
         </Suspense>

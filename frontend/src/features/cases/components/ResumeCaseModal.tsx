@@ -5,7 +5,7 @@ import type { CaseRow } from './casesTable.utils';
 interface ResumeCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onResume: (caseId: string, reason: string) => void;
+  onResume: (caseId: number, reason: string) => void;
   caseData: CaseRow | null;
 }
 

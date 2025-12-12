@@ -7,7 +7,7 @@ interface RejectCaseCreationModalProps {
   open: boolean;
   onClose: () => void;
   caseData: CaseRow | null;
-  onSubmit: (caseId: string, data: RejectCaseCreationDto) => Promise<void>;
+  onSubmit: (caseId: number, data: RejectCaseCreationDto) => Promise<void>;
 }
 
 const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({

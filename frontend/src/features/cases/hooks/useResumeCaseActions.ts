@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 export const useResumeCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
 
-  const handleResumeSubmit = async (caseId: string, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string) => {
     try {
       const resumeCaseData: ResumeCaseDto = {
         reason: reason.trim()
@@ -12,7 +12,7 @@ export const useResumeCaseActions = (refreshCases: () => Promise<void>) => {
 
       await caseService.resumeCase(caseId, resumeCaseData);
 
-      success('Case Resumed', `Case ${caseId} resumed. Reason: ${reason}`);      await refreshCases();
+      success('Case Resumed', `Case ${caseId} resumed. Reason: ${reason}`); await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not resume case.';
       const backendError = err instanceof Error ? err.message : '';

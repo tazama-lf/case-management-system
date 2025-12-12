@@ -44,7 +44,7 @@ export const CaseStatus = {
 } as const;
 
 export interface ActionHistory {
-  audit_log_id: string;
+  audit_log_id: number;
   user_id: string;
   operation: string;
   entity_name: string;
@@ -82,7 +82,7 @@ export interface AlertData {
 }
 
 export interface Alert extends Record<string, unknown> {
-  alert_id: string;
+  alert_id: number;
   tenant_id: string;
   priority: Priority;
   alert_type?: AlertType | null;
@@ -94,12 +94,12 @@ export interface Alert extends Record<string, unknown> {
   network_map: unknown;
   confidence_per: number;
   created_at: string;
-  case_id?: string;
+  case_id?: number;
   prediction_outcome?: string;
 }
 
 export interface Case {
-  case_id: string;
+  case_id: number;
   case_creator_user_id: string;
   case_owner_user_id: string;
   tenant_id: string;
@@ -107,7 +107,7 @@ export interface Case {
   priority: Priority;
   created_at: string;
   updated_at: string;
-  parent_id?: string;
+  parent_id?: number;
   case_type: CaseType;
   case_creation_type: CaseCreationType;
 }
@@ -166,19 +166,19 @@ export interface ConvertToCaseDto {
 }
 
 export interface RiskComponent {
-  id: string;
+  id: number;
   wght: number;
 }
 
 export interface RiskCategory {
-  id: string;
+  id: number;
   result: number;
   ruleResults: RiskComponent[];
 }
 
 export interface ConvertToCaseResponse {
-  case_id: string;
-  alert_id: string;
+  case_id: number;
+  alert_id: number;
   message: string;
   success: boolean;
 }
@@ -191,22 +191,22 @@ export interface CloseAlertDto {
 export interface SubmitAlertDto {
   result: {
     message: string;
-  report: unknown;
-  transaction: unknown;
-  networkMap: unknown;
+    report: unknown;
+    transaction: unknown;
+    networkMap: unknown;
   };
 }
 
 
 export interface ConvertToCaseData {
-  caseId?: string;
+  caseId?: number;
   assignedTo?: string;
   caseOwnerUserId?: string;
   priority: 'new' | 'urgent' | 'critical' | 'breach' | Priority;
   caseType: CaseType;
   linkedCases: string[];
   notes: string;
-  alertId: string;
+  alertId: number;
 }
 
 export interface AlertTableColumn {

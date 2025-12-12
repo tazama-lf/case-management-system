@@ -15,7 +15,7 @@ import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 
 interface AlertsDetailModalProps {
-  alertId: string | null;
+  alertId: number | null;
   isOpen: boolean;
   onClose: () => void;
   onCloseAlert?: (
@@ -333,7 +333,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-        {}
+        { }
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={() => {
@@ -343,9 +343,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           aria-hidden="true"
         ></div>
 
-        {}
+        { }
         <div className="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-5xl sm:w-full">
-          {}
+          { }
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={() => {
@@ -359,10 +359,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </button>
           </div>
 
-          {}
+          { }
           <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              {}
+              { }
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
@@ -375,9 +375,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {alert.priority}
                     </span>
 
-                    {}
+                    { }
                     <div className="flex items-center space-x-2 ml-4">
-                      {}
+                      { }
                       {(() => {
                         const triageCompleted = actionHistory.some(
                           (action) => action.operation === 'ALERT_UPDATED',
@@ -407,7 +407,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         ) : null;
                       })()}
 
-                      {}
+                      { }
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
@@ -424,10 +424,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
+                  { }
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Alert Summary
@@ -468,7 +468,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {}
+                  { }
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Transaction Data
@@ -491,10 +491,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
+                  { }
                   <div className="w-full bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
@@ -515,13 +515,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                           >
                             <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                                action.outcome === 'SUCCESS'
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === 'SUCCESS'
                                   ? 'bg-green-100 text-green-600'
                                   : action.outcome === 'FAILURE'
                                     ? 'bg-red-100 text-red-600'
                                     : 'bg-blue-100 text-blue-600'
-                              }`}
+                                }`}
                             >
                               <ClockIcon className="w-4 h-4" />
                             </div>
@@ -570,7 +569,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
@@ -605,7 +604,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   </div>
                 </div>
 
-                {}
+                { }
                 <div
                   className={`overflow-hidden transition-all duration-300 ${showRules ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                 >

@@ -53,14 +53,14 @@ const AlertsDashboard: React.FC = () => {
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
     try {
       await performManualTriage({
-        alertId: alert.alert_id as string,
+        alertId: alert.alert_id,
         data: triageData,
       });
       success('Triage Complete', 'Alert triage completed successfully');
-      
+
       // Refresh the alert details and keep the modal open
       try {
-        const updatedAlert = await triageService.getAlertById(alert.alert_id as string);
+        const updatedAlert = await triageService.getAlertById(alert.alert_id);
         setSelectedAlert(transformBackendAlertToUI(updatedAlert));
         setShowManualTriageModal(false);
         setShowModal(true);
@@ -83,9 +83,9 @@ const AlertsDashboard: React.FC = () => {
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
-  const [selectedAlertForTransaction, setSelectedAlertForTransaction] = useState<Alert | null>(null);  const handleRowClick = async (alert: Alert) => {
+  const [selectedAlertForTransaction, setSelectedAlertForTransaction] = useState<Alert | null>(null); const handleRowClick = async (alert: Alert) => {
     try {
-      const detailedAlert = await triageService.getAlertById(alert.alert_id as string);
+      const detailedAlert = await triageService.getAlertById(alert.alert_id);
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
       setShowModal(true);
     } catch (error) {
@@ -287,69 +287,69 @@ const AlertsDashboard: React.FC = () => {
       title="Alerts Dashboard"
       subtitle={getSubtitle()}
     >
-        {}
-        {error && (
-          <div className="mb-4">
-            <Notification
-              type="error"
-              title="Error refreshing data"
-              message={error || 'An error occurred while loading alerts'}
-            />
-          </div>
-        )}
-
-        {}
-        <AlertsSearchAndFilters
-          searchFilters={filters}
-          onFilterChange={(key, value) => {
-            setFilters({ ...filters, [key]: value });
-            setPage(1);
-          }}
-          onClearFilters={() => {
-            setFilters({
-              query: '',
-              source: '',
-              type: '',
-              priority: '',
-              timeRange: '',
-              customDateRange: undefined
-            });
-            setPage(1);
-          }}
-          customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
-          onCustomDateRangeChange={(range) => setFilters({ ...filters, customDateRange: range })}
-          alertTypes={filterOptions.alertTypes}
-          priorities={filterOptions.priorities}
-          sources={filterOptions.sources}
-        />
-
-        <ResultsSummary
-          pagination={tablePagination}
-          loading={loading}
-          lastUpdated={lastUpdated}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-          sort={{ column: String(sort.column), direction: sort.direction }}
-        />
-
-        {}
-        <div className="bg-white rounded-lg shadow">
-          <AlertsTable
-            data={alerts}
-            columns={columns}
-            onSort={(column, direction) => {
-              setSort(String(column), direction);
-              setPage(1);
-            }}
-            sortColumn={sort.column}
-            sortDirection={sort.direction}
-            onRowClick={handleRowClick}
-            emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
-            pagination={tablePagination}
+      { }
+      {error && (
+        <div className="mb-4">
+          <Notification
+            type="error"
+            title="Error refreshing data"
+            message={error || 'An error occurred while loading alerts'}
           />
         </div>
+      )}
+
+      { }
+      <AlertsSearchAndFilters
+        searchFilters={filters}
+        onFilterChange={(key, value) => {
+          setFilters({ ...filters, [key]: value });
+          setPage(1);
+        }}
+        onClearFilters={() => {
+          setFilters({
+            query: '',
+            source: '',
+            type: '',
+            priority: '',
+            timeRange: '',
+            customDateRange: undefined
+          });
+          setPage(1);
+        }}
+        customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
+        onCustomDateRangeChange={(range) => setFilters({ ...filters, customDateRange: range })}
+        alertTypes={filterOptions.alertTypes}
+        priorities={filterOptions.priorities}
+        sources={filterOptions.sources}
+      />
+
+      <ResultsSummary
+        pagination={tablePagination}
+        loading={loading}
+        lastUpdated={lastUpdated}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        sort={{ column: String(sort.column), direction: sort.direction }}
+      />
+
+      { }
+      <div className="bg-white rounded-lg shadow">
+        <AlertsTable
+          data={alerts}
+          columns={columns}
+          onSort={(column, direction) => {
+            setSort(String(column), direction);
+            setPage(1);
+          }}
+          sortColumn={sort.column}
+          sortDirection={sort.direction}
+          onRowClick={handleRowClick}
+          emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
+          pagination={tablePagination}
+        />
+      </div>
 
       {/* Alerts Detail Modal */}
       <Suspense fallback={<div>Loading modal...</div>}>
