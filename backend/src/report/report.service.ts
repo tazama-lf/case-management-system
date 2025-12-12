@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
@@ -1047,6 +1047,26 @@ export class ReportsService {
     tenantId?: string,
     role?: string,
   ): Promise<FraudReport> {
+    if (role === 'CMS_SUPERVISOR') {
+      const caseTasks = await this.prisma.task.findMany({
+        where: { case_id: caseId },
+      });
+
+      const investigationTasks = caseTasks.filter(task => 
+        task.name && task.name.toLowerCase().includes('investigate')
+      );
+
+      const incompleteTasks = investigationTasks.filter(
+        task => task.status !== TaskStatus.STATUS_30_COMPLETED
+      );
+
+      if (incompleteTasks.length > 0) {
+        const taskNames = incompleteTasks.map(t => t.name).join(', ');
+        throw new BadRequestException(
+          `Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`
+        );
+      }
+    }
     const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
     if (!caseData) throw new Error('Case not found');
     const db = this.couchdbService.getDatabase();

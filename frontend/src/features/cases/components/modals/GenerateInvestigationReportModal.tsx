@@ -92,6 +92,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [isApproved, setIsApproved] = useState(false);
+  const [tasksCompleted, setTasksCompleted] = useState(false);
+  const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
+  const [checkingTasks, setCheckingTasks] = useState(false);
 
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
@@ -102,6 +105,34 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       }).catch(() => { });
     }
   }, [open, caseComments]);
+
+  useEffect(() => {
+    const checkTaskCompletion = async () => {
+      if (!open || !caseId) return;
+      
+      setCheckingTasks(true);
+      try {
+        const tasks = await taskService.getTasksByCaseId(caseId);
+        const investigationTasks = tasks.filter(task => 
+          task.name?.toLowerCase().includes('investigate')
+        );
+        
+        const incomplete = investigationTasks.filter(
+          task => task.status !== 'STATUS_30_COMPLETED'
+        );
+        
+        setIncompleteTasks(incomplete.map(t => t.name || 'Unknown Task'));
+        setTasksCompleted(incomplete.length === 0);
+      } catch (error) {
+        showError('Failed to check task status');
+        setTasksCompleted(false);
+      } finally {
+        setCheckingTasks(false);
+      }
+    };
+
+    checkTaskCompletion();
+  }, [open, caseId, showError]);
 
   const buildExecutiveSummary = () => {
     const investigatorComment = caseComments?.[0]?.note || '';
@@ -820,16 +851,46 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </div>
               </div>
 
-              {/* Generate Button */}
+              {userRole === 'CMS_SUPERVISOR' && !tasksCompleted && incompleteTasks.length > 0 && (
+                <div className="w-full max-w-md rounded-md bg-yellow-50 border border-yellow-200 p-4 mb-6">
+                  <div className="flex">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-yellow-800">
+                        Complete Investigation Tasks First
+                      </h3>
+                      <div className="mt-2 text-sm text-yellow-700">
+                        <p>The following tasks must be completed before generating a report:</p>
+                        <ul className="list-disc list-inside mt-1">
+                          {incompleteTasks.map((task, idx) => (
+                            <li key={idx}>{task}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleGenerateReport}
-                disabled={isGenerating}
+                disabled={isGenerating || (userRole === 'CMS_SUPERVISOR' && (!tasksCompleted || checkingTasks))}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
               >
-                {isGenerating ? (
+                {checkingTasks && userRole === 'CMS_SUPERVISOR' ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Checking tasks...
+                  </>
+                ) : isGenerating ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Generating Report...
+                  </>
+                ) : userRole === 'CMS_SUPERVISOR' && !tasksCompleted ? (
+                  <>
+                    <DocumentTextIcon className="h-5 w-5" />
+                    Complete Tasks to Generate
                   </>
                 ) : (
                   <>
