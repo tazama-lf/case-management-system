@@ -21,7 +21,6 @@ export const AlertType = {
   FRAUD: 'FRAUD',
   AML: 'AML',
   FRAUD_AND_AML: 'FRAUD_AND_AML',
-  NONE: 'NONE',
 } as const;
 
 export const CaseStatus = {

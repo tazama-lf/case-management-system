@@ -150,12 +150,12 @@ export const handlers = [
     ) {
       if (
         updates.alertType &&
-        !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)
+        !['FRAUD', 'AML', 'FRAUD_AND_AML'].includes(updates.alertType)
       ) {
         return HttpResponse.json(
           {
             message: [
-              'alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML, NONE',
+              'alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML',
             ],
             error: 'Bad Request',
             statusCode: 400,

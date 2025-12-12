@@ -92,7 +92,11 @@ export class CaseService {
 
     const priorityScore = dto.priorityScore;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
-    const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
+    const caseType = (CaseType as Record<string, CaseType>)[dto.alertType];
+    
+    if (!caseType) {
+      throw new BadRequestException('Valid alert type is required: FRAUD, AML, or FRAUD_AND_AML');
+    }
 
     const isSupervisor = role === 'SUPERVISOR';
 

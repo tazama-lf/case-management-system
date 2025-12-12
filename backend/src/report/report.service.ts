@@ -856,13 +856,8 @@ export class ReportsService {
           status: {
             in: closedStatuses,
           },
+          case_type: type,
         };
-
-        if (type === AlertType.NONE) {
-          whereClause.OR = [{ case_type: null }, { case_type: AlertType.NONE }];
-        } else {
-          whereClause.case_type = type;
-        }
 
         const closedCasesOfType = await this.prisma.case.findMany({
           where: whereClause,

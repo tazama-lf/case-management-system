@@ -10,7 +10,7 @@ import type { UserOption } from '@/features/cases/services/userService';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
-export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
+export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
 
 interface CreateCaseModalProps {
   open: boolean;
@@ -65,7 +65,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
   const [priority, setPriority] = React.useState<Priority>('NEW');
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
-  const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
+  const [alertType, setAlertType] = React.useState<AlertType | ''>('');
   const [assignee, setAssignee] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<
     Record<string, string>
@@ -124,7 +124,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
     setSelectedAlert(null);
     setPriorityScore(initial?.priorityScore || 0.33);
-    setAlertType(initial?.alertType || 'FRAUD');
+    setAlertType(initial?.alertType || '');
     setAssignee(initial?.assignee || '');
     setValidationErrors({});
     setAlertSearchTerm('');
@@ -475,10 +475,10 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       : 'border-gray-300'
                   }`}
                 >
+                  <option value="" disabled>Select alert type...</option>
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML</option>
                   <option value="FRAUD_AND_AML">Fraud & AML</option>
-                  <option value="NONE">None</option>
                 </select>
                 {validationErrors.alertType && (
                   <p className="text-sm text-red-600 mt-1">
