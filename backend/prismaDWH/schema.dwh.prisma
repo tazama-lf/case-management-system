@@ -8,10 +8,31 @@ datasource dwh {
   url      = env("DWH_DATABASE_URL")
 }
 
-model account {
-  id       String
-  tenant_id String
+model customer {
+  id            String
+  tenant_id     String
+  name          String?
+  date_of_birth String?
+  email         String?
+  phone         String?
+  address       Json?
 
+  accounts      account[]
+
+  @@id([id, tenant_id])
+  @@map("customer")
+}
+
+model account {
+  id            String
+  tenant_id     String
+  account_type  String?   // "personal", "business", "savings"
+  opened_date   String?
+  balance       Decimal?
+  risk_rating   String?   // "Low", "Medium", "High"
+  customer_id   String?
+
+  customer                customer?     @relation(fields: [customer_id, tenant_id], references: [id, tenant_id])
   transaction_source      transaction[] @relation("TransactionSource")
   transaction_destination transaction[] @relation("TransactionDestination")
 

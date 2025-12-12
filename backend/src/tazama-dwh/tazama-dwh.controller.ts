@@ -1,11 +1,12 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Param, Req, UseGuards, Query, Headers } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam, ApiHeader } from '@nestjs/swagger';
 import { TazamaDwhService } from './tazama-dwh.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
+import { CustomerProfileResponseDto } from './dto/customer-profile.dto';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')
@@ -51,6 +52,20 @@ export class TazamaDWHController {
   async generateProfile(@Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
     const userId = req.user?.token?.clientId ;
     return this.tazamaDwhService.generateProfile(dto, userId);
+  }
+
+  @Get('customer/profile/:id')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get customer profile with sender and receiver details for a transaction' })
+  @ApiParam({ name: 'id', description: 'Transaction ID (e.g., TXN-001-01) to fetch both sender and receiver profiles' })
+  @ApiResponse({ status: 200, description: 'Customer profiles retrieved for sender and receiver', type: CustomerProfileResponseDto })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  async getCustomerProfile(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<CustomerProfileResponseDto> {
+    // Query DWH to get transaction details and associated customer profiles
+    return this.tazamaDwhService.getCustomerProfileByTransaction(id);
   }
 
 }
