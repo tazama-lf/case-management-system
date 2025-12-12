@@ -122,7 +122,7 @@ const WorkQueueTable: React.FC<WorkQueueTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-gray-900 font-mono break-all" title={task.caseId?.toString() || 'No Case ID'}>
-                    {task.caseId || '-'}
+                    CASE-{task.caseId || '-'}
                   </div>
                 </td>
               </tr>

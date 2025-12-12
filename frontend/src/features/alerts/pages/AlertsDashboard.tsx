@@ -144,7 +144,7 @@ const AlertsDashboard: React.FC = () => {
             className="font-medium text-gray-900"
             title={`Alert ID: ${alertId}`}
           >
-            {alertId.length > 8 ? `${alertId.substring(0, 8)}...` : alertId}
+            ALERT-{alertId.length > 8 ? `${alertId.substring(0, 8)}...` : alertId}
           </div>
         );
       }

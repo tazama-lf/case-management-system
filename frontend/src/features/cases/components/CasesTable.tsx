@@ -62,7 +62,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   onClick={() => onView(c)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    {c.id}
+                    CASE-{c.id}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
