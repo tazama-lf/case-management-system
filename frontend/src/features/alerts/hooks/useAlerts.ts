@@ -100,12 +100,13 @@ export const useAlerts = () => {
     dispatch({ type: 'FETCH_START' });
     try {
       // Build the filters object with proper pagination and sorting
+      // Remove search from server-side filters - we'll do client-side search like cases
       const filters = {
         page: state.pagination.currentPage,
         limit: state.pagination.pageSize,
         sortBy: String(state.sort.column),
         sortOrder: state.sort.direction,
-        ...(state.filters.query && { search: state.filters.query }),
+        // Remove search from server-side: ...(state.filters.query && { search: state.filters.query }),
         ...(state.filters.source && { source: state.filters.source }),
         ...(state.filters.type && { alertType: state.filters.type }),
         ...(state.filters.priority && { priority: state.filters.priority }),
@@ -125,11 +126,18 @@ export const useAlerts = () => {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
-  }, [state.pagination.currentPage, state.pagination.pageSize, state.sort.column, state.sort.direction, state.filters]);
+  }, [state.pagination.currentPage, state.pagination.pageSize, state.sort.column, state.sort.direction, state.filters.source, state.filters.type, state.filters.priority]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
+
+  // Reset to page 1 when search query changes (similar to cases)
+  useEffect(() => {
+    if (state.filters.query !== '' && state.pagination.currentPage > 1) {
+      setPage(1);
+    }
+  }, [state.filters.query]);
 
   const setFilters = (filters: Partial<AlertsSearchFilters>) => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
@@ -147,14 +155,50 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
+  // Apply client-side search filter (same logic as cases)
+  const searchFilteredAlerts = useMemo(() => {
+    if (state.filters.query === '') return state.allAlerts;
+    return state.allAlerts.filter((alert) =>
+      [
+        alert.alert_id,
+        alert.txtp,
+        alert.source,
+        alert.message,
+        alert.priority,
+        alert.alert_type,
+        String(alert.confidence_per),
+        alert.case_id,
+        // Add any additional searchable fields
+      ]
+        .filter(Boolean) // Remove null/undefined values
+        .join(' ')
+        .toLowerCase()
+        .includes(state.filters.query.toLowerCase())
+    );
+  }, [state.allAlerts, state.filters.query]);
+
   const paginatedAlerts = useMemo(() => {
-    // Backend already returns paginated results, so we just return filteredAlerts directly
+    // For client-side search: if there's a search query, paginate the filtered results
+    if (state.filters.query !== '') {
+      const start = (state.pagination.currentPage - 1) * state.pagination.pageSize;
+      const end = start + state.pagination.pageSize;
+      return searchFilteredAlerts.slice(start, end);
+    }
+    // Otherwise, use backend pagination (no search)
     return state.filteredAlerts;
-  }, [state.filteredAlerts]);
+  }, [searchFilteredAlerts, state.filteredAlerts, state.pagination.currentPage, state.pagination.pageSize, state.filters.query]);
 
 
   return {
     ...state,
+    // Update pagination info based on whether we're doing client-side search
+    pagination: {
+      ...state.pagination,
+      totalItems: state.filters.query !== '' ? searchFilteredAlerts.length : state.pagination.totalItems,
+      totalPages: state.filters.query !== '' 
+        ? Math.max(1, Math.ceil(searchFilteredAlerts.length / state.pagination.pageSize)) 
+        : state.pagination.totalPages,
+    },
     paginatedAlerts,
     setFilters,
     setSort,
