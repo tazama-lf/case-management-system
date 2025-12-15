@@ -1,6 +1,5 @@
 import React from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
-//import { Card } from '@/shared/components/ui';
 import { PageContainer } from '@/shared/components/ui';
 import { CasesTable } from '..';
 import CaseFilters from '@/features/cases/components/CaseFilters';

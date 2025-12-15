@@ -352,7 +352,7 @@ const AlertsDashboard: React.FC = () => {
       </div>
 
       {/* Alerts Detail Modal */}
-      <Suspense fallback={<div>Loading modal...</div>}>
+      <Suspense fallback={null}>
         <AlertsDetailModal
           alertId={selectedAlert?.alert_id || null}
           isOpen={showModal}
@@ -362,13 +362,13 @@ const AlertsDashboard: React.FC = () => {
             setSelectedAlert(alert);
             setShowModal(false);
             setShowManualTriageModal(true);
-          }}
+}}
         />
       </Suspense>
 
       {/* Manual Triage Modal */}
       {selectedAlert && (
-        <Suspense fallback={<div>Loading modal...</div>}>
+        <Suspense fallback={null}>
           <ManualTriageModal
             isOpen={showManualTriageModal}
             alert={convertToTriageAlert(selectedAlert)}
@@ -382,7 +382,7 @@ const AlertsDashboard: React.FC = () => {
       )}
 
       {/* Transaction Messages Modal */}
-      <Suspense fallback={<div>Loading modal...</div>}>
+      <Suspense fallback={null}>
         <TransactionMessagesModal
           isOpen={showTransactionMessages}
           onClose={handleCloseTransactionMessages}
@@ -392,7 +392,7 @@ const AlertsDashboard: React.FC = () => {
       </Suspense>
 
       {/* Message Payload Modal */}
-      <Suspense fallback={<div>Loading modal...</div>}>
+      <Suspense fallback={null}>
         <MessagePayloadModal
           isOpen={showMessagePayload}
           onClose={handleCloseMessagePayload}

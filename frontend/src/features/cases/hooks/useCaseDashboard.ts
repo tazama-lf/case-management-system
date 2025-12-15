@@ -137,15 +137,15 @@ export const useCaseDashboard = () => {
         c.id,
         c.type,
         c.status,
-        c.typologyId,
+        //c.typologyId,
         String(c.score),
         c.createdOn,
-        c.pickedOn,
-        c.assignee || '',
+        // c.pickedOn,
+        // c.assignee || '',
       ]
         .join(' ')
         .toLowerCase()
-        .includes(search.toLowerCase())
+        .includes((search.toLowerCase()))
     );
   }, [cases, search]);
 
