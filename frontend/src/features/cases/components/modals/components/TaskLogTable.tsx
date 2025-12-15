@@ -84,7 +84,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     }
 
     if (task.status === 'IN_PROGRESS') {
-      if (task.assignee && onComplete) {
+      // Don't show complete button for investigation tasks (they're completed in Investigation Summary tab)
+      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigat');
+      
+      if (task.assignee && onComplete && !isInvestigationTask) {
         actions.push(
           <button
             key="complete"
