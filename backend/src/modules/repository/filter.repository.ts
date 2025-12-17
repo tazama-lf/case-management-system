@@ -28,4 +28,23 @@ export class FilterRepository {
         });
     }
 
+    async getFiltersByfilterId(filter_Id: number) {
+        return await this.prisma.filters.findMany({
+            where: {
+                filter_Id: filter_Id
+            },
+            orderBy: {
+                created_at: 'desc',
+            },
+        });
+    }
+
+    async deleteFilter(filter_Id: number) {
+        return await this.prisma.filters.delete({
+            where: {
+                filter_Id: filter_Id
+            },
+        });
+    }
+
 }

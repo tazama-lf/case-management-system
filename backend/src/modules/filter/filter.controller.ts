@@ -25,4 +25,14 @@ export class FilterController {
   async getFiltersByUser(@Param('userId') userId: string, @Param('filterType') filterType: string) {
     return this.filterService.getFiltersByUserAndType(userId, filterType);
   }
+
+  @Post('delete/:filterId')
+  @RequireInvestigatorOrSupervisorRole()
+  async deleteFilter(
+    @Param('filterId') filterId: number,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const userId = req.user.token.clientId;
+    return this.filterService.deleteFilter(filterId, userId);
+  }
 }

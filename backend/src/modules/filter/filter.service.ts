@@ -54,6 +54,48 @@ export class FilterService {
         }
     }
 
+
+    async deleteFilter(filter_Id: number, userId: string) {
+        this.logger.log(`Deleting user filter with filter_Id: ${filter_Id}`, FilterService.name);
+        try {
+            if (!filter_Id) {
+                throw new BadRequestException('filter Id must be provided');
+            }
+
+            const getExistingfilters = await this.filterRepository.getFiltersByfilterId(filter_Id);
+            const filterAlreadyExists = getExistingfilters?.some((f) => {
+                return JSON.stringify(f.filter_Id) === filter_Id.toString();
+            });
+
+            if (!filterAlreadyExists) {
+                throw new BadRequestException('Filter Id does not exist');
+            }
+
+            const filter = await this.filterRepository.deleteFilter(filter_Id);
+
+            this.auditLogService.logAction({
+                userId,
+                operation: 'deleteFilter',
+                entityName: FilterService.name,
+                actionPerformed: `Deleting user defined filter : filterId ${filter_Id}`,
+                outcome: Outcome.SUCCESS,
+                performedAt: new Date(),
+            });
+
+            return filter;
+        } catch (error) {
+            this.logger.error('Error deleting filter', error, FilterService.name);
+            this.auditLogService.logAction({
+                userId,
+                operation: 'deleteFilter',
+                entityName: FilterService.name,
+                actionPerformed: `Attempt deleting user defined filter for ${filter_Id}`,
+                outcome: Outcome.FAILURE,
+                performedAt: new Date(),
+            });
+        }
+    }
+
     async getFiltersByUserAndType(userId: string, filterType: string) {
         this.logger.log('Retrieving comment', FilterService.name);
         try {

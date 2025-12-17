@@ -98,6 +98,29 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     onCustomDateRangeChange(newRange);
   };
 
+  const handleDeleteSavedFilter = async () => {
+    if (!selectedSavedFilterId) return;
+
+    try {
+      await filterService.deleteFilter(Number(selectedSavedFilterId));
+
+      success('Filter Deleted', 'Saved filter deleted successfully');
+      setSavedFilters(prev =>
+        prev.filter(f => f.id !== selectedSavedFilterId)
+      );
+
+      setSelectedSavedFilterId('');
+      onClearFilters();
+
+    } catch (err: any) {
+      console.error('Error deleting filter:', err);
+      error(
+        'Delete Failed',
+        err instanceof Error ? err.message : 'Failed to delete filter'
+      );
+    }
+  };
+
   const formatDisplayValue = (value: string, type: 'priority' | 'status') => {
     switch (type) {
       case 'priority':
@@ -178,23 +201,23 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     onFilterChange('type', filter.alertType);
     onFilterChange('priority', filter.priority);
     onFilterChange('source', filter.source);
-    // onFilterChange('timeRange', filter.timeRange);
-    // setShowCustomDatePicker(filter.timeRange === 'custom');
-    // if (filter.timeRange === 'custom') {
-    //   setShowCustomDatePicker(true);
+    onFilterChange('timeRange', filter.timeRange);
+    setShowCustomDatePicker(filter.timeRange === 'custom');
+    if (filter.timeRange === 'custom') {
+      setShowCustomDatePicker(true);
 
-    //   onCustomDateRangeChange({
-    //     startDate: filter.startDate || '',
-    //     endDate: filter.endDate || '',
-    //   });
-    // } else {
-    //   setShowCustomDatePicker(false);
+      onCustomDateRangeChange({
+        startDate: filter.startDate || '',
+        endDate: filter.endDate || '',
+      });
+    } else {
+      setShowCustomDatePicker(false);
 
-    //   onCustomDateRangeChange({
-    //     startDate: '',
-    //     endDate: '',
-    //   });
-    // }
+      onCustomDateRangeChange({
+        startDate: '',
+        endDate: '',
+      });
+    }
   };
 
 
@@ -444,6 +467,15 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 className="px-6 py-2 rounded-md bg-indigo-600 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
               >
                 Save Current Filters
+              </button>
+            )}
+            {/* Delete Filters */}
+            {selectedSavedFilterId && (
+              <button
+                onClick={handleDeleteSavedFilter}
+                className="px-4 py-2 rounded-md bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Delete
               </button>
             )}
           </div>
