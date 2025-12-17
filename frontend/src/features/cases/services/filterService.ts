@@ -46,6 +46,16 @@ export class FilterService {
     }
   }
 
+
+  async deleteFilter(filter_Id: number): Promise<UserFilters> {
+    try {
+      const response = await apiClient.post<UserFilters>(`${this.baseUrl}/delete/${filter_Id}`);
+      return this.validateFilterResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'delete filter');
+    }
+  }
+
   private validateFilterResponse(data: unknown): UserFilters {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid filter data received');
