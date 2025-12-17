@@ -27,6 +27,7 @@ import { FeatureExtractionModule } from './modules/feature-extraction/feature-ex
 import { RepositoryModule } from './modules/repository/repository.module';
 import { AlertModule } from './modules/alert/alert.module';
 import { WorkqueueModule } from './modules/workqueue/workqueue.module';
+import { FilterModule } from './modules/filter/filter.module'
 
 @Module({
     imports: [
@@ -58,6 +59,7 @@ import { WorkqueueModule } from './modules/workqueue/workqueue.module';
         ReportsModule,
         UserModule,
         FeatureExtractionModule,
+        FilterModule,
     ],
     providers: [
         PrismaService,

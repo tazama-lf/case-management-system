@@ -486,3 +486,12 @@ enum AsyncTaskStatus {
   FAILED
   CANCELLED
 }
+
+model filters {
+  filter_Id    Int      @id @default(autoincrement())
+  user_Id      String   @db.Uuid
+  filter_type  String   @db.VarChar(50)
+  user_filters String   @db.Text
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+  updated_at   DateTime @updatedAt @db.Timestamp(6)
+}
