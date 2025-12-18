@@ -17,8 +17,14 @@ const MultiBarChart = lazy(() => import('@/features/reports/components/MultiBarC
 const InvestigatorWorkloadReport = lazy(() => import('./InvestigatorWorkloadReport'));
 const AuditLogsReport = lazy(() => import('./AuditLogsReport'));
 const CaseAgeingReport = lazy(() => import('./CaseAgeingReport'));
+const EvidenceFindingsReport = lazy(() => import('./EvidenceFindingsReport'));
 
-type ReportType = 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
+type ReportType =
+  | 'CASE_STATUS'
+  | 'AUDIT_LOGS'
+  | 'CASE_AGEING'
+  | 'INVESTIGATOR_WORKLOAD'
+  | 'EVIDENCE_FINDINGS';
 
 const Reports: React.FC = () => {
   const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
@@ -78,6 +84,8 @@ const Reports: React.FC = () => {
         return [];
       case 'INVESTIGATOR_WORKLOAD':
         return [];
+      case 'EVIDENCE_FINDINGS':
+        return [];
       default:
         return [];
     }
@@ -127,7 +135,7 @@ const Reports: React.FC = () => {
     caseTypes: [],
     outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
     monthlyTrend: [],
-    statusDetails: []
+    statusDetails: [],
   };
 
   const statusDistributionData = [
@@ -139,7 +147,8 @@ const Reports: React.FC = () => {
     { label: 'CLOSED', value: statusDistribution.closed, color: '#6b7280', percentage: 0 }
   ].map(item => ({
     ...item,
-    percentage: stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0
+    percentage:
+      stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0,
   }));
 
   // Debug outcomes data
@@ -163,21 +172,35 @@ const Reports: React.FC = () => {
 
   const getPageTitle = () => {
     switch (reportType) {
-      case 'CASE_STATUS': return 'Case Status Report';
-      case 'AUDIT_LOGS': return 'Audit Logs';
-      case 'CASE_AGEING': return 'Case Ageing Report';
-      case 'INVESTIGATOR_WORKLOAD': return 'Investigator Workload Report';
-      default: return 'Reports Dashboard';
+      case 'CASE_STATUS':
+        return 'Case Status Report';
+      case 'AUDIT_LOGS':
+        return 'Audit Logs';
+      case 'CASE_AGEING':
+        return 'Case Ageing Report';
+      case 'INVESTIGATOR_WORKLOAD':
+        return 'Investigator Workload Report';
+      case 'EVIDENCE_FINDINGS':
+        return 'Evidence Findings Report';
+      default:
+        return 'Reports Dashboard';
     }
   };
 
   const getPageSubtitle = () => {
     switch (reportType) {
-      case 'CASE_STATUS': return 'Overview of cases by status, type, and outcome';
-      case 'AUDIT_LOGS': return 'Detailed log of all system activities for compliance and audit purposes';
-      case 'CASE_AGEING': return 'Analysis of case duration from creation to closure';
-      case 'INVESTIGATOR_WORKLOAD': return 'Overview of investigator workloads and performance metrics';
-      default: return 'Overview of cases by status, type, and outcome';
+      case 'CASE_STATUS':
+        return 'Overview of cases by status, type, and outcome';
+      case 'AUDIT_LOGS':
+        return 'Detailed log of all system activities for compliance and audit purposes';
+      case 'CASE_AGEING':
+        return 'Analysis of case duration from creation to closure';
+      case 'INVESTIGATOR_WORKLOAD':
+        return 'Overview of investigator workloads and performance metrics';
+      case 'EVIDENCE_FINDINGS':
+        return 'Comprehensive view of all evidence items linked to investigation findings and conclusions';
+      default:
+        return 'Overview of cases by status, type, and outcome';
     }
   };
 
@@ -264,9 +287,13 @@ const Reports: React.FC = () => {
 
       {reportType === 'INVESTIGATOR_WORKLOAD' && (
         <Suspense fallback={<div>Loading Investigator Workload Report...</div>}>
-          <InvestigatorWorkloadReport
-            dateRange={dateRange}
-          />
+          <InvestigatorWorkloadReport dateRange={dateRange} />
+        </Suspense>
+      )}
+
+      {reportType === 'EVIDENCE_FINDINGS' && (
+        <Suspense fallback={<div>Loading Evidence Findings Report...</div>}>
+          <EvidenceFindingsReport dateRange={dateRange} />
         </Suspense>
       )}
     </PageContainer>

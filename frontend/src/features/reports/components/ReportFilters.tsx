@@ -3,8 +3,20 @@ import { FunnelIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
-  reportType: 'CASE_STATUS' | 'AUDIT_LOGS' | 'CASE_AGEING' | 'INVESTIGATOR_WORKLOAD';
-  dateRange: 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear';
+  reportType:
+  | 'CASE_STATUS'
+  | 'AUDIT_LOGS'
+  | 'CASE_AGEING'
+  | 'INVESTIGATOR_WORKLOAD'
+  | 'EVIDENCE_FINDINGS';
+  dateRange:
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'last90'
+  | 'thisMonth'
+  | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: { caseType: string; priority: string; investigator: string }) => void;
@@ -26,6 +38,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     AUDIT_LOGS: 'Audit Logs Report',
     CASE_AGEING: 'Case Ageing Report',
     INVESTIGATOR_WORKLOAD: 'Investigator Workload Report',
+    EVIDENCE_FINDINGS: 'Evidence Findings Report',
   };
 
   const dateRangeLabels: Record<ReportFiltersProps['dateRange'], string> = {
@@ -57,7 +70,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   };
 
   const handleToggleFilters = () => {
-    setShowFilters(prev => !prev);
+    setShowFilters((prev) => !prev);
   };
 
   const handleChange = (key: 'caseType' | 'priority' | 'investigator', value: string) => {
@@ -118,8 +131,8 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                 <ul className="py-1 text-sm text-gray-700">
                   {Object.entries(dateRangeLabels).map(([range, label]) => (
                     <li key={range}>
-                      <button 
-                        onClick={() => handleSelectDateRange(range as ReportFiltersProps['dateRange'])} 
+                      <button
+                        onClick={() => handleSelectDateRange(range as ReportFiltersProps['dateRange'])}
                         className="w-full text-left px-4 py-2 hover:bg-gray-50"
                       >
                         {label}

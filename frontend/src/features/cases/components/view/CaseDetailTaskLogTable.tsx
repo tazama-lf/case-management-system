@@ -29,6 +29,15 @@ interface CaseDetailTaskLogTableProps {
   onApproveCaseCreation?: (caseData: any) => void;
   onRejectCaseCreation?: (caseData: any) => void;
   onAbandonCase?: (caseData: any) => void;
+  onCaseIdClick?: (caseId: string) => void;
+  pagination?: {
+    currentPage: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  };
+  onTaskClick?: (task: UnifiedWorkQueueTask) => void;
 }
 
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
@@ -45,6 +54,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onApproveCase,
   onApproveCaseCreation,
   onRejectCaseCreation,
+  onCaseIdClick,
+  onTaskClick,
+
+  pagination,
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
@@ -331,6 +344,17 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     return actions;
   };
 
+  const handleRowKeyDown = (
+    event: React.KeyboardEvent<HTMLTableRowElement>,
+    task: UnifiedWorkQueueTask,
+  ) => {
+    if (!onTaskClick) return;
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onTaskClick(task);
+    }
+  };
   const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList } = useInvestigatorSupervisorList();
 
   React.useEffect(() => {
@@ -383,56 +407,71 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tasks.map((task, index) => (
-              <tr key={task.id || `task-${index}`} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <div className="flex flex-col">
-                    <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
-                      TASK-{task.id || 'No ID'}
+            {tasks.map((task, index) => {
+              const isTriageAlert = task.name && task.name.toLowerCase().includes('triage alert');
+              const isClickable = onTaskClick && !isTriageAlert;
+              return (
+                <tr key={task.id || `task-${index}`}
+                  className={`hover:bg-gray-50 ${isClickable ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
+                  onClick={() => isClickable && onTaskClick(task)}
+                  onKeyDown={(event) => isClickable && handleRowKeyDown(event, task)}
+                  role={isClickable ? 'button' : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      {/* <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
+                        TASK-{task.id || 'No ID'}
+                      </div> */}
+                      {task.name && (
+                        <div
+                          // className="text-xs text-gray-500 break-words mt-1" title={task.name}>
+                          className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
+                          title={task.name || 'View task details'}>
+                          {task.name || 'Unnamed Task'}
+
+                        </div>
+                      )}
                     </div>
-                    {task.name && (
-                      <div className="text-xs text-gray-500 break-words mt-1" title={task.name}>
-                        {task.name}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId?.toString() || ''}>
-                    CASE-{task.caseId || ''}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900 break-words">
-                    {getCandidateGroup(task.candidateGroup, task.name)}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {getStatusBadge(task.status)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center text-sm text-gray-500">
-                    {formatDate(task.createdAt)}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900">
-                    {task.assignee ? (
-                      <span className="text-blue-600 break-words">
-                        {getAssigneeFullName(task.assignee, task.assigneeName)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">Unassigned</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm font-medium">
-                  <div className="flex justify-start space-x-2 items-center">
-                    {getAvailableActions(task)}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId?.toString() || ''}>
+                      CASE-{task.caseId || ''}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900 break-words">
+                      {getCandidateGroup(task.candidateGroup, task.name)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStatusBadge(task.status)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center text-sm text-gray-500">
+                      {formatDate(task.createdAt)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900">
+                      {task.assignee ? (
+                        <span className="text-blue-600 break-words">
+                          {getAssigneeFullName(task.assignee, task.assigneeName)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Unassigned</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium">
+                    <div className="flex justify-start space-x-2 items-center">
+                      {getAvailableActions(task)}
+                    </div>
+                  </td>
+                </tr>
+              )
+            }
+            )}
           </tbody>
         </table>
       </div>
@@ -458,6 +497,114 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
           />
         </Suspense>
+      )}
+
+      {/* Pagination Controls */}
+      {pagination && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    (pagination.currentPage - 1) * pagination.pageSize + 1,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    pagination.currentPage * pagination.pageSize,
+                    pagination.totalItems,
+                  )}
+                </span>{' '}
+                of <span className="font-medium">{pagination.totalItems}</span>{' '}
+                tasks
+              </p>
+            </div>
+            <div>
+              <nav
+                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                aria-label="Pagination"
+              >
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(
+                      Math.max(1, pagination.currentPage - 1),
+                    )
+                  }
+                  disabled={pagination.currentPage <= 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                { }
+                {(() => {
+                  const { currentPage, totalPages } = pagination;
+                  const pages: (number | 'ellipsis')[] = [];
+                  const windowSize = 5;
+                  const half = Math.floor(windowSize / 2);
+
+                  const addPage = (p: number) => pages.push(p);
+                  const addEllipsis = () => pages.push('ellipsis');
+
+                  if (totalPages <= windowSize + 2) {
+                    for (let p = 1; p <= totalPages; p++) addPage(p);
+                  } else {
+                    const start = Math.max(2, currentPage - half);
+                    const end = Math.min(totalPages - 1, currentPage + half);
+
+                    addPage(1);
+                    if (start > 2) addEllipsis();
+                    for (let p = start; p <= end; p++) addPage(p);
+                    if (end < totalPages - 1) addEllipsis();
+                    addPage(totalPages);
+                  }
+
+                  return pages.map((p, idx) =>
+                    p === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => pagination.onPageChange(p)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.currentPage === p
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        aria-current={
+                          pagination.currentPage === p ? 'page' : undefined
+                        }
+                      >
+                        {p}
+                      </button>
+                    ),
+                  );
+                })()}
+                <button
+                  onClick={() =>
+                    pagination.onPageChange(
+                      Math.min(
+                        pagination.totalPages,
+                        pagination.currentPage + 1,
+                      ),
+                    )
+                  }
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
       )}
     </div>)
 };

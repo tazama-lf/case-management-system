@@ -44,6 +44,13 @@ export interface CaseWithTasksDto {
   user_tasks: UserTaskDto[];
   total_tasks: number;
   alert?: AlertInfoDto;
+  assigned_to?: {
+    user_id: string;
+    task_count: number;
+  };
+  case_owner_user_id?: string;
+  completed_tasks?: number;
+  pending_tasks?: number;
   tasks?: TaskDTO[];
 }
 
@@ -78,6 +85,16 @@ export interface UserWorkloadStatsDto {
     days_old: number;
   };
   averageCaseAge: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  user_id: string;
+  operation: string;
+  entity_name: string;
+  action_performed: string;
+  outcome: string;
+  performed_at: Date;
 }
 
 export interface CloseCaseDto {
@@ -428,6 +445,46 @@ export class CaseService {
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'get all cases');
+    }
+  }
+
+  async getCaseHistory(caseId: number): Promise<AuditLogEntry[]> {
+    try {
+      const response = await apiClient.get<AuditLogEntry[]>(
+        `/api/v1/reports/audit-logs`
+      );
+
+      // Get all tasks for this case to filter task-related audit logs
+      const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
+      const taskIds = new Set(tasks.map(task => task.task_id));
+
+      // Filter audit logs for this specific case
+      return response.filter((log) => {
+        const actionLower = log.action_performed?.toLowerCase() || '';
+
+        // Check if log mentions the case ID
+        if (actionLower.includes(caseId.toString().toLowerCase())) {
+          return true;
+        }
+
+        // Check if log mentions any task IDs associated with this case
+        for (const taskId of taskIds) {
+          if (actionLower.includes(taskId.toLowerCase())) {
+            return true;
+          }
+        }
+
+        // Check if operation is related to case or task management
+        const operationLower = log.operation.toLowerCase();
+        if (operationLower.includes('case') && actionLower.includes(String(caseId))) {
+          return true;
+        }
+
+        return false;
+      });
+    } catch (error) {
+      console.error('Failed to fetch case history:', error);
+      return [];
     }
   }
 

@@ -20,6 +20,7 @@ export interface TaskForSupervisor {
   name?: string;
   description?: string;
   candidateGroup?: string;
+  investigationNotes?: string;
   created_at: string;
   updated_at: string;
 
@@ -48,6 +49,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
+  investigationNotes?: string;
 }
 
 export interface AssignTaskData {
@@ -220,7 +222,16 @@ export class TaskService {
     }
   }
 
-  async updateTaskForSupervisor(taskId: number, data: { status?: TaskStatusType; assigned_user_id?: string; name?: string; description?: string; recommendedOutcome?: string; finalNotes?: string }): Promise<TaskForSupervisor> {
+  async updateTaskForSupervisor(
+    taskId: number,
+    data: {
+      status?: TaskStatusType;
+      assigned_user_id?: string;
+      name?: string;
+      description?: string;
+      investigationNotes?: string;
+    },
+  ): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
       return response;
@@ -268,7 +279,27 @@ export class TaskService {
     }
   }
 
-  async completeTask(taskId: number): Promise<{ success: boolean; message: string }> {
+  async getInvestigationTaskForCase(caseId: number): Promise<TaskForSupervisor | null> {
+    try {
+      const tasks = await this.getTasksByCaseId(caseId);
+      // Find investigation task
+      const investigationTask = tasks.find(
+        (t) => t.name && t.name.toLowerCase().includes('investigation')
+      );
+      return investigationTask || null;
+    } catch (error: any) {
+      console.error(
+        'TaskService: Failed to get investigation task for case:',
+        caseId,
+        error,
+      );
+      throw this.handleError(error, 'get investigation task for case');
+    }
+  }
+
+  async completeTask(
+    taskId: number,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
         status: TaskStatus.STATUS_30_COMPLETED
