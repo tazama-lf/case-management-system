@@ -96,6 +96,22 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   FLOWABLE_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_USERNAME?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_DATABASE?: string;
 }
 
 export const validate = (config: Record<string, unknown>) => {

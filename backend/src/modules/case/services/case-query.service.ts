@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -19,7 +19,7 @@ export class CaseQueryService {
     private readonly auditLogService: AuditLogService,
   ) { }
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto) {
+  async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
     try {
       const {
         status,
@@ -38,6 +38,8 @@ export class CaseQueryService {
         const ownedCasesCondition: any = { case_owner_user_id: userId };
         if (status) ownedCasesCondition.status = status;
         if (priority) ownedCasesCondition.priority = priority;
+        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
+        if (isComplianceOfficer) ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
         whereConditions.push(ownedCasesCondition);
       }
 
@@ -45,6 +47,8 @@ export class CaseQueryService {
         const taskAssignmentCondition: any = { tasks: { some: { assigned_user_id: userId } } };
         if (status) taskAssignmentCondition.status = status;
         if (priority) taskAssignmentCondition.priority = priority;
+        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
+        if (isComplianceOfficer) taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
         whereConditions.push(taskAssignmentCondition);
       }
 
@@ -135,7 +139,7 @@ export class CaseQueryService {
     }
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
+  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
     try {
       const {
         status,
@@ -161,7 +165,12 @@ export class CaseQueryService {
         if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
       }
-      if (investigatorUserId) {
+      // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
+      if (isComplianceOfficer) {
+        baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
+        Object.assign(whereClause, baseFilters);
+      }
+      else if (investigatorUserId) {
         // For investigators, show cases that are either:
         // 1. Unassigned (case_owner_user_id is null)
         // 2. Ready for assignment (available in work queue)
@@ -259,20 +268,33 @@ export class CaseQueryService {
     }
   }
 
-  async getUserWorkloadStats(userId: string) {
+  async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
     try {
+      // For compliance officers, filter to only STATUS_82_CLOSED_CONFIRMED cases
+      const statusFilter = isComplianceOfficer
+        ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
+        : {
+          status: {
+            notIn: [
+              CaseStatus.STATUS_81_CLOSED_REFUTED,
+              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+              CaseStatus.STATUS_99_ABANDONED,
+            ],
+          },
+        };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { notIn: [CaseStatus.STATUS_81_CLOSED_REFUTED, CaseStatus.STATUS_82_CLOSED_CONFIRMED, CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, CaseStatus.STATUS_99_ABANDONED] },
+            ...statusFilter,
           },
         }),
         this.prismaService.task.count({ where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } } }),
         this.prismaService.case.findMany({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
-            status: { notIn: [CaseStatus.STATUS_81_CLOSED_REFUTED, CaseStatus.STATUS_82_CLOSED_CONFIRMED, CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, CaseStatus.STATUS_99_ABANDONED] },
+            ...statusFilter,
           },
           select: { case_id: true, status: true, priority: true, created_at: true },
           orderBy: { created_at: 'asc' },
@@ -320,9 +342,15 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number) {
+  async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
     const retrievedCase = await this.caseRepository.findCaseById(caseId);
     if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
+
+    // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
+    if (isComplianceOfficer && retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
+      throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
+    }
+
     return retrievedCase;
   }
 
@@ -348,5 +376,26 @@ export class CaseQueryService {
       this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseQueryService.name);
       throw error;
     }
+  }
+
+  async getCaseActionHistory(caseId: number, tenantId: string, userId: string) {
+    const caseHistory = await this.prismaService.case.findFirst({
+      where: {
+        case_id: caseId,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!caseHistory) {
+      throw new NotFoundException(`Case with ID ${caseId} was not found for tenant ${tenantId}.`);
+    }
+
+    const history = await this.auditLogService.getActionHistoryForCase(caseId);
+    return {
+      caseId,
+      tenantId,
+      userId,
+      history,
+    };
   }
 }

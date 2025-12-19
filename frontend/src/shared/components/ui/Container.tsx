@@ -23,7 +23,9 @@ export const Container: React.FC<ContainerProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${getContainerSize(size)} ${className}`}>
+    <div
+      className={`mx-auto px-4 sm:px-6 lg:px-8 ${getContainerSize(size)} ${className}`}
+    >
       {children}
     </div>
   );
@@ -109,11 +111,11 @@ export const PageContainer: React.FC<PageContainerProps> = ({
                 {title && (
                   <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
                 )}
-                {subtitle && (
-                  <p className="mt-2 text-gray-600">{subtitle}</p>
-                )}
+                {subtitle && <p className="mt-2 text-gray-600">{subtitle}</p>}
               </div>
-              {actions && <div className="flex items-center space-x-3">{actions}</div>}
+              {actions && (
+                <div className="flex items-center space-x-3">{actions}</div>
+              )}
             </div>
           </div>
         )}
@@ -150,7 +152,9 @@ export const Section: React.FC<SectionProps> = ({
               <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
             )}
           </div>
-          {actions && <div className="flex items-center space-x-3">{actions}</div>}
+          {actions && (
+            <div className="flex items-center space-x-3">{actions}</div>
+          )}
         </div>
       )}
       {children}

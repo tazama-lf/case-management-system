@@ -196,13 +196,15 @@ describe('AuditLogService', () => {
 
     it('should handle errors when creating audit log', async () => {
       prismaService.auditLog.create.mockRejectedValue(new Error('DB error'));
-      await expect(service.logAction({
-        userId: 'valid-uuid-123',
-        operation: 'test-operation',
-        entityName: 'test-entity',
-        actionPerformed: 'test-action',
-        outcome: 'success',
-      })).rejects.toThrow('DB error');
+      await expect(
+        service.logAction({
+          userId: 'valid-uuid-123',
+          operation: 'test-operation',
+          entityName: 'test-entity',
+          actionPerformed: 'test-action',
+          outcome: 'success',
+        }),
+      ).rejects.toThrow('DB error');
     });
   });
 

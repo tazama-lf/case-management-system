@@ -13,7 +13,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditLogService } from '../audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client';
+import { Prisma, TaskStatus, AssignmentRuleType, WorkQueueAssignmentRule } from '@prisma/client-cms';
 import { RuleEngineService } from './rule-engine.service';
 import { CreateAssignmentRuleDto, CreateWorkQueueDto, DetailedAssignmentRuleDto, GetWorkQueuesQueryDto, OverdueTaskDto, SLABreachTaskDto, SupervisorDashboardDto, TaskFilterDto, UpdateAssignmentRuleDto, UpdateWorkQueueDto, WorkQueueDetailResponseDto, WorkQueueListResponseDto, WorkQueueResponseDto, WorkQueueMetricsDto, TaskListResponseDto  } from './dto';
 

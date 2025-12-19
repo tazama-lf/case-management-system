@@ -14,7 +14,7 @@ interface State {
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -22,7 +22,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-
     console.error('Uncaught error:', error, errorInfo);
   }
 
@@ -44,7 +43,10 @@ export class ErrorBoundary extends Component<Props, State> {
                   Something went wrong
                 </h3>
                 <div className="mt-2 text-sm text-gray-500">
-                  <p>We encountered an unexpected error. Please refresh the page or try again later.</p>
+                  <p>
+                    We encountered an unexpected error. Please refresh the page
+                    or try again later.
+                  </p>
                 </div>
                 <div className="mt-4">
                   <button

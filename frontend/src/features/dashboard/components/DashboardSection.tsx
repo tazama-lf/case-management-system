@@ -11,7 +11,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   title,
   subtitle,
   viewAllHref,
-  children
+  children,
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -29,9 +29,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
           </a>
         )}
       </div>
-      <div className="space-y-4">
-        {children}
-      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 };

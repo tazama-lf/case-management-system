@@ -104,9 +104,7 @@ describe('TazamaAuthGuard', () => {
 
       mockRequest.headers.authorization = undefined;
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('No Bearer token provided')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('No Bearer token provided'));
     });
 
     it('should throw UnauthorizedException when authorization header does not start with Bearer', async () => {
@@ -116,9 +114,7 @@ describe('TazamaAuthGuard', () => {
 
       mockRequest.headers.authorization = 'Basic some-token';
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('No Bearer token provided')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('No Bearer token provided'));
     });
 
     it('should throw UnauthorizedException when no required claims are specified', async () => {
@@ -128,9 +124,7 @@ describe('TazamaAuthGuard', () => {
 
       mockRequest.headers.authorization = 'Bearer valid-token';
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('No required claims specified')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('No required claims specified'));
     });
 
     it('should throw UnauthorizedException when required claims are undefined', async () => {
@@ -140,9 +134,7 @@ describe('TazamaAuthGuard', () => {
 
       mockRequest.headers.authorization = 'Bearer valid-token';
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('No required claims specified')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('No required claims specified'));
     });
 
     it('should throw UnauthorizedException when token validation fails', async () => {
@@ -156,9 +148,7 @@ describe('TazamaAuthGuard', () => {
         throw new Error('Token validation failed');
       });
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Token validation failed')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Token validation failed'));
     });
 
     it('should throw UnauthorizedException when user has missing required claims', async () => {
@@ -183,9 +173,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Missing or invalid claims: admin')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Missing or invalid claims: admin'));
     });
 
     it('should throw UnauthorizedException when token decode fails', async () => {
@@ -202,9 +190,7 @@ describe('TazamaAuthGuard', () => {
       mockValidateTokenAndClaims.mockReturnValue(mockValidationResult);
       mockJwtDecode.mockReturnValue(null); // Failed to decode
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Invalid token format')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Invalid token format'));
     });
 
     it('should return true and set user when authentication is successful', async () => {
@@ -264,9 +250,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Missing or invalid claims: write')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Missing or invalid claims: write'));
     });
 
     it('should handle multiple missing claims correctly', async () => {
@@ -294,7 +278,7 @@ describe('TazamaAuthGuard', () => {
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
       await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Missing or invalid claims: admin, write, delete')
+        new UnauthorizedException('Missing or invalid claims: admin, write, delete'),
       );
     });
 
@@ -372,9 +356,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Invalid token format')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Invalid token format'));
     });
 
     it('should throw UnauthorizedException when token is missing tenantId', async () => {
@@ -398,9 +380,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Invalid token format')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Invalid token format'));
     });
 
     it('should throw UnauthorizedException when token is missing claims array', async () => {
@@ -424,9 +404,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Invalid token format')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Invalid token format'));
     });
 
     it('should throw UnauthorizedException when token has invalid claims array', async () => {
@@ -451,9 +429,7 @@ describe('TazamaAuthGuard', () => {
 
       mockJwtDecode.mockReturnValue(mockTokenPayload);
 
-      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(
-        new UnauthorizedException('Invalid token format')
-      );
+      await expect(guard.canActivate(mockExecutionContext)).rejects.toThrow(new UnauthorizedException('Invalid token format'));
     });
   });
 

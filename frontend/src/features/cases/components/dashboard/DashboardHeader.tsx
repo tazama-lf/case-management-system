@@ -12,7 +12,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onCreateClick }) => {
         <h1 className="text-2xl font-bold text-gray-900">Cases Dashboard</h1>
         <p className="text-gray-600">Manage and track investigation cases</p>
       </div>
-      <button 
+      <button
         onClick={onCreateClick}
         className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >

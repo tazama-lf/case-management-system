@@ -18,6 +18,7 @@ import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { TaskBridgeService } from '../task-bridge/task-bridge.service';
+import { AuthService } from '../auth/auth.service';
 
 export interface TaskWithCase extends Task {
   case: {
@@ -39,6 +40,7 @@ export class TaskService {
     private readonly lifecycle: TaskLifecycleService,
     private readonly flowableService: FlowableService,
     private readonly taskBridgeService: TaskBridgeService,
+    private readonly authService: AuthService,
   ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
@@ -61,8 +63,8 @@ export class TaskService {
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         description: updateData.description,
-        assigned_user_id:
-          updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+        assigned_user_id: updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+        investigationNotes: updateData.investigationNotes,
       };
 
       const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
@@ -218,11 +220,53 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: number, userId?: string) {
+  async getTasksByCaseId(caseId: number, userId?: string, userClaims: string[] = []) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
     try {
       const tasks = await this.taskRepository.findTasks({ case_id: caseId }, true);
+
+      const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+
+      const filteredTasks = tasks.filter((task) => {
+        const isComplianceTask = task.candidateGroup?.toLowerCase() === 'compliance';
+
+        if (isComplianceOfficer) {
+          return isComplianceTask;
+        }
+
+        return !isComplianceTask;
+      });
+
+      const enrichedTasks = await Promise.all(
+        filteredTasks.map(async (task) => {
+          let assignedUser: { user_id: string; username: string; role?: string } | null = null;
+
+          if (task.assigned_user_id) {
+            try {
+              const userInfo = await this.authService.getUserDetailsFromAuthService(task.assigned_user_id);
+              assignedUser = {
+                user_id: task.assigned_user_id,
+                username: userInfo.username || userInfo.email || task.assigned_user_id,
+                role: userInfo.roles[0],
+              };
+            } catch (error: any) {
+              this.logger.warn(`Could not fetch user info for ${task.assigned_user_id}: ${error.message}`, TaskService.name);
+              // Fallback to just the user ID
+              assignedUser = {
+                user_id: task.assigned_user_id,
+                username: task.assigned_user_id.substring(0, 8),
+              };
+            }
+          }
+
+          return {
+            ...task,
+            assignedUser,
+          };
+        }),
+      );
+
 
       if (userId) {
         this.auditLogService.logAction({
@@ -235,7 +279,7 @@ export class TaskService {
         });
       }
 
-      return tasks;
+      return enrichedTasks;
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
       if (userId) {

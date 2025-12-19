@@ -5,10 +5,14 @@ import type {
   InvestigatorWorkloadData,
   TaskCompletionData,
   AuditLogsData,
-  CaseAgeingData
+  CaseAgeingData,
+  EvidenceFindingsData,
 } from '../types/reports.types';
 
-export const useReports = (dateRange?: string, filters?: { caseType: string; priority: string; investigator: string }) => {
+export const useReports = (
+  dateRange?: string,
+  filters?: { caseType: string; priority: string; investigator: string },
+) => {
   return useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
     queryFn: () => reportsService.getReportsData(dateRange, filters),
@@ -62,6 +66,16 @@ export const useCaseAgeing = (dateRange?: string) => {
   return useQuery<CaseAgeingData>({
     queryKey: ['reports', 'case-ageing', dateRange],
     queryFn: () => reportsService.getCaseAgeingData(dateRange),
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: 1000 * 60 * 10,
+    refetchOnWindowFocus: true,
+  });
+};
+
+export const useEvidenceFindings = (dateRange?: string) => {
+  return useQuery<EvidenceFindingsData>({
+    queryKey: ['reports', 'evidence-findings', dateRange],
+    queryFn: () => reportsService.getEvidenceFindingsData(dateRange),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,

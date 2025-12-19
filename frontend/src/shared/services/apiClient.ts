@@ -71,7 +71,9 @@ class ApiClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.message || `HTTP ${response.status}: ${response.statusText}` || 'An error occurred',
+        errorData.message ||
+          `HTTP ${response.status}: ${response.statusText}` ||
+          'An error occurred',
       );
     }
 
@@ -133,22 +135,61 @@ class ApiClient {
     options?: ApiRequestOptions,
   ): Promise<T> {
     const { skipAuth = false, ...fetchOptions } = options || {};
+    
+    const url = `${this.baseUrl}${endpoint}`;
 
+    // For multipart uploads, we need to handle auth headers manually
+    // and NOT set Content-Type (browser will set it with boundary)
     const headers: HeadersInit = {
       ...fetchOptions.headers,
     };
 
-    if (headers && 'Content-Type' in headers) {
-      delete (headers as any)['Content-Type'];
+    if (!skipAuth) {
+      const authHeaders = authService.getAuthHeader();
+      Object.assign(headers, authHeaders);
     }
 
-    return this.request<T>(endpoint, {
+    // Remove Content-Type if it exists - browser will set it automatically for FormData
+    if (headers && 'Content-Type' in headers) {
+      delete (headers as Record<string, string>)['Content-Type'];
+    }
+
+    const config: RequestInit = {
       ...fetchOptions,
       method: 'POST',
       body: formData,
       headers,
-      skipAuth,
-    });
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (response.status === 401 && !skipAuth) {
+        const refreshed = await authService.refreshUserProfile();
+        if (refreshed) {
+          const newAuthHeaders = authService.getAuthHeader();
+          const retryHeaders = { ...headers, ...newAuthHeaders };
+          if ('Content-Type' in retryHeaders) {
+            delete (retryHeaders as Record<string, string>)['Content-Type'];
+          }
+          const retryConfig: RequestInit = {
+            ...config,
+            headers: retryHeaders,
+          };
+          const retryResponse = await fetch(url, retryConfig);
+          return this.handleResponse<T>(retryResponse);
+        } else {
+          authService.logout();
+          window.location.href = '/login';
+          throw new Error('Session expired. Please login again.');
+        }
+      }
+
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`API upload failed: ${endpoint}`, error);
+      throw error;
+    }
   }
 }
 

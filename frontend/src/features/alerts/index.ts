@@ -13,13 +13,11 @@ export {
   useAlertActionHistory,
   useAlertOperations as useAlertMutations,
   useAlertFilterOptions,
-  alertsQueryKeys
+  alertsQueryKeys,
 } from './hooks/useAlertsQuery';
 export { useAlertOperations } from './hooks/useAlertOperations';
 
-export type {
-  ActionHistory
-} from './types/triage.types';
+export type { ActionHistory } from './types/triage.types';
 
 export type {
   Alert,
@@ -28,7 +26,7 @@ export type {
   AlertsTableColumn,
   AlertsTableAction,
   AlertsTableProps,
-  AlertsDashboardProps
+  AlertsDashboardProps,
 } from './types/alertsdashboard.types';
 
 export { default as triageService } from './services/triageservice';

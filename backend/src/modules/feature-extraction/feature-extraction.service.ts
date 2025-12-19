@@ -58,7 +58,7 @@ export class FeatureExtractionService {
       features[0] = typologyResults.result;
 
       for (const ruleResult of ruleResults) {
-        const ruleId = this.extractRuleId((ruleResult as any).id);
+        const ruleId = this.extractRuleId(ruleResult.id);
         const indpdntVarbl = Number((ruleResult as any).indpdntVarbl) || 0;
 
         const ruleIndex = this.RULE_SEQUENCE.indexOf(ruleId);

@@ -18,15 +18,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks/40a6285b-9390-11f0-8c2a-367cef1558c5/identitylinks",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks",
-            "40a6285b-9390-11f0-8c2a-367cef1558c5",
-            "identitylinks"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks", "40a6285b-9390-11f0-8c2a-367cef1558c5", "identitylinks"],
           "query": [],
           "variable": []
         },
@@ -54,15 +47,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks/1a97df61-9523-11f0-9fc9-761ed81ea54b/variables",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks",
-            "1a97df61-9523-11f0-9fc9-761ed81ea54b",
-            "variables"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks", "1a97df61-9523-11f0-9fc9-761ed81ea54b", "variables"],
           "query": [],
           "variable": []
         },
@@ -90,13 +76,8 @@
         "url": {
           "raw": "{{baseUrl}}/identity/groups",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "identity",
-            "groups"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["identity", "groups"],
           "query": [],
           "variable": []
         },
@@ -124,13 +105,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks"],
           "query": [],
           "variable": []
         },
@@ -158,13 +134,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks?includeTaskLocalVariables=true",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks?includeTaskLocalVariables=true"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks?includeTaskLocalVariables=true"],
           "query": [
             {
               "key": "includeTaskLocalVariables",
@@ -188,13 +159,8 @@
         "url": {
           "raw": "{{baseUrl}}/identity/groups",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "identity",
-            "groups"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["identity", "groups"],
           "query": [],
           "variable": []
         }
@@ -213,13 +179,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks?candidateGroup=investigator",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks?candidateGroup=investigator"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks?candidateGroup=investigator"],
           "query": [
             {
               "key": "candidateGroup",
@@ -243,13 +204,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks?taskId=1a97df61-9523-11f0-9fc9-761ed81ea54b",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks?taskId=1a97df61-9523-11f0-9fc9-761ed81ea54b"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks?taskId=1a97df61-9523-11f0-9fc9-761ed81ea54b"],
           "query": [
             {
               "key": "taskId",
@@ -273,15 +229,8 @@
         "url": {
           "raw": "{{baseUrl}}/runtime/tasks/1a97df61-9523-11f0-9fc9-761ed81ea54b/variables",
           "protocol": "",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "runtime",
-            "tasks",
-            "1a97df61-9523-11f0-9fc9-761ed81ea54b",
-            "variables"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["runtime", "tasks", "1a97df61-9523-11f0-9fc9-761ed81ea54b", "variables"],
           "query": [],
           "variable": []
         }

@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: tazama_user
       POSTGRES_PASSWORD: tazama_password
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -26,7 +26,7 @@ services:
     container_name: tazama-cms-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     networks:
@@ -43,7 +43,7 @@ services:
       - database
       - redis
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -58,7 +58,7 @@ services:
     container_name: tazama-cms-frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - '5173:5173'
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -71,9 +71,25 @@ services:
     container_name: tazama-cms-nats
     restart: unless-stopped
     ports:
-      - "4222:4222"
-      - "8222:8222"
-    command: ["--jetstream", "--http_port", "8222"]
+      - '4222:4222'
+      - '8222:8222'
+    command: ['--jetstream', '--http_port', '8222']
+    networks:
+      - tazama-network
+
+  # CouchDB for evidence storage
+  couchdb:
+    image: couchdb:3.3
+    container_name: tazama-cms-couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: simon
+      COUCHDB_PASSWORD: '1234'
+    ports:
+      - '5984:5984'
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
     networks:
       - tazama-network
 
@@ -81,6 +97,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  couchdb_data:
     driver: local
 
 networks:

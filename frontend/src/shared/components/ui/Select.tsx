@@ -10,9 +10,9 @@ interface OptionsRendererProps {
   placeholder?: string;
 }
 
-export const OptionsRenderer: React.FC<OptionsRendererProps> = ({ 
-  options, 
-  placeholder 
+export const OptionsRenderer: React.FC<OptionsRendererProps> = ({
+  options,
+  placeholder,
 }) => {
   return (
     <>

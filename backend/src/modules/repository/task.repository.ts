@@ -40,8 +40,9 @@ export class TaskRepository {
       include: includeCase
         ? {
             case: {
-              select: { case_id: true, status: true, priority: true, created_at: true },
+              select: { case_id: true, status: true, priority: true, created_at: true, case_type: true },
             },
+            workQueue: { include: { roles: true } },
           }
         : undefined,
       skip,

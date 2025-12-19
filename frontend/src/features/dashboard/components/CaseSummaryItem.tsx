@@ -5,7 +5,9 @@ interface CaseSummaryItemProps {
   case: CaseSummary;
 }
 
-const CaseSummaryItem: React.FC<CaseSummaryItemProps> = ({ case: caseItem }) => {
+const CaseSummaryItem: React.FC<CaseSummaryItemProps> = ({
+  case: caseItem,
+}) => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'assigned':
@@ -40,7 +42,9 @@ const CaseSummaryItem: React.FC<CaseSummaryItemProps> = ({ case: caseItem }) => 
         </p>
       </div>
       <div className="flex items-center space-x-4">
-        <span className="text-lg font-semibold text-gray-900">{caseItem.count}</span>
+        <span className="text-lg font-semibold text-gray-900">
+          {caseItem.count}
+        </span>
         <span className="text-sm text-gray-600">{caseItem.description}</span>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MessagePayloadModal } from '../../../alerts';
 
-
 interface TransactionMessage {
   id: string;
   type: string;
@@ -23,16 +22,16 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   onClose,
   transactionId,
   messages,
-  transactionData
+  transactionData,
 }) => {
   const [payloadModalOpen, setPayloadModalOpen] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<TransactionMessage | null>(null);
+  const [selectedMessage, setSelectedMessage] =
+    useState<TransactionMessage | null>(null);
 
   const handleMessageClick = (message: TransactionMessage) => {
     setSelectedMessage(message);
     setPayloadModalOpen(true);
   };
-
 
   if (!isOpen) return null;
 
@@ -42,15 +41,29 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
         {}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Transaction Messages</h2>
-            <p className="text-sm text-gray-500">Transaction ID: {transactionId}</p>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Transaction Messages
+            </h2>
+            <p className="text-sm text-gray-500">
+              Transaction ID: {transactionId}
+            </p>
           </div>
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -75,10 +88,22 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
                 >
                   {message.type}
                 </span>
-                <span className="text-sm text-gray-600">{message.description}</span>
+                <span className="text-sm text-gray-600">
+                  {message.description}
+                </span>
               </div>
-              <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
           ))}
@@ -94,11 +119,15 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
         <MessagePayloadModal
           isOpen={payloadModalOpen}
           onClose={() => setPayloadModalOpen(false)}
-          message={selectedMessage ? {
-            ...selectedMessage,
-            timestamp: new Date().toISOString(),
-            status: 'received' as const
-          } : null}
+          message={
+            selectedMessage
+              ? {
+                  ...selectedMessage,
+                  timestamp: new Date().toISOString(),
+                  status: 'received' as const,
+                }
+              : null
+          }
           transactionData={transactionData}
         />
       </div>

@@ -12,6 +12,7 @@ export type CaseRow = {
   pickedOn: string;
   action: 'View' | 'Complete';
   assignee?: string;
+  assignedUserId?: string; // Full user ID for fetching user details
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
@@ -68,7 +69,23 @@ export const formatStatus = (status: string): string => {
   return status;
 };
 
-export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow => {
+export const transformBackendCaseToUI = (
+  backendCase: CaseWithTasksDto,
+): CaseRow => {
+  // Determine assignee display and full user ID
+  let assigneeDisplay = 'Unassigned';
+  let assignedUserId: string | undefined;
+  
+  if (backendCase.assigned_to?.user_id) {
+    assignedUserId = backendCase.assigned_to.user_id;
+    assigneeDisplay = backendCase.assigned_to.user_id.substring(0, 8);
+  } else if (backendCase.case_owner_user_id) {
+    assignedUserId = backendCase.case_owner_user_id;
+    assigneeDisplay = backendCase.case_owner_user_id.substring(0, 8);
+  } else if (backendCase.user_role === 'owner') {
+    assigneeDisplay = 'Current User';
+  }
+
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
@@ -78,11 +95,15 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typologyId: backendCase.alert?.alert_id?.toString().substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
-    pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
+    pickedOn:
+      backendCase.user_role === 'owner'
+        ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
+        : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
+    assignee: assigneeDisplay,
+    assignedUserId: assignedUserId,
     priority: backendCase.priority,
-    userRole: backendCase.user_role,
+    userRole: backendCase.user_role || 'none',
     totalTasks: backendCase.total_tasks,
     alertId: backendCase.alert?.alert_id,
     alertMessage: backendCase.alert?.message,

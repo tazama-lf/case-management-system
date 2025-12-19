@@ -6,19 +6,19 @@ interface LoadingSpinnerProps {
   fullScreen?: boolean;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
-  size = 'md', 
-  className = '', 
-  fullScreen = false 
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  size = 'md',
+  className = '',
+  fullScreen = false,
 }) => {
   const sizeClasses = {
     sm: 'h-4 w-4',
-    md: 'h-8 w-8', 
-    lg: 'h-12 w-12'
+    md: 'h-8 w-8',
+    lg: 'h-12 w-12',
   };
 
   const spinner = (
-    <div 
+    <div
       className={`animate-spin rounded-full border-b-2 border-blue-600 ${sizeClasses[size]} ${className}`}
       role="status"
       aria-label="Loading"

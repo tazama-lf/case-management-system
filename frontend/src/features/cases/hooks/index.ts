@@ -1,4 +1,7 @@
-export { useCaseData, useCaseActions as useCaseDataActions } from './useCaseData';
+export {
+  useCaseData,
+  useCaseActions as useCaseDataActions,
+} from './useCaseData';
 export { useCaseReopenActions } from './useCaseReopenActions';
 
 // Individual hooks

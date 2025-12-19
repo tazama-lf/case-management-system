@@ -5,7 +5,10 @@ interface FiltersPanelProps {
   caseType: string;
   priority: string;
   investigator: string;
-  onChange: (key: 'caseType' | 'priority' | 'investigator', value: string) => void;
+  onChange: (
+    key: 'caseType' | 'priority' | 'investigator',
+    value: string,
+  ) => void;
   onApply: () => void;
   onReset: () => void;
 }
@@ -16,14 +19,16 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
   investigator,
   onChange,
   onApply,
-  onReset
+  onReset,
 }) => {
   const { data: filtersData, isLoading } = useFilters();
 
   if (isLoading) {
     return (
       <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <div className="text-sm font-medium text-gray-700 mb-3">Additional Filters</div>
+        <div className="text-sm font-medium text-gray-700 mb-3">
+          Additional Filters
+        </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="animate-pulse">
             <div className="h-4 bg-gray-200 rounded mb-2"></div>
@@ -44,10 +49,14 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
 
   return (
     <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-      <div className="text-sm font-medium text-gray-700 mb-3">Additional Filters</div>
+      <div className="text-sm font-medium text-gray-700 mb-3">
+        Additional Filters
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Case Type</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Case Type
+          </label>
           <select
             value={caseType}
             onChange={(e) => onChange('caseType', e.target.value)}
@@ -63,7 +72,9 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Priority
+          </label>
           <select
             value={priority}
             onChange={(e) => onChange('priority', e.target.value)}
@@ -79,7 +90,9 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Investigator</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Investigator
+          </label>
           <select
             value={investigator}
             onChange={(e) => onChange('investigator', e.target.value)}
@@ -114,5 +127,3 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
 };
 
 export default FiltersPanel;
-
-

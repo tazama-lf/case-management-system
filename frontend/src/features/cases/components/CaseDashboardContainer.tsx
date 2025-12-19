@@ -13,7 +13,7 @@ const CaseDashboardContainer: React.FC = () => {
     caseActions,
     setCurrentPage,
     setPageSize,
-    refreshCases
+    refreshCases,
   } = useCaseDashboard();
 
   return (
@@ -29,7 +29,7 @@ const CaseDashboardContainer: React.FC = () => {
         onCreateNew={dashboardActions.handleCreateNew}
         onView={dashboardActions.handleView}
       />
-      
+
       <CaseModalsManager
         modalState={modalState}
         modalActions={modalActions}

@@ -20,7 +20,11 @@ services:
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tazama_user} -d ${DB_NAME:-tazama_cms}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DB_USER:-tazama_user} -d ${DB_NAME:-tazama_cms}',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -42,7 +46,15 @@ services:
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      test:
+        [
+          'CMD',
+          'redis-cli',
+          '--no-auth-warning',
+          '-a',
+          '${REDIS_PASSWORD}',
+          'ping',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -78,7 +90,7 @@ services:
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD", "node", "healthcheck.js"]
+      test: ['CMD', 'node', 'healthcheck.js']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -103,14 +115,14 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./ssl:/etc/nginx/ssl:ro
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -129,14 +141,14 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:8080"
-      - "9000:9000"
+      - '8080:8080'
+      - '9000:9000'
     volumes:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/stats"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/stats']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -146,11 +158,19 @@ services:
     image: nats:2.10-alpine
     container_name: tazama-cms-nats-prod
     restart: always
-    command: ["--jetstream", "--http_port", "8222", "--auth", "${NATS_TOKEN}"]
+    command: ['--jetstream', '--http_port', '8222', '--auth', '${NATS_TOKEN}']
     networks:
       - tazama-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:8222/healthz',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

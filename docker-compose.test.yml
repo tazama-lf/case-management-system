@@ -15,11 +15,11 @@ services:
       POSTGRES_USER: tazama_user
       POSTGRES_PASSWORD: tazama_password
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - test_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tazama_user -d tazama_cms"]
+      test: ['CMD-SHELL', 'pg_isready -U tazama_user -d tazama_cms']
       interval: 10s
       timeout: 5s
       retries: 3

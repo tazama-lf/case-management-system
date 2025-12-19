@@ -35,12 +35,16 @@ const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({ alert }) => {
   return (
     <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
       <div className="flex-1">
-        <p className={`text-sm font-medium ${getPriorityColor(alert.priority)}`}>
+        <p
+          className={`text-sm font-medium ${getPriorityColor(alert.priority)}`}
+        >
           {getPriorityLabel(alert.priority)}
         </p>
       </div>
       <div className="flex items-center space-x-4">
-        <span className="text-lg font-semibold text-gray-900">{alert.count}</span>
+        <span className="text-lg font-semibold text-gray-900">
+          {alert.count}
+        </span>
         <span className="text-sm text-gray-600">{alert.description}</span>
       </div>
     </div>

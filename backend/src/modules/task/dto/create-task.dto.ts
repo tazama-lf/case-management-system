@@ -1,5 +1,5 @@
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTaskDto {
@@ -10,6 +10,14 @@ export class CreateTaskDto {
   @IsNumber()
   caseId: number;
 
+    @ApiProperty({
+      description: 'Investigation notes for the task',
+      example: 'Detailed investigation notes entered by investigator.',
+      required: false,
+    })
+    @IsString()
+    @IsOptional()
+    investigationNotes?: string;
   @ApiProperty({
     description: 'Initial status of the task',
     enum: TaskStatus,

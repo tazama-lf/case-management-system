@@ -1,14 +1,14 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
+// import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
-import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
-import LinkedItemsTab from './view/LinkedItemsTab';
 import TaskLogTab from './view/TaskLogTab';
 import CommentHistoryTab from './view/CommentHistoryTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
+import CaseHistoryTab from './view/CaseHistoryTab';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'comments';
+type ViewTabKey = 'details' | 'tasks' | 'history' | 'comments';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -29,10 +29,10 @@ interface ViewCaseModalProps {
   onRejectCaseCreation?: (row: CaseRow) => void;
 }
 
-const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ 
-  open, 
-  onClose, 
-  row, 
+const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
+  open,
+  onClose,
+  row,
   onRefreshCases,
   canManageSupervisorActions = false,
   onComplete,
@@ -78,9 +78,8 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Case Details' },
-                { key: 'evidence', label: 'Evidence & Documents' },
-                { key: 'linked', label: 'Linked Items' },
                 { key: 'tasks', label: 'Task Log' },
+                { key: 'history', label: 'Case History' },
                 { key: 'comments', label: 'Comments History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
@@ -103,8 +102,8 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           ) : (
             <>
               {tab === 'details' && (
-                <CaseDetailsTab 
-                  row={row} 
+                <CaseDetailsTab
+                  row={row}
                   canManageSupervisorActions={canManageSupervisorActions}
                   onComplete={onComplete}
                   onCloseCase={onCloseCase}
@@ -119,12 +118,10 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onRejectCaseCreation={onRejectCaseCreation}
                 />
               )}
-              {tab === 'evidence' && <EvidenceDocumentsTab />}
-              {tab === 'linked' && <LinkedItemsTab />}
               {tab === 'tasks' && (
-                <TaskLogTab 
-                  caseId={row.id} 
-                  alertId={row.alertId} 
+                <TaskLogTab
+                  caseId={row.id}
+                  alertId={row.alertId}
                   onRefreshCases={onRefreshCases}
                   canManageSupervisorActions={canManageSupervisorActions}
                   caseData={row}
@@ -134,8 +131,10 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onAbandonCase={onAbandonCase}
                 />
               )}
-              {/* {tab === 'notes' && <InvestigationNotesTab />} */}
               {tab === 'comments' && <CommentHistoryTab caseId={row.id} />}
+              {tab === 'history' && (
+                <CaseHistoryTab caseId={row.id} row={row} />
+              )}
             </>
           )}
         </div>

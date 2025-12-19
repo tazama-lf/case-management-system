@@ -20,6 +20,9 @@ export interface LoginCredentials {
 }
 
 export interface User {
+  user_id: string;
+  username: string;
+  roles: string[];
   userId: string;
   tenantId: string;
   email: string;
@@ -80,6 +83,7 @@ export interface AuthContextType extends AuthState {
   hasBackendClaim: (claim: string) => boolean;
   hasInvestigatorRole: () => boolean;
   hasSupervisorRole: () => boolean;
+  hasComplianceOfficerRole: () => boolean;
   hasCMSAdminRole: () => boolean;
   hasAdminRole: () => boolean;
   hasAnyRole: (roles: string[]) => boolean;

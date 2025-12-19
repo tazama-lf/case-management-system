@@ -1,6 +1,6 @@
 {
   "name": "tazama-case-management-system",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Tazama Case and Investigation Management System - Monorepo",
   "private": true,
   "workspaces": [
@@ -51,5 +51,12 @@
     "npm": ">=9.0.0"
   },
   "author": "Tazama",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/multer": "^2.0.0",
+    "crypto-js": "^4.2.0",
+    "multer": "^2.0.2",
+    "nano": "^11.0.3"
+  }
 }

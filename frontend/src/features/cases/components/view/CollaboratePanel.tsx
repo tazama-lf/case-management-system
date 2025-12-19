@@ -1,12 +1,23 @@
 import React from 'react';
 import NewDiscussionThreadModal from './NewDiscussionThreadModal';
-import type { Collaborator, NewDiscussionThreadPayload } from './NewDiscussionThreadModal';
+import type {
+  Collaborator,
+  NewDiscussionThreadPayload,
+} from './NewDiscussionThreadModal';
 
-const Card: React.FC<{ title?: string; children: React.ReactNode; right?: React.ReactNode }>= ({ title, right, children }) => (
+const Card: React.FC<{
+  title?: string;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+}> = ({ title, right, children }) => (
   <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
     {(title || right) && (
       <div className="mb-3 flex items-center justify-between">
-        {title ? <div className="text-sm font-semibold text-gray-800">{title}</div> : <div />}
+        {title ? (
+          <div className="text-sm font-semibold text-gray-800">{title}</div>
+        ) : (
+          <div />
+        )}
         {right ? <div>{right}</div> : null}
       </div>
     )}
@@ -14,20 +25,32 @@ const Card: React.FC<{ title?: string; children: React.ReactNode; right?: React.
   </div>
 );
 
-const ProgressBar: React.FC<{ value: number }>= ({ value }) => (
+const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
   <div className="h-2 w-full rounded bg-gray-100">
-    <div className="h-2 rounded bg-indigo-600" style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }} />
+    <div
+      className="h-2 rounded bg-indigo-600"
+      style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
+    />
   </div>
 );
 
-const Pill: React.FC<{ color?: 'green' | 'yellow' | 'red' | 'gray'; children: React.ReactNode }>= ({ color = 'gray', children }) => {
+const Pill: React.FC<{
+  color?: 'green' | 'yellow' | 'red' | 'gray';
+  children: React.ReactNode;
+}> = ({ color = 'gray', children }) => {
   const map = {
     green: 'bg-green-50 text-green-700 ring-green-200',
     yellow: 'bg-yellow-50 text-yellow-800 ring-yellow-200',
     red: 'bg-red-50 text-red-700 ring-red-200',
     gray: 'bg-gray-100 text-gray-700 ring-gray-200',
   } as const;
-  return <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${map[color]}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${map[color]}`}
+    >
+      {children}
+    </span>
+  );
 };
 
 interface CollaboratePanelProps {
@@ -42,24 +65,46 @@ const defaultCollaborators: Collaborator[] = [
   { id: 'c4', name: 'David Wilson', role: 'Risk Manager' },
 ];
 
-const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = defaultCollaborators, onCreateThread }) => {
+const CollaboratePanel: React.FC<CollaboratePanelProps> = ({
+  collaborators = defaultCollaborators,
+  onCreateThread,
+}) => {
   const [openCreate, setOpenCreate] = React.useState(false);
 
   // Data arrays for repetitive structures
   const typologies = [
     { id: 'account-muling', name: 'Account Muling', score: 85 },
-    { id: 'transaction-structuring', name: 'Transaction Structuring', score: 75 }
+    {
+      id: 'transaction-structuring',
+      name: 'Transaction Structuring',
+      score: 75,
+    },
   ];
 
   const linkedAlerts = [
     { id: 'A-30023', title: 'Large Transaction', status: 'Active' },
-    { id: 'A-30024', title: 'Unusual Patterns', status: 'Closed' }
+    { id: 'A-30024', title: 'Unusual Patterns', status: 'Closed' },
   ];
 
   const collaboratorData = [
-    { id: 'john-smith', name: 'John Smith', role: 'Lead Investigator', status: 'Viewed' },
-    { id: 'sarah-johnson', name: 'Sarah Johnson', role: 'Risk Analyst', status: 'Not viewed' },
-    { id: 'michael-brown', name: 'Michael Brown', role: 'Compliance Officer', status: 'Viewed' }
+    {
+      id: 'john-smith',
+      name: 'John Smith',
+      role: 'Lead Investigator',
+      status: 'Viewed',
+    },
+    {
+      id: 'sarah-johnson',
+      name: 'Sarah Johnson',
+      role: 'Risk Analyst',
+      status: 'Not viewed',
+    },
+    {
+      id: 'michael-brown',
+      name: 'Michael Brown',
+      role: 'Compliance Officer',
+      status: 'Viewed',
+    },
   ];
 
   const handleCreate = (payload: NewDiscussionThreadPayload) => {
@@ -72,7 +117,9 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
       {}
       <div className="w-full max-w-sm space-y-4">
         <Card title="Alert Stage" right={<Pill color="green">Complete</Pill>}>
-          <div className="mb-2 text-xs text-gray-500">Started · Not started</div>
+          <div className="mb-2 text-xs text-gray-500">
+            Started · Not started
+          </div>
           <div className="mb-2 flex items-center justify-between text-xs text-gray-600">
             <span>Progress</span>
             <span>100%</span>
@@ -85,8 +132,13 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
           </div>
         </Card>
 
-        <Card title="Investigate" right={<Pill color="yellow">In-Progress</Pill>}>
-          <div className="mb-2 text-xs text-gray-500">Started 4/9/25, 10:28:48 AM</div>
+        <Card
+          title="Investigate"
+          right={<Pill color="yellow">In-Progress</Pill>}
+        >
+          <div className="mb-2 text-xs text-gray-500">
+            Started 4/9/25, 10:28:48 AM
+          </div>
           <div className="mb-2 flex items-center justify-between text-xs text-gray-600">
             <span>Progress</span>
             <span>45%</span>
@@ -115,7 +167,10 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
         <Card title="Typologies Triggered">
           <div className="space-y-2">
             {typologies.map((typology) => (
-              <div key={typology.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+              <div
+                key={typology.id}
+                className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2"
+              >
                 <div className="text-sm">{typology.name}</div>
                 <Pill color="gray">Score {typology.score}</Pill>
               </div>
@@ -126,26 +181,41 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
         <Card title="Linked Alerts">
           <div className="space-y-2">
             {linkedAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+              <div
+                key={alert.id}
+                className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2"
+              >
                 <div>
                   <div className="text-sm font-medium">{alert.id}</div>
                   <div className="text-xs text-gray-500">{alert.title}</div>
                 </div>
-                <Pill color={alert.status === 'Active' ? 'green' : 'gray'}>{alert.status}</Pill>
+                <Pill color={alert.status === 'Active' ? 'green' : 'gray'}>
+                  {alert.status}
+                </Pill>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card title="Collaborators & Task Assignments" right={<div className="text-xs text-gray-500">3 people</div>}>
+        <Card
+          title="Collaborators & Task Assignments"
+          right={<div className="text-xs text-gray-500">3 people</div>}
+        >
           <div className="space-y-2">
             {collaboratorData.map((collaborator) => (
-              <div key={collaborator.id} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2">
+              <div
+                key={collaborator.id}
+                className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2"
+              >
                 <div>
                   <div className="text-sm">{collaborator.name}</div>
-                  <div className="text-xs text-gray-500">{collaborator.role}</div>
+                  <div className="text-xs text-gray-500">
+                    {collaborator.role}
+                  </div>
                 </div>
-                <div className={`text-xs ${collaborator.status === 'Viewed' ? 'text-green-600' : 'text-gray-400'}`}>
+                <div
+                  className={`text-xs ${collaborator.status === 'Viewed' ? 'text-green-600' : 'text-gray-400'}`}
+                >
                   {collaborator.status}
                 </div>
               </div>
@@ -158,17 +228,29 @@ const CollaboratePanel: React.FC<CollaboratePanelProps> = ({ collaborators = def
       <div className="flex-1 space-y-4">
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <input className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Search discussions..." />
-            <button onClick={() => setOpenCreate(true)} className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">+ New Thread</button>
+            <input
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Search discussions..."
+            />
+            <button
+              onClick={() => setOpenCreate(true)}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+            >
+              + New Thread
+            </button>
           </div>
         </Card>
 
         <Card>
           <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-gray-900">Transaction Pattern Analysis</div>
+            <div className="text-sm font-medium text-gray-900">
+              Transaction Pattern Analysis
+            </div>
             <div className="text-xs text-gray-500">1 comments</div>
           </div>
-          <div className="mt-1 text-xs text-gray-500">3 collaborators · Last activity 2024-01-15 14:02:03</div>
+          <div className="mt-1 text-xs text-gray-500">
+            3 collaborators · Last activity 2024-01-15 14:02:03
+          </div>
         </Card>
       </div>
 

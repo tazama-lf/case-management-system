@@ -5,6 +5,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditLogModule } from './modules/audit/auditLog.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaDWHModule } from '../prismaDWH/prismaDWH.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenExpiryInterceptor } from './interpectors/token-expiry.interceptor';
 import { SharedModule } from './modules/shared/shared.module';
@@ -13,6 +14,7 @@ import { CaseModule } from './modules/case/case.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { TaskModule } from './modules/task/task.module';
 import { NatsModule } from './modules/nats/nats.module';
+import { PrismaDWHService } from '../prismaDWH/prismaDWH.service';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './modules/flowable/flowable.module';
 import { WorkQueueModule } from './modules/work-queue/work-queue.module';
@@ -27,44 +29,52 @@ import { FeatureExtractionModule } from './modules/feature-extraction/feature-ex
 import { RepositoryModule } from './modules/repository/repository.module';
 import { AlertModule } from './modules/alert/alert.module';
 import { WorkqueueModule } from './modules/workqueue/workqueue.module';
+import { CouchdbModule } from './modules/couchdb/couchdb.module';
+import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
+import { EvidenceModule } from './modules/evidence/evidence.module';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-            envFilePath: '.env',
-            isGlobal: true,
-            validate,
-        }),
-        EventEmitterModule.forRoot(),
-        RepositoryModule,
-        SharedModule,
-        PrismaModule,
-        FlowableModule,
-        NatsModule,
-        AuditLogModule,
-        ConfigManagementModule,
-        AlertModule,
-        TriageModule,
-        CommentModule,
-        CaseModule,
-        TaskModule,
-        AuthModule,
-        SystemConfigModule,
-        WorkQueueModule,
-        WorkqueueModule,
-        AsyncTaskModule,
-        NotificationModule,
-        NotificationPreferencesModule,
-        ReportsModule,
-        UserModule,
-        FeatureExtractionModule,
-    ],
-    providers: [
-        PrismaService,
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: TokenExpiryInterceptor,
-        },
-    ],
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath: '.env',
+      isGlobal: true,
+      validate,
+    }),
+    EventEmitterModule.forRoot(),
+    RepositoryModule,
+    SharedModule,
+    PrismaModule,
+    PrismaDWHModule,
+    FlowableModule,
+    NatsModule,
+    AuditLogModule,
+    ConfigManagementModule,
+    AlertModule,
+    TriageModule,
+    CommentModule,
+    CaseModule,
+    TaskModule,
+    AuthModule,
+    SystemConfigModule,
+    WorkQueueModule,
+    WorkqueueModule,
+    AsyncTaskModule,
+    NotificationModule,
+    NotificationPreferencesModule,
+    ReportsModule,
+    UserModule,
+    FeatureExtractionModule,
+    CouchdbModule,
+    EvidenceModule,
+    TazamaDwhModule
+  ],
+  providers: [
+    PrismaService,
+    PrismaDWHService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TokenExpiryInterceptor,
+    },
+  ],
 })
 export class AppModule { }

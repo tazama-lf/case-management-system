@@ -1,5 +1,3 @@
-
-
 export interface FlowableTask {
   id: number;
   name: string;
@@ -34,7 +32,6 @@ export interface FlowableTask {
   caseDefinitionId?: string;
 }
 
-
 export interface FlowableTaskListResponse {
   data: FlowableTask[];
   total: number;
@@ -44,7 +41,6 @@ export interface FlowableTaskListResponse {
   size: number;
 }
 
-
 export interface FlowableErrorResponse {
   message: string;
   exception?: string;
@@ -53,15 +49,14 @@ export interface FlowableErrorResponse {
   path: string;
 }
 
-
 export const WorkQueueCandidateGroup = {
   INVESTIGATIONS: 'investigations',
   INVESTIGATORS: 'investigators',
-  SUPERVISORS: 'supervisors'
+  SUPERVISORS: 'supervisors',
 } as const;
 
-export type WorkQueueCandidateGroupType = typeof WorkQueueCandidateGroup[keyof typeof WorkQueueCandidateGroup];
-
+export type WorkQueueCandidateGroupType =
+  (typeof WorkQueueCandidateGroup)[keyof typeof WorkQueueCandidateGroup];
 
 export interface FlowableWorkQueueFilters {
   candidateGroup?: WorkQueueCandidateGroupType | string;
@@ -81,7 +76,6 @@ export interface FlowableWorkQueueFilters {
   sort?: string;
   order?: 'asc' | 'desc';
 }
-
 
 export interface UnifiedWorkQueueTask {
   id: number;
@@ -113,7 +107,6 @@ export interface UnifiedWorkQueueTask {
   };
 }
 
-
 export interface WorkQueueResponse {
   tasks: UnifiedWorkQueueTask[];
   total: number;
@@ -123,18 +116,15 @@ export interface WorkQueueResponse {
   candidateGroup?: string;
 }
 
-
 export interface FlowableTaskAssignmentRequest {
   assignedUserId: string;
   owner?: string;
 }
 
-
 export interface FlowableTaskCompletionRequest {
   variables?: Record<string, any>;
   localVariables?: Record<string, any>;
 }
-
 
 export interface CaseProcessVariables {
   caseId: number;

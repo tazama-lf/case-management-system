@@ -1,6 +1,15 @@
 import React from 'react';
-import { useSystemConfig, getTriageModeLabel, getTriageModeDescription, getTriageModeColor } from '../../../shared/hooks/useSystemConfig';
-import { CpuChipIcon, UserIcon, ForwardIcon } from '@heroicons/react/24/outline';
+import {
+  useSystemConfig,
+  getTriageModeLabel,
+  getTriageModeDescription,
+  getTriageModeColor,
+} from '../../../shared/hooks/useSystemConfig';
+import {
+  CpuChipIcon,
+  UserIcon,
+  ForwardIcon,
+} from '@heroicons/react/24/outline';
 import type { TriageType } from '../../../shared/services/systemConfigService';
 
 interface TriageModeIndicatorProps {
@@ -31,7 +40,9 @@ export const TriageModeIndicator: React.FC<TriageModeIndicatorProps> = ({
 
   if (loading || !config) {
     return (
-      <div className={`animate-pulse bg-gray-200 rounded-md h-6 w-32 ${className}`} />
+      <div
+        className={`animate-pulse bg-gray-200 rounded-md h-6 w-32 ${className}`}
+      />
     );
   }
 
@@ -54,7 +65,9 @@ export const TriageModeIndicator: React.FC<TriageModeIndicatorProps> = ({
 
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border ${colorClasses}`}>
+      <div
+        className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border ${colorClasses}`}
+      >
         {icon}
         <span>{label}</span>
       </div>

@@ -4,7 +4,9 @@ interface WorkQueueTableSkeletonProps {
   rows?: number;
 }
 
-const WorkQueueTableSkeleton: React.FC<WorkQueueTableSkeletonProps> = ({ rows = 5 }) => {
+const WorkQueueTableSkeleton: React.FC<WorkQueueTableSkeletonProps> = ({
+  rows = 5,
+}) => {
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="overflow-x-auto">

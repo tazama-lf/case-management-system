@@ -11,10 +11,14 @@ interface RecentActivitySectionProps {
   activities: ActivityItem[];
 }
 
-const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({ activities }) => {
+const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
+  activities,
+}) => {
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        Recent Activity
+      </h3>
       <div className="space-y-3">
         {activities.map((activity) => (
           <div key={activity.id} className="flex items-start space-x-3">

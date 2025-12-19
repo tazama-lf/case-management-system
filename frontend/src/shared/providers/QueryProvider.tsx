@@ -10,7 +10,11 @@ const queryClient = new QueryClient({
       retry: (failureCount, error) => {
         if (error instanceof Error) {
           const message = error.message.toLowerCase();
-          if (message.includes('401') || message.includes('403') || message.includes('404')) {
+          if (
+            message.includes('401') ||
+            message.includes('403') ||
+            message.includes('404')
+          ) {
             return false;
           }
         }

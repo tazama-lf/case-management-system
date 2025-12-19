@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CaseCreationType, CaseStatus, CaseType, Priority } from '@prisma/client';
+import { CaseCreationType, CaseStatus, CaseType, Priority } from '@prisma/client-cms';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateCaseDto {

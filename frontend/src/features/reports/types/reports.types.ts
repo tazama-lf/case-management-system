@@ -57,7 +57,6 @@ export interface ReportFilters {
   assignee: string;
 }
 
-
 export interface InvestigatorStats {
   totalInvestigators: number;
   avgCasesPerInvestigator: number;
@@ -108,7 +107,6 @@ export interface InvestigatorWorkloadData {
   performanceData: InvestigatorPerformance[];
 }
 
-
 export interface TaskStats {
   totalTasks: number;
   completionRate: number;
@@ -158,7 +156,6 @@ export interface TaskCompletionData {
   taskDetails: TaskDetail[];
 }
 
-
 export interface AuditLogsStats {
   totalLogs: number;
   caseActions: number;
@@ -181,7 +178,6 @@ export interface AuditLogsData {
   stats: AuditLogsStats;
   auditLogs: AuditLog[];
 }
-
 
 export interface CaseAgeingStats {
   avgCaseAge: number;
@@ -232,4 +228,57 @@ export interface CaseAgeingData {
   ageingDistribution: AgeingDistribution[];
   caseTypeResolution: CaseTypeResolution[];
   caseDetails: CaseAgeingDetail[];
+}
+
+// Evidence Findings Report Types
+export interface EvidenceFindingsStats {
+  totalFindings: number;
+  evidenceItems: number;
+  confirmedFindings: number;
+  refutedFindings: number;
+}
+
+export interface FindingStatusDistribution {
+  confirmed: number;
+  refuted: number;
+  inconclusive: number;
+}
+
+export interface EvidenceItem {
+  id: string;
+  type: string;
+  count: number;
+  percentage: number;
+  status: 'Confirmed' | 'Refuted' | 'Inconclusive';
+}
+
+export interface FindingDetail {
+  caseId: string;
+  taskId?: string;
+  finding: string;
+  conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive';
+  evidenceCount: number;
+  supportingEvidence: (
+    | string
+    | {
+        id: string;
+        fileName: string;
+        fileSize?: number;
+        mimeType?: string;
+        evidenceType?: string;
+        uploadedBy?: string;
+        uploadedByName?: string;
+        uploadedAt?: string;
+        description?: string;
+        hash?: string;
+      }
+  )[];
+  dateIdentified: string;
+}
+
+export interface EvidenceFindingsData {
+  stats: EvidenceFindingsStats;
+  statusDistribution: FindingStatusDistribution;
+  evidenceItems: EvidenceItem[];
+  findings: FindingDetail[];
 }

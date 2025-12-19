@@ -13,6 +13,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
     hasCMSAdminRole,
     hasInvestigatorRole,
     hasSupervisorRole,
+    hasComplianceOfficerRole,
     hasBackendClaim,
   } = useAuth();
 
@@ -29,6 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
           return hasInvestigatorRole();
         case 'CMS_SUPERVISOR':
           return hasSupervisorRole();
+        case 'CMS_COMPLIANCE_OFFICER':
+          return hasComplianceOfficerRole();
         default:
           return hasBackendClaim(role);
       }
@@ -66,20 +69,18 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
               onClick={() => toggleExpanded(item.href)}
               className={`
                 group flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm font-semibold leading-6 transition-colors duration-200
-                ${
-                  active
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
+                ${active
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
                 }
                 ${level > 0 ? 'ml-6' : ''}
               `}
             >
               <Icon
-                className={`h-6 w-6 shrink-0 ${
-                  active
-                    ? 'text-blue-700'
-                    : 'text-gray-400 group-hover:text-blue-700'
-                }`}
+                className={`h-6 w-6 shrink-0 ${active
+                  ? 'text-blue-700'
+                  : 'text-gray-400 group-hover:text-blue-700'
+                  }`}
                 aria-hidden="true"
               />
               <span className="flex-1">{item.name}</span>
@@ -99,20 +100,18 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
               to={item.href}
               className={`
                 group flex w-full items-center gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors duration-200
-                ${
-                  active
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
+                ${active
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:text-blue-700 hover:bg-gray-50'
                 }
                 ${level > 0 ? 'ml-6' : ''}
               `}
             >
               <Icon
-                className={`h-6 w-6 shrink-0 ${
-                  active
-                    ? 'text-blue-700'
-                    : 'text-gray-400 group-hover:text-blue-700'
-                }`}
+                className={`h-6 w-6 shrink-0 ${active
+                  ? 'text-blue-700'
+                  : 'text-gray-400 group-hover:text-blue-700'
+                  }`}
                 aria-hidden="true"
               />
               <span className="flex-1">{item.name}</span>
@@ -138,17 +137,17 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
 
   return (
     <div className="flex h-full grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
-      {}
+      { }
       <div className="flex h-16 shrink-0 items-center">
         <div className="flex items-center">
-          {}
+          { }
           <span className="ml-3 text-xl font-semibold text-gray-900">
             Investigation Platform
           </span>
         </div>
       </div>
 
-      {}
+      { }
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>

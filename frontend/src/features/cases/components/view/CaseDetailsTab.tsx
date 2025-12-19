@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';

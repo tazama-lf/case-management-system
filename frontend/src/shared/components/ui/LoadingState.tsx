@@ -75,12 +75,26 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
         {errorComponent || (
           <div className="text-center py-12">
             <div className="text-red-600 mb-2">
-              <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-12 w-12 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Data</h3>
-            <p className="text-gray-600">{errorMessage || 'An unexpected error occurred'}</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              Error Loading Data
+            </h3>
+            <p className="text-gray-600">
+              {errorMessage || 'An unexpected error occurred'}
+            </p>
           </div>
         )}
       </div>
@@ -93,12 +107,26 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
         {emptyComponent || (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-2">
-              <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="h-12 w-12 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
-            <p className="text-gray-600">There's nothing to display right now.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              No Data Available
+            </h3>
+            <p className="text-gray-600">
+              There's nothing to display right now.
+            </p>
           </div>
         )}
       </div>
@@ -164,7 +192,9 @@ export const CardSkeleton: React.FC<CardSkeletonProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
+    <div
+      className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}
+    >
       <div className="space-y-4">
         <Skeleton className="h-6 w-1/3" />
         <Skeleton className="h-4 w-full" />

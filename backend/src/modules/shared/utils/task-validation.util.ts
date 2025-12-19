@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 
 interface Task {
   task_id: number;

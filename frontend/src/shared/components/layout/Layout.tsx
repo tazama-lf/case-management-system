@@ -18,8 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
     logout();
   };
 
-  const handleNavigate = (_href: string) => {
-  };
+  const handleNavigate = (_href: string) => {};
 
   return (
     <div className="h-screen flex bg-gray-50">

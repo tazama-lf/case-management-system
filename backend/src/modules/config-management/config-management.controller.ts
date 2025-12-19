@@ -61,9 +61,9 @@ export class ConfigManagementController {
     ) {
         const userId = req.user.token.clientId;
 
-        if (!userId) {
-            throw new BadRequestException('User ID not found in token');
-        }
+    if (!userId) {
+      throw new BadRequestException('User ID not found in token');
+    }
 
         return this.configService.configureRole(roleName, body.permissions, body.description || '', userId, body.require2FA ?? true);
     }
@@ -83,20 +83,20 @@ export class ConfigManagementController {
         return this.configService.listAllRoles();
     }
 
-    @Get('roles/:roleName')
-    @RequireAdminRole()
-    @ApiOperation({
-        summary: 'Get role permissions',
-        description: 'Get permissions for a specific role',
-    })
-    @ApiParam({
-        name: 'roleName',
-        description: 'Name of the role',
-        example: 'CMS_SUPERVISOR',
-    })
-    async getRolePermissions(@Param('roleName') roleName: string) {
-        return this.configService.getRolePermissions(roleName);
-    }
+  @Get('roles/:roleName')
+  @RequireAdminRole()
+  @ApiOperation({
+    summary: 'Get role permissions',
+    description: 'Get permissions for a specific role',
+  })
+  @ApiParam({
+    name: 'roleName',
+    description: 'Name of the role',
+    example: 'CMS_SUPERVISOR',
+  })
+  async getRolePermissions(@Param('roleName') roleName: string) {
+    return this.configService.getRolePermissions(roleName);
+  }
 
     @Put('integration/:systemName')
     @RequireAdminRole()
@@ -119,12 +119,12 @@ export class ConfigManagementController {
     async configureIntegration(@Param('systemName') systemName: string, @Body() config: ConfigureIntegrationDto, @Req() req: AuthenticatedRequest) {
         const userId = req.user.token.clientId;
 
-        if (!userId) {
-            throw new BadRequestException('User ID not found in token');
-        }
-
-        return this.configService.configureIntegration(systemName, config, userId);
+    if (!userId) {
+      throw new BadRequestException('User ID not found in token');
     }
+
+    return this.configService.configureIntegration(systemName, config, userId);
+  }
 
     @Post('integration/:systemName/test')
     @RequireAdminRole()
@@ -146,12 +146,12 @@ export class ConfigManagementController {
     async testIntegration(@Param('systemName') systemName: string, @Req() req: AuthenticatedRequest) {
         const userId = req.user.token.clientId;
 
-        if (!userId) {
-            throw new BadRequestException('User ID not found in token');
-        }
-
-        return this.configService.testIntegration(systemName, userId);
+    if (!userId) {
+      throw new BadRequestException('User ID not found in token');
     }
+
+    return this.configService.testIntegration(systemName, userId);
+  }
 
     @Post('verify-2fa/:changeId')
     @RequireAdminRole()
@@ -170,12 +170,12 @@ export class ConfigManagementController {
     async verify2FA(@Param('changeId') changeId: number, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest) {
         const userId = req.user.token.clientId;
 
-        if (!userId) {
-            throw new BadRequestException('User ID not found in token');
-        }
-
-        return this.configService.verify2FAAndApplyChange(changeId, body.twoFactorCode, userId);
+    if (!userId) {
+      throw new BadRequestException('User ID not found in token');
     }
+
+    return this.configService.verify2FAAndApplyChange(changeId, body.twoFactorCode, userId);
+  }
 
     @Get('audit/changes')
     @RequireAdminRole()
@@ -228,8 +228,8 @@ export class ConfigManagementController {
             configType,
         };
 
-        return this.configService.getConfigurationChangeLogs(filters);
-    }
+    return this.configService.getConfigurationChangeLogs(filters);
+  }
 
     @Get('audit/export')
     @RequireAdminRole()
@@ -270,18 +270,19 @@ export class ConfigManagementController {
             endDate: endDate ? new Date(endDate) : undefined,
         };
 
-        const data = await this.configService.exportConfigurationLogs(format, filters);
+    const data = await this.configService.exportConfigurationLogs(format, filters);
 
-        if (format === 'csv') {
-            return {
-                data,
-                headers: {
-                    'Content-Type': 'text/csv',
-                    'Content-Disposition': 'attachment; filename=configuration-audit-log.csv',
-                },
-            };
-        }
-
-        return data;
+    if (format === 'csv') {
+      return {
+        data,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename=configuration-audit-log.csv',
+        },
+      };
     }
+
+    return data;
+  }
 }
+

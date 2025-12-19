@@ -13,7 +13,9 @@ class SystemConfigService {
 
   async getSystemConfig(): Promise<SystemConfig> {
     try {
-      const response = await apiClient.get<SystemConfig>(`${this.baseUrl}/system`);
+      const response = await apiClient.get<SystemConfig>(
+        `${this.baseUrl}/system`,
+      );
       return response;
     } catch (error) {
       console.error('Failed to fetch system config:', error);

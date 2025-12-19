@@ -21,7 +21,7 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
       // Display the actual transaction data as formatted JSON
       return JSON.stringify(transactionData, null, 2);
     }
-    
+
     // No transaction data available
     return 'No transaction data available';
   };
@@ -30,7 +30,7 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
     if (!message || !transactionData) return;
 
     const payloadContent = getPayloadContent();
-    
+
     const blob = new Blob([payloadContent], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -101,7 +101,10 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
                     Transaction Payload (JSON)
                   </h4>
                 </div>
-                <div className="p-4 overflow-auto flex-1 bg-white" style={{ maxHeight: 'calc(90vh - 250px)' }}>
+                <div
+                  className="p-4 overflow-auto flex-1 bg-white"
+                  style={{ maxHeight: 'calc(90vh - 250px)' }}
+                >
                   <pre className="text-sm text-gray-800 font-mono whitespace-pre-wrap">
                     {payloadContent}
                   </pre>

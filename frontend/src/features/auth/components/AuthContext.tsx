@@ -121,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasBackendClaim: authService.hasBackendClaim.bind(authService),
     hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
     hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
+    hasComplianceOfficerRole: authService.hasComplianceOfficerRole.bind(authService),
     hasCMSAdminRole: authService.hasCMSAdminRole.bind(authService),
     hasAdminRole: authService.hasAdminRole.bind(authService),
     hasAnyRole: authService.hasAnyRole.bind(authService),

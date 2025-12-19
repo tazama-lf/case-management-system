@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { CreateTaskDto } from '../../../src/modules/task/dto/create-task.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 
 describe('CreateTaskDto', () => {
   it('should be defined', () => {
