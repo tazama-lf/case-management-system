@@ -5,7 +5,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client';
+import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import {
   TaskCreatedEvent,
@@ -22,7 +22,7 @@ import { AuthService } from '../auth/auth.service';
 
 export interface TaskWithCase extends Task {
   case: {
-    case_id: string;
+    case_id: number;
     priority: string;
     status: string;
     created_at: Date;

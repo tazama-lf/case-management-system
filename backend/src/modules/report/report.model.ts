@@ -6,7 +6,7 @@ export enum FraudReportOutcome {
 
 export interface FraudReport {
   reportId: string;
-  caseId: string;
+  caseId: number;
   metadata: {
     caseType: string;
     investigator: string;

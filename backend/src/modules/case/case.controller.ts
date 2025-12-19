@@ -86,7 +86,7 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getCaseActionHistory(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest) {
+  async getCaseActionHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

@@ -1,7 +1,7 @@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { BadRequestException, InternalServerErrorException, Injectable } from '@nestjs/common';
-import { Alert, AlertType, Priority, Prisma } from '@prisma/client';
+import { Alert, AlertType, Priority, Prisma } from '@prisma/client-cms';
 
 @Injectable()
 export class AlertStatisticsService {

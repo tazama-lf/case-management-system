@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, TaskStatus, CaseStatus } from '@prisma/client';
+import { Prisma, TaskStatus, CaseStatus } from '@prisma/client-cms';
 
 @Injectable()
 export class TaskRepository {

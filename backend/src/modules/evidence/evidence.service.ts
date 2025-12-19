@@ -7,11 +7,11 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CouchdbService } from '../modules/couchdb/couchdb.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { PrismaService } from 'prisma/prisma.service';
+import { CouchdbService } from '../couchdb/couchdb.service';
 
 @Injectable()
 export class EvidenceService {
@@ -409,7 +409,7 @@ export class EvidenceService {
     return { evidence, total: evidence.length, taskId };
   }
 
-  async getEvidenceByCaseId(caseId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+  async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const tasks = await this.prisma.task.findMany({
       where: { case_id: caseId },
       select: { task_id: true },

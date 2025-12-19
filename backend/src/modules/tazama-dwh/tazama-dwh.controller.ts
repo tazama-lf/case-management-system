@@ -1,12 +1,12 @@
 import { Controller, Post, Get, Body, Param, Req, UseGuards, Query, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam, ApiHeader } from '@nestjs/swagger';
 import { TazamaDwhService } from './tazama-dwh.service';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
-import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { CustomerProfileResponseDto } from './dto/customer-profile.dto';
+import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')

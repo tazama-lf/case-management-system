@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { EvidenceController } from './evidence.controller';
 import { EvidenceService } from './evidence.service';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { CouchdbModule } from '../modules/couchdb/couchdb.module';
 import { AuditLogModule } from '../audit/auditLog.module';
+import { PrismaModule } from 'prisma/prisma.module';
+import { CouchdbModule } from '../couchdb/couchdb.module';
 
 @Module({
   imports: [

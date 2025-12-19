@@ -8,7 +8,7 @@ import { FraudReport, FraudReportOutcome } from './report.model';
 import { UpdateCaseDto } from '../case/dto/update-case.dto';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
-import { EvidenceService } from 'src/evidence/evidence.service';
+import { EvidenceService } from '../evidence/evidence.service';
 
 @Injectable()
 export class ReportsService {
@@ -1040,7 +1040,7 @@ export class ReportsService {
   }
 
   async generateFraudReport(
-    caseId: string,
+    caseId: number,
     investigatorInputs: string,
     supervisorRemarks: string,
     userId?: string,

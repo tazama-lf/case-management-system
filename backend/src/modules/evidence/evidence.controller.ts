@@ -20,10 +20,10 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
-import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } from '../auth/auth.decorator';
-import { AuthenticatedRequest } from '../auth/auth.types';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims, RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Evidence')
 @Controller('api/v1/evidence')
@@ -137,7 +137,7 @@ export class EvidenceController {
     description: 'List of evidence retrieved successfully',
     type: EvidenceListResponseDto,
   })
-  async getEvidenceByCase(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+  async getEvidenceByCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 

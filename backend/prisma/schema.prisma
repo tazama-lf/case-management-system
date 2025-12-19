@@ -178,7 +178,7 @@ model Comment {
 model Evidence {
   evidence_id      Int      @id @default(autoincrement())
   task_id          Int
-  case_id          Int?     @db.Uuid
+  case_id          Int?    
   uploader_user_id String   @db.Uuid
   tenant_id        String   
   name             String   @db.VarChar(255)
@@ -216,7 +216,7 @@ model Report {
 
 model TransactionProfile {
   profile_id      String   @id @default(uuid())
-  case_id         String   @db.Uuid
+  case_id         Int   
   generated_by    String   @db.Uuid
   generated_at    DateTime @default(now())
   filters         Json?
