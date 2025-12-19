@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CaseStatus, CaseType, Priority, PredictionOutcome } from '@prisma/client';
+import { CaseStatus, CaseType, Priority, PredictionOutcome } from '@prisma/client-cms';
 import { IsEnum, IsOptional, IsUUID, IsNumber,IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateCaseDto {

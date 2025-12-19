@@ -28,6 +28,7 @@ export class TaskBridgeService {
                 candidateGroup: taskDTO.candidateGroup,
                 status: taskDTO.status,
                 assigned_user_id: taskDTO.assignedUserId,
+                investigationNotes: taskDTO.investigationNotes,
             });
 
             this.auditLogService.logAction({

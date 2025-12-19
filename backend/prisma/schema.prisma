@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-cms"
 }
 
 datasource db {
@@ -125,6 +126,8 @@ model Case {
   alert                Alert?
   comments             Comment[]
   tasks                Task[]
+  evidence             Evidence[]
+  transactionProfiles  TransactionProfile[]
 
   @@map("cases")
 }
@@ -136,6 +139,7 @@ model Task {
   assigned_user_id   String?    @db.Uuid
   name               String?
   description        String?
+  investigationNotes String? @db.Text
   task_type          TaskType?
   candidateGroup     String?    @db.VarChar(50)
   work_queue_id      Int?
@@ -174,16 +178,23 @@ model Comment {
 model Evidence {
   evidence_id      Int      @id @default(autoincrement())
   task_id          Int
+  case_id          Int?    
   uploader_user_id String   @db.Uuid
-  tenant_id        String
-  name             String   @db.VarChar(30)
-  description      String   @db.VarChar(100)
-  type             String   @db.VarChar(30)
+  tenant_id        String   
+  name             String   @db.VarChar(255)
+  description      String   @db.VarChar(1000)
+  type             String   @db.VarChar(50)
   file_path        String
+  file_size        BigInt?
+  file_type        String?  @db.VarChar(255)
   evidence_hash    String
+  metadata         Json?
   uploaded_at      DateTime @default(now()) @db.Timestamp(6)
   task             Task     @relation(fields: [task_id], references: [task_id])
+  case             Case?    @relation(fields: [case_id], references: [case_id])
 
+  @@index([case_id])
+  @@index([evidence_hash])
   @@map("evidence")
 }
 
@@ -194,12 +205,28 @@ model Report {
   report_type      ReportType
   report_file_path String
   report_hash      String     @db.VarChar(255)
-  version          String
+  version          Int        @default(1)
+  locked           Boolean    @default(false)
   created_at       DateTime   @default(now()) @db.Timestamp(6)
   updated_at       DateTime   @updatedAt @db.Timestamp(6)
   task             Task       @relation(fields: [task_id], references: [task_id])
 
   @@map("reports")
+}
+
+model TransactionProfile {
+  profile_id      String   @id @default(uuid())
+  case_id         Int   
+  generated_by    String   @db.Uuid
+  generated_at    DateTime @default(now())
+  filters         Json?
+  metrics         Json?
+  outliers        Json?
+  summary_table   Json?
+  notes           String?  @db.Text
+  visualization   String?
+  detected_anomalies Json?
+  case            Case     @relation(fields: [case_id], references: [case_id])
 }
 
 enum Priority {
@@ -239,14 +266,12 @@ enum AlertType {
   FRAUD
   AML
   FRAUD_AND_AML
-  NONE
 }
 
 enum CaseType {
   FRAUD
   AML
   FRAUD_AND_AML
-  NONE
 }
 
 enum PredictionOutcome {
@@ -275,6 +300,7 @@ enum TaskType {
   REPORT_GENERATION
   CASE_CLOSURE
   ESCALATION
+  SAR_STR_FILING
 }
 
 enum UserRole {

@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseStatus, CaseType, TaskStatus } from '@prisma/client';
+import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -368,12 +368,12 @@ export class CaseService {
     return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId);
   }
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto) {
-    return this.caseQueryService.getUserCases(userId, query);
+  async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
+    return this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
   }
 
-  async getUserWorkloadStats(userId: string) {
-    return this.caseQueryService.getUserWorkloadStats(userId);
+  async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
+    return this.caseQueryService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
@@ -567,7 +567,11 @@ export class CaseService {
       throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
     }
   }
-  async retrieveCase(caseId: number) {
-    return this.caseQueryService.retrieveCase(caseId);
+  async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
+    return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
+  }
+
+  async getCaseActionHistory(caseId: number, tenantId: string, userId: string) {
+    return this.caseQueryService.getCaseActionHistory(caseId, tenantId, userId);
   }
 }

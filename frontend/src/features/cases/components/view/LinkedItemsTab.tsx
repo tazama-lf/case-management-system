@@ -220,6 +220,79 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         isOpen={isAlertModalOpen}
         onClose={handleCloseAlertModal}
       />
+      <div className="py-4 space-y-8">
+        <h2 className="text-lg font-semibold text-gray-900">Related Items</h2>
+
+        {/* Related Cases Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Cases</h3>
+          <div className="space-y-2">
+            {linkedCases.length > 0 ? (
+              linkedCases.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#/cases/${item.id}`}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                >
+                  <LinkIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Case {item.id} - {item.label}</span>
+                </a>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No related cases found</p>
+            )}
+          </div>
+        </div>
+
+        {/* Related Alerts Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Alerts</h3>
+          <div className="space-y-2">
+            {linkedAlerts.length > 0 ? (
+              linkedAlerts.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleAlertClick(item.id)}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm text-left"
+                >
+                  <LinkIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>{item.id} - {item.label}</span>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No related alerts found</p>
+            )}
+          </div>
+        </div>
+
+        {/* Related Transactions Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Transactions</h3>
+          <div className="space-y-2">
+            {linkedTransactions.length > 0 ? (
+              linkedTransactions.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#/transactions/${item.id}`}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                >
+                  <LinkIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>{item.id} - {item.label}</span>
+                </a>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No related transactions found</p>
+            )}
+          </div>
+        </div>
+
+        {/* Alert Detail Modal */}
+        <AlertsDetailModal
+          alertId={selectedAlertId}
+          isOpen={isAlertModalOpen}
+          onClose={handleCloseAlertModal}
+        />
+      </div>
     </div>
   );
 };

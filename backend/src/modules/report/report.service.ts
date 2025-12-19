@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseStatus, TaskStatus, AlertType } from '@prisma/client';
+import { CaseStatus, TaskStatus, AlertType } from '@prisma/client-cms';
+import { FraudReport, FraudReportOutcome } from './report.model';
+import { UpdateCaseDto } from '../case/dto/update-case.dto';
+import { NotificationService } from '../notification/notification.service';
+import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
+import { EvidenceService } from '../evidence/evidence.service';
 
 @Injectable()
 export class ReportsService {
@@ -12,6 +17,9 @@ export class ReportsService {
     private readonly caseService: CaseService,
     private readonly taskService: TaskService,
     private readonly auditLogService: AuditLogService,
+    private readonly evidenceService: EvidenceService,
+    private readonly couchdbService: CouchdbService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private getDateRange(dateRange?: string): { startDate: Date; endDate: Date } {
@@ -848,13 +856,8 @@ export class ReportsService {
           status: {
             in: closedStatuses,
           },
+          case_type: type,
         };
-
-        if (type === AlertType.NONE) {
-          whereClause.OR = [{ case_type: null }, { case_type: AlertType.NONE }];
-        } else {
-          whereClause.case_type = type;
-        }
 
         const closedCasesOfType = await this.prisma.case.findMany({
           where: whereClause,
@@ -1034,5 +1037,190 @@ export class ReportsService {
         label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned',
       })),
     };
+  }
+
+  async generateFraudReport(
+    caseId: number,
+    investigatorInputs: string,
+    supervisorRemarks: string,
+    userId?: string,
+    tenantId?: string,
+    role?: string,
+  ): Promise<FraudReport> {
+    if (role === 'CMS_SUPERVISOR') {
+      const caseTasks = await this.prisma.task.findMany({
+        where: { case_id: caseId },
+      });
+
+      const investigationTasks = caseTasks.filter(task => 
+        task.name && task.name.toLowerCase().includes('investigate')
+      );
+
+      const incompleteTasks = investigationTasks.filter(
+        task => task.status !== TaskStatus.STATUS_30_COMPLETED
+      );
+
+      if (incompleteTasks.length > 0) {
+        const taskNames = incompleteTasks.map(t => t.name).join(', ');
+        throw new BadRequestException(
+          `Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`
+        );
+      }
+    }
+    const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
+    if (!caseData) throw new Error('Case not found');
+    const db = this.couchdbService.getDatabase();
+    const existingReportsResult = await db.find({ selector: { caseId, category: 'report' } });
+    const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
+    const nextVersion = existingReports.length > 0
+      ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
+      : 1;
+    const reportId = `${caseId}-v${nextVersion}`;
+    const evidenceResult = await this.evidenceService.getEvidenceByCaseId(caseId, userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
+    const evidenceSummary = evidenceResult.evidence;
+    const report: FraudReport = {
+      reportId,
+      caseId,
+      metadata: {
+        caseType: caseData.case_type ?? '',
+        investigator: caseData.case_owner_user_id ?? '',
+        supervisor: '',
+        submittedAt: new Date().toISOString(),
+      },
+      keyFindings: '',
+      evidenceSummary,
+      decisions: FraudReportOutcome.UNDER_MONITORING,
+      investigatorInputs,
+      supervisorRemarks,
+      recommendations: '',
+      archived: false,
+      version: nextVersion,
+      history: [],
+      category: 'report',
+    };
+    await this.couchdbService.insertDocument(reportId, report);
+    await this.auditLogService.logAction({
+      userId: userId ?? '',
+      operation: 'CREATE',
+      entityName: 'FraudReport',
+      actionPerformed: `Fraud report generated (v${nextVersion})`,
+      outcome: 'SUCCESS',
+      performedAt: new Date(),
+    });
+    return report;
+  }
+
+  async editFraudReport(reportId: string, updates: Partial<FraudReport>, userId?: string): Promise<FraudReport> {
+    const existing = await this.couchdbService.getDocument(reportId);
+    if (!existing) throw new Error('Report not found');
+    if (existing.locked) {
+      // Create new version
+      const newVersion = (existing.version ?? 1) + 1;
+      const newReport: FraudReport = {
+        ...existing,
+        ...updates,
+        reportId: `${existing.caseId}-v${newVersion}`,
+        version: newVersion,
+        locked: false,
+        history: [...(existing.history ?? []), existing],
+        category: 'report',
+        metadata: {
+          ...existing.metadata,
+          submittedAt: new Date().toISOString(),
+        },
+      };
+      await this.couchdbService.insertDocument(newReport.reportId, newReport);
+      await this.auditLogService.logAction({
+        userId: userId ?? '',
+        operation: 'CREATE_VERSION',
+        entityName: 'FraudReport',
+        actionPerformed: `Created new report version ${newVersion} for case ${existing.caseId}`,
+        outcome: 'SUCCESS',
+        performedAt: new Date(),
+      });
+      return newReport;
+    } else {
+      // Update unlocked report
+      const updated: FraudReport = {
+        ...existing,
+        ...updates,
+        category: 'report',
+        metadata: {
+          ...existing.metadata,
+          submittedAt: new Date().toISOString(),
+        },
+      };
+      await this.couchdbService.updateDocument(reportId, updated);
+      await this.auditLogService.logAction({
+        userId: userId ?? '',
+        operation: 'UPDATE',
+        entityName: 'FraudReport',
+        actionPerformed: 'Fraud report edited',
+        outcome: 'SUCCESS',
+        performedAt: new Date(),
+      });
+      return updated;
+    }
+  }
+
+  async approveFraudReport(
+    reportId: string,
+    outcome: FraudReportOutcome,
+    supervisor: string,
+    supervisorUserId: string,
+  ): Promise<FraudReport> {
+    const report = await this.couchdbService.getDocument(reportId);
+    if (!report) throw new Error('Report not found');
+    report.archived = true;
+    report.locked = true;
+    report.metadata.approvedAt = new Date().toISOString();
+    report.decisions = outcome;
+    report.supervisorRemarks = supervisor;
+    report.category = 'report';
+    await this.couchdbService.updateDocument(reportId, report);
+    // Audit trail: log report approval
+    await this.auditLogService.logAction({
+      userId: supervisorUserId,
+      operation: 'APPROVE',
+      entityName: 'FraudReport',
+      actionPerformed: 'Fraud report approved',
+      outcome: 'SUCCESS',
+      performedAt: new Date(),
+    });
+    // Send notification to Compliance Officer 
+    await this.notificationService.sendGroupNotification({
+      candidateGroup: 'COMPLIANCE_OFFICER',
+      type: 'GENERIC',
+      message: `Fraud report ${reportId} for case ${report.caseId} has been approved. Outcome: ${outcome}`,
+      metadata: { reportId, caseId: report.caseId, outcome },
+    });
+    let newStatus: CaseStatus = CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
+    if (outcome === FraudReportOutcome.CONFIRMED_FRAUD) {
+      newStatus = CaseStatus.STATUS_82_CLOSED_CONFIRMED;
+    } else if (outcome === FraudReportOutcome.REFUTED_FRAUD) {
+      newStatus = CaseStatus.STATUS_81_CLOSED_REFUTED;
+    }
+    const updateDto: UpdateCaseDto = { status: newStatus };
+    await this.caseService.updateCase(report.caseId, updateDto, supervisorUserId);
+    return report;
+  }
+
+  async getFraudReports(caseId: string): Promise<FraudReport[]> {
+    // Fetch all reports for case from CouchDB
+    const db = this.couchdbService.getDatabase();
+    const result = await db.find({ selector: { caseId, category: 'report' } });
+    // Accept userId as an optional second argument for audit logging
+    const userId = arguments.length > 1 ? arguments[1] : 'SYSTEM';
+    await this.auditLogService.logAction({
+      userId,
+      operation: 'RETRIEVE',
+      entityName: 'FraudReport',
+      actionPerformed: `Retrieved fraud reports for case ${caseId}`,
+      outcome: 'SUCCESS',
+      performedAt: new Date(),
+    });
+    // Sort reports by version descending (latest first)
+    const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+    return reports;
   }
 }

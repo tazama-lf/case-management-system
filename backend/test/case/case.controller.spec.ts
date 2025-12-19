@@ -3,10 +3,10 @@ import { CaseController } from '../../src/modules/case/case.controller';
 import { CaseService } from '../../src/modules/case/case.service';
 import { CreateCaseDto } from '../../src/modules/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/modules/case/dto/update-case.dto';
-import { SystemCaseCreationDto } from '../../src/modules/case/dto/system-case-creation.dto';
-import { TazamaAuthGuard } from '../../src/modules/auth/tazama-auth.guard';
-import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client';
-import { AuthenticatedRequest } from '../../src/modules/auth/auth.types';
+import { CaseStatus, CaseType, Priority, CaseCreationType } from '@prisma/client-cms';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { SystemCaseCreationDto } from 'src/modules/case/dto';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 describe('CaseController', () => {
   let controller: CaseController;
@@ -34,9 +34,9 @@ describe('CaseController', () => {
         },
       ],
     })
-        .overrideGuard(TazamaAuthGuard)
-        .useValue(mockAuthGuard)
-        .compile();
+      .overrideGuard(TazamaAuthGuard)
+      .useValue(mockAuthGuard)
+      .compile();
 
     controller = module.get<CaseController>(CaseController);
     caseService = module.get(CaseService);

@@ -3,7 +3,7 @@ import { Cron, CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { EventDeduplicator } from '../shared/utils/event-deduplicator';
 import { CronJob } from 'cron';
 

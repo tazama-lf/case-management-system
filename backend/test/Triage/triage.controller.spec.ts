@@ -19,9 +19,7 @@ describe('TriageController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TriageController],
-      providers: [
-        { provide: TriageService, useValue: mockTriageService },
-      ],
+      providers: [{ provide: TriageService, useValue: mockTriageService }],
     }).compile();
 
     controller = module.get<TriageController>(TriageController);
@@ -41,7 +39,7 @@ describe('TriageController', () => {
       message: 'Test alert message',
       report: { evaluationID: 'test', status: 'active', timestamp: new Date(), tadpResult: {} },
       transaction: { TenantId: 'tenant1', TxTp: 'payment' },
-      networkMap: { nodes: [], edges: [] }
+      networkMap: { nodes: [], edges: [] },
     } as any;
     const req = { user: { token: { clientId: 'user1', tenantId: 'tenant1' } } } as any;
     triageService.handleNewAlert.mockResolvedValue('submitted');

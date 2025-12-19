@@ -27,6 +27,7 @@ import {
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole
 } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
@@ -569,10 +570,10 @@ export class TaskController {
   }
 
   @Get('case/:caseId')
-  @RequireAnyValidRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
-    description: 'Retrieves all tasks associated with a given case ID. Any authenticated user can access this endpoint.',
+    description: 'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
   })
   @ApiParam({
     name: 'caseId',
@@ -617,11 +618,12 @@ export class TaskController {
   })
   async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.getTasksByCaseId(caseId, userId);
+    const userClaims = req.user.token.claims || [];
+    return this.taskService.getTasksByCaseId(caseId, userId, userClaims);
   }
 
   @Get('work-queues/:candidateGroup')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get work queue for a candidate group',
     description:
@@ -901,7 +903,7 @@ export class TaskController {
   }
 
   @Get('statistics')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get work queue statistics',
     description: 'Retrieves task statistics for work queues accessible to the authenticated user.',

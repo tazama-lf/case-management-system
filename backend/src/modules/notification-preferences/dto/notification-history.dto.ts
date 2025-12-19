@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { NotificationChannel, NotificationType, DeliveryStatus } from '@prisma/client';
+import { NotificationChannel, NotificationType, DeliveryStatus } from '@prisma/client-cms';
 
 export class NotificationHistoryDto {
   @ApiProperty({

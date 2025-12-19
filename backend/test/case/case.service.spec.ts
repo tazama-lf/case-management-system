@@ -1,4 +1,3 @@
- 
 import { Test, TestingModule } from '@nestjs/testing';
 import { CaseService } from '../../src/modules/case/case.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,9 +7,9 @@ import { FlowableService } from '../../src/modules/flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateCaseDto } from '../../src/modules/case/dto/create-case.dto';
 import { UpdateCaseDto } from '../../src/modules/case/dto/update-case.dto';
-import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client';
+import { CaseStatus, TaskStatus, Priority, CaseType, CaseCreationType } from '@prisma/client-cms';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { Outcome } from '../../src/modules/audit/types/outcome';
+import { Outcome } from 'src/utils/types/outcome';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -142,10 +141,7 @@ describe('CaseService', () => {
           case_creation_type: createCaseDto.caseCreationType,
         },
       });
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Case created successfully: ${mockCase.case_id}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Case created successfully: ${mockCase.case_id}`, CaseService.name);
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
         userId,
         operation: 'createCase',
@@ -163,11 +159,7 @@ describe('CaseService', () => {
       await expect(service.createCase(createCaseDto, userId)).rejects.toThrow('Database error');
 
       expect(mockLoggerService.log).toHaveBeenCalledWith('Creating case', CaseService.name);
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-          `Error creating case: ${error.message}`,
-          error.stack,
-          CaseService.name,
-      );
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error creating case: ${error.message}`, error.stack, CaseService.name);
     });
   });
 
@@ -193,10 +185,7 @@ describe('CaseService', () => {
 
       const result = await service.retrieveCase(caseId);
 
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Retrieving case: ${caseId}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Retrieving case: ${caseId}`, CaseService.name);
       expect(mockPrismaService.case.findUnique).toHaveBeenCalledWith({
         where: { case_id: caseId },
         include: { alert: true, tasks: true },
@@ -213,10 +202,7 @@ describe('CaseService', () => {
         where: { case_id: caseId },
         include: { alert: true, tasks: true },
       });
-      expect(mockLoggerService.warn).toHaveBeenCalledWith(
-          `Case not found: ${caseId}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.warn).toHaveBeenCalledWith(`Case not found: ${caseId}`, CaseService.name);
     });
 
     it('should handle database errors', async () => {
@@ -225,10 +211,7 @@ describe('CaseService', () => {
 
       await expect(service.retrieveCase(caseId)).rejects.toThrow('Database error');
 
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Retrieving case: ${caseId}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Retrieving case: ${caseId}`, CaseService.name);
     });
   });
 
@@ -268,10 +251,7 @@ describe('CaseService', () => {
 
       const result = await service.updateCase(caseId, updateCaseDto, userId);
 
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Updating case: ${caseId}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Updating case: ${caseId}`, CaseService.name);
       expect(mockPrismaService.case.update).toHaveBeenCalledWith({
         where: { case_id: caseId },
         data: {
@@ -281,10 +261,7 @@ describe('CaseService', () => {
           case_owner_user_id: updateCaseDto.caseOwnerUserId,
         },
       });
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Case updated successfully: ${updatedMockCase.case_id}`,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Case updated successfully: ${updatedMockCase.case_id}`, CaseService.name);
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
         userId,
         operation: 'updateCase',
@@ -299,19 +276,10 @@ describe('CaseService', () => {
       const error = new Error('Database error');
       mockPrismaService.case.update.mockRejectedValue(error);
 
-      await expect(service.updateCase(caseId, updateCaseDto, userId)).rejects.toThrow(
-          'Database error',
-      );
+      await expect(service.updateCase(caseId, updateCaseDto, userId)).rejects.toThrow('Database error');
 
-      expect(mockLoggerService.log).toHaveBeenCalledWith(
-          `Updating case: ${caseId}`,
-          CaseService.name,
-      );
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-          `Error updating case: ${error.message}`,
-          error.stack,
-          CaseService.name,
-      );
+      expect(mockLoggerService.log).toHaveBeenCalledWith(`Updating case: ${caseId}`, CaseService.name);
+      expect(mockLoggerService.error).toHaveBeenCalledWith(`Error updating case: ${error.message}`, error.stack, CaseService.name);
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith({
         userId,
         operation: 'updateCase',
@@ -433,7 +401,7 @@ describe('CaseService', () => {
           confidencePercentage: 0, // Should be valid
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -464,7 +432,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -496,7 +464,7 @@ describe('CaseService', () => {
           riskScore: 15,
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         prismaService.$transaction.mockImplementation(async (fn) => {
@@ -516,11 +484,11 @@ describe('CaseService', () => {
         await service.createCaseSystemTransmission(payload, clientId);
 
         expect(flowableService.startProcessInstance).toHaveBeenCalledWith(
-            'caseCreationProcess',
-            expect.objectContaining({
-              autocloseEligible: true, // Low confidence and low risk should be eligible
-            }),
-            'case-123'
+          'caseCreationProcess',
+          expect.objectContaining({
+            autocloseEligible: true, // Low confidence and low risk should be eligible
+          }),
+          'case-123',
         );
       });
 
@@ -533,7 +501,7 @@ describe('CaseService', () => {
           riskScore: 20, // Exactly 20
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -556,11 +524,11 @@ describe('CaseService', () => {
 
         // Should not be autoclose eligible (confidence < 30 AND risk < 20)
         expect(flowableService.startProcessInstance).toHaveBeenCalledWith(
-            'caseCreationProcess',
-            expect.objectContaining({
-              autocloseEligible: false,
-            }),
-            'case-123'
+          'caseCreationProcess',
+          expect.objectContaining({
+            autocloseEligible: false,
+          }),
+          'case-123',
         );
       });
     });
@@ -577,7 +545,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-  const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         prismaService.$transaction.mockImplementation(async (fn) => {
@@ -620,7 +588,7 @@ describe('CaseService', () => {
           fraudType: 'False-Positive', // Not in the true positive list
         };
 
-  const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -657,7 +625,7 @@ describe('CaseService', () => {
           // No fraudType specified
         };
 
-  const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -738,7 +706,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-  const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
         const mockInvTask = { task_id: 'inv-123' };
 
@@ -796,9 +764,9 @@ describe('CaseService', () => {
 
         // Verify error logging and audit failure logging
         expect(loggerService.error).toHaveBeenCalledWith(
-            `Error in system-to-system case creation: ${transactionError.message}`,
-            transactionError.stack,
-            CaseService.name
+          `Error in system-to-system case creation: ${transactionError.message}`,
+          transactionError.stack,
+          CaseService.name,
         );
         expect(auditLogService.logAction).toHaveBeenCalledWith({
           userId: 'system-uuid',
@@ -816,7 +784,7 @@ describe('CaseService', () => {
           transaction: { transactionId: 'txn-1', amount: 100, currency: 'USD', debtor: {}, creditor: {}, timestamp: '2024' },
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -844,7 +812,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -874,7 +842,7 @@ describe('CaseService', () => {
           fraudType: 'Money-Laundering',
         };
 
-  const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-1', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'atm-task-1' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -895,9 +863,9 @@ describe('CaseService', () => {
         await expect(service.createCaseSystemTransmission(payload, clientId)).rejects.toThrow('Case update failed');
 
         expect(loggerService.error).toHaveBeenCalledWith(
-            'Failed to autoclose case: Case update failed',
-            expect.any(String),
-            CaseService.name
+          'Failed to autoclose case: Case update failed',
+          expect.any(String),
+          CaseService.name,
         );
       });
 
@@ -909,7 +877,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -929,17 +897,17 @@ describe('CaseService', () => {
         // Second task update (ATM completion) should succeed
         // Task create (investigation task) should fail
         prismaService.task.update
-            .mockResolvedValueOnce({}) // routeToATM
-            .mockResolvedValueOnce({}); // ATM completion
+          .mockResolvedValueOnce({}) // routeToATM
+          .mockResolvedValueOnce({}); // ATM completion
 
         prismaService.task.create.mockRejectedValueOnce(new Error('Investigation task creation failed'));
 
         await expect(service.createCaseSystemTransmission(payload, clientId)).rejects.toThrow('Investigation task creation failed');
 
         expect(loggerService.error).toHaveBeenCalledWith(
-            'Failed to create investigation task: Investigation task creation failed',
-            expect.any(String),
-            CaseService.name
+          'Failed to create investigation task: Investigation task creation failed',
+          expect.any(String),
+          CaseService.name,
         );
       });
     });
@@ -952,7 +920,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -987,7 +955,7 @@ describe('CaseService', () => {
           // No priority, confidencePercentage, etc.
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');
@@ -1022,7 +990,7 @@ describe('CaseService', () => {
           confidencePercentage: 80,
         };
 
-  const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
+        const mockCase = { case_id: 'case-123', status: CaseStatus.STATUS_00_DRAFT };
         const mockTask = { task_id: 'task-123' };
 
         configService.get.mockReturnValue('system-uuid');

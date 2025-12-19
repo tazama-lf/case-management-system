@@ -49,6 +49,10 @@ export class CaseCreationApprovalService {
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = dto.alertType;
 
+    if (!caseType) {
+      throw new BadRequestException('Valid alert type is required: FRAUD, AML, or FRAUD_AND_AML');
+    }
+    
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
@@ -203,7 +207,7 @@ export class CaseCreationApprovalService {
 
     const priorityScore = dto.priorityScore;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
-    const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? CaseType.NONE;
+    const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? null;
 
     try {
       const caseDetail: CreateCaseDto = {

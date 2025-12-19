@@ -4,12 +4,12 @@ import { TaskController } from '../../src/modules/task/task.controller';
 import { TaskService } from '../../src/modules/task/task.service';
 import { CreateTaskDto } from '../../src/modules/task/dto/create-task.dto';
 import { UpdateTaskDto } from '../../src/modules/task/dto/update-task.dto';
-import { TaskStatus } from '@prisma/client';
-import { AuthenticatedRequest } from '../../src/modules/auth/auth.types';
+import { TaskStatus } from '@prisma/client-cms';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LogCallback } from '@tazama-lf/frms-coe-lib/lib/helpers/logUtilities';
 import { LumberjackGRPCService } from '@tazama-lf/frms-coe-lib/lib/services/lumberjackGRPCService';
 import { Logger } from 'pino';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 describe('TaskController', () => {
   let controller: TaskController;
@@ -111,10 +111,7 @@ describe('TaskController', () => {
       const result = await controller.createTask(createTaskDto, mockRequest);
 
       expect(result).toEqual(mockTask);
-      expect(mockTaskService.createTask).toHaveBeenCalledWith(
-        createTaskDto,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.createTask).toHaveBeenCalledWith(createTaskDto, mockUser.token.clientId);
       expect(mockTaskService.createTask).toHaveBeenCalledTimes(1);
     });
 
@@ -122,14 +119,9 @@ describe('TaskController', () => {
       const error = new BadRequestException('Invalid case ID');
       mockTaskService.createTask.mockRejectedValue(error);
 
-      await expect(
-        controller.createTask(createTaskDto, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.createTask(createTaskDto, mockRequest)).rejects.toThrow(BadRequestException);
 
-      expect(mockTaskService.createTask).toHaveBeenCalledWith(
-        createTaskDto,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.createTask).toHaveBeenCalledWith(createTaskDto, mockUser.token.clientId);
     });
 
     it('should pass the correct parameters to service', async () => {
@@ -158,18 +150,10 @@ describe('TaskController', () => {
       const reassignedTask = { ...mockTask, assignedUserId: newAssigneeId };
       mockTaskService.reassignTask.mockResolvedValue(reassignedTask);
 
-      const result = await controller.reassignTask(
-        taskId,
-        newAssigneeId,
-        mockRequest,
-      );
+      const result = await controller.reassignTask(taskId, newAssigneeId, mockRequest);
 
       expect(result).toEqual(reassignedTask);
-      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(
-        taskId,
-        mockUser.token.clientId,
-        newAssigneeId,
-      );
+      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(taskId, mockUser.token.clientId, newAssigneeId);
       expect(mockTaskService.reassignTask).toHaveBeenCalledTimes(1);
     });
 
@@ -177,30 +161,18 @@ describe('TaskController', () => {
       const error = new NotFoundException('Task not found');
       mockTaskService.reassignTask.mockRejectedValue(error);
 
-      await expect(
-        controller.reassignTask(taskId, newAssigneeId, mockRequest),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.reassignTask(taskId, newAssigneeId, mockRequest)).rejects.toThrow(NotFoundException);
 
-      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(
-        taskId,
-        mockUser.token.clientId,
-        newAssigneeId,
-      );
+      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(taskId, mockUser.token.clientId, newAssigneeId);
     });
 
     it('should handle invalid assignee error', async () => {
       const error = new BadRequestException('Invalid assignee ID');
       mockTaskService.reassignTask.mockRejectedValue(error);
 
-      await expect(
-        controller.reassignTask(taskId, 'invalid-id', mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.reassignTask(taskId, 'invalid-id', mockRequest)).rejects.toThrow(BadRequestException);
 
-      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(
-        taskId,
-        mockUser.token.clientId,
-        'invalid-id',
-      );
+      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(taskId, mockUser.token.clientId, 'invalid-id');
     });
 
     it('should pass correct parameters to service', async () => {
@@ -209,11 +181,7 @@ describe('TaskController', () => {
 
       await controller.reassignTask(taskId, newAssigneeId, mockRequest);
 
-      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(
-        taskId,
-        mockUser.token.clientId,
-        newAssigneeId,
-      );
+      expect(mockTaskService.reassignTask).toHaveBeenCalledWith(taskId, mockUser.token.clientId, newAssigneeId);
     });
   });
 
@@ -229,18 +197,10 @@ describe('TaskController', () => {
       const updatedTask = { ...mockTask, ...updateTaskDto };
       mockTaskService.updateTask.mockResolvedValue(updatedTask);
 
-      const result = await controller.updateTask(
-        taskId,
-        updateTaskDto,
-        mockRequest,
-      );
+      const result = await controller.updateTask(taskId, updateTaskDto, mockRequest);
 
       expect(result).toEqual(updatedTask);
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
-        taskId,
-        updateTaskDto,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, updateTaskDto, mockUser.token.clientId);
       expect(mockTaskService.updateTask).toHaveBeenCalledTimes(1);
     });
 
@@ -248,30 +208,18 @@ describe('TaskController', () => {
       const error = new NotFoundException('Task not found');
       mockTaskService.updateTask.mockRejectedValue(error);
 
-      await expect(
-        controller.updateTask(taskId, updateTaskDto, mockRequest),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.updateTask(taskId, updateTaskDto, mockRequest)).rejects.toThrow(NotFoundException);
 
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
-        taskId,
-        updateTaskDto,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, updateTaskDto, mockUser.token.clientId);
     });
 
     it('should handle validation errors during update', async () => {
       const error = new BadRequestException('Invalid task status');
       mockTaskService.updateTask.mockRejectedValue(error);
 
-      await expect(
-        controller.updateTask(taskId, updateTaskDto, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.updateTask(taskId, updateTaskDto, mockRequest)).rejects.toThrow(BadRequestException);
 
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
-        taskId,
-        updateTaskDto,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, updateTaskDto, mockUser.token.clientId);
     });
 
     it('should update with partial data', async () => {
@@ -281,36 +229,20 @@ describe('TaskController', () => {
       const updatedTask = { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED };
       mockTaskService.updateTask.mockResolvedValue(updatedTask);
 
-      const result = await controller.updateTask(
-        taskId,
-        partialUpdate,
-        mockRequest,
-      );
+      const result = await controller.updateTask(taskId, partialUpdate, mockRequest);
 
       expect(result).toEqual(updatedTask);
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
-        taskId,
-        partialUpdate,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, partialUpdate, mockUser.token.clientId);
     });
 
     it('should handle empty update object', async () => {
       const emptyUpdate: UpdateTaskDto = {};
       mockTaskService.updateTask.mockResolvedValue(mockTask);
 
-      const result = await controller.updateTask(
-        taskId,
-        emptyUpdate,
-        mockRequest,
-      );
+      const result = await controller.updateTask(taskId, emptyUpdate, mockRequest);
 
       expect(result).toEqual(mockTask);
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
-        taskId,
-        emptyUpdate,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, emptyUpdate, mockUser.token.clientId);
     });
 
     it('should pass correct parameters to service', async () => {
@@ -341,20 +273,14 @@ describe('TaskController', () => {
       const result = await controller.assignTaskToInvestigator(taskId, investigatorId, mockRequest);
 
       expect(result).toEqual(mockTask);
-      expect(mockTaskService.assignTaskToInvestigator).toHaveBeenCalledWith(
-        taskId,
-        investigatorId,
-        mockUser.token.clientId,
-      );
+      expect(mockTaskService.assignTaskToInvestigator).toHaveBeenCalledWith(taskId, investigatorId, mockUser.token.clientId);
     });
 
     it('should handle error during assignment', async () => {
       const error = new BadRequestException('User is not investigator');
       mockTaskService.assignTaskToInvestigator = jest.fn().mockRejectedValue(error);
 
-      await expect(
-        controller.assignTaskToInvestigator(taskId, investigatorId, mockRequest)
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.assignTaskToInvestigator(taskId, investigatorId, mockRequest)).rejects.toThrow(BadRequestException);
     });
   });
 

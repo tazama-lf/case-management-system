@@ -20,11 +20,11 @@ describe('Auth Types', () => {
       // Create a mock that satisfies the interface structure
       const mockToken = {} as TazamaToken;
       const mockValidated = {} as ClaimValidationResult;
-      
+
       const user: AuthenticatedUser = {
         token: mockToken,
         validated: mockValidated,
-        validClaims: ['claim1', 'claim2']
+        validClaims: ['claim1', 'claim2'],
       };
 
       // Test that the interface structure is correct
@@ -38,7 +38,7 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: []
+        validClaims: [],
       };
 
       expect(user.validClaims).toHaveLength(0);
@@ -49,7 +49,7 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: ['admin', 'user', 'read', 'write']
+        validClaims: ['admin', 'user', 'read', 'write'],
       };
 
       expect(user.validClaims).toHaveLength(4);
@@ -61,7 +61,7 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: []
+        validClaims: [],
       };
 
       // Test that token property accepts TazamaToken type
@@ -73,7 +73,7 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: []
+        validClaims: [],
       };
 
       // Test that validated property accepts ClaimValidationResult type
@@ -88,12 +88,12 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: ['test']
+        validClaims: ['test'],
       };
 
       // Test that AuthenticatedRequest includes user property
       const request = { user } as AuthenticatedRequest;
-      
+
       expect(request).toHaveProperty('user');
       expect(request.user).toBeDefined();
       expect(request.user.validClaims).toContain('test');
@@ -103,14 +103,14 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: []
+        validClaims: [],
       };
 
       // Test that we can assign standard Request properties
       const request = {
         user,
         url: '/test',
-        method: 'GET'
+        method: 'GET',
       } as AuthenticatedRequest;
 
       expect(request.user).toBeDefined();
@@ -122,13 +122,13 @@ describe('Auth Types', () => {
       const userWithClaims: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: ['admin', 'moderator']
+        validClaims: ['admin', 'moderator'],
       };
 
       const userWithoutClaims: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: []
+        validClaims: [],
       };
 
       const requestWithClaims = { user: userWithClaims } as AuthenticatedRequest;
@@ -142,18 +142,18 @@ describe('Auth Types', () => {
   describe('Type Exports', () => {
     it('should export TazamaToken type', () => {
       // Test that TazamaToken type is available for import
-      const createToken = (): TazamaToken => ({} as TazamaToken);
+      const createToken = (): TazamaToken => ({}) as TazamaToken;
       const token = createToken();
-      
+
       expect(token).toBeDefined();
       expect(typeof token).toBe('object');
     });
 
     it('should export ClaimValidationResult type', () => {
       // Test that ClaimValidationResult type is available for import
-      const createResult = (): ClaimValidationResult => ({} as ClaimValidationResult);
+      const createResult = (): ClaimValidationResult => ({}) as ClaimValidationResult;
       const result = createResult();
-      
+
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
     });
@@ -163,7 +163,7 @@ describe('Auth Types', () => {
       const createUser = (token: TazamaToken, validated: ClaimValidationResult): AuthenticatedUser => ({
         token,
         validated,
-        validClaims: []
+        validClaims: [],
       });
 
       const token = {} as TazamaToken;
@@ -182,17 +182,17 @@ describe('Auth Types', () => {
         {
           token: {} as TazamaToken,
           validated: {} as ClaimValidationResult,
-          validClaims: ['read']
+          validClaims: ['read'],
         },
         {
           token: {} as TazamaToken,
           validated: {} as ClaimValidationResult,
-          validClaims: ['write', 'admin']
-        }
+          validClaims: ['write', 'admin'],
+        },
       ];
 
-      const adminUsers = users.filter(user => user.validClaims.includes('admin'));
-      const allClaims = users.flatMap(user => user.validClaims);
+      const adminUsers = users.filter((user) => user.validClaims.includes('admin'));
+      const allClaims = users.flatMap((user) => user.validClaims);
 
       expect(adminUsers).toHaveLength(1);
       expect(allClaims).toContain('read');
@@ -204,7 +204,7 @@ describe('Auth Types', () => {
       const user: AuthenticatedUser = {
         token: {} as TazamaToken,
         validated: {} as ClaimValidationResult,
-        validClaims: ['test', 'example']
+        validClaims: ['test', 'example'],
       };
 
       const { token, validated, validClaims } = user;

@@ -114,13 +114,12 @@ describe('AlertPriorityService', () => {
       expect(mockPrismaService.alert.findMany).toHaveBeenCalledWith({
         where: {
           alert_status: {
-            not: 'CLOSED'
-          }
-        }
+            not: 'CLOSED',
+          },
+        },
       });
       expect(mockPrismaService.alert.update).toHaveBeenCalled();
     });
-
 
     it('should handle empty alert list', async () => {
       mockPrismaService.alert.findMany.mockResolvedValue([]);
@@ -141,10 +140,7 @@ describe('AlertPriorityService', () => {
 
       await service.runRecalculation();
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to process alert error-alert'),
-        expect.any(String)
-      );
+      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process alert error-alert'), expect.any(String));
     });
   });
 
@@ -177,7 +173,7 @@ describe('AlertPriorityService', () => {
 
       const updateCall = mockPrismaService.alert.update.mock.calls[0];
       expect(updateCall[0].data.alert_data.urgency).toBe('New');
-      
+
       jest.useRealTimers();
     });
 
@@ -195,7 +191,7 @@ describe('AlertPriorityService', () => {
 
       const updateCall = mockPrismaService.alert.update.mock.calls[0];
       expect(updateCall[0].data.alert_data.urgency).toBe('Urgent');
-      
+
       jest.useRealTimers();
     });
 
@@ -213,7 +209,7 @@ describe('AlertPriorityService', () => {
 
       const updateCall = mockPrismaService.alert.update.mock.calls[0];
       expect(updateCall[0].data.alert_data.urgency).toBe('Critical');
-      
+
       jest.useRealTimers();
     });
 
@@ -231,11 +227,10 @@ describe('AlertPriorityService', () => {
 
       const updateCall = mockPrismaService.alert.update.mock.calls[0];
       expect(updateCall[0].data.alert_data.urgency).toBe('Breach');
-      
+
       jest.useRealTimers();
     });
   });
-
 
   describe('simplified priority system', () => {
     it('should use fixed priority score of 0.5', async () => {
@@ -278,7 +273,7 @@ describe('AlertPriorityService', () => {
 
       const updateCall = mockPrismaService.alert.update.mock.calls[0];
       const updatedData = updateCall[0].data.alert_data;
-      
+
       expect(updatedData.urgency).toBe('Urgent');
       expect(updatedData.priority_score).toBe(0.5);
       expect(updatedData.sla_progress).toBeCloseTo(0.4167, 3); // 30/72 hours

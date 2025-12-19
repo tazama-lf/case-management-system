@@ -1,16 +1,149 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Query, Req, UseGuards, Post, Put, Param, Body } from '@nestjs/common';
+import { GenerateFraudReportDto } from './dto/generate-fraud-report.dto';
+import { ApproveFraudReportDto } from './dto/approve-fraud-report.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Reports')
-@ApiBearerAuth()
+@ApiBearerAuth('jwt')
 @Controller('api/v1/reports')
 @UseGuards(TazamaAuthGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
+
+  // --- Fraud Report Endpoints ---
+
+  @Post('fraud/generate')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Generate fraud investigation report', description: 'Create a new fraud investigation report for a case.' })
+  @ApiResponse({ status: 201, description: 'Fraud report generated successfully.' })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          caseId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4' },
+          investigatorInputs: { type: 'string', example: 'Initial investigation completed. Evidence collected.' },
+          supervisorRemarks: { type: 'string', example: 'Please review findings and recommendations.' },
+          userId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' },
+          tenantId: { type: 'string', example: 'tenant-001' },
+          role: { type: 'string', example: 'CMS_SUPERVISOR' }
+        },
+        required: ['caseId', 'investigatorInputs', 'supervisorRemarks']
+      },
+      examples: {
+        default: {
+          summary: 'Sample request',
+          value: {
+            caseId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4',
+            investigatorInputs: 'Initial investigation completed. Evidence collected.',
+            supervisorRemarks: 'Please review findings and recommendations.',
+            userId: '1d2282cb-5733-4755-bf3f-677074fb9cd6',
+            tenantId: 'tenant-001',
+            role: 'CMS_SUPERVISOR'
+          }
+        }
+      }
+    })
+  async generateFraudReport(@Req() req: AuthenticatedRequest, @Body() body: any) {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+
+    const claims = req.user.token.claims || [];
+  
+    const role = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR'
+      : claims.includes('CMS_INVESTIGATOR') ? 'CMS_INVESTIGATOR'
+      : null;
+    if (!role) {
+      throw new Error('User does not have a valid investigator or supervisor role');
+    }
+    return await this.reportsService.generateFraudReport(
+      body.caseId,
+      body.investigatorInputs,
+      body.supervisorRemarks,
+      userId,
+      tenantId,
+      role
+    );
+  }
+
+  @Put('fraud/edit/:reportId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Edit fraud investigation report', description: 'Edit an existing fraud investigation report.' })
+  @ApiResponse({ status: 200, description: 'Fraud report updated successfully.' })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          keyFindings: { type: 'string', example: 'Fraud confirmed after review.' },
+          recommendations: { type: 'string', example: 'Escalate to compliance for further action.' },
+          supervisorRemarks: { type: 'string', example: 'Reviewed and ready for approval.' },
+          decisions: { type: 'string', example: 'Confirmed Fraud' }
+        },
+        required: ['keyFindings', 'recommendations', 'supervisorRemarks']
+      },
+      examples: {
+        default: {
+          summary: 'Sample edit request',
+          value: {
+            keyFindings: 'Fraud confirmed after review.',
+            recommendations: 'Escalate to compliance for further action.',
+            supervisorRemarks: 'Reviewed and ready for approval.',
+            decisions: 'Confirmed Fraud'
+          }
+        }
+      }
+    })
+  async editFraudReport(@Req() req: AuthenticatedRequest, @Param('reportId') reportId: string, @Body() updates: any) {
+    const userId = req.user.token.clientId;
+    return await this.reportsService.editFraudReport(reportId, updates, userId);
+  }
+
+  @Post('fraud/approve')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Approve fraud investigation report', description: 'Approve a fraud investigation report and archive it.' })
+  @ApiResponse({ status: 200, description: 'Fraud report approved and archived.' })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          reportId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1' },
+          outcome: { type: 'string', enum: ['Confirmed Fraud', 'Refuted Fraud', 'Under Monitoring'], example: 'Confirmed Fraud' },
+          supervisor: { type: 'string', example: 'Jane Supervisor' },
+          supervisorUserId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' }
+        },
+        required: ['reportId', 'outcome', 'supervisor', 'supervisorUserId']
+      },
+      examples: {
+        default: {
+          summary: 'Sample approve request',
+          value: {
+            reportId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1',
+            outcome: 'Confirmed Fraud',
+            supervisor: 'Jane Supervisor',
+            supervisorUserId: '1d2282cb-5733-4755-bf3f-677074fb9cd6'
+          }
+        }
+      }
+    })
+  async approveFraudReport(@Body() body: any) {
+    return await this.reportsService.approveFraudReport(
+      body.reportId,
+      body.outcome,
+      body.supervisor,
+      body.supervisorUserId
+    );
+  }
+
+  @Get('fraud/:caseId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get fraud investigation reports for a case', description: 'Retrieve all fraud investigation reports for a given case.' })
+  @ApiResponse({ status: 200, description: 'Fraud reports retrieved successfully.' })
+  async getFraudReports(@Param('caseId') caseId: string) {
+    return await this.reportsService.getFraudReports(caseId);
+  }
 
   @Get('case-status')
   @RequireInvestigatorOrSupervisorRole()

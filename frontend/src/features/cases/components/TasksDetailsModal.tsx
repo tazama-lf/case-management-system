@@ -31,8 +31,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  // const [saving, setSaving] = React.useState(false);
+  // const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
 
   // Extract transaction ID from transaction data
@@ -78,8 +78,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     if (open) {
       setTab('details');
       setShowCollaborate(false);
-      setSaveSuccess(false);
-      uploadEvidenceRef.current = null;
+      // setSaveSuccess(false);
+      // uploadEvidenceRef.current = null;
       window.scrollTo({ top: 0 });
 
       // Fetch tasks for this case
@@ -100,32 +100,32 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   }, [open, row?.id]);
 
-  const handleSaveTask = async () => {
-    if (!tasks[0]?.task_id) {
-      return;
-    }
+  // const handleSaveTask = async () => {
+  //   if (!tasks[0]?.task_id) {
+  //     return;
+  //   }
 
-    setSaving(true);
-    setSaveSuccess(false);
+  //   setSaving(true);
+  //   setSaveSuccess(false);
 
-    try {
+  //   try {
 
-      if (uploadEvidenceRef.current) {
-        await uploadEvidenceRef.current();
-        setSaveSuccess(true);
+  //     if (uploadEvidenceRef.current) {
+  //       await uploadEvidenceRef.current();
+  //       setSaveSuccess(true);
 
 
-        setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
-    } catch (error) {
-      alert('Failed to upload evidence. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  //       setTimeout(() => setSaveSuccess(false), 3000);
+  //     } else {
+  //       setSaveSuccess(true);
+  //       setTimeout(() => setSaveSuccess(false), 2000);
+  //     }
+  //   } catch (error) {
+  //     alert('Failed to upload evidence. Please try again.');
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   if (!open || !row) return null;
 
@@ -189,7 +189,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
                   taskId={tasks[0]?.task_id}
-                  caseId={row?.id}
                   onSaveRequest={(uploadFn) => {
                     uploadEvidenceRef.current = uploadFn;
                   }}
@@ -230,21 +229,21 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         { }
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          {saveSuccess && (
+          {/* {saveSuccess && (
             <span className="text-sm text-green-600 font-medium">
               ✓ Evidence uploaded successfully
             </span>
-          )}
+          )} */}
           <button
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-            disabled={saving}
+          // disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
-          {tab === 'evidence' && (
+          {/* {tab === 'evidence' && (
             <button
               type="button"
               onClick={handleSaveTask}
@@ -254,7 +253,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
               {saving ? 'Uploading...' : 'Upload Evidence'}
             </button>
-          )}
+          )} */}
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { ManualTriageDto } from '../../../src/modules/triage/dto/manual-triage.dto';
-import { CaseStatus, Priority, AlertType, PredictionOutcome } from '@prisma/client';
+import { CaseStatus, Priority, AlertType, PredictionOutcome } from '@prisma/client-cms';
 
 describe('ManualTriageDto', () => {
   // Helper function to create valid base data
@@ -30,7 +30,7 @@ describe('ManualTriageDto', () => {
 
   it('should allow setting and getting all properties', () => {
     const dto = new ManualTriageDto();
-    
+
     dto.priorityScore = 85;
     dto.note = 'Manual triage note';
     dto.status = CaseStatus.STATUS_82_CLOSED_CONFIRMED;
@@ -121,7 +121,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const priorityScoreError = errors.find(error => error.property === 'priorityScore');
+      const priorityScoreError = errors.find((error) => error.property === 'priorityScore');
       expect(priorityScoreError).toBeDefined();
       expect(priorityScoreError?.constraints).toHaveProperty('isNumber');
     });
@@ -136,7 +136,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const priorityScoreError = errors.find(error => error.property === 'priorityScore');
+      const priorityScoreError = errors.find((error) => error.property === 'priorityScore');
       expect(priorityScoreError).toBeDefined();
       expect(priorityScoreError?.constraints).toHaveProperty('isNumber');
     });
@@ -179,7 +179,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const noteError = errors.find(error => error.property === 'note');
+      const noteError = errors.find((error) => error.property === 'note');
       expect(noteError).toBeDefined();
       expect(noteError?.constraints).toHaveProperty('isString');
     });
@@ -194,7 +194,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const noteError = errors.find(error => error.property === 'note');
+      const noteError = errors.find((error) => error.property === 'note');
       expect(noteError).toBeDefined();
       expect(noteError?.constraints).toHaveProperty('isString');
     });
@@ -210,7 +210,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const noteError = errors.find(error => error.property === 'note');
+      const noteError = errors.find((error) => error.property === 'note');
       expect(noteError).toBeDefined();
       expect(noteError?.constraints).toHaveProperty('maxLength');
     });
@@ -276,7 +276,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const statusError = errors.find(error => error.property === 'status');
+      const statusError = errors.find((error) => error.property === 'status');
       expect(statusError).toBeDefined();
       expect(statusError?.constraints).toHaveProperty('isEnum');
     });
@@ -291,7 +291,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const statusError = errors.find(error => error.property === 'status');
+      const statusError = errors.find((error) => error.property === 'status');
       expect(statusError).toBeDefined();
       expect(statusError?.constraints).toHaveProperty('isEnum');
     });
@@ -331,7 +331,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const confidenceError = errors.find(error => error.property === 'confidence_per');
+      const confidenceError = errors.find((error) => error.property === 'confidence_per');
       expect(confidenceError).toBeDefined();
       expect(confidenceError?.constraints).toHaveProperty('isNumber');
     });
@@ -352,12 +352,7 @@ describe('ManualTriageDto', () => {
 
   describe('priority validation (optional)', () => {
     it('should accept valid Priority enum values', async () => {
-      const validPriorities = [
-        Priority.NEW,
-        Priority.URGENT,
-        Priority.CRITICAL,
-        Priority.BREACH,
-      ];
+      const validPriorities = [Priority.NEW, Priority.URGENT, Priority.CRITICAL, Priority.BREACH];
 
       for (const priority of validPriorities) {
         const validData = {
@@ -393,7 +388,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const priorityError = errors.find(error => error.property === 'priority');
+      const priorityError = errors.find((error) => error.property === 'priority');
       expect(priorityError).toBeDefined();
       expect(priorityError?.constraints).toHaveProperty('isEnum');
     });
@@ -401,11 +396,7 @@ describe('ManualTriageDto', () => {
 
   describe('alertType validation (optional)', () => {
     it('should accept valid AlertType enum values', async () => {
-      const validAlertTypes = [
-        AlertType.FRAUD,
-        AlertType.AML,
-        AlertType.FRAUD_AND_AML,
-      ];
+      const validAlertTypes = [AlertType.FRAUD, AlertType.AML, AlertType.FRAUD_AND_AML];
 
       for (const alertType of validAlertTypes) {
         const validData = {
@@ -441,7 +432,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const alertTypeError = errors.find(error => error.property === 'alertType');
+      const alertTypeError = errors.find((error) => error.property === 'alertType');
       expect(alertTypeError).toBeDefined();
       expect(alertTypeError?.constraints).toHaveProperty('isEnum');
     });
@@ -490,7 +481,7 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      const outcomeError = errors.find(error => error.property === 'predictionOutcome');
+      const outcomeError = errors.find((error) => error.property === 'predictionOutcome');
       expect(outcomeError).toBeDefined();
       expect(outcomeError?.constraints).toHaveProperty('isEnum');
     });
@@ -536,13 +527,13 @@ describe('ManualTriageDto', () => {
       const errors = await validate(dto);
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.some(error => error.property === 'priorityScore')).toBe(true);
-      expect(errors.some(error => error.property === 'note')).toBe(true);
-      expect(errors.some(error => error.property === 'status')).toBe(true);
-      expect(errors.some(error => error.property === 'confidence_per')).toBe(true);
-      expect(errors.some(error => error.property === 'priority')).toBe(true);
-      expect(errors.some(error => error.property === 'alertType')).toBe(true);
-      expect(errors.some(error => error.property === 'predictionOutcome')).toBe(true);
+      expect(errors.some((error) => error.property === 'priorityScore')).toBe(true);
+      expect(errors.some((error) => error.property === 'note')).toBe(true);
+      expect(errors.some((error) => error.property === 'status')).toBe(true);
+      expect(errors.some((error) => error.property === 'confidence_per')).toBe(true);
+      expect(errors.some((error) => error.property === 'priority')).toBe(true);
+      expect(errors.some((error) => error.property === 'alertType')).toBe(true);
+      expect(errors.some((error) => error.property === 'predictionOutcome')).toBe(true);
     });
 
     it('should handle null values for optional fields', async () => {
@@ -577,7 +568,7 @@ describe('ManualTriageDto', () => {
 
       const serialized = JSON.stringify(dto);
       const parsed = JSON.parse(serialized);
-      
+
       expect(parsed.priorityScore).toBe(80);
       expect(parsed.note).toBe('Test note');
       expect(parsed.status).toBe(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);

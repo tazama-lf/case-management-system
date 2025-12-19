@@ -16,7 +16,9 @@ export function extractUserData(req: AuthenticatedRequest) {
 
     const role = claims.includes('CMS_SUPERVISOR') ? 'SUPERVISOR' : 'INVESTIGATOR';
     const validateClaim = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-
+    const userClaims = req.user.token.claims || [];
+    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+    
     return {
         userId: clientId,
         tenantId,
@@ -25,6 +27,7 @@ export function extractUserData(req: AuthenticatedRequest) {
         role,
         claims,
         validateClaim,
+        isComplianceOfficer,
         userInfo: { tenantName: req.user.token.tenantName, role, token: bearerToken, validateClaim },
     };
 }

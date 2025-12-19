@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, TaskStatus, CaseStatus } from '@prisma/client';
+import { Prisma, TaskStatus, CaseStatus } from '@prisma/client-cms';
 
 @Injectable()
 export class TaskRepository {
@@ -40,8 +40,9 @@ export class TaskRepository {
       include: includeCase
         ? {
             case: {
-              select: { case_id: true, status: true, priority: true, created_at: true },
+              select: { case_id: true, status: true, priority: true, created_at: true, case_type: true },
             },
+            workQueue: { include: { roles: true } },
           }
         : undefined,
       skip,

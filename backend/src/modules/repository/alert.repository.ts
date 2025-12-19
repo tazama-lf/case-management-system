@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Alert, Priority, Prisma } from '@prisma/client';
+import { Alert, Priority, Prisma } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 
 @Injectable()
