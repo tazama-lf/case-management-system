@@ -28,7 +28,10 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   onSuspendCase,
   onResumeCase,
   onApproveCaseReopen,
-  onRejectCaseReopen
+  onRejectCaseReopen,
+  onApproveCaseCreation,
+  onRejectCaseCreation,
+  onApproveCase,
 }) => {
   const showSupervisorControls = canManageSupervisorActions;
 
@@ -70,55 +73,55 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     }
 
     // Case Closure Decision button - show for cases pending final approval
-    // if (showSupervisorControls &&
-    //     onApproveCase &&
-    //     (caseData.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-    //       caseData.status.includes('PENDING FINAL APPROVAL'))) {
-    //   actions.push(
-    //     <button
-    //       key="approve-closure"
-    //       onClick={() => onApproveCase(caseData)}
-    //       className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    //     >
-    //       <CheckIcon className="h-4 w-4" />
-    //       Review Case Closure
-    //     </button>
-    //   );
-    // }
+    if (showSupervisorControls &&
+        onApproveCase &&
+        (caseData.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
+          caseData.status.includes('PENDING FINAL APPROVAL'))) {
+      actions.push(
+        <button
+          key="approve-closure"
+          onClick={() => onApproveCase(caseData)}
+          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <CheckIcon className="h-4 w-4" />
+          Review Case Closure
+        </button>
+      );
+    }
 
     // Approve Case Creation button - show for cases pending creation approval
-    // if (showSupervisorControls &&
-    //     onApproveCaseCreation &&
-    //     (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-    //       caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
-    //   actions.push(
-    //     <button
-    //       key="approve-creation"
-    //       onClick={() => onApproveCaseCreation(caseData)}
-    //       className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-    //     >
-    //       <CheckIcon className="h-4 w-4" />
-    //       Approve Case Creation
-    //     </button>
-    //   );
-    // }
+    if (showSupervisorControls &&
+        onApproveCaseCreation &&
+        (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
+          caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+      actions.push(
+        <button
+          key="approve-creation"
+          onClick={() => onApproveCaseCreation(caseData)}
+          className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+          <CheckIcon className="h-4 w-4" />
+          Approve Case Creation
+        </button>
+      );
+    }
 
     // Reject Case Creation button - show for cases pending creation approval
-    // if (showSupervisorControls &&
-    //     onRejectCaseCreation &&
-    //     (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-    //       caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
-    //   actions.push(
-    //     <button
-    //       key="reject-creation"
-    //       onClick={() => onRejectCaseCreation(caseData)}
-    //       className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-    //     >
-    //       <XCircleIcon className="h-4 w-4" />
-    //       Reject Case Creation
-    //     </button>
-    //   );
-    // }
+    if (showSupervisorControls &&
+        onRejectCaseCreation &&
+        (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
+          caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+      actions.push(
+        <button
+          key="reject-creation"
+          onClick={() => onRejectCaseCreation(caseData)}
+          className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          <XCircleIcon className="h-4 w-4" />
+          Reject Case Creation
+        </button>
+      );
+    }
 
     // Approve Case Reopening button - show for cases pending reopening approval
     if (showSupervisorControls &&
