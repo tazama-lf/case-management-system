@@ -60,6 +60,9 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
+    if (filters.timeRange) params.append('timeRange', filters.timeRange);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
     params.append('reportStatus', filters.reportStatus || 'ALRT');
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());

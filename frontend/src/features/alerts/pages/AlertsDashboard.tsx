@@ -48,6 +48,44 @@ const AlertsDashboard: React.FC = () => {
 
   const { performManualTriage } = useAlertOperations();
   const { filterOptions } = useAlertFilterOptions();
+
+  // Memoize filter options to prevent unnecessary re-renders
+  const memoizedFilterOptions = React.useMemo(() => ({
+    alertTypes: filterOptions.alertTypes,
+    priorities: filterOptions.priorities,
+    sources: filterOptions.sources,
+  }), [filterOptions.alertTypes, filterOptions.priorities, filterOptions.sources]);
+
+  // Memoize filter functions to prevent unnecessary re-renders
+  const handleFilterChange = React.useCallback((key: keyof typeof filters, value: string) => {
+    console.log('🔍 AlertsDashboard - Filter change:', key, '=', value);
+    setFilters({ [key]: value });
+    setPage(1);
+  }, [setFilters, setPage]);
+
+  const handleClearFilters = React.useCallback(() => {
+    setFilters({
+      query: '',
+      source: '',
+      type: '',
+      priority: '',
+      timeRange: '',
+      customDateRange: undefined
+    });
+    setPage(1);
+  }, [setFilters, setPage]);
+
+  const handleCustomDateRangeChange = React.useCallback((range: { startDate: string; endDate: string }) => {
+    setFilters({ customDateRange: range });
+  }, [setFilters]);
+
+  const handleToggleFilters = React.useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
+
+  const customDateRange = React.useMemo(() => 
+    filters.customDateRange || { startDate: '', endDate: '' }
+  , [filters.customDateRange]);
   const { success, error: showError } = useToast();
 
   const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
@@ -79,6 +117,7 @@ const AlertsDashboard: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [showTransactionMessages, setShowTransactionMessages] = useState(false);
   const [showMessagePayload, setShowMessagePayload] = useState(false);
@@ -255,7 +294,10 @@ const AlertsDashboard: React.FC = () => {
     return "Triage and investigate alerts, convert to cases, and manage alert workflows";
   };
 
-  if (loading && alerts.length === 0) {
+  // Show full page skeleton only on initial load with no data
+  const isInitialLoad = loading && alerts.length === 0 && !lastUpdated;
+  
+  if (isInitialLoad) {
     return (
       <PageContainer
         title="Alerts Dashboard"
@@ -301,26 +343,15 @@ const AlertsDashboard: React.FC = () => {
       { }
       <AlertsSearchAndFilters
         searchFilters={filters}
-        onFilterChange={(key, value) => {
-          setFilters({ ...filters, [key]: value });
-          setPage(1);
-        }}
-        onClearFilters={() => {
-          setFilters({
-            query: '',
-            source: '',
-            type: '',
-            priority: '',
-            timeRange: '',
-            customDateRange: undefined
-          });
-          setPage(1);
-        }}
-        customDateRange={filters.customDateRange || { startDate: '', endDate: '' }}
-        onCustomDateRangeChange={(range) => setFilters({ ...filters, customDateRange: range })}
-        alertTypes={filterOptions.alertTypes}
-        priorities={filterOptions.priorities}
-        sources={filterOptions.sources}
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+        customDateRange={customDateRange}
+        onCustomDateRangeChange={handleCustomDateRangeChange}
+        alertTypes={memoizedFilterOptions.alertTypes}
+        priorities={memoizedFilterOptions.priorities}
+        sources={memoizedFilterOptions.sources}
+        showFilters={showFilters}
+        onToggleFilters={handleToggleFilters}
       />
 
       <ResultsSummary
@@ -336,19 +367,23 @@ const AlertsDashboard: React.FC = () => {
 
       { }
       <div className="bg-white rounded-lg shadow">
-        <AlertsTable
-          data={alerts}
-          columns={columns}
-          onSort={(column, direction) => {
-            setSort(String(column), direction);
-            setPage(1);
-          }}
-          sortColumn={sort.column}
-          sortDirection={sort.direction}
-          onRowClick={handleRowClick}
-          emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
-          pagination={tablePagination}
-        />
+        {loading ? (
+          <AlertsTableSkeleton rows={pagination.pageSize} />
+        ) : (
+          <AlertsTable
+            data={alerts}
+            columns={columns}
+            onSort={(column, direction) => {
+              setSort(String(column), direction);
+              setPage(1);
+            }}
+            sortColumn={sort.column}
+            sortDirection={sort.direction}
+            onRowClick={handleRowClick}
+            emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
+            pagination={tablePagination}
+          />
+        )}
       </div>
 
       {/* Alerts Detail Modal */}

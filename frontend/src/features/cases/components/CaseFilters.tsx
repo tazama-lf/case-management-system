@@ -133,6 +133,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
       success('Filter Created', `Filter created successfully with status: ${statusFilter},
           priority: ${priorityFilter},
           sortBy: ${sortBy},`);
+      await fetchSavedFilters();
     } catch (err: any) {
       console.error('Error saving filter:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to save filter';

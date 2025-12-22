@@ -178,11 +178,11 @@ export const useAlertOperations = () => {
 };
 
 export const useAlertFilterOptions = () => {
-  const filterOptions = {
+  const filterOptions = useMemo(() => ({
     priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],
     sources: ['REST API', 'NATS'],
-  };
+  }), []);
 
   return {
     filterOptions,

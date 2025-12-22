@@ -23,6 +23,8 @@ interface AlertsSearchAndFiltersProps {
   alertTypes?: string[];
   priorities?: string[];
   sources?: string[];
+  showFilters?: boolean;
+  onToggleFilters?: () => void;
 }
 
 export type UserSavedFilter = {
@@ -50,14 +52,49 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   onCustomDateRangeChange,
 
   alertTypes
-  , priorities, sources
+  , priorities, sources,
+  showFilters: parentShowFilters,
+  onToggleFilters
 }) => {
+  // Debug: Log prop changes
+  const prevProps = React.useRef<AlertsSearchAndFiltersProps | undefined>(undefined);
+  React.useEffect(() => {
+    if (prevProps.current) {
+      const current = { searchFilters, onFilterChange, onClearFilters, customDateRange, onCustomDateRangeChange, alertTypes, priorities, sources };
+      const prev = prevProps.current;
+      
+      Object.keys(current).forEach(key => {
+        if (current[key as keyof typeof current] !== prev[key as keyof typeof prev]) {
+          console.log(`🔄 Prop changed: ${key}`, {
+            previous: prev[key as keyof typeof prev],
+            current: current[key as keyof typeof current]
+          });
+        }
+      });
+    }
+    prevProps.current = { searchFilters, onFilterChange, onClearFilters, customDateRange, onCustomDateRangeChange, alertTypes, priorities, sources };
+  });
+
   const { success, error } = useToast();
   const [selectedSavedFilterId, setSelectedSavedFilterId] = React.useState('');
   const [savedFilters, setSavedFilters] = React.useState<UserSavedFilter[]>([]);
 
-  const [showFilters, setShowFilters] = useState(false);
+  // Use parent state if provided, otherwise fall back to local state
+  const [localShowFilters, setLocalShowFilters] = useState(false);
+  const showFilters = parentShowFilters !== undefined ? parentShowFilters : localShowFilters;
+  const toggleFilters = onToggleFilters || (() => setLocalShowFilters(!localShowFilters));
+
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+
+  // Debug: Log when showFilters changes
+  React.useEffect(() => {
+    console.log('🔍 AlertsSearchAndFilters showFilters changed:', showFilters);
+  }, [showFilters]);
+
+  // Debug: Log when component re-renders
+  React.useEffect(() => {
+    console.log('🔄 AlertsSearchAndFilters re-rendered, current showFilters:', showFilters);
+  });
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priorities: [],
     alertTypes: [],
@@ -82,6 +119,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   );
 
   const handleTimeRangeChange = (value: string) => {
+    console.log('🔍 AlertsSearchAndFilters - Time range changed to:', value);
     onFilterChange('timeRange', value);
     if (value === 'custom') {
       setShowCustomDatePicker(true);
@@ -185,8 +223,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   React.useEffect(() => {
     fetchSavedFilters();
-    console.log('Filters updated:', searchFilters);
-    setSelectedSavedFilterId('');
   }, [fetchSavedFilters]);
 
 
@@ -223,7 +259,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   const handleSaveCurrentFilters = async () => {
     try {
-
       const currentUser = authService.getUser();
       const currentUserId = currentUser?.userId;
       const setFilter = searchFilters;
@@ -237,7 +272,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           timeRange: setFilter.timeRange || '',
           startDate: customDateRange.startDate || '',
           endDate: customDateRange.endDate || ''
-
         }),
       };
       const savedFilter = await filterService.createFilter(payload);
@@ -246,6 +280,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       success('Filter Created', `Saved with: Alert Type: ${searchFilters.type || 'ALL'}, Priority: ${searchFilters.priority || 'ALL'},
             Source: ${searchFilters.source || 'ALL'}, Time Range: ${searchFilters.timeRange || 'ALL'}, StarDate: ${customDateRange.startDate || 'None'}, EndDate: ${customDateRange.endDate || 'None'}`
       );
+      
+      // Refresh the saved filters list to show the new filter
+      await fetchSavedFilters();
     } catch (err: any) {
       console.error('Error saving filter:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to save filter';
@@ -275,7 +312,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
           { }
           <button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={toggleFilters}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <FunnelIcon className="h-5 w-5 mr-2" />
@@ -382,11 +419,11 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <option value="">All Time</option>
                   <option value="today">Today</option>
                   <option value="yesterday">Yesterday</option>
-                  <option value="thisWeek">This Week</option>
-                  <option value="last7days">Last 7 Days</option>
+                  <option value="last7">Last 7 Days</option>
+                  <option value="last30">Last 30 Days</option>
+                  <option value="last90">Last 90 Days</option>
                   <option value="thisMonth">This Month</option>
-                  <option value="last30days">Last 30 Days</option>
-                  <option value="last90days">Last 90 Days</option>
+                  <option value="lastYear">Last Year</option>
                   <option value="custom">Custom Range</option>
                 </select>
               </div>
@@ -486,4 +523,4 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   );
 };
 
-export default AlertsSearchAndFilters;
+export default React.memo(AlertsSearchAndFilters);

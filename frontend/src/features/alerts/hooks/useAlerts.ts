@@ -109,7 +109,13 @@ export const useAlerts = () => {
         ...(state.filters.source && { source: state.filters.source }),
         ...(state.filters.type && { alertType: state.filters.type }),
         ...(state.filters.priority && { priority: state.filters.priority }),
+        ...(state.filters.timeRange && { timeRange: state.filters.timeRange }),
+        ...(state.filters.customDateRange?.startDate && { startDate: state.filters.customDateRange.startDate }),
+        ...(state.filters.customDateRange?.endDate && { endDate: state.filters.customDateRange.endDate }),
       };
+
+      console.log('🔍 useAlerts - Sending filters to API:', filters);
+      console.log('🔍 useAlerts - Current state.filters:', state.filters);
 
       const response = await triageService.getAlerts(filters);
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);

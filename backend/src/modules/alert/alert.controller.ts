@@ -82,6 +82,27 @@ export class AlertController {
         description: 'Sort order',
         example: 'desc',
     })
+    @ApiQuery({
+        name: 'timeRange',
+        required: false,
+        type: 'string',
+        description: 'Predefined time range filter',
+        example: 'today',
+    })
+    @ApiQuery({
+        name: 'startDate',
+        required: false,
+        type: 'string',
+        description: 'Start date for custom date range (YYYY-MM-DD)',
+        example: '2025-01-01',
+    })
+    @ApiQuery({
+        name: 'endDate',
+        required: false,
+        type: 'string',
+        description: 'End date for custom date range (YYYY-MM-DD)',
+        example: '2025-01-31',
+    })
     @ApiResponse({
         status: 200,
         description: 'Alerts retrieved successfully',
@@ -100,9 +121,19 @@ export class AlertController {
         @Query('limit') limit = 10,
         @Query('sortBy') sortBy = 'created_at',
         @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+        @Query('timeRange') timeRange?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
     ) {
         const tenantId = req.user.token.tenantId;
         if (!tenantId) throw new BadRequestException('Missing tenantId');
+        
+        // Log received parameters for debugging
+        console.log('🔍 AlertController - Received parameters:', {
+            priority, type, alertType, search, source, reportStatus,
+            page, limit, sortBy, sortOrder, timeRange, startDate, endDate
+        });
+        
         return this.alertStatisticsService.getAlertsForUser({
             tenantId,
             priority,
@@ -115,6 +146,9 @@ export class AlertController {
             limit: Number(limit),
             sortBy,
             sortOrder,
+            timeRange,
+            startDate,
+            endDate,
         });
     }
 }
