@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AsyncTaskStatus } from '@prisma/client';
+import { AsyncTaskStatus } from '@prisma/client-cms';
 
 @Injectable()
 export class AsyncTaskRepository {

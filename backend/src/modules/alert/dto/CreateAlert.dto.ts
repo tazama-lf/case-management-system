@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AlertType, PredictionOutcome, Priority } from '@prisma/client';
+import { AlertType, PredictionOutcome, Priority } from '@prisma/client-cms';
 import { NetworkMap } from '@tazama-lf/frms-coe-lib/lib/interfaces';
 import { Alert } from '@tazama-lf/frms-coe-lib/lib/interfaces/processor-files/Alert';
 import { IsEnum, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
