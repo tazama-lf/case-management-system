@@ -8,11 +8,10 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY package-lock.json ./
-COPY .npmrc .npmrc ./
+COPY .npmrc ./
 
 # Install dependencies
-RUN npm ci
+RUN npm i
 # Copy source code
 COPY . .
 
