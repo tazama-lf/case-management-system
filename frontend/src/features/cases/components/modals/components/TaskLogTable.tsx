@@ -214,19 +214,15 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks.map((task, index) => {
-              const isTriageAlert = task.name && task.name.toLowerCase().includes('triage alert');
-              const isClickable = onTaskClick && !isTriageAlert;
+              const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigate');
+              const isClickable = onTaskClick && isInvestigationTask;
               
               return (
                 <tr
                   key={task.id || `task-${index}`}
                   className={`hover:bg-gray-50 ${isClickable ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
-                  onClick={() => isClickable && onTaskClick(task)}
-                  onKeyDown={(event) => isClickable && handleRowKeyDown(event, task)}
-                  role={isClickable ? 'button' : undefined}
-                  tabIndex={isClickable ? 0 : undefined}
                 >
-                <td className="px-4 py-3">
+                <td className="px-4 py-3"  onClick={() => isClickable && onTaskClick(task)} tabIndex={isClickable ? 0 : undefined}>
                   <div className="flex flex-col">
                     <div
                       className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]"
