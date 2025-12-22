@@ -11,10 +11,10 @@ export class CouchdbService implements OnModuleInit {
   private readonly dbName: string;
 
   constructor(private configService: ConfigService) {
-    const url = this.configService.get<string>('COUCHDB_URL', 'http://localhost:5984');
-    const username = this.configService.get<string>('COUCHDB_USERNAME', 'simon');
-    const password = this.configService.get<string>('COUCHDB_PASSWORD', '1234');
-    this.dbName = this.configService.get<string>('COUCHDB_DATABASE', 'evidence_store');
+    const url = this.configService.get<string>('COUCHDB_URL') || 'http://localhost:5984';
+    const username = this.configService.get<string>('COUCHDB_USERNAME');
+    const password = this.configService.get<string>('COUCHDB_PASSWORD');
+    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') || 'evidence_store';
 
     const urlWithAuth = url.replace('://', `://${username}:${password}@`);
 
