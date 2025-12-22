@@ -1,8 +1,3 @@
-
-# =============================================================================
-# Backend Development Dockerfile
-# =============================================================================
-
 FROM node:22-alpine
 
 # Install dumb-init for proper signal handling
@@ -22,6 +17,7 @@ RUN npm install --ignore-scripts
 COPY . .
 
 RUN npx prisma generate
+RUN npx prisma generate --schema=prismaDWH/schema.dwh.prisma
 # Build the application
 RUN npm run build
 # Expose port
