@@ -4,7 +4,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { FlowableTaskService } from './flowable-task.service';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
 import { AuditLogService } from '../../audit/auditLog.service';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from '../../repository/case.repository';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 

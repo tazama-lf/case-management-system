@@ -10,7 +10,7 @@ import {
   TaskUnassignedEvent,
   TaskCompletedEvent,
 } from '../../events/domain-events';
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@prisma/client-cms';
 import { FlowableUtilitiesService } from '../services/flowable-utilities.service';
 import { FlowableTaskService } from '../services/flowable-task.service';
 import { FlowableProcessService } from '../services/flowable-process.service';

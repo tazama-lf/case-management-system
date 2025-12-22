@@ -4,7 +4,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from 'src/modules/task/task.service';
-import { CaseStatus, TaskStatus } from '@prisma/client';
+import { CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';

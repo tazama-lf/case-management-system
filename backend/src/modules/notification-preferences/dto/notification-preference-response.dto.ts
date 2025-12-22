@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { NotificationChannel } from '@prisma/client';
+import { NotificationChannel } from '@prisma/client-cms';
 import { IsString } from 'class-validator';
 
 export class NotificationPreferenceResponseDto {

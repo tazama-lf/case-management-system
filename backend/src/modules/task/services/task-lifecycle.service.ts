@@ -4,7 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client';
+import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client-cms';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 

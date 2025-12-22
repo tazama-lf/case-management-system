@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, AlertType } from '@prisma/client';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, AlertType } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';

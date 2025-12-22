@@ -1,4 +1,4 @@
-import { CaseStatus } from '@prisma/client';
+import { CaseStatus } from '@prisma/client-cms';
 
 /**
  * Valid case closure outcomes

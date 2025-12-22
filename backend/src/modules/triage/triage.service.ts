@@ -7,7 +7,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
-import { Priority, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client';
+import { Priority, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';

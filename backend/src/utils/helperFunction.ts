@@ -1,5 +1,5 @@
 import { AuthenticatedRequest } from './types/auth.types';
-import { CaseStatus } from '@prisma/client';
+import { CaseStatus } from '@prisma/client-cms';
 import { CASE_CLOSURE_OUTCOMES, CLOSED_CASE_STATUSES, VALIDATION_LENGTHS } from '../constants/case.constants';
 import { CloseCaseDto } from 'src/modules/case/dto/close-case.dto';
 
