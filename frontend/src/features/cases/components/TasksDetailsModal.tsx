@@ -9,9 +9,10 @@ import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import CustomerProfileTab from './view/CustomerProfileTab';
+import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
+type ViewTabKey = 'details' | 'evidence' | 'visualizations' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
 interface TaskDetailsModalProps {
   open: boolean;
@@ -157,6 +158,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'customer', label: 'Customer Profile' },
                 { key: 'evidence', label: 'Evidence' },
+                { key: 'visualizations', label: 'Visualizations' },
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -199,6 +201,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                   }}
                 />
+              </div>
+              <div style={{ display: tab === 'visualizations' ? 'block' : 'none' }}>
+                <VisualizationsTab caseId={row?.id} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && <LinkedItemsTab caseId={row.id} />}
