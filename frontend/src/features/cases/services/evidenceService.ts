@@ -153,7 +153,7 @@ export class EvidenceService {
 
 
   async verifyEvidence(
-    evidenceId: string,
+    evidenceId: number,
   ): Promise<VerifyEvidenceResponse> {
     try {
       const response = await apiClient.get<VerifyEvidenceResponse>(
@@ -165,11 +165,21 @@ export class EvidenceService {
     }
   }
 
+  async deleteEvidence(evidenceId: number): Promise<void> {
+    try {
+      await apiClient.post<void>(`${this.baseUrl}/delete/${evidenceId}`);
+    } catch (error) {
+      throw this.handleError(error, 'delete evidence');
+    }
+  }
+
 
   async viewEvidence(evidenceId: number): Promise<Blob> {
 
     return this.downloadEvidence(evidenceId);
   }
+
+
 
 
   async downloadEvidence(evidenceId: number): Promise<Blob> {

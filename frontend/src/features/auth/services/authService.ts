@@ -90,6 +90,8 @@ class AuthService {
 
       // Map backend response to User interface
       const user: User = {
+        roles: data.roles,
+        username: data.username,
         userId: data.clientId,
         tenantId: data.tenantId,
         email: data.email,

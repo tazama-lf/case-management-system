@@ -53,6 +53,9 @@ export type EvidenceType =
   | 'ADVERSE_MEDIA'
   | 'OTHER'
   | 'SAR_STR_FILING'
+  | 'SCREENSHOT'
+  | 'MEDIA'
+  | 'LOG_FILE'
   | 'KYC'
   | 'EDD';
 

@@ -22,6 +22,8 @@ export interface LoginCredentials {
 export interface User {
   userId: string;
   tenantId: string;
+  username: string;
+  roles: string[];
   email: string;
   fullName: string;
   tenantName: string;

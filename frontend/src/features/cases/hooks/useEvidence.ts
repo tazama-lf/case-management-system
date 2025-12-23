@@ -10,13 +10,13 @@ import toast from 'react-hot-toast';
 export const evidenceKeys = {
   all: ['evidence'] as const,
   lists: () => [...evidenceKeys.all, 'list'] as const,
-  list: (caseId: string, filters?: EvidenceSearchFilters) =>
+  list: (caseId: number, filters?: EvidenceSearchFilters) =>
     [...evidenceKeys.lists(), caseId, filters] as const,
   details: () => [...evidenceKeys.all, 'detail'] as const,
-  detail: (id: string) => [...evidenceKeys.details(), id] as const,
-  statistics: (caseId: string) =>
+  detail: (id: number) => [...evidenceKeys.details(), id] as const,
+  statistics: (caseId: number) =>
     [...evidenceKeys.all, 'statistics', caseId] as const,
-  auditLog: (evidenceId: string) =>
+  auditLog: (evidenceId: number) =>
     [...evidenceKeys.all, 'audit-log', evidenceId] as const,
   search: (filters: EvidenceSearchFilters) =>
     [...evidenceKeys.all, 'search', filters] as const,
@@ -26,16 +26,16 @@ export const evidenceKeys = {
  * Hook to fetch case evidence list
  */
 export const useCaseEvidence = (
-  caseId: string,
+  caseId: number,
   filters?: EvidenceSearchFilters,
-  page: number = 1,
-  limit: number = 20,
+  // page: number = 1,
+  // limit: number = 20,
   enabled: boolean = true,
 ) => {
   return useQuery({
     queryKey: evidenceKeys.list(caseId, filters),
     queryFn: () =>
-      evidenceService.getCaseEvidence(caseId, filters, page, limit),
+      evidenceService.getCaseEvidence(caseId),
     enabled: enabled && !!caseId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -45,7 +45,7 @@ export const useCaseEvidence = (
  * Hook to fetch evidence details
  */
 export const useEvidenceDetails = (
-  evidenceId: string,
+  evidenceId: number,
   enabled: boolean = true,
 ) => {
   return useQuery({
@@ -58,36 +58,36 @@ export const useEvidenceDetails = (
 /**
  * Hook to fetch evidence statistics
  */
-export const useEvidenceStatistics = (
-  caseId: string,
-  enabled: boolean = true,
-) => {
-  return useQuery({
-    queryKey: evidenceKeys.statistics(caseId),
-    queryFn: () => evidenceService.getCaseEvidenceStatistics(caseId),
-    enabled: enabled && !!caseId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
+// export const useEvidenceStatistics = (
+//   caseId: number,
+//   enabled: boolean = true,
+// ) => {
+//   return useQuery({
+//     queryKey: evidenceKeys.statistics(caseId),
+//     queryFn: () => evidenceService.getCaseEvidenceStatistics(caseId),
+//     enabled: enabled && !!caseId,
+//     staleTime: 5 * 60 * 1000, // 5 minutes
+//   });
+// };
 
 /**
  * Hook to fetch evidence audit log
  */
-export const useEvidenceAuditLog = (
-  evidenceId: string,
-  enabled: boolean = true,
-) => {
-  return useQuery({
-    queryKey: evidenceKeys.auditLog(evidenceId),
-    queryFn: () => evidenceService.getEvidenceAuditLog(evidenceId),
-    enabled: enabled && !!evidenceId,
-  });
-};
+// export const useEvidenceAuditLog = (
+//   evidenceId: number,
+//   enabled: boolean = true,
+// ) => {
+//   return useQuery({
+//     queryKey: evidenceKeys.auditLog(evidenceId),
+//     queryFn: () => evidenceService.getEvidenceAuditLog(evidenceId),
+//     enabled: enabled && !!evidenceId,
+//   });
+// };
 
 /**
  * Hook to upload evidence
  */
-export const useUploadEvidence = (caseId: string) => {
+export const useUploadEvidence = (caseId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -101,7 +101,7 @@ export const useUploadEvidence = (caseId: string) => {
         queryKey: evidenceKeys.statistics(caseId),
       });
       toast.success(
-        `Evidence "${response.evidence.file_name}" uploaded successfully`,
+        `Evidence "${response.fileName}" uploaded successfully`,
       );
     },
     onError: (error: Error) => {
@@ -113,21 +113,21 @@ export const useUploadEvidence = (caseId: string) => {
 /**
  * Hook to verify evidence integrity
  */
-export const useVerifyEvidence = (caseId: string) => {
+export const useVerifyEvidence = (caseId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: VerifyEvidenceDto) =>
-      evidenceService.verifyEvidence(data),
+      evidenceService.verifyEvidence(data.evidenceId),
     onSuccess: (response) => {
       queryClient.invalidateQueries({
-        queryKey: evidenceKeys.detail(response.evidence_id),
+        queryKey: evidenceKeys.detail(response.evidenceId),
       });
       queryClient.invalidateQueries({
         queryKey: evidenceKeys.list(caseId, undefined),
       });
 
-      if (response.hash_match) {
+      if (response.verified) {
         toast.success('Evidence integrity verified successfully');
       } else {
         toast.error('Evidence integrity check failed - hash mismatch!');
@@ -142,17 +142,16 @@ export const useVerifyEvidence = (caseId: string) => {
 /**
  * Hook to delete evidence
  */
-export const useDeleteEvidence = (caseId: string) => {
+export const useDeleteEvidence = (caseId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
-      evidenceId,
-      reason,
+      evidenceId
     }: {
-      evidenceId: string;
+      evidenceId: number;
       reason?: string;
-    }) => evidenceService.deleteEvidence(evidenceId, reason),
+    }) => evidenceService.deleteEvidence(evidenceId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: evidenceKeys.list(caseId, undefined),
@@ -171,44 +170,70 @@ export const useDeleteEvidence = (caseId: string) => {
 /**
  * Hook to update evidence metadata
  */
-export const useUpdateEvidenceMetadata = (caseId: string) => {
-  const queryClient = useQueryClient();
+// export const useUpdateEvidenceMetadata = (caseId: number) => {
+//   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      evidenceId,
-      updates,
-    }: {
-      evidenceId: string;
-      updates: Parameters<typeof evidenceService.updateEvidenceMetadata>[1];
-    }) => evidenceService.updateEvidenceMetadata(evidenceId, updates),
-    onSuccess: (evidence) => {
-      queryClient.invalidateQueries({
-        queryKey: evidenceKeys.detail(evidence.evidence_id),
-      });
-      queryClient.invalidateQueries({
-        queryKey: evidenceKeys.list(caseId, undefined),
-      });
-      toast.success('Evidence metadata updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Update failed: ${error.message}`);
-    },
-  });
-};
+//   return useMutation({
+//     mutationFn: ({
+//       evidenceId,
+//       updates,
+//     }: {
+//       evidenceId: number;
+//       updates: Parameters<typeof evidenceService.updateEvidenceMetadata>[1];
+//     }) => evidenceService.updateEvidenceMetadata(evidenceId, updates),
+//     onSuccess: (evidence) => {
+//       queryClient.invalidateQueries({
+//         queryKey: evidenceKeys.detail(evidence.evidence_id),
+//       });
+//       queryClient.invalidateQueries({
+//         queryKey: evidenceKeys.list(caseId, undefined),
+//       });
+//       toast.success('Evidence metadata updated successfully');
+//     },
+//     onError: (error: Error) => {
+//       toast.error(`Update failed: ${error.message}`);
+//     },
+//   });
+// };
 
 /**
  * Hook to download evidence
  */
+// export const useDownloadEvidence = () => {
+//   return useMutation({
+//     mutationFn: (evidenceId: number) =>
+//       evidenceService.downloadEvidence(evidenceId),
+//     onSuccess: (response) => {
+//       // Trigger download
+//       window.open(response.url, '_blank');
+//       toast.success('Download started');
+//     },
+//     onError: (error: Error) => {
+//       toast.error(`Download failed: ${error.message}`);
+//     },
+//   });
+// };
+
 export const useDownloadEvidence = () => {
   return useMutation({
-    mutationFn: (evidenceId: string) =>
+    mutationFn: (evidenceId: number) =>
       evidenceService.downloadEvidence(evidenceId),
-    onSuccess: (response) => {
-      // Trigger download
-      window.open(response.url, '_blank');
+
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'evidence';
+      document.body.appendChild(a);
+      a.click();
+
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
       toast.success('Download started');
     },
+
     onError: (error: Error) => {
       toast.error(`Download failed: ${error.message}`);
     },

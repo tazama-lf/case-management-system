@@ -1,8 +1,14 @@
 import React from 'react';
-import { ArrowUpTrayIcon, ChartBarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-// import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfileModal';
+import {
+  ArrowUpTrayIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CheckCircleIcon,
+  MinusCircleIcon,
+} from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
+import { taskService, type TaskForSupervisor } from '../../services/taskService';
 
 const evidenceSections: Array<{
   key: string;
@@ -48,27 +54,34 @@ const evidenceSections: Array<{
 
 interface TaskEvidenceTabProps {
   taskId: number;
-  caseId?: number;
   onUploadComplete?: () => void;
   onSaveRequest?: (uploadFn: () => Promise<void>) => void;
 }
 
 const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   taskId,
-  caseId,
   onUploadComplete,
   onSaveRequest,
 }) => {
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
   const [sectionFiles, setSectionFiles] = React.useState<Record<string, File[]>>({});
   const [sectionComments, setSectionComments] = React.useState<Record<string, string>>({});
   const [uploadedEvidence, setUploadedEvidence] = React.useState<Record<string, Evidence[]>>({});
   const [loading, setLoading] = React.useState(false);
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
-  const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [transactionProfile, setTransactionProfile] = React.useState<any>(null);
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+
+  const toggleSection = (key: string) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   React.useEffect(() => {
+    setSaveSuccess(false);
+    uploadEvidenceRef.current = null;
+
     const loadEvidence = async () => {
       if (!taskId) return;
 
@@ -227,154 +240,213 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     return `${size.toFixed(size >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
   };
 
+  const handleSaveTask = async () => {
+    if (!taskId) {
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+
+      if (uploadEvidenceRef.current) {
+        await uploadEvidenceRef.current();
+        setSaveSuccess(true);
+
+
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } catch (error) {
+      alert('Failed to upload evidence. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Removed Save Progress button as requested */}
+    <div className="space-y-4">
+      <div className="text-sm font-semibold text-gray-900">
+        Evidence & Documents
+      </div>
 
-      <div className="text-sm font-semibold text-gray-900">Evidence &amp; Documents</div>
-      {evidenceSections.map((section) => (
-        <section
-          key={section.key}
-          className="rounded-lg border border-gray-200 bg-white shadow-sm"
-          aria-labelledby={`${section.key}-title`}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
-            <div>
-              <h4 id={`${section.key}-title`} className="text-sm font-medium text-gray-900">
-                {section.title}
-              </h4>
-              {section.helper ? <p className="text-xs text-gray-500">{section.helper}</p> : null}
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                ref={(el) => {
-                  if (el) {
-                    fileInputRefs.current[section.key] = el;
-                  }
-                }}
-                id={`${section.key}-uploader`}
-                type="file"
-                multiple
-                accept="*/*"
-                style={{ display: 'none' }}
-                onChange={(event) => handleFileChange(event, section.key)}
-                aria-label={`Upload files for ${section.title}`}
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAttachClick(section.key);
-                }}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600"
-              >
-                <ArrowUpTrayIcon className="h-4 w-4" aria-hidden="true" />
-                Attach Evidence
-              </button>
-            </div>
-          </div>
+      {evidenceSections.map((section) => {
+        const isOpen = openSections[section.key];
 
-          <div className="space-y-4 p-4">
-            <div>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                Pending Upload
-              </div>
-              {sectionFiles[section.key]?.length ? (
-                <ul className="space-y-2">
-                  {sectionFiles[section.key].map((files, index) => (
-                    <li
-                      key={`${files.name}-${index}`}
-                      className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm"
-                    >
-                      <div className="truncate">
-                        <p className="truncate font-medium text-gray-900" title={files.name}>
-                          {files.name}
-                        </p>
-                        <p className="text-xs text-gray-500">{formatFileSize(files.size)}</p>
-                      </div>
-                      {uploading[section.key] ? (
-                        <span className="text-xs text-blue-600">Uploading...</span>
-                      ) : (
-                        <span className="text-xs text-gray-400">Ready to upload</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
-                  No files pending
-                </p>
-              )}
-            </div>
-
-            {uploadedEvidence[section.key]?.length > 0 && (
+        return (
+          <section
+            key={section.key}
+            className="rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            {/* HEADER */}
+            <button
+              type="button"
+              onClick={() => toggleSection(section.key)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+            >
               <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Uploaded Evidence ({uploadedEvidence[section.key].length})
-                </div>
-                {loading ? (
-                  <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
-                    Loading...
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {uploadedEvidence[section.key].map((evidence) => (
-                      <li
-                        key={evidence.id}
-                        className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm shadow-sm"
-                      >
-                        <div className="truncate flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate font-medium text-gray-900" title={evidence.fileName}>
-                              {evidence.fileName}
-                            </p>
-                            {section.key === 'kyc-edd' && (
-                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                {evidence.evidenceType}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Uploaded {new Date(evidence.uploadedAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <span className="text-xs text-green-600 ml-2">✓ Uploaded</span>
-                      </li>
-                    ))}
-                  </ul>
+                <h4 className="text-sm font-medium text-gray-900">
+                  {section.title}
+                </h4>
+                {section.helper && (
+                  <p className="text-xs text-gray-500">{section.helper}</p>
                 )}
               </div>
+              {isOpen ? (
+                <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+              )}
+            </button>
+
+            {/* BODY */}
+            {isOpen && (
+              <div className="space-y-4 border-t p-4">
+                <input
+                  type="file"
+                  multiple
+                  hidden
+                  ref={(el) => {
+                    fileInputRefs.current[section.key] = el;
+                  }}
+                  onChange={(e) => handleFileChange(e, section.key)}
+                />
+
+                {/* Pending Upload */}
+                <div>
+                  <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Pending Upload
+                  </div>
+                  {sectionFiles[section.key]?.length ? (
+                    <ul className="space-y-2">
+                      {sectionFiles[section.key].map((file, index) => (
+                        <li
+                          key={`${file.name}-${index}`}
+                          className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm"
+                        >
+                          <div className="truncate">
+                            <p className="truncate font-medium text-gray-900">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            Ready to upload
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
+                      No files pending
+                    </p>
+                  )}
+                </div>
+
+                {/* Uploaded Evidence */}
+                {uploadedEvidence[section.key]?.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Uploaded Evidence ({uploadedEvidence[section.key].length})
+                    </div>
+                    {loading ? (
+                      <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
+                        Loading...
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {uploadedEvidence[section.key].map((evidence) => (
+                          <li
+                            key={evidence.id}
+                            className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm shadow-sm"
+                          >
+                            <div className="truncate">
+                              <p className="truncate font-medium text-gray-900">
+                                {evidence.fileName}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Uploaded{' '}
+                                {new Date(evidence.uploadedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <span className="text-xs text-green-600">
+                              ✓ Uploaded
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                  </div>
+                )}
+
+                {/* Comments */}
+                <div>
+                  <label
+                    htmlFor={`${section.key}-comments`}
+                    className="mb-1 block text-xs font-medium text-gray-700"
+                  >
+                    Comments
+                  </label>
+                  <textarea
+                    id={`${section.key}-comments`}
+                    placeholder={section.commentPlaceholder}
+                    rows={4}
+                    value={sectionComments[section.key] || ''}
+                    onChange={(e) =>
+                      setSectionComments((prev) => ({
+                        ...prev,
+                        [section.key]: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    {saveSuccess && (
+                      <span className="text-sm text-green-600 font-medium">
+                        ✓ Evidence uploaded successfully
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleAttachClick(section.key)}
+                      className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ArrowUpTrayIcon className="h-5 w-5" aria-hidden="true" />
+                      Attach Evidence
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTask}
+                      disabled={saving || taskId === undefined || uploading[section.key]}
+                      className="inline-flex items-center gap-2 rounded-md border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:ring-1 focus:ring-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
+                      {saving ? 'Uploading...' : 'Upload Evidence'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTask}
+                      disabled={saving || taskId === undefined || uploading[section.key]}
+                      className="inline-flex items-center gap-2 rounded-md border border-red-600 bg-red-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:ring-1 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MinusCircleIcon className="h-5 w-5" aria-hidden="true" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-
-            <div>
-              <label htmlFor={`${section.key}-comments`} className="mb-1 block text-xs font-medium text-gray-700">
-                Comments
-              </label>
-              <textarea
-                id={`${section.key}-comments`}
-                placeholder={section.commentPlaceholder}
-                rows={4}
-                value={sectionComments[section.key] || ''}
-                onChange={(e) => setSectionComments(prev => ({ ...prev, [section.key]: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </section>
-      ))}
-
-      {/* Generate Transaction Profile Modal
-      <GenerateTransactionProfileModal
-        open={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        caseId={caseId}
-        onSaveProfile={(profileData: any) => {
-          setTransactionProfile(profileData);
-          setShowProfileModal(false);
-        }}
-        initialProfile={transactionProfile}
-      /> */}
+          </section>
+        );
+      })}
     </div>
   );
 };
