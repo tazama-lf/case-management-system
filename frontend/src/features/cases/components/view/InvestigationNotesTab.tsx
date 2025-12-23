@@ -9,15 +9,15 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { commentService, type TaskComment } from '../../services/commentService';
-import { taskService } from '../../services/taskService';
+import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface InvestigationNotesTabProps {
-  taskId?: number;
+  task?: TaskForSupervisor;
 }
 
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
-  taskId,
+  task,
 }) => {
   const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
@@ -31,11 +31,11 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   React.useEffect(() => {
     const loadComments = async () => {
-      if (!taskId) return;
-
+      if (!task) return;
+      setNotes(task.investigationNotes || '');
       setLoading(true);
       try {
-        const comments = await commentService.getCommentsByTask(taskId);
+        const comments = await commentService.getCommentsByTask(task.task_id);
         setExistingComments(comments);
       } catch (error) {
         console.error('Failed to load comments:', error);
@@ -45,7 +45,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
     };
 
     loadComments();
-  }, [taskId]);
+  }, [task]);
 
 
 
@@ -117,14 +117,14 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const handleLink = () => insertFormatting('[', '](url)', 'link text');
 
   const handleSaveNotes = async () => {
-    if (!taskId || !notes.trim()) {
+    if (!task?.task_id || !notes.trim()) {
       showError('Please add investigation notes before saving.');
       return;
     }
 
     setSaving(true);
     try {
-      await taskService.updateTaskForSupervisor(taskId, {
+      await taskService.updateTaskForSupervisor(task.task_id, {
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');

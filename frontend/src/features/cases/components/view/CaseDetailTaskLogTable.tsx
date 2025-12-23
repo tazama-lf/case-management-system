@@ -13,6 +13,7 @@ import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
 import authService from '@/features/auth/services/authService';
 import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
+import { EyeIcon } from '@heroicons/react/24/solid';
 
 interface CaseDetailTaskLogTableProps {
   alertId?: number;
@@ -217,6 +218,21 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
+  const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+    if (isCurrentUserAssigned(task)) {
+      const isClickable = onTaskClick && task.name && task.name.toLowerCase().includes('investigate');
+      actions.push(
+        createActionButton(
+          'view',
+          () =>  isClickable && onTaskClick(task),
+          <EyeIcon className="h-4 w-4 mr-1" />,
+          'View task',
+          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
+        )
+      );
+    }
+  };
+
   const addApprovalActions = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     // Handle "Approve Case Creation" tasks - supervisor approval for new cases
     if (task.name === 'Approve Case Creation' && canManageSupervisorActions && onApproveCaseCreation && caseData) {
@@ -329,7 +345,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     if (task.status === 'IN_PROGRESS') {
       addReassignAction(actions, task);
       addUnassignAction(actions, task);
-      addCompleteAction(actions, task);
+      addViewAction(actions, task);
       addApprovalActions(actions, task);
       return actions;
     }
@@ -414,11 +430,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <tr key={task.id || `task-${index}`}
                   className={`hover:bg-gray-50 ${isClickable ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
                 >
-                  <td 
-                    className="px-4 py-3"
-                    onClick={() => isClickable && onTaskClick(task)}
-                    tabIndex={isClickable ? 0 : undefined}
-                  >
+                  <td className="px-4 py-3">
                     <div className="flex flex-col">
                       {/* <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
                         TASK-{task.id || 'No ID'}
@@ -426,7 +438,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                       {task.name && (
                         <div
                           // className="text-xs text-gray-500 break-words mt-1" title={task.name}>
-                          className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
+                          className={`text-xs break-words mt-1 text-gray-900`}
                           title={task.name || 'View task details'}>
                           {task.name || 'Unnamed Task'}
 
