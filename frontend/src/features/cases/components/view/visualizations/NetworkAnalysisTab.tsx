@@ -22,7 +22,8 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   caseId,
   transactionId,
 }) => {
-  const [activeSubTab, setActiveSubTab] = React.useState<NetworkSubTab>('transaction');
+  const [activeSubTab, setActiveSubTab] =
+    React.useState<NetworkSubTab>('transaction');
   const [timeRange, setTimeRange] = React.useState<TimeRange>('30d');
   const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
 
@@ -57,53 +58,52 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   ];
 
   const selectedTimeLabel =
-    timeRangeOptions.find((opt) => opt.value === timeRange)?.label || 'Last 30 Days';
+    timeRangeOptions.find((opt) => opt.value === timeRange)?.label ||
+    'Last 30 Days';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Network Navigator</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Visualize relationships and transaction flows across accounts and counterparties
+          <h3 className="text-lg font-semibold text-gray-900">
+            Network Navigator
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Visualize relationships and transaction flows across accounts and
+            counterparties
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Time Range Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowTimeDropdown(!showTimeDropdown)}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              {selectedTimeLabel}
-              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-            </button>
-            {showTimeDropdown && (
-              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                {timeRangeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      setTimeRange(option.value);
-                      setShowTimeDropdown(false);
-                    }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${
-                      timeRange === option.value
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Filter Button */}
-          <button className="rounded-lg border border-gray-300 bg-white p-2 text-gray-500 hover:bg-gray-50">
-            <AdjustmentsHorizontalIcon className="h-5 w-5" />
+        {/* Time Range Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowTimeDropdown(!showTimeDropdown)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            {selectedTimeLabel}
+            <ChevronDownIcon className="h-4 w-4 text-gray-500" />
           </button>
+          {showTimeDropdown && (
+            // <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+            <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              {timeRangeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setTimeRange(option.value);
+                    setShowTimeDropdown(false);
+                  }}
+                  className={`block w-full px-4 py-2 text-left text-sm ${
+                    timeRange === option.value
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -130,15 +130,21 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
       </div>
 
       {/* Sub-tab Content */}
-      <div className="border border-gray-200 bg-white">
+      <div className="rounded-lg border border-gray-200 bg-white">
         {activeSubTab === 'transaction' && (
-          <TransactionNetworkTab caseId={caseId} transactionId={transactionId} />
+          <TransactionNetworkTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
         {activeSubTab === 'account' && (
           <AccountNetworkTab caseId={caseId} transactionId={transactionId} />
         )}
         {activeSubTab === 'counterparty' && (
-          <CounterpartyNetworkTab caseId={caseId} transactionId={transactionId} />
+          <CounterpartyNetworkTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
       </div>
     </div>

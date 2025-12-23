@@ -26,7 +26,7 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
   summaryFields,
 }) => {
   return (
-    <div className="h-full w-72 border-l border-gray-200 bg-white p-4">
+    <div className="h-full w-72 border-gray-200 bg-white p-4">
       <h3 className="text-base font-semibold text-gray-900">{title}</h3>
 
       <div className="mt-4 space-y-4">

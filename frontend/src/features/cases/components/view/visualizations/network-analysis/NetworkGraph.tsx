@@ -228,7 +228,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
   };
 
   return (
-    <div className="relative h-[450px] w-full border border-gray-200 bg-gray-50">
+    <div className="relative h-full min-h-[400px] w-full rounded-lg bg-gray-50">
       {/* Zoom Controls */}
       <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
         <button
@@ -259,7 +259,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
         ref={svgRef}
         width="100%"
         height="100%"
-        viewBox="0 0 600 400"
+        viewBox="0 0 600 500"
         preserveAspectRatio="xMidYMid meet"
         style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
       >

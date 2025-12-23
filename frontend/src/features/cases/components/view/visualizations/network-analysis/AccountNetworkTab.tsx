@@ -60,9 +60,9 @@ const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
   ];
 
   return (
-    <div className="flex h-[450px]">
+    <div className="flex min-h-[400px] p-4">
       {/* Graph Area */}
-      <div className="relative flex-1">
+      <div className="relative flex-1 min-h-[650px]">
         <NetworkGraph
           nodes={nodes}
           edges={edges}
