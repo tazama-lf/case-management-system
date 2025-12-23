@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDto } from './dto/alert-navigator.dto';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { IngestAlertDto } from './dto/ingest-alert.dto';
@@ -34,6 +35,79 @@ export class TriageService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
   ) {}
+
+  async getAlertNavigator(alertId: string, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
+    this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
+
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId, tenant_id: tenantId },
+    });
+    if (!alert) {
+      this.logger.warn(`Alert not found: ${alertId} for tenant: ${tenantId}`, TriageService.name);
+      throw new NotFoundException('Alert not found');
+    }
+
+    this.logger.log(`Alert found: ${alertId}, processing data`, TriageService.name);
+
+    const alertReport = alert.alert_data as any || {};
+    const transactionData = alert.transaction as any || {};
+    const networkMapData = alert.network_map as any || {};
+    const tadpReport = alertReport || {};
+
+    const typologies: TypologyDto[] = [];
+    const rules: RuleDto[] = [];
+
+    const typologyResults = tadpReport?.tadpResult?.typologyResult || [];
+    this.logger.log(`Processing ${typologyResults.length} typologies`, TriageService.name);
+
+    for (const typology of typologyResults) {
+      typologies.push({
+        id: typology.id,
+        config: typology.cfg,
+        alertThreshold: typology.workflow?.alertThreshold ?? null,
+        interdictionThreshold: typology.workflow?.interdictionThreshold ?? null,
+      });
+      if (Array.isArray(typology.ruleResults)) {
+        for (const rule of typology.ruleResults) {
+          rules.push({
+            id: rule.id,
+            config: rule.cfg,
+            weighting: rule.wght ?? null,
+            independentVariable: rule.subRuleRef ?? null,
+          });
+        }
+      }
+    }
+
+    this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
+
+    const blockStatus: BlockStatusDto | null = alert.block_status || alert.block_reason ? {
+      status: alert.block_status ?? '',
+      reason: alert.block_reason ?? '',
+    } : null;
+
+    const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
+    const relatedLinks: RelatedLinksDto = {
+      transactionDetails: `/api/v1/transactions/${transactionId}`,
+      transactionHistory: `/api/v1/transactions/${transactionId}/history`,
+      conditionsView: `/api/v1/alerts/${alertId}/conditions`,
+      alertHistory: `/api/v1/triage/alerts/${alertId}/action-history`,
+    };
+
+    this.logger.log(`Alert navigator data prepared for alertId: ${alertId}`, TriageService.name);
+
+    return {
+      alertId: alert.alert_id,
+      transactionId,
+      timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
+      transactionType: alert.txtp ?? '',
+      reason: alert.message ?? '',
+      typologies,
+      rules,
+      blockStatus,
+      relatedLinks,
+    };
+  }
 
   @OnEvent('alert.incoming')
   async handleIncomingAlertEvent(event: { payload: any; source: string; userId: string; tenantId: string }) {

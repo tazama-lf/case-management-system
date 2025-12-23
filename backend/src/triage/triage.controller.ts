@@ -20,6 +20,7 @@ import { RequireAlertTriageRole, RequireInvestigatorOrSupervisorRole } from 'src
 import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { AlertNavigatorDto } from './dto/alert-navigator.dto';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')
@@ -351,5 +352,32 @@ export class TriageController {
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
     return await this.triageService.processIncomingAlert(dto, 'REST API', userId, tenantId);
+  }
+
+  @Get(':alertId/navigator')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get alert navigator details',
+    description: 'Retrieve all details for Alert Navigator view',
+  })
+  @ApiParam({
+    name: 'alertId',
+    type: 'string',
+    description: 'UUID of the alert',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Alert navigator details',
+    type: AlertNavigatorDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Alert not found' })
+  async getAlertNavigator(@Param('alertId') alertId: string, @Req() req: AuthenticatedRequest): Promise<AlertNavigatorDto> {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+    return this.triageService.getAlertNavigator(alertId, tenantId, userId);
   }
 }
