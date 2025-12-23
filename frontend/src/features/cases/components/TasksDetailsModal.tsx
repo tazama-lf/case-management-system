@@ -8,11 +8,12 @@ import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
-import { taskService, type TaskForSupervisor } from '../services/taskService';
+import { taskService, type Task, type TaskForSupervisor } from '../services/taskService';
 
 type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
 interface TaskDetailsModalProps {
+  selectedTask: Task;
   open: boolean;
   onClose: () => void;
   row?: CaseRow | null;
@@ -21,6 +22,7 @@ interface TaskDetailsModalProps {
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
+  selectedTask,
   open,
   onClose,
   row,
@@ -184,11 +186,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           ) : (
             <>
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
-                <TaskDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
+                <TaskDetailsTab row={row} tasks={tasks.filter(t => t.task_id === selectedTask?.id)} loadingTasks={loadingTasks} />
               </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
-                  taskId={tasks[0]?.task_id}
+                  taskId={tasks.filter(t => t.task_id === selectedTask?.id)[0]?.task_id}
                   onSaveRequest={(uploadFn) => {
                     uploadEvidenceRef.current = uploadFn;
                   }}

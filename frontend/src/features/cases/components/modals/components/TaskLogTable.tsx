@@ -225,9 +225,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 <td className="px-4 py-3"  onClick={() => isClickable && onTaskClick(task)} tabIndex={isClickable ? 0 : undefined}>
                   <div className="flex flex-col">
                     <div
-                      className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]"
-                      title={task.id || 'No ID'}
-                    >
+                      className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]">
                       {task.id || 'No ID'}
                     </div>
                   </div>
@@ -242,9 +240,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div
-                    className="text-xs text-gray-900 font-mono truncate max-w-[10rem]"
-                    title={task.caseId || ''}
-                  >
+                    className="text-xs text-gray-900 font-mono truncate max-w-[10rem]">
                     {task.caseId || ''}
                   </div>
                 </td>

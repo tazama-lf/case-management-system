@@ -577,6 +577,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       {taskDetailsModalOpen && selectedTask && (
         <Suspense fallback={<div>Loading...</div>}>
           <TaskDetailsModal
+            selectedTask={selectedTask}
             open={taskDetailsModalOpen}
             onClose={() => {
               setTaskDetailsModalOpen(false);

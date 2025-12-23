@@ -41,7 +41,6 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(null);
   const [loadingUser, setLoadingUser] = React.useState(false);
 
-
  
   React.useEffect(() => {
     const fetchUserDetails = async () => {
@@ -84,11 +83,11 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
 
   const formatTaskStatus = (status: string): string => {
     const statusLabels: Record<string, string> = {
-      STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
-      STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
-      STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
-      STATUS_21_BLOCKED: 'STATUS_21_BLOCKED',
-      STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
+      STATUS_01_UNASSIGNED: '01_UNASSIGNED',
+      STATUS_10_ASSIGNED: '10_ASSIGNED',
+      STATUS_20_IN_PROGRESS: '20_IN_PROGRESS',
+      STATUS_21_BLOCKED: '21_BLOCKED',
+      STATUS_30_COMPLETED: '30_COMPLETED',
  
       UNASSIGNED: 'UNASSIGNED',
       ASSIGNED: 'ASSIGNED',
@@ -106,7 +105,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     return row.priority || 'NEW';
   };
 
-  const formatTaskId = (taskId: string): string => {
+  const formatTaskId = (taskId: number): any => {
     return taskId || 'No ID';
   };
 
@@ -146,7 +145,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Task ID
                   </div>
                   <div className="font-medium text-gray-900 font-mono text-sm">
-                    {formatTaskId(task.task_id)}
+                    {`TASK-${formatTaskId(task.task_id)}`}
                   </div>
                 </div>
 
@@ -253,7 +252,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                   Case ID
                 </div>
                 <div className="font-medium text-gray-900">
-                  {task.case_id || row.id}
+                  {`CASE-${task.case_id || row.id}`}
                 </div>
               </div>
 
@@ -277,7 +276,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                 <span
                   className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}
                 >
-                  {row.status}
+                  {formatTaskStatus(row.status)}
                 </span>
               </div>
 
