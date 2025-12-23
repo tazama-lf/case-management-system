@@ -579,6 +579,17 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({ caseId, caseStatus, onRefreshCa
             }}
             row={caseData || undefined}
             onRefreshCases={onRefreshCases}
+            onTaskUpdate={async () => {
+              // Refresh tasks in TaskLogTab when investigation task is completed
+              if (caseId) {
+                try {
+                  const fetchedTasks = await taskService.getTasksByCaseId(caseId);
+                  setTasks(fetchedTasks);
+                } catch (err) {
+                  console.error('Failed to refresh tasks:', err);
+                }
+              }
+            }}
           />
         </Suspense>
       )}

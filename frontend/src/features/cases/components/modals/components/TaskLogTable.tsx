@@ -84,7 +84,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     }
 
     if (task.status === 'IN_PROGRESS') {
-      if (task.assignee && onComplete) {
+      // Don't show complete button for investigation tasks (they're completed in Investigation Summary tab)
+      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigat');
+      
+      if (task.assignee && onComplete && !isInvestigationTask) {
         actions.push(
           <button
             key="complete"
@@ -210,15 +213,19 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tasks.map((task, index) => (
-              <tr
-                key={task.id || `task-${index}`}
-                className={`hover:bg-gray-50 ${onTaskClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
-                onClick={() => onTaskClick?.(task)}
-                onKeyDown={(event) => handleRowKeyDown(event, task)}
-                role={onTaskClick ? 'button' : undefined}
-                tabIndex={onTaskClick ? 0 : undefined}
-              >
+            {tasks.map((task, index) => {
+              const isTriageAlert = task.name && task.name.toLowerCase().includes('triage alert');
+              const isClickable = onTaskClick && !isTriageAlert;
+              
+              return (
+                <tr
+                  key={task.id || `task-${index}`}
+                  className={`hover:bg-gray-50 ${isClickable ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
+                  onClick={() => isClickable && onTaskClick(task)}
+                  onKeyDown={(event) => isClickable && handleRowKeyDown(event, task)}
+                  role={isClickable ? 'button' : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                >
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
                     <div
@@ -231,7 +238,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 </td>
                 <td className="px-4 py-3">
                   <div
-                    className={`text-xs break-words mt-1 ${onTaskClick ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
+                    className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
                     title={task.name || 'View task details'}
                   >
                     {task.name || 'Unnamed Task'}
@@ -277,7 +284,8 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

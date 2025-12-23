@@ -43,7 +43,7 @@ import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
     PrismaDWHModule,
     CaseCreationModule,
     FlowableModule,
-    // NatsModule,
+    NatsModule,
     AuditLogModule,
     ConfigManagementModule,
     TriageModule,

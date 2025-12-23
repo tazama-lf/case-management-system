@@ -19,6 +19,7 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   row?: CaseRow | null;
   onRefreshCases?: () => Promise<void>;
+  onTaskUpdate?: () => void;
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
@@ -26,6 +27,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   onClose,
   row,
   onRefreshCases: _onRefreshCases,
+  onTaskUpdate,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
@@ -214,7 +216,22 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
-                {row?.id && <InvestigationSummaryTab caseId={row.id} row={row} />}
+                {row?.id && (
+                  <InvestigationSummaryTab
+                    caseId={row.id}
+                    row={row}
+                    onTaskUpdate={() => {
+                      // Refresh tasks in this modal
+                      if (row?.id) {
+                        taskService.getTasksByCaseId(row.id).then(setTasks).catch(console.error);
+                      }
+                      // Notify parent (TaskLogTab) to refresh its task list
+                      if (onTaskUpdate) {
+                        onTaskUpdate();
+                      }
+                    }}
+                  />
+                )}
               </div>
             </>
           )}

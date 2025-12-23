@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
 import { caseService } from '../../services/caseService';
 import { evidenceService } from '../../services/evidenceService';
 import { commentService } from '../../services/commentService';
-import { taskService } from '../../services/taskService';
+import { taskService, TaskStatus } from '../../services/taskService';
 import userService from '../../services/userService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import type { Evidence } from '../../types/evidence.types';
 import type { Comment } from '../../services/commentService';
 import GenerateInvestigationReportModal from '../modals/GenerateInvestigationReportModal';
+import { useToast } from '@/shared/providers/ToastProvider';
+
+const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 interface InvestigationSummaryTabProps {
   caseId: string;
   row?: CaseRow;
+  onTaskUpdate?: () => void;
 }
 
 interface EvidenceCategory {
@@ -23,7 +27,8 @@ interface EvidenceCategory {
   evidence: Evidence[];
 }
 
-const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId }) => {
+const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate }) => {
+  const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
   const [caseComments, setCaseComments] = useState<Comment[]>([]);
@@ -35,6 +40,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [taskId, setTaskId] = useState<string>('');
+  const [investigationTask, setInvestigationTask] = useState<any>(null);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   useEffect(() => {
     const fetchCaseAndEvidence = async () => {
@@ -128,6 +135,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           );
           if (investigationTask) {
             setTaskId(investigationTask.task_id);
+            setInvestigationTask(investigationTask);
             if (investigationTask.investigationNotes) {
               setInvestigationNotes(investigationTask.investigationNotes);
             }
@@ -178,6 +186,45 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       newExpanded.add(categoryType);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const handleCompleteTask = async (task: any, _notes?: string) => {
+    try {
+      // Use task_id instead of id (tasks from getTasksByCaseId use task_id)
+      const taskIdToComplete = task.task_id || task.id;
+      await taskService.updateTaskForSupervisor(taskIdToComplete, {
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
+
+      // Close modal and refresh investigation task data
+      setShowCompleteModal(false);
+
+      // Refetch the tasks to update investigation task status
+      const tasks = await taskService.getTasksByCaseId(caseId);
+
+      // Update investigation task
+      const updatedInvestigationTask = tasks.find(
+        (t) => t.name && t.name.toLowerCase().includes('investigat')
+      );
+      if (updatedInvestigationTask) {
+        setInvestigationTask(updatedInvestigationTask);
+      }
+
+      success(
+        'Task Completed Successfully',
+        `Investigation task has been completed successfully.`,
+      );
+
+      // Notify parent component to refresh task list
+      if (onTaskUpdate) {
+        onTaskUpdate();
+      }
+    } catch (error) {
+      toastError(
+        'Failed to Complete Task',
+        error instanceof Error ? error.message : 'An unknown error occurred',
+      );
+    }
   };
 
   const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
@@ -235,6 +282,17 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             </div>
           </div>
           <div className="flex items-center gap-2 ml-6">
+            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && (
+              <button
+                onClick={() => setShowCompleteModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Complete Investigation
+              </button>
+            )}
             <button
               onClick={() => setShowReportModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
@@ -450,6 +508,18 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           return acc;
         }, {} as Record<string, number>)}
       />
+
+      {/* Complete Investigation Task Modal */}
+      {showCompleteModal && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <CompleteTaskModal
+            open={showCompleteModal}
+            onClose={() => setShowCompleteModal(false)}
+            onCompleteTask={handleCompleteTask}
+            task={investigationTask}
+          />
+        </Suspense>
+      )}
     </>
   );
 };
