@@ -8,11 +8,10 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY .npmrc .npmrc ./
+COPY .npmrc ./
 
 # Install dependencies
-RUN npm install --ignore-scripts
-
+RUN npm i --ignore-scripts
 # Copy source code
 COPY . .
 
