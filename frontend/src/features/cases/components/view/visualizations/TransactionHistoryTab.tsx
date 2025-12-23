@@ -252,7 +252,7 @@ const TransactionHistoryTab: React.FC = () => {
                   borderRadius: '6px',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 }}
-                formatter={(value) => `$${value.toLocaleString()}`}
+                formatter={(value) => typeof value === 'number' ? `$${value.toLocaleString()}` : value}
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Line
