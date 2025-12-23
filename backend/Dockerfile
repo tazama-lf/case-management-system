@@ -11,7 +11,7 @@ COPY package*.json ./
 COPY .npmrc ./
 
 # Install dependencies
-RUN npm i
+RUN npm i --ignore-scripts
 # Copy source code
 COPY . .
 
