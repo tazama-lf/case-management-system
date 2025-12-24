@@ -21,6 +21,7 @@ import { AuthenticatedRequest } from 'src/auth/auth.types';
 import { AlertMessageDto } from 'src/nats/dto/AlertMessageDto.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AlertNavigatorDto } from './dto/alert-navigator.dto';
+import { TransactionDetailDto } from './dto/transaction-detail.dto';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')
@@ -378,6 +379,42 @@ export class TriageController {
     const tenantId = req.user.token.tenantId;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
-    return this.triageService.getAlertNavigator(alertId, tenantId, userId);
+
+    const trimmedAlertId = alertId.trim();
+
+    return this.triageService.getAlertNavigator(trimmedAlertId, tenantId, userId);
+  }
+
+  @Get('transactions/:transactionId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get transaction details',
+    description: 'Retrieve detailed metadata of a transaction including debtor, creditor, amounts, and links',
+  })
+  @ApiParam({
+    name: 'transactionId',
+    type: 'string',
+    description: 'Transaction ID (MsgId)',
+    example: 'f8b8...',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction details retrieved successfully',
+    type: TransactionDetailDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  async getTransactionDetail(
+    @Param('transactionId') transactionId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<TransactionDetailDto> {
+    const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
+    if (!userId) throw new BadRequestException('Missing userId');
+
+    const trimmedTransactionId = transactionId.trim();
+
+    return this.triageService.getTransactionDetail(trimmedTransactionId, tenantId, userId);
   }
 }
