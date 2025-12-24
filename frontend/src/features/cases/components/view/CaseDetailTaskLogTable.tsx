@@ -156,12 +156,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   /** Check if a task can be unassigned (has assignee + callback exists) */
   const canUnassignTask = (task: UnifiedWorkQueueTask) => task.assignee && onUnassign;
 
-  /** Check if a task can be completed (assigned + callback exists + not approval tasks) */
-  const canCompleteTask = (task: UnifiedWorkQueueTask) =>
-    task.assignee &&
-    onComplete &&
-    !['Approve Case Creation', 'Approve Case Closure'].includes(task.name || '');
-
   const addAssignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canAssignTask(task)) {
       actions.push(
@@ -204,22 +198,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
-  const addCompleteAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (canCompleteTask(task) && isCurrentUserAssigned(task)) {
-      actions.push(
-        createActionButton(
-          'complete',
-          () => onComplete!(task),
-          <CheckIcon className="h-4 w-4 mr-1" />,
-          'Mark complete',
-          'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
-        )
-      );
-    }
-  };
-
   const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (isCurrentUserAssigned(task)) {
       const isClickable = onTaskClick && task.name && task.name.toLowerCase().includes('investigate');
       actions.push(
         createActionButton(
@@ -230,7 +209,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
         )
       );
-    }
   };
 
   const addApprovalActions = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
@@ -360,17 +338,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     return actions;
   };
 
-  const handleRowKeyDown = (
-    event: React.KeyboardEvent<HTMLTableRowElement>,
-    task: UnifiedWorkQueueTask,
-  ) => {
-    if (!onTaskClick) return;
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onTaskClick(task);
-    }
-  };
   const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList } = useInvestigatorSupervisorList();
 
   React.useEffect(() => {
@@ -432,12 +399,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 >
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      {/* <div className="text-xs font-medium text-gray-900 font-mono break-all" title={task.id.toString() || 'No ID'}>
-                        TASK-{task.id || 'No ID'}
-                      </div> */}
                       {task.name && (
                         <div
-                          // className="text-xs text-gray-500 break-words mt-1" title={task.name}>
                           className={`text-xs break-words mt-1 text-gray-900`}
                           title={task.name || 'View task details'}>
                           {task.name || 'Unnamed Task'}
@@ -509,114 +472,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
           />
         </Suspense>
-      )}
-
-      {/* Pagination Controls */}
-      {pagination && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    (pagination.currentPage - 1) * pagination.pageSize + 1,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    pagination.currentPage * pagination.pageSize,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{pagination.totalItems}</span>{' '}
-                tasks
-              </p>
-            </div>
-            <div>
-              <nav
-                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                aria-label="Pagination"
-              >
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(
-                      Math.max(1, pagination.currentPage - 1),
-                    )
-                  }
-                  disabled={pagination.currentPage <= 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                { }
-                {(() => {
-                  const { currentPage, totalPages } = pagination;
-                  const pages: (number | 'ellipsis')[] = [];
-                  const windowSize = 5;
-                  const half = Math.floor(windowSize / 2);
-
-                  const addPage = (p: number) => pages.push(p);
-                  const addEllipsis = () => pages.push('ellipsis');
-
-                  if (totalPages <= windowSize + 2) {
-                    for (let p = 1; p <= totalPages; p++) addPage(p);
-                  } else {
-                    const start = Math.max(2, currentPage - half);
-                    const end = Math.min(totalPages - 1, currentPage + half);
-
-                    addPage(1);
-                    if (start > 2) addEllipsis();
-                    for (let p = start; p <= end; p++) addPage(p);
-                    if (end < totalPages - 1) addEllipsis();
-                    addPage(totalPages);
-                  }
-
-                  return pages.map((p, idx) =>
-                    p === 'ellipsis' ? (
-                      <span
-                        key={`ellipsis-${idx}`}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => pagination.onPageChange(p)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.currentPage === p
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        aria-current={
-                          pagination.currentPage === p ? 'page' : undefined
-                        }
-                      >
-                        {p}
-                      </button>
-                    ),
-                  );
-                })()}
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(
-                      Math.min(
-                        pagination.totalPages,
-                        pagination.currentPage + 1,
-                      ),
-                    )
-                  }
-                  disabled={pagination.currentPage >= pagination.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
       )}
     </div>)
 };

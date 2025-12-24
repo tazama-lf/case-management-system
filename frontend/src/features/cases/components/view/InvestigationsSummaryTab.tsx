@@ -11,6 +11,7 @@ import type { Evidence } from '../../types/evidence.types';
 import type { TaskComment } from '../../services/commentService';
 import GenerateInvestigationReportModal from '../modals/GenerateInvestigationReportModal';
 import { useToast } from '@/shared/providers/ToastProvider';
+import authService from '@/features/auth/services/authService';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
@@ -42,6 +43,14 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [taskId, setTaskId] = useState<string>('');
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [isSupervisor, setIsSupervisor] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getUser();
+    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+    setIsSupervisor(isSupervisor);
+  }, []);
+
 
   useEffect(() => {
     const fetchCaseAndEvidence = async () => {
@@ -293,13 +302,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 Complete Investigation
               </button>
             )}
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-            >
-              <DocumentTextIcon className="h-5 w-5" />
-              Generate Report
-            </button>
+              {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
+                          <button
+                            onClick={() => setShowReportModal(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+                          >
+                            <DocumentTextIcon className="h-5 w-5" />
+                            Generate Report
+                          </button>
+                        )}
           </div>
         </div>
 
