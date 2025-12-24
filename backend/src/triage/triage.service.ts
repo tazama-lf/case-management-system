@@ -281,6 +281,7 @@ export class TriageService {
         reference,
         purpose,
       },
+      links,
       visualizationUrl,
     };
   }

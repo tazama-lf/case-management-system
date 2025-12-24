@@ -5,6 +5,7 @@ export class TransactionDetailDto {
   creditorProfile: CreditorDto;
   amountAndCurrency: AmountAndCurrencyDto;
   settlementDetails: SettlementDetailsDto;
+  links: LinkDto[];
   visualizationUrl?: string; // For JupyterLab viz
 }
 
