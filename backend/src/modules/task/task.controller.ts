@@ -129,7 +129,7 @@ export class TaskController {
   }
 
   @Patch(':taskId/reassign')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reassign a task to another user',
@@ -205,7 +205,7 @@ export class TaskController {
   }
 
   @Patch(':taskId/unassign')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Unassign a task',
@@ -300,7 +300,7 @@ export class TaskController {
   }
 
   @Patch(':taskId/assign')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Assign a task to an investigator',

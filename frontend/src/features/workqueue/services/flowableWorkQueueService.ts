@@ -307,6 +307,10 @@ export class FlowableWorkQueueService {
         value: WorkQueueCandidateGroup.SUPERVISORS,
         label: 'Supervisors Queue',
       },
+      {
+        value: WorkQueueCandidateGroup.COMPLIANCE_OFFICERS,
+        label: 'Compliance Officers Queue',
+      },
     ];
 
     if (isSupervisor) {

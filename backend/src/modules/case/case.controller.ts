@@ -277,8 +277,9 @@ export class CaseController {
 
     // Check if user is investigator (not supervisor/admin)
     const isInvestigator = claims.includes('CMS_INVESTIGATOR') && !claims.includes('CMS_SUPERVISOR') && !claims.includes('CMS_ADMIN') && !claims.includes('CMS_COMPLIANCE_OFFICER');
+    const isComplianceOfficer = claims.includes('CMS_COMPLIANCE_OFFICER');
 
-    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined);
+    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined, isComplianceOfficer);
   }
 
   @Get('user/assigned')

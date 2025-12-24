@@ -57,7 +57,8 @@ export interface FlowableErrorResponse {
 export const WorkQueueCandidateGroup = {
   INVESTIGATIONS: 'investigations',
   INVESTIGATORS: 'investigators',
-  SUPERVISORS: 'supervisors'
+  SUPERVISORS: 'supervisors',
+  COMPLIANCE_OFFICERS: 'compliance_officers',
 } as const;
 
 export type WorkQueueCandidateGroupType = typeof WorkQueueCandidateGroup[keyof typeof WorkQueueCandidateGroup];

@@ -364,8 +364,8 @@ export class CaseService {
     return this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string) {
-    return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId);
+  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
+    return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
   }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
