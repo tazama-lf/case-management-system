@@ -219,8 +219,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   };
 
   const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (isCurrentUserAssigned(task)) {
-      const isClickable = onTaskClick && task.name && task.name.toLowerCase().includes('investigate');
+    if (onTaskClick) {
+      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigate');
+      const isClickable = isInvestigationTask;
       actions.push(
         createActionButton(
           'view',
@@ -339,6 +340,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     // COMPLETED tasks have no available actions
     if (task.status === 'COMPLETED') {
+      if (task.name.toLowerCase().includes('investigate')) {
+        addViewAction(actions, task);
+      }
       return actions;
     }
 

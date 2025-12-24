@@ -84,6 +84,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         if (fetchedCase) {
           const transformedCase = transformBackendCaseToUI(fetchedCase);
           setCaseData(transformedCase);
+        } else {
+          const caseDetails = await caseService.getCaseDetails(caseId)
+          const transformedCase = transformBackendCaseToUI(caseDetails as unknown as CaseWithTasksDto);
+          setCaseData(transformedCase);
         }
 
         // Fetch all investigators to build name mapping
@@ -99,7 +103,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           console.warn('Failed to fetch investigators:', err);
         }
       } catch (err) {
-        console.error('Failed to fetch tasks for case:', caseId, err);
         setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
       } finally {
         setLoading(false);
@@ -438,8 +441,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     // Check if this should open SAR/STR Filing modal instead of Task Details
     const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole();
     // const hasRequiredRole = hasSupervisorRole();
-    const isClosedCase = caseStatus === 'STATUS_81_CLOSED_REFUTED' ||
-      caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
+    const isClosedCase = caseStatus === 'STATUS_81_CLOSED_REFUTED' || caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
     const isUnassignedTask = task.status === 'UNASSIGNED';
 
     if (hasRequiredRole && isClosedCase && isUnassignedTask) {
