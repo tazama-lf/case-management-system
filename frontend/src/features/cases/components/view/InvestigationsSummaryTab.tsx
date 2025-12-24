@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { marked } from 'marked';
 import type { CaseRow } from '../casesTable.utils';
 import { caseService } from '../../services/caseService';
 import { evidenceService } from '../../services/evidenceService';
@@ -19,6 +20,7 @@ interface InvestigationSummaryTabProps {
   caseId: number;
   row?: CaseRow;
   onTaskUpdate?: () => void;
+  refreshKey?: number;
 }
 
 interface EvidenceCategory {
@@ -28,7 +30,7 @@ interface EvidenceCategory {
   evidence: Evidence[];
 }
 
-const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate }) => {
+const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate, refreshKey }) => {
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
@@ -163,7 +165,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     };
 
     fetchCaseAndEvidence();
-  }, [caseId]);
+  }, [caseId, refreshKey]);
 
   if (loading) {
     return (
@@ -339,9 +341,12 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             Investigation Notes
           </h3>
           {investigationNotes ? (
-            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded border border-gray-200">
-              {investigationNotes}
-            </div>
+            <div 
+              className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200 prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ 
+                __html: marked(investigationNotes) as string
+              }}
+            />
           ) : (
             <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
               No investigation notes available.

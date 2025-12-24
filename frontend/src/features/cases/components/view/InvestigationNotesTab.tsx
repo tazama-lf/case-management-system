@@ -1,11 +1,8 @@
 import React from 'react';
+import SimpleMDE from 'react-simplemde-editor';
+import 'easymde/dist/easymde.min.css';
+import { marked } from 'marked';
 import {
-  BoldIcon,
-  ItalicIcon,
-  UnderlineIcon,
-  ListBulletIcon,
-  NumberedListIcon,
-  LinkIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { commentService, type TaskComment } from '../../services/commentService';
@@ -14,20 +11,45 @@ import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
+  onNotesUpdate?: () => void;
 }
 
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   task,
+  onNotesUpdate,
 }) => {
   const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-
-
+  const simpleMDEOptions = React.useMemo(() => ({
+    spellChecker: false,
+    placeholder: "Add your investigation notes here...",
+    status: false,
+    autofocus: false,
+    tabSize: 2,
+    previewRender: function(plainText: string) {
+      return marked.parse(plainText);
+    },
+    toolbar: [
+      "bold", "italic",
+      {
+        name: "underline",
+        action: function customFunction(editor: any) {
+          const cm = editor.codemirror;
+          const selection = cm.getSelection();
+          cm.replaceSelection(`<u>${selection}</u>`);
+        },
+        className: "fa fa-underline",
+        title: "Underline",
+      },
+      "|",
+      "unordered-list", "ordered-list", "|",
+      "link"
+    ],
+  } as any), []);
 
   React.useEffect(() => {
     const loadComments = async () => {
@@ -47,75 +69,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
     loadComments();
   }, [task]);
 
-
-
-  const insertFormatting = (
-    prefix: string,
-    suffix: string = '',
-    placeholder: string = ''
-  ) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = notes.substring(start, end);
-    const textToInsert = selectedText || placeholder;
-
-    const newText =
-      notes.substring(0, start) +
-      prefix +
-      textToInsert +
-      suffix +
-      notes.substring(end);
-
-    setNotes(newText);
-
-
-    setTimeout(() => {
-      textarea.focus();
-      const newPosition = start + prefix.length + textToInsert.length;
-      textarea.setSelectionRange(newPosition, newPosition);
-    }, 0);
-  };
-
-  const handleBold = () => insertFormatting('**', '**', ' ');
-  const handleItalic = () => insertFormatting('_', '_', ' ');
-  const handleUnderline = () => insertFormatting('<u>', '</u>', ' ');
-  const handleBulletList = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const lineStart = notes.lastIndexOf('\n', start - 1) + 1;
-    const newText =
-      notes.substring(0, lineStart) + '• ' + notes.substring(lineStart);
-    setNotes(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 2, start + 2);
-    }, 0);
-  };
-
-  const handleNumberedList = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const lineStart = notes.lastIndexOf('\n', start - 1) + 1;
-    const newText =
-      notes.substring(0, lineStart) + '1. ' + notes.substring(lineStart);
-    setNotes(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 3, start + 3);
-    }, 0);
-  };
-
-  const handleLink = () => insertFormatting('[', '](url)', 'link text');
-
   const handleSaveNotes = async () => {
     if (!task?.task_id || !notes.trim()) {
       showError('Please add investigation notes before saving.');
@@ -128,6 +81,11 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');
+      
+      // Trigger refresh in investigation summary
+      if (onNotesUpdate) {
+        onNotesUpdate();
+      }
     } catch (error) {
       console.error('Failed to save investigation notes:', error);
       showError('Failed to save investigation notes. Please try again.');
@@ -167,69 +125,12 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             </div>
           )}
 
-          {/* Editor Container */}
-          <div className="overflow-hidden rounded-md border border-gray-300 shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
-            {/* Formatting Toolbar */}
-            <div className="flex items-center gap-1 border-b border-gray-300 bg-gray-50 p-2">
-              <button
-                type="button"
-                onClick={handleBold}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Bold (Markdown: **text**)"
-              >
-                <BoldIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleItalic}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Italic (Markdown: _text_)"
-              >
-                <ItalicIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleUnderline}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Underline (HTML: <u>text</u>)"
-              >
-                <UnderlineIcon className="h-5 w-5" />
-              </button>
-              <div className="mx-1 h-6 w-px bg-gray-300"></div>
-              <button
-                type="button"
-                onClick={handleBulletList}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Bullet List"
-              >
-                <ListBulletIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleNumberedList}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Numbered List"
-              >
-                <NumberedListIcon className="h-5 w-5" />
-              </button>
-              <div className="mx-1 h-6 w-px bg-gray-300"></div>
-              <button
-                type="button"
-                onClick={handleLink}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                title="Insert Link (Markdown: [text](url))"
-              >
-                <LinkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            <textarea
-              ref={textareaRef}
+          {/* SimpleMDE Editor */}
+          <div className="simplemde-wrapper">
+            <SimpleMDE
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add your investigation notes here... (supports Markdown formatting)"
-              rows={12}
-              className="w-full resize-none border-0 px-3 py-2 text-sm focus:outline-none focus:ring-0"
+              onChange={setNotes}
+              options={simpleMDEOptions}
             />
           </div>
 

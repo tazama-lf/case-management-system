@@ -1,14 +1,13 @@
 import React from 'react';
-import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon} from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
-// import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
 import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
-import { taskService, type Task, type TaskForSupervisor } from '../services/taskService';
+import { taskService, type TaskForSupervisor } from '../services/taskService';
 
 type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
@@ -33,8 +32,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  // const [saving, setSaving] = React.useState(false);
-  // const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
 
   // Extract transaction ID from transaction data
@@ -80,8 +78,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     if (open) {
       setTab('details');
       setShowCollaborate(false);
-      // setSaveSuccess(false);
-      // uploadEvidenceRef.current = null;
       window.scrollTo({ top: 0 });
 
       // Fetch tasks for this case
@@ -101,34 +97,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
     }
   }, [open, row?.id]);
-
-  // const handleSaveTask = async () => {
-  //   if (!tasks[0]?.task_id) {
-  //     return;
-  //   }
-
-  //   setSaving(true);
-  //   setSaveSuccess(false);
-
-  //   try {
-
-  //     if (uploadEvidenceRef.current) {
-  //       await uploadEvidenceRef.current();
-  //       setSaveSuccess(true);
-
-
-  //       setTimeout(() => setSaveSuccess(false), 3000);
-  //     } else {
-  //       setSaveSuccess(true);
-  //       setTimeout(() => setSaveSuccess(false), 2000);
-  //     }
-  //   } catch (error) {
-  //     alert('Failed to upload evidence. Please try again.');
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
   if (!open || !row) return null;
 
   return (
@@ -158,7 +126,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               [
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
-                // { key: 'customer', label: 'Customer Profile' },
                 { key: 'evidence', label: 'Evidence' },
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
@@ -204,7 +171,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab
-                  taskId={tasks[0]?.task_id}
+                  task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
+                  onNotesUpdate={() => setSummaryRefreshKey(prev => prev + 1)}
                 />
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
@@ -212,6 +180,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <InvestigationSummaryTab
                     caseId={row.id}
                     row={row}
+                    refreshKey={summaryRefreshKey}
                     onTaskUpdate={() => {
                       // Refresh tasks in this modal
                       if (row?.id) {
@@ -231,31 +200,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         { }
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          {/* {saveSuccess && (
-            <span className="text-sm text-green-600 font-medium">
-              ✓ Evidence uploaded successfully
-            </span>
-          )} */}
           <button
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-          // disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
-          {/* {tab === 'evidence' && (
-            <button
-              type="button"
-              onClick={handleSaveTask}
-              disabled={saving || !tasks[0]?.task_id}
-              className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
-              {saving ? 'Uploading...' : 'Upload Evidence'}
-            </button>
-          )} */}
         </div>
       </div>
     </div>
