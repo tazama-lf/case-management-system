@@ -13,7 +13,7 @@ import { taskService, type Task, type TaskForSupervisor } from '../services/task
 type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
 interface TaskDetailsModalProps {
-  selectedTask: Task;
+  selectedTask: any;
   open: boolean;
   onClose: () => void;
   row?: CaseRow | null;

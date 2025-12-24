@@ -4,7 +4,7 @@ import { ApproveFraudReportDto } from './dto/approve-fraud-report.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Reports')
@@ -146,7 +146,7 @@ export class ReportsController {
   }
 
   @Get('case-status')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get case status report',
     description: 'Retrieve comprehensive case status analytics including distribution, types, outcomes, and trends',

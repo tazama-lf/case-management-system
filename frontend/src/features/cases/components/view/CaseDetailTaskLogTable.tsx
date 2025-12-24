@@ -47,7 +47,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onAssign,
   onUnassign,
   onReassign,
-  onComplete,
   onUpdateStatus,
   onRefreshCases,
   canManageSupervisorActions = false,
@@ -55,10 +54,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onApproveCase,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  onCaseIdClick,
   onTaskClick,
 
-  pagination,
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showManualTriageModal, setShowManualTriageModal] = useState(false);
@@ -199,7 +196,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   };
 
   const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-      const isClickable = onTaskClick && task.name && task.name.toLowerCase().includes('investigate');
+    if (onTaskClick) {
+      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigate');
+      const isClickable = isInvestigationTask;
       actions.push(
         createActionButton(
           'view',
@@ -209,6 +208,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
         )
       );
+    }
   };
 
   const addApprovalActions = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
@@ -317,6 +317,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     // COMPLETED tasks have no available actions
     if (task.status === 'COMPLETED') {
+      if (task.name.toLowerCase().includes('investigate')) {
+        addViewAction(actions, task);
+      }
       return actions;
     }
 

@@ -106,7 +106,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <CasesDashboard />
@@ -132,7 +132,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <WorkQueueDashboard />
@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <WorkQueueDashboard />
