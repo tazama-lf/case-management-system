@@ -3,12 +3,12 @@ import {
   ArrowUpTrayIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  CheckCircleIcon,
-  MinusCircleIcon,
+  XMarkIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
-import { taskService, type TaskForSupervisor } from '../../services/taskService';
 
 const evidenceSections: Array<{
   key: string;
@@ -54,6 +54,7 @@ const evidenceSections: Array<{
 
 interface TaskEvidenceTabProps {
   taskId: number;
+  caseId?: string;
   onUploadComplete?: () => void;
   onSaveRequest?: (uploadFn: () => Promise<void>) => void;
 }
@@ -64,9 +65,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   onSaveRequest,
 }) => {
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
-  const [saving, setSaving] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
   const [sectionFiles, setSectionFiles] = React.useState<Record<string, File[]>>({});
   const [sectionComments, setSectionComments] = React.useState<Record<string, string>>({});
   const [uploadedEvidence, setUploadedEvidence] = React.useState<Record<string, Evidence[]>>({});
@@ -74,13 +72,17 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
 
+  const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
+    id: number;
+    fileName: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   React.useEffect(() => {
-    setSaveSuccess(false);
-    uploadEvidenceRef.current = null;
 
     const loadEvidence = async () => {
       if (!taskId) return;
@@ -141,7 +143,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         return files.map(async (files) => {
           const uploadDto: UploadEvidenceDto = {
             file: files,
-            taskId,
+            taskId: taskId,
             evidenceType: section.evidenceType,
             description: sectionComments[sectionKey] || `${section.title} evidence`,
             comments: sectionComments[sectionKey],
@@ -196,6 +198,28 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   }, [onSaveRequest, sectionFiles, sectionComments, taskId]);
 
+  const handleConfirmDelete = async () => {
+    if (!evidenceToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await evidenceService.deleteEvidence(evidenceToDelete.id, evidenceToDelete.fileName);
+
+      setUploadedEvidence(prev => {
+        const updated: typeof prev = {};
+        Object.keys(prev).forEach(sectionKey => {
+          updated[sectionKey] = prev[sectionKey].filter(
+            e => e.id !== evidenceToDelete.id
+          );
+        });
+        return updated;
+      });
+
+      setEvidenceToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
 
   const handleAttachClick = (sectionKey: string) => {
@@ -240,32 +264,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     return `${size.toFixed(size >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
   };
 
-  const handleSaveTask = async () => {
-    if (!taskId) {
-      return;
-    }
-
-    setSaving(true);
-    setSaveSuccess(false);
-
-    try {
-
-      if (uploadEvidenceRef.current) {
-        await uploadEvidenceRef.current();
-        setSaveSuccess(true);
-
-
-        setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
-    } catch (error) {
-      alert('Failed to upload evidence. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -321,31 +319,49 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                     Pending Upload
                   </div>
                   {sectionFiles[section.key]?.length ? (
-                    <ul className="space-y-2">
-                      {sectionFiles[section.key].map((file, index) => (
-                        <li
-                          key={`${file.name}-${index}`}
-                          className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm"
-                        >
-                          <div className="truncate">
-                            <p className="truncate font-medium text-gray-900">
-                              {file.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {formatFileSize(file.size)}
-                            </p>
-                          </div>
-                          <span className="text-xs text-gray-400">
-                            Ready to upload
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+
+                    <div className="flex items-start gap-2">
+                      {/* Files List */}
+                      <ul className="space-y-2 flex-1">
+                        {sectionFiles[section.key].map((file, index) => (
+                          <li
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm"
+                          >
+                            <div className="truncate">
+                              <p className="truncate font-medium text-gray-900">{file.name}</p>
+                              <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">Ready to upload</span>
+                              <button
+                                type="button"
+                                className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                title="Remove Upload"
+                                onClick={() => {
+                                  setSectionFiles((prev) => ({
+                                    ...prev,
+                                    [section.key]: prev[section.key].filter((_, i) => i !== index),
+                                  }));
+                                }}
+                              >
+                                <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                              </button>
+                            </div>
+                          </li>
+
+                        ))}
+                      </ul>
+
+                    </div>
+
+
                   ) : (
                     <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm italic text-gray-500">
                       No files pending
                     </p>
                   )}
+
                 </div>
 
                 {/* Uploaded Evidence */}
@@ -365,23 +381,46 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             key={evidence.id}
                             className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm shadow-sm"
                           >
-                            <div className="truncate">
-                              <p className="truncate font-medium text-gray-900">
-                                {evidence.fileName}
-                              </p>
+                            {/* Left content */}
+                            <div className="truncate flex-1">
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className="truncate font-medium text-gray-900"
+                                  title={evidence.fileName}
+                                >
+                                  {evidence.fileName}
+                                </p>
+
+                                {section.key === 'kyc-edd' && (
+                                  <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                    {evidence.evidenceType}
+                                  </span>
+                                )}
+                              </div>
+
                               <p className="text-xs text-gray-500">
-                                Uploaded{' '}
-                                {new Date(evidence.uploadedAt).toLocaleString()}
+                                Uploaded {new Date(evidence.uploadedAt).toLocaleString()}
                               </p>
                             </div>
-                            <span className="text-xs text-green-600">
-                              ✓ Uploaded
-                            </span>
+
+                            {/* Right actions */}
+                            <div className="ml-3 flex items-center gap-2">
+                              <span className="text-xs text-green-600">✓ Uploaded</span>
+
+                              <button
+                                type="button"
+                                onClick={() => setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })}
+                                className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                title="Delete Evidence"
+                              >
+                                <TrashIcon className="h-4.5 w-4.5" />
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
-                    )}
 
+                    )}
                   </div>
                 )}
 
@@ -409,36 +448,17 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    {saveSuccess && (
-                      <span className="text-sm text-green-600 font-medium">
-                        ✓ Evidence uploaded successfully
-                      </span>
-                    )}
                     <button
                       type="button"
-                      onClick={() => handleAttachClick(section.key)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAttachClick(section.key);
+                      }}
                       className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-1 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ArrowUpTrayIcon className="h-5 w-5" aria-hidden="true" />
                       Attach
-                    </button>
-                    {/* <button
-                      type="button"
-                      onClick={handleSaveTask}
-                      disabled={saving || taskId === undefined || uploading[section.key]}
-                      className="inline-flex items-center gap-2 rounded-md border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:ring-1 focus:ring-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
-                      {saving ? 'Uploading...' : 'Upload Evidence'}
-                    </button> */}
-                    <button
-                      type="button"
-                      onClick={handleSaveTask}
-                      disabled={saving || taskId === undefined || uploading[section.key]}
-                      className="inline-flex items-center gap-2 rounded-md border border-red-600 bg-red-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:ring-1 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <MinusCircleIcon className="h-5 w-5" aria-hidden="true" />
-                      Delete
                     </button>
                   </div>
                 </div>
@@ -447,6 +467,43 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           </section>
         );
       })}
+      {evidenceToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+              </span>
+              Delete Evidence?
+            </h3>
+
+            <p className="mt-4 text-sm text-gray-600">
+              This action cannot be undone. Are you sure you want to delete <span className="font-bold text-gray-800">
+                {evidenceToDelete.fileName}
+              </span>
+              ?
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setEvidenceToDelete(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -171,6 +171,13 @@ export class EvidenceService {
     return this.downloadEvidence(evidenceId);
   }
 
+  async deleteEvidence(evidenceId: number, fileName: string): Promise<void> {
+    try {
+      await apiClient.delete<void>(`${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`);
+    } catch (error) {
+      throw this.handleError(error, 'delete evidence');
+    }
+  }
 
   async downloadEvidence(evidenceId: number): Promise<Blob> {
     const startTime = performance.now();
