@@ -176,13 +176,13 @@ model Comment {
 }
 
 model Evidence {
-  evidence_id      Int      @id @default(autoincrement())
+  evidence_id      String   @id @db.VarChar(255)
   task_id          Int
   case_id          Int?    
   uploader_user_id String   @db.Uuid
   tenant_id        String   
   name             String   @db.VarChar(255)
-  description      String   @db.VarChar(1000)
+  description      String?   @db.VarChar(1000)
   type             String   @db.VarChar(50)
   file_path        String
   file_size        BigInt?

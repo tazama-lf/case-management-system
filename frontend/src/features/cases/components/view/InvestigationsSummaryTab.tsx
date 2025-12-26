@@ -238,7 +238,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     }
   };
 
-  const handleDownloadEvidence = async (evidenceId: number, fileName: string) => {
+  const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
     try {
       setDownloadingId(evidenceId.toString());
       const blob = await evidenceService.downloadEvidence(evidenceId);
@@ -304,15 +304,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 Complete Investigation
               </button>
             )}
-              {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
-                          <button
-                            onClick={() => setShowReportModal(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-                          >
-                            <DocumentTextIcon className="h-5 w-5" />
-                            Generate Report
-                          </button>
-                        )}
+            {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+              >
+                <DocumentTextIcon className="h-5 w-5" />
+                Generate Report
+              </button>
+            )}
           </div>
         </div>
 
@@ -341,9 +341,9 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             Investigation Notes
           </h3>
           {investigationNotes ? (
-            <div 
+            <div
               className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200 prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ 
+              dangerouslySetInnerHTML={{
                 __html: marked(investigationNotes) as string
               }}
             />

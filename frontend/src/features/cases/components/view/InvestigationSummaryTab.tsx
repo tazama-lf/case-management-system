@@ -37,7 +37,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [taskId, setTaskId] = useState<number>();
   const [investigationTask, setInvestigationTask] = useState<any>(null);
@@ -227,7 +227,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     }
   };
 
-  const handleDownloadEvidence = async (evidenceId: number, fileName: string) => {
+  const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
     try {
       setDownloadingId(evidenceId);
       const blob = await evidenceService.downloadEvidence(evidenceId);

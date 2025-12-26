@@ -10,9 +10,11 @@ import {
 } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
-import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
+import { EvidenceRepository } from '../repository/evidence.repository';
+import { TaskRepository } from '../repository/task.repository';
 
 @Injectable()
 export class EvidenceService {
@@ -22,6 +24,8 @@ export class EvidenceService {
     private prisma: PrismaService,
     private couchdb: CouchdbService,
     private auditLog: AuditLogService,
+    private evidenceRepository: EvidenceRepository,
+    private taskRepository: TaskRepository,
   ) { }
 
   private sha256(buffer: Buffer): string {
@@ -74,6 +78,9 @@ export class EvidenceService {
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
+    const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId);
+    this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
+
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
     const metadata: any = {
@@ -123,8 +130,24 @@ export class EvidenceService {
       });
 
       currentRev = attachmentResult.rev;
-    }
 
+      this.evidenceRepository.createEvidence(userId, {
+        id: evidenceId,
+        taskId: Number(dto.taskId),
+        fileName: file.originalname,
+        description: dto.description,
+        evidenceType: dto.evidenceType,
+        file_path: attachmentResult.filePath,
+        hash: hash,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        uploadedAt: metadata.uploadedAt,
+        uploadedBy: userId,
+        case_Id: taskWithCase?.case_id,
+        tenant_id: tenantId,
+        metadata: metadata,
+      } as CreateEvidenceDto);
+    }
     await this.couchdb.updateDocument(evidenceId, metadata);
 
     await this.auditLog.logAction({
@@ -158,6 +181,9 @@ export class EvidenceService {
     try {
       this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
       const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
+      this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
+
+      this.evidenceRepository.deleteEvidenceById(evidenceId);
 
     } catch (error) {
 
@@ -465,12 +491,11 @@ export class EvidenceService {
     const allDocs: any[] = [];
 
     for (const taskId of taskIds) {
-      const query: any = { tenantId, taskId, page: 1, limit: 100 };
+      const query: any = { tenantId, taskId: taskId.toString(), page: 1, limit: 100 };
       if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
       else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
         throw new UnauthorizedException('Invalid role');
       }
-
       const result = await this.couchdb.queryDocuments(query);
       const docs = result.data || [];
       allDocs.push(...docs);

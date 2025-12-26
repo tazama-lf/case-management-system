@@ -5,12 +5,14 @@ import { EvidenceService } from './evidence.service';
 import { AuditLogModule } from '../audit/auditLog.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { CouchdbModule } from '../couchdb/couchdb.module';
+import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
   imports: [
     PrismaModule,
     CouchdbModule,
     AuditLogModule,
+    RepositoryModule,
     MulterModule.register({
       limits: {
         fileSize: 100 * 1024 * 1024,
@@ -22,4 +24,4 @@ import { CouchdbModule } from '../couchdb/couchdb.module';
   providers: [EvidenceService],
   exports: [EvidenceService],
 })
-export class EvidenceModule {}
+export class EvidenceModule { }

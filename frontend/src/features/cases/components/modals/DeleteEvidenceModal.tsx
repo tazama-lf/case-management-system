@@ -5,11 +5,11 @@ import type { Evidence } from "../../types";
 
 interface DeleteEvidenceModalProps {
     evidenceToDelete: {
-        id: number;
+        id: string;
         fileName: string;
     } | null;
     setEvidenceToDelete: React.Dispatch<React.SetStateAction<{
-        id: number;
+        id: string;
         fileName: string;
     } | null>>;
     setUploadedEvidence: React.Dispatch<React.SetStateAction<Record<string, Evidence[]>>>;

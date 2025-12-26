@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
@@ -39,6 +39,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
   const uploadRegulatoryFilesRef = React.useRef<(() => Promise<void>) | null>(null);
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
+  const [noEvidenceError, setNoEvidenceError] = React.useState(false);
 
   // Extract transaction ID from transaction data
   // const transactionId = React.useMemo(() => {
@@ -111,9 +112,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       return;
     }
 
+    setNoEvidenceError(false);
     setSaving(true);
     setSaveSuccess(false);
-
     try {
 
       if (uploadEvidenceRef.current) {
@@ -126,6 +127,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
       }
+
+      if (!uploadEvidenceRef.current || uploadEvidenceRef.current === null || uploadEvidenceRef.current.length === 0) {
+        setNoEvidenceError(true);
+        setSaveSuccess(false);
+        setTimeout(() => setNoEvidenceError(false), 3000);
+        return;
+      }
+
+
     } catch (error) {
       alert('Failed to upload evidence. Please try again.');
     } finally {
@@ -281,6 +291,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               ✓ Evidence uploaded successfully
             </span>
           )}
+          {noEvidenceError && (
+            <span className="text-sm font-medium text-red-600">
+              <ExclamationTriangleIcon className="h-5.5 w-5.5 inline mr-1" aria-hidden="true" /> No evidence attached to upload
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -294,7 +309,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <button
               type="button"
               onClick={handleSaveTask}
-              disabled={saving || !tasks[0]?.task_id || uploadEvidenceRef.current === null}
+              disabled={saving || !tasks[0]?.task_id}
               className="inline-flex items-center gap-2 rounded-md border border-green-600 bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:ring-1 focus:ring-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />

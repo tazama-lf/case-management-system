@@ -5,7 +5,6 @@ import {
   ChevronUpIcon,
   XMarkIcon,
   TrashIcon,
-  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
@@ -74,10 +73,9 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
 
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
-    id: number;
+    id: string;
     fileName: string;
   } | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -199,28 +197,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   }, [onSaveRequest, sectionFiles, sectionComments, taskId]);
 
-  const handleConfirmDelete = async () => {
-    if (!evidenceToDelete) return;
-
-    try {
-      setIsDeleting(true);
-      await evidenceService.deleteEvidence(evidenceToDelete.id.toString(), evidenceToDelete.fileName);
-
-      setUploadedEvidence(prev => {
-        const updated: typeof prev = {};
-        Object.keys(prev).forEach(sectionKey => {
-          updated[sectionKey] = prev[sectionKey].filter(
-            e => e.id !== evidenceToDelete.id
-          );
-        });
-        return updated;
-      });
-
-      setEvidenceToDelete(null);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
 
   const handleAttachClick = (sectionKey: string) => {
