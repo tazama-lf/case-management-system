@@ -55,7 +55,6 @@ export type EvidenceType =
   | 'SAR_STR_FILING'
   | 'KYC'
   | 'EDD'
-  | 'REGULATORY_FILING';
 
 export interface EvidenceMetadata {
   screeningDate?: string;
