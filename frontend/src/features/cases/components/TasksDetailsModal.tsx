@@ -8,8 +8,10 @@ import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
+import RegulatoryFillingTab from './view/RegulatoryFillingTab';
+import authService from '@/features/auth/services/authService';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
+type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary' | 'regulatory';
 
 interface TaskDetailsModalProps {
   selectedTask: any;
@@ -35,46 +37,47 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
+  const uploadRegulatoryFilesRef = React.useRef<(() => Promise<void>) | null>(null);
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
 
   // Extract transaction ID from transaction data
-  const transactionId = React.useMemo(() => {
+  // const transactionId = React.useMemo(() => {
 
-    if (!row?.transaction) {
-      return undefined;
-    }
+  //   if (!row?.transaction) {
+  //     return undefined;
+  //   }
 
-    let transactionData = row.transaction;
+  //   let transactionData = row.transaction;
 
-    // Check if transaction is a string that needs parsing
-    if (typeof transactionData === 'string') {
-      try {
-        transactionData = JSON.parse(transactionData);
-      } catch (e) {
-        return undefined;
-      }
-    }
+  //   // Check if transaction is a string that needs parsing
+  //   if (typeof transactionData === 'string') {
+  //     try {
+  //       transactionData = JSON.parse(transactionData);
+  //     } catch (e) {
+  //       return undefined;
+  //     }
+  //   }
 
-    const transaction = transactionData as Record<string, unknown>;
+  //   const transaction = transactionData as Record<string, unknown>;
 
-    const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
-    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | undefined;
+  //   const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
+  //   const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | undefined;
 
 
-    // Try multiple possible field locations
-    const extractedId = (
-      txInfAndSts?.OrgnlEndToEndId ||
-      txInfAndSts?.EndToEndId ||
-      transaction?.transaction_id ||
-      transaction?.transactionId
-    );
+  //   // Try multiple possible field locations
+  //   const extractedId = (
+  //     txInfAndSts?.OrgnlEndToEndId ||
+  //     txInfAndSts?.EndToEndId ||
+  //     transaction?.transaction_id ||
+  //     transaction?.transactionId
+  //   );
 
-    if (extractedId && typeof extractedId === 'string') {
-      return extractedId;
-    }
+  //   if (extractedId && typeof extractedId === 'string') {
+  //     return extractedId;
+  //   }
 
-    return undefined;
-  }, [row]);
+  //   return undefined;
+  // }, [row]);
 
   React.useEffect(() => {
     if (open) {
@@ -82,6 +85,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setShowCollaborate(false);
       setSaveSuccess(false);
       uploadEvidenceRef.current = null;
+      uploadRegulatoryFilesRef.current = null;
       window.scrollTo({ top: 0 });
 
       // Fetch tasks for this case
@@ -129,6 +133,33 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   };
 
+  const handleSaveRegulatoryFiles = async () => {
+    if (!tasks[0]?.task_id) {
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+
+      if (uploadRegulatoryFilesRef.current) {
+        await uploadRegulatoryFilesRef.current();
+        setSaveSuccess(true);
+
+
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } catch (error) {
+      alert('Failed to upload evidence. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!open || !row) return null;
 
   return (
@@ -161,6 +192,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'evidence', label: 'Evidence' },
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
+                authService.hasCMSComplianceOfficerRole() ? { key: 'regulatory', label: 'Regulatory Filling' } : { key: 'regulatory', label: '' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -226,6 +258,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   />
                 )}
               </div>
+              {authService.hasCMSComplianceOfficerRole() && <div style={{ display: tab === 'regulatory' ? 'block' : 'none' }}>
+                {row?.id && (
+                  <div>
+                    <RegulatoryFillingTab
+                      onSaveRequest={(uploadFn) => {
+                        uploadRegulatoryFilesRef.current = uploadFn;
+                      }}
+                      taskId={row.id}
+                    />
+                  </div>
+                )}
+              </div>}
             </>
           )}
         </div>
@@ -255,6 +299,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             >
               <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
               {saving ? 'Uploading...' : 'Upload Evidence'}
+            </button>
+          )}
+          {tab === 'regulatory' && authService.hasCMSComplianceOfficerRole() && (
+            <button
+              type="button"
+              onClick={handleSaveRegulatoryFiles}
+              disabled={saving || !tasks[0]?.task_id || uploadRegulatoryFilesRef.current === null}
+              className="inline-flex items-center gap-2 rounded-md border border-green-600 bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:ring-1 focus:ring-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+              {saving ? 'Uploading...' : 'Upload Regulatory File'}
             </button>
           )}
         </div>
