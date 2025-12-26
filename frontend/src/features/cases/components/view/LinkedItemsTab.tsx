@@ -8,17 +8,17 @@ interface LinkedItemsTabProps {
   caseId: number;
 }
 
-interface LinkedCase {
-  id: number;
-  label: string;
-  status: string;
-}
+// interface LinkedCase {
+//   id: number;
+//   label: string;
+//   status: string;
+// }
 
-interface LinkedAlert {
-  id: number;
-  label: string;
-  type: string;
-}
+// interface LinkedAlert {
+//   id: number;
+//   label: string;
+//   type: string;
+// }
 
 interface LinkedTransaction {
   id: string;
@@ -28,16 +28,16 @@ interface LinkedTransaction {
 
 const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
   const [loading, setLoading] = useState(true);
-  const [linkedCases, setLinkedCases] = useState<LinkedCase[]>([]);
-  const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
+  // const [linkedCases, setLinkedCases] = useState<LinkedCase[]>([]);
+  // const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
   const [linkedTransactions, setLinkedTransactions] = useState<LinkedTransaction[]>([]);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
-  const handleAlertClick = (alertId: number) => {
-    setSelectedAlertId(alertId);
-    setIsAlertModalOpen(true);
-  };
+  // const handleAlertClick = (alertId: number) => {
+  //   setSelectedAlertId(alertId);
+  //   setIsAlertModalOpen(true);
+  // };
 
   const handleCloseAlertModal = () => {
     setIsAlertModalOpen(false);
@@ -78,11 +78,11 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         });
 
         // Map alerts for display
-        const mappedAlerts: LinkedAlert[] = caseAlerts.map(alert => ({
-          id: alert.alert_id,
-          label: alert.message || 'Alert',
-          type: alert.alert_type || 'N/A'
-        }));
+        // const mappedAlerts: LinkedAlert[] = caseAlerts.map(alert => ({
+        //   id: alert.alert_id,
+        //   label: alert.message || 'Alert',
+        //   type: alert.alert_type || 'N/A'
+        // }));
 
         // Map transactions for display
         const mappedTransactions: LinkedTransaction[] = Array.from(transactionIds).map(txnId => ({
@@ -117,16 +117,16 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
           }
         });
 
-        const mappedCases: LinkedCase[] = allCases
-          .filter(caseItem => relatedCaseIds.has(caseItem.case_id.toString()))
-          .map(caseItem => ({
-            id: caseItem.case_id,
-            label: caseItem.case_type || 'Investigation',
-            status: caseItem.status || 'Unknown'
-          }));
+        // const mappedCases: LinkedCase[] = allCases
+        //   .filter(caseItem => relatedCaseIds.has(caseItem.case_id.toString()))
+        //   .map(caseItem => ({
+        //     id: caseItem.case_id,
+        //     label: caseItem.case_type || 'Investigation',
+        //     status: caseItem.status || 'Unknown'
+        //   }));
 
-        setLinkedCases(mappedCases);
-        setLinkedAlerts(mappedAlerts);
+        // setLinkedCases(mappedCases);
+        // setLinkedAlerts(mappedAlerts);
         setLinkedTransactions(mappedTransactions);
 
         setLoading(false);
@@ -149,10 +149,10 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
 
   return (
     <div className="py-4 space-y-8">
-      <h2 className="text-lg font-semibold text-gray-900">Related Items</h2>
+      {/* <h2 className="text-lg font-semibold text-gray-900">Related Items</h2> */}
 
       {/* Related Cases Section */}
-      <div>
+      {/* <div>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Cases</h3>
         <div className="space-y-2">
           {linkedCases.length > 0 ? (
@@ -172,7 +172,6 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         </div>
       </div>
 
-      {/* Related Alerts Section */}
       <div>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Alerts</h3>
         <div className="space-y-2">
@@ -191,7 +190,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
             <p className="text-sm text-gray-500">No related alerts found</p>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Related Transactions Section */}
       <div>
