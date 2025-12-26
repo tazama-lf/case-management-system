@@ -197,7 +197,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
   const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (onTaskClick) {
-      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigate');
+      const isInvestigationTask = task.name && (task.name.toLowerCase().includes('investigate') || task.name.toLowerCase().includes('sar'));
       const isClickable = isInvestigationTask;
       actions.push(
         createActionButton(

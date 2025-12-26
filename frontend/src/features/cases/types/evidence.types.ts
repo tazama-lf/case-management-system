@@ -12,7 +12,7 @@ export interface EvidenceAttachment {
 }
 
 export interface Evidence {
-  id: number; // Evidence ID
+  id: string; // Evidence ID
   taskId: number; // Task ID this evidence belongs to
   caseId?: number; // Case ID (derived from task)
   fileName: string;
@@ -55,7 +55,6 @@ export type EvidenceType =
   | 'SAR_STR_FILING'
   | 'KYC'
   | 'EDD'
-  | 'REGULATORY_FILING';
 
 export interface EvidenceMetadata {
   screeningDate?: string;
@@ -94,7 +93,7 @@ export interface UploadEvidenceDto {
 }
 
 export interface UploadEvidenceResponse {
-  id: number;
+  id: string;
   taskId: number;
   fileName: string;
   evidenceType: EvidenceType;
@@ -110,12 +109,12 @@ export interface UploadEvidenceResponse {
 }
 
 export interface VerifyEvidenceDto {
-  evidenceId: number;
+  evidenceId: string;
   expectedHash: string;
 }
 
 export interface VerifyEvidenceResponse {
-  evidenceId: number;
+  evidenceId: string;
   expectedHash: string;
   verified: boolean;
   message: string;
@@ -141,7 +140,7 @@ export interface EvidenceListResponse {
 export interface DeleteEvidenceResponse {
   success: boolean;
   message: string;
-  evidenceId: number;
+  evidenceId: string;
 }
 
 export interface DownloadEvidenceResponse {
@@ -151,7 +150,7 @@ export interface DownloadEvidenceResponse {
 
 export interface EvidenceAuditLog {
   logId: number;
-  evidenceId: number;
+  evidenceId: string;
   action: 'UPLOAD' | 'DOWNLOAD' | 'VERIFY' | 'DELETE' | 'UPDATE' | 'VIEW';
   userId: string;
   userName?: string;

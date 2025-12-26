@@ -140,7 +140,7 @@ export class EvidenceService {
   }
 
 
-  async getEvidenceById(evidenceId: number): Promise<Evidence> {
+  async getEvidenceById(evidenceId: string): Promise<Evidence> {
     try {
       const response = await apiClient.get<Evidence>(
         `${this.baseUrl}/${evidenceId}`,
@@ -166,7 +166,7 @@ export class EvidenceService {
   }
 
 
-  async viewEvidence(evidenceId: number): Promise<Blob> {
+  async viewEvidence(evidenceId: string): Promise<Blob> {
 
     return this.downloadEvidence(evidenceId);
   }
@@ -179,7 +179,7 @@ export class EvidenceService {
     }
   }
 
-  async downloadEvidence(evidenceId: number): Promise<Blob> {
+  async downloadEvidence(evidenceId: string): Promise<Blob> {
     const startTime = performance.now();
 
     try {

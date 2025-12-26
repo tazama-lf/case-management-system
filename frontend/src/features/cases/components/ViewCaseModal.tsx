@@ -125,6 +125,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onRefreshCases={onRefreshCases}
                   canManageSupervisorActions={canManageSupervisorActions}
                   caseData={row}
+                  caseStatus={row.status}
                   onApproveCase={onApproveCase}
                   onApproveCaseCreation={onApproveCaseCreation}
                   onRejectCaseCreation={onRejectCaseCreation}

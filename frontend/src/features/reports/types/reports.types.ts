@@ -245,7 +245,7 @@ export interface FindingStatusDistribution {
 }
 
 export interface EvidenceItem {
-  id: number;
+  id: string;
   type: string;
   count: number;
   percentage: number;
@@ -261,7 +261,7 @@ export interface FindingDetail {
   supportingEvidence: (
     | string
     | {
-      id: number;
+      id: string;
       fileName: string;
       fileSize?: number;
       mimeType?: string;

@@ -48,7 +48,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'
   >('All');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   // Use real data from API
@@ -96,9 +96,9 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     }
   };
 
-  const handleViewEvidence = async (filename: string, evidenceId: number) => {
+  const handleViewEvidence = async (filename: string, evidenceId: string) => {
     const actualEvidenceId = evidenceId;
-    setViewingId(actualEvidenceId.toString());
+    setViewingId(actualEvidenceId);
 
     try {
       console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename });
@@ -173,7 +173,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     }
   };
 
-  const handleDownloadEvidence = async (evidenceId: number) => {
+  const handleDownloadEvidence = async (evidenceId: string) => {
     setDownloadingId(evidenceId);
 
     try {
@@ -529,7 +529,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                 <div className="space-y-3">
                                   {finding.supportingEvidence.map(
                                     (evidence: string | {
-                                      id: number;
+                                      id: string;
                                       fileName: string;
                                       fileSize?: number;
                                       mimeType?: string;
@@ -569,7 +569,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleViewEvidence(evidenceName, Number(evidenceId));
+                                                  handleViewEvidence(evidenceName, evidenceId);
                                                 }}
                                                 disabled={viewingId === evidenceId || downloadingId === evidenceId}
                                                 className={`inline-flex items-center justify-center p-2 rounded transition-colors ${viewingId === evidenceId
@@ -592,7 +592,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleDownloadEvidence(Number(evidenceId));
+                                                  handleDownloadEvidence(evidenceId);
                                                 }}
                                                 disabled={downloadingId === evidenceId || viewingId === evidenceId}
                                                 className={`inline-flex items-center justify-center p-2 rounded transition-colors ${downloadingId === evidenceId

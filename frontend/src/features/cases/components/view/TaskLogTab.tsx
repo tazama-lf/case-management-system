@@ -440,11 +440,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 
     // Check if this should open SAR/STR Filing modal instead of Task Details
     const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole();
-    // const hasRequiredRole = hasSupervisorRole();
     const isClosedCase = caseStatus === 'STATUS_81_CLOSED_REFUTED' || caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
-    const isUnassignedTask = task.status === 'UNASSIGNED';
-
-    if (hasRequiredRole && isClosedCase && isUnassignedTask) {
+    if (hasRequiredRole && isClosedCase) {
       // Open SAR/STR Filing modal for closed cases with unassigned tasks
       setSarStrFilingModalOpen(true);
     } else {

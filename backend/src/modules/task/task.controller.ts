@@ -448,7 +448,7 @@ export class TaskController {
   }
 
   @Patch(':taskId')
-  @RequireInvestigatorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update task details',
