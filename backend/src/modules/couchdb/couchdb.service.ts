@@ -11,10 +11,10 @@ export class CouchdbService implements OnModuleInit {
   private readonly dbName: string;
 
   constructor(private configService: ConfigService) {
-    const url = this.configService.get<string>('COUCHDB_URL') || 'http://localhost:5984';
-    const username = this.configService.get<string>('COUCHDB_USERNAME');
-    const password = this.configService.get<string>('COUCHDB_PASSWORD');
-    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') || 'evidence_store';
+    const url = this.configService.get<string>('COUCHDB_URL') || 'http://10.10.80.16:5984';
+    const username = this.configService.get<string>('COUCHDB_USERNAME') || 'simon';
+    const password = this.configService.get<string>('COUCHDB_PASSWORD') || '1234';
+    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') || 'cms-evidence';
 
     const urlWithAuth = url.replace('://', `://${username}:${password}@`);
 
@@ -44,6 +44,21 @@ export class CouchdbService implements OnModuleInit {
 
   async insertDocument(docId: string, metadata: any) {
     return this.db.insert(metadata, docId);
+  }
+
+  async deleteEvidence(evidenceId: string, fileName: string, rev: string): Promise<nano.DocumentDestroyResponse> {
+
+    try {
+      await this.db.destroy(evidenceId, rev);
+      this.logger.log(`Evidence document "${evidenceId}" deleted successfully`);
+
+      return { ok: true, id: evidenceId, rev: '' };
+
+    } catch (error) {
+      this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
+      throw new Error(error.message || 'Failed to delete attachment');
+      throw error;
+    }
   }
 
   async insertAttachment(

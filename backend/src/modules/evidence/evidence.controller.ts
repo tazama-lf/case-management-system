@@ -15,6 +15,7 @@ import {
   MaxFileSizeValidator,
   UploadedFiles,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -30,7 +31,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class EvidenceController {
-  constructor(private evidenceService: EvidenceService) {}
+  constructor(private evidenceService: EvidenceService) { }
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -102,11 +103,11 @@ export class EvidenceController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) 
-      ? 'CMS_SUPERVISOR' 
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR)
+      ? 'CMS_SUPERVISOR'
       : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
-      ? 'CMS_COMPLIANCE_OFFICER'
-      : 'CMS_INVESTIGATOR';
+        ? 'CMS_COMPLIANCE_OFFICER'
+        : 'CMS_INVESTIGATOR';
     return this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
   }
 
@@ -163,7 +164,7 @@ export class EvidenceController {
 
   @Get(':id/download')
   @RequireInvestigatorOrSupervisorRole()
-  async downloadEvidence(@Param('id') id: string, @Res() res: Response,  @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
+  async downloadEvidence(@Param('id') id: string, @Res() res: Response, @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
     const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
@@ -182,6 +183,25 @@ export class EvidenceController {
     });
 
     res.send(buffer);
+  }
+
+  @Delete(':id/attachments/:attachmentName')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'delete evidence' })
+  @ApiResponse({
+    status: 200,
+    description: 'Deleted evidence successfully',
+  })
+  async deleteEvidence(
+    @Param('id') id: string,
+    @Param('attachmentName') attachmentName: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<EvidenceResponseDto> {
+    const { clientId, tenantId, claims } = req.user.token;
+    if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
+
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    return this.evidenceService.deleteEvidence(id, attachmentName, clientId);
   }
 
   @Get(':id/verify')

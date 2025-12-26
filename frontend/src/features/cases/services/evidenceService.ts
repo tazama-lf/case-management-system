@@ -171,7 +171,7 @@ export class EvidenceService {
     return this.downloadEvidence(evidenceId);
   }
 
-  async deleteEvidence(evidenceId: number, fileName: string): Promise<void> {
+  async deleteEvidence(evidenceId: string, fileName: string): Promise<void> {
     try {
       await apiClient.delete<void>(`${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`);
     } catch (error) {

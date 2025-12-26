@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
@@ -35,6 +35,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
+  const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
 
   // Extract transaction ID from transaction data
   const transactionId = React.useMemo(() => {

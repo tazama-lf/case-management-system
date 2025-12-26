@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsEnum, IsOptional, MaxLength, IsDateString, IsArray, IsNumber } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export enum EvidenceType {
   SANCTIONS = 'SANCTIONS',
@@ -13,6 +13,7 @@ export enum EvidenceType {
 
 export class UploadEvidenceDto {
   @ApiProperty({ description: 'Task ID this evidence belongs to' })
+  @Type(() => Number)
   @IsNumber()
   taskId: number;
 

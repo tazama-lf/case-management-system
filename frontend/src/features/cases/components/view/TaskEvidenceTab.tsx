@@ -203,7 +203,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
     try {
       setIsDeleting(true);
-      await evidenceService.deleteEvidence(evidenceToDelete.id, evidenceToDelete.fileName);
+      await evidenceService.deleteEvidence(evidenceToDelete.id.toString(), evidenceToDelete.fileName);
 
       setUploadedEvidence(prev => {
         const updated: typeof prev = {};

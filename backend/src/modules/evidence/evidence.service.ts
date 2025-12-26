@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   ForbiddenException,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'crypto';
@@ -21,7 +22,7 @@ export class EvidenceService {
     private prisma: PrismaService,
     private couchdb: CouchdbService,
     private auditLog: AuditLogService,
-  ) {}
+  ) { }
 
   private sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -51,25 +52,25 @@ export class EvidenceService {
   }
 
   async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-        const kycEddTypes = ['KYC', 'EDD'];
-        const allowedMimeTypes = [
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'image/png',
-          'image/jpeg'
-        ];
+    const kycEddTypes = ['KYC', 'EDD'];
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'image/png',
+      'image/jpeg'
+    ];
 
-        if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
-          this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
-          for (const file of files) {
-            this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
-            if (!allowedMimeTypes.includes(file.mimetype)) {
-              this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
-              throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
-            }
-          }
+    if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
+      this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
+      for (const file of files) {
+        this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
+          throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
         }
+      }
+    }
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
@@ -79,7 +80,7 @@ export class EvidenceService {
       _id: evidenceId,
       evidenceId,
       tenantId,
-      taskId: dto.taskId,
+      taskId: String(dto.taskId),
       uploadedBy: userId,
       uploadedAt: new Date(),
       evidenceType: dto.evidenceType,
@@ -135,6 +136,47 @@ export class EvidenceService {
     });
 
     return metadata;
+  }
+
+  async deleteEvidence(evidenceId: string, fileName: string, userId: string): Promise<EvidenceResponseDto> {
+
+    if (evidenceId === null || evidenceId === undefined || evidenceId.trim() === '' || fileName === null || fileName === undefined || fileName.trim() === '') {
+      this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
+      this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
+      throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
+    }
+    this.logger.log(`Deleting evidence ${evidenceId}`);
+
+    const doc = await this.couchdb.getDocument(evidenceId.toString());
+    this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
+
+    if (!doc) {
+      this.logger.error(`Evidence ${evidenceId} not found`);
+      throw new NotFoundException(`Evidence ${evidenceId} not found`);
+    }
+
+    try {
+      this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
+      const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
+
+    } catch (error) {
+
+      if (error.status === 409) {
+        throw new ConflictException(
+          'Document was updated. Please retry.'
+        );
+      }
+      throw error;
+    }
+
+    await this.auditLog.logAction({
+      userId,
+      operation: 'delete',
+      entityName: 'Evidence',
+      actionPerformed: 'EVIDENCE_DELETED',
+      outcome: 'SUCCESS',
+    });
+    return doc;
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
