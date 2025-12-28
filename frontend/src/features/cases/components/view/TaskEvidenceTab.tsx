@@ -4,11 +4,14 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   XMarkIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
+import { useToast } from '../../../../shared/providers/ToastProvider';
 
 const evidenceSections: Array<{
   key: string;
@@ -72,54 +75,109 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
 
+  const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [noEvidenceError, setNoEvidenceError] = React.useState(false);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
   } | null>(null);
+  const { success, error } = useToast();
+
+  const UploadEvidence = async () => {
+    if (!taskId) return;
+
+    const sectionsToUpload = Object.entries(sectionFiles).filter(
+      ([_, files]) => files.length > 0
+    );
+
+    if (sectionsToUpload.length === 0) {
+      setNoEvidenceError(true);
+      setTimeout(() => setNoEvidenceError(false), 3000);
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+    setNoEvidenceError(false);
+
+    try {
+      const uploadPromises = sectionsToUpload.flatMap(([sectionKey, files]) => {
+        const section = evidenceSections.find(s => s.key === sectionKey);
+        if (!section) return [];
+
+        return files.map((file) =>
+          evidenceService.uploadEvidence({
+            file,
+            taskId,
+            evidenceType: section.evidenceType,
+            description: sectionComments[sectionKey] || `${section.title} evidence`,
+            comments: sectionComments[sectionKey],
+          })
+        );
+      });
+
+      await Promise.all(uploadPromises);
+
+      setSectionFiles({});
+      setSectionComments({});
+      setSaveSuccess(true);
+      await loadEvidence();
+      onUploadComplete?.();
+      success('Evidence uploaded successfully');
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      alert('Failed to upload evidence.');
+      error('Failed to upload evidence');
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  React.useEffect(() => {
 
-    const loadEvidence = async () => {
-      if (!taskId) return;
+  const loadEvidence = React.useCallback(async () => {
+    if (!taskId) return;
 
-      setLoading(true);
-      try {
-        const response = await evidenceService.getTaskEvidence(taskId);
+    setLoading(true);
+    try {
+      const response = await evidenceService.getTaskEvidence(taskId);
 
-        // Group evidence by type
-        const grouped: Record<string, Evidence[]> = {
-          'kyc-edd': [],
-          sanctions: [],
-          'adverse-media': [],
-          others: [],
-        };
+      // Group evidence by type
+      const grouped: Record<string, Evidence[]> = {
+        'kyc-edd': [],
+        sanctions: [],
+        'adverse-media': [],
+        others: [],
+      };
 
-        response.evidence.forEach((evidence) => {
-          if (evidence.evidenceType === 'KYC' || evidence.evidenceType === 'EDD') {
-            grouped['kyc-edd'].push(evidence);
-          } else if (evidence.evidenceType === 'SANCTIONS') {
-            grouped.sanctions.push(evidence);
-          } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
-            grouped['adverse-media'].push(evidence);
-          } else {
-            grouped.others.push(evidence);
-          }
-        });
+      response.evidence.forEach((evidence) => {
+        if (evidence.evidenceType === 'KYC' || evidence.evidenceType === 'EDD') {
+          grouped['kyc-edd'].push(evidence);
+        } else if (evidence.evidenceType === 'SANCTIONS') {
+          grouped.sanctions.push(evidence);
+        } else if (evidence.evidenceType === 'ADVERSE_MEDIA') {
+          grouped['adverse-media'].push(evidence);
+        } else {
+          grouped.others.push(evidence);
+        }
+      });
 
-        setUploadedEvidence(grouped);
-      } catch (error) {
-        console.error('Failed to load evidence:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadEvidence();
+      setUploadedEvidence(grouped);
+    } catch (error) {
+      console.error('Failed to load evidence:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [taskId]);
+
+  React.useEffect(() => {
+    loadEvidence();
+  }, [loadEvidence]);
 
   const handleUploadEvidence = async () => {
     if (!taskId) {
@@ -244,8 +302,21 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="text-sm font-semibold text-gray-900">
-        Evidence & Documents
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-gray-900">Evidence & Documents</div>
+        <button
+          type="button"
+          onClick={UploadEvidence}
+          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0)}
+          className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
+        ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
+              ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
+              : 'border-green-600 bg-green-600 text-white hover:bg-green-700'}
+        `}
+        >
+          <CheckCircleIcon className="h-4 w-4" />
+          {saving ? 'Uploading...' : 'Upload Evidence'}
+        </button>
       </div>
 
       {evidenceSections.map((section) => {
@@ -449,6 +520,10 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           evidenceToDelete={evidenceToDelete}
           setEvidenceToDelete={setEvidenceToDelete}
           setUploadedEvidence={setUploadedEvidence}
+          onDeleteSuccess={() => {
+            loadEvidence();
+            onUploadComplete?.();
+          }}
         />
       )}
     </div>

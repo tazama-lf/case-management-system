@@ -13,12 +13,15 @@ interface DeleteEvidenceModalProps {
         fileName: string;
     } | null>>;
     setUploadedEvidence: React.Dispatch<React.SetStateAction<Record<string, Evidence[]>>>;
+    onDeleteSuccess?: () => void;
 }
+
 
 const DeleteEvidenceModal: React.FC<DeleteEvidenceModalProps> = ({
     evidenceToDelete,
     setEvidenceToDelete,
     setUploadedEvidence,
+    onDeleteSuccess,
 }) => {
     const [isDeleting, setIsDeleting] = React.useState(false);
     const handleConfirmDelete = async () => {
@@ -37,6 +40,8 @@ const DeleteEvidenceModal: React.FC<DeleteEvidenceModalProps> = ({
                 });
                 return updated;
             });
+
+            onDeleteSuccess?.();
 
             setEvidenceToDelete(null);
         } finally {
