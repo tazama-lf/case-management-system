@@ -1,10 +1,10 @@
 import React from 'react';
-import AlertNavigatorTab from './visualizations/AlertNavigatorTab';
-import TransactionDetailsTab from './visualizations/TransactionDetailsTab';
-import TransactionHistoryTab from './visualizations/TransactionHistoryTab';
-import NetworkAnalysisTab from './visualizations/NetworkAnalysisTab';
-import AlertHistoryTab from './visualizations/AlertHistoryTab';
-import ConditionsTab from './visualizations/ConditionsTab';
+import AlertNavigatorTab from './visualizations/alertnavigator/AlertNavigatorTab';
+import TransactionDetailsTab from './visualizations/transactiondetails/TransactionDetailsTab';
+import TransactionHistoryTab from './visualizations/transactionhistory/TransactionHistoryTab';
+import NetworkAnalysisTab from './visualizations/network-analysis/NetworkAnalysisTab';
+import AlertHistoryTab from './visualizations/alerthistory/AlertHistoryTab';
+import ConditionsTab from './visualizations/conditions/ConditionsTab';
 
 type VisualizationSubTab = 
   | 'alert-navigator'

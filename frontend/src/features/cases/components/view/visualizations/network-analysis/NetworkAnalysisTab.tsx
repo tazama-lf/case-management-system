@@ -1,7 +1,7 @@
 import React from 'react';
-import TransactionNetworkTab from './network-analysis/TransactionNetworkTab';
-import AccountNetworkTab from './network-analysis/AccountNetworkTab';
-import CounterpartyNetworkTab from './network-analysis/CounterpartyNetworkTab';
+import TransactionNetworkTab from './TransactionNetworkTab';
+import AccountNetworkTab from './AccountNetworkTab';
+import CounterpartyNetworkTab from './CounterpartyNetworkTab';
 import {
   ArrowsRightLeftIcon,
   BuildingOfficeIcon,
