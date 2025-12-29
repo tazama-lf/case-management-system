@@ -8,6 +8,8 @@ import {
 import { commentService, type TaskComment } from '../../services/commentService';
 import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
+import {BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
 
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
@@ -23,33 +25,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
-
-  const simpleMDEOptions = React.useMemo(() => ({
-    spellChecker: false,
-    placeholder: "Add your investigation notes here...",
-    status: false,
-    autofocus: false,
-    tabSize: 2,
-    previewRender: function(plainText: string) {
-      return marked.parse(plainText);
-    },
-    toolbar: [
-      "bold", "italic",
-      {
-        name: "underline",
-        action: function customFunction(editor: any) {
-          const cm = editor.codemirror;
-          const selection = cm.getSelection();
-          cm.replaceSelection(`<u>${selection}</u>`);
-        },
-        className: "fa fa-underline",
-        title: "Underline",
-      },
-      "|",
-      "unordered-list", "ordered-list", "|",
-      "link"
-    ],
-  } as any), []);
 
   React.useEffect(() => {
     const loadComments = async () => {
@@ -125,13 +100,23 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             </div>
           )}
 
-          {/* SimpleMDE Editor */}
-          <div className="simplemde-wrapper">
-            <SimpleMDE
-              value={notes}
-              onChange={setNotes}
-              options={simpleMDEOptions}
-            />
+          {/* MDX Editor */}
+            <div className="mdx-editor-container">
+              <MDXEditor
+                markdown={notes}
+                onChange={setNotes}
+                plugins={[headingsPlugin(), listsPlugin(), linkDialogPlugin(), linkPlugin(), quotePlugin(), markdownShortcutPlugin(), toolbarPlugin({
+                  toolbarClassName: 'editor-toolbar ',
+                  toolbarContents: () => (
+                    <>
+                      <UndoRedo />
+                      <BoldItalicUnderlineToggles />
+                      <ListsToggle />
+                      <CreateLink />
+                    </>
+                  )
+                })]}
+              />
           </div>
 
           {/* Save Button */}
