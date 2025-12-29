@@ -57,11 +57,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     const transaction = transactionData as Record<string, unknown>;
     
+    // Try to get MsgId first (from GrpHdr)
     const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
+    const grpHdr = fiToFIPmtSts?.GrpHdr as Record<string, unknown> | undefined;
+    const msgId = grpHdr?.MsgId;
+    
+    if (msgId && typeof msgId === 'string') {
+      return msgId;
+    }
+
+    // Fallback to other possible field locations
     const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | undefined;
     
-    
-    // Try multiple possible field locations
     const extractedId = (
       txInfAndSts?.OrgnlEndToEndId ||
       txInfAndSts?.EndToEndId ||
@@ -205,7 +212,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'visualizations' ? 'block' : 'none' }}>
-                <VisualizationsTab caseId={row?.id} transactionId={transactionId} />
+                <VisualizationsTab alertId={row?.alertId} caseId={row?.id} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && <LinkedItemsTab caseId={row.id} />}

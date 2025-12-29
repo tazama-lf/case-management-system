@@ -15,11 +15,13 @@ type VisualizationSubTab =
   | 'conditions';
 
 interface VisualizationsTabProps {
+  alertId?: string;
   caseId?: string;
   transactionId?: string;
 }
 
 const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
+  alertId,
   caseId,
   transactionId,
 }) => {
@@ -58,7 +60,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
       {/* Sub-tab content */}
       <div className="mt-4">
         {activeSubTab === 'alert-navigator' && (
-          <AlertNavigatorTab caseId={caseId} transactionId={transactionId} />
+          <AlertNavigatorTab alertId={alertId} caseId={caseId} transactionId={transactionId} />
         )}
         {activeSubTab === 'transaction-details' && (
           <TransactionDetailsTab caseId={caseId} transactionId={transactionId} />

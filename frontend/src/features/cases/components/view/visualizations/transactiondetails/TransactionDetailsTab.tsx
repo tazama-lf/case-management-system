@@ -1,5 +1,7 @@
 import React from 'react';
 import { UserCircleIcon, BuildingOfficeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import transactionDetailsService from './services/service';
+import type { TransactionDetailsDto } from './types/types';
 
 interface TransactionDetailsTabProps {
   caseId?: string;
@@ -8,8 +10,75 @@ interface TransactionDetailsTabProps {
 
 const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
   caseId: _caseId,
-  transactionId: _transactionId,
+  transactionId,
 }) => {
+  const [data, setData] = React.useState<TransactionDetailsDto | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!transactionId) {
+      setLoading(false);
+      console.log('No transactionId provided');
+      return;
+    }
+
+    console.log('Fetching transaction details for:', transactionId);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await transactionDetailsService.getTransactionDetails(transactionId);
+        setData(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load transaction details';
+        console.error('Error fetching transaction:', message);
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [transactionId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading...</span>
+      </div>
+    );
+  }
+
+  if (!transactionId) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">Select a transaction to view details</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+        <p className="text-sm text-yellow-700 font-medium">⚠️ Transaction Data Unavailable</p>
+        <p className="text-sm text-yellow-600 mt-1">{error}</p>
+        {transactionId && (
+          <p className="text-xs text-yellow-500 mt-2">Transaction ID: <span className="font-mono">{transactionId}</span></p>
+        )}
+        <p className="text-xs text-yellow-600 mt-3 italic">The backend transaction details service may not have seeded data for this transaction.</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">No data available</p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -28,7 +97,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               Transaction ID
             </div>
             <div className="text-sm font-medium text-gray-900">
-              TXN-30308112-788510
+              {data.transactionOverview.transactionId}
             </div>
           </div>
           <div>
@@ -36,7 +105,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               Timestamp
             </div>
             <div className="text-sm font-medium text-gray-900">
-              2024-01-15 14:23:01 UTC
+              {new Date(data.transactionOverview.timestamp).toLocaleString()}
             </div>
           </div>
           <div>
@@ -44,7 +113,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               Type
             </div>
             <div className="text-sm font-medium text-gray-900">
-              Wire Transfer
+              {data.transactionOverview.transactionType}
             </div>
           </div>
           <div>
@@ -70,17 +139,17 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-500 uppercase">Debtor</div>
-                <div className="text-sm font-semibold text-gray-900">John Smith</div>
+                <div className="text-sm font-semibold text-gray-900">{data.transactionFlow.debtor.name}</div>
               </div>
             </div>
             <div className="space-y-1.5 text-xs">
               <div>
                 <span className="text-gray-500">Account:</span>
-                <span className="ml-2 text-gray-900 font-medium">ACC-1234-5678-9812</span>
+                <span className="ml-2 text-gray-900 font-medium">{data.transactionFlow.debtor.account.iban}</span>
               </div>
               <div>
                 <span className="text-gray-500">Bank:</span>
-                <span className="ml-2 text-gray-900">First National Bank</span>
+                <span className="ml-2 text-gray-900">{data.transactionFlow.debtor.bank}</span>
               </div>
             </div>
           </div>
@@ -94,7 +163,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div className="h-px w-16 bg-gradient-to-r from-blue-400 to-purple-400"></div>
             </div>
-            <div className="text-xl font-bold text-gray-900">$45,000</div>
+            <div className="text-xl font-bold text-gray-900">${data.transactionFlow.amount.amount.toLocaleString()}</div>
           </div>
 
           {/* Creditor */}
@@ -105,17 +174,17 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-500 uppercase">Creditor</div>
-                <div className="text-sm font-semibold text-gray-900">Global Trading Corp</div>
+                <div className="text-sm font-semibold text-gray-900">{data.transactionFlow.creditor.name}</div>
               </div>
             </div>
             <div className="space-y-1.5 text-xs">
               <div>
                 <span className="text-gray-500">Account:</span>
-                <span className="ml-2 text-gray-900 font-medium">ACC-9876-5432-1098</span>
+                <span className="ml-2 text-gray-900 font-medium">{data.transactionFlow.creditor.account.iban}</span>
               </div>
               <div>
                 <span className="text-gray-500">Bank:</span>
-                <span className="ml-2 text-gray-900">International Bank Ltd</span>
+                <span className="ml-2 text-gray-900">{data.transactionFlow.creditor.bankName}</span>
               </div>
             </div>
           </div>
@@ -133,27 +202,27 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
           <div className="space-y-3">
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Name</div>
-              <div className="text-sm text-gray-900">John Smith</div>
+              <div className="text-sm text-gray-900">{data.debtorProfile.name}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Account Number</div>
-              <div className="text-sm text-gray-900 font-mono">ACC-1234-5678-9812</div>
+              <div className="text-sm text-gray-900 font-mono">{data.debtorProfile.account.iban}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Account Type</div>
-              <div className="text-sm text-gray-900">Personal Checking</div>
+              <div className="text-sm text-gray-900">{data.debtorProfile.accountType}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Bank</div>
-              <div className="text-sm text-gray-900">First National Bank</div>
+              <div className="text-sm text-gray-900">{data.debtorProfile.bank}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Swift Code</div>
-              <div className="text-sm text-gray-900 font-mono">FNBIUS33</div>
+              <div className="text-sm text-gray-900 font-mono">{data.debtorProfile.swiftCode}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Address</div>
-              <div className="text-sm text-gray-900">123 Main St, New York, NY 10001</div>
+              <div className="text-sm text-gray-900">{data.debtorProfile.address}</div>
             </div>
           </div>
         </div>
@@ -167,27 +236,27 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
           <div className="space-y-3">
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Name</div>
-              <div className="text-sm text-gray-900">Global Trading Corp</div>
+              <div className="text-sm text-gray-900">{data.creditorProfile.name}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Account Number</div>
-              <div className="text-sm text-gray-900 font-mono">ACC-9876-5432-1098</div>
+              <div className="text-sm text-gray-900 font-mono">{data.creditorProfile.account.iban}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Account Type</div>
-              <div className="text-sm text-gray-900">Business Account</div>
+              <div className="text-sm text-gray-900">{data.creditorProfile.accountType}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Bank</div>
-              <div className="text-sm text-gray-900">International Bank Ltd</div>
+              <div className="text-sm text-gray-900">{data.creditorProfile.bank}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Swift Code</div>
-              <div className="text-sm text-gray-900 font-mono">INTLGB21</div>
+              <div className="text-sm text-gray-900 font-mono">{data.creditorProfile.swiftCode}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Address</div>
-              <div className="text-sm text-gray-900">456 Commerce Ave, London, UK EC1A 1BB</div>
+              <div className="text-sm text-gray-900">{data.creditorProfile.address}</div>
             </div>
           </div>
         </div>
@@ -204,36 +273,62 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
             <h4 className="text-sm font-semibold text-gray-900">Amount & Currency</h4>
           </div>
           <div className="space-y-2.5">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Original Amount:</span>
-              <span className="text-sm font-medium text-gray-900">USD $45,000</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Exchange Rate:</span>
-              <span className="text-sm font-medium text-gray-900">1</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Converted Amount:</span>
-              <span className="text-sm font-medium text-gray-900">GBP $15,460</span>
-            </div>
-            <div className="border-t border-gray-200 my-2"></div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Sender Charges:</span>
-              <span className="text-sm font-medium text-gray-900">$25</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Intermediary Charges:</span>
-              <span className="text-sm font-medium text-gray-900">$15</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Receiver Charges:</span>
-              <span className="text-sm font-medium text-gray-900">$0</span>
-            </div>
-            <div className="border-t border-gray-200 my-2"></div>
-            <div className="flex justify-between">
-              <span className="text-sm font-semibold text-gray-900">Total Charges:</span>
-              <span className="text-sm font-bold text-gray-900">$40</span>
-            </div>
+            {data.amountAndCurrency.map((amountItem, idx) => (
+              <div key={idx}>
+                {amountItem.originalAmount && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Original Amount:</span>
+                      <span className="text-sm font-medium text-gray-900">USD ${amountItem.originalAmount.toLocaleString()}</span>
+                    </div>
+                    {amountItem.exchangeRate && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Exchange Rate:</span>
+                        <span className="text-sm font-medium text-gray-900">{amountItem.exchangeRate}</span>
+                      </div>
+                    )}
+                    {amountItem.convertedAmount && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Converted Amount:</span>
+                        <span className="text-sm font-medium text-gray-900">${amountItem.convertedAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {(amountItem.senderCharges || amountItem.intermediaryCharges || amountItem.receiverCharges) && (
+                  <>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    {amountItem.senderCharges && amountItem.senderCharges.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Sender Charges:</span>
+                        <span className="text-sm font-medium text-gray-900">${amountItem.senderCharges[0].amount}</span>
+                      </div>
+                    )}
+                    {amountItem.intermediaryCharges && amountItem.intermediaryCharges.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Intermediary Charges:</span>
+                        <span className="text-sm font-medium text-gray-900">${amountItem.intermediaryCharges[0].amount}</span>
+                      </div>
+                    )}
+                    {amountItem.receiverCharges && amountItem.receiverCharges.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Receiver Charges:</span>
+                        <span className="text-sm font-medium text-gray-900">${amountItem.receiverCharges[0].amount}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {amountItem.totalCharges && (
+                  <>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-semibold text-gray-900">Total Charges:</span>
+                      <span className="text-sm font-bold text-gray-900">${amountItem.totalCharges}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -250,26 +345,32 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
                 Transaction Timestamp
               </div>
-              <div className="text-sm text-gray-900">2024-01-15 14:23:01 UTC</div>
+              <div className="text-sm text-gray-900">{new Date(data.transactionOverview.timestamp).toLocaleString()}</div>
             </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Settlement Date
+            {data.settlementDetails.settlementDate && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                  Settlement Date
+                </div>
+                <div className="text-sm text-gray-900">{data.settlementDetails.settlementDate}</div>
               </div>
-              <div className="text-sm text-gray-900">2024-01-16</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Reference
+            )}
+            {data.settlementDetails.reference && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                  Reference
+                </div>
+                <div className="text-sm text-gray-900">{data.settlementDetails.reference}</div>
               </div>
-              <div className="text-sm text-gray-900">Invoice #INV-2024-0115</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Purpose
+            )}
+            {data.settlementDetails.purpose && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                  Purpose
+                </div>
+                <div className="text-sm text-gray-900">{data.settlementDetails.purpose}</div>
               </div>
-              <div className="text-sm text-gray-900">Payment for goods</div>
-            </div>
+            )}
           </div>
         </div>
       </div>
