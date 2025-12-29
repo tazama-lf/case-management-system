@@ -1,4 +1,14 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import {
+  AlertNavigatorDto,
+  TypologyDto,
+  RuleDto,
+  BlockStatusDto,
+  RelatedLinksDto,
+  AmountDto,
+  RuleDetailDto,
+} from './dto/alert-navigator.dto';
+import { TransactionDetailDto, DebtorDto, CreditorDto, AccountDto, ChargeDto, AgentDto, LinkDto } from './dto/transaction-detail.dto';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { IngestAlertDto } from './dto/ingest-alert.dto';
@@ -34,6 +44,247 @@ export class TriageService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
   ) {}
+
+  async getAlertNavigator(alertId: string, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
+    this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
+
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId, tenant_id: tenantId },
+    });
+    if (!alert) {
+      this.logger.warn(`Alert not found: ${alertId} for tenant: ${tenantId}`, TriageService.name);
+      throw new NotFoundException('Alert not found');
+    }
+
+    this.logger.log(`Alert found: ${alertId}, processing data`, TriageService.name);
+
+    const alertReport = (alert.alert_data as any) || {};
+    const transactionData = (alert.transaction as any) || {};
+    const networkMapData = (alert.network_map as any) || {};
+    const tadpReport = alertReport || {};
+
+    const typologies: TypologyDto[] = [];
+    const rules: RuleDto[] = [];
+
+    const typologyResults = tadpReport?.tadpResult?.typologyResult || [];
+    this.logger.log(`Processing ${typologyResults.length} typologies`, TriageService.name);
+
+    for (const typology of typologyResults) {
+      typologies.push({
+        id: typology.id,
+        score: typology.result ?? 0,
+        threshold: typology.workflow?.alertThreshold ?? 0,
+        rules:
+          typology.ruleResults?.map((rule) => ({
+            id: rule.id,
+            weight: rule.wght ?? 0,
+          })) || [],
+      });
+      if (Array.isArray(typology.ruleResults)) {
+        for (const rule of typology.ruleResults) {
+          rules.push({
+            id: rule.id,
+            weight: rule.wght ?? 0,
+          });
+        }
+      }
+    }
+
+    this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
+
+    const blockStatusValue = alert.block_status ?? alertReport?.block_status;
+    const blockReasonValue = alert.block_reason ?? alertReport?.block_reason;
+
+    const blockStatus: BlockStatusDto | null =
+      blockStatusValue || blockReasonValue
+        ? {
+            status: blockStatusValue ?? '',
+            reason: blockReasonValue ?? '',
+          }
+        : null;
+
+    const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
+    const amount = {
+      value: transactionData?.FIToFIPmtSts?.TxInfAndSts?.Amt?.Amt ?? 0,
+      currency: transactionData?.FIToFIPmtSts?.TxInfAndSts?.Amt?.Ccy ?? '',
+    };
+    const relatedLinks: RelatedLinksDto = {
+      transactionDetail: `/triage/transaction-detail/${transactionId}`,
+      transactionHistory: `/api/v1/transactions/${transactionId}/history`,
+      conditionsView: `/api/v1/alerts/${alertId}/conditions`,
+      alertHistory: `/api/v1/triage/alerts/${alertId}/action-history`,
+      jupyterLab: `/notebooks/transaction-viz.ipynb?alertId=${alertId}`,
+    };
+
+    const links: LinkDto[] = [
+      {
+        rel: 'alert-navigator',
+        href: `/api/v1/triage/alerts/${alert.alert_id}/navigator`,
+      },
+      {
+        rel: 'transaction-history',
+        href: `/api/v1/transactions/${transactionId}/history`,
+      },
+    ];
+
+    this.logger.log(`Alert navigator data prepared for alertId: ${alertId}`, TriageService.name);
+
+    return {
+      alertId: alert.alert_id,
+      transactionId,
+      timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
+      transactionType: alert.txtp ?? '',
+      amount,
+      status: blockStatusValue ?? '',
+      reason: alert.message ?? '',
+      blockReason: blockReasonValue ?? '',
+      typologies,
+      rules,
+      blockStatus,
+      relatedLinks,
+      links,
+    };
+  }
+
+  async getTransactionDetail(transactionId: string, tenantId: string, userId: string): Promise<TransactionDetailDto> {
+    this.logger.log(
+      `Fetching transaction detail for transactionId: ${transactionId}, tenantId: ${tenantId}, userId: ${userId}`,
+      TriageService.name,
+    );
+
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        tenant_id: tenantId,
+        transaction: {
+          path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+          equals: transactionId,
+        },
+      },
+    });
+
+    if (!alert) {
+      this.logger.warn(`Transaction not found: ${transactionId} for tenant: ${tenantId}`, TriageService.name);
+      throw new NotFoundException('Transaction not found');
+    }
+
+    const transactionData = (alert.transaction as any) || {};
+    const txInfAndSts = transactionData?.FIToFIPmtSts?.TxInfAndSts;
+
+    const debtor: DebtorDto = {
+      name: txInfAndSts?.Dbtr?.Nm,
+      account: {
+        iban: txInfAndSts?.Dbtr?.Acct?.Id?.IBAN,
+        type: txInfAndSts?.Dbtr?.Acct?.Tp,
+      },
+      bank: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.Nm,
+      swiftCode: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.BICFI,
+      address: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.PstlAdr
+        ? `${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.StrtNm}, ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.TwnNm}, ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.Ctry} ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.PstCd}`
+        : undefined,
+      accountType: txInfAndSts?.Dbtr?.Acct?.Tp,
+    };
+
+    const creditor: CreditorDto = {
+      name: txInfAndSts?.Cdtr?.Nm,
+      account: {
+        iban: txInfAndSts?.Cdtr?.Acct?.Id?.IBAN,
+        type: txInfAndSts?.Cdtr?.Acct?.Tp,
+      },
+      bank: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.Nm,
+      swiftCode: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.BICFI,
+      address: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.PstlAdr
+        ? `${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.StrtNm}, ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.TwnNm}, ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.Ctry} ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.PstCd}`
+        : undefined,
+      accountType: txInfAndSts?.Cdtr?.Acct?.Tp,
+    };
+
+    // Amount and currency
+    const amount = txInfAndSts?.Amt?.Amt || 0;
+    const currency = txInfAndSts?.Amt?.Ccy || 'USD';
+    const exchangeRate = 0.79; // Example rate for USD to GBP
+    const convertedAmount = Math.round(amount * exchangeRate); // Rounded to nearest
+    const convertedCurrency = 'GBP';
+
+    // Charges
+    const charges: ChargeDto[] = (txInfAndSts?.ChrgsInf || []).map((charge: any) => ({
+      amount: charge.Amt?.Amt || 0,
+      currency: charge.Amt?.Ccy || 'USD',
+      agent: {
+        memberId: charge.Agt?.FinInstnId?.ClrSysMmbId?.MmbId || '',
+      },
+    }));
+
+    const totalCharges = charges.reduce((sum, charge) => sum + charge.amount, 0);
+
+    // Settlement details
+    const settlementDate = txInfAndSts?.SttlmInf?.SttlmDt;
+    const reference = txInfAndSts?.SttlmInf?.Ref;
+    const purpose = txInfAndSts?.SttlmInf?.Purp;
+
+    // Links
+    const links: LinkDto[] = [
+      {
+        rel: 'alert-navigator',
+        href: `/api/v1/triage/alerts/${alert.alert_id}/navigator`,
+      },
+      {
+        rel: 'transaction-history',
+        href: `/api/v1/transactions/${transactionId}/history`,
+      },
+    ];
+
+    // Visualization URL - placeholder, assuming JupyterLab endpoint
+    const visualizationUrl = `${this.configService.get('JUPYTERLAB_URL', 'http://localhost:8888')}/notebooks/transaction-viz.ipynb?transactionId=${transactionId}`;
+
+    this.logger.log(`Transaction detail prepared for transactionId: ${transactionId}`, TriageService.name);
+
+    return {
+      transactionOverview: {
+        transactionId,
+        transactionType: alert.txtp || '',
+        timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm || '',
+      },
+      transactionFlow: {
+        debtor: {
+          name: debtor.name || '',
+          account: debtor.account || { iban: '' },
+          bank: debtor.bank || '',
+        },
+        amount: {
+          amount,
+        },
+        creditor: {
+          name: creditor.name || '',
+          account: creditor.account || { iban: '' },
+          bankName: creditor.bank || '',
+        },
+      },
+      debtorProfile: debtor,
+      creditorProfile: creditor,
+      amountAndCurrency: [
+        {
+          originalAmount: amount,
+          exchangeRate,
+          convertedAmount,
+        },
+        {
+          senderCharges: charges.length > 0 ? [charges[0]] : [],
+          intermediaryCharges: charges.length > 1 ? [charges[1]] : [],
+          receiverCharges: charges.length > 2 ? [charges[2]] : [],
+        },
+        {
+          totalCharges,
+        },
+      ],
+      settlementDetails: {
+        settlementDate,
+        reference,
+        purpose,
+      },
+      links,
+      visualizationUrl,
+    };
+  }
 
   @OnEvent('alert.incoming')
   async handleIncomingAlertEvent(event: { payload: any; source: string; userId: string; tenantId: string }) {

@@ -1,0 +1,205 @@
+{
+    "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+    "priority": "NEW",
+    "source": "NATS",
+    "txtp": "pacs.002.001.12",
+    "message": "Detected multiple Transactions that had untracked huge some of figures",
+    "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+            "GrpHdr": {
+                "MsgId": "f8b8c4e8-4f7b-4c8a-9b1a-2f3e4d5c6b7a",
+                "CreDtTm": "2025-01-14T05:52:31.244Z"
+            },
+            "TxInfAndSts": {
+                "OrgnlInstrId": "5ab4c3d2-1e9f-4a8b-8c7d-6e5f4a3b2c1d",
+                "OrgnlEndToEndId": "ceef8d9a-7b6c-5d4e-3f2a-1b0c9d8e7f6a",
+                "TxSts": "ACCC",
+                "ChrgsInf": [
+                    {
+                        "Amt": {
+                            "Amt": 25.00,
+                            "Ccy": "USD"
+                        },
+                        "Agt": {
+                            "FinInstnId": {
+                                "ClrSysMmbId": {
+                                    "MmbId": "fsp001"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "Amt": {
+                            "Amt": 15.00,
+                            "Ccy": "USD"
+                        },
+                        "Agt": {
+                            "FinInstnId": {
+                                "ClrSysMmbId": {
+                                    "MmbId": "fsp001"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "Amt": {
+                            "Amt": 0.00,
+                            "Ccy": "USD"
+                        },
+                        "Agt": {
+                            "FinInstnId": {
+                                "ClrSysMmbId": {
+                                    "MmbId": "fsp002"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "AccptncDtTm": "2023-06-02T07:52:31.000Z",
+                "InstgAgt": {
+                    "FinInstnId": {
+                        "ClrSysMmbId": {
+                            "MmbId": "fsp001"
+                        }
+                    }
+                },
+                "InstdAgt": {
+                    "FinInstnId": {
+                        "ClrSysMmbId": {
+                            "MmbId": "fsp002"
+                        }
+                    }
+                },
+                "Amt": {
+                    "Amt": 45000.00,
+                    "Ccy": "USD"
+                },
+                "Dbtr": {
+                    "Nm": "John Doe",
+                    "Acct": {
+                        "Id": {
+                            "IBAN": "ACC-1234-5678-9012"
+                        },
+                        "Tp": "Business Checking"
+                    },
+                    "Agt": {
+                        "FinInstnId": {
+                            "Nm": "First National Bank",
+                            "BICFI": "FNBAUS33",
+                            "PstlAdr": {
+                                "StrtNm": "123 Main St",
+                                "TwnNm": "New York",
+                                "Ctry": "US",
+                                "PstCd": "10001"
+                            }
+                        }
+                    }
+                },
+                "Cdtr": {
+                    "Nm": "Jane Smith",
+                    "Acct": {
+                        "Id": {
+                            "IBAN": "ACC-9876-5432-1098"
+                        },
+                        "Tp": "Corporate Account"
+                    },
+                    "Agt": {
+                        "FinInstnId": {
+                            "Nm": "International Bank Ltd",
+                            "BICFI": "INTLGB2L",
+                            "PstlAdr": {
+                                "StrtNm": "456 Commerce Ave",
+                                "TwnNm": "London",
+                                "Ctry": "GB",
+                                "PstCd": "EC1A 1BB"
+                            }
+                        }
+                    }
+                },
+                "SttlmInf": {
+                    "SttlmDt": "2024-01-16",
+                    "Ref": "Invoice #INV-2024-0115",
+                    "Purp": "Payment for goods"
+                }
+            }
+        }
+    },
+    "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+            {
+                "id": "004@1.0.0",
+                "cfg": "1.0.0",
+                "txTp": "pacs.002.001.12",
+                "typologies": [
+                    {
+                        "id": "typology-processor@1.0.0",
+                        "cfg": "999@1.0.0",
+                        "rules": [
+                            {
+                                "id": "EFRuP@1.0.0",
+                                "cfg": "none"
+                            },
+                            {
+                                "id": "901@1.0.0",
+                                "cfg": "1.0.0"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "report": {
+        "evaluationID": "d643a8f9-2b1c-4d3e-8f5a-9b6c7d8e9f0a",
+        "metaData": {
+            "prcgTmDP": 3234241,
+            "prcgTmED": 70686
+        },
+        "status": "NALT",
+        "timestamp": {},
+        "block_status": "ALLOWED",
+        "block_reason": "Transaction amounts within acceptable thresholds despite multiple charges",
+        "tadpResult": {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "prcgTm": 1936516,
+            "typologyResult": [
+                {
+                    "id": "typology-processor@1.0.0",
+                    "cfg": "999@1.0.0",
+                    "result": 500,
+                    "ruleResults": [
+                        {
+                            "id": "EFRuP@1.0.0",
+                            "cfg": "none",
+                            "subRuleRef": "none",
+                            "prcgTm": 499791,
+                            "wght": 0
+                        },
+                        {
+                            "id": "901@1.0.0",
+                            "cfg": "1.0.0",
+                            "subRuleRef": ".02",
+                            "prcgTm": 2185855,
+                            "wght": 200
+                        }
+                    ],
+                    "prcgTm": 1283670,
+                    "review": true,
+                    "workflow": {
+                        "alertThreshold": 200,
+                        "interdictionThreshold": 400,
+                        "flowProcessor": "EFRuP@1.0.0"
+                    }
+                }
+            ]
+        }
+    },
+    "confidence_per": 82.5,
+    "case_id": null,
+    "userId": "test-user-001"
+}

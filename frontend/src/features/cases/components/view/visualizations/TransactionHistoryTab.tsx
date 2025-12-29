@@ -19,40 +19,49 @@ const TransactionHistoryTab: React.FC = () => {
   const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
   const [showBenfordsAnalysis, setShowBenfordsAnalysis] = React.useState(false);
 
-  const timeFilters = ['Last Day', 'Last Week', 'Last Month', 'Last Year', 'All History'];
+  const timeFilters = [
+    'Last Day',
+    'Last Week',
+    'Last Month',
+    'Last Year',
+    'All History',
+  ];
 
-  const chartData = React.useMemo(() => [
-    { day: 0, date: 'Nov 25', amount: 8000, count: 2, alert: false },
-    { day: 1, date: 'Nov 26', amount: 9500, count: 3, alert: false },
-    { day: 2, date: 'Nov 27', amount: 11000, count: 3, alert: false },
-    { day: 3, date: 'Nov 28', amount: 10000, count: 2, alert: false },
-    { day: 4, date: 'Nov 29', amount: 7000, count: 2, alert: false },
-    { day: 5, date: 'Nov 30', amount: 5000, count: 1, alert: false },
-    { day: 6, date: 'Dec 1', amount: 6500, count: 2, alert: false },
-    { day: 7, date: 'Dec 2', amount: 9000, count: 3, alert: true },
-    { day: 8, date: 'Dec 3', amount: 11500, count: 3, alert: false },
-    { day: 9, date: 'Dec 4', amount: 10500, count: 2, alert: false },
-    { day: 10, date: 'Dec 5', amount: 7500, count: 2, alert: false },
-    { day: 11, date: 'Dec 6', amount: 4500, count: 1, alert: false },
-    { day: 12, date: 'Dec 7', amount: 3500, count: 1, alert: false },
-    { day: 13, date: 'Dec 8', amount: 5500, count: 2, alert: false },
-    { day: 14, date: 'Dec 9', amount: 13500, count: 4, alert: true },
-    { day: 15, date: 'Dec 10', amount: 12000, count: 3, alert: false },
-    { day: 16, date: 'Dec 11', amount: 8000, count: 2, alert: false },
-    { day: 17, date: 'Dec 12', amount: 6000, count: 2, alert: false },
-    { day: 18, date: 'Dec 13', amount: 9500, count: 3, alert: false },
-    { day: 19, date: 'Dec 14', amount: 12500, count: 3, alert: false },
-    { day: 20, date: 'Dec 15', amount: 13000, count: 4, alert: false },
-    { day: 21, date: 'Dec 16', amount: 10500, count: 3, alert: false },
-    { day: 22, date: 'Dec 17', amount: 9000, count: 2, alert: false },
-    { day: 23, date: 'Dec 18', amount: 7500, count: 2, alert: false },
-    { day: 24, date: 'Dec 19', amount: 11000, count: 3, alert: false },
-    { day: 25, date: 'Dec 20', amount: 13500, count: 4, alert: true },
-    { day: 26, date: 'Dec 21', amount: 12000, count: 3, alert: false },
-    { day: 27, date: 'Dec 22', amount: 8500, count: 2, alert: false },
-    { day: 28, date: 'Dec 23', amount: 10500, count: 3, alert: false },
-    { day: 29, date: 'Dec 24', amount: 12000, count: 3, alert: false },
-  ], []);
+  const chartData = React.useMemo(
+    () => [
+      { day: 0, date: 'Nov 25', amount: 8000, count: 2, alert: false },
+      { day: 1, date: 'Nov 26', amount: 9500, count: 3, alert: false },
+      { day: 2, date: 'Nov 27', amount: 11000, count: 3, alert: false },
+      { day: 3, date: 'Nov 28', amount: 10000, count: 2, alert: false },
+      { day: 4, date: 'Nov 29', amount: 7000, count: 2, alert: false },
+      { day: 5, date: 'Nov 30', amount: 5000, count: 1, alert: false },
+      { day: 6, date: 'Dec 1', amount: 6500, count: 2, alert: false },
+      { day: 7, date: 'Dec 2', amount: 9000, count: 3, alert: true },
+      { day: 8, date: 'Dec 3', amount: 11500, count: 3, alert: false },
+      { day: 9, date: 'Dec 4', amount: 10500, count: 2, alert: false },
+      { day: 10, date: 'Dec 5', amount: 7500, count: 2, alert: false },
+      { day: 11, date: 'Dec 6', amount: 4500, count: 1, alert: false },
+      { day: 12, date: 'Dec 7', amount: 3500, count: 1, alert: false },
+      { day: 13, date: 'Dec 8', amount: 5500, count: 2, alert: false },
+      { day: 14, date: 'Dec 9', amount: 13500, count: 4, alert: true },
+      { day: 15, date: 'Dec 10', amount: 12000, count: 3, alert: false },
+      { day: 16, date: 'Dec 11', amount: 8000, count: 2, alert: false },
+      { day: 17, date: 'Dec 12', amount: 6000, count: 2, alert: false },
+      { day: 18, date: 'Dec 13', amount: 9500, count: 3, alert: false },
+      { day: 19, date: 'Dec 14', amount: 12500, count: 3, alert: false },
+      { day: 20, date: 'Dec 15', amount: 13000, count: 4, alert: false },
+      { day: 21, date: 'Dec 16', amount: 10500, count: 3, alert: false },
+      { day: 22, date: 'Dec 17', amount: 9000, count: 2, alert: false },
+      { day: 23, date: 'Dec 18', amount: 7500, count: 2, alert: false },
+      { day: 24, date: 'Dec 19', amount: 11000, count: 3, alert: false },
+      { day: 25, date: 'Dec 20', amount: 13500, count: 4, alert: true },
+      { day: 26, date: 'Dec 21', amount: 12000, count: 3, alert: false },
+      { day: 27, date: 'Dec 22', amount: 8500, count: 2, alert: false },
+      { day: 28, date: 'Dec 23', amount: 10500, count: 3, alert: false },
+      { day: 29, date: 'Dec 24', amount: 12000, count: 3, alert: false },
+    ],
+    [],
+  );
 
   const volumeDistribution = [
     { date: 'Dec 11', value: 5 },
@@ -71,9 +80,9 @@ const TransactionHistoryTab: React.FC = () => {
 
   const cumulativeData = React.useMemo(() => {
     let sum = 0;
-    return chartData.map(d => ({
+    return chartData.map((d) => ({
       date: d.date,
-      cumulative: (sum += d.amount)
+      cumulative: (sum += d.amount),
     }));
   }, [chartData]);
 
@@ -94,7 +103,9 @@ const TransactionHistoryTab: React.FC = () => {
       {/* Header with Filter */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Transaction History Analysis</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Transaction History Analysis
+          </h3>
           <p className="text-sm text-gray-600 mt-1">
             Historical transaction patterns and behavioral analysis for ACC-1234
           </p>
@@ -117,7 +128,9 @@ const TransactionHistoryTab: React.FC = () => {
                     setShowFilterDropdown(false);
                   }}
                   className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                    filter === timeFilter ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                    filter === timeFilter
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700'
                   }`}
                 >
                   {filter}
@@ -162,7 +175,9 @@ const TransactionHistoryTab: React.FC = () => {
 
       {/* Transaction Timeline */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h4 className="text-sm font-semibold text-gray-900 mb-6">Transaction Timeline</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-6">
+          Transaction Timeline
+        </h4>
         <ResponsiveContainer width="100%" height={350}>
           <ComposedChart
             data={chartData}
@@ -178,7 +193,11 @@ const TransactionHistoryTab: React.FC = () => {
               yAxisId="left"
               tick={{ fontSize: 12, fill: '#9ca3af' }}
               stroke="#e5e7eb"
-              label={{ value: 'Amount ($)', angle: -90, position: 'insideLeft' }}
+              label={{
+                value: 'Amount ($)',
+                angle: -90,
+                position: 'insideLeft',
+              }}
             />
             <YAxis
               yAxisId="right"
@@ -197,10 +216,7 @@ const TransactionHistoryTab: React.FC = () => {
               formatter={(value) => value}
               labelFormatter={(label) => `Date: ${label}`}
             />
-            <Legend
-              wrapperStyle={{ paddingTop: '20px' }}
-              iconType="line"
-            />
+            <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="line" />
             <Line
               yAxisId="left"
               type="monotone"
@@ -229,7 +245,9 @@ const TransactionHistoryTab: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
         {/* Cumulative Value */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h4 className="text-sm font-semibold text-gray-900 mb-6">Cumulative Value</h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-6">
+            Cumulative Value
+          </h4>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart
               data={cumulativeData}
@@ -252,7 +270,11 @@ const TransactionHistoryTab: React.FC = () => {
                   borderRadius: '6px',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 }}
-                formatter={(value) => typeof value === 'number' ? `$${value.toLocaleString()}` : value}
+                formatter={(value) =>
+                  typeof value === 'number'
+                    ? `$${value.toLocaleString()}`
+                    : value
+                }
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Line
@@ -270,7 +292,9 @@ const TransactionHistoryTab: React.FC = () => {
 
         {/* Transaction Volume Distribution */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h4 className="text-sm font-semibold text-gray-900 mb-6">Transaction Volume Distribution</h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-6">
+            Transaction Volume Distribution
+          </h4>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
               data={volumeDistribution}
@@ -312,8 +336,13 @@ const TransactionHistoryTab: React.FC = () => {
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">Benford's Law Distribution Analysis</h4>
-            <p className="text-xs text-gray-600 mt-1">Comparing first-digit distribution of transaction amounts against expected Benford's Law distribution</p>
+            <h4 className="text-sm font-semibold text-gray-900">
+              Benford's Law Distribution Analysis
+            </h4>
+            <p className="text-xs text-gray-600 mt-1">
+              Comparing first-digit distribution of transaction amounts against
+              expected Benford's Law distribution
+            </p>
           </div>
           <button
             onClick={() => setShowBenfordsAnalysis(!showBenfordsAnalysis)}
@@ -333,12 +362,20 @@ const TransactionHistoryTab: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   dataKey="digit"
-                  label={{ value: 'First Digit', position: 'insideBottomRight', offset: -10 }}
+                  label={{
+                    value: 'First Digit',
+                    position: 'insideBottomRight',
+                    offset: -10,
+                  }}
                   tick={{ fontSize: 12, fill: '#9ca3af' }}
                   stroke="#e5e7eb"
                 />
                 <YAxis
-                  label={{ value: 'Frequency (%)', angle: -90, position: 'insideLeft' }}
+                  label={{
+                    value: 'Frequency (%)',
+                    angle: -90,
+                    position: 'insideLeft',
+                  }}
                   tick={{ fontSize: 12, fill: '#9ca3af' }}
                   stroke="#e5e7eb"
                 />
@@ -371,13 +408,27 @@ const TransactionHistoryTab: React.FC = () => {
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex gap-3">
                 <div className="flex-shrink-0 text-yellow-600 mt-0.5">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-yellow-800">Deviation Detected</h3>
-                  <p className="text-sm text-yellow-700 mt-1">Actual distribution shows significant variance from expected Benford's Law pattern, particularly in digits 1, 5, and 9. This may indicate potential manipulation or structuring.</p>
+                  <h3 className="text-sm font-semibold text-yellow-800">
+                    Deviation Detected
+                  </h3>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Actual distribution shows significant variance from expected
+                    Benford's Law pattern, particularly in digits 1, 5, and 9.
+                    This may indicate potential manipulation or structuring.
+                  </p>
                 </div>
               </div>
             </div>
@@ -388,7 +439,9 @@ const TransactionHistoryTab: React.FC = () => {
       {/* Recent Transactions Table */}
       <div className="rounded-lg border border-gray-200 bg-white">
         <div className="p-5 border-b border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-900">Recent Transactions</h4>
+          <h4 className="text-sm font-semibold text-gray-900">
+            Recent Transactions
+          </h4>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -419,9 +472,13 @@ const TransactionHistoryTab: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               <tr className="hover:bg-gray-50">
-                <td className="px-5 py-4 text-sm font-medium text-gray-900">TXN-8921</td>
+                <td className="px-5 py-4 text-sm font-medium text-gray-900">
+                  TXN-8921
+                </td>
                 <td className="px-5 py-4 text-sm text-gray-900">2024-01-15</td>
-                <td className="px-5 py-4 text-sm text-gray-900">Wire Transfer</td>
+                <td className="px-5 py-4 text-sm text-gray-900">
+                  Wire Transfer
+                </td>
                 <td className="px-5 py-4 text-sm text-gray-900">ABC Corp</td>
                 <td className="px-5 py-4 text-sm text-gray-900">$12,500</td>
                 <td className="px-5 py-4">
