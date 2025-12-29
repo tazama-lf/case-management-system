@@ -36,7 +36,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
-  const [noEvidenceError, setNoEvidenceError] = React.useState(false);
+  //const [noEvidenceError, setNoEvidenceError] = React.useState(false);
 
   // Extract transaction ID from transaction data
   // const transactionId = React.useMemo(() => {
@@ -82,7 +82,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setTab('details');
       setShowCollaborate(false);
       setSaveSuccess(false);
-      uploadEvidenceRef.current = null;
+      //uploadEvidenceRef.current = null;
       window.scrollTo({ top: 0 });
 
       // Fetch tasks for this case
@@ -103,42 +103,42 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   }, [open, row?.id]);
 
-  const handleSaveTask = async () => {
-    if (!tasks[0]?.task_id) {
-      return;
-    }
+  // const handleSaveTask = async () => {
+  //   if (!tasks[0]?.task_id) {
+  //     return;
+  //   }
 
-    setNoEvidenceError(false);
-    setSaving(true);
-    setSaveSuccess(false);
-    try {
+  //   setNoEvidenceError(false);
+  //   setSaving(true);
+  //   setSaveSuccess(false);
+  //   try {
 
-      if (uploadEvidenceRef.current) {
-        await uploadEvidenceRef.current();
-        setSaveSuccess(true);
-
-
-        setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
-
-      if (!uploadEvidenceRef.current || uploadEvidenceRef.current === null || uploadEvidenceRef.current.length === 0) {
-        setNoEvidenceError(true);
-        setSaveSuccess(false);
-        setTimeout(() => setNoEvidenceError(false), 3000);
-        return;
-      }
+  //     if (uploadEvidenceRef.current) {
+  //       await uploadEvidenceRef.current();
+  //       setSaveSuccess(true);
 
 
-    } catch (error) {
-      alert('Failed to upload evidence. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-  
+  //       setTimeout(() => setSaveSuccess(false), 3000);
+  //     } else {
+  //       setSaveSuccess(true);
+  //       setTimeout(() => setSaveSuccess(false), 2000);
+  //     }
+
+  //     if (!uploadEvidenceRef.current || uploadEvidenceRef.current === null || uploadEvidenceRef.current.length === 0) {
+  //       setNoEvidenceError(true);
+  //       setSaveSuccess(false);
+  //       setTimeout(() => setNoEvidenceError(false), 3000);
+  //       return;
+  //     }
+
+
+  //   } catch (error) {
+  //     alert('Failed to upload evidence. Please try again.');
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
+
 
   if (!open || !row) return null;
 
@@ -201,11 +201,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
                   taskId={tasks.filter(t => t.task_id === selectedTask?.id)[0]?.task_id}
-                  onSaveRequest={(uploadFn) => {
-                    uploadEvidenceRef.current = uploadFn;
-                  }}
+                  // onSaveRequest={(uploadFn) => {
+                  //   uploadEvidenceRef.current = uploadFn;
+                  // }}
                   onUploadComplete={() => {
-
+                    setSummaryRefreshKey(prev => prev + 1);
                   }}
                 />
               </div>
@@ -243,7 +243,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         { }
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          {saveSuccess && (
+          {/* {saveSuccess && (
             <span className="text-sm text-green-600 font-medium">
               ✓ Evidence uploaded successfully
             </span>
@@ -252,7 +252,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <span className="text-sm font-medium text-red-600">
               <ExclamationTriangleIcon className="h-5.5 w-5.5 inline mr-1" aria-hidden="true" /> No evidence attached to upload
             </span>
-          )}
+          )} */}
           <button
             type="button"
             onClick={onClose}
@@ -262,7 +262,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
           </button>
-          {tab === 'evidence' && (
+          {/* {tab === 'evidence' && (
             <button
               type="button"
               onClick={handleSaveTask}
@@ -272,7 +272,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
               {saving ? 'Uploading...' : 'Upload Evidence'}
             </button>
-          )}
+          )} */}
         </div>
       </div>
     </div>

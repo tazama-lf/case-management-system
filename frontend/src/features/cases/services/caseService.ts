@@ -450,16 +450,20 @@ export class CaseService {
 
   async getCaseHistory(caseId: number): Promise<AuditLogEntry[]> {
     try {
-      const response = await apiClient.get<AuditLogEntry[]>(
+      const response = await apiClient.get<{
+        stats: unknown;
+        auditLogs: AuditLogEntry[];
+      }>(
         `/api/v1/reports/audit-logs`
       );
 
       // Get all tasks for this case to filter task-related audit logs
       const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
       const taskIds = new Set(tasks.map(task => task.task_id));
+      const logs = response.auditLogs ?? [];
 
       // Filter audit logs for this specific case
-      return response.filter((log) => {
+      return logs.filter((log) => {
         const actionLower = log.action_performed?.toLowerCase() || '';
 
         // Check if log mentions the case ID
@@ -469,7 +473,7 @@ export class CaseService {
 
         // Check if log mentions any task IDs associated with this case
         for (const taskId of taskIds) {
-          if (actionLower.includes(taskId.toLowerCase())) {
+          if (actionLower.includes(taskId.toString().toLowerCase())) {
             return true;
           }
         }

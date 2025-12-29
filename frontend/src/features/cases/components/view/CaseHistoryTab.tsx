@@ -15,6 +15,7 @@ import { caseService } from '../../services/caseService';
 import { taskService } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
 import type { Case } from '@/features/alerts/types/triage.types';
+import { useAuth } from '@/features/auth/components/AuthContext';
 
 interface CaseHistoryEvent {
   id: string;
@@ -195,6 +196,8 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   const [history, setHistory] = useState<CaseHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
+  const { hasInvestigatorRole, hasSupervisorRole } = useAuth();
+  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -222,17 +225,19 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         try {
           const caseDetails: Case = await caseService.getCaseDetails(caseId);
 
-
-          events.push({
-            id: `case-created-${caseDetails.case_id}`,
-            timestamp: caseDetails.created_at,
-            action: 'Case submitted for approval',
-            performedBy: 'System',
-            userId: caseDetails.case_creator_user_id,
-            details: `Case created with priority ${caseDetails.priority} and type ${caseDetails.case_type}`,
-            outcome: 'info',
-            type: 'case',
-          });
+          if (caseDetails.case_creation_type !== null && caseDetails.case_creation_type !== undefined && caseDetails.case_creation_type.length > 0 &&
+            caseDetails.case_creation_type.toLowerCase() === 'MANUAL'.toLowerCase() && isInvestigatorOnly) {
+            events.push({
+              id: `case-created-${caseDetails.case_id}`,
+              timestamp: caseDetails.created_at,
+              action: 'Case submitted for approval',
+              performedBy: 'System',
+              userId: caseDetails.case_creator_user_id,
+              details: `Case created with priority ${caseDetails.priority} and type ${caseDetails.case_type}`,
+              outcome: 'info',
+              type: 'case',
+            });
+          }
 
 
           if (caseDetails.case_owner_user_id && caseDetails.case_owner_user_id !== caseDetails.case_creator_user_id) {
