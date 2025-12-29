@@ -2,7 +2,7 @@ import { Controller, Post, Get, Param, Body, Query, UseGuards } from '@nestjs/co
 import { ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiTags } from '@nestjs/swagger';
 import { WorkqueueService } from './workqueue.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
-import { RequireAdminRole, RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decorator';
+import { RequireAdminRole, RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
 import { TaskResponseDTO, WorkQueueStatisticsDTO } from './dto/workqueue.dto';
 import { CreateCandidateGroupDto } from './dto/workqueue.dto';
 
@@ -99,7 +99,7 @@ export class WorkqueueController {
   }
 
   @Get('assignee/:assignee/tasks')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks assigned to a user',
     description: 'Retrieve all tasks assigned to a specific user',

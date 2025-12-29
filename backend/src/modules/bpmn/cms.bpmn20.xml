@@ -193,6 +193,25 @@
         <!-- Approval Decision Gateway -->
         <exclusiveGateway id="approvalDecisionGateway" name="Approval Decision"/>
 
+        <!-- SAR/STR Filing Decision Gateway -->
+        <exclusiveGateway id="sarStrDecisionGateway" name="SAR/STR Filing Required"/>
+
+        <!-- SAR/STR Filing Task -->
+        <userTask id="fileSarStr" name="File SAR/STR Report"
+                  flowable:candidateGroups="compliance">
+            <documentation>File Suspicious Activity Report (SAR) or Suspicious Transaction Report (STR) for confirmed cases</documentation>
+            <extensionElements>
+                <flowable:formProperty id="sarStrAction" name="Action"
+                                       type="enum" required="true">
+                    <flowable:value id="inProgress" name="Keep Working"/>
+                    <flowable:value id="complete" name="Complete Filing"/>
+                </flowable:formProperty>
+            </extensionElements>
+        </userTask>
+
+        <!-- SAR/STR Completion Decision Gateway -->
+        <exclusiveGateway id="sarStrCompletionGateway" name="SAR/STR Action Decision"/>
+
         <!-- Case Reopening Support -->
         <userTask id="reopenCase" name="Reopen Case"
                   flowable:candidateGroups="supervisors">
@@ -361,12 +380,39 @@
         <!-- Closure approval workflow -->
         <sequenceFlow id="flowFromSupervisorApproval" sourceRef="supervisorApproval" targetRef="approvalDecisionGateway"/>
 
-        <sequenceFlow id="flowApprove" sourceRef="approvalDecisionGateway" targetRef="endApproved">
+        <sequenceFlow id="flowApprove" sourceRef="approvalDecisionGateway" targetRef="sarStrDecisionGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${approvalDecision == 'approve'}
             </conditionExpression>
         </sequenceFlow>
+        <!-- SAR/STR Filing flows -->
+        <sequenceFlow id="flowRequiresSarStr" sourceRef="sarStrDecisionGateway" targetRef="fileSarStr">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${finalOutcome == 'STATUS_82_CLOSED_CONFIRMED'}
+            </conditionExpression>
+        </sequenceFlow>
 
+        <sequenceFlow id="flowNoSarStrRequired" sourceRef="sarStrDecisionGateway" targetRef="endApproved">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${finalOutcome != 'STATUS_82_CLOSED_CONFIRMED'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowFromSarStr" sourceRef="fileSarStr" targetRef="sarStrCompletionGateway"/>
+
+        <!-- SAR/STR Completion Decision flows -->
+        <sequenceFlow id="flowSarStrInProgress" sourceRef="sarStrCompletionGateway" targetRef="fileSarStr">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${sarStrAction == 'inProgress'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowSarStrComplete" sourceRef="sarStrCompletionGateway" targetRef="endApproved">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${sarStrAction == 'complete'}
+            </conditionExpression>
+        </sequenceFlow>
+        
         <sequenceFlow id="flowReject" sourceRef="approvalDecisionGateway" targetRef="investigationRoutingGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${approvalDecision == 'reject'}
