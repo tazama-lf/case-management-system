@@ -7,11 +7,12 @@ import { CaseModule } from '../case/case.module';
 import { AuditLogModule } from '../audit/auditLog.module';
 import { AlertController } from './alert.controller';
 import { AlertStatisticsService } from './alert.statistics.service';
+import { EventLogModule } from '../event_log/eventLog.module';
 
 @Module({
-  imports: [LoggerModule, AuditLogModule, ConfigModule, RepositoryModule, CaseModule],
+  imports: [LoggerModule, AuditLogModule, ConfigModule, RepositoryModule, CaseModule, EventLogModule],
   providers: [AlertService, AlertStatisticsService],
   exports: [AlertService, AlertStatisticsService],
   controllers: [AlertController],
 })
-export class AlertModule {}
+export class AlertModule { }

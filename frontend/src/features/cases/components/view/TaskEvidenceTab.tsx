@@ -131,6 +131,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       error('Failed to upload evidence');
     } finally {
       setSaving(false);
+
     }
   };
 
@@ -355,6 +356,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   type="file"
                   multiple
                   hidden
+                  accept=".pdf,.docx,.xlsx,.png,.jpeg,.jpg"
                   ref={(el) => {
                     fileInputRefs.current[section.key] = el;
                   }}

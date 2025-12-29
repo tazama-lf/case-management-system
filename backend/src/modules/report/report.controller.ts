@@ -12,7 +12,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 @Controller('api/v1/reports')
 @UseGuards(TazamaAuthGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(private readonly reportsService: ReportsService) { }
 
   // --- Fraud Report Endpoints ---
 
@@ -20,42 +20,42 @@ export class ReportsController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Generate fraud investigation report', description: 'Create a new fraud investigation report for a case.' })
   @ApiResponse({ status: 201, description: 'Fraud report generated successfully.' })
-    @ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          caseId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4' },
-          investigatorInputs: { type: 'string', example: 'Initial investigation completed. Evidence collected.' },
-          supervisorRemarks: { type: 'string', example: 'Please review findings and recommendations.' },
-          userId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' },
-          tenantId: { type: 'string', example: 'tenant-001' },
-          role: { type: 'string', example: 'CMS_SUPERVISOR' }
-        },
-        required: ['caseId', 'investigatorInputs', 'supervisorRemarks']
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        caseId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4' },
+        investigatorInputs: { type: 'string', example: 'Initial investigation completed. Evidence collected.' },
+        supervisorRemarks: { type: 'string', example: 'Please review findings and recommendations.' },
+        userId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' },
+        tenantId: { type: 'string', example: 'tenant-001' },
+        role: { type: 'string', example: 'CMS_SUPERVISOR' }
       },
-      examples: {
-        default: {
-          summary: 'Sample request',
-          value: {
-            caseId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4',
-            investigatorInputs: 'Initial investigation completed. Evidence collected.',
-            supervisorRemarks: 'Please review findings and recommendations.',
-            userId: '1d2282cb-5733-4755-bf3f-677074fb9cd6',
-            tenantId: 'tenant-001',
-            role: 'CMS_SUPERVISOR'
-          }
+      required: ['caseId', 'investigatorInputs', 'supervisorRemarks']
+    },
+    examples: {
+      default: {
+        summary: 'Sample request',
+        value: {
+          caseId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4',
+          investigatorInputs: 'Initial investigation completed. Evidence collected.',
+          supervisorRemarks: 'Please review findings and recommendations.',
+          userId: '1d2282cb-5733-4755-bf3f-677074fb9cd6',
+          tenantId: 'tenant-001',
+          role: 'CMS_SUPERVISOR'
         }
       }
-    })
+    }
+  })
   async generateFraudReport(@Req() req: AuthenticatedRequest, @Body() body: any) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
     const claims = req.user.token.claims || [];
-  
+
     const role = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR'
       : claims.includes('CMS_INVESTIGATOR') ? 'CMS_INVESTIGATOR'
-      : null;
+        : null;
     if (!role) {
       throw new Error('User does not have a valid investigator or supervisor role');
     }
@@ -73,29 +73,29 @@ export class ReportsController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Edit fraud investigation report', description: 'Edit an existing fraud investigation report.' })
   @ApiResponse({ status: 200, description: 'Fraud report updated successfully.' })
-    @ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          keyFindings: { type: 'string', example: 'Fraud confirmed after review.' },
-          recommendations: { type: 'string', example: 'Escalate to compliance for further action.' },
-          supervisorRemarks: { type: 'string', example: 'Reviewed and ready for approval.' },
-          decisions: { type: 'string', example: 'Confirmed Fraud' }
-        },
-        required: ['keyFindings', 'recommendations', 'supervisorRemarks']
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        keyFindings: { type: 'string', example: 'Fraud confirmed after review.' },
+        recommendations: { type: 'string', example: 'Escalate to compliance for further action.' },
+        supervisorRemarks: { type: 'string', example: 'Reviewed and ready for approval.' },
+        decisions: { type: 'string', example: 'Confirmed Fraud' }
       },
-      examples: {
-        default: {
-          summary: 'Sample edit request',
-          value: {
-            keyFindings: 'Fraud confirmed after review.',
-            recommendations: 'Escalate to compliance for further action.',
-            supervisorRemarks: 'Reviewed and ready for approval.',
-            decisions: 'Confirmed Fraud'
-          }
+      required: ['keyFindings', 'recommendations', 'supervisorRemarks']
+    },
+    examples: {
+      default: {
+        summary: 'Sample edit request',
+        value: {
+          keyFindings: 'Fraud confirmed after review.',
+          recommendations: 'Escalate to compliance for further action.',
+          supervisorRemarks: 'Reviewed and ready for approval.',
+          decisions: 'Confirmed Fraud'
         }
       }
-    })
+    }
+  })
   async editFraudReport(@Req() req: AuthenticatedRequest, @Param('reportId') reportId: string, @Body() updates: any) {
     const userId = req.user.token.clientId;
     return await this.reportsService.editFraudReport(reportId, updates, userId);
@@ -105,29 +105,29 @@ export class ReportsController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Approve fraud investigation report', description: 'Approve a fraud investigation report and archive it.' })
   @ApiResponse({ status: 200, description: 'Fraud report approved and archived.' })
-    @ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          reportId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1' },
-          outcome: { type: 'string', enum: ['Confirmed Fraud', 'Refuted Fraud', 'Under Monitoring'], example: 'Confirmed Fraud' },
-          supervisor: { type: 'string', example: 'Jane Supervisor' },
-          supervisorUserId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' }
-        },
-        required: ['reportId', 'outcome', 'supervisor', 'supervisorUserId']
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        reportId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1' },
+        outcome: { type: 'string', enum: ['Confirmed Fraud', 'Refuted Fraud', 'Under Monitoring'], example: 'Confirmed Fraud' },
+        supervisor: { type: 'string', example: 'Jane Supervisor' },
+        supervisorUserId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' }
       },
-      examples: {
-        default: {
-          summary: 'Sample approve request',
-          value: {
-            reportId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1',
-            outcome: 'Confirmed Fraud',
-            supervisor: 'Jane Supervisor',
-            supervisorUserId: '1d2282cb-5733-4755-bf3f-677074fb9cd6'
-          }
+      required: ['reportId', 'outcome', 'supervisor', 'supervisorUserId']
+    },
+    examples: {
+      default: {
+        summary: 'Sample approve request',
+        value: {
+          reportId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1',
+          outcome: 'Confirmed Fraud',
+          supervisor: 'Jane Supervisor',
+          supervisorUserId: '1d2282cb-5733-4755-bf3f-677074fb9cd6'
         }
       }
-    })
+    }
+  })
   async approveFraudReport(@Body() body: any) {
     return await this.reportsService.approveFraudReport(
       body.reportId,
@@ -343,6 +343,60 @@ export class ReportsController {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   getAuditLogs(@Query('dateRange') dateRange?: string) {
     return this.reportsService.getAuditLogs(dateRange);
+  }
+
+  @Get('event-logs')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get event logs report',
+    description: 'Retrieve event trail data including user actions, system events, and compliance information',
+  })
+  @ApiQuery({
+    name: 'dateRange',
+    required: false,
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    description: 'Time period for the report data',
+    example: 'last30',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Event logs report data retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        stats: {
+          type: 'object',
+          properties: {
+            totalLogs: { type: 'number', example: 500 },
+            caseActions: { type: 'number', example: 150 },
+            userSessions: { type: 'number', example: 75 },
+            systemWarnings: { type: 'number', example: 12 },
+          },
+        },
+        eventLogs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              event_log_id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+              user_id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174001' },
+              operation: { type: 'string', example: 'UPDATE' },
+              entity_name: { type: 'string', example: 'Case' },
+              action_performed: { type: 'string', example: 'Case status updated' },
+              outcome: { type: 'string', example: 'SUCCESS' },
+              performed_at: { type: 'string', example: '10/22/2025, 02:30:45 PM' },
+              type: { type: 'string', example: 'Success' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  getEventLogs(@Query('dateRange') dateRange?: string) {
+    return this.reportsService.getEventLogs(dateRange);
   }
 
   @Get('case-ageing')

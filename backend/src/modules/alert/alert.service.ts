@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
+import { EventLogService } from '../event_log/eventLog.service';
 
 @Injectable()
 export class AlertService {
@@ -17,6 +18,7 @@ export class AlertService {
         private readonly configService: ConfigService,
         private readonly alertRepository: AlertRepository,
         private readonly caseCreationService: CaseCreationApprovalService,
+        private readonly eventLogService: EventLogService,
     ) { }
 
     async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
@@ -57,6 +59,15 @@ export class AlertService {
                 actionPerformed: `${alertId} - Triaged by user ${userId}`,
                 outcome: `Alert ${alertId} updated successfully`,
             });
+
+            await this.eventLogService.logEventAction({
+                userId,
+                operation: 'ALERT_UPDATED',
+                entityName: AlertService.name,
+                actionPerformed: `${alertId} - Triaged by user ${userId}`,
+                outcome: `Alert ${alertId} updated successfully`,
+            });
+
 
             this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
             return updatedAlert;

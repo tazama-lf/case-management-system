@@ -19,6 +19,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
+import { EventLogService } from 'src/modules/event_log/eventLog.service';
 
 export interface TaskWithCase extends Task {
   case: {
@@ -41,7 +42,8 @@ export class TaskService {
     private readonly flowableService: FlowableService,
     private readonly taskBridgeService: TaskBridgeService,
     private readonly authService: AuthService,
-  ) {}
+    private readonly eventLogService: EventLogService,
+  ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     return this.taskBridgeService.createTask(taskDTO, userId);
@@ -148,6 +150,15 @@ export class TaskService {
       this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
 
       this.auditLogService.logAction({
+        userId,
+        actionPerformed: `Updated task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'updateTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      this.eventLogService.logEventAction({
         userId,
         actionPerformed: `Updated task ${taskId}`,
         entityName: TaskService.name,

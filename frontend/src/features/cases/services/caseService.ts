@@ -492,6 +492,50 @@ export class CaseService {
     }
   }
 
+  async getCaseHistoryByEvent(caseId: number): Promise<AuditLogEntry[]> {
+    try {
+      const response = await apiClient.get<{
+        stats: unknown;
+        eventLogs: AuditLogEntry[];
+      }>(
+        `/api/v1/reports/event-logs`
+      );
+
+      // Get all tasks for this case to filter task-related audit logs
+      const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
+      const taskIds = new Set(tasks.map(task => task.task_id));
+      const logs = response.eventLogs ?? [];
+
+      // Filter audit logs for this specific case
+      return logs.filter((log) => {
+        const actionLower = log.action_performed?.toLowerCase() || '';
+
+        // Check if log mentions the case ID
+        if (actionLower.includes(caseId.toString().toLowerCase())) {
+          return true;
+        }
+
+        // Check if log mentions any task IDs associated with this case
+        for (const taskId of taskIds) {
+          if (actionLower.includes(taskId.toString().toLowerCase())) {
+            return true;
+          }
+        }
+
+        // Check if operation is related to case or task management
+        const operationLower = log.operation.toLowerCase();
+        if (operationLower.includes('case') && actionLower.includes(String(caseId))) {
+          return true;
+        }
+
+        return false;
+      });
+    } catch (error) {
+      console.error('Failed to fetch case history:', error);
+      return [];
+    }
+  }
+
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;

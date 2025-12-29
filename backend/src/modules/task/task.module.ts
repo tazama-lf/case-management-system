@@ -10,6 +10,7 @@ import { NotificationModule } from 'src/modules/notification/notification.module
 import { FlowableModule } from '../flowable/flowable.module';
 import { RepositoryModule } from '../repository/repository.module';
 import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
+import { EventLogModule } from '../event_log/eventLog.module';
 
 @Module({
 	imports: [
@@ -20,7 +21,8 @@ import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 		NotificationModule,
 		FlowableModule,
 		RepositoryModule,
-		TaskBridgeModule
+		TaskBridgeModule,
+		EventLogModule,
 	],
 	providers: [TaskService, TaskLifecycleService],
 	exports: [TaskService],

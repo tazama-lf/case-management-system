@@ -24,6 +24,7 @@ import {
 } from './dto';
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
+import { EventLogService } from '../event_log/eventLog.service';
 
 @Injectable()
 export class CaseService {
@@ -41,6 +42,7 @@ export class CaseService {
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
+    private readonly eventLogService: EventLogService,
   ) { }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
@@ -93,6 +95,14 @@ export class CaseService {
         await this.commentService.addComment(createCommentDto, userId);
 
         await this.auditLogService.logAction({
+          userId,
+          operation: 'suspendCase',
+          entityName: CaseService.name,
+          actionPerformed: `Suspend case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        await this.eventLogService.logEventAction({
           userId,
           operation: 'suspendCase',
           entityName: CaseService.name,
@@ -225,6 +235,14 @@ export class CaseService {
           outcome: Outcome.SUCCESS,
         });
 
+        await this.eventLogService.logEventAction({
+          userId,
+          operation: 'resumeCase',
+          entityName: CaseService.name,
+          actionPerformed: `Resume case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
         return { case: updatedCase, task: updatedTask };
       });
 
@@ -300,6 +318,14 @@ export class CaseService {
         this.flowableService.handleCaseAbandoned({ caseId, reason });
 
         await this.auditLogService.logAction({
+          userId,
+          operation: 'abandonCase',
+          entityName: CaseService.name,
+          actionPerformed: `Abandon case ${caseId}`,
+          outcome: Outcome.SUCCESS,
+        });
+
+        await this.eventLogService.logEventAction({
           userId,
           operation: 'abandonCase',
           entityName: CaseService.name,
@@ -536,6 +562,14 @@ export class CaseService {
       }
 
       await this.auditLogService.logAction({
+        userId,
+        operation: 'completeCaseCreation',
+        entityName: CaseService.name,
+        actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         operation: 'completeCaseCreation',
         entityName: CaseService.name,
