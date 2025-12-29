@@ -7,6 +7,8 @@ import TaskLogTab from './view/TaskLogTab';
 import CommentHistoryTab from './view/CommentHistoryTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 import CaseHistoryTab from './view/CaseHistoryTab';
+import { caseService, type CaseWithTasksDto } from '../services/caseService';
+import { transformBackendCaseToUI } from './casesTable.utils';
 
 type ViewTabKey = 'details' | 'tasks' | 'history' | 'comments';
 
@@ -49,6 +51,14 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
+  const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(null);
+
+  // Initialize local case data when row changes
+  React.useEffect(() => {
+    if (row) {
+      setLocalCaseData(row);
+    }
+  }, [row]);
 
   React.useEffect(() => {
     if (open) {
@@ -57,7 +67,21 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     }
   }, [open]);
 
-  if (!open || !row) return null;
+  // Function to refresh case data
+  const refreshCaseData = React.useCallback(async () => {
+    if (!row?.id) return;
+    try {
+      const caseDetails = await caseService.getCaseDetails(row.id);
+      const transformedCase = transformBackendCaseToUI(caseDetails as unknown as CaseWithTasksDto);
+      setLocalCaseData(transformedCase);
+    } catch (error) {
+      console.error('Failed to refresh case data:', error);
+    }
+  }, [row?.id]);
+
+  if (!open || !localCaseData) return null;
+
+  const displayData = localCaseData;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
@@ -103,7 +127,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             <>
               {tab === 'details' && (
                 <CaseDetailsTab
-                  row={row}
+                  row={displayData}
                   canManageSupervisorActions={canManageSupervisorActions}
                   onComplete={onComplete}
                   onCloseCase={onCloseCase}
@@ -120,21 +144,27 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               )}
               {tab === 'tasks' && (
                 <TaskLogTab
-                  caseId={row.id}
-                  alertId={row.alertId}
-                  onRefreshCases={onRefreshCases}
+                  caseId={displayData.id}
+                  alertId={displayData.alertId}
+                  onRefreshCases={async () => {
+                    // Refresh both the main case list and the local case data
+                    await Promise.all([
+                      onRefreshCases?.(),
+                      refreshCaseData()
+                    ]);
+                  }}
                   canManageSupervisorActions={canManageSupervisorActions}
-                  caseData={row}
-                  caseStatus={row.status}
+                  caseData={displayData}
+                  caseStatus={displayData.status}
                   onApproveCase={onApproveCase}
                   onApproveCaseCreation={onApproveCaseCreation}
                   onRejectCaseCreation={onRejectCaseCreation}
                   onAbandonCase={onAbandonCase}
                 />
               )}
-              {tab === 'comments' && <CommentHistoryTab caseId={row.id} />}
+              {tab === 'comments' && <CommentHistoryTab caseId={displayData.id} />}
               {tab === 'history' && (
-                <CaseHistoryTab caseId={row.id} row={row} />
+                <CaseHistoryTab caseId={displayData.id} row={displayData} />
               )}
             </>
           )}

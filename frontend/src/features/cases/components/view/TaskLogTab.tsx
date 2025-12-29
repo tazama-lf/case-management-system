@@ -590,6 +590,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
                 try {
                   const fetchedTasks = await taskService.getTasksByCaseId(caseId);
                   setTasks(fetchedTasks);
+                  
+                  // Also refresh the case data to update the Close Case button visibility
+                  if (onRefreshCases) {
+                    await onRefreshCases();
+                  }
                 } catch (err) {
                   console.error('Failed to refresh tasks:', err);
                 }
