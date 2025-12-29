@@ -23,7 +23,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             <div className="mt-2 text-xs text-gray-500">
               Case ID: {caseId}
             </div>
-          )}
+          )}w
           {transactionId && (
             <div className="mt-1 text-xs text-gray-500">
               Transaction ID: {transactionId}
