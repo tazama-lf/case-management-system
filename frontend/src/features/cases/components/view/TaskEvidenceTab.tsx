@@ -356,7 +356,11 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   type="file"
                   multiple
                   hidden
-                  accept=".pdf,.docx,.xlsx,.png,.jpeg,.jpg"
+                  accept={
+                    section.key === 'kyc-edd'
+                      ? '.pdf,.docx,.xlsx,.png,.jpeg,.jpg'
+                      : '*'
+                  }
                   ref={(el) => {
                     fileInputRefs.current[section.key] = el;
                   }}
