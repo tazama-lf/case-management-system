@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Req, UseGuards, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { ManualAlertUpdateDTO } from '../alert/dto/Alert.dto';
+import { ManualAlertUpdateDTO } from '../alert/dto';
 import { HealthCheckResponseDTO, AlertTriageResponseDTO, AlertActionHistoryDTO, AlertDetailsResponseDTO } from './dto/triage.dto';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
