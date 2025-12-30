@@ -1,15 +1,51 @@
 import React from 'react';
-import SimpleMDE from 'react-simplemde-editor';
 import 'easymde/dist/easymde.min.css';
-import { marked } from 'marked';
 import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { commentService, type TaskComment } from '../../services/commentService';
 import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import {BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect} from '@mdxeditor/editor';
+import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+
+// Add inline styles for list support
+const editorStyle = `
+  .mdx-editor-container [contenteditable] ul {
+    list-style-type: disc !important;
+    padding-left: 2rem !important;
+    margin: 1rem 0 !important;
+  }
+  .mdx-editor-container [contenteditable] ol {
+    list-style-type: decimal !important;
+    padding-left: 2rem !important;
+    margin: 1rem 0 !important;
+  }
+  .mdx-editor-container [contenteditable] li {
+    display: list-item !important;
+    margin: 0.25rem 0 !important;
+  }
+  
+  /* Ensure link dialog appears above modal */
+  [class*="linkDialog"],
+  [class*="popupContainer"],
+  [class*="_linkDialog"],
+  [class*="_popupContainer"],
+  [role="dialog"],
+  [role="alertdialog"] {
+    z-index: 9999 !important;
+  }
+  
+  /* Ensure links open properly */
+  .mdx-editor-container a {
+    color: #2563eb;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .mdx-editor-container a:hover {
+    color: #1d4ed8;
+  }
+`;
 
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
@@ -25,6 +61,54 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
+
+  // Handle link clicks to ensure external links work properly
+  React.useEffect(() => {
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
+        e.preventDefault();
+        const href = (target as HTMLAnchorElement).href;
+
+        // Extract the actual URL from the href
+        let url = href;
+
+        // If the URL is relative (doesn't have protocol), extract the path and add https://
+        if (!href.match(/^https?:\/\//i) && !href.match(/^mailto:/i)) {
+          // Extract the relative path part (e.g., /cases/google.com -> google.com)
+          const match = href.match(/\/([^/]+)$/);
+          if (match) {
+            url = 'https://' + match[1];
+          }
+        }
+
+        // Open in new tab
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    document.addEventListener('click', handleLinkClick);
+    return () => document.removeEventListener('click', handleLinkClick);
+  }, []);
+
+  // Transform markdown to ensure all links have proper protocols
+  const transformMarkdownLinks = (markdown: string): string => {
+    // Match markdown links: [text](url)
+    return markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+      // If URL doesn't start with protocol or is not a mailto link
+      if (!url.match(/^(https?:\/\/|mailto:|#)/i)) {
+        // Add https:// prefix
+        return `[${text}](https://${url})`;
+      }
+      return match;
+    });
+  };
+
+  const handleNotesChange = (value: string) => {
+    // Transform links to ensure they have proper protocols
+    const transformedValue = transformMarkdownLinks(value);
+    setNotes(transformedValue);
+  };
 
   React.useEffect(() => {
     const loadComments = async () => {
@@ -56,7 +140,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');
-      
+
       // Trigger refresh in investigation summary
       if (onNotesUpdate) {
         onNotesUpdate();
@@ -71,6 +155,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   return (
     <div className="space-y-6">
+      <style>{editorStyle}</style>
       <div className="text-sm font-semibold text-gray-700">
         Investigation Notes
       </div>
@@ -101,11 +186,20 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           )}
 
           {/* MDX Editor */}
-            <div className="mdx-editor-container">
-              <MDXEditor
-                markdown={notes}
-                onChange={setNotes}
-                plugins={[headingsPlugin(), listsPlugin(), linkDialogPlugin(), linkPlugin(), quotePlugin(), markdownShortcutPlugin(), toolbarPlugin({
+          <div className="mdx-editor-container min-h-[250px]">
+            <MDXEditor
+              markdown={notes}
+              onChange={handleNotesChange}
+              className="mdx-editor"
+              contentEditableClassName="prose"
+              plugins={[
+                headingsPlugin(),
+                listsPlugin(),
+                linkDialogPlugin(),
+                linkPlugin(),
+                quotePlugin(),
+                markdownShortcutPlugin(),
+                toolbarPlugin({
                   toolbarClassName: 'editor-toolbar ',
                   toolbarContents: () => (
                     <>
@@ -116,7 +210,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                     </>
                   )
                 })]}
-              />
+            />
           </div>
 
           {/* Save Button */}

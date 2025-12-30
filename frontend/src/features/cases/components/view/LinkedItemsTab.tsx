@@ -148,7 +148,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
   }
 
   return (
-    <div className="py-4 space-y-8">
+    <div className="py-4 space-y-8 min-h-[200px]">
       {/* <h2 className="text-lg font-semibold text-gray-900">Related Items</h2> */}
 
       {/* Related Cases Section */}

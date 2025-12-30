@@ -318,9 +318,9 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         }
 
         try {
-          const auditLogs = await caseService.getCaseHistory(caseId);
+          const eventLogs = await caseService.getCaseHistoryByEvent(caseId);
 
-          auditLogs.forEach((log) => {
+          eventLogs.forEach((log) => {
             let action = formatOperation(log.operation);
             let details = log.action_performed || 'Action performed';
 
@@ -415,6 +415,10 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     }
   };
 
+  const sortedHistory = [...history].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -424,14 +428,13 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   }
 
   return (
+
     <div className="py-4">
       {/* Timeline Header */}
       <h3 className="text-base font-semibold text-gray-900 mb-6">Case Timeline</h3>
-
-      {/* Timeline Events */}
       <div className="space-y-6">
-        {history.length > 0 ? (
-          history.map((event) => (
+        {sortedHistory.length > 0 ? (
+          sortedHistory.map((event) => (
             <div key={event.id} className="flex gap-4">
               {/* Icon */}
               <div className="flex-shrink-0">
@@ -468,9 +471,61 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               No history events available for this case
             </p>
           </div>
-        )}
-      </div>
-    </div>
+        )
+        }
+      </div >
+    </div >
+
+
+
+
+    // <div className="py-4">
+    //   {/* Timeline Header */}
+    //   <h3 className="text-base font-semibold text-gray-900 mb-6">Case Timeline</h3>
+
+    //   {/* Timeline Events */}
+    //   <div className="space-y-6">
+    //     {history.length > 0 ? (
+    //       history.map((event) => (
+    //         <div key={event.id} className="flex gap-4">
+    //           {/* Icon */}
+    //           <div className="flex-shrink-0">
+    //             {getEventIcon(event.outcome, event.action)}
+    //           </div>
+
+    //           {/* Content */}
+    //           <div className="flex-1 min-w-0">
+    //             <h4 className="text-sm font-semibold text-gray-900">
+    //               {event.action}
+    //             </h4>
+    //             <p className="text-xs text-gray-500 mt-0.5">
+    //               {formatTimestamp(event.timestamp)}
+    //             </p>
+    //             <p className="text-sm text-gray-700 mt-1">
+    //               {event.details}
+    //             </p>
+    //             {event.userId && investigators[event.userId] && (
+    //               <p className="text-xs text-gray-600 mt-1">
+    //                 {event.type === 'task' && event.action.includes('assigned')
+    //                   ? `Assigned to ${investigators[event.userId]}`
+    //                   : event.performedBy === 'System'
+    //                     ? `Related to ${investigators[event.userId]}`
+    //                     : `By ${investigators[event.userId]}`}
+    //               </p>
+    //             )}
+    //           </div>
+    //         </div>
+    //       ))
+    //     ) : (
+    //       <div className="text-center py-12">
+    //         <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+    //         <p className="text-sm text-gray-600">
+    //           No history events available for this case
+    //         </p>
+    //       </div>
+    //     )}
+    //   </div>
+    // </div>
   );
 };
 
