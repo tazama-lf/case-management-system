@@ -1,24 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-  Query,
-  BadRequestException,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Req, UseGuards, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
 import { TriageService } from './triage.service';
-import { ManualAlertUpdateDTO } from '../alert/dto/alert.dto';
+import { ManualAlertUpdateDTO } from '../alert/dto/Alert.dto';
 import { HealthCheckResponseDTO, AlertTriageResponseDTO, AlertActionHistoryDTO, AlertDetailsResponseDTO } from './dto/triage.dto';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')

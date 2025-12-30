@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Alert, Priority, Prisma } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
+import { extractReferenceId } from './utils/extractReferenceId';
+import { TransactionDTO } from 'src/dtos/Transaction.dto';
+import { JsonValue } from './utils/types/JsonValue';
 
 @Injectable()
 export class AlertRepository {
@@ -34,6 +37,37 @@ export class AlertRepository {
       return createdAlert;
     } catch (error) {
       throw new Error(`Failed to create alert: ${error.message}`);
+    }
+  }
+
+  async createTransaction(tenantId: string, transactionData: TransactionDTO) {
+    try {
+      if (!transactionData || typeof transactionData !== 'object') {
+        throw new Error('Invalid transaction data');
+      }
+      const referenceIdData = await this.getReferenceId(transactionData!.TxTp);
+      const referenceId = extractReferenceId(transactionData as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+      if (!referenceId) {
+        throw new Error('ReferenceId not found in transaction data');
+      }
+
+      if (!referenceIdData) {
+        throw new Error('ReferenceId not found in transaction data');
+      }
+
+      const transactionRecord = await this.prisma.transactionData.create({
+        data: {
+          tenantId,
+          endToEndId: referenceId,
+          transactionData: JSON.parse(JSON.stringify(transactionData)),
+        },
+      });
+      if (!transactionRecord) {
+        throw new Error('Failed to create transaction record');
+      }
+      return transactionRecord;
+    } catch (error) {
+      throw new Error(`Failed to create transaction record: ${error.message}`);
     }
   }
 
@@ -130,6 +164,27 @@ export class AlertRepository {
       return totalCount;
     } catch (error) {
       throw new Error(`Failed to count alerts: ${error.message}`);
+    }
+  }
+
+  async getReferenceId(txTp: string) {
+    try {
+      const referenceId = await this.prisma.referenceId.findUnique({
+        where: {
+          txTp,
+        },
+      });
+
+      if (!referenceId) {
+        throw new NotFoundException(`ReferenceId with TxTp ${txTp} not found`);
+      }
+
+      return referenceId;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new Error(`Failed to get ReferenceId with TxTp ${txTp}: ${error.message}`);
     }
   }
 }

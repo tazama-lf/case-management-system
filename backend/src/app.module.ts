@@ -32,6 +32,7 @@ import { WorkqueueModule } from './modules/workqueue/workqueue.module';
 import { CouchdbModule } from './modules/couchdb/couchdb.module';
 import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { EvidenceModule } from './modules/evidence/evidence.module';
     NatsModule,
     AuditLogModule,
     ConfigManagementModule,
+    AdminModule,
     AlertModule,
     TriageModule,
     CommentModule,
@@ -66,7 +68,7 @@ import { EvidenceModule } from './modules/evidence/evidence.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
-    TazamaDwhModule
+    TazamaDwhModule,
   ],
   providers: [
     PrismaService,
@@ -77,4 +79,4 @@ import { EvidenceModule } from './modules/evidence/evidence.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
