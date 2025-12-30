@@ -6,7 +6,7 @@ import {
 import { commentService, type TaskComment } from '../../services/commentService';
 import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import {BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect} from '@mdxeditor/editor';
+import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
 // Add inline styles for list support
@@ -69,10 +69,10 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
         e.preventDefault();
         const href = (target as HTMLAnchorElement).href;
-        
+
         // Extract the actual URL from the href
         let url = href;
-        
+
         // If the URL is relative (doesn't have protocol), extract the path and add https://
         if (!href.match(/^https?:\/\//i) && !href.match(/^mailto:/i)) {
           // Extract the relative path part (e.g., /cases/google.com -> google.com)
@@ -81,7 +81,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             url = 'https://' + match[1];
           }
         }
-        
+
         // Open in new tab
         window.open(url, '_blank', 'noopener,noreferrer');
       }
@@ -140,7 +140,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');
-      
+
       // Trigger refresh in investigation summary
       if (onNotesUpdate) {
         onNotesUpdate();
@@ -186,23 +186,23 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           )}
 
           {/* MDX Editor */}
-            <div className="mdx-editor-container">
-              <MDXEditor
-                markdown={notes}
-                onChange={handleNotesChange}
-                className="mdx-editor"
-                contentEditableClassName="prose"
-                plugins={[
-                  headingsPlugin(), 
-                  listsPlugin(), 
-                  linkDialogPlugin(), 
-                  linkPlugin(), 
-                  quotePlugin(), 
-                  markdownShortcutPlugin(), 
-                  toolbarPlugin({
-                    toolbarClassName: 'editor-toolbar ',
-                    toolbarContents: () => (
-                      <>
+          <div className="mdx-editor-container min-h-[250px]">
+            <MDXEditor
+              markdown={notes}
+              onChange={handleNotesChange}
+              className="mdx-editor"
+              contentEditableClassName="prose"
+              plugins={[
+                headingsPlugin(),
+                listsPlugin(),
+                linkDialogPlugin(),
+                linkPlugin(),
+                quotePlugin(),
+                markdownShortcutPlugin(),
+                toolbarPlugin({
+                  toolbarClassName: 'editor-toolbar ',
+                  toolbarContents: () => (
+                    <>
                       <UndoRedo />
                       <BoldItalicUnderlineToggles />
                       <ListsToggle />
@@ -210,7 +210,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                     </>
                   )
                 })]}
-              />
+            />
           </div>
 
           {/* Save Button */}
