@@ -53,34 +53,44 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
 
   return (
     <PageContainer
-      subtitle="Manage work queues for different user groups"
       className={className}
     >
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search work queues..."
-          />
-        </div>
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={handleCreateQueue}
-            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Create Queue
-          </button>
+
+      <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl shadow-sm border border-slate-200 p-6 mt-8 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="max-w-md">
+            <h4 className="text-2xl font-bold text-gray-900">Work Queues</h4>
+            <p className="text-gray-600 mt-1">
+              Manage work queues for different user groups
+            </p>
+          </div>
+
+          {/* RIGHT SIDE */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search work queues..."
+            />
+
+            <button
+              onClick={handleCreateQueue}
+              className="h-10 min-w-[160px] inline-flex items-center justify-center gap-2 px-4 rounded-xl text-white font-medium bg-indigo-600 hover:bg-indigo-700"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create New Queue
+            </button>
+          </div>
         </div>
       </div>
-      
+
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <>
+        <div className="space-y-6">
           <ResultsSummary
             pagination={{
               currentPage: pagination.currentPage,
@@ -93,20 +103,24 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             sort={{ column: 'name', direction: 'asc' }}
             itemType="work queues"
           />
-          <AdminWorkQueuesTable
-            queues={filteredQueues}
-            pagination={{
-              ...pagination,
-              onPageChange
-            }}
-          />
-        </>
+
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <AdminWorkQueuesTable
+              queues={filteredQueues}
+              pagination={{
+                ...pagination,
+                onPageChange
+              }}
+            />
+          </div>
+        </div>
       )}
-      
+
       <CreateQueueModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={refetch} 
+        onCreate={refetch}
       />
     </PageContainer>
   );

@@ -17,6 +17,9 @@ const CasesDashboard = lazy(
 const AdminDashboard = lazy(
   () => import('@/features/admin/pages/AdminDashboard'),
 );
+const ReferenceIdDashboard = lazy(
+  () => import('@/features/admin/pages/ReferenceIdDashboard'),
+);
 const WorkQueueDashboard = lazy(
   () => import('@/features/workqueue/pages/WorkQueueDashboard'),
 );
@@ -169,9 +172,21 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: (
-          <ProtectedRoute requireBackendAccess>
+          <ProtectedRoute requireBackendAccess
+            requiredRoles={['CMS_ADMIN']}>
             <Suspense fallback={<PageLoadingFallback />}>
               <AdminDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reference_id',
+        element: (
+          <ProtectedRoute requireBackendAccess
+            requiredRoles={['CMS_ADMIN']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <ReferenceIdDashboard />
             </Suspense>
           </ProtectedRoute>
         ),

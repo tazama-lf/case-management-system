@@ -1,17 +1,15 @@
 import React from 'react';
 import { PageContainer } from '../../../shared/components/ui';
-import { WorkQueueManagement } from '..';
+import { ReferenceDashboardContent } from '..';
 
 const AdminDashboard: React.FC = () => {
 
 
   return (
     <PageContainer
-      title="Admin Dashboard"
+      title="Reference ID Dashboard"
     >
-      <div className="mt-1">
-        <WorkQueueManagement />
-      </div>
+      <ReferenceDashboardContent />
     </PageContainer>
   );
 };
