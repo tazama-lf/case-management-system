@@ -83,6 +83,21 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     fileName: string;
   } | null>(null);
   const { success, error } = useToast();
+  const allowedFileTypes: Record<string, string[]> = {
+    'sanctions': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'adverse-media': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'kyc-edd': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'sar-str': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'others': ['mp3', 'css', 'json', 'pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg'],
+  };
+
+  const maxFilesPerSection: Record<string, number> = {
+    'sanctions': 5,
+    'adverse-media': 5,
+    'kyc-edd': 5,
+    'sar-str': 5,
+    'others': 10,
+  };
 
   const UploadEvidence = async () => {
     if (!taskId) return;
@@ -127,8 +142,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       success('Evidence uploaded successfully');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      alert('Failed to upload evidence.');
-      error('Failed to upload evidence');
+      error('Failed to upload evidence.');
     } finally {
       setSaving(false);
 
@@ -272,29 +286,66 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   };
 
+  // const handleFilesSelected = (sectionKey: string, fileList: FileList | null) => {
+  //   if (!fileList || fileList.length === 0) return;
+
+  //   setSectionFiles((prev) => {
+  //     const existing = prev[sectionKey] ?? [];
+
+
+  //     const sanitizedFiles = Array.from(fileList).map(file => {
+  //       const sanitizedFile = new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), {
+  //         type: file.type,
+  //       });
+  //       return sanitizedFile;
+  //     });
+
+  //     const nextFiles = [...existing, ...sanitizedFiles];
+  //     return { ...prev, [sectionKey]: nextFiles };
+  //   });
+  //   // setSectionFiles((prev) => {
+  //   //   const existing = prev[sectionKey] ?? [];
+  //   //   const nextFiles = [...existing, ...Array.from(fileList)];
+  //   //   return { ...prev, [sectionKey]: nextFiles };
+  //   // });
+  // };
+
   const handleFilesSelected = (sectionKey: string, fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
 
-    setSectionFiles((prev) => {
-      const existing = prev[sectionKey] ?? [];
+    const existingPending = sectionFiles[sectionKey] ?? [];
+    const existingUploaded = uploadedEvidence[sectionKey] ?? [];
+    const maxFiles = maxFilesPerSection[sectionKey] || 5;
 
+    // Total files if we add these new ones
+    if (existingPending.length + existingUploaded.length + fileList.length > maxFiles) {
+      error(`Cannot attach files. Maximum ${maxFiles} files allowed for section ${sectionKey}`);
+      return; // Reject new files entirely
+    }
 
-      const sanitizedFiles = Array.from(fileList).map(file => {
-        const sanitizedFile = new File([file], file.name.replace(/[^\w\-() ]+/g, '_'), {
-          type: file.type,
-        });
-        return sanitizedFile;
+    const sanitizedFiles: File[] = Array.from(fileList)
+      .map(file => new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), { type: file.type }))
+      .filter(file => {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        if (!allowedFileTypes[sectionKey]?.includes(ext)) {
+          error(`File type not allowed for ${sectionKey}: ${file.name}`);
+          return false;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          error(`File exceeds 50MB: ${file.name}`);
+          return false;
+        }
+        return true;
       });
 
-      const nextFiles = [...existing, ...sanitizedFiles];
-      return { ...prev, [sectionKey]: nextFiles };
-    });
-    // setSectionFiles((prev) => {
-    //   const existing = prev[sectionKey] ?? [];
-    //   const nextFiles = [...existing, ...Array.from(fileList)];
-    //   return { ...prev, [sectionKey]: nextFiles };
-    // });
+    if (sanitizedFiles.length === 0) return; // nothing to add
+
+    setSectionFiles(prev => ({
+      ...prev,
+      [sectionKey]: [...existingPending, ...sanitizedFiles],
+    }));
   };
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, sectionKey: string) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -371,8 +422,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   multiple
                   hidden
                   accept={
-                    section.key === 'kyc-edd'
-                      ? '.pdf,.docx,.xlsx,.png,.jpeg,.jpg'
+                    section.key in allowedFileTypes
+                      ? allowedFileTypes[section.key].map(ext => `.${ext}`).join(',')
                       : '*'
                   }
                   ref={(el) => {
