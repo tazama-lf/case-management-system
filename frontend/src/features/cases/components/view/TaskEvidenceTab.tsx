@@ -277,9 +277,23 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
     setSectionFiles((prev) => {
       const existing = prev[sectionKey] ?? [];
-      const nextFiles = [...existing, ...Array.from(fileList)];
+
+
+      const sanitizedFiles = Array.from(fileList).map(file => {
+        const sanitizedFile = new File([file], file.name.replace(/[^\w\-() ]+/g, '_'), {
+          type: file.type,
+        });
+        return sanitizedFile;
+      });
+
+      const nextFiles = [...existing, ...sanitizedFiles];
       return { ...prev, [sectionKey]: nextFiles };
     });
+    // setSectionFiles((prev) => {
+    //   const existing = prev[sectionKey] ?? [];
+    //   const nextFiles = [...existing, ...Array.from(fileList)];
+    //   return { ...prev, [sectionKey]: nextFiles };
+    // });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, sectionKey: string) => {
