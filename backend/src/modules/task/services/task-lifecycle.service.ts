@@ -225,6 +225,15 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    await this.eventLogSerice.logEventAction({
+      userId: assignedUserId,
+      actionPerformed: `Task ${taskId} reassigned to investigator ${assignedUserId}`,
+      entityName: 'TaskService',
+      operation: 'retrieveTask',
+      outcome: 'SUCCESS',
+      performedAt: new Date(),
+    });
+
     return result.updatedTask;
   }
 

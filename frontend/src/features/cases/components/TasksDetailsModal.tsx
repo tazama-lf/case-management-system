@@ -200,7 +200,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
-                  taskId={tasks.filter(t => t.task_id === selectedTask?.id)[0]?.task_id}
+                  task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
                   // onSaveRequest={(uploadFn) => {
                   //   uploadEvidenceRef.current = uploadFn;
                   // }}

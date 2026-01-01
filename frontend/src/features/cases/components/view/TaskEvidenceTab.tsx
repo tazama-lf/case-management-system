@@ -12,6 +12,8 @@ import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { useToast } from '../../../../shared/providers/ToastProvider';
+import type { TaskForSupervisor } from '../../services/taskService';
+import { TaskStatus } from '../../services/taskService';
 
 const evidenceSections: Array<{
   key: string;
@@ -56,14 +58,14 @@ const evidenceSections: Array<{
   ];
 
 interface TaskEvidenceTabProps {
-  taskId: number;
+  task: TaskForSupervisor;
   caseId?: string;
   onUploadComplete?: () => void;
   onSaveRequest?: (uploadFn: () => Promise<void>) => void;
 }
 
 const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
-  taskId,
+  task,
   onUploadComplete,
   onSaveRequest,
 }) => {
@@ -74,6 +76,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+  const taskId = task?.task_id;
+  const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
@@ -83,6 +87,21 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     fileName: string;
   } | null>(null);
   const { success, error } = useToast();
+  const allowedFileTypes: Record<string, string[]> = {
+    'sanctions': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'adverse-media': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'kyc-edd': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'sar-str': ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'],
+    'others': ['mp3', 'css', 'json', 'pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg'],
+  };
+
+  const maxFilesPerSection: Record<string, number> = {
+    'sanctions': 5,
+    'adverse-media': 5,
+    'kyc-edd': 5,
+    'sar-str': 5,
+    'others': 10,
+  };
 
   const UploadEvidence = async () => {
     if (!taskId) return;
@@ -127,8 +146,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       success('Evidence uploaded successfully');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      alert('Failed to upload evidence.');
-      error('Failed to upload evidence');
+      error('Failed to upload evidence.');
     } finally {
       setSaving(false);
 
@@ -272,15 +290,66 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   };
 
+  // const handleFilesSelected = (sectionKey: string, fileList: FileList | null) => {
+  //   if (!fileList || fileList.length === 0) return;
+
+  //   setSectionFiles((prev) => {
+  //     const existing = prev[sectionKey] ?? [];
+
+
+  //     const sanitizedFiles = Array.from(fileList).map(file => {
+  //       const sanitizedFile = new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), {
+  //         type: file.type,
+  //       });
+  //       return sanitizedFile;
+  //     });
+
+  //     const nextFiles = [...existing, ...sanitizedFiles];
+  //     return { ...prev, [sectionKey]: nextFiles };
+  //   });
+  //   // setSectionFiles((prev) => {
+  //   //   const existing = prev[sectionKey] ?? [];
+  //   //   const nextFiles = [...existing, ...Array.from(fileList)];
+  //   //   return { ...prev, [sectionKey]: nextFiles };
+  //   // });
+  // };
+
   const handleFilesSelected = (sectionKey: string, fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
 
-    setSectionFiles((prev) => {
-      const existing = prev[sectionKey] ?? [];
-      const nextFiles = [...existing, ...Array.from(fileList)];
-      return { ...prev, [sectionKey]: nextFiles };
-    });
+    const existingPending = sectionFiles[sectionKey] ?? [];
+    const existingUploaded = uploadedEvidence[sectionKey] ?? [];
+    const maxFiles = maxFilesPerSection[sectionKey] || 5;
+
+    // Total files if we add these new ones
+    if (existingPending.length + existingUploaded.length + fileList.length > maxFiles) {
+      error(`Cannot attach files. Maximum ${maxFiles} files allowed for section ${sectionKey}`);
+      return; // Reject new files entirely
+    }
+
+    const sanitizedFiles: File[] = Array.from(fileList)
+      .map(file => new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), { type: file.type }))
+      .filter(file => {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        if (!allowedFileTypes[sectionKey]?.includes(ext)) {
+          error(`File type not allowed for ${sectionKey}: ${file.name}`);
+          return false;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          error(`File exceeds 50MB: ${file.name}`);
+          return false;
+        }
+        return true;
+      });
+
+    if (sanitizedFiles.length === 0) return; // nothing to add
+
+    setSectionFiles(prev => ({
+      ...prev,
+      [sectionKey]: [...existingPending, ...sanitizedFiles],
+    }));
   };
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, sectionKey: string) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -308,7 +377,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         <button
           type="button"
           onClick={UploadEvidence}
-          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0)}
+          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted}
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
         ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
               ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
@@ -357,8 +426,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   multiple
                   hidden
                   accept={
-                    section.key === 'kyc-edd'
-                      ? '.pdf,.docx,.xlsx,.png,.jpeg,.jpg'
+                    section.key in allowedFileTypes
+                      ? allowedFileTypes[section.key].map(ext => `.${ext}`).join(',')
                       : '*'
                   }
                   ref={(el) => {
@@ -389,6 +458,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-400">Ready to upload</span>
                               <button
+                                disabled={isTaskCompleted}
                                 type="button"
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 title="Remove Upload"
@@ -504,6 +574,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      disabled={isTaskCompleted}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
