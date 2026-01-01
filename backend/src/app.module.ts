@@ -33,6 +33,7 @@ import { CouchdbModule } from './modules/couchdb/couchdb.module';
 import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { FilterModule } from './modules/filter/filter.module'
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { AdminModule } from './modules/admin/admin.module';
     CouchdbModule,
     EvidenceModule,
     TazamaDwhModule,
+    FilterModule,
   ],
   providers: [
     PrismaService,
@@ -79,4 +81,4 @@ import { AdminModule } from './modules/admin/admin.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
