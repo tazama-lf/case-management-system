@@ -49,7 +49,7 @@ export class EventLogService {
     async getActionHistoryForAlert(alertId: number) {
         return await this.prisma.eventLog.findMany({
             where: {
-                operation: 'ALERT_UPDATED',
+                operation: 'Alert updated',
                 outcome: `Alert ${alertId} updated successfully`,
                 entity_name: 'AlertService',
             },

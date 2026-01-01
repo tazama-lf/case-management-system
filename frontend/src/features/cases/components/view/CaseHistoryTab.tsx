@@ -399,6 +399,11 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     fetchData();
   }, [caseId]);
 
+  const formatActionText = (text?: string) => {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  };
+
   const formatTimestamp = (timestamp: string) => {
     try {
       const date = new Date(timestamp);
@@ -430,42 +435,51 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   return (
     <div className="space-y-6">
       {/* Timeline Header */}
-      <h3 className="text-lg font-semibold text-gray-900">Case Timeline</h3>
+      <h3 className="text-xl font-semibold text-gray-900">Case Timeline</h3>
 
       {/* Timeline Events */}
       {sortedHistory.length > 0 ? (
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+        <div className="relative pl-40 mt-5">
+          {/* Continuous vertical line */}
+          <div className="absolute left-[178px] top-2 bottom-8 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200"></div>
 
           {sortedHistory.map((event, index) => (
-            <div key={index} className="relative pl-8 pb-8 last:pb-0">
-              {/* Timeline dot */}
-              <div className="absolute left-0 top-1 w-2 h-2 rounded-full bg-blue-500 -translate-x-[3px] mt-1.5"></div>
+            <div key={index} className="relative pb-10 last:pb-0">
+              {/* Timestamp on left */}
+              <div className="absolute left-[-160px] top-0 w-36 text-right">
+                <div className="text-sm font-medium text-gray-600">
+                  {formatTimestamp(event.timestamp)}
+                </div>
+              </div>
 
-              {/* Content */}
-              <div className="space-y-1 mt-3">
-                <div className="font-medium text-gray-900">{event.action}</div>
-                <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
-                {event.details && (
-                  <div className="text-sm text-gray-700">{event.details}</div>
-                )}
-                {event.userId && investigators[event.userId] && (
-                  <div className="text-sm text-gray-600">
-                    {event.type === 'task' && event.action.includes('assigned')
-                      ? `Assigned to ${investigators[event.userId]}`
-                      : event.performedBy === 'System'
-                        ? `Related to ${investigators[event.userId]}`
-                        : `By ${investigators[event.userId]}`}
-                  </div>
-                )}
+              {/* Timeline dot */}
+              <div className="absolute left-[-11px] top-1.5 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-md z-10"></div>
+
+              {/* Content card */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="space-y-2">
+                  <div className="font-semibold text-gray-900 text-base">{formatActionText(event.action)}</div>
+                  {event.details && (
+                    <div className="text-sm text-gray-600 leading-relaxed">{event.details}</div>
+                  )}
+                  {event.userId && investigators[event.userId] && (
+                    <div className="flex items-center gap-2 text-sm text-blue-600 font-medium pt-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      {event.type === 'task' && event.action.includes('assigned')
+                        ? `Assigned to ${investigators[event.userId]}`
+                        : event.performedBy === 'System'
+                          ? `Related to ${investigators[event.userId]}`
+                          : `By ${investigators[event.userId]}`}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-500 py-8">
-          No history events available for this case
+        <div className="text-center text-gray-500 py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-lg">No history events available for this case</div>
         </div>
       )}
     </div>

@@ -19,7 +19,7 @@ export class AlertService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly eventLogService: EventLogService,
-  ) {}
+  ) { }
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
     this.loggerService.log(`Start - Alert Creation`, AlertService.name);
@@ -63,7 +63,7 @@ export class AlertService {
 
       await this.eventLogService.logEventAction({
         userId,
-        operation: 'ALERT_UPDATED',
+        operation: 'Alert updated',
         entityName: AlertService.name,
         actionPerformed: `${alertId} - Triaged by user ${userId}`,
         outcome: `Alert ${alertId} updated successfully`,
