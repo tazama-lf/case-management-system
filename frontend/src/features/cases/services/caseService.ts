@@ -97,6 +97,15 @@ export interface AuditLogEntry {
   performed_at: Date;
 }
 
+export interface EventLogEntry {
+  event_log_id: string;
+  user_id: string;
+  operation: string;
+  entity_name: string;
+  action_performed: string;
+  outcome: string;
+  performed_at: Date;
+}
 export interface CloseCaseDto {
   recommendedOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
   finalNotes: string;
@@ -492,11 +501,11 @@ export class CaseService {
     }
   }
 
-  async getCaseHistoryByEvent(caseId: number): Promise<AuditLogEntry[]> {
+  async getCaseHistoryByEvent(caseId: number): Promise<EventLogEntry[]> {
     try {
       const response = await apiClient.get<{
         stats: unknown;
-        eventLogs: AuditLogEntry[];
+        eventLogs: EventLogEntry[];
       }>(
         `/api/v1/reports/event-logs`
       );

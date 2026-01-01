@@ -8,6 +8,7 @@ import { taskService, type TaskForSupervisor } from '../../services/taskService'
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { TaskStatus } from '../../services/taskService';
 
 // Add inline styles for list support
 const editorStyle = `
@@ -52,6 +53,7 @@ interface InvestigationNotesTabProps {
   onNotesUpdate?: () => void;
 }
 
+
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   task,
   onNotesUpdate,
@@ -61,6 +63,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
+  const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   // Handle link clicks to ensure external links work properly
   React.useEffect(() => {
@@ -190,6 +193,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
+              readOnly={isTaskCompleted}
               className="mdx-editor"
               contentEditableClassName="prose"
               plugins={[
@@ -217,7 +221,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           <div className="flex justify-end gap-2">
             <button
               onClick={handleSaveNotes}
-              disabled={saving || !notes.trim()}
+              disabled={saving || !notes.trim() || isTaskCompleted}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
             >
               <CheckIcon className="h-4 w-4" />

@@ -12,6 +12,8 @@ import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { useToast } from '../../../../shared/providers/ToastProvider';
+import type { TaskForSupervisor } from '../../services/taskService';
+import { TaskStatus } from '../../services/taskService';
 
 const evidenceSections: Array<{
   key: string;
@@ -56,14 +58,14 @@ const evidenceSections: Array<{
   ];
 
 interface TaskEvidenceTabProps {
-  taskId: number;
+  task: TaskForSupervisor;
   caseId?: string;
   onUploadComplete?: () => void;
   onSaveRequest?: (uploadFn: () => Promise<void>) => void;
 }
 
 const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
-  taskId,
+  task,
   onUploadComplete,
   onSaveRequest,
 }) => {
@@ -74,6 +76,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+  const taskId = task?.task_id;
+  const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
@@ -373,7 +377,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         <button
           type="button"
           onClick={UploadEvidence}
-          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0)}
+          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted}
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
         ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
               ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
@@ -454,6 +458,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-400">Ready to upload</span>
                               <button
+                                disabled={isTaskCompleted}
                                 type="button"
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 title="Remove Upload"
@@ -569,6 +574,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      disabled={isTaskCompleted}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

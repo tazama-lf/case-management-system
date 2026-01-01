@@ -25,7 +25,7 @@ interface CaseHistoryEvent {
   userId?: string;
   details: string;
   outcome: 'success' | 'warning' | 'error' | 'info';
-  type: 'case' | 'task' | 'audit';
+  type: 'case' | 'task' | 'event';
 }
 
 interface CaseHistoryTabProps {
@@ -363,7 +363,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             }
 
             events.push({
-              id: `audit-${log.id}`,
+              id: `event-${log.event_log_id}`,
               timestamp: log.performed_at instanceof Date
                 ? log.performed_at.toISOString()
                 : new Date(log.performed_at).toISOString(),
@@ -372,7 +372,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               userId: log.user_id,
               details: details,
               outcome: mapOutcomeToEventOutcome(log.outcome),
-              type: 'audit',
+              type: 'event',
             });
           });
         } catch (err) {
@@ -428,104 +428,47 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   }
 
   return (
-
-    <div className="py-4">
+    <div className="space-y-6">
       {/* Timeline Header */}
-      <h3 className="text-base font-semibold text-gray-900 mb-6">Case Timeline</h3>
-      <div className="space-y-6">
-        {sortedHistory.length > 0 ? (
-          sortedHistory.map((event) => (
-            <div key={event.id} className="flex gap-4">
-              {/* Icon */}
-              <div className="flex-shrink-0">
-                {getEventIcon(event.outcome, event.action)}
-              </div>
+      <h3 className="text-lg font-semibold text-gray-900">Case Timeline</h3>
+
+      {/* Timeline Events */}
+      {sortedHistory.length > 0 ? (
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+          {sortedHistory.map((event, index) => (
+            <div key={index} className="relative pl-8 pb-8 last:pb-0">
+              {/* Timeline dot */}
+              <div className="absolute left-0 top-1 w-2 h-2 rounded-full bg-blue-500 -translate-x-[3px] mt-1.5"></div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900">
-                  {event.action}
-                </h4>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {formatTimestamp(event.timestamp)}
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  {event.details}
-                </p>
+              <div className="space-y-1 mt-3">
+                <div className="font-medium text-gray-900">{event.action}</div>
+                <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
+                {event.details && (
+                  <div className="text-sm text-gray-700">{event.details}</div>
+                )}
                 {event.userId && investigators[event.userId] && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <div className="text-sm text-gray-600">
                     {event.type === 'task' && event.action.includes('assigned')
                       ? `Assigned to ${investigators[event.userId]}`
                       : event.performedBy === 'System'
                         ? `Related to ${investigators[event.userId]}`
                         : `By ${investigators[event.userId]}`}
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">
-              No history events available for this case
-            </p>
-          </div>
-        )
-        }
-      </div >
-    </div >
-
-
-
-
-    // <div className="py-4">
-    //   {/* Timeline Header */}
-    //   <h3 className="text-base font-semibold text-gray-900 mb-6">Case Timeline</h3>
-
-    //   {/* Timeline Events */}
-    //   <div className="space-y-6">
-    //     {history.length > 0 ? (
-    //       history.map((event) => (
-    //         <div key={event.id} className="flex gap-4">
-    //           {/* Icon */}
-    //           <div className="flex-shrink-0">
-    //             {getEventIcon(event.outcome, event.action)}
-    //           </div>
-
-    //           {/* Content */}
-    //           <div className="flex-1 min-w-0">
-    //             <h4 className="text-sm font-semibold text-gray-900">
-    //               {event.action}
-    //             </h4>
-    //             <p className="text-xs text-gray-500 mt-0.5">
-    //               {formatTimestamp(event.timestamp)}
-    //             </p>
-    //             <p className="text-sm text-gray-700 mt-1">
-    //               {event.details}
-    //             </p>
-    //             {event.userId && investigators[event.userId] && (
-    //               <p className="text-xs text-gray-600 mt-1">
-    //                 {event.type === 'task' && event.action.includes('assigned')
-    //                   ? `Assigned to ${investigators[event.userId]}`
-    //                   : event.performedBy === 'System'
-    //                     ? `Related to ${investigators[event.userId]}`
-    //                     : `By ${investigators[event.userId]}`}
-    //               </p>
-    //             )}
-    //           </div>
-    //         </div>
-    //       ))
-    //     ) : (
-    //       <div className="text-center py-12">
-    //         <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-    //         <p className="text-sm text-gray-600">
-    //           No history events available for this case
-    //         </p>
-    //       </div>
-    //     )}
-    //   </div>
-    // </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 py-8">
+          No history events available for this case
+        </div>
+      )}
+    </div>
   );
 };
 
