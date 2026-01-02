@@ -532,6 +532,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               <span className="text-xs text-green-600">✓ Uploaded</span>
 
                               <button
+                                disabled={isTaskCompleted}
                                 type="button"
                                 onClick={() => setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })}
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"

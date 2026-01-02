@@ -66,7 +66,7 @@ export class AlertService {
         operation: 'Alert updated',
         entityName: AlertService.name,
         actionPerformed: `${alertId} - Triaged by user ${userId}`,
-        outcome: `Alert ${alertId} updated successfully`,
+        outcome: `Alert with Alert ID: ${alertId} updated successfully`,
       });
 
       this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);

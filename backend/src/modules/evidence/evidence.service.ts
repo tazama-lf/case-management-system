@@ -15,6 +15,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
+import { EventLogService } from 'src/modules/event_log/eventLog.service';
 
 @Injectable()
 export class EvidenceService {
@@ -26,6 +27,7 @@ export class EvidenceService {
     private auditLog: AuditLogService,
     private evidenceRepository: EvidenceRepository,
     private taskRepository: TaskRepository,
+    private readonly eventLogSerice: EventLogService,
   ) { }
 
   private sha256(buffer: Buffer): string {
@@ -99,6 +101,17 @@ export class EvidenceService {
         'image/tiff'
       ],
       SANCTIONS: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff'
+      ],
+      SAR_STR_FILING: [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'text/plain',
@@ -242,6 +255,14 @@ export class EvidenceService {
       operation: 'upload',
       entityName: 'Evidence',
       actionPerformed: 'EVIDENCE_UPLOADED',
+      outcome: 'SUCCESS',
+    });
+
+    await this.eventLogSerice.logEventAction({
+      userId,
+      operation: 'upload',
+      entityName: 'Evidence',
+      actionPerformed: `EVIDENCE_UPLOADED for Case ${taskWithCase?.case_id} and Task ${Number(dto.taskId)}`,
       outcome: 'SUCCESS',
     });
 

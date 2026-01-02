@@ -501,6 +501,11 @@ export class CaseService {
     }
   }
 
+  containsId(text: string, id: number): boolean {
+    const regex = new RegExp(`(^|[^0-9])${id}([^0-9]|$)`);
+    return regex.test(text);
+  }
+
   async getCaseHistoryByEvent(caseId: number): Promise<EventLogEntry[]> {
     try {
       const response = await apiClient.get<{
@@ -519,21 +524,22 @@ export class CaseService {
       return logs.filter((log) => {
         const actionLower = log.action_performed?.toLowerCase() || '';
 
-        // Check if log mentions the case ID
-        if (actionLower.includes(caseId.toString().toLowerCase())) {
+        if (actionLower.includes('case') && this.containsId(actionLower, caseId)) {
           return true;
         }
 
-        // Check if log mentions any task IDs associated with this case
-        for (const taskId of taskIds) {
-          if (actionLower.includes(taskId.toString().toLowerCase())) {
-            return true;
+        // Task-related logs
+        if (actionLower.includes('task')) {
+          for (const taskId of taskIds) {
+            if (this.containsId(actionLower, Number(taskId))) {
+              return true;
+            }
           }
         }
 
-        // Check if operation is related to case or task management
+        // Operation-based fallback
         const operationLower = log.operation.toLowerCase();
-        if (operationLower.includes('case') && actionLower.includes(String(caseId))) {
+        if (operationLower.includes('case') && this.containsId(actionLower, caseId)) {
           return true;
         }
 

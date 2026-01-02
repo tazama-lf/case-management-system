@@ -21,7 +21,7 @@ const DeleteEvidenceModal: React.FC<DeleteEvidenceModalProps> = ({
     evidenceToDelete,
     setEvidenceToDelete,
     setUploadedEvidence,
-    onDeleteSuccess,
+    onDeleteSuccess
 }) => {
     const [isDeleting, setIsDeleting] = React.useState(false);
     const handleConfirmDelete = async () => {

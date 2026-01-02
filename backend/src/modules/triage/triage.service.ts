@@ -20,6 +20,7 @@ import { FlowableService } from '../flowable/flowable.service';
 import { Outcome } from '../../utils/types/outcome';
 import { ManualAlertUpdateDTO, IngestAlertDto } from '../alert/dto';
 import { UpdateAlertDTO } from '../alert/dto';
+import { EventLogService } from '../event_log/eventLog.service';
 
 @Injectable()
 export class TriageService {
@@ -36,6 +37,7 @@ export class TriageService {
         private readonly flowableService: FlowableService,
         private readonly alertService: AlertService,
         private audit: AuditLogService,
+        private eventLogService: EventLogService,
         private readonly caseCreationService: CaseCreationApprovalService,
         private taskService: TaskService,
         private commentService: CommentService,
@@ -185,6 +187,7 @@ export class TriageService {
         }
 
         const history = await this.audit.getActionHistoryForAlert(alertId);
+        await this.eventLogService.getActionHistoryForAlert(alertId)
         return {
             alertId,
             tenantId,
@@ -449,6 +452,14 @@ export class TriageService {
                 outcome: 'SUCCESS',
             });
 
+            await this.eventLogService.logEventAction({
+                userId,
+                operation: 'case auto closed',
+                entityName: 'Case',
+                actionPerformed: `Auto-closed case ${caseId} with status: ${status}`,
+                outcome: 'SUCCESS',
+            });
+
             return { updatedCase, updatedTask };
         } catch (error) {
             this.logger.error(`Auto-close failed for case ${caseId}`, error);
@@ -491,6 +502,14 @@ export class TriageService {
             await this.audit.logAction({
                 userId,
                 operation: 'INVESTIGATION_TASK_TRIGGERED',
+                entityName: 'Task',
+                actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
+                outcome: 'SUCCESS',
+            });
+
+            await this.eventLogService.logEventAction({
+                userId,
+                operation: 'Investigation task triggered',
                 entityName: 'Task',
                 actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
                 outcome: 'SUCCESS',
@@ -550,6 +569,14 @@ export class TriageService {
             await this.audit.logAction({
                 userId,
                 operation: 'TRIAGE_ALERT_UPDATED',
+                entityName: 'Alert & Task',
+                actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
+                outcome: Outcome.SUCCESS,
+            });
+
+            await this.eventLogService.logEventAction({
+                userId,
+                operation: 'triage alert updated',
                 entityName: 'Alert & Task',
                 actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
                 outcome: Outcome.SUCCESS,

@@ -122,6 +122,15 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    // await this.eventLogSerice.logEventAction({
+    //   userId: assignedUserId,
+    //   actionPerformed: `Task ${taskId} assigned to investigator ${assignedUserId}`,
+    //   entityName: 'TaskService',
+    //   operation: 'retrieveTask',
+    //   outcome: 'SUCCESS',
+    //   performedAt: new Date(),
+    // });
+
 
 
     await this.notificationService.sendNotification({
@@ -550,7 +559,7 @@ export class TaskLifecycleService {
         userId,
         actionPerformed: auditDescription,
         entityName: 'Task',
-        operation: 'REASSIGN_TASK',
+        operation: `REASSIGN_TASK`,
         outcome: 'SUCCESS',
         performedAt: new Date(),
       });

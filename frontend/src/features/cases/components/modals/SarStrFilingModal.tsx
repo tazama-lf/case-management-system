@@ -2,6 +2,7 @@ import React from 'react';
 import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, UploadEvidenceDto } from '../../types/evidence.types';
+import { useToast } from '../../../../shared/providers/ToastProvider';
 
 interface SarStrFilingModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const [uploading, setUploading] = React.useState(false);
   const [uploadedEvidence, setUploadedEvidence] = React.useState<Evidence[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const { success, error } = useToast();
 
   // Load existing SAR/STR evidence when modal opens
   React.useEffect(() => {
@@ -44,8 +46,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
         );
 
         setUploadedEvidence(sarStrEvidence);
-      } catch (error) {
-        console.error('Failed to load evidence:', error);
+      } catch (err) {
+        console.error('Failed to load evidence:', err);
+        error('Failed to load evidence');
       } finally {
         setLoading(false);
       }
@@ -126,10 +129,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
       );
       setUploadedEvidence(sarStrEvidence);
 
-      alert('SAR/STR filing uploaded successfully');
-    } catch (error) {
-      console.error('Failed to upload SAR/STR filing:', error);
-      alert('Failed to upload SAR/STR filing. Please try again.');
+      success('SAR/STR filing uploaded successfully');
+    } catch (err) {
+      console.error('Failed to upload SAR/STR filing:', err);
+      error('Failed to upload SAR/STR filing. Please try again.');
     } finally {
       setUploading(false);
     }

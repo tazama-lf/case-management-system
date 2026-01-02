@@ -6,6 +6,7 @@ import { AuditLogModule } from '../audit/auditLog.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { CouchdbModule } from '../couchdb/couchdb.module';
 import { RepositoryModule } from '../repository/repository.module';
+import { EventLogModule } from '../event_log/eventLog.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { RepositoryModule } from '../repository/repository.module';
     CouchdbModule,
     AuditLogModule,
     RepositoryModule,
+    EventLogModule,
     MulterModule.register({
       limits: {
         fileSize: 100 * 1024 * 1024,

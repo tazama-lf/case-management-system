@@ -11,6 +11,8 @@ import { AlertModule } from '../alert/alert.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { CaseModule } from '../case/case.module';
 import { FlowableModule } from '../flowable/flowable.module';
+import { EventLogService } from '../event_log/eventLog.service';
+import { EventLogModule } from '../event_log/eventLog.module';
 
 @Module({
   imports: [
@@ -24,9 +26,10 @@ import { FlowableModule } from '../flowable/flowable.module';
     FeatureExtractionModule,
     PrismaModule,
     FlowableModule,
+    EventLogModule
   ],
   controllers: [TriageController],
-  providers: [TriageService, AuditLogService],
+  providers: [TriageService, AuditLogService, EventLogService],
   exports: [TriageService],
 })
-export class TriageModule {}
+export class TriageModule { }

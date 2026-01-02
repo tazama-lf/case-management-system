@@ -222,100 +222,100 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         const events: CaseHistoryEvent[] = [];
 
 
-        try {
-          const caseDetails: Case = await caseService.getCaseDetails(caseId);
+        // try {
+        //   const caseDetails: Case = await caseService.getCaseDetails(caseId);
 
-          if (caseDetails.case_creation_type !== null && caseDetails.case_creation_type !== undefined && caseDetails.case_creation_type.length > 0 &&
-            caseDetails.case_creation_type.toLowerCase() === 'MANUAL'.toLowerCase() && isInvestigatorOnly) {
-            events.push({
-              id: `case-created-${caseDetails.case_id}`,
-              timestamp: caseDetails.created_at,
-              action: 'Case submitted for approval',
-              performedBy: 'System',
-              userId: caseDetails.case_creator_user_id,
-              details: `Case created with priority ${caseDetails.priority} and type ${caseDetails.case_type}`,
-              outcome: 'info',
-              type: 'case',
-            });
-          }
-
-
-          if (caseDetails.case_owner_user_id && caseDetails.case_owner_user_id !== caseDetails.case_creator_user_id) {
-            events.push({
-              id: `case-assigned-${caseDetails.case_id}`,
-              timestamp: caseDetails.updated_at,
-              action: 'Case assigned to investigator',
-              performedBy: 'System',
-              userId: caseDetails.case_owner_user_id,
-              details: `Case assigned to investigator for review`,
-              outcome: 'info',
-              type: 'case',
-            });
-          }
+        //   if (caseDetails.case_creation_type !== null && caseDetails.case_creation_type !== undefined && caseDetails.case_creation_type.length > 0 &&
+        //     caseDetails.case_creation_type.toLowerCase() === 'MANUAL'.toLowerCase() && isInvestigatorOnly) {
+        //     events.push({
+        //       id: `case-created-${caseDetails.case_id}`,
+        //       timestamp: caseDetails.created_at,
+        //       action: 'Case submitted for approval',
+        //       performedBy: 'System',
+        //       userId: caseDetails.case_creator_user_id,
+        //       details: `Case created with priority ${caseDetails.priority} and type ${caseDetails.case_type}`,
+        //       outcome: 'info',
+        //       type: 'case',
+        //     });
+        //   }
 
 
-          const statusEvent = mapStatusToEvent(caseDetails.status, caseDetails.updated_at);
-          if (statusEvent) {
-            events.push({
-              ...statusEvent,
-              id: `case-status-${caseDetails.case_id}`,
-              userId: caseDetails.case_owner_user_id,
-              type: 'case',
-            });
-          }
-        } catch (err) {
-          console.warn('Failed to fetch case details:', err);
-        }
+        //   if (caseDetails.case_owner_user_id && caseDetails.case_owner_user_id !== caseDetails.case_creator_user_id) {
+        //     events.push({
+        //       id: `case-assigned-${caseDetails.case_id}`,
+        //       timestamp: caseDetails.updated_at,
+        //       action: 'Case assigned to investigator',
+        //       performedBy: 'System',
+        //       userId: caseDetails.case_owner_user_id,
+        //       details: `Case assigned to investigator for review`,
+        //       outcome: 'info',
+        //       type: 'case',
+        //     });
+        //   }
 
 
-        try {
-          const tasks = await taskService.getTasksByCaseId(caseId);
+        //   const statusEvent = mapStatusToEvent(caseDetails.status, caseDetails.updated_at);
+        //   if (statusEvent) {
+        //     events.push({
+        //       ...statusEvent,
+        //       id: `case-status-${caseDetails.case_id}`,
+        //       userId: caseDetails.case_owner_user_id,
+        //       type: 'case',
+        //     });
+        //   }
+        // } catch (err) {
+        //   console.warn('Failed to fetch case details:', err);
+        // }
 
-          tasks.forEach((task) => {
-            // Only add task creation event (don't add task assignment here, let audit logs handle it)
-            events.push({
-              id: `task-created-${task.task_id}`,
-              timestamp: task.created_at,
-              action: task.name || 'Task created',
-              performedBy: 'System',
-              userId: undefined, // Don't set userId for creation
-              details: task.description || 'Task created and ready for assignment',
-              outcome: 'info',
-              type: 'task',
-            });
 
-            // Check current task status for unassignment
-            if (task.status === 'STATUS_01_UNASSIGNED' && task.updated_at !== task.created_at) {
-              // Task was unassigned (updated_at differs from created_at means it changed)
-              events.push({
-                id: `task-unassigned-${task.task_id}`,
-                timestamp: task.updated_at,
-                action: 'Task unassigned',
-                performedBy: 'System',
-                userId: undefined,
-                details: `${task.name || 'Task'} was unassigned from investigator`,
-                outcome: 'warning',
-                type: 'task',
-              });
-            }
+        // try {
+        //   const tasks = await taskService.getTasksByCaseId(caseId);
 
-            // Check for completed tasks
-            if (task.status === 'STATUS_30_COMPLETED') {
-              events.push({
-                id: `task-completed-${task.task_id}`,
-                timestamp: task.updated_at,
-                action: 'Investigation completed',
-                performedBy: task.assignedUser?.username || 'Investigator',
-                userId: task.assigned_user_id,
-                details: `${task.name || 'Task'} completed and evidence collected`,
-                outcome: 'success',
-                type: 'task',
-              });
-            }
-          });
-        } catch (err) {
-          console.warn('Failed to fetch tasks:', err);
-        }
+        //   tasks.forEach((task) => {
+        //     // Only add task creation event (don't add task assignment here, let audit logs handle it)
+        //     events.push({
+        //       id: `task-created-${task.task_id}`,
+        //       timestamp: task.created_at,
+        //       action: task.name || 'Task created',
+        //       performedBy: 'System',
+        //       userId: undefined, // Don't set userId for creation
+        //       details: task.description || 'Task created and ready for assignment',
+        //       outcome: 'info',
+        //       type: 'task',
+        //     });
+
+        //     // Check current task status for unassignment
+        //     if (task.status === 'STATUS_01_UNASSIGNED' && task.updated_at !== task.created_at) {
+        //       // Task was unassigned (updated_at differs from created_at means it changed)
+        //       events.push({
+        //         id: `task-unassigned-${task.task_id}`,
+        //         timestamp: task.updated_at,
+        //         action: 'Task unassigned',
+        //         performedBy: 'System',
+        //         userId: undefined,
+        //         details: `${task.name || 'Task'} was unassigned from investigator`,
+        //         outcome: 'warning',
+        //         type: 'task',
+        //       });
+        //     }
+
+        //     // Check for completed tasks
+        //     if (task.status === 'STATUS_30_COMPLETED') {
+        //       events.push({
+        //         id: `task-completed-${task.task_id}`,
+        //         timestamp: task.updated_at,
+        //         action: 'Investigation completed',
+        //         performedBy: task.assignedUser?.username || 'Investigator',
+        //         userId: task.assigned_user_id,
+        //         details: `${task.name || 'Task'} completed and evidence collected`,
+        //         outcome: 'success',
+        //         type: 'task',
+        //       });
+        //     }
+        //   });
+        // } catch (err) {
+        //   console.warn('Failed to fetch tasks:', err);
+        // }
 
         try {
           const eventLogs = await caseService.getCaseHistoryByEvent(caseId);
@@ -329,7 +329,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             const operationLower = log.operation.toLowerCase();
 
             // Handle task reassignment
-            if (operationLower.includes('reassign') || actionLower.includes('reassign')) {
+            if (operationLower.includes('reassign')) {
               action = 'Task reassigned';
               if (actionLower.includes('from') && actionLower.includes('to')) {
                 details = log.action_performed;
@@ -338,13 +338,12 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               }
             }
             // Handle task unassignment
-            else if (operationLower.includes('unassign') || actionLower.includes('unassign')) {
+            else if (operationLower.includes('unassign')) {
               action = 'Task unassigned';
               details = log.action_performed || 'Task was unassigned from investigator';
             }
             // Handle task assignment (but not reassignment)
-            else if ((operationLower.includes('assign') && !operationLower.includes('reassign') && !operationLower.includes('unassign')) ||
-              (actionLower.includes('assign') && !actionLower.includes('reassign') && !actionLower.includes('unassign'))) {
+            else if ((operationLower.includes('assign') && !operationLower.includes('reassign') && !operationLower.includes('unassign'))) {
               action = 'Task assigned';
             }
             // Handle case status changes
@@ -435,51 +434,78 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   return (
     <div className="space-y-6">
       {/* Timeline Header */}
-      <h3 className="text-xl font-semibold text-gray-900">Case Timeline</h3>
+      <h3 className="text-xl font-semibold text-gray-900 text-center mb-8">Case Timeline</h3>
 
       {/* Timeline Events */}
       {sortedHistory.length > 0 ? (
-        <div className="relative pl-40 mt-5">
-          {/* Continuous vertical line */}
-          <div className="absolute left-[178px] top-2 bottom-8 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200"></div>
+        <div className="relative max-w-4xl mx-auto">
+          {/* Continuous vertical line in center */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-300 -translate-x-1/2"></div>
 
-          {sortedHistory.map((event, index) => (
-            <div key={index} className="relative pb-10 last:pb-0">
-              {/* Timestamp on left */}
-              <div className="absolute left-[-160px] top-0 w-36 text-right">
-                <div className="text-sm font-medium text-gray-600">
-                  {formatTimestamp(event.timestamp)}
-                </div>
-              </div>
+          {sortedHistory.map((event, index) => {
+            const isLeft = index % 2 === 0;
 
-              {/* Timeline dot */}
-              <div className="absolute left-[-11px] top-1.5 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-md z-10"></div>
+            return (
+              <div key={index} className="relative pb-12 last:pb-0">
+                {/* Timeline dot in center */}
+                <div className="absolute left-1/2 top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-md -translate-x-1/2 z-10"></div>
 
-              {/* Content card */}
-              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div className="space-y-2">
-                  <div className="font-semibold text-gray-900 text-base">{formatActionText(event.action)}</div>
-                  {event.details && (
-                    <div className="text-sm text-gray-600 leading-relaxed">{event.details}</div>
-                  )}
-                  {event.userId && investigators[event.userId] && (
-                    <div className="flex items-center gap-2 text-sm text-blue-600 font-medium pt-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                      {event.type === 'task' && event.action.includes('assigned')
-                        ? `Assigned to ${investigators[event.userId]}`
-                        : event.performedBy === 'System'
-                          ? `Related to ${investigators[event.userId]}`
-                          : `By ${investigators[event.userId]}`}
+                {isLeft ? (
+                  // Left side layout (date on left, content on right)
+                  <div className="flex items-start gap-8">
+                    <div className="w-1/2 text-right pr-8">
+                      <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
                     </div>
-                  )}
-                </div>
+                    <div className="w-1/2 pl-8">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-900">{formatActionText(event.action)}</div>
+                        {event.details && (
+                          <div className="text-sm text-gray-600">{event.details}</div>
+                        )}
+                        {event.userId && investigators[event.userId] && (
+                          <div className="text-sm text-blue-600">
+                            {event.type === 'task' && event.action.includes('assigned')
+                              ? `Assigned to ${investigators[event.userId]}`
+                              : event.performedBy === 'System'
+                                ? `Related to ${investigators[event.userId]}`
+                                : `By ${investigators[event.userId]}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Right side layout (content on left, date on right)
+                  <div className="flex items-start gap-8">
+                    <div className="w-1/2 text-right pr-8">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-900">{event.action}</div>
+                        {event.details && (
+                          <div className="text-sm text-gray-600">{event.details}</div>
+                        )}
+                        {event.userId && investigators[event.userId] && (
+                          <div className="text-sm text-blue-600">
+                            {event.type === 'task' && event.action.includes('assigned')
+                              ? `Assigned to ${investigators[event.userId]}`
+                              : event.performedBy === 'System'
+                                ? `Related to ${investigators[event.userId]}`
+                                : `By ${investigators[event.userId]}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="w-1/2 pl-8">
+                      <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <div className="text-center text-gray-500 py-12 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="text-lg">No history events available for this case</div>
+        <div className="text-center text-gray-500 py-8">
+          No history events available for this case
         </div>
       )}
     </div>

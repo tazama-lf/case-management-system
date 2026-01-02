@@ -160,7 +160,7 @@ export class TaskService {
 
       this.eventLogService.logEventAction({
         userId,
-        actionPerformed: `Updated task ${taskId}`,
+        actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.SUCCESS,
@@ -459,6 +459,15 @@ export class TaskService {
 
       const auditService = auditLogService || this.auditLogService;
       auditService.logAction({
+        userId,
+        actionPerformed: `Claimed task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'claimTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         actionPerformed: `Claimed task ${taskId}`,
         entityName: TaskService.name,
