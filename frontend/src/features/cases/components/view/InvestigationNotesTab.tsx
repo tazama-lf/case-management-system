@@ -9,44 +9,6 @@ import { useNotifications } from '@/shared/providers/NotificationProvider';
 import {BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect} from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
-// Add inline styles for list support
-const editorStyle = `
-  .mdx-editor-container [contenteditable] ul {
-    list-style-type: disc !important;
-    padding-left: 2rem !important;
-    margin: 1rem 0 !important;
-  }
-  .mdx-editor-container [contenteditable] ol {
-    list-style-type: decimal !important;
-    padding-left: 2rem !important;
-    margin: 1rem 0 !important;
-  }
-  .mdx-editor-container [contenteditable] li {
-    display: list-item !important;
-    margin: 0.25rem 0 !important;
-  }
-  
-  /* Ensure link dialog appears above modal */
-  [class*="linkDialog"],
-  [class*="popupContainer"],
-  [class*="_linkDialog"],
-  [class*="_popupContainer"],
-  [role="dialog"],
-  [role="alertdialog"] {
-    z-index: 9999 !important;
-  }
-  
-  /* Ensure links open properly */
-  .mdx-editor-container a {
-    color: #2563eb;
-    text-decoration: underline;
-    cursor: pointer;
-  }
-  .mdx-editor-container a:hover {
-    color: #1d4ed8;
-  }
-`;
-
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
   onNotesUpdate?: () => void;
@@ -155,7 +117,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <style>{editorStyle}</style>
       <div className="text-sm font-semibold text-gray-700">
         Investigation Notes
       </div>
