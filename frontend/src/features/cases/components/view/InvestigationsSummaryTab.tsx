@@ -17,6 +17,12 @@ import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.t
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
+// Configure marked to handle line breaks properly (GitHub-flavored markdown)
+marked.setOptions({
+  breaks: true, // Convert \n to <br>
+  gfm: true, // GitHub-flavored markdown
+});
+
 interface InvestigationSummaryTabProps {
   caseId: number;
   row?: CaseRow;
@@ -365,7 +371,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           </h3>
           {investigationNotes ? (
             <div
-              className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200 prose prose-sm max-w-none"
+              className="markdown-content text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200"
               dangerouslySetInnerHTML={{
                 __html: marked(investigationNotes) as string
               }}
@@ -387,9 +393,12 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               {caseComments.map((comment, index) => (
                 <div key={comment.comment_id || index}>
                   {/* Notes */}
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {comment.note}
-                  </p>
+                  <div
+                    className="markdown-content text-sm text-gray-700 leading-relaxed"
+                    dangerouslySetInnerHTML={{
+                      __html: marked(comment.note) as string
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -406,9 +415,12 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               {supervisorComments.map((comment, index) => (
                 <div key={comment.comment_id || index}>
                   {/* Notes */}
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
-                    {comment.note}
-                  </p>
+                  <div
+                    className="markdown-content text-sm text-gray-700 leading-relaxed mb-4"
+                    dangerouslySetInnerHTML={{
+                      __html: marked(comment.note) as string
+                    }}
+                  />
 
                   {/* Supervisor outcome only */}
                   <div className="p-3 bg-green-50 border border-green-200 rounded">
