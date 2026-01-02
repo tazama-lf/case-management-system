@@ -229,6 +229,25 @@ model TransactionProfile {
   case            Case     @relation(fields: [case_id], references: [case_id])
 }
 
+model TransactionData {
+  transactionId Int      @id @default(autoincrement())
+  tenantId      String
+  endToEndId    String   @db.VarChar(50)
+  transactionData Json
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("transaction_data")
+}
+
+model ReferenceId {
+  id   Int      @id @default(autoincrement())
+  txTp String   @db.VarChar(50) @unique
+  referenceIdName   String @db.VarChar(50)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("reference_ids")
+}
+
 enum Priority {
   NEW
   URGENT
@@ -511,4 +530,16 @@ enum AsyncTaskStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+model EventLog {
+  event_log_id     Int      @id @default(autoincrement())
+  user_id          String   @db.Uuid
+  operation        String   @db.VarChar(50)
+  entity_name      String   @db.VarChar(50)
+  action_performed String   @db.VarChar(255)
+  outcome          String   @db.VarChar(255)
+  performed_at     DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("event_log")
 }

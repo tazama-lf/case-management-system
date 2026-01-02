@@ -9,7 +9,7 @@ const AdminDashboard: React.FC = () => {
     <PageContainer
       title="Admin Dashboard"
     >
-      <div className="mt-6">
+      <div className="mt-1">
         <WorkQueueManagement />
       </div>
     </PageContainer>

@@ -94,6 +94,14 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 }) => {
   const { success, error } = useToast();
   const { params, navigate } = useDynamicRoute();
+  const closeViewCaseModal = () => {
+    modalActions.setIsViewOpen(false);
+    modalActions.setSelectedRow(null);
+
+    if (params.caseId) {
+      navigate('/cases');
+    }
+  };
 
   const handleCreate = async (payload: {
     alertId?: number;
@@ -388,16 +396,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       <ViewCaseModal
         open={modalState.isViewOpen}
-        onClose={() => {
-          modalActions.setIsViewOpen(false);
-          modalActions.setSelectedRow(null);
-          // Clear case ID from URL when closing modal
-          if (params.caseId) {
-            navigate('/cases');
-          }
-        }}
+        onClose={closeViewCaseModal}
         row={modalState.selectedRow}
         onRefreshCases={onRefreshCases}
+        onAfterTaskReassign={closeViewCaseModal}
         canManageSupervisorActions={permissions.canManageSupervisorActions}
         onComplete={(row) => {
           modalActions.setSelectedRow(row);

@@ -29,6 +29,7 @@ interface ViewCaseModalProps {
   onRejectCaseReopen?: (row: CaseRow) => void;
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
+  onAfterTaskReassign?: () => void;
 }
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
@@ -36,6 +37,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   onClose,
   row,
   onRefreshCases,
+  onAfterTaskReassign,
   canManageSupervisorActions = false,
   onComplete,
   onCloseCase,
@@ -146,6 +148,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 <TaskLogTab
                   caseId={displayData.id}
                   alertId={displayData.alertId}
+                  onAfterTaskReassign={onAfterTaskReassign}
                   onRefreshCases={async () => {
                     // Refresh both the main case list and the local case data
                     await Promise.all([

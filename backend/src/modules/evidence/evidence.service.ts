@@ -57,24 +57,111 @@ export class EvidenceService {
 
   async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
     const kycEddTypes = ['KYC', 'EDD'];
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'image/png',
-      'image/jpeg'
-    ];
+    // const allowedMimeTypes = [
+    //   'application/pdf',
+    //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    //   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    //   'image/png',
+    //   'image/jpeg'
+    // ];
+    const allowedMimeTypes: Record<string, string[]> = {
+      KYC: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff'
+      ],
+      EDD: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff'
+      ],
+      ADVERSE_MEDIA: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff'
+      ],
+      SANCTIONS: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff'
+      ],
+      OTHER: [
+        'audio/mpeg', 'text/css', 'application/json',
+        'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain', 'application/vnd.ms-powerpoint', 'application/epub+zip',
+        'text/html', 'image/png', 'image/jpeg', 'image/tiff'
+      ]
+    };
 
-    if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
-      this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
-      for (const file of files) {
-        this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
-        if (!allowedMimeTypes.includes(file.mimetype)) {
-          this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
-          throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
-        }
+    const maxFilesPerSection: Record<string, number> = {
+      KYC: 5,
+      EDD: 5,
+      SANCTIONS: 5,
+      ADVERSE_MEDIA: 5,
+      OTHER: 10,
+    };
+
+    const maxSize = 50 * 1024 * 1024; // 50MB
+
+    // if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
+    //   this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
+
+    //   for (const file of files) {
+    //     this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
+    //     if (!allowedMimeTypes.includes(file.mimetype)) {
+    //       this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
+    //       throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
+    //     }
+    //   }
+    // }
+    const sectionKey = dto.evidenceType.toUpperCase() as keyof typeof maxFilesPerSection;
+
+    // Check if the number of files in this upload exceeds max allowed
+    if (files.length > maxFilesPerSection[sectionKey]) {
+      throw new BadRequestException(
+        `Cannot attach files. Maximum ${maxFilesPerSection[sectionKey]} files allowed for section ${dto.evidenceType}`
+      );
+    }
+
+    for (const file of files) {
+      // Validate MIME type
+      const allowed = allowedMimeTypes[dto.evidenceType];
+      if (!allowed?.includes(file.mimetype)) {
+        throw new BadRequestException(`File type ${file.mimetype} is not allowed for ${dto.evidenceType} evidence. File: ${file.originalname}`);
+      }
+
+      // Validate file size
+      if (file.size > maxSize) {
+        throw new BadRequestException(`File exceeds 50MB: ${file.originalname}`);
       }
     }
+
+
+
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 

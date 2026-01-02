@@ -9,6 +9,8 @@ import { UpdateCaseDto } from '../case/dto/update-case.dto';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
 import { EvidenceService } from '../evidence/evidence.service';
+import { EventLogService } from '../event_log/eventLog.service';
+
 
 @Injectable()
 export class ReportsService {
@@ -20,7 +22,9 @@ export class ReportsService {
     private readonly evidenceService: EvidenceService,
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
-  ) {}
+    private readonly eventLogService: EventLogService,
+
+  ) { }
 
   private getDateRange(dateRange?: string): { startDate: Date; endDate: Date } {
     const now = new Date();
@@ -177,9 +181,9 @@ export class ReportsService {
     const avgResolutionTime =
       allClosedCasesWithTimes.length > 0
         ? allClosedCasesWithTimes.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / allClosedCasesWithTimes.length
+          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + resolutionTime;
+        }, 0) / allClosedCasesWithTimes.length
         : 0;
 
     const statusMap: Record<CaseStatus, string> = {
@@ -387,9 +391,9 @@ export class ReportsService {
       const avgResolutionTimeMonth =
         monthClosedCases.length > 0
           ? monthClosedCases.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-              return sum + resolutionTime;
-            }, 0) / monthClosedCases.length
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / monthClosedCases.length
           : 0;
 
       resolutionTrend.push({
@@ -506,9 +510,9 @@ export class ReportsService {
         const avgResolutionDays =
           cases.length > 0
             ? cases.reduce((sum, case_) => {
-                const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-                return sum + resolutionTime;
-              }, 0) / cases.length
+              const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
+              return sum + resolutionTime;
+            }, 0) / cases.length
             : 0;
 
         return {
@@ -632,9 +636,9 @@ export class ReportsService {
         const avgResolutionTime =
           closedCasesWithTimes.length > 0
             ? closedCasesWithTimes.reduce((sum, case_) => {
-                const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-                return sum + resolutionTime;
-              }, 0) / closedCasesWithTimes.length
+              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              return sum + resolutionTime;
+            }, 0) / closedCasesWithTimes.length
             : 0;
 
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
@@ -740,14 +744,14 @@ export class ReportsService {
         outcome: log.outcome ? log.outcome.toString() : '',
         performed_at: log.performed_at
           ? log.performed_at.toLocaleString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-            })
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+          })
           : '',
         type: this.getAuditLogType(log.outcome || ''),
       };
@@ -761,6 +765,49 @@ export class ReportsService {
         systemWarnings,
       },
       auditLogs: formattedLogs,
+    };
+  }
+
+  async getEventLogs(dateRange?: string) {
+    const { startDate, endDate } = this.getDateRange(dateRange);
+
+    const eventLogs = await this.eventLogService.getLogs(100, 0);
+
+    const filteredLogs = eventLogs.filter((log) => log.performed_at >= startDate && log.performed_at <= endDate);
+
+    const caseActions = filteredLogs.filter(
+      (log) => log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case')),
+    ).length;
+
+    const formattedLogs = filteredLogs.map((log) => {
+      return {
+        event_log_id: log.event_log_id ? log.event_log_id.toString() : '',
+        user_id: log.user_id ? log.user_id.toString() : '',
+        operation: log.operation ? log.operation.toString() : '',
+        entity_name: log.entity_name ? log.entity_name.toString() : '',
+        action_performed: log.action_performed ? log.action_performed.toString() : '',
+        outcome: log.outcome ? log.outcome.toString() : '',
+        performed_at: log.performed_at
+          ? log.performed_at.toLocaleString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+          })
+          : '',
+        type: this.getAuditLogType(log.outcome || ''),
+      };
+    });
+
+    return {
+      stats: {
+        totalLogs: filteredLogs.length,
+        caseActions,
+      },
+      eventLogs: formattedLogs,
     };
   }
 
@@ -800,9 +847,9 @@ export class ReportsService {
     const avgResolutionTime =
       closedCasesWithTimes.length > 0
         ? closedCasesWithTimes.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / closedCasesWithTimes.length
+          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + resolutionTime;
+        }, 0) / closedCasesWithTimes.length
         : 0;
 
     const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
@@ -1052,7 +1099,7 @@ export class ReportsService {
         where: { case_id: caseId },
       });
 
-      const investigationTasks = caseTasks.filter(task => 
+      const investigationTasks = caseTasks.filter(task =>
         task.name && task.name.toLowerCase().includes('investigate')
       );
 

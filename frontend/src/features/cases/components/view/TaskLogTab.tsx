@@ -12,11 +12,13 @@ import authService from '@/features/auth/services/authService';
 import { caseService, type CaseWithTasksDto } from '../../services/caseService';
 import { transformBackendCaseToUI } from '../casesTable.utils';
 
+
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
 const AssignTaskModal = lazy(() => import('../modals/AssignTaskModal'));
 const ReassignTaskModal = lazy(() => import('../modals/ReassignTaskModal'));
 const UpdateTaskStatusModal = lazy(() => import('../modals/UpdateTaskStatusModal'));
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
+
 
 interface TaskLogTabProps {
   caseId: number;
@@ -29,6 +31,7 @@ interface TaskLogTabProps {
   onApproveCaseCreation?: (caseData: any) => void;
   onRejectCaseCreation?: (caseData: any) => void;
   onAbandonCase?: (caseData: any) => void;
+  onAfterTaskReassign?: () => void;
 }
 const TaskLogTab: React.FC<TaskLogTabProps> = ({
   caseId,
@@ -36,6 +39,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   alertId,
   canManageSupervisorActions = false,
   caseStatus,
+  onAfterTaskReassign,
   // caseData,
   onApproveCase,
   onApproveCaseCreation,
@@ -43,7 +47,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   onAbandonCase
 }) => {
   const { success, error: toastError } = useToast();
-  const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole } = useAuth();
+  const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole, hasInvestigatorRole } = useAuth();
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [caseData, setCaseData] = useState<CaseRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +63,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
+  // Check if user is investigator only (no supervisor or admin role)
+  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -307,6 +313,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           break;
         case 'reassign':
           await taskService.reassignTask(task.id, assignee!, justification!);
+          if (onAfterTaskReassign && isInvestigatorOnly) {
+            onAfterTaskReassign();
+          }
           break;
         case 'unassign':
           await taskService.unassignTask(task.id, { reason: reason! });
@@ -524,11 +533,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
             onClose={() => {
               setReassignModalOpen(false);
               setSelectedTask(null);
+
             }}
             onReassign={handleModalReassign}
             task={selectedTask}
           />
         </Suspense>
+
       )}
 
       {unassignModalOpen && (
@@ -590,7 +601,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
                 try {
                   const fetchedTasks = await taskService.getTasksByCaseId(caseId);
                   setTasks(fetchedTasks);
-                  
+
                   // Also refresh the case data to update the Close Case button visibility
                   if (onRefreshCases) {
                     await onRefreshCases();

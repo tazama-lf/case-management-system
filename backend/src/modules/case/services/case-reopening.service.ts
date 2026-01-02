@@ -12,6 +12,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
+import { EventLogService } from 'src/modules/event_log/eventLog.service';
 
 @Injectable()
 export class CaseReopeningService {
@@ -24,7 +25,8 @@ export class CaseReopeningService {
     private readonly logger: LoggerService,
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
-  ) {}
+    private readonly eventLogService: EventLogService,
+  ) { }
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
     return determineOriginalClosedStatus(caseData);
@@ -87,6 +89,14 @@ export class CaseReopeningService {
           outcome: Outcome.SUCCESS,
         });
 
+        await this.eventLogService.logEventAction({
+          userId,
+          operation: 'reopenCase',
+          entityName: CaseReopeningService.name,
+          actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
+          outcome: Outcome.SUCCESS,
+        });
+
         return {
           success: true,
           message: 'Case reopened successfully',
@@ -123,7 +133,7 @@ export class CaseReopeningService {
         await tx.comment.create({
           data: {
             user_id: userId,
-          //  task_id: approvalTask.task_id,
+            //  task_id: approvalTask.task_id,
             case_id: caseId,
             note: JSON.stringify({
               requestedBy: userId,
@@ -145,6 +155,14 @@ export class CaseReopeningService {
       });
 
       await this.auditLogService.logAction({
+        userId,
+        operation: 'reopenCase',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         operation: 'reopenCase',
         entityName: CaseReopeningService.name,
@@ -252,7 +270,7 @@ export class CaseReopeningService {
           data: {
             user_id: supervisorId,
             case_id: caseId,
-           // task_id: reopeningTask.task_id,
+            // task_id: reopeningTask.task_id,
             note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
           },
         });
@@ -313,6 +331,14 @@ export class CaseReopeningService {
       }
 
       await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'approveCaseReopening',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId: supervisorId,
         operation: 'approveCaseReopening',
         entityName: CaseReopeningService.name,
@@ -417,7 +443,7 @@ export class CaseReopeningService {
           data: {
             user_id: supervisorId,
             case_id: caseId,
-          //  task_id: reopeningTask.task_id,
+            //  task_id: reopeningTask.task_id,
             note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
           },
         });
@@ -451,6 +477,14 @@ export class CaseReopeningService {
       }
 
       await this.auditLogService.logAction({
+        userId: supervisorId,
+        operation: 'rejectCaseReopening',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId: supervisorId,
         operation: 'rejectCaseReopening',
         entityName: CaseReopeningService.name,

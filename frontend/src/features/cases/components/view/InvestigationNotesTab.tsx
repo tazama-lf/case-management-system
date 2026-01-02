@@ -6,13 +6,15 @@ import {
 import { commentService, type TaskComment } from '../../services/commentService';
 import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import {BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect} from '@mdxeditor/editor';
+import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { TaskStatus } from '../../services/taskService';
 
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
   onNotesUpdate?: () => void;
 }
+
 
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   task,
@@ -23,6 +25,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
+  const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   // Handle link clicks to ensure external links work properly
   React.useEffect(() => {
@@ -31,10 +34,10 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
         e.preventDefault();
         const href = (target as HTMLAnchorElement).href;
-        
+
         // Extract the actual URL from the href
         let url = href;
-        
+
         // If the URL is relative (doesn't have protocol), extract the path and add https://
         if (!href.match(/^https?:\/\//i) && !href.match(/^mailto:/i)) {
           // Extract the relative path part (e.g., /cases/google.com -> google.com)
@@ -43,7 +46,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             url = 'https://' + match[1];
           }
         }
-        
+
         // Open in new tab
         window.open(url, '_blank', 'noopener,noreferrer');
       }
@@ -102,7 +105,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');
-      
+
       // Trigger refresh in investigation summary
       if (onNotesUpdate) {
         onNotesUpdate();
@@ -147,23 +150,24 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           )}
 
           {/* MDX Editor */}
-            <div className="mdx-editor-container">
-              <MDXEditor
-                markdown={notes}
-                onChange={handleNotesChange}
-                className="mdx-editor"
-                contentEditableClassName="prose"
-                plugins={[
-                  headingsPlugin(), 
-                  listsPlugin(), 
-                  linkDialogPlugin(), 
-                  linkPlugin(), 
-                  quotePlugin(), 
-                  markdownShortcutPlugin(), 
-                  toolbarPlugin({
-                    toolbarClassName: 'editor-toolbar ',
-                    toolbarContents: () => (
-                      <>
+          <div className="mdx-editor-container min-h-[250px]">
+            <MDXEditor
+              markdown={notes}
+              onChange={handleNotesChange}
+              readOnly={isTaskCompleted}
+              className="mdx-editor"
+              contentEditableClassName="prose"
+              plugins={[
+                headingsPlugin(),
+                listsPlugin(),
+                linkDialogPlugin(),
+                linkPlugin(),
+                quotePlugin(),
+                markdownShortcutPlugin(),
+                toolbarPlugin({
+                  toolbarClassName: 'editor-toolbar ',
+                  toolbarContents: () => (
+                    <>
                       <UndoRedo />
                       <BoldItalicUnderlineToggles />
                       <ListsToggle />
@@ -171,14 +175,14 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                     </>
                   )
                 })]}
-              />
+            />
           </div>
 
           {/* Save Button */}
           <div className="flex justify-end gap-2">
             <button
               onClick={handleSaveNotes}
-              disabled={saving || !notes.trim()}
+              disabled={saving || !notes.trim() || isTaskCompleted}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
             >
               <CheckIcon className="h-4 w-4" />

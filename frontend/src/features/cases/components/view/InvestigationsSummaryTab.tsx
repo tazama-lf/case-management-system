@@ -13,6 +13,7 @@ import type { TaskComment } from '../../services/commentService';
 import GenerateInvestigationReportModal from '../modals/GenerateInvestigationReportModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
+import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
@@ -52,6 +53,28 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
+
+  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
+    return {
+      id: task.task_id,
+      taskId: task.task_id,
+      name: task.name || 'Unnamed Task',
+      description: task.description,
+      assignee: task.assigned_user_id,
+      assigneeName: task.assignedUser?.username || task.assigned_user_id,
+      candidateGroup: task.candidateGroup || 'investigations',
+      status: task.status,
+      priority: caseDetails?.priority || 'NEW',
+      createdAt: task.created_at,
+      dueDate: task.sla_deadline || undefined,
+      processInstanceId: '',
+      caseId: task.case_id,
+      flowableData: task,
+
+    };
+
+  };
+
 
   useEffect(() => {
     const user = authService.getUser();
@@ -544,7 +567,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             open={showCompleteModal}
             onClose={() => setShowCompleteModal(false)}
             onCompleteTask={handleCompleteTask}
-            task={investigationTask}
+            task={mapToUnifiedWorkQueueTask(investigationTask, caseDetails)}
           />
         </Suspense>
       )}

@@ -87,7 +87,8 @@ export const ROUTES = {
   WORK_QUEUE_TASK: '/work-queue/:taskId',
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
-  ADMIN: '/admin'
+  ADMIN: '/admin',
+  REFERENCE_ID: '/reference_id'
 } as const;
 
 /**

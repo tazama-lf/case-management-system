@@ -13,6 +13,7 @@ import { FlowableService } from '../..//flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
+import { EventLogService } from 'src/modules/event_log/eventLog.service';
 
 @Injectable()
 export class CaseCreationApprovalService {
@@ -27,7 +28,8 @@ export class CaseCreationApprovalService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
     private readonly caseQueryService: CaseQueryService,
-  ) {}
+    private readonly eventLogService: EventLogService,
+  ) { }
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -52,7 +54,7 @@ export class CaseCreationApprovalService {
     if (!caseType) {
       throw new BadRequestException('Valid alert type is required: FRAUD, AML, or FRAUD_AND_AML');
     }
-    
+
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
@@ -166,6 +168,14 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.eventLogService.logEventAction({
+        userId,
+        operation: 'createManualCase',
+        entityName: CaseCreationApprovalService.name,
+        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
+        outcome: Outcome.SUCCESS,
+      });
+
       return {
         success: true,
         case: result.case,
@@ -252,6 +262,14 @@ export class CaseCreationApprovalService {
       });
 
       await this.auditLogService.logAction({
+        userId,
+        operation: 'saveCaseAsDraft',
+        entityName: 'CaseCreation',
+        actionPerformed: `Draft case ${result.case.case_id} created`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         operation: 'saveCaseAsDraft',
         entityName: 'CaseCreation',
@@ -466,6 +484,14 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.eventLogService.logEventAction({
+        userId: supervisorId,
+        operation: 'approveCaseCreation',
+        entityName: CaseCreationApprovalService.name,
+        actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+        outcome: Outcome.SUCCESS,
+      });
+
       this.logger.log(
         `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
         CaseCreationApprovalService.name,
@@ -571,6 +597,14 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.eventLogService.logEventAction({
+        userId: supervisorId,
+        operation: 'rejectCaseCreation',
+        entityName: CaseCreationApprovalService.name,
+        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
+        outcome: Outcome.SUCCESS,
+      });
+
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
       this.logger.error(
@@ -655,6 +689,14 @@ export class CaseCreationApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.eventLogService.logEventAction({
+        userId,
+        operation: 'completeCase',
+        entityName: CaseCreationApprovalService.name,
+        actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+        outcome: Outcome.SUCCESS,
+      });
+
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
       this.logger.error('completeCase failed', { error: err, caseId, userId, tenantId });
@@ -693,6 +735,14 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
       await this.auditLogService.logAction({
+        userId,
+        operation: 'createCase',
+        entityName: 'CaseCreationApprovalService',
+        actionPerformed: `Case ${createdCase.case_id} created successfully`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         operation: 'createCase',
         entityName: 'CaseCreationApprovalService',
@@ -770,6 +820,14 @@ export class CaseCreationApprovalService {
       });
 
       await this.auditLogService.logAction({
+        userId,
+        operation: 'updateCaseStatus',
+        entityName: 'CaseCreationApprovalService',
+        actionPerformed: `Updated case ${caseId} status to ${status}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      await this.eventLogService.logEventAction({
         userId,
         operation: 'updateCaseStatus',
         entityName: 'CaseCreationApprovalService',

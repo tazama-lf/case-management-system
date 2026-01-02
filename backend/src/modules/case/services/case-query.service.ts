@@ -9,6 +9,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { AuditLogService } from '../../audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
+import { EventLogService } from 'src/modules/event_log/eventLog.service';
 
 @Injectable()
 export class CaseQueryService {
@@ -17,6 +18,7 @@ export class CaseQueryService {
     private readonly logger: LoggerService,
     private readonly caseRepository: CaseRepository,
     private readonly auditLogService: AuditLogService,
+    private readonly eventLogService: EventLogService,
   ) { }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
@@ -364,6 +366,14 @@ export class CaseQueryService {
       });
 
       this.auditLogService.logAction({
+        userId,
+        operation: 'updateCase',
+        entityName: CaseQueryService.name,
+        actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
+        outcome: Outcome.SUCCESS,
+      });
+
+      this.eventLogService.logEventAction({
         userId,
         operation: 'updateCase',
         entityName: CaseQueryService.name,

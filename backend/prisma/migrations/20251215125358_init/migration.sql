@@ -8,10 +8,10 @@ CREATE TYPE "public"."CaseStatus" AS ENUM ('STATUS_00_DRAFT', 'STATUS_01_PENDING
 CREATE TYPE "public"."TaskStatus" AS ENUM ('STATUS_01_UNASSIGNED', 'STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS', 'STATUS_30_COMPLETED', 'STATUS_21_BLOCKED');
 
 -- CreateEnum
-CREATE TYPE "public"."CaseType" AS ENUM ('FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE');
+CREATE TYPE "public"."AlertType" AS ENUM ('FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE');
 
 -- CreateEnum
-CREATE TYPE "public"."AlertType" AS ENUM ('FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE');
+CREATE TYPE "public"."CaseType" AS ENUM ('FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE');
 
 -- CreateEnum
 CREATE TYPE "public"."PredictionOutcome" AS ENUM ('FALSE_POSITIVE', 'TRUE_POSITIVE', 'FALSE_NEGATIVE', 'TRUE_NEGATIVE');
@@ -43,9 +43,12 @@ CREATE TYPE "public"."NotificationType" AS ENUM ('TASK_ASSIGNED', 'TASK_REASSIGN
 -- CreateEnum
 CREATE TYPE "public"."DeliveryStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'RETRYING', 'PERMANENT_FAILURE');
 
+-- CreateEnum
+CREATE TYPE "public"."AsyncTaskStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED');
+
 -- CreateTable
 CREATE TABLE "public"."system_configurations" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "config_key" TEXT NOT NULL,
     "config_value" JSONB NOT NULL,
     "config_type" TEXT NOT NULL,
@@ -62,8 +65,8 @@ CREATE TABLE "public"."system_configurations" (
 
 -- CreateTable
 CREATE TABLE "public"."configuration_change_logs" (
-    "id" TEXT NOT NULL,
-    "config_id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "config_id" INTEGER NOT NULL,
     "config_key" TEXT NOT NULL,
     "old_value" JSONB,
     "new_value" JSONB NOT NULL,
@@ -83,7 +86,7 @@ CREATE TABLE "public"."configuration_change_logs" (
 
 -- CreateTable
 CREATE TABLE "public"."role_permissions" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "role_name" TEXT NOT NULL,
     "permissions" JSONB NOT NULL,
     "description" TEXT,
@@ -99,7 +102,7 @@ CREATE TABLE "public"."role_permissions" (
 
 -- CreateTable
 CREATE TABLE "public"."integration_configs" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "system_name" TEXT NOT NULL,
     "endpoint_url" TEXT,
     "api_key" TEXT,
@@ -119,7 +122,7 @@ CREATE TABLE "public"."integration_configs" (
 
 -- CreateTable
 CREATE TABLE "public"."audit_log" (
-    "audit_log_id" UUID NOT NULL,
+    "audit_log_id" SERIAL NOT NULL,
     "user_id" UUID NOT NULL,
     "operation" VARCHAR(50) NOT NULL,
     "entity_name" VARCHAR(50) NOT NULL,
@@ -132,8 +135,8 @@ CREATE TABLE "public"."audit_log" (
 
 -- CreateTable
 CREATE TABLE "public"."alerts" (
-    "alert_id" UUID NOT NULL,
-    "tenant_id" UUID NOT NULL,
+    "alert_id" SERIAL NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "priority" "public"."Priority" DEFAULT 'NEW',
     "priority_score" DOUBLE PRECISION,
     "alert_type" "public"."AlertType",
@@ -146,22 +149,22 @@ CREATE TABLE "public"."alerts" (
     "network_map" JSONB NOT NULL,
     "confidence_per" INTEGER NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "case_id" UUID,
+    "case_id" INTEGER,
 
     CONSTRAINT "alerts_pkey" PRIMARY KEY ("alert_id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."cases" (
-    "case_id" UUID NOT NULL,
+    "case_id" SERIAL NOT NULL,
     "case_creator_user_id" UUID NOT NULL,
     "case_owner_user_id" UUID,
-    "tenant_id" UUID NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "status" "public"."CaseStatus" NOT NULL,
     "priority" "public"."Priority" NOT NULL DEFAULT 'NEW',
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6) NOT NULL,
-    "parent_id" UUID,
+    "parent_id" INTEGER,
     "case_type" "public"."CaseType",
     "case_creation_type" "public"."CaseCreationType" NOT NULL,
 
@@ -170,15 +173,15 @@ CREATE TABLE "public"."cases" (
 
 -- CreateTable
 CREATE TABLE "public"."tasks" (
-    "task_id" UUID NOT NULL,
-    "case_id" UUID NOT NULL,
+    "task_id" SERIAL NOT NULL,
+    "case_id" INTEGER NOT NULL,
     "status" "public"."TaskStatus" NOT NULL DEFAULT 'STATUS_01_UNASSIGNED',
     "assigned_user_id" UUID,
     "name" TEXT,
     "description" TEXT,
     "task_type" "public"."TaskType",
     "candidateGroup" VARCHAR(50),
-    "work_queue_id" UUID,
+    "work_queue_id" INTEGER,
     "sla_deadline" TIMESTAMP(6),
     "sla_duration_hours" INTEGER,
     "completed_at" TIMESTAMP(6),
@@ -190,23 +193,23 @@ CREATE TABLE "public"."tasks" (
 
 -- CreateTable
 CREATE TABLE "public"."comments" (
-    "comment_id" UUID NOT NULL,
+    "comment_id" SERIAL NOT NULL,
     "user_id" UUID NOT NULL,
     "note" TEXT NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6) NOT NULL,
-    "case_id" UUID,
-    "task_id" UUID,
+    "case_id" INTEGER,
+    "task_id" INTEGER,
 
     CONSTRAINT "comments_pkey" PRIMARY KEY ("comment_id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."evidence" (
-    "evidence_id" UUID NOT NULL,
-    "task_id" UUID NOT NULL,
+    "evidence_id" SERIAL NOT NULL,
+    "task_id" INTEGER NOT NULL,
     "uploader_user_id" UUID NOT NULL,
-    "tenant_id" UUID NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "name" VARCHAR(30) NOT NULL,
     "description" VARCHAR(100) NOT NULL,
     "type" VARCHAR(30) NOT NULL,
@@ -219,8 +222,8 @@ CREATE TABLE "public"."evidence" (
 
 -- CreateTable
 CREATE TABLE "public"."reports" (
-    "report_id" UUID NOT NULL,
-    "task_id" UUID NOT NULL,
+    "report_id" SERIAL NOT NULL,
+    "task_id" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "report_type" "public"."ReportType" NOT NULL,
     "report_file_path" TEXT NOT NULL,
@@ -234,10 +237,10 @@ CREATE TABLE "public"."reports" (
 
 -- CreateTable
 CREATE TABLE "public"."work_queues" (
-    "work_queue_id" UUID NOT NULL,
+    "work_queue_id" SERIAL NOT NULL,
     "name" VARCHAR(100) NOT NULL,
     "description" TEXT,
-    "tenant_id" UUID NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_by_user_id" UUID NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -248,8 +251,8 @@ CREATE TABLE "public"."work_queues" (
 
 -- CreateTable
 CREATE TABLE "public"."work_queue_roles" (
-    "work_queue_role_id" UUID NOT NULL,
-    "work_queue_id" UUID NOT NULL,
+    "work_queue_role_id" SERIAL NOT NULL,
+    "work_queue_id" INTEGER NOT NULL,
     "role" "public"."UserRole" NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -258,8 +261,8 @@ CREATE TABLE "public"."work_queue_roles" (
 
 -- CreateTable
 CREATE TABLE "public"."work_queue_task_types" (
-    "work_queue_task_type_id" UUID NOT NULL,
-    "work_queue_id" UUID NOT NULL,
+    "work_queue_task_type_id" SERIAL NOT NULL,
+    "work_queue_id" INTEGER NOT NULL,
     "task_type" "public"."TaskType" NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -268,8 +271,8 @@ CREATE TABLE "public"."work_queue_task_types" (
 
 -- CreateTable
 CREATE TABLE "public"."work_queue_assignment_rules" (
-    "assignment_rule_id" UUID NOT NULL,
-    "work_queue_id" UUID NOT NULL,
+    "assignment_rule_id" SERIAL NOT NULL,
+    "work_queue_id" INTEGER NOT NULL,
     "rule_name" VARCHAR(255) NOT NULL DEFAULT 'Legacy Rule',
     "rule_type" "public"."AssignmentRuleType" NOT NULL,
     "rule_config" JSONB NOT NULL,
@@ -291,8 +294,8 @@ CREATE TABLE "public"."work_queue_assignment_rules" (
 
 -- CreateTable
 CREATE TABLE "public"."work_queue_members" (
-    "work_queue_member_id" UUID NOT NULL,
-    "work_queue_id" UUID NOT NULL,
+    "work_queue_member_id" SERIAL NOT NULL,
+    "work_queue_id" INTEGER NOT NULL,
     "user_id" UUID NOT NULL,
     "assignment_type" "public"."AssignmentType" NOT NULL DEFAULT 'MANUAL',
     "assigned_by_user_id" UUID,
@@ -304,9 +307,9 @@ CREATE TABLE "public"."work_queue_members" (
 
 -- CreateTable
 CREATE TABLE "public"."user_notification_preferences" (
-    "preference_id" UUID NOT NULL,
+    "preference_id" SERIAL NOT NULL,
     "user_id" UUID NOT NULL,
-    "tenant_id" UUID NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "email_enabled" BOOLEAN NOT NULL DEFAULT true,
     "in_app_enabled" BOOLEAN NOT NULL DEFAULT true,
     "sms_enabled" BOOLEAN NOT NULL DEFAULT false,
@@ -322,11 +325,11 @@ CREATE TABLE "public"."user_notification_preferences" (
 
 -- CreateTable
 CREATE TABLE "public"."notification_logs" (
-    "notification_log_id" UUID NOT NULL,
+    "notification_log_id" SERIAL NOT NULL,
     "user_id" UUID NOT NULL,
-    "tenant_id" UUID NOT NULL,
-    "task_id" UUID,
-    "case_id" UUID,
+    "tenant_id" TEXT NOT NULL,
+    "task_id" INTEGER,
+    "case_id" INTEGER,
     "notification_type" "public"."NotificationType" NOT NULL,
     "channel" "public"."NotificationChannel" NOT NULL,
     "delivery_status" "public"."DeliveryStatus" NOT NULL DEFAULT 'PENDING',
@@ -340,6 +343,22 @@ CREATE TABLE "public"."notification_logs" (
     "updated_at" TIMESTAMP(6) NOT NULL,
 
     CONSTRAINT "notification_logs_pkey" PRIMARY KEY ("notification_log_id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."async_tasks" (
+    "task_id" SERIAL NOT NULL,
+    "task_type" VARCHAR(50) NOT NULL,
+    "status" "public"."AsyncTaskStatus" NOT NULL DEFAULT 'PENDING',
+    "payload" JSONB NOT NULL,
+    "max_retries" INTEGER NOT NULL DEFAULT 5,
+    "retry_count" INTEGER NOT NULL DEFAULT 0,
+    "next_retry_at" TIMESTAMP(6),
+    "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) NOT NULL,
+    "created_by" VARCHAR(100),
+
+    CONSTRAINT "async_tasks_pkey" PRIMARY KEY ("task_id")
 );
 
 -- CreateIndex
@@ -434,6 +453,21 @@ CREATE INDEX "notification_logs_created_at_idx" ON "public"."notification_logs"(
 
 -- CreateIndex
 CREATE INDEX "notification_logs_user_id_read_at_idx" ON "public"."notification_logs"("user_id", "read_at");
+
+-- CreateIndex
+CREATE INDEX "async_tasks_status_idx" ON "public"."async_tasks"("status");
+
+-- CreateIndex
+CREATE INDEX "async_tasks_task_type_idx" ON "public"."async_tasks"("task_type");
+
+-- CreateIndex
+CREATE INDEX "async_tasks_next_retry_at_idx" ON "public"."async_tasks"("next_retry_at");
+
+-- CreateIndex
+CREATE INDEX "async_tasks_created_at_idx" ON "public"."async_tasks"("created_at");
+
+-- CreateIndex
+CREATE INDEX "async_tasks_status_task_type_next_retry_at_idx" ON "public"."async_tasks"("status", "task_type", "next_retry_at");
 
 -- AddForeignKey
 ALTER TABLE "public"."alerts" ADD CONSTRAINT "alerts_case_id_fkey" FOREIGN KEY ("case_id") REFERENCES "public"."cases"("case_id") ON DELETE SET NULL ON UPDATE CASCADE;

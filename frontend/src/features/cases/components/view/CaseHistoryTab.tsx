@@ -25,7 +25,7 @@ interface CaseHistoryEvent {
   userId?: string;
   details: string;
   outcome: 'success' | 'warning' | 'error' | 'info';
-  type: 'case' | 'task' | 'audit';
+  type: 'case' | 'task' | 'event';
 }
 
 interface CaseHistoryTabProps {
@@ -318,9 +318,9 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         }
 
         try {
-          const auditLogs = await caseService.getCaseHistory(caseId);
+          const eventLogs = await caseService.getCaseHistoryByEvent(caseId);
 
-          auditLogs.forEach((log) => {
+          eventLogs.forEach((log) => {
             let action = formatOperation(log.operation);
             let details = log.action_performed || 'Action performed';
 
@@ -363,7 +363,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             }
 
             events.push({
-              id: `audit-${log.id}`,
+              id: `event-${log.event_log_id}`,
               timestamp: log.performed_at instanceof Date
                 ? log.performed_at.toISOString()
                 : new Date(log.performed_at).toISOString(),
@@ -372,7 +372,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               userId: log.user_id,
               details: details,
               outcome: mapOutcomeToEventOutcome(log.outcome),
-              type: 'audit',
+              type: 'event',
             });
           });
         } catch (err) {
@@ -399,6 +399,11 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     fetchData();
   }, [caseId]);
 
+  const formatActionText = (text?: string) => {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  };
+
   const formatTimestamp = (timestamp: string) => {
     try {
       const date = new Date(timestamp);
@@ -415,6 +420,10 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     }
   };
 
+  const sortedHistory = [...history].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -424,52 +433,55 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   }
 
   return (
-    <div className="py-4">
+    <div className="space-y-6">
       {/* Timeline Header */}
-      <h3 className="text-base font-semibold text-gray-900 mb-6">Case Timeline</h3>
+      <h3 className="text-xl font-semibold text-gray-900">Case Timeline</h3>
 
       {/* Timeline Events */}
-      <div className="space-y-6">
-        {history.length > 0 ? (
-          history.map((event) => (
-            <div key={event.id} className="flex gap-4">
-              {/* Icon */}
-              <div className="flex-shrink-0">
-                {getEventIcon(event.outcome, event.action)}
+      {sortedHistory.length > 0 ? (
+        <div className="relative pl-40 mt-5">
+          {/* Continuous vertical line */}
+          <div className="absolute left-[178px] top-2 bottom-8 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200"></div>
+
+          {sortedHistory.map((event, index) => (
+            <div key={index} className="relative pb-10 last:pb-0">
+              {/* Timestamp on left */}
+              <div className="absolute left-[-160px] top-0 w-36 text-right">
+                <div className="text-sm font-medium text-gray-600">
+                  {formatTimestamp(event.timestamp)}
+                </div>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900">
-                  {event.action}
-                </h4>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {formatTimestamp(event.timestamp)}
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  {event.details}
-                </p>
-                {event.userId && investigators[event.userId] && (
-                  <p className="text-xs text-gray-600 mt-1">
-                    {event.type === 'task' && event.action.includes('assigned')
-                      ? `Assigned to ${investigators[event.userId]}`
-                      : event.performedBy === 'System'
-                        ? `Related to ${investigators[event.userId]}`
-                        : `By ${investigators[event.userId]}`}
-                  </p>
-                )}
+              {/* Timeline dot */}
+              <div className="absolute left-[-11px] top-1.5 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-md z-10"></div>
+
+              {/* Content card */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="space-y-2">
+                  <div className="font-semibold text-gray-900 text-base">{formatActionText(event.action)}</div>
+                  {event.details && (
+                    <div className="text-sm text-gray-600 leading-relaxed">{event.details}</div>
+                  )}
+                  {event.userId && investigators[event.userId] && (
+                    <div className="flex items-center gap-2 text-sm text-blue-600 font-medium pt-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      {event.type === 'task' && event.action.includes('assigned')
+                        ? `Assigned to ${investigators[event.userId]}`
+                        : event.performedBy === 'System'
+                          ? `Related to ${investigators[event.userId]}`
+                          : `By ${investigators[event.userId]}`}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">
-              No history events available for this case
-            </p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-lg">No history events available for this case</div>
+        </div>
+      )}
     </div>
   );
 };

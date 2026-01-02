@@ -15,9 +15,10 @@ import { CaseReopeningService } from './services/case-reopening.service';
 import { FlowableModule } from '../flowable/flowable.module';
 import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
+import { EventLogModule } from '../event_log/eventLog.module';
 
 @Module({
-	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule],
+	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule, EventLogModule],
 	providers: [
 		CaseService,
 		CaseQueryService,
@@ -34,4 +35,4 @@ import { SharedModule } from '../shared/shared.module';
 	],
 	controllers: [CaseController],
 })
-export class CaseModule {}
+export class CaseModule { }

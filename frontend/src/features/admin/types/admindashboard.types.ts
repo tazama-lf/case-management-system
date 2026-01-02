@@ -41,3 +41,15 @@ export interface CandidateGroupData {
   name: string;
   type: string;
 }
+
+export interface ReferenceIdsData {
+  id: Number;
+  txTp: string;
+  referenceIdName: string;
+  createdAt: string;
+}
+
+export interface ReferenceIdsRequest {
+  txTp: string;
+  referenceIdName: string;
+}
