@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, AlertType } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -118,7 +118,7 @@ export class CaseCreationApprovalService {
           userId,
         );
       } else {
-        if (caseType === AlertType.FRAUD_AND_AML) {
+        if (caseType === CaseType.FRAUD_AND_AML) {
           await this.taskService.createTask(
             {
               caseId: result.case.case_id,
@@ -769,7 +769,7 @@ export class CaseCreationApprovalService {
       };
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
-          if (caseType === AlertType.FRAUD_AND_AML) {
+          if (caseType === CaseType.FRAUD_AND_AML) {
             // Create separate tasks for Fraud and AML investigations
             await this.taskService.createTask(
               {

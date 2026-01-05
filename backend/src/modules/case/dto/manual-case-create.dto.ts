@@ -1,4 +1,4 @@
-import { AlertType } from '@prisma/client-cms';
+import { CaseType } from '@prisma/client-cms';
 import { IsEnum, IsNumber, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -21,10 +21,10 @@ export class ManualCreateCaseDto {
 
   @ApiProperty({
     description: 'Type of alert',
-    enum: AlertType,
-    example: AlertType.FRAUD,
+    enum: CaseType,
+    example: CaseType.FRAUD,
     enumName: 'AlertType',
   })
-  @IsEnum(AlertType)
-  alertType: AlertType;
+  @IsEnum(CaseType)
+  alertType: CaseType;
 }

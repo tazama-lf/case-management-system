@@ -14,6 +14,7 @@ import GenerateInvestigationReportModal from '../modals/GenerateInvestigationRep
 import { useToast } from '@/shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
+import type { TaskForSupervisor } from '../../services/taskService';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
@@ -28,6 +29,7 @@ interface InvestigationSummaryTabProps {
   row?: CaseRow;
   onTaskUpdate?: () => void;
   refreshKey?: number;
+  task: TaskForSupervisor;
 }
 
 interface EvidenceCategory {
@@ -37,7 +39,7 @@ interface EvidenceCategory {
   evidence: Evidence[];
 }
 
-const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate, refreshKey }) => {
+const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate, refreshKey, task }) => {
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
@@ -49,10 +51,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
-  const [taskId, setTaskId] = useState<string>('');
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
+  const taskId = task?.task_id;
 
   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
     return {
@@ -82,6 +84,60 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     setIsSupervisor(isSupervisor);
   }, []);
 
+  const loadEvidence = React.useCallback(async () => {
+    if (!taskId) return;
+    const evidenceResponse = await evidenceService.getTaskEvidence(taskId);
+
+
+    const groupedByType = new Map<string, Evidence[]>();
+
+    if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
+      evidenceResponse.evidence.forEach((evidence) => {
+        const type = evidence.evidenceType || 'OTHER';
+        if (!groupedByType.has(type)) {
+          groupedByType.set(type, []);
+        }
+        groupedByType.get(type)!.push(evidence);
+      });
+    }
+
+
+    const categories: EvidenceCategory[] = Array.from(groupedByType.entries()).map(([type, items]) => {
+      let displayLabel = '';
+
+      switch (type) {
+        case 'ADVERSE_MEDIA':
+          displayLabel = 'Adverse Media and Search Records';
+          break;
+        case 'SANCTIONS':
+          displayLabel = 'Sanctions Screening Results';
+          break;
+        case 'SAR_STR_FILING':
+          displayLabel = 'SAR/STR Filing Documentation';
+          break;
+        case 'OTHER':
+          displayLabel = 'Supporting Documentation and Reference Materials';
+          break;
+        default:
+          displayLabel = type;
+      }
+
+      return {
+        type: displayLabel,
+        count: items.length,
+        description: items.length === 1 ? 'document' : 'documents',
+        evidence: items,
+      };
+    });
+
+    categories.sort((a, b) => b.count - a.count);
+    setEvidenceCategories(categories);
+  }, [taskId]);
+
+  React.useEffect(() => {
+    loadEvidence();
+  }, [loadEvidence]);
+
 
   useEffect(() => {
     const fetchCaseAndEvidence = async () => {
@@ -93,52 +149,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         setCaseDetails(details);
 
 
-        const evidenceResponse = await evidenceService.getCaseEvidence(caseId);
 
-
-        const groupedByType = new Map<string, Evidence[]>();
-
-        if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
-          evidenceResponse.evidence.forEach((evidence) => {
-            const type = evidence.evidenceType || 'OTHER';
-            if (!groupedByType.has(type)) {
-              groupedByType.set(type, []);
-            }
-            groupedByType.get(type)!.push(evidence);
-          });
-        }
-
-
-        const categories: EvidenceCategory[] = Array.from(groupedByType.entries()).map(([type, items]) => {
-          let displayLabel = '';
-
-          switch (type) {
-            case 'ADVERSE_MEDIA':
-              displayLabel = 'Adverse Media and Search Records';
-              break;
-            case 'SANCTIONS':
-              displayLabel = 'Sanctions Screening Results';
-              break;
-            case 'SAR_STR_FILING':
-              displayLabel = 'SAR/STR Filing Documentation';
-              break;
-            case 'OTHER':
-              displayLabel = 'Supporting Documentation and Reference Materials';
-              break;
-            default:
-              displayLabel = type;
-          }
-
-          return {
-            type: displayLabel,
-            count: items.length,
-            description: items.length === 1 ? 'document' : 'documents',
-            evidence: items,
-          };
-        });
-
-        categories.sort((a, b) => b.count - a.count);
-        setEvidenceCategories(categories);
 
 
         const comments = await commentService.getCommentsByCase(caseId);
@@ -174,7 +185,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             (t) => t.name && t.name.toLowerCase().includes('investigat')
           );
           if (investigationTask) {
-            setTaskId(investigationTask.task_id.toString());
             setInvestigationTask(investigationTask);
             if (investigationTask.investigationNotes) {
               setInvestigationNotes(investigationTask.investigationNotes);
@@ -549,7 +559,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
         caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
-        taskId={Number(taskId)}
+        taskId={taskId}
         caseData={caseDetails || undefined}
         caseComments={caseComments}
         supervisorComments={supervisorComments}

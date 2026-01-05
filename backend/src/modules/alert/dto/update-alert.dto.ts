@@ -1,4 +1,4 @@
-import { Priority, AlertType, PredictionOutcome, CaseStatus } from '@prisma/client-cms';
+import { Priority, CaseType, PredictionOutcome, CaseStatus } from '@prisma/client-cms';
 import { IsOptional, IsEnum, IsNumber, IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -40,14 +40,14 @@ export class ManualAlertUpdateDTO {
 
     @ApiProperty({
         description: 'Type of alert',
-        enum: AlertType,
-        example: AlertType.FRAUD,
+        enum: CaseType,
+        example: CaseType.FRAUD,
         required: false,
         enumName: 'AlertType',
     })
     @IsOptional()
-    @IsEnum(AlertType)
-    alertType?: AlertType;
+    @IsEnum(CaseType)
+    alertType?: CaseType;
 
     @ApiProperty({
         description: 'Prediction outcome from ML model',

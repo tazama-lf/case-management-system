@@ -95,7 +95,7 @@ model Alert {
   tenant_id          String
   priority           Priority?          @default(NEW)
   priority_score     Float?
-  alert_type         AlertType?
+  alert_type         CaseType?
   prediction_outcome PredictionOutcome? @default(TRUE_POSITIVE)
   source             String?            @db.VarChar(50)
   txtp               String?            @db.VarChar(50)
@@ -279,12 +279,6 @@ enum TaskStatus {
   STATUS_20_IN_PROGRESS
   STATUS_30_COMPLETED
   STATUS_21_BLOCKED
-}
-
-enum AlertType {
-  FRAUD
-  AML
-  FRAUD_AND_AML
 }
 
 enum CaseType {

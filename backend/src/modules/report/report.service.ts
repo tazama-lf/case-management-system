@@ -3,7 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseStatus, TaskStatus, AlertType } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { UpdateCaseDto } from '../case/dto/update-case.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -898,7 +898,7 @@ export class ReportsService {
     });
 
     const caseTypeResolution = await Promise.all(
-      Object.values(AlertType).map(async (type) => {
+      Object.values(CaseType).map(async (type) => {
         const whereClause: any = {
           status: {
             in: closedStatuses,
@@ -993,13 +993,13 @@ export class ReportsService {
     };
   }
 
-  private getCaseTypeColor(caseType: AlertType | null): string {
+  private getCaseTypeColor(caseType: CaseType | null): string {
     switch (caseType) {
-      case AlertType.FRAUD:
+      case CaseType.FRAUD:
         return '#ef4444';
-      case AlertType.AML:
+      case CaseType.AML:
         return '#8b5cf6';
-      case AlertType.FRAUD_AND_AML:
+      case CaseType.FRAUD_AND_AML:
         return '#f59e0b';
       default:
         return '#3b82f6';

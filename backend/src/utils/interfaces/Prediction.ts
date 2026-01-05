@@ -1,4 +1,4 @@
-import { AlertType } from '@prisma/client-cms';
+import { CaseType } from '@prisma/client-cms';
 
 export interface AIPrediction {
   priority: number;
@@ -8,6 +8,6 @@ export interface AIPrediction {
 export interface Prediction {
   priorityScore: number;
   confidence_per: number;
-  alertType: AlertType;
+  alertType: CaseType;
   isTruePositive: boolean;
 }

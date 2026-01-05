@@ -221,6 +221,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
                 {row?.id && (
                   <InvestigationSummaryTab
+                    task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
                     caseId={row.id}
                     row={row}
                     refreshKey={summaryRefreshKey}

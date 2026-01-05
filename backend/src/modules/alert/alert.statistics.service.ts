@@ -1,7 +1,7 @@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { BadRequestException, InternalServerErrorException, Injectable } from '@nestjs/common';
-import { Alert, AlertType, Priority, Prisma } from '@prisma/client-cms';
+import { Alert, CaseType, Priority, Prisma } from '@prisma/client-cms';
 
 @Injectable()
 export class AlertStatisticsService {
@@ -62,10 +62,10 @@ export class AlertStatisticsService {
         }
 
         if (alertType) {
-            if (!Object.values(AlertType).includes(alertType.toUpperCase() as AlertType)) {
+            if (!Object.values(CaseType).includes(alertType.toUpperCase() as CaseType)) {
                 throw new BadRequestException(`Invalid alertType: ${alertType}`);
             }
-            whereClause.alert_type = alertType.toUpperCase() as AlertType;
+            whereClause.alert_type = alertType.toUpperCase() as CaseType;
         }
 
         if (type) {
@@ -91,9 +91,9 @@ export class AlertStatisticsService {
                     priority: { equals: search.toUpperCase() as Priority },
                 });
             }
-            if (typeof search === 'string' && Object.values(AlertType).includes(search.toUpperCase() as AlertType)) {
+            if (typeof search === 'string' && Object.values(CaseType).includes(search.toUpperCase() as CaseType)) {
                 searchConditions.push({
-                    alert_type: { equals: search.toUpperCase() as AlertType },
+                    alert_type: { equals: search.toUpperCase() as CaseType },
                 });
             }
             whereClause.OR = searchConditions;

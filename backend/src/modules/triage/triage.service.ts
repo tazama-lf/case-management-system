@@ -7,7 +7,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
-import { Priority, CaseStatus, AlertType, CaseType, Prisma, TaskStatus } from '@prisma/client-cms';
+import { Priority, CaseStatus, CaseType, Prisma, TaskStatus } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
@@ -303,7 +303,7 @@ export class TriageService {
             }
 
             if (predictedTruePositive) {
-                if (predictedAlertType === AlertType.FRAUD_AND_AML) {
+                if (predictedAlertType === CaseType.FRAUD_AND_AML) {
                     await this.taskService.updateTask(
                         triageTaskId,
                         {
@@ -334,7 +334,7 @@ export class TriageService {
                     return;
                 }
 
-                if (predictedAlertType === AlertType.AML) {
+                if (predictedAlertType === CaseType.AML) {
                     await this.flowableService.handleTaskCompleted({
                         caseId: caseId,
                         taskName: triageTask.name!,
@@ -356,7 +356,7 @@ export class TriageService {
                     );
                 }
 
-                if (predictedAlertType === AlertType.FRAUD) {
+                if (predictedAlertType === CaseType.FRAUD) {
                     if (!transactionOccurred) {
                         await this.flowableService.handleTaskCompleted({
                             caseId: caseId,
@@ -480,7 +480,7 @@ export class TriageService {
         taskId: number,
         triageTaskDesc: string,
         priority: Priority,
-        alertType?: AlertType,
+        alertType?: CaseType,
     ): Promise<unknown> {
         try {
             this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
@@ -537,7 +537,7 @@ export class TriageService {
     private async updateAlertAndUpdateTriageTask(
         alertId: number,
         taskId: number,
-        predictedAlertType: AlertType,
+        predictedAlertType: CaseType,
         predictedConfidence: number,
         predictedPriorityScore: number,
         priority: Priority,
@@ -598,7 +598,7 @@ export class TriageService {
 
             return {
                 priorityScore: predictedResult.data.priority,
-                alertType: AlertType.FRAUD,
+                alertType: CaseType.FRAUD,
                 confidence_per: confidence,
                 isTruePositive: false,
             };
