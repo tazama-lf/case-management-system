@@ -147,6 +147,8 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     }
   };
 
+
+
   if (!open) return null;
 
   return (
@@ -251,6 +253,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                   ref={fileInputRef}
                   type="file"
                   multiple
+                  accept=".pdf,.docx,.txt,.ppt,.epub,.html,.png,.jpeg,.jpg,.tiff"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="sar-str-file-input"
@@ -290,7 +293,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
               )}
 
               <p className="text-xs text-gray-500 mt-1">
-                Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG
+                Supported formats: PDF, DOC, DOCX, , TXT, JPG, PNG, TIFF, PPT, EPUB, HTML
               </p>
             </div>
 

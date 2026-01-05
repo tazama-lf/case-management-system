@@ -250,7 +250,6 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                     <option value="FRAUD">Fraud</option>
                     <option value="AML">AML</option>
                     <option value="FRAUD_AND_AML">Fraud and AML</option>
-                    <option value="NONE">None</option>
                   </select>
                 </div>
 
