@@ -1,6 +1,7 @@
 import type { CloseCaseDto } from '../services/caseService';
 import { caseService } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import authService from '@/features/auth/services/authService';
 
 export const useCloseCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
@@ -8,9 +9,18 @@ export const useCloseCaseActions = (refreshCases: () => Promise<void>) => {
   const handleCloseCaseSubmit = async (caseId: number, data: CloseCaseDto) => {
     try {
       await caseService.closeCase(caseId, data);
-      success('Investigation Complete', 'Case submitted for review.');
-      await refreshCases();
-    } catch (err) {
+      const user = authService.getUser();
+      const isSupervisor = Boolean(user?.validatedClaims?.CMS_SUPERVISOR);
+
+  success(
+    'Investigation Complete',
+    isSupervisor
+      ? 'Case Closed Successfully.'
+      : 'Case Closed Successfully. Submitted for review.'
+  );
+
+  await refreshCases();
+     }catch (err) {
       let errorMessage = 'Could not close the case.';
       const backendError = err instanceof Error ? err.message : '';
 
