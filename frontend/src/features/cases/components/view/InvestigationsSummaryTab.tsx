@@ -84,6 +84,13 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     setIsSupervisor(isSupervisor);
   }, []);
 
+  // Check if the logged-in user is the case owner
+  const isUserCaseOwner = (): boolean => {
+    const user = authService.getUser();
+    if (!user || !caseDetails) return false;
+    return user.userId === caseDetails.case_owner_user_id;
+  };
+
   const loadEvidence = React.useCallback(async () => {
     if (!taskId) return;
     const evidenceResponse = await evidenceService.getTaskEvidence(taskId);
@@ -332,7 +339,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             </div>
           </div>
           <div className="flex items-center gap-2 ml-6">
-            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && (
+            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && isUserCaseOwner() && (
               <button
                 onClick={() => setShowCompleteModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
