@@ -338,13 +338,13 @@ class ReportsService {
           // Map evidence to include full object with all available fields
           const supportingEvidence = caseEvidence.map((e: Record<string, unknown>) => {
             const evidenceId =
-              (e.id as number) ||
-              (e.evidenceId as number) ||
-              (e.evidence_id as number) ||
+              (e.id as string) ||
+              (e.evidenceId as string) ||
+              (e.evidence_id as string) ||
               `unknown_${Date.now()}`;
 
             // Extract fileName from attachments array if it exists there
-            const attachments = e.attachments as Array<Record<string, unknown>> | undefined;
+            const attachments = e.metadata as Array<Record<string, unknown>> | undefined;
             const firstAttachment = attachments?.[0];
 
             const fileName =
@@ -403,7 +403,7 @@ class ReportsService {
 
             return {
               ...e,
-              id: typeof e.id === 'number' ? e.id : Number(e.id),
+              id: typeof e.id === 'string' ? e.id : e.id,
             };
           });
 
