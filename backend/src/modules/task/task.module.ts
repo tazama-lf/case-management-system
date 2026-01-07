@@ -11,6 +11,9 @@ import { FlowableModule } from '../flowable/flowable.module';
 import { RepositoryModule } from '../repository/repository.module';
 import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 import { EventLogModule } from '../event_log/eventLog.module';
+import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import { CaseHistoryModule } from '../case_history/caseHistory.module';
+
 
 @Module({
 	imports: [
@@ -23,6 +26,8 @@ import { EventLogModule } from '../event_log/eventLog.module';
 		RepositoryModule,
 		TaskBridgeModule,
 		EventLogModule,
+		TaskHistoryModule,
+		CaseHistoryModule,
 	],
 	providers: [TaskService, TaskLifecycleService],
 	exports: [TaskService],

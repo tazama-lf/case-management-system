@@ -16,6 +16,7 @@ import { CouchdbService } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { TaskHistoryService } from '../task_history/taskHistory.service';
 
 @Injectable()
 export class EvidenceService {
@@ -28,6 +29,7 @@ export class EvidenceService {
     private evidenceRepository: EvidenceRepository,
     private taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
+    private readonly taskHistoryService: TaskHistoryService,
   ) { }
 
   private sha256(buffer: Buffer): string {
@@ -188,6 +190,7 @@ export class EvidenceService {
       evidenceId,
       tenantId,
       taskId: String(dto.taskId),
+      case_Id: String(task.case_id),
       uploadedBy: userId,
       uploadedAt: new Date(),
       evidenceType: dto.evidenceType,
@@ -195,7 +198,7 @@ export class EvidenceService {
       description: dto.description,
       comments: dto.comments,
       archive: false,
-      attachments: [],
+      metadata: [],
     };
 
     if (dto.evidenceType === 'ADVERSE_MEDIA') {
@@ -220,7 +223,7 @@ export class EvidenceService {
 
       const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
 
-      metadata.attachments.push({
+      metadata.metadata.push({
         fileName: file.originalname,
         fileSize: file.size,
         filePath: attachmentResult.filePath,
@@ -243,7 +246,7 @@ export class EvidenceService {
         mimeType: file.mimetype,
         uploadedAt: metadata.uploadedAt,
         uploadedBy: userId,
-        case_Id: taskWithCase?.case_id,
+        case_Id: task.case_id,
         tenant_id: tenantId,
         metadata: metadata,
       } as CreateEvidenceDto);
@@ -262,9 +265,21 @@ export class EvidenceService {
       userId,
       operation: 'upload',
       entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${taskWithCase?.case_id} and Task ${Number(dto.taskId)}`,
+      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${Number(dto.taskId)}`,
       outcome: 'SUCCESS',
     });
+
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId,
+      operation: 'upload Evidence',
+      entityName: 'Evidence',
+      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${Number(dto.taskId)}`,
+      case_id: task.case_id,
+      task_id: dto.taskId,
+    });
+
+
+
 
     return metadata;
   }
@@ -360,7 +375,7 @@ export class EvidenceService {
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
       comments: evidenceDoc.comments,
-      attachments: evidenceDoc.attachments,
+      attachments: evidenceDoc.metadata,
       archive: evidenceDoc.archive,
     };
   }
@@ -382,7 +397,7 @@ export class EvidenceService {
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
-    const attachments = evidenceDoc.attachments || [];
+    const attachments = evidenceDoc.metadata || [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;
@@ -438,11 +453,11 @@ export class EvidenceService {
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
           comments: evidenceDoc.comments,
-          attachments: evidenceDoc.attachments,
+          attachments: evidenceDoc.metadata,
           fileName: evidenceDoc.fileName,
-          fileSize: evidenceDoc.attachments[0].fileSize,
-          mimeType: evidenceDoc.attachments[0].mimeType,
-          hash: evidenceDoc.attachments[0].hash,
+          fileSize: evidenceDoc.metadata[0].fileSize,
+          mimeType: evidenceDoc.metadata[0].mimeType,
+          hash: evidenceDoc.metadata[0].hash,
           archive: evidenceDoc.archive,
         },
       };
@@ -472,7 +487,7 @@ export class EvidenceService {
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
-    const attachments = evidenceDoc.attachments || [];
+    const attachments = evidenceDoc.metadata || [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;
@@ -570,7 +585,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      attachments: item.attachments,
+      attachments: item.metadata,
       archive: item.archive,
     }));
 
@@ -623,7 +638,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      attachments: item.attachments,
+      attachments: item.metadata,
       archive: item.archive,
     }));
 
@@ -660,7 +675,7 @@ export class EvidenceService {
       tags: item.tags,
       description: item.description,
       comments: item.comments,
-      attachments: item.attachments,
+      attachments: item.metadata,
       archive: item.archive,
     }));
 

@@ -13,6 +13,7 @@ import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 
 @Injectable()
 export class CaseReopeningService {
@@ -26,6 +27,7 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly eventLogService: EventLogService,
+    private readonly caseHistoryService: CaseHistoryService
   ) { }
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
@@ -95,6 +97,14 @@ export class CaseReopeningService {
           entityName: CaseReopeningService.name,
           actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
           outcome: Outcome.SUCCESS,
+        });
+
+        await this.caseHistoryService.logCaseHistoryAction({
+          userId,
+          operation: 'reopenCase',
+          entityName: CaseReopeningService.name,
+          actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
+          case_id: caseId,
         });
 
         return {
@@ -168,6 +178,14 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId,
+        operation: 'reopenCase',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+        case_id: caseId,
       });
 
       return {
@@ -346,6 +364,13 @@ export class CaseReopeningService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId: supervisorId,
+        operation: 'approveCaseReopening',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+        case_id: caseId,
+      });
       this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
 
       return {
@@ -490,6 +515,14 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId: supervisorId,
+        operation: 'rejectCaseReopening',
+        entityName: CaseReopeningService.name,
+        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
+        case_id: caseId,
       });
 
       this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);

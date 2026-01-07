@@ -5,7 +5,8 @@ import { RepositoryModule } from '../repository/repository.module';
 import { AuditLogModule } from '../audit/auditLog.module';
 import { FlowableModule } from '../flowable/flowable.module';
 import { EventLogModule } from '../event_log/eventLog.module';
-
+import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import { CaseHistoryModule } from '../case_history/caseHistory.module';
 /**
  * TaskBridgeModule - Breaks circular dependency between FlowableModule and TaskModule
  *
@@ -13,7 +14,7 @@ import { EventLogModule } from '../event_log/eventLog.module';
  * FlowableModule or TaskModule, allowing both to use it without circular dependencies.
  */
 @Module({
-    imports: [LoggerModule, RepositoryModule, FlowableModule, AuditLogModule, EventLogModule],
+    imports: [LoggerModule, RepositoryModule, FlowableModule, AuditLogModule, EventLogModule, TaskHistoryModule, CaseHistoryModule],
     providers: [TaskBridgeService],
     exports: [TaskBridgeService],
 })
