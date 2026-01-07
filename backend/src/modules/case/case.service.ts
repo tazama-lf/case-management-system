@@ -15,6 +15,7 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
+import { CaseHistoryService } from '../case_history/caseHistory.service';
 import {
   CloseCaseDto,
   ManualCreateCaseDto,
@@ -43,6 +44,7 @@ export class CaseService {
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
     private readonly eventLogService: EventLogService,
+    private readonly caseHistoryService: CaseHistoryService,
   ) { }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
@@ -108,6 +110,14 @@ export class CaseService {
           entityName: CaseService.name,
           actionPerformed: `Suspend case ${caseId}`,
           outcome: Outcome.SUCCESS,
+        });
+
+        await this.caseHistoryService.logCaseHistoryAction({
+          userId,
+          operation: 'suspendCase',
+          entityName: CaseService.name,
+          actionPerformed: `Suspend case ${caseId}`,
+          case_id: caseId,
         });
 
         return { case: updatedCase, task: updatedTask };
@@ -243,6 +253,15 @@ export class CaseService {
           outcome: Outcome.SUCCESS,
         });
 
+        await this.caseHistoryService.logCaseHistoryAction({
+          userId,
+          operation: 'resumeCase',
+          entityName: CaseService.name,
+          actionPerformed: `Resume case ${caseId}`,
+          case_id: caseId,
+        });
+
+
         return { case: updatedCase, task: updatedTask };
       });
 
@@ -331,6 +350,14 @@ export class CaseService {
           entityName: CaseService.name,
           actionPerformed: `Abandon case ${caseId}`,
           outcome: Outcome.SUCCESS,
+        });
+
+        await this.caseHistoryService.logCaseHistoryAction({
+          userId,
+          operation: 'abandonCase',
+          entityName: CaseService.name,
+          actionPerformed: `Abandon case ${caseId}`,
+          case_id: caseId,
         });
 
         return { case: updatedCase, task: updatedTask };
@@ -575,6 +602,14 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId,
+        operation: 'completeCaseCreation',
+        entityName: CaseService.name,
+        actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+        case_id: caseId,
       });
 
       return {

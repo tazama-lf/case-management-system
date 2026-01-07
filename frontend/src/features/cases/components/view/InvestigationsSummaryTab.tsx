@@ -108,57 +108,80 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       });
     }
 
+    const EVIDENCE_PRIORITY: Record<string, number> = {
+      KYC: 1,
+      SANCTIONS: 2,
+      ADVERSE_MEDIA: 3,
+      SAR_STR_FILING: 4,
+      OTHER: 5
 
-    const categories: EvidenceCategory[] = Array.from(groupedByType.entries()).map(([type, items]) => {
-      let displayLabel = '';
+    };
 
+    const getDisplayLabel = (type: string): string => {
       switch (type) {
-        case 'ADVERSE_MEDIA':
-          displayLabel = 'Adverse Media and Search Records';
-          break;
+        case 'KYC':
+          return 'KYC/EDD Report';
         case 'SANCTIONS':
-          displayLabel = 'Sanctions Screening Results';
-          break;
+          return 'Sanctions Screening';
+        case 'ADVERSE_MEDIA':
+          return 'Adverse Media Screening';
         case 'SAR_STR_FILING':
-          displayLabel = 'SAR/STR Filing Documentation';
-          break;
+          return 'SAR/STR Filing Documentation';
         case 'OTHER':
-          displayLabel = 'Supporting Documentation and Reference Materials';
-          break;
+          return 'Other supporting Documentation and Reference Materials';
         default:
-          displayLabel = type;
+          return type;
       }
+    };
 
-      return {
-        type: displayLabel,
+    const ORDERED_TYPES = [
+      'KYC',
+      'SANCTIONS',
+      'ADVERSE_MEDIA',
+      'SAR_STR_FILING',
+      'OTHER',
+    ];
+    const categories: EvidenceCategory[] = [];
+
+    ORDERED_TYPES.forEach(type => {
+      const items = groupedByType.get(type);
+      if (!items) return;
+
+      categories.push({
+        type: getDisplayLabel(type),
         count: items.length,
         description: items.length === 1 ? 'document' : 'documents',
         evidence: items,
-      };
+      });
     });
 
-    categories.sort((a, b) => b.count - a.count);
+    groupedByType.forEach((items, type) => {
+      if (ORDERED_TYPES.includes(type)) return;
+
+      categories.push({
+        type: getDisplayLabel(type),
+        count: items.length,
+        description: items.length === 1 ? 'document' : 'documents',
+        evidence: items,
+      });
+    });
+
     setEvidenceCategories(categories);
   }, [taskId]);
 
   React.useEffect(() => {
     loadEvidence();
-  }, [loadEvidence]);
+  }, [loadEvidence, refreshKey]);
+
+
 
 
   useEffect(() => {
     const fetchCaseAndEvidence = async () => {
       try {
         setLoading(true);
-
-
         const details = await caseService.getCaseDetails(caseId);
         setCaseDetails(details);
-
-
-
-
-
         const comments = await commentService.getCommentsByCase(caseId);
         setCaseComments(comments || []);
 

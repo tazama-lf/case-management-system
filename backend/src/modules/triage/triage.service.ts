@@ -21,6 +21,8 @@ import { Outcome } from '../../utils/types/outcome';
 import { ManualAlertUpdateDTO, IngestAlertDto } from '../alert/dto';
 import { UpdateAlertDTO } from '../alert/dto';
 import { EventLogService } from '../event_log/eventLog.service';
+import { CaseHistoryService } from '../case_history/caseHistory.service';
+import { TaskHistoryService } from '../task_history/taskHistory.service';
 
 @Injectable()
 export class TriageService {
@@ -45,6 +47,8 @@ export class TriageService {
         private readonly eventEmitter: EventEmitter2,
         private readonly casePriorityUtil: CasePriorityUtil,
         private readonly featureExtractionService: FeatureExtractionService,
+        private readonly caseHistoryService: CaseHistoryService,
+        private readonly taskHistoryService: TaskHistoryService,
     ) { }
 
     async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
@@ -460,6 +464,16 @@ export class TriageService {
                 outcome: 'SUCCESS',
             });
 
+            await this.caseHistoryService.logCaseHistoryAction({
+                userId,
+                operation: 'case auto closed',
+                entityName: 'Case',
+                actionPerformed: `Auto-closed case ${caseId} with status: ${status}`,
+                case_id: caseId,
+            });
+
+
+
             return { updatedCase, updatedTask };
         } catch (error) {
             this.logger.error(`Auto-close failed for case ${caseId}`, error);
@@ -515,6 +529,16 @@ export class TriageService {
                 outcome: 'SUCCESS',
             });
 
+            await this.taskHistoryService.logTaskHistoryAction({
+                userId,
+                operation: 'Investigation task triggered',
+                entityName: 'Task',
+                actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
+                case_id: caseId,
+                task_id: taskId
+            });
+
+
             this.logger.log(`End - AI triage completed for case ${caseId}`, TriageService.name);
 
             return {
@@ -558,7 +582,7 @@ export class TriageService {
             const alert = await this.alertService.updateAlert(alertId, userId, updateDto);
             // this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
 
-            await this.taskService.updateTask(
+            const task = await this.taskService.updateTask(
                 taskId,
                 {
                     description: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
@@ -580,6 +604,15 @@ export class TriageService {
                 entityName: 'Alert & Task',
                 actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
                 outcome: Outcome.SUCCESS,
+            });
+
+            await this.taskHistoryService.logTaskHistoryAction({
+                userId,
+                operation: 'triage alert updated',
+                entityName: 'Alert & Task',
+                actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
+                case_id: task.case_id,
+                task_id: taskId
             });
 
             this.logger.log(`End - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);

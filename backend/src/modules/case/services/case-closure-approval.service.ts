@@ -15,6 +15,8 @@ import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service'
+import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 
 @Injectable()
 export class CaseClosureApprovalService {
@@ -28,6 +30,8 @@ export class CaseClosureApprovalService {
     private readonly flowableService: FlowableService,
     private readonly commentService: CommentService,
     private readonly eventLogService: EventLogService,
+    private readonly caseHistoryService: CaseHistoryService,
+    private readonly taskHistoryService: TaskHistoryService,
   ) { }
 
 
@@ -107,6 +111,15 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        operation: 'createSARTask',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
+        case_id: caseId,
+        task_id: sarTask.task_id,
       });
 
       this.logger.log(`Successfully created SAR_STR_FILING task ${sarTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
@@ -304,6 +317,14 @@ export class CaseClosureApprovalService {
           outcome: Outcome.SUCCESS,
         });
 
+        await this.caseHistoryService.logCaseHistoryAction({
+          userId,
+          operation: 'closeCase',
+          entityName: CaseClosureApprovalService.name,
+          actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
+          case_id: caseId,
+        });
+
         // Auto-generate SAR_STR_FILING task if case is confirmed
         if (finalStatus === CaseStatus.STATUS_82_CLOSED_CONFIRMED) {
           try {
@@ -410,6 +431,14 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId,
+        operation: 'closeCase',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
+        case_id: caseId,
       });
 
       return {
@@ -568,6 +597,14 @@ export class CaseClosureApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId: supervisorId,
+        operation: 'approveCaseClosure',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
+        case_id: caseId,
+      });
+
       this.logger.log(
         `[ApproveCaseClosure] Case ${caseId} closure approved successfully with outcome ${finalOutcome}`,
         CaseClosureApprovalService.name,
@@ -694,6 +731,14 @@ export class CaseClosureApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId: supervisorId,
+        operation: 'rejectCaseClosure',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
+        case_id: caseId,
+      });
+
       this.logger.log(
         `Case ${caseId} closure rejected successfully. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
         CaseClosureApprovalService.name,
@@ -789,6 +834,14 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Case ${caseId} returned for additional review`,
         outcome: Outcome.SUCCESS,
+      });
+
+      await this.caseHistoryService.logCaseHistoryAction({
+        userId: supervisorId,
+        operation: 'returnCaseForReview',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Case ${caseId} returned for additional review`,
+        case_id: caseId,
       });
 
       return {

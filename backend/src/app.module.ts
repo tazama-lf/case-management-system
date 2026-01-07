@@ -34,6 +34,8 @@ import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { FilterModule } from './modules/filter/filter.module'
+import { CaseHistoryModule } from './modules/case_history/caseHistory.module';
+import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import { FilterModule } from './modules/filter/filter.module'
     EvidenceModule,
     TazamaDwhModule,
     FilterModule,
+    CaseHistoryModule,
+    TaskHistoryModule,
   ],
   providers: [
     PrismaService,

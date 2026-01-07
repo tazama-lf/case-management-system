@@ -123,7 +123,7 @@ export const useCaseDashboard = () => {
       } else {
 
         navigate('/cases');
-        error('Case Not Found', `Case with ID ${caseId} was not found or you don't have permission to view it.`);
+        // error('Case Not Found', `Case with ID ${caseId} was not found or you don't have permission to view it.`);
       }
     }
   }, [cases, params.caseId, navigate, error]);

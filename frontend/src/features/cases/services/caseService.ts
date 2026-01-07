@@ -97,15 +97,6 @@ export interface AuditLogEntry {
   performed_at: Date;
 }
 
-export interface EventLogEntry {
-  event_log_id: string;
-  user_id: string;
-  operation: string;
-  entity_name: string;
-  action_performed: string;
-  outcome: string;
-  performed_at: Date;
-}
 export interface CloseCaseDto {
   recommendedOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
   finalNotes: string;
@@ -457,99 +448,6 @@ export class CaseService {
     }
   }
 
-  async getCaseHistory(caseId: number): Promise<AuditLogEntry[]> {
-    try {
-      const response = await apiClient.get<{
-        stats: unknown;
-        auditLogs: AuditLogEntry[];
-      }>(
-        `/api/v1/reports/audit-logs`
-      );
-
-      // Get all tasks for this case to filter task-related audit logs
-      const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
-      const taskIds = new Set(tasks.map(task => task.task_id));
-      const logs = response.auditLogs ?? [];
-
-      // Filter audit logs for this specific case
-      return logs.filter((log) => {
-        const actionLower = log.action_performed?.toLowerCase() || '';
-
-        // Check if log mentions the case ID
-        if (actionLower.includes(caseId.toString().toLowerCase())) {
-          return true;
-        }
-
-        // Check if log mentions any task IDs associated with this case
-        for (const taskId of taskIds) {
-          if (actionLower.includes(taskId.toString().toLowerCase())) {
-            return true;
-          }
-        }
-
-        // Check if operation is related to case or task management
-        const operationLower = log.operation.toLowerCase();
-        if (operationLower.includes('case') && actionLower.includes(String(caseId))) {
-          return true;
-        }
-
-        return false;
-      });
-    } catch (error) {
-      console.error('Failed to fetch case history:', error);
-      return [];
-    }
-  }
-
-  containsId(text: string, id: number): boolean {
-    const regex = new RegExp(`(^|[^0-9])${id}([^0-9]|$)`);
-    return regex.test(text);
-  }
-
-  async getCaseHistoryByEvent(caseId: number): Promise<EventLogEntry[]> {
-    try {
-      const response = await apiClient.get<{
-        stats: unknown;
-        eventLogs: EventLogEntry[];
-      }>(
-        `/api/v1/reports/event-logs`
-      );
-
-      // Get all tasks for this case to filter task-related audit logs
-      const tasks = await apiClient.get<Array<{ task_id: string }>>(`/api/v1/task/case/${caseId}`);
-      const taskIds = new Set(tasks.map(task => task.task_id));
-      const logs = response.eventLogs ?? [];
-
-      // Filter audit logs for this specific case
-      return logs.filter((log) => {
-        const actionLower = log.action_performed?.toLowerCase() || '';
-
-        if (actionLower.includes('case') && this.containsId(actionLower, caseId)) {
-          return true;
-        }
-
-        // Task-related logs
-        if (actionLower.includes('task')) {
-          for (const taskId of taskIds) {
-            if (this.containsId(actionLower, Number(taskId))) {
-              return true;
-            }
-          }
-        }
-
-        // Operation-based fallback
-        const operationLower = log.operation.toLowerCase();
-        if (operationLower.includes('case') && this.containsId(actionLower, caseId)) {
-          return true;
-        }
-
-        return false;
-      });
-    } catch (error) {
-      console.error('Failed to fetch case history:', error);
-      return [];
-    }
-  }
 
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {

@@ -6,6 +6,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { CreateTaskDto } from '../task/dto/create-task.dto';
 import { FlowableService } from '../flowable/flowable.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { TaskHistoryService } from '../task_history/taskHistory.service';
 
 @Injectable()
 export class TaskBridgeService {
@@ -14,6 +15,7 @@ export class TaskBridgeService {
         private readonly logger: LoggerService,
         private readonly auditLogService: AuditLogService,
         private readonly eventLogService: EventLogService,
+        private readonly taskHistoryService: TaskHistoryService,
     ) { }
 
     async createTask(taskDTO: CreateTaskDto, userId: string) {
@@ -49,6 +51,15 @@ export class TaskBridgeService {
                 operation: 'createTask',
                 outcome: Outcome.SUCCESS,
                 performedAt: new Date(),
+            });
+
+            await this.taskHistoryService.logTaskHistoryAction({
+                userId,
+                actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+                entityName: TaskBridgeService.name,
+                operation: 'createTask',
+                task_id: createdTask.task_id,
+                case_id: createdTask.case_id
             });
 
 

@@ -7,6 +7,7 @@ import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
 import { NotificationService } from 'src/modules/notification/notification.service';
+import { TaskHistoryService } from '../task_history/taskHistory.service';
 import {
   TaskCreatedEvent,
   TaskStatusChangedEvent,
@@ -43,6 +44,7 @@ export class TaskService {
     private readonly taskBridgeService: TaskBridgeService,
     private readonly authService: AuthService,
     private readonly eventLogService: EventLogService,
+    private readonly taskHistoryService: TaskHistoryService,
   ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
@@ -165,6 +167,15 @@ export class TaskService {
         operation: 'updateTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
+      });
+
+      await this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
+        entityName: TaskService.name,
+        operation: 'updateTask',
+        task_id: taskId,
+        case_id: updatedTask.case_id
       });
 
       return updatedTask;
@@ -474,6 +485,15 @@ export class TaskService {
         operation: 'claimTask',
         outcome: Outcome.SUCCESS,
         performedAt: new Date(),
+      });
+
+      await this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        actionPerformed: `Claimed task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'claimTask',
+        task_id: taskId,
+        case_id: updatedTask.case_id
       });
 
       return updatedTask;

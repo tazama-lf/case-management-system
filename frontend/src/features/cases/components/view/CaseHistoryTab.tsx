@@ -15,7 +15,9 @@ import { caseService } from '../../services/caseService';
 import { taskService } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
 import type { Case } from '@/features/alerts/types/triage.types';
-import { useAuth } from '@/features/auth/components/AuthContext';
+import { caseHistoryService } from '../../services/caseHistoryService';
+import { taskHistoryService } from '../../services/taskHistoryService';
+
 
 interface CaseHistoryEvent {
   id: string;
@@ -24,8 +26,7 @@ interface CaseHistoryEvent {
   performedBy: string;
   userId?: string;
   details: string;
-  outcome: 'success' | 'warning' | 'error' | 'info';
-  type: 'case' | 'task' | 'event';
+  type: 'case' | 'task';
 }
 
 interface CaseHistoryTabProps {
@@ -188,7 +189,6 @@ const mapStatusToEvent = (
     action: eventData.action,
     performedBy: 'System',
     details: eventData.details,
-    outcome: eventData.outcome,
   };
 };
 
@@ -196,8 +196,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   const [history, setHistory] = useState<CaseHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
-  const { hasInvestigatorRole, hasSupervisorRole } = useAuth();
-  const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -318,51 +316,75 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         // }
 
         try {
-          const eventLogs = await caseService.getCaseHistoryByEvent(caseId);
+          const caseHistory = await caseHistoryService.getCaseHistory(caseId);
+          const taskHistory = await taskHistoryService.getCaseHistory(caseId);
 
-          eventLogs.forEach((log) => {
+          caseHistory.forEach((log) => {
             let action = formatOperation(log.operation);
             let details = log.action_performed || 'Action performed';
 
-            // Detect specific operations for better labeling
-            const actionLower = log.action_performed?.toLowerCase() || '';
-            const operationLower = log.operation.toLowerCase();
+            const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
 
-            // Handle task reassignment
-            if (operationLower.includes('reassign')) {
-              action = 'Task reassigned';
-              if (actionLower.includes('from') && actionLower.includes('to')) {
-                details = log.action_performed;
-              } else {
-                details = 'Task was reassigned to a different investigator';
-              }
+            if (operationLower.includes('createcase') || operationLower.includes('createmanualcase')) {
+              action = 'Case created';
             }
-            // Handle task unassignment
-            else if (operationLower.includes('unassign')) {
-              action = 'Task unassigned';
-              details = log.action_performed || 'Task was unassigned from investigator';
+            else if (operationLower.includes('savecaseasdraft')) {
+              action = 'Case saved as draft';
             }
-            // Handle task assignment (but not reassignment)
-            else if ((operationLower.includes('assign') && !operationLower.includes('reassign') && !operationLower.includes('unassign'))) {
-              action = 'Task assigned';
+            else if (operationLower.includes('completecase')) {
+              action = 'Case completed';
             }
-            // Handle case status changes
-            else if (operationLower.includes('updatecase') || operationLower.includes('update_case')) {
-              if (actionLower.includes('status')) {
-                action = 'Case status updated';
-              }
+            else if (operationLower.includes('completecasecreation')) {
+              action = 'Case creation completed';
             }
-            // Handle evidence uploads
-            else if (operationLower.includes('evidence') || actionLower.includes('evidence')) {
-              action = 'Evidence uploaded';
+            else if (operationLower.includes('updatecasestatus')) {
+              action = 'Case status updated';
             }
-            // Handle comments
-            else if (operationLower.includes('comment') || actionLower.includes('comment')) {
-              action = 'Comment added';
+            else if (operationLower === 'updatecase') {
+              action = 'Case updated';
+            }
+            else if (operationLower.includes('suspendcase')) {
+              action = 'Case suspended';
+            }
+            else if (operationLower.includes('resumecase')) {
+              action = 'Case resumed';
+            }
+            else if (operationLower.includes('closecase')) {
+              action = 'Case closed';
+            }
+            else if (operationLower.includes('abandoncase')) {
+              action = 'Case abandoned';
+            }
+            else if (operationLower.includes('reopencase')) {
+              action = 'Case reopened';
+            }
+            else if (operationLower.includes('approvecasecreation')) {
+              action = 'Approve case creation';
+            }
+            else if (operationLower.includes('rejectcasecreation')) {
+              action = 'Reject case creation';
+            }
+            else if (operationLower.includes('approvecaseclosure')) {
+              action = 'Case approved';
+            }
+            else if (operationLower.includes('rejectcaseclosure')) {
+              action = 'Case rejected';
+            }
+            else if (operationLower.includes('approveCaseReopening')) {
+              action = 'Approve case reopening';
+            }
+            else if (operationLower.includes('rejectCaseReopening')) {
+              action = 'Reject case reopening';
+            }
+            else if (operationLower.includes('returncaseforreview')) {
+              action = 'Case returned for review';
+            }
+            else if (operationLower.includes('autoclosed')) {
+              action = 'Case auto-closed';
             }
 
             events.push({
-              id: `event-${log.event_log_id}`,
+              id: `event-${log.case_id}`,
               timestamp: log.performed_at instanceof Date
                 ? log.performed_at.toISOString()
                 : new Date(log.performed_at).toISOString(),
@@ -370,24 +392,94 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               performedBy: log.entity_name === 'System' ? 'System' : 'User',
               userId: log.user_id,
               details: details,
-              outcome: mapOutcomeToEventOutcome(log.outcome),
-              type: 'event',
+              type: 'case',
             });
           });
+
+          taskHistory.forEach((log) => {
+            let action = formatOperation(log.operation);
+            let details = log.action_performed || 'Action performed';
+
+            const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
+            const actionLower = (log.action_performed || '').toLowerCase();
+
+            if (operationLower.includes('createtask')) {
+              action = 'Task created';
+            }
+            else if (operationLower.includes('createsartask')) {
+              action = 'SAR/STR task created';
+            }
+            else if (operationLower.includes('updatetask')) {
+              action = 'Task updated';
+            }
+            else if (operationLower.includes('claimtask')) {
+              action = 'Task claimed';
+            }
+            else if (operationLower.includes('selfassigntask')) {
+              action = 'Task self-assigned';
+            }
+            else if (operationLower.includes('reassigntask')) {
+              action = 'Task reassigned';
+            }
+            else if (operationLower.includes('unassigntask')) {
+              action = 'Task unassigned';
+            }
+            else if (operationLower.includes('assigntask')) {
+              action = 'Task assigned';
+            }
+            // else if (operationLower.includes('retrievetask')) {
+            //   action = 'Task retrieved';
+            // }
+            else if (operationLower.includes('completetask')) {
+              action = 'Task completed';
+            }
+
+            else if (operationLower.includes('upload') || actionLower.includes('evidence')) {
+              action = 'Evidence uploaded';
+            }
+
+            else if (operationLower.includes('assigntasktoinvestigator')) {
+              action = 'Assign Task to Investigator';
+            }
+
+            else if (operationLower.includes('investigationtasktriggered')) {
+              action = 'Investigation task triggered';
+            }
+            else if (operationLower.includes('triagealertupdated')) {
+              action = 'Triage alert updated';
+            }
+            else {
+
+            }
+
+            events.push({
+              id: `task-${log.task_id}`,
+              timestamp:
+                log.performed_at instanceof Date
+                  ? log.performed_at.toISOString()
+                  : new Date(log.performed_at).toISOString(),
+              action,
+              performedBy: log.entity_name === 'System' ? 'System' : 'User',
+              userId: log.user_id,
+              details,
+              type: 'task',
+            });
+          });
+
         } catch (err) {
-          console.warn('Failed to fetch audit logs:', err);
+          console.warn('Failed to fetch case History:', err);
         }
 
-        const uniqueEvents = Array.from(
-          new Map(events.map(event => [event.id, event])).values()
-        );
+        // const uniqueEvents = Array.from(
+        //   new Map(events.map(event => [event.id, event])).values()
+        // );
 
-        uniqueEvents.sort(
+        events.sort(
           (a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
-        setHistory(uniqueEvents);
+        setHistory(events);
       } catch (err) {
         console.error('Failed to fetch case history:', err);
       } finally {

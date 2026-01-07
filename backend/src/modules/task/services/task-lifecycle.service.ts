@@ -8,6 +8,7 @@ import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client-cms';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 
 @Injectable()
 export class TaskLifecycleService {
@@ -19,6 +20,7 @@ export class TaskLifecycleService {
     private readonly eventEmitter: EventEmitter2,
     private readonly notificationService: NotificationService,
     private readonly eventLogSerice: EventLogService,
+    private readonly taskHistoryService: TaskHistoryService,
   ) { }
 
   private async getTaskOrThrow(taskId: number) {
@@ -111,6 +113,17 @@ export class TaskLifecycleService {
       operation: 'assignTaskToInvestigator',
       outcome: 'SUCCESS',
       performedAt: new Date(),
+    });
+
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId: supervisorId,
+      actionPerformed: isInvestigationTask
+        ? `Assigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
+        : `Assigned task ${taskId} to user ${assignedUserId}`,
+      entityName: 'TaskService',
+      operation: 'assignTaskToInvestigator',
+      task_id: taskId,
+      case_id: existingTask.case_id
     });
 
     await this.auditLogService.logAction({
@@ -223,6 +236,19 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId: actorUserId,
+      actionPerformed: isInvestigationTask
+        ? `Reassigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
+        : `Reassigned task ${taskId} to user ${assignedUserId}`,
+      entityName: 'TaskService',
+      operation: 'reassignTask',
+      task_id: taskId,
+      case_id: existingTask.case_id
+    });
+
+
+
 
 
     await this.auditLogService.logAction({
@@ -242,6 +268,16 @@ export class TaskLifecycleService {
       outcome: 'SUCCESS',
       performedAt: new Date(),
     });
+
+    // await this.taskHistoryService.logTaskHistoryAction({
+    //   userId: assignedUserId,
+    //   actionPerformed: `Task ${taskId} reassigned to investigator ${assignedUserId}`,
+    //   entityName: 'TaskService',
+    //   operation: 'retrieveTask',
+    //   task_id: taskId,
+    //   case_id: existingTask.case_id
+    // });
+
 
     return result.updatedTask;
   }
@@ -315,6 +351,17 @@ export class TaskLifecycleService {
       operation: 'selfAssignTask',
       outcome: 'SUCCESS',
       performedAt: new Date(),
+    });
+
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId: investigatorUserId,
+      actionPerformed: isInvestigationTask
+        ? `Self-assigned task ${taskId} and updated case ${existingTask.case_id} to ASSIGNED`
+        : `Self-assigned task ${taskId}`,
+      entityName: 'TaskService',
+      operation: 'selfAssignTask',
+      task_id: taskId,
+      case_id: existingTask.case_id
     });
 
     return result.updatedTask;
@@ -414,6 +461,15 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId: actorUserId,
+      actionPerformed: `Unassigned task ${taskId} from user ${existingTask.assigned_user_id}.`,
+      entityName: 'TaskService',
+      operation: 'unassignTask',
+      task_id: taskId,
+      case_id: existingTask.case_id
+    });
+
     return {
       ...result.updatedTask,
       // message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
@@ -485,6 +541,14 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
+    await this.taskHistoryService.logTaskHistoryAction({
+      userId: actorUserId,
+      actionPerformed: `Completed task ${taskId}`,
+      entityName: 'TaskService',
+      operation: 'completeTask',
+      task_id: taskId,
+      case_id: existingTask.case_id
+    });
 
 
     return updatedTask;
@@ -562,6 +626,15 @@ export class TaskLifecycleService {
         operation: `REASSIGN_TASK`,
         outcome: 'SUCCESS',
         performedAt: new Date(),
+      });
+
+      await this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        actionPerformed: auditDescription,
+        entityName: 'Task',
+        operation: `reassignTask`,
+        task_id: taskId,
+        case_id: task.case.case_id
       });
 
       this.eventEmitter.emit('task.reassigned', {
