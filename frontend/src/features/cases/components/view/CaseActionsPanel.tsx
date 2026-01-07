@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
+import authService from '@/features/auth/services/authService';
+import { caseService } from '../../services/caseService';
+import type { Case } from '@/features/alerts/types/triage.types';
 //interface
 interface CaseActionsPanelProps {
   caseData: CaseRow;
@@ -34,8 +37,33 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   onApproveCase,
 }) => {
   const showSupervisorControls = canManageSupervisorActions;
+  const [caseDetails, setCaseDetails] = useState<Case | null>(null);
+
+  // Fetch case details to get case_owner_user_id
+  useEffect(() => {
+    const fetchCaseDetails = async () => {
+      try {
+        const details = await caseService.getCaseDetails(caseData.id);
+        setCaseDetails(details);
+      } catch (error) {
+        console.error('Failed to fetch case details:', error);
+      }
+    };
+
+    if (caseData.id) {
+      fetchCaseDetails();
+    }
+  }, [caseData.id]);
+
+  // Check if the logged-in user is the case owner
+  const isUserCaseOwner = (): boolean => {
+    const user = authService.getUser();
+    if (!user || !caseDetails) return false;
+    return user.userId === caseDetails.case_owner_user_id;
+  };
 
   const getAvailableActions = () => {
+    console.log('Case Data in Actions Panel:', caseData);
     const actions: React.ReactNode[] = [];
 
     // Complete action
@@ -52,14 +80,14 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       );
     }
 
-    // Close Case button - show for in-progress cases when ALL investigation tasks are completed
+    // Close Case button - show for in-progress cases when ALL investigation tasks are completed and user is case owner
     const investigateTasks = caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
     const completedInvestigateTasks = investigateTasks.filter((t) => t.status === 'STATUS_30_COMPLETED');
     
     if (onCloseCase && (
       caseData.status === 'STATUS_20_IN_PROGRESS' ||
       caseData.status.includes('IN PROGRESS')
-    ) && investigateTasks.length > 0 && investigateTasks.length === completedInvestigateTasks.length) {
+    ) && investigateTasks.length > 0 && investigateTasks.length === completedInvestigateTasks.length && isUserCaseOwner()) {
       actions.push(
         <button
           key="close"
