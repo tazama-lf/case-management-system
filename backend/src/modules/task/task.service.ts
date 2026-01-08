@@ -251,8 +251,10 @@ export class TaskService {
       const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
 
       const filteredTasks = tasks.filter((task) => {
-        const isComplianceTask = task.candidateGroup?.toLowerCase() === 'compliance';
+        this.logger.log(`Compliance Officer task : ${tasks}`);
 
+        const isComplianceTask = task.candidateGroup?.toLowerCase() === 'compliance';
+        this.logger.log(`isComplianceTask : ${isComplianceTask}`);
         if (isComplianceOfficer) {
           return isComplianceTask;
         }

@@ -81,6 +81,10 @@ class UserService {
     return this.getUsersByRole('CMS_SUPERVISOR');
   }
 
+  async getComplianceOfficers(): Promise<UserOption[]> {
+    return this.getUsersByRole('CMS_COMPLIANCE_OFFICER');
+  }
+
   async getAllUsers(): Promise<UserOption[]> {
     try {
       // Fetch both investigators and supervisors

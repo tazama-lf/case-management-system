@@ -5,19 +5,27 @@ import type { UserOption } from '../services/userService';
 export const useInvestigatorSupervisorList = () => {
   const supervisorsCacheKey = 'supervisors';
   const investigatorsCacheKey = 'investigators';
+  const complianceCacheKey = 'compliance';
 
   const [supervisors, setSupervisors] = useState<UserOption[]>(() => {
     const cached = sessionStorage.getItem(supervisorsCacheKey);
     return cached ? JSON.parse(cached) : [];
   });
 
+
   const [investigators, setInvestigators] = useState<UserOption[]>(() => {
     const cached = sessionStorage.getItem(investigatorsCacheKey);
     return cached ? JSON.parse(cached) : [];
   });
 
+  const [complianceOfficers, setComplianceOfficers] = useState<UserOption[]>(() => {
+    const cached = sessionStorage.getItem(complianceCacheKey);
+    return cached ? JSON.parse(cached) : [];
+  });
+
   const [loadingInvestigators, setLoadingInvestigators] = useState(false);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+  const [loadingComplianceOfficers, setLoadingComplianceOfficers] = useState(false);
 
   const fetchInvestigatorsList = async () => {
     setLoadingInvestigators(true);
@@ -41,6 +49,31 @@ export const useInvestigatorSupervisorList = () => {
       setInvestigators([]);
     } finally {
       setLoadingInvestigators(false);
+    }
+  };
+
+  const fetchComplianceOfficersList = async () => {
+    setLoadingComplianceOfficers(true);
+    try {
+      const cached = sessionStorage.getItem(complianceCacheKey);
+      if (cached) {
+        setComplianceOfficers(JSON.parse(cached));
+        return;
+      }
+
+      const data = await userService.getComplianceOfficers();
+      if (data?.length > 0) {
+        setComplianceOfficers(data);
+        sessionStorage.setItem(complianceCacheKey, JSON.stringify(data));
+      } else {
+        console.warn('No investigators returned from service.');
+        setComplianceOfficers([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch investigators:', error);
+      setComplianceOfficers([]);
+    } finally {
+      setLoadingComplianceOfficers(false);
     }
   };
 
@@ -79,15 +112,18 @@ export const useInvestigatorSupervisorList = () => {
   useEffect(() => {
     fetchInvestigatorsList();
     fetchSupervisorsList();
+    fetchComplianceOfficersList();
   }, []);
 
   return {
     investigators,
     supervisors,
+    complianceOfficers,
     loadingInvestigators,
     loadingSupervisors,
     fetchInvestigatorsList,
     fetchSupervisorsList,
+    fetchComplianceOfficersList,
     clearCache,
   };
 };

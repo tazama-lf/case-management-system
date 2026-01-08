@@ -40,52 +40,50 @@ export class CaseClosureApprovalService {
 
     try {
 
-      const existingSARTask = await this.prismaService.task.findFirst({
-        where: {
-          case_id: caseId,
-          task_type: 'SAR_STR_FILING' as any,
+      const createSARFilingTask = await this.taskService.createTask(
+        {
+          caseId,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: TASK_NAMES.SAR_STR_FILING,
+          description: `Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.`,
+          candidateGroup: CANDIDATE_GROUPS.COMPLIANCE_OFFICER,
         },
-      });
+        userId,
+      );
 
-      if (existingSARTask) {
-        this.logger.log(`SAR_STR_FILING task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseClosureApprovalService.name);
-        return;
-      }
+      // const complianceQueue = await this.prismaService.workQueue.findFirst({
+      //   where: {
+      //     tenant_id: tenantId,
+      //     is_active: true,
+      //     name: {
+      //       contains: 'compliance',
+      //       mode: 'insensitive',
+      //     },
+      //   },
+      // });
 
+      // const taskData: any = {
+      //   case: {
+      //     connect: { case_id: caseId },
+      //   },
+      //   status: TaskStatus.STATUS_01_UNASSIGNED,
+      //   name: 'SAR_STR_FILING',
+      //   description:
+      //     'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
+      //   task_type: 'SAR_STR_FILING',
+      //   candidateGroup: 'compliance',
+      //   sla_duration_hours: 48,
+      // };
 
-      const complianceQueue = await this.prismaService.workQueue.findFirst({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          name: {
-            contains: 'compliance',
-            mode: 'insensitive',
-          },
-        },
-      });
+      // if (complianceQueue) {
+      //   taskData.workQueue = {
+      //     connect: { work_queue_id: complianceQueue.work_queue_id },
+      //   };
+      // }
 
-      const taskData: any = {
-        case: {
-          connect: { case_id: caseId },
-        },
-        status: TaskStatus.STATUS_01_UNASSIGNED,
-        name: 'SAR_STR_FILING',
-        description:
-          'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
-        task_type: 'SAR_STR_FILING',
-        candidateGroup: 'compliance',
-        sla_duration_hours: 48,
-      };
-
-      if (complianceQueue) {
-        taskData.workQueue = {
-          connect: { work_queue_id: complianceQueue.work_queue_id },
-        };
-      }
-
-      const sarTask = await this.prismaService.task.create({
-        data: taskData,
-      });
+      // const sarTask = await this.prismaService.task.create({
+      //   data: taskData,
+      // });
 
 
       // this.flowableService.createTask({
@@ -101,7 +99,7 @@ export class CaseClosureApprovalService {
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -109,7 +107,7 @@ export class CaseClosureApprovalService {
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
         outcome: Outcome.SUCCESS,
       });
 
@@ -117,12 +115,12 @@ export class CaseClosureApprovalService {
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Auto-generated SAR_STR_FILING task ${sarTask.task_id} for confirmed case ${caseId}`,
+        actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
         case_id: caseId,
-        task_id: sarTask.task_id,
+        task_id: createSARFilingTask.task_id,
       });
 
-      this.logger.log(`Successfully created SAR_STR_FILING task ${sarTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
+      this.logger.log(`Successfully created SAR_STR_FILING task ${createSARFilingTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
     } catch (error) {
 
       this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);

@@ -52,6 +52,7 @@ export const TASK_NAMES = {
   APPROVE_CASE_CLOSURE_VARIANTS: ['Approve Case Closure', 'Approve case closure', 'approve case closure'],
   APPROVE_CASE_REOPENING: 'Approve Case Reopening',
   COMPLETE_NEW_CASE: 'Complete New Case',
+  SAR_STR_FILING: 'SAR/STR Filing'
 } as const;
 
 /**
@@ -60,6 +61,7 @@ export const TASK_NAMES = {
 export const CANDIDATE_GROUPS = {
   INVESTIGATIONS: 'investigations',
   SUPERVISORS: 'supervisors',
+  COMPLIANCE_OFFICER: 'compliance'
 } as const;
 
 /**

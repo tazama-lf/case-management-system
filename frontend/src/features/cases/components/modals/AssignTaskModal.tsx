@@ -26,10 +26,10 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   // const [investigators, setInvestigators] = useState<Investigator[]>([]);
   // const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserInvestigator, setCurrentUserInvestigator] =
-    useState<Investigator | null>(null);
+  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
+  const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
+  const { fetchInvestigatorsList, loadingInvestigators, investigators, fetchComplianceOfficersList, complianceOfficers } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     setAssignee('');
@@ -39,13 +39,26 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   useEffect(() => {
     if (open) {
       const user = authService.getUser();
-      const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
-      setIsSupervisor(isSupervisor);
+      if (task?.name.toLowerCase().includes('sar')) {
+        const isComplianceOfficer = user?.validatedClaims?.CMS_COMPLIANCE_OFFICER === true;
+        setIsComplianceOfficer(isComplianceOfficer)
 
-      if (isSupervisor) {
+        if (isComplianceOfficer) {
+          fetchComplianceOfficersList();
+        }
+        fetchCurrentUserAsInvestigator();
+
+      } else {
+        const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+        setIsSupervisor(isSupervisor);
+
+        if (isSupervisor) {
           fetchInvestigatorsList();
+        }
+        fetchCurrentUserAsInvestigator();
       }
-      fetchCurrentUserAsInvestigator();
+
+
     }
   }, [open]);
 

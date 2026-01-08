@@ -202,7 +202,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       actions.push(
         createActionButton(
           'view',
-          () =>  isClickable && onTaskClick(task),
+          () => isClickable && onTaskClick(task),
           <EyeIcon className="h-4 w-4 mr-1" />,
           'View task',
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
@@ -317,7 +317,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     // COMPLETED tasks have no available actions
     if (task.status === 'COMPLETED') {
-      if (task.name.toLowerCase().includes('investigate') || task.name.toLowerCase().includes('sar')) {
+      if (task.name.toLowerCase().includes('sar')) {
+        addViewAction(actions, task);
+      } else if (task.status === 'COMPLETED' && task.name.toLowerCase().includes('investigat')) {
+
         addViewAction(actions, task);
       }
       return actions;
@@ -341,13 +344,16 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     return actions;
   };
 
-  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList } = useInvestigatorSupervisorList();
+  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
 
   React.useEffect(() => {
     if (investigators.length === 0)
       fetchInvestigatorsList();
     if (supervisors.length === 0)
       fetchSupervisorsList();
+    if (complianceOfficers.length === 0) {
+      fetchComplianceOfficersList();
+    }
   }, []);
 
 
@@ -358,6 +364,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
     if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
     return assigneeName || assignee;
   };
