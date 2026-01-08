@@ -33,7 +33,7 @@ export class CaseCreationApprovalService {
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -81,7 +81,7 @@ export class CaseCreationApprovalService {
           tenantId,
           caseStatus,
           creationType: CaseCreationType.MANUAL,
-          isTriageAlert: false,
+          isTriageDisabled: false,
           creatorRole: role,
         });
 
@@ -248,7 +248,7 @@ export class CaseCreationApprovalService {
         tenantId,
         caseStatus: CaseStatus.STATUS_00_DRAFT,
         creationType: CaseCreationType.MANUAL,
-        isTriageAlert: false,
+        isTriageDisabled: false,
         creatorRole: role,
       });
 
@@ -752,7 +752,7 @@ export class CaseCreationApprovalService {
     try {
       this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
       const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
-      const isTriageAlert = triageType === 'DISABLED' ? false : true;
+      const isTriageDisabled = triageType === 'DISABLED' ? true : false;
 
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
@@ -770,7 +770,7 @@ export class CaseCreationApprovalService {
         tenantId: createdCase.tenant_id,
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
-        isTriageAlert,
+        isTriageDisabled,
         creatorRole: 'SYSTEM',
       });
 

@@ -16,10 +16,7 @@ import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
 import {
   TaskAssignedEvent,
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
   TaskUnassignedEvent,
-  BpmnTaskCreatedEvent,
   CaseAbandonedEvent,
   CaseCreatedEvent,
   CaseStatusChangedEvent,
@@ -53,7 +50,7 @@ export class FlowableService implements OnModuleInit {
   async onModuleInit() {
     // Check if Flowable is enabled
     const flowableEnabled = this.configService.get<boolean>('FLOWABLE_ENABLED', true);
-    
+
     if (!flowableEnabled) {
       this.logger.log('Flowable is disabled via configuration, skipping initialization', FlowableService.name);
       return;
@@ -80,11 +77,11 @@ export class FlowableService implements OnModuleInit {
         if (attempt === this.maxRetries) {
           // Make this a warning instead of error to allow application to start
           const skipOnFailure = this.configService.get<boolean>('FLOWABLE_SKIP_ON_FAILURE', false);
-          
+
           if (skipOnFailure) {
             this.logger.warn(
               `Flowable initialization failed after ${this.maxRetries} attempts. Continuing without Flowable as FLOWABLE_SKIP_ON_FAILURE=true`,
-              FlowableService.name
+              FlowableService.name,
             );
             return;
           } else {
@@ -219,17 +216,6 @@ export class FlowableService implements OnModuleInit {
     return this.processService.setProcessVariables(processInstanceId, variables);
   }
 
-  // async getTenantTasks(
-  //   tenantId: string,
-  //   filters?: {
-  //     candidateGroup?: string;
-  //     assignee?: string;
-  //     unassigned?: boolean;
-  //   },
-  // ) {
-  //   return this.taskService.getTenantTasks(filters);
-  // }
-
   async getTask(taskId: number) {
     return this.taskService.getTask(taskId);
   }
@@ -277,16 +263,16 @@ export class FlowableService implements OnModuleInit {
   async healthCheck(): Promise<{ status: string; message?: string }> {
     try {
       this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
-      
+
       const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
         params: { size: 1 },
       });
-      
+
       this.logger.log('Flowable health check passed', FlowableService.name);
       return { status: 'healthy' };
     } catch (error) {
       let errorMessage = `Flowable connection failed: ${error.message}`;
-      
+
       if (error.code === 'ECONNREFUSED') {
         errorMessage = `Cannot connect to Flowable server at ${this.flowableUrl} - server may not be running`;
       } else if (error.code === 'ECONNRESET') {
@@ -294,7 +280,7 @@ export class FlowableService implements OnModuleInit {
       } else if (error.response?.status === 401) {
         errorMessage = `Authentication failed for Flowable server - check FLOWABLE_USERNAME and FLOWABLE_PASSWORD`;
       }
-      
+
       this.logger.error(`Health check failed: ${errorMessage}`, error.stack, FlowableService.name);
       throw new Error(errorMessage);
     }

@@ -8,9 +8,10 @@ import { ProcessAlertController } from './process-alert.controller';
 import { AuditLogModule } from '../audit/auditLog.module';
 import { CaseModule } from '../case/case.module';
 import { AlertModule } from '../alert/alert.module';
+import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
-  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, AlertModule, TaskModule, CaseModule],
+  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, AlertModule, TaskModule, CaseModule, FlowableModule],
   providers: [ProcessAlertService],
   exports: [ProcessAlertService],
   controllers: [ProcessAlertController],
