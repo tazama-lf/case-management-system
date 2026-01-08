@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { InvestigatorPerformance } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import TablePagination from '../../../shared/components/TablePagination';
 import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
+import { useInvestigatorSupervisorList } from '../../cases/hooks/useInvestigatorSupervisorList';
 
 interface InvestigatorPerformanceTableProps {
   data: InvestigatorPerformance[];
@@ -28,6 +29,27 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
     data,
     defaultItemsPerPage: 10,
   });
+
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+
+  useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+  const getUserNameById = (userId: string) => {
+
+    const inv = investigators.find(i => i.id === userId);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === userId);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return userId;
+  };
 
   // Create pagination object for TablePagination
   const pagination: TablePaginationInfo = {
@@ -150,7 +172,7 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     <div className="break-words">
-                      {row.investigator || 'Unknown'}
+                      {getUserNameById(row.investigatorId) || 'Unknown'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">

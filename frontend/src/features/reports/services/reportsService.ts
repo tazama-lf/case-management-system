@@ -282,6 +282,11 @@ class ReportsService {
 
       // For each case, fetch all evidence by case ID (the backend should handle finding evidence with any taskId)
       for (const caseItem of cases) {
+
+        if (caseItem.status === 'STATUS_00_DRAFT' || caseItem.status === 'STATUS_10_ASSIGNED' || caseItem.status === 'STATUS_99_ABANDONED' ||
+          caseItem.status === 'STATUS_02_READY_FOR_ASSIGNMENT' || caseItem.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL') {
+          continue;
+        }
         let caseEvidence: Record<string, unknown>[] = [];
 
         try {
@@ -344,7 +349,7 @@ class ReportsService {
               `unknown_${Date.now()}`;
 
             // Extract fileName from attachments array if it exists there
-            const attachments = e.metadata as Array<Record<string, unknown>> | undefined;
+            const attachments = e.attachments as Array<Record<string, unknown>> | undefined;
             const firstAttachment = attachments?.[0];
 
             const fileName =

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { ResolutionEfficiency } from '../types/reports.types';
+import { useInvestigatorSupervisorList } from '../../cases/hooks/useInvestigatorSupervisorList';
 
 interface ResolutionEfficiencyChartProps {
   data: ResolutionEfficiency[];
@@ -9,6 +10,27 @@ interface ResolutionEfficiencyChartProps {
 }
 
 const ResolutionEfficiencyChart: React.FC<ResolutionEfficiencyChartProps> = ({ data, title, height = 350 }) => {
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+  const getUserNameById = (userId: string) => {
+
+    const inv = investigators.find(i => i.id === userId);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === userId);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return userId;
+  };
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6">
@@ -21,7 +43,7 @@ const ResolutionEfficiencyChart: React.FC<ResolutionEfficiencyChartProps> = ({ d
   }
 
   const chartData = data.map((item) => ({
-    name: item.name,
+    name: getUserNameById(item.name),
     avgDays: item.avgDays
   }));
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { VolumeTrend } from '../types/reports.types';
+import { useInvestigatorSupervisorList } from '../../cases/hooks/useInvestigatorSupervisorList';
 
 interface CaseVolumeTrendChartProps {
   data: VolumeTrend[];
@@ -20,7 +21,28 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
     );
   }
 
-  const investigators = Object.keys(data[0]?.investigators || {});
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+  const getUserNameById = (userId: string) => {
+
+    const inv = investigators.find(i => i.id === userId);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === userId);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return userId;
+  };
+
+  const investigator = Object.keys(data[0]?.investigators || {});
   const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
 
   const chartData = data.map((item) => ({
@@ -54,12 +76,12 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({ data, title
           <YAxis />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
-          {investigators.map((investigator, index) => (
+          {investigator.map((investigator, index) => (
             <Line
-              key={investigator}
+              key={getUserNameById(investigator)}
               type="monotone"
               dataKey={investigator}
-              name={investigator}
+              name={getUserNameById(investigator)}
               stroke={colors[index % colors.length]}
               strokeWidth={2}
               dot={{ r: 4 }}

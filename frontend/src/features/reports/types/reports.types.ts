@@ -68,6 +68,7 @@ export interface InvestigatorWorkload {
   name: string;
   activeCases: number;
   pendingTasks: number;
+  investigatorId: string;
 }
 
 export interface VolumeTrend {

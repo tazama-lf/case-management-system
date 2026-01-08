@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { OutcomeDistribution } from '../types/reports.types';
+import { useInvestigatorSupervisorList } from '../../cases/hooks/useInvestigatorSupervisorList';
 
 interface OutcomeDistributionChartProps {
   data: OutcomeDistribution[];
@@ -20,9 +21,30 @@ const OutcomeDistributionChart: React.FC<OutcomeDistributionChartProps> = ({ dat
     );
   }
 
- 
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+  const getUserNameById = (userId: string) => {
+
+    const inv = investigators.find(i => i.id === userId);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === userId);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return userId;
+  };
+
+
   const chartData = data.map(item => ({
-    name: item.name,
+    name: getUserNameById(item.name),
     Confirmed: item.confirmed,
     Refuted: item.refuted,
     Inconclusive: item.inconclusive
@@ -36,15 +58,15 @@ const OutcomeDistributionChart: React.FC<OutcomeDistributionChartProps> = ({ dat
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis dataKey="name" tick={{ fontSize: 12 }} />
           <YAxis />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#fff', 
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#fff',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}
           />
-          <Legend 
+          <Legend
             wrapperStyle={{ paddingTop: '20px' }}
             iconType="rect"
           />
