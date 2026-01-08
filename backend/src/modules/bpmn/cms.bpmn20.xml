@@ -17,11 +17,14 @@
                 <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
                 <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="STATUS_00_DRAFT"/>
-                <flowable:formProperty id="isTriageAlert" name="Is Triage Alert" type="boolean" default="false"/>
+                <flowable:formProperty id="isTriageDisabled" name="Is Triage Disabled" type="boolean" default="false"/>
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
                 <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
             </extensionElements>
         </startEvent>
+
+        <!-- Triage is DISABLED -->
+        <exclusiveGateway id="triageGateway" name="Triage Check"/>
 
         <!-- CASE ASSIGNMENT LOGIC -->
         <userTask id="completeCaseCreation" name="Complete New Case"
@@ -233,7 +236,19 @@
         <!-- SEQUENCE FLOWS -->
 
         <!-- Initial routing -->
-        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="completeCaseCreation"/>
+        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="triageGateway"/>
+
+        <sequenceFlow id="flowTriageBypass" sourceRef="triageGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isTriageDisabled == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowTriageDisabled" sourceRef="triageGateway" targetRef="investigationRoutingGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isTriageDisabled == true}
+            </conditionExpression>
+        </sequenceFlow>
 
         <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="creationTypeGateway"/>
 

@@ -19,14 +19,14 @@ export class AlertService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly eventLogService: EventLogService,
-  ) { }
+  ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
     this.loggerService.log(`Start - Alert Creation`, AlertService.name);
     const txtp = alert.transaction.TxTp;
     alert.message = alert.message ?? 'Suspicious activity detected';
     try {
-      const transactionRecord = await this.alertRepository.createTransaction(tenantId, alert.transaction);
+      await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({
         tenantId,
         priority: Priority.NEW,
