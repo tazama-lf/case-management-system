@@ -8,12 +8,14 @@ import {
   ExclamationTriangleIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import type { User } from '@/shared/interfaces/user.interface';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, EvidenceType, UploadEvidenceDto } from '../../types/evidence.types';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { TaskStatus } from '../../services/taskService';
+import authService from '@/features/auth/services/authService';
 
 const evidenceSections: Array<{
   key: string;
@@ -77,8 +79,9 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
   const taskId = task?.task_id;
+  const taskAssignedId = task?.assigned_user_id
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
-
+  const [currentUser, setCurrentUser] = React.useState<User>();
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [noEvidenceError, setNoEvidenceError] = React.useState(false);
@@ -102,6 +105,11 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     'sar-str': 5,
     'others': 10,
   };
+
+  React.useEffect(() => {
+    const user = authService.getUser();
+    if (user) setCurrentUser(user);
+  }, []);
 
   const UploadEvidence = async () => {
     if (!taskId) return;
@@ -377,7 +385,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         <button
           type="button"
           onClick={UploadEvidence}
-          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted}
+          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted || taskAssignedId !== currentUser?.userId}
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
         ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
               ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
@@ -458,7 +466,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-400">Ready to upload</span>
                               <button
-                                disabled={isTaskCompleted}
+                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
                                 type="button"
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 title="Remove Upload"
@@ -532,7 +540,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               <span className="text-xs text-green-600">✓ Uploaded</span>
 
                               <button
-                                disabled={isTaskCompleted}
+                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
                                 type="button"
                                 onClick={() => setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })}
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
@@ -575,7 +583,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      disabled={isTaskCompleted}
+                      disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
