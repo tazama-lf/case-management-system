@@ -345,9 +345,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                     id="sar-str-file-input"
                   />
                   <button
+                    disabled={task.status.toLowerCase().includes('completed')}
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ArrowUpTrayIcon className="h-4 w-4" />
                     Select Files
@@ -367,8 +368,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                         </span>
                         <button
                           type="button"
+                          disabled={task.status.toLowerCase().includes('completed')}
                           onClick={() => handleRemoveFile(index)}
-                          className="ml-2 text-red-600 hover:text-red-800"
+                          className="ml-2 text-red-600 hover:text-red-800 disabled:opacity-50"
                           aria-label="Remove file"
                         >
                           <XMarkIcon className="h-4 w-4" />
@@ -403,7 +405,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <button
                   type="button"
                   onClick={handleUpload}
-                  disabled={uploading || selectedFiles.length === 0}
+                  disabled={uploading || selectedFiles.length === 0 || task.status.toLowerCase().includes('completed')}
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowUpTrayIcon className="h-5 w-5" />
