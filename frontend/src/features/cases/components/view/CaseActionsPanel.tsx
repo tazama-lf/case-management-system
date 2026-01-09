@@ -63,7 +63,6 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   };
 
   const getAvailableActions = () => {
-    console.log('Case Data in Actions Panel:', caseData);
     const actions: React.ReactNode[] = [];
 
     // Complete action
@@ -262,12 +261,12 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-gray-200">
-      <div className="flex items-center justify-between">
+    <div>
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900">Available Actions</h3>
       </div>
       
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         {availableActions}
       </div>
       

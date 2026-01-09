@@ -6,6 +6,7 @@ import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 interface CaseDetailsTabProps {
   row: CaseRow;
   canManageSupervisorActions?: boolean;
+  showActions?: boolean;
   onComplete?: (row: CaseRow) => void;
   onCloseCase?: (row: CaseRow) => void;
   onReopenCase?: (row: CaseRow) => void;
@@ -47,6 +48,7 @@ const getScoreColor = (score: number): string => {
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ 
   row, 
   canManageSupervisorActions = false,
+  showActions = true,
   onComplete,
   onCloseCase,
   onReopenCase,
@@ -193,23 +195,25 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       </div>
 
       {/* Actions Panel */}
-      <div className="col-span-full">
-        <CaseActionsPanel
-          caseData={row}
-          canManageSupervisorActions={canManageSupervisorActions}
-          onComplete={onComplete}
-          onCloseCase={onCloseCase}
-          onReopenCase={onReopenCase}
-          onAbandonCase={onAbandonCase}
-          onSuspendCase={onSuspendCase}
-          onResumeCase={onResumeCase}
-          onApproveCase={onApproveCase}
-          onApproveCaseReopen={onApproveCaseReopen}
-          onRejectCaseReopen={onRejectCaseReopen}
-          onApproveCaseCreation={onApproveCaseCreation}
-          onRejectCaseCreation={onRejectCaseCreation}
-        />
-      </div>
+      {showActions && (
+        <div className="col-span-full">
+          <CaseActionsPanel
+            caseData={row}
+            canManageSupervisorActions={canManageSupervisorActions}
+            onComplete={onComplete}
+            onCloseCase={onCloseCase}
+            onReopenCase={onReopenCase}
+            onAbandonCase={onAbandonCase}
+            onSuspendCase={onSuspendCase}
+            onResumeCase={onResumeCase}
+            onApproveCase={onApproveCase}
+            onApproveCaseReopen={onApproveCaseReopen}
+            onRejectCaseReopen={onRejectCaseReopen}
+            onApproveCaseCreation={onApproveCaseCreation}
+            onRejectCaseCreation={onRejectCaseCreation}
+          />
+        </div>
+      )}
 
     </div>
   );

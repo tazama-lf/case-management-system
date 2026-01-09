@@ -101,7 +101,8 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
       };
 
       await onSubmit(triageData);
-      onClose();
+      // Don't close here - let the parent handle closing after refresh
+      // onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to perform manual triage');
     } finally {
@@ -115,8 +116,8 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity" onClick={onClose} aria-hidden="true"></div>
-        <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-2xl w-full">
-          <div className="bg-white px-6 py-6">
+        <div className="relative bg-white rounded-lg text-left shadow-xl transform transition-all scale-95 max-w-2xl w-full max-h-[85vh] flex flex-col">
+          <div className="bg-white px-6 py-6 overflow-y-auto flex-1">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">

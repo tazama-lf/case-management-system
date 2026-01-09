@@ -7,6 +7,7 @@ import TaskLogTab from './view/TaskLogTab';
 import CommentHistoryTab from './view/CommentHistoryTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
 import CaseHistoryTab from './view/CaseHistoryTab';
+import CaseActionsPanel from './view/CaseActionsPanel';
 import { caseService, type CaseWithTasksDto } from '../services/caseService';
 import { transformBackendCaseToUI } from './casesTable.utils';
 
@@ -89,7 +90,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
         { }
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
           </div>
@@ -100,7 +101,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
 
         { }
         {!showCollaborate && (
-          <div className="flex items-center gap-2 px-6 pt-3">
+          <div className="flex items-center gap-2 px-6 pt-3 border-b border-gray-200">
             {(
               [
                 { key: 'details', label: 'Case Details' },
@@ -131,6 +132,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 <CaseDetailsTab
                   row={displayData}
                   canManageSupervisorActions={canManageSupervisorActions}
+                  showActions={false}
                   onComplete={onComplete}
                   onCloseCase={onCloseCase}
                   onReopenCase={onReopenCase}
@@ -172,6 +174,27 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             </>
           )}
         </div>
+
+        { }
+        {!showCollaborate && tab === 'details' && (
+          <div className="border-t border-gray-200 bg-white px-6 py-4">
+            <CaseActionsPanel
+              caseData={displayData}
+              canManageSupervisorActions={canManageSupervisorActions}
+              onComplete={onComplete}
+              onCloseCase={onCloseCase}
+              onReopenCase={onReopenCase}
+              onAbandonCase={onAbandonCase}
+              onSuspendCase={onSuspendCase}
+              onResumeCase={onResumeCase}
+              onApproveCase={onApproveCase}
+              onApproveCaseReopen={onApproveCaseReopen}
+              onRejectCaseReopen={onRejectCaseReopen}
+              onApproveCaseCreation={onApproveCaseCreation}
+              onRejectCaseCreation={onRejectCaseCreation}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

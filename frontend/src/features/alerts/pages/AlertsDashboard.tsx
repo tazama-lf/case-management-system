@@ -56,17 +56,23 @@ const AlertsDashboard: React.FC = () => {
         alertId: alert.alert_id,
         data: triageData,
       });
+      
+      // Refresh alerts list to show updated data - await to ensure it completes
+      await refreshAlerts();
+      
       success('Triage Complete', 'Alert triage completed successfully');
 
-      // Refresh the alert details and keep the modal open
+      // Close the manual triage modal
+      setShowManualTriageModal(false);
+      
+      // Refresh the alert details and show the detail modal
       try {
         const updatedAlert = await triageService.getAlertById(alert.alert_id);
         setSelectedAlert(transformBackendAlertToUI(updatedAlert));
-        setShowManualTriageModal(false);
         setShowModal(true);
       } catch (error) {
         console.error('Failed to refresh alert:', error);
-        refreshAlerts();
+        setSelectedAlert(null);
       }
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
