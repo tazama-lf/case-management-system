@@ -39,7 +39,9 @@ interface EvidenceCategory {
   evidence: Evidence[];
 }
 
+
 const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate, refreshKey, task }) => {
+  const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
@@ -54,7 +56,14 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const taskId = task?.task_id;
+
+
+
+  useEffect(() => {
+    if (task?.task_id) {
+      setCurrentTaskId(task.task_id);
+    }
+  }, [task?.task_id]);
 
   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
     return {
@@ -92,8 +101,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   };
 
   const loadEvidence = React.useCallback(async () => {
-    if (!taskId) return;
-    const evidenceResponse = await evidenceService.getTaskEvidence(taskId);
+    if (!currentTaskId) return;
+    const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
 
 
     const groupedByType = new Map<string, Evidence[]>();
@@ -167,7 +176,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     });
 
     setEvidenceCategories(categories);
-  }, [taskId]);
+  }, [currentTaskId]);
 
   React.useEffect(() => {
     loadEvidence();
@@ -177,6 +186,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
 
   useEffect(() => {
+    if (!currentTaskId) return;
     const fetchCaseAndEvidence = async () => {
       try {
         setLoading(true);
@@ -212,7 +222,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           }
 
           const investigationTask = tasks.find(
-            (t) => t.name && t.name.toLowerCase().includes('investigat')
+            (t) => t.task_id === currentTaskId
           );
           if (investigationTask) {
             setInvestigationTask(investigationTask);
@@ -234,15 +244,9 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     };
 
     fetchCaseAndEvidence();
-  }, [caseId, refreshKey]);
+  }, [caseId, refreshKey, currentTaskId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+
 
   const getOutcomeLabel = (status: string): string => {
     if (status?.includes('CONFIRMED')) return 'Confirmed Fraud';
@@ -284,7 +288,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
       // Update investigation task
       const updatedInvestigationTask = tasks.find(
-        (t) => t.name && t.name.toLowerCase().includes('investigat')
+        (t) => t.task_id === currentTaskId
       );
       if (updatedInvestigationTask) {
         setInvestigationTask(updatedInvestigationTask);
@@ -328,6 +332,19 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       setDownloadingId(null);
     }
   };
+
+  useEffect(() => {
+    console.log('taskId:', currentTaskId);
+    console.log('investigationTask:', investigationTask);
+  }, [currentTaskId, investigationTask]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -589,7 +606,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
         caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
-        taskId={taskId}
+        taskId={currentTaskId || undefined}
         caseData={caseDetails || undefined}
         caseComments={caseComments}
         supervisorComments={supervisorComments}
@@ -601,7 +618,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       />
 
       {/* Complete Investigation Task Modal */}
-      {showCompleteModal && (
+      {showCompleteModal && investigationTask && (
         <Suspense fallback={<div>Loading...</div>}>
           <CompleteTaskModal
             open={showCompleteModal}

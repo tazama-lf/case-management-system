@@ -174,21 +174,45 @@ export class CaseQueryService {
         baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
         Object.assign(whereClause, baseFilters);
       }
+      // else if (investigatorUserId) {
+      //   // For investigators, show cases that are either:
+      //   // 1. Unassigned (case_owner_user_id is null)
+      //   // 2. Ready for assignment (available in work queue)
+      //   // 3. Owned by this specific investigator
+      //   whereClause.AND = [
+      //     baseFilters,
+      //     {
+      //       OR: [
+      //         { case_owner_user_id: null },
+      //         { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+      //         { case_owner_user_id: investigatorUserId },
+      //       ],
+      //     },
+      //   ];
+      // }
       else if (investigatorUserId) {
-        // For investigators, show cases that are either:
-        // 1. Unassigned (case_owner_user_id is null)
-        // 2. Ready for assignment (available in work queue)
-        // 3. Owned by this specific investigator
         whereClause.AND = [
           baseFilters,
           {
             OR: [
-              { case_owner_user_id: null },
-              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
               { case_owner_user_id: investigatorUserId },
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: investigatorUserId,
+                  },
+                },
+              },
+              {
+                AND: [
+                  { case_owner_user_id: null },
+                  { status: CaseStatus.STATUS_00_DRAFT },
+                ],
+              },
             ],
           },
         ];
+
       } else {
         Object.assign(whereClause, baseFilters);
         if (ownerId) whereClause.case_owner_user_id = ownerId;
