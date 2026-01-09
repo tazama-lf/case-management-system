@@ -9,7 +9,7 @@ import authService from '../../auth/services/authService';
 
 export type PredictionOutcome = 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
 export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
-export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML' | 'NONE';
+export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
 export type CaseStatus = 'STATUS_00_DRAFT' | 'STATUS_01_PENDING_CASE_CREATION_APPROVAL'
   | 'STATUS_02_READY_FOR_ASSIGNMENT' | 'STATUS_03_RETURNED' | 'STATUS_10_ASSIGNED'
   | 'STATUS_20_IN_PROGRESS' | 'STATUS_21_SUSPENDED' | 'STATUS_22_PENDING_FINAL_APPROVAL'

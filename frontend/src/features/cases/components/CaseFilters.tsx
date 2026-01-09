@@ -40,14 +40,19 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   const [savedFilters, setSavedFilters] = React.useState<UserSavedFilter[]>([]);
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'STATUS_00_DRAFT', label: 'Draft' },
-    { value: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL', label: 'Pending Creation Approval' },
-    { value: 'STATUS_20_IN_PROGRESS', label: 'In Progress' },
-    { value: 'STATUS_21_SUSPENDED', label: 'Suspended' },
-    { value: 'STATUS_22_PENDING_FINAL_APPROVAL', label: 'Pending Final Approval' },
-    { value: 'STATUS_81_CLOSED_REFUTED', label: 'Closed - Refuted' },
+    { value: 'STATUS_99_ABANDONED', label: 'Abandoned' },
+    { value: 'STATUS_10_ASSIGNED', label: 'Assigned' },
     { value: 'STATUS_82_CLOSED_CONFIRMED', label: 'Closed - Confirmed' },
     { value: 'STATUS_83_CLOSED_INCONCLUSIVE', label: 'Closed - Inconclusive' },
+    { value: 'STATUS_81_CLOSED_REFUTED', label: 'Closed - Refuted' },
+    { value: 'STATUS_00_DRAFT', label: 'Draft' },
+    { value: 'STATUS_20_IN_PROGRESS', label: 'In Progress' },
+    { value: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL', label: 'Pending Creation Approval' },
+    { value: 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL', label: 'Pending Case Reopening Approval' },
+    { value: 'STATUS_21_SUSPENDED', label: 'Suspended' },
+    { value: 'STATUS_22_PENDING_FINAL_APPROVAL', label: 'Pending Final Approval' },
+    { value: 'STATUS_02_READY_FOR_ASSIGNMENT', label: 'Ready for Assignment' },
+
   ];
 
   const priorityOptions = [

@@ -63,11 +63,21 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
+  const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();
     if (user) setCurrentUser(user);
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const isCompliance = currentUser?.validatedClaims?.CMS_COMPLIANCE_OFFICER;
+    if (isCompliance)
+      setIsComplianceOfficer(isCompliance);
+
+  }, [currentUser]);
 
   const tableColumns = [
     { key: 'task', label: 'Task', width: 'w-80' },
@@ -346,30 +356,31 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     return actions;
   };
-
   const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
 
-  React.useEffect(() => {
+
+
+  useEffect(() => {
     if (investigators.length === 0)
       fetchInvestigatorsList();
     if (supervisors.length === 0)
       fetchSupervisorsList();
-    if (complianceOfficers.length === 0) {
-      fetchComplianceOfficersList();
-    }
+
+
   }, []);
 
 
   const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
+    if (isComplianceOfficer) {
+      const compliance = (currentUser?.userId === assigneeName || currentUser?.userId === assignee);
+      if (compliance) return `${currentUser?.fullName}`;
+    }
 
     const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
     const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
     if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
-    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
     return assigneeName || assignee;
   };

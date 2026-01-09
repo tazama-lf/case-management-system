@@ -43,7 +43,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
         const isComplianceOfficer = user?.validatedClaims?.CMS_COMPLIANCE_OFFICER === true;
         setIsComplianceOfficer(isComplianceOfficer)
 
-        if (isComplianceOfficer) {
+        if (complianceOfficers) {
           fetchComplianceOfficersList();
         }
         fetchCurrentUserAsInvestigator();

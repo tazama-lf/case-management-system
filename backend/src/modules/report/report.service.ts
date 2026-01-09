@@ -516,7 +516,7 @@ export class ReportsService {
             : 0;
 
         return {
-          name: `User ${case_owner_user_id}`,
+          name: `${case_owner_user_id}`,
           avgDays: Math.round(avgResolutionDays),
         };
       }),
@@ -555,7 +555,7 @@ export class ReportsService {
         ]);
 
         return {
-          name: `User ${case_owner_user_id}`,
+          name: `${case_owner_user_id}`,
           confirmed,
           refuted,
           inconclusive,
@@ -682,7 +682,7 @@ export class ReportsService {
           },
         });
 
-        monthData.investigators[`User ${case_owner_user_id}`] = caseCount;
+        monthData.investigators[`${case_owner_user_id}`] = caseCount;
       }
 
       volumeTrend.push(monthData);

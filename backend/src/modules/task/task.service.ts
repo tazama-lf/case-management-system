@@ -169,14 +169,16 @@ export class TaskService {
         performedAt: new Date(),
       });
 
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
-        entityName: TaskService.name,
-        operation: 'updateTask',
-        task_id: taskId,
-        case_id: updatedTask.case_id
-      });
+      if (existingTask.status !== updatedTask.status) {
+        await this.taskHistoryService.logTaskHistoryAction({
+          userId,
+          actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
+          entityName: TaskService.name,
+          operation: 'updateTask',
+          task_id: taskId,
+          case_id: updatedTask.case_id
+        });
+      }
 
       return updatedTask;
     } catch (error) {

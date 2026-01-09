@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { InvestigatorWorkload } from '../types/reports.types';
+import { useInvestigatorSupervisorList } from '../../cases/hooks/useInvestigatorSupervisorList';
 
 interface WorkloadBarChartProps {
   data: InvestigatorWorkload[];
@@ -20,8 +21,32 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height
     );
   }
 
+
+
+
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, []);
+
+  const getUserNameById = (userId: string) => {
+
+    const inv = investigators.find(i => i.id === userId);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === userId);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return userId;
+  };
+
   const chartData = data.map((item) => ({
-    name: item.name,
+    name: getUserNameById(item.investigatorId),
     'Active Cases': item.activeCases,
     'Pending Tasks': item.pendingTasks
   }));
