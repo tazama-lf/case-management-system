@@ -4,6 +4,7 @@ import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
 import { caseService } from '../../services/caseService';
 import type { Case } from '@/features/alerts/types/triage.types';
+import { useAuth } from '@/features/auth/components/AuthContext';
 //interface
 interface CaseActionsPanelProps {
   caseData: CaseRow;
@@ -38,6 +39,12 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 }) => {
   const showSupervisorControls = canManageSupervisorActions;
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
+  const { hasComplianceOfficerRole } = useAuth();
+  
+  // Compliance officers cannot perform any case actions
+  if (hasComplianceOfficerRole()) {
+    return null;
+  }
 
   // Fetch case details to get case_owner_user_id
   useEffect(() => {
