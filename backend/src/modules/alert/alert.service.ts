@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
@@ -9,6 +9,10 @@ import { CaseCreationApprovalService } from '../case/services/case-creation-appr
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { EventLogService } from '../event_log/eventLog.service';
+import { TransactionDataRespository } from '../repository/transactionalData.respository'
+import { extractReferenceId } from '../repository/utils/extractReferenceId';
+import { JsonValue } from '../repository/utils/types/JsonValue';
+
 
 @Injectable()
 export class AlertService {
@@ -19,6 +23,7 @@ export class AlertService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly eventLogService: EventLogService,
+    private readonly transactionDataRespository: TransactionDataRespository,
   ) { }
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
@@ -96,4 +101,38 @@ export class AlertService {
       return createdAlert;
     }
   }
+
+  async getAlertTransactionalData(alertId: number) {
+    this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
+    if (alertId == null || alertId == undefined) {
+      throw new BadRequestException(`AlertID is missing`);
+    }
+
+    const alert = await this.alertRepository.getAlertById(alertId);
+    this.loggerService.log(`alert:  ${JSON.stringify(alert)}`, AlertService.name);
+    this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
+    if (alert) {
+      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+      this.loggerService.log(`ReferenceId:  ${referenceIdData.referenceIdName}`, AlertService.name);
+      const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+      if (!referenceId) {
+        throw new Error('ReferenceId not found in transaction data');
+      }
+      this.loggerService.log(`referenceId: ${referenceId}`, AlertService.name);
+      const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
+      this.loggerService.log(`transactionData:  ${JSON.stringify(transactionData)}`, AlertService.name);
+      if (!transactionData)
+        throw new InternalServerErrorException(
+          `transactionData not found for AlertId ${alertId}`,
+        );
+
+      return transactionData;
+
+
+
+    } else {
+      throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
+    }
+  }
+
 }

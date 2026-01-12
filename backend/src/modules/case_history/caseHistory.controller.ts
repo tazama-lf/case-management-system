@@ -32,7 +32,6 @@ export class CaseHistoryController {
     async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
         return this.caseHistoryService.getLogs(Number(limit), Number(offset));
     }
-    c
 
     @Get(':caseId')
     @RequireInvestigatorOrSupervisorRoleOrComplianceRole()

@@ -98,7 +98,7 @@ model Alert {
   alert_type         CaseType?
   prediction_outcome PredictionOutcome? @default(TRUE_POSITIVE)
   source             String?            @db.VarChar(50)
-  txtp               String?            @db.VarChar(50)
+  txtp               String            @db.VarChar(50)
   message            String             @db.VarChar(100)
   alert_data         Json
   transaction        Json

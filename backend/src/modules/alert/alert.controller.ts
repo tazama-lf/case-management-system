@@ -1,15 +1,19 @@
-import { Controller, Get, Query, Req, BadRequestException, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { RequireInvestigatorOrSupervisorRole } from '../../decorators/auth.decorator';
+import { Controller, Get, Query, Req, BadRequestException, UseGuards, Param } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { AlertResponseDto } from './dto';
+import { AlertService } from './alert.service'
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
 export class AlertController {
-    constructor(private readonly alertStatisticsService: AlertStatisticsService) { }
+    constructor(
+        private readonly alertStatisticsService: AlertStatisticsService,
+        private readonly alertService: AlertService
+    ) { }
 
     @Get()
     @RequireInvestigatorOrSupervisorRole()
@@ -116,5 +120,32 @@ export class AlertController {
             sortBy,
             sortOrder,
         });
+    }
+
+
+    @Get(':alertId/transaction-data')
+    @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+    @ApiBearerAuth('jwt')
+    @ApiOperation({
+        summary: 'Get transactional data',
+        description: 'Retrieve all transactional data of the user',
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiQuery({
+        name: 'alertId',
+        required: true,
+        type: 'number',
+        description: 'alert Id',
+        example: '1',
+    })
+    async getAlertTransactionalData(
+        @Req() req: AuthenticatedRequest,
+        @Param('alertId') alertId: number,
+    ) {
+        const user_id = req.user.token.clientId;
+        if (!user_id) throw new BadRequestException('Missing clientId');
+        return this.alertService.getAlertTransactionalData(
+            alertId
+        );
     }
 }

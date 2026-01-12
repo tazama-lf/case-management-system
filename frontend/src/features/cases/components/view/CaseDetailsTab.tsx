@@ -2,6 +2,12 @@ import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
+import type { TransactionHistoryDto } from '../../../alerts/types/triage.types';
+import triageService from '../../../alerts/services/triageservice';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon
+} from '@heroicons/react/24/outline';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -44,8 +50,8 @@ const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
-const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({ 
-  row, 
+const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
+  row,
   canManageSupervisorActions = false,
   onComplete,
   onCloseCase,
@@ -57,12 +63,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   onApproveCaseReopen,
   onRejectCaseReopen,
   onApproveCaseCreation,
-  onRejectCaseCreation
+  onRejectCaseCreation,
 }) => {
+
+  const [transactionalData, setTransactionData] = React.useState<TransactionHistoryDto[]>();
+  const [openTransactions, setOpenTransactions] = React.useState<Record<string, boolean>>({});
   // Extract transaction data
   const getTransactionData = () => {
     if (!row.transaction) return null;
-    
+
     try {
       const txData = row.transaction as Record<string, unknown>;
       const fiToFIPmtSts = txData?.FIToFIPmtSts as Record<string, unknown>;
@@ -73,7 +82,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   };
 
   const transactionData = getTransactionData();
-  
+
   const getNestedValue = (obj: Record<string, unknown> | null, path: string[]): string => {
     if (!obj) return 'N/A';
     let current: unknown = obj;
@@ -86,6 +95,53 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     }
     return typeof current === 'string' ? current : 'N/A';
   };
+
+  const escapeHtml = (unsafe: string) => {
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  const syntaxHighlightJson = (obj: unknown) => {
+    const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    const escaped = escapeHtml(String(json));
+
+    const highlighted = escaped
+      .replace(
+        /("(.*?)")(?=\s*:)/g,
+        '<span class="text-indigo-700 font-medium">$1</span>',
+      )
+      .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+      .replace(
+        /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi,
+        '$1<span class="text-red-600">$2</span>',
+      )
+      .replace(
+        /(:\s*)(true|false)/gi,
+        '$1<span class="text-yellow-600">$2</span>',
+      )
+      .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+
+    return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+  };
+
+  React.useEffect(() => {
+    const fetchTransactionData = async () => {
+      if (!row?.alertId) return;
+
+      try {
+        const transactionData = await triageService.getAlertTransactionalData(row.alertId);
+        setTransactionData(transactionData);
+      } catch (error) {
+        console.error(`Unable to retrieve Transaction Data for alert ID ${row.alertId}`, error);
+      }
+    };
+
+    fetchTransactionData();
+  }, [row?.alertId]);
 
   const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
   const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
@@ -168,7 +224,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         )}
       </div>
 
-      {/* Creditor Information */}
+      {/* Creditor Information
       <div className="space-y-3">
         <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
         <SectionCard>
@@ -177,12 +233,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
             <div className="text-gray-900 font-mono">{creditorFsp}</div>
           </div>
         </SectionCard>
-      </div>
+      </div> */}
 
-      
+
 
       {/* Debtor Information */}
-      <div className="space-y-3 col-span-full">
+      {/* <div className="space-y-3 col-span-full">
         <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
         <SectionCard>
           <div className="grid grid-cols-2 gap-y-3">
@@ -190,7 +246,67 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
             <div className="text-gray-900 font-mono">{debtorFsp}</div>
           </div>
         </SectionCard>
-      </div>
+      </div> */}
+
+      {/* Transactions */}
+      {transactionalData && transactionalData.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-gray-700">Transactions</div>
+
+          {transactionalData.map((tx) => {
+            const isOpen = openTransactions[tx.transactionId] || false;
+            const txTp = getNestedValue(tx.transactionData as Record<string, unknown>, ['TxTp']);
+
+            return (
+              <section
+                key={tx.transactionId}
+                className="rounded-lg border border-gray-200 bg-white shadow-sm"
+              >
+                {/* HEADER */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenTransactions((prev) => ({
+                      ...prev,
+                      [tx.transactionId]: !prev[tx.transactionId],
+                    }))
+                  }
+                  className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                >
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">
+                      {txTp}
+                    </h4>
+                  </div>
+                  {isOpen ? (
+                    <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                  )}
+                </button>
+
+                {/* BODY */}
+                {isOpen && (
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                    {tx.transactionData ? (
+                      <pre
+                        className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: syntaxHighlightJson(tx.transactionData),
+                        }}
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-600">
+                        No transaction data
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {/* Actions Panel */}
       <div className="col-span-full">

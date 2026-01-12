@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest, AuthenticatedUser } from 'src/utils/types/auth.types';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { User } from 'src/decorators/user.decorator';
@@ -14,7 +14,7 @@ export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Get('list-by-role/:role')
-    @RequireInvestigatorOrSupervisorRole()
+    @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
     @ApiParam({ name: 'role', required: true, description: 'Role to filter users by', example: 'CMS_SUPERVISOR' })
     @ApiResponse({ status: 200, description: 'List of users with the specified role' })
     async getUsers(@Param('role') role: string, @Req() req: AuthenticatedRequest, @User() user: AuthenticatedUser) {

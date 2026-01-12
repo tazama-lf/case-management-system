@@ -7,6 +7,7 @@ import type {
   AlertStatus,
   AlertsFilter,
   ActionHistory,
+  TransactionHistoryDto,
 } from '../types/triage.types';
 
 class TriageService {
@@ -175,6 +176,18 @@ class TriageService {
     } catch (error) {
       throw this.handleError(error, 'close alert');
     }
+  }
+
+  async getAlertTransactionalData(alertId: number) {
+    try {
+      const response = await apiClient.get<TransactionHistoryDto[]>(
+        `${this.alertBaseUrl}/${alertId}/transaction-data`,
+      );
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'close alert');
+    }
+
   }
 
   async getNALTAlerts(

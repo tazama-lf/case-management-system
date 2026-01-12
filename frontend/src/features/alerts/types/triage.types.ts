@@ -53,6 +53,14 @@ export interface ActionHistory {
   performed_at: string;
 }
 
+export interface TransactionHistoryDto {
+  transactionId: number;
+  tenantId: string;
+  endToEndId: string;
+  transactionData: unknown;
+  createdAt: Date;
+}
+
 
 export const CaseType = {
   FRAUD: 'FRAUD',
