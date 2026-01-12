@@ -63,8 +63,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   // Check if user is investigator only (no supervisor or admin role)
   const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
+
+  // Function to trigger task refresh
+  const refreshTasks = React.useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -73,9 +79,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       try {
         setLoading(true);
         setError(null);
-        // old version
-        // const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-
+        
         // Fetch tasks and case data in parallel
         const [fetchedTasks, fetchedCase] = await Promise.all([
           taskService.getTasksByCaseId(caseId),
@@ -116,7 +120,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     };
 
     fetchTasks();
-  }, [caseId]);
+  }, [caseId, refreshTrigger]);
 
 
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
@@ -239,7 +243,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   });
 
   const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
-
 
   const handleAssign = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
@@ -501,7 +504,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           onUpdateStatus={handleUpdateStatus}
           onComplete={handleCompleteTask}
           onTaskClick={handleViewTaskDetails}
-          onRefreshCases={onRefreshCases}
+          onRefreshCases={async () => {
+            // Trigger local task refresh
+            refreshTasks();
+            // Call parent refresh
+            if (onRefreshCases) {
+              await onRefreshCases();
+            }
+          }}
           canManageSupervisorActions={canManageSupervisorActions}
           caseData={caseData}
           onApproveCase={onApproveCase}

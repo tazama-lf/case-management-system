@@ -126,9 +126,13 @@ export const useAlertOperations = () => {
   const updateAlertMutation = useMutation({
     mutationFn: ({ alertId, data }: { alertId: number; data: Record<string, unknown> }) =>
       triageService.updateAlert(alertId, data),
-    onSuccess: (data, variables) => {
+      onSuccess: (data, variables) => {
       // showSuccess('Alert updated successfully');
+      // Invalidate all alert lists to refetch with latest data
+       console.log('Failed to refresh case data:');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
+      // Refetch the specific alert detail
+      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.detail(variables.alertId) });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data

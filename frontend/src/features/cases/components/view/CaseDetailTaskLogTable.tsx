@@ -112,19 +112,22 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
         alertId: alert.alert_id,
         data: triageData,
       });
-      success('Triage Complete', 'Alert triage completed successfully');
+      
+      // Close modal immediately
+      setShowManualTriageModal(false);
+      setSelectedAlert(null);
+      setLoadingAlertForTask(null);
+      
+      success('Manual Triage Completed', 'The alert has been triaged successfully.');
 
-      // Refresh the alert details and keep the modal open
-      try {
-        const updatedAlert = await triageService.getAlertById(alert.alert_id);
-        setSelectedAlert(transformBackendAlertToUI(updatedAlert));
-        setShowManualTriageModal(false);
-      } catch (error) {
-        console.error('Failed to refresh alert:', error);
-        onRefreshCases?.();
+      // Brief delay to ensure backend has processed the triage and created new tasks
+         await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
+      if (onRefreshCases) {
+        await onRefreshCases();
       }
     } catch (error) {
-      console.error('Failed to perform manual triage:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
       showError('Triage Failed', errorMessage);
       throw error;
