@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TaskController } from '../../src/modules/task/task.controller';
 import { TaskService } from '../../src/modules/task/task.service';
-import { CreateTaskDto } from '../../src/modules/task/dto/create-task.dto';
+import { CreateTaskDto } from '../../src/dtos/create-task.dto';
 import { UpdateTaskDto } from '../../src/modules/task/dto/update-task.dto';
 import { TaskStatus } from '@prisma/client-cms';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';

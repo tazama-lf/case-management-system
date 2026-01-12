@@ -33,9 +33,10 @@ import { CouchdbModule } from './modules/couchdb/couchdb.module';
 import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
 import { AdminModule } from './modules/admin/admin.module';
-import { FilterModule } from './modules/filter/filter.module'
+import { FilterModule } from './modules/filter/filter.module';
 import { CaseHistoryModule } from './modules/case_history/caseHistory.module';
 import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
+import { TaskSyncModule } from './modules/task-sync/task-sync.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
     FilterModule,
     CaseHistoryModule,
     TaskHistoryModule,
+    TaskSyncModule,
   ],
   providers: [
     PrismaService,
@@ -85,4 +87,4 @@ import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

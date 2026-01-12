@@ -10,14 +10,14 @@ export class CreateTaskDto {
   @IsNumber()
   caseId: number;
 
-    @ApiProperty({
-      description: 'Investigation notes for the task',
-      example: 'Detailed investigation notes entered by investigator.',
-      required: false,
-    })
-    @IsString()
-    @IsOptional()
-    investigationNotes?: string;
+  @ApiProperty({
+    description: 'Investigation notes for the task',
+    example: 'Detailed investigation notes entered by investigator.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  investigationNotes?: string;
   @ApiProperty({
     description: 'Initial status of the task',
     enum: TaskStatus,

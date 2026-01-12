@@ -15,7 +15,7 @@ export class CaseEventListener {
     // private readonly bpmnSyncService: BpmnSyncService,
   ) {}
 
-  @OnEvent('case.created')
+  // @OnEvent('case.created')
   async handleCaseCreated(event: CaseCreatedEvent) {
     try {
       this.logger.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);

@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
@@ -326,6 +326,17 @@ export class FlowableService implements OnModuleInit {
 
   async handleGetTasksByAssignee(assignee: string) {
     return this.identityService.getTasksAssignedToUser(assignee);
+  }
+
+  async fetchFlowableTasks(caseId: number): Promise<unknown[]> {
+    const processInstance = await this.processService.getProcessInstanceByBusinessKey(caseId);
+    if (!processInstance) {
+      throw new NotFoundException(`No Flowable process found for case ${caseId}`);
+    }
+
+    const processTasks = await this.taskService.getProcessTasks(processInstance.id);
+
+    return processTasks;
   }
 
   private sleep(ms: number): Promise<void> {

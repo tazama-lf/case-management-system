@@ -1,26 +1,21 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskDto } from '../../dtos/create-task.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
-import {
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
-  TaskAssignedEvent,
-  TaskUnassignedEvent,
-  CaseStatusChangedEvent,
-} from '../events/domain-events';
+import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { isCaseEligibleForInProgress } from './utils/helperFunctions';
 
 export interface TaskWithCase extends Task {
   case: {
@@ -45,11 +40,69 @@ export class TaskService {
     private readonly authService: AuthService,
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
-  async createTask(taskDTO: CreateTaskDto, userId: string) {
-    return this.taskBridgeService.createTask(taskDTO, userId);
+  async createTask(taskDTO: CreateTaskDto, userId: string): Promise<Task> {
+    // return this.taskBridgeService.createTask(taskDTO, userId);
+
+    this.logger.log('Creating task', TaskBridgeService.name);
+    try {
+      const createdTask = await this.taskRepository.createTask({
+        case: {
+          connect: {
+            case_id: taskDTO.caseId,
+          },
+        },
+        name: taskDTO.name,
+        description: taskDTO.description,
+        candidateGroup: taskDTO.candidateGroup,
+        status: taskDTO.status,
+        assigned_user_id: taskDTO.assignedUserId,
+        investigationNotes: taskDTO.investigationNotes,
+      });
+
+      this.auditLogService.logAction({
+        userId,
+        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+        entityName: TaskBridgeService.name,
+        operation: 'createTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      this.eventLogService.logEventAction({
+        userId,
+        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+        entityName: TaskBridgeService.name,
+        operation: 'createTask',
+        outcome: Outcome.SUCCESS,
+        performedAt: new Date(),
+      });
+
+      await this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+        entityName: TaskBridgeService.name,
+        operation: 'createTask',
+        task_id: createdTask.task_id,
+        case_id: createdTask.case_id,
+      });
+
+      return { ...createdTask };
+    } catch (error) {
+      this.logger.error('Error creating task', error, TaskBridgeService.name);
+      this.auditLogService.logAction({
+        userId,
+        actionPerformed: 'Error creating task',
+        entityName: TaskBridgeService.name,
+        operation: 'createTask',
+        outcome: Outcome.FAILURE,
+        performedAt: new Date(),
+      });
+      throw error;
+    }
   }
+
   async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
     return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
@@ -67,7 +120,8 @@ export class TaskService {
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         description: updateData.description,
-        assigned_user_id: updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+        assigned_user_id:
+          updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
         investigationNotes: updateData.investigationNotes,
       };
 
@@ -86,7 +140,7 @@ export class TaskService {
           const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tx);
           if (!caseRecord) throw new NotFoundException(`Case ${taskRecord.case_id} not found`);
 
-          if (this.isCaseEligibleForInProgress(caseRecord.status)) {
+          if (isCaseEligibleForInProgress(caseRecord.status)) {
             const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
             const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
             if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
@@ -175,7 +229,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'updateTask',
         task_id: taskId,
-        case_id: updatedTask.case_id
+        case_id: updatedTask.case_id,
       });
 
       return updatedTask;
@@ -288,7 +342,6 @@ export class TaskService {
           };
         }),
       );
-
 
       if (userId) {
         this.auditLogService.logAction({
@@ -493,7 +546,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'claimTask',
         task_id: taskId,
-        case_id: updatedTask.case_id
+        case_id: updatedTask.case_id,
       });
 
       return updatedTask;
@@ -507,10 +560,6 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  // async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-  //   return this.lifecycle.releaseTask(taskId, userId);
-  // }
-
   async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
     return this.lifecycle.completeTask(taskId, userId);
   }
@@ -520,10 +569,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {
@@ -541,15 +590,5 @@ export class TaskService {
     assignedUserId?: string,
   ) {
     return this.lifecycle.reassignTaskToWorkQueue(taskId, targetWorkQueueId, userId, tenantId, reason, assignedUserId);
-  }
-
-  private isCaseEligibleForInProgress(status: CaseStatus): boolean {
-    const eligibleStatuses: CaseStatus[] = [
-      CaseStatus.STATUS_10_ASSIGNED,
-      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      CaseStatus.STATUS_03_RETURNED,
-    ];
-
-    return eligibleStatuses.includes(status);
   }
 }

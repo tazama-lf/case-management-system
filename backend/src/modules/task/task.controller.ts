@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { TaskService } from './task.service';
-import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskDto } from '../../dtos/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { ReassignTaskDto } from './dto/reassign-task.dto';
@@ -27,7 +27,7 @@ import {
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
-  RequireInvestigatorOrSupervisorRoleOrComplianceRole
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
@@ -201,7 +201,7 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note); ;
+    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
   }
 
   @Patch(':taskId/unassign')
@@ -370,7 +370,13 @@ export class TaskController {
     const supervisorId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    const result = await this.taskService.assignTaskToInvestigator(taskId, assignTaskDto.assignedUserId, supervisorId, tenantId, assignTaskDto.note);
+    const result = await this.taskService.assignTaskToInvestigator(
+      taskId,
+      assignTaskDto.assignedUserId,
+      supervisorId,
+      tenantId,
+      assignTaskDto.note,
+    );
 
     return {
       success: true,
@@ -573,7 +579,8 @@ export class TaskController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
-    description: 'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
+    description:
+      'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
   })
   @ApiParam({
     name: 'caseId',

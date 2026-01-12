@@ -8,6 +8,8 @@ import { CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { AlertService } from '../alert/alert.service';
 import { FlowableService } from '../flowable/flowable.service';
+import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
+import { TaskSyncService } from '../task-sync/task-sync.service';
 
 @Injectable()
 export class ProcessAlertService {
@@ -19,6 +21,7 @@ export class ProcessAlertService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly alertService: AlertService,
     private readonly flowableService: FlowableService,
+    private readonly taskSyncService: TaskSyncService,
   ) {}
 
   async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string) {
@@ -42,22 +45,10 @@ export class ProcessAlertService {
       }
 
       case 'MANUAL': {
-        const processInstance = await this.flowableService.getProcessInstanceByBusinessKey(alert.case_id);
-        this.loggerService.log('processInstance', processInstance);
-        const processTasks = await this.flowableService.getProcessTasks(processInstance.id);
-        this.loggerService.log('processTasks', JSON.stringify(processTasks));
-
-        // await this.taskService.createTask(
-        //     {
-        //         caseId: alert.case_id,
-        //         status: TaskStatus.STATUS_01_UNASSIGNED,
-        //         name: 'Complete New Case',
-        //         description: `Manual triage required for alert: ${alert.alert_id}`,
-        //         candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        //         // assignedUserId: userId
-        //     },
-        //     userId,
-        // );
+        await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
+          maxRetries: 5,
+          delayMs: 50,
+        });
         break;
       }
 
