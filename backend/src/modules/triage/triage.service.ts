@@ -121,6 +121,16 @@ export class TriageService {
                     },
                 });
 
+                await this.caseCreationService.updateCaseStatus(
+                    alert.case_id,
+                    updateAlertDto.status,
+                    userId,
+                    priority,
+                    updateAlertDto.alertType as CaseType,
+                );
+
+
+
                 this.logger.log(
                     `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
                     TriageService.name,

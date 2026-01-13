@@ -16,6 +16,7 @@ import { useToast } from '../../../../shared/providers/ToastProvider';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { TaskStatus } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
+import ConfirmUploadEvidenceModal from '../modals/ConfirmUploadEvidenceModal';
 
 const evidenceSections: Array<{
   key: string;
@@ -85,6 +86,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [noEvidenceError, setNoEvidenceError] = React.useState(false);
+  const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
+
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
@@ -110,6 +113,15 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     const user = authService.getUser();
     if (user) setCurrentUser(user);
   }, []);
+
+  const uploadPreviewSections = React.useMemo(() => {
+    return evidenceSections
+      .map(section => ({
+        sectionTitle: section.title,
+        files: sectionFiles[section.key] ?? [],
+      }))
+      .filter(section => section.files.length > 0);
+  }, [sectionFiles]);
 
   const UploadEvidence = async () => {
     if (!taskId) return;
@@ -384,7 +396,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         <div className="text-sm font-semibold text-gray-900">Evidence & Documents</div>
         <button
           type="button"
-          onClick={UploadEvidence}
+          // onClick={UploadEvidence}
+          onClick={() => setShowUploadConfirm(true)}
           disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted || taskAssignedId !== currentUser?.userId}
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
         ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
@@ -609,6 +622,18 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           onDeleteSuccess={() => {
             loadEvidence();
             onUploadComplete?.();
+          }}
+        />
+      )}
+      {showUploadConfirm && (
+        <ConfirmUploadEvidenceModal
+          isOpen={showUploadConfirm}
+          isUploading={saving}
+          sections={uploadPreviewSections}
+          onCancel={() => setShowUploadConfirm(false)}
+          onConfirm={async () => {
+            await UploadEvidence();
+            setShowUploadConfirm(false);
           }}
         />
       )}
