@@ -7,6 +7,7 @@ import CasesTableSkeleton from '@/features/cases/components/CasesTableSkeleton';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import type { CaseDashboardState } from '../hooks/useCaseDashboard';
+import { useAuth } from '@/features/auth/components/AuthContext';
 
 interface CaseDashboardContentProps {
   dashboardState: CaseDashboardState;
@@ -31,6 +32,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onCreateNew,
   onView
 }) => {
+  const {
+    hasComplianceOfficerRole
+  } = useAuth();
   const { cases, loading, errorState, filters, pagination } = dashboardState;
 
   return (
@@ -43,15 +47,23 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
               <h1 className="text-3xl font-bold text-gray-900">Cases Dashboard</h1>
               <p className="mt-2 text-gray-600">Manage and track investigation cases</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={onCreateNew}
-                className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Create Manually
-              </button>
-            </div>
+            {!hasComplianceOfficerRole() ? (
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={onCreateNew}
+                  className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Create Manually
+                </button>
+
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+
+
+              </div>
+            )}
           </div>
 
           <CaseFilters

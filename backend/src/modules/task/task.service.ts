@@ -250,18 +250,23 @@ export class TaskService {
     try {
       const tasks = await this.taskRepository.findTasks({ case_id: caseId }, true);
 
+      const isInvestigator = userClaims.includes('CMS_INVESTIGATOR');
+      const isSupervisor = userClaims.includes('CMS_SUPERVISOR');
       const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
 
       const filteredTasks = tasks.filter((task) => {
-        this.logger.log(`Compliance Officer task : ${tasks}`);
 
-        const isComplianceTask = task.candidateGroup?.toLowerCase() === 'compliance';
-        this.logger.log(`isComplianceTask : ${isComplianceTask}`);
-        if (isComplianceOfficer) {
-          return isComplianceTask;
+        const isComplianceTask =
+          task.candidateGroup?.toLowerCase() === 'compliance';
+
+        // Investigator should NOT see compliance tasks
+        if (isSupervisor || isComplianceOfficer) {
+          return true;
+        } else if (isInvestigator) {
+          return !isComplianceTask;
         }
 
-        return !isComplianceTask;
+        return true;
       });
 
       const enrichedTasks = await Promise.all(

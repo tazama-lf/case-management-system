@@ -87,7 +87,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [noEvidenceError, setNoEvidenceError] = React.useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
-
+  const [validationErrors, setValidationErrors] = React.useState<{ [key: string]: string }>({});
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
@@ -578,11 +578,13 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   >
                     Comments
                   </label>
+
                   <textarea
                     id={`${section.key}-comments`}
                     placeholder={section.commentPlaceholder}
                     rows={4}
-                    value={sectionComments[section.key] || ''}
+                    maxLength={1000}
+                    value={sectionComments[section.key] ?? ''}
                     onChange={(e) =>
                       setSectionComments((prev) => ({
                         ...prev,
@@ -591,6 +593,36 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                     }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
+
+                  {(() => {
+                    const length = (sectionComments[section.key] ?? '').length;
+                    const isLimitReached = length === 1000;
+
+                    return (
+                      <div className="mt-1">
+                        <div className="flex justify-between items-center">
+                          <span
+                            className={`text-xs ${isLimitReached ? 'text-red-500' : 'text-gray-500'
+                              }`}
+                          >
+                            {length}/1000
+                          </span>
+                        </div>
+
+                        <div className="mt-1">
+                          {isLimitReached ? (
+                            <p className="text-red-500 text-xs">
+                              Maximum character limit reached
+                            </p>
+                          ) : (
+                            <p className="text-gray-500 text-xs">
+                              Comments help with case investigation and audit trails
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <div className="flex items-center gap-3">

@@ -15,7 +15,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
 
   const [priority, setPriority] = useState<Priority>(alert.priority);
   const [confidence, setConfidence] = useState(alert.confidence_per);
-  const [priorityScore, setPriorityScore] = useState<number>(0.33);
+  const [priorityScore, setPriorityScore] = useState<number>(0);
   const [alertType, setAlertType] = React.useState<AlertType | undefined>(
     alert.alert_type || undefined
   );
@@ -68,7 +68,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
   React.useEffect(() => {
     setPriority(alert.priority);
     setConfidence(alert.confidence_per);
-    setPriorityScore(0.33);
+    setPriorityScore(0);
     setAlertType(alert.alert_type || undefined);
     setNote('');
     setPredictionOutcome('FALSE_POSITIVE');

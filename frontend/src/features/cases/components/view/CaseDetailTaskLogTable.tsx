@@ -63,21 +63,13 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
-  const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
+  // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();
     if (user) setCurrentUser(user);
   }, []);
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const isCompliance = currentUser?.validatedClaims?.CMS_COMPLIANCE_OFFICER;
-    if (isCompliance)
-      setIsComplianceOfficer(isCompliance);
-
-  }, [currentUser]);
 
   const tableColumns = [
     { key: 'task', label: 'Task', width: 'w-80' },
@@ -112,17 +104,17 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
         alertId: alert.alert_id,
         data: triageData,
       });
-      
+
       // Close modal immediately
       setShowManualTriageModal(false);
       setSelectedAlert(null);
       setLoadingAlertForTask(null);
-      
+
       success('Manual Triage Completed', 'The alert has been triaged successfully.');
 
       // Brief delay to ensure backend has processed the triage and created new tasks
-         await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
       if (onRefreshCases) {
         await onRefreshCases();
@@ -365,16 +357,20 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       fetchInvestigatorsList();
     if (supervisors.length === 0)
       fetchSupervisorsList();
+    if (complianceOfficers.length === 0)
+      fetchComplianceOfficersList();
 
 
   }, []);
 
 
   const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
-    if (isComplianceOfficer) {
-      const compliance = (currentUser?.userId === assigneeName || currentUser?.userId === assignee);
-      if (compliance) return `${currentUser?.fullName}`;
-    }
+
+    // const compliance = (currentUser?.userId === assigneeName || currentUser?.userId === assignee);
+    // if (compliance) return `${currentUser?.fullName}`;
+
+    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
     const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
     if (inv) return `${inv.firstName} ${inv.lastName}`;

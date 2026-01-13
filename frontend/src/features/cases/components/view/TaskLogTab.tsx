@@ -79,7 +79,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       try {
         setLoading(true);
         setError(null);
-        
+
         // Fetch tasks and case data in parallel
         const [fetchedTasks, fetchedCase] = await Promise.all([
           taskService.getTasksByCaseId(caseId),
@@ -451,9 +451,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     setSelectedTask(task);
 
     // Check if this should open SAR/STR Filing modal instead of Task Details
-    const hasRequiredRole = hasComplianceOfficerRole()
+    const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole()
     const isClosedCase = caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
-    if (hasRequiredRole && isClosedCase) {
+    const isStrTask = task.name === 'SAR/STR Filing';
+    if (hasRequiredRole && isClosedCase && isStrTask) {
       // Open SAR/STR Filing modal for closed cases with unassigned tasks
       setSarStrFilingModalOpen(true);
     } else {
