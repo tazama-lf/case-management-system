@@ -10,6 +10,13 @@ import userService from '../../services/userService';
 import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { marked } from 'marked';
+
+// Configure marked to handle line breaks properly (GitHub-flavored markdown)
+marked.setOptions({
+  breaks: true, // Convert \n to <br>
+  gfm: true, // GitHub-flavored markdown
+});
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
@@ -157,7 +164,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
-    caseComments?.[0]?.note || "1. Investigation findings pending.\n\n2. Additional details to be added."
+    investigationNotes || "1. Investigation findings pending.\n\n2. Additional details to be added."
   );
   const [recommendations, setRecommendations] = useState(
     "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
@@ -966,15 +973,18 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               {/* Key Findings */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">Key Findings</h5>
-                <textarea
-                  value={keyFindings}
-                  onChange={(e) => {
-                    setKeyFindings(e.target.value);
-                    setIsApproved(false);
-                  }}
-                  disabled={userRole !== 'CMS_SUPERVISOR'}
-                  className="w-full h-32 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
+                {investigationNotes ? (
+                  <div
+                    className="markdown-content text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200"
+                    dangerouslySetInnerHTML={{
+                      __html: marked(investigationNotes) as string
+                    }}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
+                    No investigation notes available.
+                  </div>
+                )}
               </div>
 
               {/* Supervisor Feedback - moved next to Key Findings */}

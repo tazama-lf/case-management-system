@@ -11,6 +11,8 @@ import type {
 } from '../types/triage.types';
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
+import userService from '../../cases/services/userService';
+import { taskService, type TaskForSupervisor } from '../../cases/services/taskService';
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 
@@ -196,6 +198,66 @@ const syntaxHighlightJson = (obj: unknown) => {
   return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
 };
 
+const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
+  const [username, setUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const userDetails = await userService.getUserDetailsById(action.user_id);
+        if (userDetails) {
+          const userName = userService.formatUserName(userDetails);
+          setUsername(userName);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user details:', error);
+      }
+    };
+
+    fetchUsername();
+  }, [action.user_id]);
+
+  const displayText = username && action.action_performed.includes(action.user_id) 
+    ? action.action_performed.replace(action.user_id, username)
+    : action.action_performed;
+
+  const userDisplayName = username || action.user_id;
+
+  return (
+    <>
+      <p className="text-sm text-gray-900">
+        <span className="font-medium">
+          {displayText}
+        </span>
+      </p>
+      <div className="flex items-center space-x-2 text-xs text-gray-500">
+        <span>
+          {new Date(action.performed_at).toLocaleString(
+            'en-US',
+            {
+              month: 'numeric',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+            },
+          )}
+        </span>
+        {action.user_id && (
+          <>
+            <span>•</span>
+            <span className="font-medium">
+              User: {userDisplayName}
+            </span>
+          </>
+        )}
+      </div>
+    </>
+  );
+};
+
 const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   alertId,
   isOpen,
@@ -212,6 +274,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] = useState(false);
 
   const { data: caseDetails } = useCase(alert?.case_id);
 
@@ -251,6 +314,36 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
     fetchAlertDetails();
   }, [alertId, isOpen]);
+
+  // Check if Complete New Case task is completed
+  useEffect(() => {
+    const checkCompleteNewCaseStatus = async () => {
+      if (!alert?.case_id) {
+        setIsCompleteNewCaseCompleted(false);
+        return;
+      }
+
+      try {
+        const tasks = await taskService.getTasksByCaseId(alert.case_id);
+        const completeNewCaseTask = tasks.find(
+          (task: TaskForSupervisor) => task.name === 'Complete New Case'
+        );
+        
+        if (completeNewCaseTask) {
+          setIsCompleteNewCaseCompleted(
+            completeNewCaseTask.status === 'STATUS_30_COMPLETED' 
+          );
+        } else {
+          setIsCompleteNewCaseCompleted(false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tasks for case:', error);
+        setIsCompleteNewCaseCompleted(false);
+      }
+    };
+
+    checkCompleteNewCaseStatus();
+  }, [alert?.case_id]);
 
   if (!isOpen) {
     return null;
@@ -388,7 +481,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           onManualTriage &&
                           (isManualMode || isDisabledMode) &&
                           !isAIMode &&
-                          !triageCompleted;
+                          !triageCompleted &&
+                          !isCompleteNewCaseCompleted;
 
                         return showButton && onManualTriage ? (
                           <button
@@ -525,35 +619,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               <ClockIcon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-900">
-                                <span className="font-medium">
-                                  {action.action_performed}
-                                </span>
-                              </p>
-                              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                <span>
-                                  {new Date(action.performed_at).toLocaleString(
-                                    'en-US',
-                                    {
-                                      month: 'numeric',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit',
-                                      hour12: true,
-                                    },
-                                  )}
-                                </span>
-                                {action.user_id && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="font-medium">
-                                      User: {action.user_id}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
+                              <ActionHistoryItem action={action} />
                             </div>
                           </div>
                         ))}

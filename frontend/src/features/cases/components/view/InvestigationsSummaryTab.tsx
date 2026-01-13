@@ -440,28 +440,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           )}
         </div>
 
-        {/* Final Investigation Summary Section - Investigator Comments */}
-        {caseComments.length > 0 && (
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">
-              Final Investigation Summary
-            </h3>
-            <div className="space-y-4">
-              {caseComments.map((comment, index) => (
-                <div key={comment.comment_id || index}>
-                  {/* Notes */}
-                  <div
-                    className="markdown-content text-sm text-gray-700 leading-relaxed"
-                    dangerouslySetInnerHTML={{
-                      __html: marked(comment.note) as string
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Supervisor Comments Section */}
         {supervisorComments.length > 0 && (
           <div className="rounded-lg border border-gray-200 bg-white p-6">

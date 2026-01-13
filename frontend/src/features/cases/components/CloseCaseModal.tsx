@@ -97,9 +97,15 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             <p className="text-sm text-gray-500">
               Case ID: {caseId} {caseName && `• ${caseName}`}
             </p>
-            <p className="text-xs text-blue-600 mt-1">
-              This will submit the case for supervisor approval
-            </p>
+            {isSupervisor ? (
+              <p className="text-xs text-green-600 mt-1">
+                As a supervisor, you can directly close this case.
+              </p>
+            ) : (
+              <p className="text-xs text-blue-600 mt-1">
+                This will submit the case for supervisor approval
+              </p>
+            )}
           </div>
           <button
             onClick={handleClose}
