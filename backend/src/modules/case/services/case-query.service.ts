@@ -203,12 +203,19 @@ export class CaseQueryService {
                   },
                 },
               },
-              {
-                AND: [
-                  { case_owner_user_id: null },
-                  { status: CaseStatus.STATUS_00_DRAFT },
-                ],
-              },
+              { case_owner_user_id: null },
+              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+              // {
+              //   AND: [
+              //     { case_owner_user_id: null },
+              //     {
+              //       OR: [
+              //         { status: CaseStatus.STATUS_00_DRAFT },
+              //         { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+              //       ],
+              //     }
+              //   ],
+              // },
             ],
           },
         ];
