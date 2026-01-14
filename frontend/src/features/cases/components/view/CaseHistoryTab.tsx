@@ -11,10 +11,7 @@ import {
   DocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
-import { caseService } from '../../services/caseService';
-import { taskService } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
-import type { Case } from '@/features/alerts/types/triage.types';
 import { caseHistoryService } from '../../services/caseHistoryService';
 import { taskHistoryService } from '../../services/taskHistoryService';
 
@@ -219,102 +216,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
         const events: CaseHistoryEvent[] = [];
 
-
-        // try {
-        //   const caseDetails: Case = await caseService.getCaseDetails(caseId);
-
-        //   if (caseDetails.case_creation_type !== null && caseDetails.case_creation_type !== undefined && caseDetails.case_creation_type.length > 0 &&
-        //     caseDetails.case_creation_type.toLowerCase() === 'MANUAL'.toLowerCase() && isInvestigatorOnly) {
-        //     events.push({
-        //       id: `case-created-${caseDetails.case_id}`,
-        //       timestamp: caseDetails.created_at,
-        //       action: 'Case submitted for approval',
-        //       performedBy: 'System',
-        //       userId: caseDetails.case_creator_user_id,
-        //       details: `Case created with priority ${caseDetails.priority} and type ${caseDetails.case_type}`,
-        //       outcome: 'info',
-        //       type: 'case',
-        //     });
-        //   }
-
-
-        //   if (caseDetails.case_owner_user_id && caseDetails.case_owner_user_id !== caseDetails.case_creator_user_id) {
-        //     events.push({
-        //       id: `case-assigned-${caseDetails.case_id}`,
-        //       timestamp: caseDetails.updated_at,
-        //       action: 'Case assigned to investigator',
-        //       performedBy: 'System',
-        //       userId: caseDetails.case_owner_user_id,
-        //       details: `Case assigned to investigator for review`,
-        //       outcome: 'info',
-        //       type: 'case',
-        //     });
-        //   }
-
-
-        //   const statusEvent = mapStatusToEvent(caseDetails.status, caseDetails.updated_at);
-        //   if (statusEvent) {
-        //     events.push({
-        //       ...statusEvent,
-        //       id: `case-status-${caseDetails.case_id}`,
-        //       userId: caseDetails.case_owner_user_id,
-        //       type: 'case',
-        //     });
-        //   }
-        // } catch (err) {
-        //   console.warn('Failed to fetch case details:', err);
-        // }
-
-
-        // try {
-        //   const tasks = await taskService.getTasksByCaseId(caseId);
-
-        //   tasks.forEach((task) => {
-        //     // Only add task creation event (don't add task assignment here, let audit logs handle it)
-        //     events.push({
-        //       id: `task-created-${task.task_id}`,
-        //       timestamp: task.created_at,
-        //       action: task.name || 'Task created',
-        //       performedBy: 'System',
-        //       userId: undefined, // Don't set userId for creation
-        //       details: task.description || 'Task created and ready for assignment',
-        //       outcome: 'info',
-        //       type: 'task',
-        //     });
-
-        //     // Check current task status for unassignment
-        //     if (task.status === 'STATUS_01_UNASSIGNED' && task.updated_at !== task.created_at) {
-        //       // Task was unassigned (updated_at differs from created_at means it changed)
-        //       events.push({
-        //         id: `task-unassigned-${task.task_id}`,
-        //         timestamp: task.updated_at,
-        //         action: 'Task unassigned',
-        //         performedBy: 'System',
-        //         userId: undefined,
-        //         details: `${task.name || 'Task'} was unassigned from investigator`,
-        //         outcome: 'warning',
-        //         type: 'task',
-        //       });
-        //     }
-
-        //     // Check for completed tasks
-        //     if (task.status === 'STATUS_30_COMPLETED') {
-        //       events.push({
-        //         id: `task-completed-${task.task_id}`,
-        //         timestamp: task.updated_at,
-        //         action: 'Investigation completed',
-        //         performedBy: task.assignedUser?.username || 'Investigator',
-        //         userId: task.assigned_user_id,
-        //         details: `${task.name || 'Task'} completed and evidence collected`,
-        //         outcome: 'success',
-        //         type: 'task',
-        //       });
-        //     }
-        //   });
-        // } catch (err) {
-        //   console.warn('Failed to fetch tasks:', err);
-        // }
-
         try {
           const caseHistory = await caseHistoryService.getCaseHistory(caseId);
           const taskHistory = await taskHistoryService.getCaseHistory(caseId);
@@ -370,10 +271,10 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             else if (operationLower.includes('rejectcaseclosure')) {
               action = 'Case rejected';
             }
-            else if (operationLower.includes('approveCaseReopening')) {
+            else if (operationLower.includes('approvecasereopening')) {
               action = 'Approve case reopening';
             }
-            else if (operationLower.includes('rejectCaseReopening')) {
+            else if (operationLower.includes('rejectcasereopening')) {
               action = 'Reject case reopening';
             }
             else if (operationLower.includes('returncaseforreview')) {
@@ -554,7 +455,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                         {event.details && (
                           <div className="text-sm text-gray-600">{event.details}</div>
                         )}
-                        {event.userId && investigators[event.userId] && (
+                        {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
                             {event.type === 'task' && event.action.includes('assigned')
                               ? `Assigned to ${investigators[event.userId]}`
@@ -562,7 +463,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                                 ? `Related to ${investigators[event.userId]}`
                                 : `By ${investigators[event.userId]}`}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>
@@ -575,7 +476,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                         {event.details && (
                           <div className="text-sm text-gray-600">{event.details}</div>
                         )}
-                        {event.userId && investigators[event.userId] && (
+                        {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
                             {event.type === 'task' && event.action.includes('assigned')
                               ? `Assigned to ${investigators[event.userId]}`
@@ -583,7 +484,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                                 ? `Related to ${investigators[event.userId]}`
                                 : `By ${investigators[event.userId]}`}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                     <div className="w-1/2 pl-8">

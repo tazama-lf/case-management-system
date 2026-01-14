@@ -118,8 +118,8 @@ export class TaskLifecycleService {
     await this.taskHistoryService.logTaskHistoryAction({
       userId: supervisorId,
       actionPerformed: isInvestigationTask
-        ? `Assigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
-        : `Assigned task ${taskId} to user ${assignedUserId}`,
+        ? `Assigned task ${taskId} and updated case ${existingTask.case_id} to ASSIGNED`
+        : `Assigned task ${taskId}`,
       entityName: 'TaskService',
       operation: 'assignTaskToInvestigator',
       task_id: taskId,
@@ -239,8 +239,8 @@ export class TaskLifecycleService {
     await this.taskHistoryService.logTaskHistoryAction({
       userId: actorUserId,
       actionPerformed: isInvestigationTask
-        ? `Reassigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
-        : `Reassigned task ${taskId} to user ${assignedUserId}`,
+        ? `Reassigned task ${taskId} and updated case ${existingTask.case_id} to ASSIGNED`
+        : `Reassigned task ${taskId}`,
       entityName: 'TaskService',
       operation: 'reassignTask',
       task_id: taskId,
@@ -463,7 +463,7 @@ export class TaskLifecycleService {
 
     await this.taskHistoryService.logTaskHistoryAction({
       userId: actorUserId,
-      actionPerformed: `Unassigned task ${taskId} from user ${existingTask.assigned_user_id}.`,
+      actionPerformed: `Unassigned task ${taskId}`,
       entityName: 'TaskService',
       operation: 'unassignTask',
       task_id: taskId,
