@@ -78,10 +78,12 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
-
+        
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Request reopening of a previously closed case for further investigation or correction.
+            {isSupervisor
+              ? 'As a supervisor, you can directly reopen this case for further investigation.'
+              : 'Request reopening of a previously closed case for further investigation or correction.'}
           </p>
 
           <form onSubmit={handleSubmit}>

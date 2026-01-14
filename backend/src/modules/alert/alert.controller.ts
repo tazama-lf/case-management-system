@@ -16,7 +16,7 @@ export class AlertController {
     ) { }
 
     @Get()
-    @RequireInvestigatorOrSupervisorRole()
+    @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
     @ApiOperation({
         summary: 'Get all alerts for current user',
         description: 'Retrieve paginated list of alerts with optional filtering',

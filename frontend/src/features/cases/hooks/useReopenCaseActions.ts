@@ -1,9 +1,18 @@
 import { caseService } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { authService } from '@/features/auth';
+import React from 'react';
 
 export const useReopenCaseActions = (refreshCases: () => Promise<void>) => {
   const { success, error } = useToast();
+  const [isSupervisor, setIsSupervisor] = React.useState(false);
 
+  React.useEffect(() => {
+      const user = authService.getUser();
+      const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+      setIsSupervisor(isSupervisor);
+    }, []);
+  
   const handleReopenSubmit = async (caseId: number, reason: string) => {
     try {
       const reopenCaseData = {
@@ -11,9 +20,12 @@ export const useReopenCaseActions = (refreshCases: () => Promise<void>) => {
       };
 
       await caseService.reopenCase(caseId, reopenCaseData);
-
-      success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
-
+      
+      {isSupervisor ?
+        success('Case Reopened', `Case ${caseId} reopened successfully.`)
+        :
+        success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
+      }
       await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not submit reopen request.';

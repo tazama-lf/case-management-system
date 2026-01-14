@@ -507,36 +507,46 @@ p {
 
 /* Markdown Content Rendering Styles */
 .markdown-content {
-  white-space: pre-line !important;
+  white-space: normal !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
+  line-height: 1.3 !important;
 }
 
 .markdown-content ul {
   list-style-type: disc !important;
-  padding-left: 2rem !important;
-  margin: 1rem 0 !important;
+  padding-left: 1rem !important;
+  margin: 0.3rem 0 !important;
 }
 
 .markdown-content ol {
   list-style-type: decimal !important;
-  padding-left: 2rem !important;
-  margin: 1rem 0 !important;
+  padding-left: 1rem !important;
+  margin: 0.3rem 0 !important;
 }
 
 .markdown-content li {
   display: list-item !important;
-  margin: 0.25rem 0 !important;
+  margin: 0.1rem 0 !important;
+  line-height: 1.3 !important;
+}
+
+.markdown-content li p {
+  display: block !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
 }
 
 .markdown-content p {
-  margin: 0.5rem 0 !important;
+  margin: 0.1rem 0 !important;
+  line-height: 1.3 !important;
+  display: block !important;
 }
 
 .markdown-content br {
   display: block !important;
   content: "" !important;
-  margin: 0.25rem 0 !important;
+  margin: 0.1rem 0 !important;
 }
 
 .markdown-content strong {
