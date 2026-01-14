@@ -309,7 +309,15 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
         'Conclusion': item.conclusion || '',
         'Evidence Count': item.evidenceCount || 0,
         'Supporting Evidence': JSON.stringify(item.supportingEvidence) || item.avg_resolution_time || 0,
+        'Comments': Array.isArray(item.supportingEvidence)
+          ? item.supportingEvidence
+            .map((ev: { id?: string; fileName?: string; description?: string }) =>
+              `${ev.id ?? ''} | ${ev.fileName ?? ''} | ${ev.description ?? ''}`
+            )
+            .join('\n')
+          : '',
         'Date Identified': item.dateIdentified || '',
+
       }));
 
     default:
@@ -396,6 +404,7 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Conclusion', label: 'Conclusion', width: 110 },
         { key: 'Evidence Count', label: 'Evidence Count', width: 80 },
         { key: 'Supporting Evidence', label: 'Supporting Evidence', width: 230 },
+        { key: 'Comments', label: 'Comments', width: 150 },
         { key: 'Date Identified', label: 'Date Identified', width: 100 },
       ];
 
