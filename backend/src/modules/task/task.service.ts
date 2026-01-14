@@ -63,6 +63,7 @@ export class TaskService {
         createdTask.task_id,
       );
 
+      this.logger.log('End - createTask', TaskService.name);
       return { ...createdTask };
     } catch (error) {
       this.logger.error('Error creating task', error, TaskService.name);

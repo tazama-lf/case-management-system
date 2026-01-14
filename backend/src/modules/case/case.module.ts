@@ -18,23 +18,42 @@ import { SharedModule } from '../shared/shared.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
+import { CaseCreationService } from './services/case-creation.service';
 
 @Module({
-	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule, EventLogModule, CaseHistoryModule, TaskHistoryModule],
-	providers: [
-		CaseService,
-		CaseQueryService,
-		CaseClosureApprovalService,
-		CaseCreationApprovalService,
-		CaseReopeningService
-	],
-	exports: [
-		CaseService,
-		CaseQueryService,
-		CaseClosureApprovalService,
-		CaseCreationApprovalService,
-		CaseReopeningService
-	],
-	controllers: [CaseController],
+  imports: [
+    PrismaModule,
+    AuditLogModule,
+    LoggerModule,
+    TaskModule,
+    CommentModule,
+    NotificationModule,
+    RepositoryModule,
+    FlowableModule,
+    UserModule,
+    SharedModule,
+    EventLogModule,
+    CaseHistoryModule,
+    TaskHistoryModule,
+    LoggingOrchestrationModule,
+  ],
+  providers: [
+    CaseService,
+    CaseCreationService,
+    CaseQueryService,
+    CaseClosureApprovalService,
+    CaseCreationApprovalService,
+    CaseReopeningService,
+  ],
+  exports: [
+    CaseService,
+    CaseCreationService,
+    CaseQueryService,
+    CaseClosureApprovalService,
+    CaseCreationApprovalService,
+    CaseReopeningService,
+  ],
+  controllers: [CaseController],
 })
-export class CaseModule { }
+export class CaseModule {}

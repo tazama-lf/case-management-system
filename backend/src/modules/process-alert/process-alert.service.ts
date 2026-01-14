@@ -54,17 +54,10 @@ export class ProcessAlertService {
 
       case 'DISABLED':
       default: {
-        await this.taskService.createTask(
-          {
-            caseId: alert.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Case',
-            description: `Investigate case: ${alert.case_id}`,
-            candidateGroup: 'Investigations',
-          },
-          userId,
-        );
-
+        await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
+          maxRetries: 5,
+          delayMs: 50,
+        });
         await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
         break;
       }

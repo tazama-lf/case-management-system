@@ -748,69 +748,6 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
-    try {
-      this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
-      const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
-      const isTriageDisabled = triageType === 'DISABLED' ? true : false;
-
-      const createdCase = await this.caseRepository.createCase({
-        tenantId: createCaseDTO.tenantId,
-        caseCreatorUserId: createCaseDTO.caseCreatorUserId,
-        caseOwnerUserId: createCaseDTO.caseOwnerUserId,
-        status: createCaseDTO.status,
-        priority: createCaseDTO.priority,
-        parentId: createCaseDTO.parentId ?? null,
-        caseType: createCaseDTO.caseType,
-        caseCreationType: createCaseDTO.caseCreationType,
-      });
-
-      this.flowableService.handleCaseCreated({
-        caseId: createdCase.case_id,
-        tenantId: createdCase.tenant_id,
-        caseStatus: createdCase.status,
-        creationType: createCaseDTO.caseCreationType,
-        isTriageDisabled,
-        creatorRole: 'SYSTEM',
-      });
-
-      this.logger.log(
-        `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
-        CaseCreationApprovalService.name,
-      );
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        case_id: createdCase.case_id,
-      });
-
-      return createdCase;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`[CaseWorkflow] Error creating case: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
-      throw error;
-    }
-  }
-
   async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
     this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {

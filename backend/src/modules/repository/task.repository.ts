@@ -1,17 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Prisma, TaskStatus, CaseStatus } from '@prisma/client-cms';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class TaskRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /* ----------------------------- Generic Helpers ---------------------------- */
-  async transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
+export class TaskRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
   }
 
-  /* ------------------------------ Task Queries ------------------------------ */
   async findTaskById(taskId: number) {
     return this.prisma.task.findUnique({ where: { task_id: taskId } });
   }

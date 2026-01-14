@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client-cms';
 import { PrismaService } from 'prisma/prisma.service';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class AdminRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AdminRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
   async registerReferenceId(idData: Prisma.ReferenceIdCreateInput) {
     try {

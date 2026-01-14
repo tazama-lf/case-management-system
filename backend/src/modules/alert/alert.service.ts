@@ -9,6 +9,7 @@ import { CaseCreationApprovalService } from '../case/services/case-creation-appr
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
 import { AuditLogService } from '../audit/auditLog.service';
 import { EventLogService } from '../event_log/eventLog.service';
+import { CaseCreationService } from '../case/services/case-creation.service';
 
 @Injectable()
 export class AlertService {
@@ -17,14 +18,14 @@ export class AlertService {
     private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
-    private readonly caseCreationService: CaseCreationApprovalService,
+    private readonly caseCreationService: CaseCreationService,
     private readonly eventLogService: EventLogService,
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
     this.loggerService.log(`Start - Alert Creation`, AlertService.name);
     const txtp = alert.transaction.TxTp;
-    alert.message = alert.message ?? 'Suspicious activity detected';
+    alert.message = alert.message ?? 'Generic Alert Message';
     try {
       await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({

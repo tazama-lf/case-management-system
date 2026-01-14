@@ -5,10 +5,13 @@ import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
 import { JsonValue } from './utils/types/JsonValue';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class AlertRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AlertRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
   async createAlert(alertData: CreateAlertDTO) {
     try {
