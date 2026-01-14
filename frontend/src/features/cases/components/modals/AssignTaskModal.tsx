@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import authService from '../../../auth/services/authService';
 import type { Investigator } from '../../../auth/types/auth.types';
 import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
+import { useAuth } from '@/features/auth';
 
 interface AssignTaskModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
+  const { hasComplianceOfficerRole } = useAuth();
   const { fetchInvestigatorsList, loadingInvestigators, investigators, fetchComplianceOfficersList, complianceOfficers } = useInvestigatorSupervisorList();
 
   useEffect(() => {
@@ -40,12 +41,12 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     if (open) {
       const user = authService.getUser();
       if (task?.name.toLowerCase().includes('sar')) {
-        const isComplianceOfficer = user?.validatedClaims?.CMS_COMPLIANCE_OFFICER === true;
-        setIsComplianceOfficer(isComplianceOfficer)
-
-        if (complianceOfficers) {
-          fetchComplianceOfficersList();
+        if (hasComplianceOfficerRole()) {
+          if (complianceOfficers.length === 0) {
+            fetchComplianceOfficersList();
+          }
         }
+
         fetchCurrentUserAsInvestigator();
 
       } else {

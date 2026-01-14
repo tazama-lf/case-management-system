@@ -105,11 +105,11 @@ export const exportToPDF = async (
         columns.map(col => {
           const value = row[col.key];
           let displayValue = '';
-          
+
           if (value !== undefined && value !== null) {
             displayValue = String(value);
           }
-          
+
           return {
             text: displayValue,
             style: 'tableCell',
@@ -119,17 +119,17 @@ export const exportToPDF = async (
       )
     ];
 
-   
+
     const columnWidths = columns.map(col => {
       const requestedWidth = col.width || 100;
       const scaledWidth = Math.floor(requestedWidth * widthScale);
-      
-     
+
+
       if (col.key.toLowerCase().includes('id')) {
         return Math.max(scaledWidth, 70);
       }
-      
-      return Math.max(scaledWidth, 50); 
+
+      return Math.max(scaledWidth, 50);
     });
 
     const docDefinition = {
@@ -143,10 +143,10 @@ export const exportToPDF = async (
           margin: [0, 0, 0, 20] as [number, number, number, number]
         },
         {
-          text: `Generated on: ${new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
+          text: `Generated on: ${new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
@@ -301,16 +301,28 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
         'Performance Trend': item.performanceTrend || item.performance_trend || 'Stable',
       }));
 
+    case 'EVIDENCE_FINDINGS':
+      return data.map(item => ({
+        'Case ID': String(item.caseId || ''),
+        'Task ID': String(item.taskId || ''),
+        'Finding': item.finding || '',
+        'Conclusion': item.conclusion || '',
+        'Evidence Count': item.evidenceCount || 0,
+        'Supporting Evidence': JSON.stringify(item.supportingEvidence) || item.avg_resolution_time || 0,
+        'Date Identified': item.dateIdentified || '',
+      }));
+
     default:
-     
+
       return data.map(item => {
         const formatted: ExportData = {};
         Object.keys(item).forEach(key => {
           const value = item[key];
-         
+
           if (key.toLowerCase().includes('id') || key.toLowerCase().includes('case')) {
             formatted[key] = String(value || '');
-          } else {
+          }
+          else {
             formatted[key] = value;
           }
         });
@@ -374,6 +386,17 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Avg Resolution Time (Days)', label: 'Avg Resolution Time (Days)', width: 130 },
         { key: 'Case Closure Rate (%)', label: 'Case Closure Rate (%)', width: 120 },
         { key: 'Performance Trend', label: 'Performance Trend', width: 110 },
+      ];
+
+    case 'EVIDENCE_FINDINGS':
+      return [
+        { key: 'Case ID', label: 'Case ID', width: 80 },
+        { key: 'Task ID', label: 'Task ID', width: 80 },
+        { key: 'Finding', label: 'Finding', width: 100 },
+        { key: 'Conclusion', label: 'Conclusion', width: 110 },
+        { key: 'Evidence Count', label: 'Evidence Count', width: 80 },
+        { key: 'Supporting Evidence', label: 'Supporting Evidence', width: 230 },
+        { key: 'Date Identified', label: 'Date Identified', width: 100 },
       ];
 
     default:

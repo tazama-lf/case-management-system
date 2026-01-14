@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserMinusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface UnassignTaskModalProps {
   open: boolean;
@@ -17,6 +18,32 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+    if (complianceOfficers.length === 0)
+      fetchComplianceOfficersList();
+
+
+  }, []);
+
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+
+    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
+
+    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return assigneeName || assignee;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +105,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
                 <div className="font-medium text-gray-900 mb-1">Task Details:</div>
                 <div className="text-gray-700">
                   <div><strong>Name:</strong> {task.name}</div>
-                  <div><strong>Current Assignee:</strong> {task.assigneeName || task.assignee || 'Unassigned'}</div>
+                  <div><strong>Current Assignee:</strong> {getAssigneeFullName(task.assignee, task.assigneeName) || 'Unassigned'}</div>
                   <div><strong>Status:</strong> {task.status}</div>
                 </div>
               </div>

@@ -2,8 +2,9 @@ import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.typ
 import React, { useEffect, useState } from 'react';
 // import authService from '../../../auth/services/authService';
 import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
-// import type { Investigator } from '../../../auth/types/auth.types';
-
+import type { User } from '../../../auth/types/auth.types';
+import { useAuth } from '@/features/auth';
+import authService from '../../../auth/services/authService';
 interface ReassignTaskModalProps {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,9 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   // const [investigators, setInvestigators] = useState<Investigator[]>([]);
   // const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { hasComplianceOfficerRole } = useAuth();
+  const { fetchInvestigatorsList, loadingInvestigators, investigators, fetchComplianceOfficersList, complianceOfficers, supervisors } = useInvestigatorSupervisorList();
+  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<User | null>(null);
 
   useEffect(() => {
     setAssignee('');
@@ -46,13 +50,36 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   //     setLoading(false);
   //   }
   // };
-  const { fetchInvestigatorsList, loadingInvestigators, investigators } = useInvestigatorSupervisorList();
-
   useEffect(() => {
     if (open) {
-      fetchInvestigatorsList();
+      const user = authService.getUser();
+      setCurrentUserInvestigator(user);
+      if (task?.name.toLowerCase().includes('sar')) {
+        if (hasComplianceOfficerRole()) {
+          if (complianceOfficers.length === 0) {
+            fetchComplianceOfficersList();
+
+          }
+        }
+      } else {
+        fetchInvestigatorsList();
+      }
     }
   }, [open]);
+
+  const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
+
+    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
+
+    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return assigneeName || assignee;
+  };
 
   // const useMockData = () => {
   //   const mockInvestigators: Investigator[] = [
@@ -122,7 +149,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
             <label className="mb-1 block text-sm font-medium text-gray-700">Current Assignee</label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               {task.assigneeName && task.assignee ? (
-                `${task.assigneeName} (${task.assignee})`
+                `${getAssigneeFullName(task.assigneeName, task.assignee)} (${task.assignee})`
               ) : task.assigneeName || task.assignee || 'Unassigned'}
             </div>
           </div>
@@ -135,7 +162,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               </div>
             ) : (
               <>
-                {investigators.filter(investigator => investigator.id !== task.assignee).length > 0 ? (
+                {/* {investigators.filter(investigator => investigator.id !== task.assignee).length > 0 ? (
                   <select
                     value={assignee}
                     onChange={(e) => {
@@ -159,7 +186,47 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                     No other investigators available for reassignment
                   </div>
-                )}
+                )} */}
+                {(() => {
+                  const isSarTask = task?.name.toLowerCase().includes('sar');
+                  const optionsList = isSarTask ? complianceOfficers : investigators;
+
+                  const filteredList = optionsList.filter(
+                    user => user.id !== task.assignee && user.id !== currentUserInvestigator?.userId
+                  );
+
+                  if (filteredList.length === 0) {
+                    return (
+                      <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                        No other {isSarTask ? 'compliance officers' : 'investigators'} available for reassignment
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <select
+                      value={assignee}
+                      onChange={(e) => setAssignee(e.target.value)}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Select {isSarTask ? 'Compliance Officer' : 'Investigator'}</option>
+
+                      {isSarTask
+                        ? filteredList.map(co => (
+                          <option key={co.id} value={co.id}>
+                            {co.firstName} {co.lastName} ({co.name})
+                          </option>
+                        ))
+                        : filteredList.map(investigator => (
+                          <option key={investigator.id} value={investigator.id}>
+                            {investigator.firstName} {investigator.lastName} ({investigator.name})
+                          </option>
+                        ))}
+                    </select>
+                  );
+                })()}
+
               </>
             )}
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import {
   ExclamationCircleIcon,
   FunnelIcon,
@@ -19,6 +19,7 @@ import {
 import { usePagination } from '@/shared/hooks/usePagination';
 import type { FindingDetail } from '@/features/reports/types/reports.types';
 import { evidenceService } from '../../cases/services/evidenceService';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 const PaginationControls = React.lazy(
   () => import('../../../shared/PaginationControls'),
@@ -50,6 +51,34 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
+
+
+
+  useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+    if (complianceOfficers.length === 0)
+      fetchComplianceOfficersList();
+
+
+  }, []);
+
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+
+    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
+
+    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return '';
+  };
 
   // Use real data from API
   const displayData = evidenceData;
@@ -644,12 +673,13 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                                   </span>
                                                 </div>
                                               )}
-                                              {evidenceObj.uploadedByName && (
+                                              {getAssigneeFullName(evidenceObj.uploadedBy) !== '' && (
                                                 <div className="col-span-2">
                                                   <span className="text-gray-500 font-medium">Uploaded By:</span>
-                                                  <span className="text-gray-700 ml-1">{evidenceObj.uploadedByName}</span>
+                                                  <span className="text-gray-700 ml-1">{getAssigneeFullName(evidenceObj.uploadedBy)}</span>
                                                 </div>
-                                              )}
+                                              )
+                                              }
                                               {evidenceObj.uploadedBy && !evidenceObj.uploadedByName && (
                                                 <div className="col-span-2">
                                                   <span className="text-gray-500 font-medium">Uploaded By (ID):</span>
