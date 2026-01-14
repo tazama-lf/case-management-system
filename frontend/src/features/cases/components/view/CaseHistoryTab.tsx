@@ -455,7 +455,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                         {event.details && (
                           <div className="text-sm text-gray-600">{event.details}</div>
                         )}
-                        {event.userId && investigators[event.userId] && (
+                        {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
                             {event.type === 'task' && event.action.includes('assigned')
                               ? `Assigned to ${investigators[event.userId]}`
@@ -463,7 +463,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                                 ? `Related to ${investigators[event.userId]}`
                                 : `By ${investigators[event.userId]}`}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>
@@ -476,7 +476,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                         {event.details && (
                           <div className="text-sm text-gray-600">{event.details}</div>
                         )}
-                        {event.userId && investigators[event.userId] && (
+                        {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
                             {event.type === 'task' && event.action.includes('assigned')
                               ? `Assigned to ${investigators[event.userId]}`
@@ -484,7 +484,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                                 ? `Related to ${investigators[event.userId]}`
                                 : `By ${investigators[event.userId]}`}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                     <div className="w-1/2 pl-8">
