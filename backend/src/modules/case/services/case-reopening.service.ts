@@ -368,7 +368,7 @@ export class CaseReopeningService {
         userId: supervisorId,
         operation: 'approveCaseReopening',
         entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created`,
         case_id: caseId,
       });
       this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
