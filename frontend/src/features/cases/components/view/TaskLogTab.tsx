@@ -209,8 +209,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         taskName.includes('final approval'),
 
         // Task description patterns
-        taskDescription.includes('supervisor'),
-        taskDescription.includes('approval required'),
+        // Pattern based on description is not required.
+        // taskDescription.includes('supervisor'),
+        // taskDescription.includes('approval required'),
 
         // Legacy patterns
         taskName === 'approve case creation',
