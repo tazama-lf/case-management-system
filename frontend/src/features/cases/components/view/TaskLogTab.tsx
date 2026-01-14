@@ -384,7 +384,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const handleModalReassign = (task: UnifiedWorkQueueTask, assignee: string, justification: string) =>
     handleTaskOperation('reassign', { task, assignee, justification });
 
-  const handleUnassignTask = (_taskId: string, reason: string) => {
+  const handleUnassignTask = (_taskId: number, reason: string) => {
     if (selectedTask) {
       return handleTaskOperation('unassign', { task: selectedTask, reason });
     }
@@ -630,10 +630,16 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         <Suspense fallback={<div>Loading...</div>}>
           <SarStrFilingModal
             open={sarStrFilingModalOpen}
-            onClose={() => {
+            onClose={async () => {
               setSarStrFilingModalOpen(false);
               setSelectedTask(null);
-            }}
+              refreshTasks();
+              if (onRefreshCases) {
+                await onRefreshCases();
+              }
+            }
+            }
+
             taskId={selectedTask.id}
             task={selectedTask}
             caseId={selectedTask.caseId || caseId}

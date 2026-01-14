@@ -7,6 +7,7 @@ import type { Case } from '@/features/alerts/types/triage.types';
 import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { CaseWithTasksDto } from '../../services/caseService';
+import { useAuth } from '@/features/auth';
 
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
@@ -40,6 +41,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const [loading, setLoading] = useState(false);
   const { success, error } = useToast();
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
+  const { hasComplianceOfficerRole } = useAuth();
   // Load existing SAR/STR evidence when modal opens
   useEffect(() => {
     if (!open || !taskId) return;
@@ -345,7 +347,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                     id="sar-str-file-input"
                   />
                   <button
-                    disabled={task.status.toLowerCase().includes('completed')}
+                    disabled={
+                      task.status.toLowerCase().includes('completed') ||
+                      !hasComplianceOfficerRole()
+                    }
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -368,9 +373,12 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                         </span>
                         <button
                           type="button"
-                          disabled={task.status.toLowerCase().includes('completed')}
+                          disabled={
+                            task.status.toLowerCase().includes('completed') ||
+                            !hasComplianceOfficerRole()
+                          }
                           onClick={() => handleRemoveFile(index)}
-                          className="ml-2 text-red-600 hover:text-red-800 disabled:opacity-50"
+                          className="ml-2 text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Remove file"
                         >
                           <XMarkIcon className="h-4 w-4" />
@@ -387,17 +395,45 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
               {/* Remarks Field */}
               <div>
-                <label htmlFor="sar-remarks" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="sar-remarks"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Comments
                 </label>
+
                 <textarea
                   id="sar-remarks"
                   value={sarRemarks}
                   onChange={(e) => setSarRemarks(e.target.value)}
                   rows={4}
+                  maxLength={1000}
                   placeholder="Add any comments about this SAR/STR filing..."
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+
+                <div className="mt-1">
+                  <div className="flex justify-between items-center">
+                    <span
+                      className={`text-xs ${sarRemarks.length === 1000 ? 'text-red-500' : 'text-gray-500'
+                        }`}
+                    >
+                      {sarRemarks.length}/1000
+                    </span>
+                  </div>
+
+                  <div className="mt-1">
+                    {sarRemarks.length === 1000 ? (
+                      <p className="text-red-500 text-xs">
+                        Maximum character limit reached
+                      </p>
+                    ) : (
+                      <p className="text-gray-500 text-xs">
+                        Comments help with case investigation and audit trails
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Upload Button */}
@@ -405,7 +441,12 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <button
                   type="button"
                   onClick={handleUpload}
-                  disabled={uploading || selectedFiles.length === 0 || task.status.toLowerCase().includes('completed')}
+                  disabled={
+                    uploading ||
+                    selectedFiles.length === 0 ||
+                    task.status.toLowerCase().includes('completed') ||
+                    !hasComplianceOfficerRole()
+                  }
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowUpTrayIcon className="h-5 w-5" />
@@ -474,15 +515,16 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
             >
               Close
             </button>
-            {!task.status.toLocaleLowerCase().includes('complete') && (
-              <button
-                type="button"
-                onClick={() => setCompleteTaskModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm border-green-600 bg-green-600 text-white hover:bg-green-700"
-              >
-                Mark as Complete
-              </button>
-            )}
+            {hasComplianceOfficerRole() &&
+              !task.status.toLowerCase().includes('completed') && (
+                <button
+                  type="button"
+                  onClick={() => setCompleteTaskModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm border-green-600 bg-green-600 text-white hover:bg-green-700"
+                >
+                  Mark as Complete
+                </button>
+              )}
           </div>
         </div>
       </div>

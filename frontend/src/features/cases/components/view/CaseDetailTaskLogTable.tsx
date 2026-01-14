@@ -14,6 +14,7 @@ import authService from '@/features/auth/services/authService';
 import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import { EyeIcon } from '@heroicons/react/24/solid';
+import { useAuth } from '@/features/auth';
 
 interface CaseDetailTaskLogTableProps {
   alertId?: number;
@@ -63,6 +64,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
+  const { hasComplianceOfficerRole } = useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
@@ -331,6 +333,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
+
+
     if (task.status === 'IN_PROGRESS') {
       addReassignAction(actions, task);
       addUnassignAction(actions, task);
@@ -338,6 +342,18 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       addApprovalActions(actions, task);
       return actions;
     }
+
+    if (task.name === 'SAR/STR Filing' && !hasComplianceOfficerRole()) {
+      if (task.status === 'UNASSIGNED') {
+        return actions;
+      } else {
+        addViewAction(actions, task);
+        return actions;
+      }
+
+    }
+
+
 
     addAssignAction(actions, task);
     addReassignAction(actions, task);

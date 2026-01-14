@@ -5,7 +5,7 @@ import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.typ
 interface UnassignTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onUnassign: (taskId: string, reason: string) => void;
+  onUnassign: (taskId: number, reason: string) => void;
   task?: UnifiedWorkQueueTask | null;
 }
 
