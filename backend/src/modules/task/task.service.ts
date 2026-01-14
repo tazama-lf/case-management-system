@@ -12,19 +12,11 @@ import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
-import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { isCaseEligibleForInProgress } from './utils/helperFunctions';
-
-export interface TaskWithCase extends Task {
-  case: {
-    case_id: number;
-    priority: string;
-    status: string;
-    created_at: Date;
-  };
-}
+import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { TaskWithCase } from './types/TaskWithCase';
 
 @Injectable()
 export class TaskService {
@@ -36,16 +28,14 @@ export class TaskService {
     private readonly notificationService: NotificationService,
     private readonly lifecycle: TaskLifecycleService,
     private readonly flowableService: FlowableService,
-    private readonly taskBridgeService: TaskBridgeService,
     private readonly authService: AuthService,
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string): Promise<Task> {
-    // return this.taskBridgeService.createTask(taskDTO, userId);
-
-    this.logger.log('Creating task', TaskBridgeService.name);
+    this.logger.log('Start - createTask', TaskService.name);
     try {
       const createdTask = await this.taskRepository.createTask({
         case: {
@@ -61,43 +51,27 @@ export class TaskService {
         investigationNotes: taskDTO.investigationNotes,
       });
 
-      this.auditLogService.logAction({
-        userId,
-        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-        entityName: TaskBridgeService.name,
-        operation: 'createTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      this.eventLogService.logEventAction({
-        userId,
-        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-        entityName: TaskBridgeService.name,
-        operation: 'createTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-        entityName: TaskBridgeService.name,
-        operation: 'createTask',
-        task_id: createdTask.task_id,
-        case_id: createdTask.case_id,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+          entityName: TaskService.name,
+          operation: 'createTask',
+          outcome: Outcome.SUCCESS,
+        },
+        createdTask.case_id,
+        createdTask.task_id,
+      );
 
       return { ...createdTask };
     } catch (error) {
-      this.logger.error('Error creating task', error, TaskBridgeService.name);
-      this.auditLogService.logAction({
+      this.logger.error('Error creating task', error, TaskService.name);
+      this.loggingOrchestrationService.logActions({
         userId,
         actionPerformed: 'Error creating task',
-        entityName: TaskBridgeService.name,
+        entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
-        performedAt: new Date(),
       });
       throw error;
     }

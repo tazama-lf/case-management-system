@@ -37,6 +37,7 @@ import { FilterModule } from './modules/filter/filter.module';
 import { CaseHistoryModule } from './modules/case_history/caseHistory.module';
 import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
 import { TaskSyncModule } from './modules/task-sync/task-sync.module';
+import { LoggingOrchestrationModule } from './modules/logging-orchestration/logging-orchestration.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { TaskSyncModule } from './modules/task-sync/task-sync.module';
     CaseHistoryModule,
     TaskHistoryModule,
     TaskSyncModule,
+    LoggingOrchestrationModule,
   ],
   providers: [
     PrismaService,

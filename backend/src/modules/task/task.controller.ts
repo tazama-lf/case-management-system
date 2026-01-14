@@ -22,17 +22,14 @@ import { ReassignTaskDto } from './dto/reassign-task.dto';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { UnassignTaskDto } from './dto/unassign-task-dto';
 import {
-  RequireAlertTriageRole,
   RequireAnyValidRole,
   RequireSupervisorRole,
   RequireInvestigatorRole,
-  RequireInvestigatorOrSupervisorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
@@ -57,76 +54,7 @@ export class TaskController {
     private readonly auditLogService: AuditLogService,
     private readonly loggerService: LoggerService,
     private readonly flowableService: FlowableService,
-    private readonly taskBridgeService: TaskBridgeService,
   ) {}
-
-  @Post()
-  @RequireAlertTriageRole()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create a new task',
-    description: 'Creates a new task for a case. Only users with ALERT_TRIAGE role can create tasks.',
-  })
-  @ApiBody({
-    type: CreateTaskDto,
-    description: 'Task creation details',
-    examples: {
-      example1: {
-        summary: 'Create unassigned task',
-        value: {
-          caseId: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Verify customer identity',
-          description: 'Review submitted documents for compliance',
-          candidateGroup: 'investigations',
-        },
-      },
-      example2: {
-        summary: 'Create and assign task',
-        value: {
-          caseId: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Verify customer identity',
-          description: 'Review submitted documents for compliance',
-          candidateGroup: 'investigations',
-          assignedUserId: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',
-          status: 'STATUS_10_ASSIGNED',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Task successfully created',
-    schema: {
-      type: 'object',
-      properties: {
-        task_id: { type: 'string', format: 'uuid' },
-        case_id: { type: 'string', format: 'uuid' },
-        name: { type: 'string' },
-        description: { type: 'string' },
-        status: { type: 'string' },
-        candidateGroup: { type: 'string' },
-        assigned_user_id: { type: 'string', format: 'uuid', nullable: true },
-        created_at: { type: 'string', format: 'date-time' },
-        updated_at: { type: 'string', format: 'date-time' },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad Request - Invalid input or case not found',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing authentication',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - User lacks ALERT_TRIAGE role',
-  })
-  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    return this.taskBridgeService.createTask(createTaskDto, userId);
-  }
 
   @Patch(':taskId/reassign')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()

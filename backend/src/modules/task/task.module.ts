@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
@@ -9,28 +9,27 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/modules/notification/notification.module';
 import { FlowableModule } from '../flowable/flowable.module';
 import { RepositoryModule } from '../repository/repository.module';
-import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
-
+import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 
 @Module({
-	imports: [
-		PrismaModule,
-		AuditLogModule,
-		LoggerModule,
-		AuthModule,
-		NotificationModule,
-		FlowableModule,
-		RepositoryModule,
-		TaskBridgeModule,
-		EventLogModule,
-		TaskHistoryModule,
-		CaseHistoryModule,
-	],
-	providers: [TaskService, TaskLifecycleService],
-	exports: [TaskService],
-	controllers: [TaskController],
+  imports: [
+    PrismaModule,
+    AuditLogModule,
+    LoggerModule,
+    LoggingOrchestrationModule,
+    AuthModule,
+    NotificationModule,
+    FlowableModule,
+    RepositoryModule,
+    EventLogModule,
+    TaskHistoryModule,
+    CaseHistoryModule,
+  ],
+  providers: [TaskService, TaskLifecycleService],
+  exports: [TaskService],
+  controllers: [TaskController],
 })
-export class TaskModule { }
+export class TaskModule {}
