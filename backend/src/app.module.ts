@@ -26,6 +26,7 @@ import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 import { CouchdbModule } from './couchdb/couchdb.module';
 import { EvidenceModule } from './evidence/evidence.module';
+import { GoldLakehouseModule } from './gold-lakehouse/gold-lakehouse.module';
 
 
 @Module({
@@ -57,6 +58,7 @@ import { EvidenceModule } from './evidence/evidence.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
+    GoldLakehouseModule,
   ],
   providers: [
     PrismaService,
