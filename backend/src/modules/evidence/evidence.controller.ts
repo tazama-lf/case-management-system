@@ -166,7 +166,7 @@ export class EvidenceController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async downloadEvidence(@Param('id') id: string, @Res() res: Response, @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = (claims.includes(TazamaClaims.CMS_SUPERVISOR) || claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
     const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
 
     if (!files.length) throw new NotFoundException('No files found');
