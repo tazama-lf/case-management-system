@@ -3,7 +3,7 @@ import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommentService } from './comment.service';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 
 @Controller('api/v1/comment')
 @UseGuards(TazamaAuthGuard)
@@ -11,34 +11,34 @@ export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Post()
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.commentService.addComment(createCommentDto, userId);
   }
 
   @Get(':commentId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getComment(@Param('commentId') commentId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     return this.commentService.getComment(commentId, userId);
   }
 
   @Get()
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByCaseOrTask(@Req() req: AuthenticatedRequest, @Query('caseId') caseId?: number, @Query('taskId') taskId?: number) {
     const userId = req?.user.token.clientId;
     return this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
   }
 
  @Get('/case/:caseId/comment')
- @RequireInvestigatorOrSupervisorRole()
+ @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByCaseId(@Param('caseId') caseId: number , @Req() req: AuthenticatedRequest) {
     return this.commentService.getCommentsByCaseId(caseId);
   }
 
   @Get('/task/:taskId/comment')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByTaskId(@Param('taskId') taskId: number , @Req() req: AuthenticatedRequest) {
     return this.commentService.getCommentsByTaskId(taskId);
   }
