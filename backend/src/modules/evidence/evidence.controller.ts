@@ -112,7 +112,7 @@ export class EvidenceController {
   }
 
   @Get('evidenceType/:evidenceType')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get all evidence for a evidencetype' })
   @ApiResponse({
     status: 200,
@@ -131,7 +131,7 @@ export class EvidenceController {
   }
 
   @Get('case/:caseId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get all evidence for a case' })
   @ApiResponse({
     status: 200,
@@ -163,7 +163,7 @@ export class EvidenceController {
   }
 
   @Get(':id/download')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async downloadEvidence(@Param('id') id: string, @Res() res: Response, @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
     const { clientId, tenantId, claims } = req.user.token;
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
@@ -186,7 +186,7 @@ export class EvidenceController {
   }
 
   @Delete(':id/attachments/:attachmentName')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'delete evidence' })
   @ApiResponse({
     status: 200,
@@ -205,7 +205,7 @@ export class EvidenceController {
   }
 
   @Get(':id/verify')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Verify evidence integrity' })
   @ApiResponse({
     status: 200,

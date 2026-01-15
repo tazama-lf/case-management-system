@@ -3,46 +3,50 @@ import React from "react";
 import { evidenceService } from "../../services/evidenceService";
 import type { Evidence } from "../../types";
 
-interface DeleteEvidenceModalProps {
-    evidenceToDelete: {
-        id: string;
-        fileName: string;
-    } | null;
-    setEvidenceToDelete: React.Dispatch<React.SetStateAction<{
-        id: string;
-        fileName: string;
-    } | null>>;
-    setUploadedEvidence: React.Dispatch<React.SetStateAction<Record<string, Evidence[]>>>;
+interface DeleteEvidenceModalProps<T extends Evidence[] | Record<string, Evidence[]>> {
+    evidenceToDelete: { id: string; fileName: string } | null;
+    setEvidenceToDelete: React.Dispatch<
+        React.SetStateAction<{ id: string; fileName: string } | null>
+    >;
+    setUploadedEvidence: React.Dispatch<React.SetStateAction<T>>;
     onDeleteSuccess?: () => void;
 }
 
-
-const DeleteEvidenceModal: React.FC<DeleteEvidenceModalProps> = ({
+const DeleteEvidenceModal = <T extends Evidence[] | Record<string, Evidence[]>>({
     evidenceToDelete,
     setEvidenceToDelete,
     setUploadedEvidence,
-    onDeleteSuccess
-}) => {
+    onDeleteSuccess,
+}: DeleteEvidenceModalProps<T>) => {
     const [isDeleting, setIsDeleting] = React.useState(false);
+
     const handleConfirmDelete = async () => {
         if (!evidenceToDelete) return;
 
         try {
             setIsDeleting(true);
-            await evidenceService.deleteEvidence(evidenceToDelete.id, evidenceToDelete.fileName);
+            await evidenceService.deleteEvidence(
+                evidenceToDelete.id,
+                evidenceToDelete.fileName
+            );
 
-            setUploadedEvidence(prev => {
-                const updated: typeof prev = {};
-                Object.keys(prev).forEach(sectionKey => {
-                    updated[sectionKey] = prev[sectionKey].filter(
-                        e => e.id !== evidenceToDelete.id
-                    );
-                });
-                return updated;
+            setUploadedEvidence((prev) => {
+                // Check if it's an array
+                if (Array.isArray(prev)) {
+                    return prev.filter((e) => e.id !== evidenceToDelete.id) as T;
+                } else {
+                    // It's a Record<string, Evidence[]>
+                    const updated: Record<string, Evidence[]> = {};
+                    Object.keys(prev).forEach((sectionKey) => {
+                        updated[sectionKey] = prev[sectionKey].filter(
+                            (e) => e.id !== evidenceToDelete.id
+                        );
+                    });
+                    return updated as T;
+                }
             });
 
             onDeleteSuccess?.();
-
             setEvidenceToDelete(null);
         } finally {
             setIsDeleting(false);

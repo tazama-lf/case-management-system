@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, UploadEvidenceDto } from '../../types/evidence.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
@@ -8,7 +8,7 @@ import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.t
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import type { CaseWithTasksDto } from '../../services/caseService';
 import { useAuth } from '@/features/auth';
-
+import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 interface SarStrFilingModalProps {
@@ -42,6 +42,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const { success, error } = useToast();
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const { hasComplianceOfficerRole } = useAuth();
+  const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
+    id: string;
+    fileName: string;
+  } | null>(null);
   // Load existing SAR/STR evidence when modal opens
   useEffect(() => {
     if (!open || !taskId) return;
@@ -471,36 +475,48 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {uploadedEvidence.map((evidence) => (
-                    <div
-                      key={evidence.id}
-                      className="flex items-start justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-3"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <DocumentCheckIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-900">
-                            {evidence.fileName}
-                          </span>
+                  {uploadedEvidence.length > 0 && (
+                    <div className="space-y-3">
+                      {uploadedEvidence.map((evidence) => (
+                        <div
+                          key={evidence.id}
+                          className="flex items-start justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-3"
+                        >
+                          <div className="truncate flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <DocumentCheckIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                              <span className="truncate text-sm font-medium text-gray-900">
+                                {evidence.fileName}
+                              </span>
+                            </div>
+                            {evidence.description && (
+                              <p className="text-xs text-gray-600 whitespace-pre-line mt-2">
+                                {evidence.description}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-2">
+                              Uploaded: {new Date(evidence.uploadedAt).toLocaleString()} by {evidence.uploadedBy}
+                            </p>
+                          </div>
+                          <div className="ml-3 flex items-center gap-2">
+                            <span className="text-xs text-green-600">✓ Uploaded</span>
+
+                            <button
+                              disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
+                              type="button"
+                              onClick={() =>
+                                setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })
+                              }
+                              className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              title="Delete Evidence"
+                            >
+                              <TrashIcon className="h-4.5 w-4.5" />
+                            </button>
+                          </div>
                         </div>
-                        {evidence.description && (
-                          <p className="text-xs text-gray-600 whitespace-pre-line mt-2">
-                            {evidence.description}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-2">
-                          Uploaded: {new Date(evidence.uploadedAt).toLocaleString()} by {evidence.uploadedBy}
-                        </p>
-                      </div>
-                      {/* <button
-                      type="button"
-                      onClick={() => handleDownloadEvidence(evidence)}
-                      className="ml-4 inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
-                    >
-                      Download
-                    </button> */}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
@@ -528,6 +544,23 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
           </div>
         </div>
       </div>
+
+      {evidenceToDelete && (
+        <DeleteEvidenceModal
+          evidenceToDelete={evidenceToDelete}
+          setEvidenceToDelete={setEvidenceToDelete}
+          setUploadedEvidence={setUploadedEvidence} // Evidence[] type
+          onDeleteSuccess={() => {
+            // Remove deleted evidence from the flat array
+            setUploadedEvidence((prev) =>
+              prev.filter((e) => e.id !== evidenceToDelete.id)
+            );
+            setEvidenceToDelete(null);
+            success('Evidence deleted successfully');
+          }}
+        />
+      )}
+
       {/* Complete Investigation Task Modal */}
       {completeTaskModalOpen && (
         <Suspense fallback={<div>Loading...</div>}>

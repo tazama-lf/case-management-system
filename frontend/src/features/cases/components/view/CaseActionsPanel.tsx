@@ -5,6 +5,8 @@ import authService from '@/features/auth/services/authService';
 import { caseService } from '../../services/caseService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import { useAuth } from '@/features/auth/components/AuthContext';
+import { useCaseTasks } from '../../hooks/useCaseTasks';
+import { TaskStatus } from '../../services/taskService';
 //interface
 interface CaseActionsPanelProps {
   caseData: CaseRow;
@@ -40,7 +42,21 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   const showSupervisorControls = canManageSupervisorActions;
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const { hasComplianceOfficerRole } = useAuth();
-  
+  const { tasks, fetchTasks } = useCaseTasks(caseData.id);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchTasks();
+    };
+    fetchData();
+  }, [fetchTasks]);
+
+  const hasCompletedStrTask = tasks.some(
+    (task) =>
+      task.name === 'SAR/STR Filing' &&
+      (task.status === TaskStatus.STATUS_30_COMPLETED)
+  );
+
   // Compliance officers cannot perform any case actions
   if (hasComplianceOfficerRole()) {
     return null;
@@ -89,7 +105,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     // Close Case button - show for in-progress cases when ALL investigation tasks are completed and user is case owner
     const investigateTasks = caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
     const completedInvestigateTasks = investigateTasks.filter((t) => t.status === 'STATUS_30_COMPLETED');
-    
+
     if (onCloseCase && (
       caseData.status === 'STATUS_20_IN_PROGRESS' ||
       caseData.status.includes('IN PROGRESS')
@@ -108,9 +124,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Case Closure Decision button - show for cases pending final approval
     if (showSupervisorControls &&
-        onApproveCase &&
-        (caseData.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-          caseData.status.includes('PENDING FINAL APPROVAL'))) {
+      onApproveCase &&
+      (caseData.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
+        caseData.status.includes('PENDING FINAL APPROVAL'))) {
       actions.push(
         <button
           key="approve-closure"
@@ -125,9 +141,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Approve Case Creation button - show for cases pending creation approval
     if (showSupervisorControls &&
-        onApproveCaseCreation &&
-        (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-          caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+      onApproveCaseCreation &&
+      (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
+        caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
       actions.push(
         <button
           key="approve-creation"
@@ -142,9 +158,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Reject Case Creation button - show for cases pending creation approval
     if (showSupervisorControls &&
-        onRejectCaseCreation &&
-        (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-          caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+      onRejectCaseCreation &&
+      (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
+        caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
       actions.push(
         <button
           key="reject-creation"
@@ -159,9 +175,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Approve Case Reopening button - show for cases pending reopening approval
     if (showSupervisorControls &&
-        onApproveCaseReopen &&
-        (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-          caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
+      onApproveCaseReopen &&
+      (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
+        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
       actions.push(
         <button
           key="approve-reopen"
@@ -176,9 +192,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Reject Case Reopening button - show for cases pending reopening approval
     if (showSupervisorControls &&
-        onRejectCaseReopen &&
-        (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-          caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
+      onRejectCaseReopen &&
+      (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
+        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
       actions.push(
         <button
           key="reject-reopen"
@@ -192,7 +208,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     }
 
     // Reopen Case button - show for closed cases
-    if (onReopenCase && (
+    if (onReopenCase && hasCompletedStrTask && (
       caseData.status === 'STATUS_81_CLOSED_REFUTED' ||
       caseData.status === 'STATUS_82_CLOSED_CONFIRMED' ||
       caseData.status === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
@@ -272,11 +288,11 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900">Available Actions</h3>
       </div>
-      
+
       <div className="flex flex-wrap gap-3">
         {availableActions}
       </div>
-      
+
       <div className="mt-3 text-sm text-gray-500">
         Actions will be available based on your permissions and the case's current status.
       </div>
