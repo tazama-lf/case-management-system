@@ -10,9 +10,21 @@ import { CaseModule } from '../case/case.module';
 import { AlertModule } from '../alert/alert.module';
 import { FlowableModule } from '../flowable/flowable.module';
 import { TaskSyncModule } from '../task-sync/task-sync.module';
+import { CaseSyncModule } from '../case-sync/case-sync.module';
 
 @Module({
-  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, AlertModule, TaskModule, CaseModule, FlowableModule, TaskSyncModule],
+  imports: [
+    LoggerModule,
+    AuditLogModule,
+    ConfigModule,
+    TriageModule,
+    AlertModule,
+    TaskModule,
+    CaseModule,
+    FlowableModule,
+    TaskSyncModule,
+    CaseSyncModule,
+  ],
   providers: [ProcessAlertService],
   exports: [ProcessAlertService],
   controllers: [ProcessAlertController],

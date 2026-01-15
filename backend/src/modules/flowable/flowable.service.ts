@@ -37,7 +37,7 @@ export class FlowableService implements OnModuleInit {
     private readonly logger: LoggerService,
     private readonly clientFactory: FlowableClientFactory,
     private readonly processService: FlowableProcessService,
-    private readonly taskService: FlowableTaskService,
+    private readonly flowableTaskService: FlowableTaskService,
     private readonly identityService: FlowableIdentityService,
     private readonly utilitiesService: FlowableUtilitiesService,
     private readonly caseEventListener: CaseEventListener,
@@ -169,43 +169,43 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getProcessTasks(processInstanceId: string) {
-    return this.taskService.getProcessTasks(processInstanceId);
+    return this.flowableTaskService.getProcessTasks(processInstanceId);
   }
 
   async createTask(taskData: CreateFlowableTaskDto) {
-    return this.taskService.createTask(taskData);
+    return this.flowableTaskService.createTask(taskData);
   }
 
   async completeTask(taskId: number, variables?: Record<string, string>) {
-    return this.taskService.completeTask(taskId, variables);
+    return this.flowableTaskService.completeTask(taskId, variables);
   }
 
   async claimTask(taskId: number, userId: string): Promise<void> {
-    return this.taskService.claimTask(taskId, userId);
+    return this.flowableTaskService.claimTask(taskId, userId);
   }
 
   async unclaimTask(taskId: number): Promise<void> {
-    return this.taskService.unclaimTask(taskId);
+    return this.flowableTaskService.unclaimTask(taskId);
   }
 
   async delegateTask(taskId: number, userId: string): Promise<void> {
-    return this.taskService.delegateTask(taskId, userId);
+    return this.flowableTaskService.delegateTask(taskId, userId);
   }
 
   async assignTaskToCandidateGroup(taskId: number, group: string) {
-    return this.taskService.assignTaskToCandidateGroup(taskId, group);
+    return this.flowableTaskService.assignTaskToCandidateGroup(taskId, group);
   }
 
   async getTaskIdentityLinks(taskId: number) {
-    return this.taskService.getTaskIdentityLinks(taskId);
+    return this.flowableTaskService.getTaskIdentityLinks(taskId);
   }
 
   async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
-    return this.taskService.getCandidateGroupTasks(candidateGroup, includeVariables);
+    return this.flowableTaskService.getCandidateGroupTasks(candidateGroup, includeVariables);
   }
 
   async getUserTasks(assignee: string, includeVariables: boolean = true) {
-    return this.taskService.getUserTasks(assignee, includeVariables);
+    return this.flowableTaskService.getUserTasks(assignee, includeVariables);
   }
 
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
@@ -217,11 +217,11 @@ export class FlowableService implements OnModuleInit {
   }
 
   async getTask(taskId: number) {
-    return this.taskService.getTask(taskId);
+    return this.flowableTaskService.getTask(taskId);
   }
 
   async setTaskVariables(taskId: number, variables: Record<string, string>) {
-    return this.taskService.setTaskVariables(taskId, variables);
+    return this.flowableTaskService.setTaskVariables(taskId, variables);
   }
 
   async getTaskVariables(taskId: number): Promise<Record<string, unknown>> {
@@ -229,11 +229,11 @@ export class FlowableService implements OnModuleInit {
   }
 
   async updateTaskVariable(taskId: number, variableName: string, value: string) {
-    return this.taskService.updateTaskVariable(taskId, variableName, value);
+    return this.flowableTaskService.updateTaskVariable(taskId, variableName, value);
   }
 
   async deleteTaskVariable(taskId: number, variableName: string) {
-    return this.taskService.deleteTaskVariable(taskId, variableName);
+    return this.flowableTaskService.deleteTaskVariable(taskId, variableName);
   }
 
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
@@ -334,7 +334,7 @@ export class FlowableService implements OnModuleInit {
       throw new NotFoundException(`No Flowable process found for case ${caseId}`);
     }
 
-    const processTasks = await this.taskService.getProcessTasks(processInstance.id);
+    const processTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
 
     return processTasks;
   }

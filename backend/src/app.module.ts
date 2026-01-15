@@ -38,6 +38,7 @@ import { CaseHistoryModule } from './modules/case_history/caseHistory.module';
 import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
 import { TaskSyncModule } from './modules/task-sync/task-sync.module';
 import { LoggingOrchestrationModule } from './modules/logging-orchestration/logging-orchestration.module';
+import { CaseSyncModule } from './modules/case-sync/case-sync.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { LoggingOrchestrationModule } from './modules/logging-orchestration/logg
     CaseHistoryModule,
     TaskHistoryModule,
     TaskSyncModule,
+    CaseSyncModule,
     LoggingOrchestrationModule,
   ],
   providers: [

@@ -10,6 +10,7 @@ import { AlertService } from '../alert/alert.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
 import { TaskSyncService } from '../task-sync/task-sync.service';
+import { CaseSyncService } from '../case-sync/case-sync.service';
 
 @Injectable()
 export class ProcessAlertService {
@@ -22,6 +23,7 @@ export class ProcessAlertService {
     private readonly alertService: AlertService,
     private readonly flowableService: FlowableService,
     private readonly taskSyncService: TaskSyncService,
+    private readonly caseSyncService: CaseSyncService,
   ) {}
 
   async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string) {
@@ -54,11 +56,12 @@ export class ProcessAlertService {
 
       case 'DISABLED':
       default: {
-        await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
-          maxRetries: 5,
-          delayMs: 50,
-        });
-        await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
+        await this.caseSyncService.syncCaseStatusWithFlowable(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
+        // await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
+        //   maxRetries: 5,
+        //   delayMs: 50,
+        // });
+        // await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
         break;
       }
     }

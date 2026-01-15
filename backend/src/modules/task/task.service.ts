@@ -34,22 +34,25 @@ export class TaskService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async createTask(taskDTO: CreateTaskDto, userId: string): Promise<Task> {
+  async createTask(taskDTO: CreateTaskDto, userId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
     try {
-      const createdTask = await this.taskRepository.createTask({
-        case: {
-          connect: {
-            case_id: taskDTO.caseId,
+      const createdTask = await this.taskRepository.createTask(
+        {
+          case: {
+            connect: {
+              case_id: taskDTO.caseId,
+            },
           },
+          name: taskDTO.name,
+          description: taskDTO.description,
+          candidateGroup: taskDTO.candidateGroup,
+          status: taskDTO.status,
+          assigned_user_id: taskDTO.assignedUserId,
+          investigationNotes: taskDTO.investigationNotes,
         },
-        name: taskDTO.name,
-        description: taskDTO.description,
-        candidateGroup: taskDTO.candidateGroup,
-        status: taskDTO.status,
-        assigned_user_id: taskDTO.assignedUserId,
-        investigationNotes: taskDTO.investigationNotes,
-      });
+        tx,
+      );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

@@ -749,7 +749,7 @@ export class CaseCreationApprovalService {
   }
 
   async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
-    this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
+    this.logger.log(`Start - updateCaseStatus`, CaseCreationApprovalService.name);
     try {
       const updateData: Record<string, unknown> = {
         status,

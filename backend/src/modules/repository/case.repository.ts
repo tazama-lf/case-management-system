@@ -179,7 +179,10 @@ export class CaseRepository extends BaseRepository {
     return caseData;
   }
 
-  async updateCase(caseId: number, data: Prisma.CaseUpdateInput) {
+  async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
+    if (tx) {
+      return await tx.case.update({ where: { case_id: caseId }, data });
+    }
     return await this.prisma.case.update({
       where: { case_id: caseId },
       data,

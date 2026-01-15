@@ -2,10 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { TaskService } from '../task/task.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { EventLogService } from '../event_log/eventLog.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { CreateTaskDto } from '../../dtos/create-task.dto';
-import { Task, TaskStatus } from '@prisma/client-cms';
+import { Prisma, Task, TaskStatus } from '@prisma/client-cms';
 
 @Injectable()
 export class TaskSyncService {
@@ -13,8 +11,6 @@ export class TaskSyncService {
     private readonly taskService: TaskService,
     private readonly flowableService: FlowableService,
     private readonly loggerService: LoggerService,
-    private readonly eventLogService: EventLogService,
-    private readonly auditLogService: AuditLogService,
   ) {}
 
   async syncTaskCreationWithFlowable(
@@ -22,6 +18,7 @@ export class TaskSyncService {
     caseId: number,
     candidateGroup: string,
     syncOptions: { maxRetries: number; delayMs: number },
+    tx?: Prisma.TransactionClient,
   ): Promise<Task[]> {
     this.loggerService.log(`Start - syncTaskCreationWithFlowable`, TaskSyncService.name);
     try {
@@ -40,7 +37,7 @@ export class TaskSyncService {
             candidateGroup: candidateGroup,
           };
           try {
-            return await this.taskService.createTask(createTaskDto, userId);
+            return await this.taskService.createTask(createTaskDto, userId, tx);
           } catch (error) {
             throw error;
           }
@@ -69,7 +66,7 @@ export class TaskSyncService {
         await this.sleep(delayMs);
         retries++;
       } catch (error) {
-        this.loggerService.error(`Error fetching tasks from Flowable: ${error}`, TaskSyncService.name);
+        this.loggerService.warn(`Problem fetching tasks from Flowable: ${error}`, TaskSyncService.name);
         lastError = error;
       }
     }
