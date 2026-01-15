@@ -50,6 +50,8 @@ export class TaskSyncService {
     }
   }
 
+  async syncTaskUpdateWithFlowable() {}
+
   private async fetchFlowableTasks(caseId: number, maxRetries: number, delayMs: number) {
     let retries = 0;
     let lastError: Error | null = null;

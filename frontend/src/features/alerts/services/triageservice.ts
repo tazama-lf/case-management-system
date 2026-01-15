@@ -115,7 +115,9 @@ class TriageService {
 
   async getAlertById(alertId: number): Promise<Alert> {
     try {
-      const response = await apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
+      const response = await apiClient.get<Alert>(
+        `${this.alertBaseUrl}/${alertId}`,
+      );
       return this.validateAlertResponse(response);
     } catch (error) {
       throw this.handleError(error, 'fetch alert details');
@@ -125,7 +127,7 @@ class TriageService {
   async getAlertActionHistory(alertId: number): Promise<ActionHistory[]> {
     try {
       const response = await apiClient.get<{ history: ActionHistory[] }>(
-        `${this.baseUrl}/${alertId}/action-history`,
+        `${this.alertBaseUrl}/${alertId}/action-history`,
       );
       return response.history;
     } catch (error) {
@@ -179,7 +181,12 @@ class TriageService {
 
   async getNALTAlerts(
     search?: string,
-    pagination?: { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }
+    pagination?: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    },
   ): Promise<{
     alerts: Alert[];
     pagination: {
