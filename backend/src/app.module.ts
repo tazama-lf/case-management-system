@@ -5,9 +5,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditLogModule } from './audit/auditLog.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { PrismaDWHModule } from '../prismaDWH/prismaDWH.module';
 import { PrismaService } from '../prisma/prisma.service';
-import { PrismaDWHService } from '../prismaDWH/prismaDWH.service';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { SharedModule } from './shared/shared.module';
 import { CaseCreationModule } from './case-creation/case-creation.module';
@@ -28,7 +26,7 @@ import { UserModule } from './user/user.module';
 import { FeatureExtractionModule } from './feature-extraction/feature-extraction.module';
 import { CouchdbModule } from './couchdb/couchdb.module';
 import { EvidenceModule } from './evidence/evidence.module';
-import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
+
 
 @Module({
   imports: [
@@ -40,7 +38,6 @@ import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
     EventEmitterModule.forRoot(),
     SharedModule,
     PrismaModule,
-    PrismaDWHModule,
     CaseCreationModule,
     FlowableModule,
     NatsModule,
@@ -60,11 +57,9 @@ import { TazamaDwhModule } from './tazama-dwh/tazama-dwh.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
-    TazamaDwhModule
   ],
   providers: [
     PrismaService,
-    PrismaDWHService,
     {
       provide: APP_INTERCEPTOR,
       useClass: TokenExpiryInterceptor,
