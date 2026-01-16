@@ -174,7 +174,6 @@ export class GoldLakehouseService {
         }),
       ]);
 
-<<<<<<< HEAD
       // Fetch rules with rule_weight > 0 using SQL
       const rulesResponse = await this.runSqlQuery(
         `
@@ -187,12 +186,6 @@ export class GoldLakehouseService {
         `,
         1000,
       );
-=======
-      const header = headerResponse.data?.[0] || null;
-      const rawTypologies = typologiesResponse.data || [];
-      const rawRules = rulesResponse.data || [];
-      const alertDetails = alertDetailsResponse.data?.[0] || null;
->>>>>>> 71398560d62c5e946a3c519654941c5d16e2ec6b
 
       const combinedRaw = alertWithTransactionResponse?.data?.[0];
 
@@ -253,59 +246,7 @@ export class GoldLakehouseService {
       const totalRules = rulesRaw.length;
       const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + (t.typologyScore || 0), 0) / totalTypologies : 0;
 
-      // Transform to frontend-expected format
-      const typologies = rawTypologies.map((t) => {
-        const cleaned = this.stripRedundantFields(this.stripHudiMetadata(t));
-        return {
-          id: cleaned.typology_id?.toString() || '',
-          score: cleaned.typology_score || 0,
-          threshold: cleaned.typology_threshold || 0,
-          rules: rawRules
-            .filter((r) => r.typology_id === t.typology_id)
-            .map((r) => {
-              const cleanedRule = this.stripRedundantFields(this.stripHudiMetadata(r));
-              return {
-                id: cleanedRule.rule_id?.toString() || '',
-                weight: cleanedRule.rule_weight || 0,
-              };
-            }),
-        };
-      });
-
-      const rules = rawRules.map((r) => {
-        const cleaned = this.stripRedundantFields(this.stripHudiMetadata(r));
-        return {
-          id: cleaned.rule_id?.toString() || '',
-          weight: cleaned.rule_weight || 0,
-        };
-      });
-
-      const amount = {
-        value: transactionSummary?.amount || header?.alert_amount || 0,
-        currency: transactionSummary?.currency || header?.alert_currency || 'USD',
-      };
-
-      const relatedLinks = {
-        transactionDetail: `/triage/transaction-detail/${transactionSummary?.tx_msg_id || ''}`,
-        transactionHistory: `/api/v1/transactions/${transactionSummary?.tx_msg_id || ''}/history`,
-        conditionsView: `/api/v1/alerts/${alertId}/conditions`,
-        alertHistory: `/api/v1/triage/alerts/${alertId}/action-history`,
-        jupyterLab: `/notebooks/transaction-viz.ipynb?alertId=${alertId}`,
-      };
-
-      const links = [
-        {
-          rel: 'alert-navigator',
-          href: `/api/v1/lakehouse/alert-navigator/${alertId}?tenantId=${tenantId}`,
-        },
-        {
-          rel: 'transaction-history',
-          href: `/api/v1/transactions/${transactionSummary?.tx_msg_id || ''}/history`,
-        },
-      ];
-
       return {
-<<<<<<< HEAD
         alertMetadata,
         typologies,
         statistics: {
@@ -317,26 +258,6 @@ export class GoldLakehouseService {
           alertId,
           tenantId,
         },
-=======
-        alertId: alertId.toString(),
-        transactionId: transactionSummary?.tx_msg_id || transactionSummary?.transaction_id || '',
-        timestamp: transactionSummary?.timestamp || header?.alert_timestamp || '',
-        transactionType: header?.transaction_type || '',
-        amount,
-        status: alertDetails?.alert_status || header?.alert_status || '',
-        reason: alertDetails?.alert_message || header?.alert_message || '',
-        blockReason: header?.block_reason || '',
-        typologies,
-        rules,
-        blockStatus: header?.block_status
-          ? {
-              status: header.block_status,
-              reason: header.block_reason || '',
-            }
-          : null,
-        relatedLinks,
-        links,
->>>>>>> 71398560d62c5e946a3c519654941c5d16e2ec6b
       };
     } catch (error) {
       this.logger.error(`Error fetching Alert Navigator data: ${error.message}`, error.stack);
