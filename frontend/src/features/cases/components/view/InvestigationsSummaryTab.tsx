@@ -390,7 +390,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 Complete Investigation
               </button>
             )}
-            {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
+            {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (caseDetails?.status === 'STATUS_81_CLOSED_REFUTED' || caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED' || caseDetails?.status === 'STATUS_83_CLOSED_INCONCLUSIVE') && (
               <button
                 onClick={() => setShowReportModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
@@ -585,16 +585,14 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         open={showReportModal}
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
+        caseStatus={caseDetails?.status}
         caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
         taskId={currentTaskId || undefined}
         caseData={caseDetails || undefined}
         caseComments={caseComments}
         supervisorComments={supervisorComments}
         investigationNotes={investigationNotes}
-        evidenceCount={evidenceCategories.reduce((acc, category) => {
-          acc[category.type] = category.count;
-          return acc;
-        }, {} as Record<string, number>)}
+        evidenceCategory={evidenceCategories}
       />
 
       {/* Complete Investigation Task Modal */}
