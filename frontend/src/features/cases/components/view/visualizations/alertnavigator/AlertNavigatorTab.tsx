@@ -31,8 +31,11 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         setError(null);
         const result = await alertNavigatorService.getAlertNavigator(alertId);
         setData(result);
-        if (result.typologies.length > 0) {
-          setExpandedTypologies(new Set([result.typologies[0].id]));
+        if (result.typologies && result.typologies.length > 0) {
+          const firstTypologyId = result.typologies[0].id;
+          if (firstTypologyId) {
+            setExpandedTypologies(new Set([firstTypologyId]));
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load data';
@@ -107,12 +110,12 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Alert Navigator</h3>
         <span className="inline-flex items-center rounded-md px-3 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-red-200">
-          {data.status || 'PENDING'}
+          {data.alertMetadata.status || 'PENDING'}
         </span>
       </div>
 
       <p className="text-sm text-gray-600">
-        Alert ID: {data.alertId}
+        Alert ID: {data.alertMetadata.alertId}
       </p>
 
       <div className="rounded-lg border border-gray-200 bg-white p-5">
@@ -120,37 +123,37 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         <div className="grid grid-cols-2 gap-x-8 gap-y-4">
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Alert ID</div>
-            <div className="text-sm font-medium text-gray-900">{data.alertId}</div>
+            <div className="text-sm font-medium text-gray-900">{data.alertMetadata.alertId}</div>
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Timestamp</div>
             <div className="text-sm font-medium text-gray-900">
-              {new Date(data.timestamp).toLocaleString()}
+              {new Date(data.alertMetadata.timestamp).toLocaleString()}
             </div>
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Transaction Type</div>
-            <div className="text-sm font-medium text-gray-900">{data.transactionType}</div>
+            <div className="text-sm font-medium text-gray-900">{data.alertMetadata.transactionType}</div>
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Amount</div>
             <div className="text-sm font-medium text-gray-900">
-              {data.amount.value} {data.amount.currency}
+              {data.alertMetadata.amount} {data.alertMetadata.currency}
             </div>
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Transaction ID</div>
-            <div className="text-sm font-medium text-gray-900">{data.transactionId}</div>
+            <div className="text-sm font-medium text-gray-900">{data.alertMetadata.transactionId}</div>
           </div>
           <div className="col-span-2">
             <div className="text-xs font-medium text-gray-500 uppercase mb-1">Reason</div>
-            <div className="text-sm text-gray-900">{data.reason}</div>
+            <div className="text-sm text-gray-900">{data.alertMetadata.reason}</div>
           </div>
-          {data.blockStatus && (
+          {data.alertMetadata.blockReason && (
             <div className="col-span-2">
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">Block Status</div>
               <div className="text-sm text-gray-900">
-                {data.blockStatus.status} - {data.blockStatus.reason}
+                {data.alertMetadata.status} - {data.alertMetadata.blockReason}
               </div>
             </div>
           )}
@@ -160,15 +163,15 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
       <div className="rounded-lg border border-gray-200 bg-white p-5">
         <h4 className="text-sm font-semibold text-gray-900 mb-4">Triggered Typologies</h4>
         <div className="space-y-3">
-          {data.typologies.length > 0 ? (
-            data.typologies.map((typology: TypologyDto) => (
-              <div key={typology.id} className="rounded-lg border border-gray-200 bg-gray-50">
+          {data.typologies && data.typologies.length > 0 ? (
+            data.typologies.map((typology: any) => (
+              <div key={typology.typologyId} className="rounded-lg border border-gray-200 bg-gray-50">
                 <button
-                  onClick={() => toggleTypology(typology.id)}
+                  onClick={() => toggleTypology(typology.typologyId.toString())}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    {expandedTypologies.has(typology.id) ? (
+                    {expandedTypologies.has(typology.typologyId?.toString() || typology.id) ? (
                       <ChevronUpIcon className="h-4 w-4 text-gray-500" />
                     ) : (
                       <ChevronDownIcon className="h-4 w-4 text-gray-500" />
@@ -176,45 +179,48 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                     <div className="flex items-center gap-2">
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          typology.score >= 80
+                          (typology.typologyScore ?? typology.score ?? 0) >= 80
                             ? 'bg-red-500'
-                            : typology.score >= 60
+                            : (typology.typologyScore ?? typology.score ?? 0) >= 60
                             ? 'bg-orange-500'
                             : 'bg-yellow-500'
                         }`}
                       />
-                      <span className="text-sm font-medium text-gray-900">{typology.id}</span>
+                      <span className="text-sm font-medium text-gray-900">{typology.typologyId || typology.id}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-sm font-semibold ${getScoreTextColor(
-                        typology.score,
+                        typology.typologyScore ?? typology.score ?? 0,
                       )}`}
                     >
-                      Score: {typology.score.toFixed(2)}
+                      Score: {(typology.typologyScore ?? typology.score ?? 0).toFixed(2)}
                     </span>
                     <div className="w-24 bg-gray-200 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full ${getScoreColor(typology.score)}`}
-                        style={{ width: `${Math.min(typology.score, 100)}%` }}
+                        className={`h-2 rounded-full ${getScoreColor(typology.typologyScore ?? typology.score ?? 0)}`}
+                        style={{ width: `${Math.min(typology.typologyScore ?? typology.score ?? 0, 100)}%` }}
                       />
                     </div>
                   </div>
                 </button>
-                {expandedTypologies.has(typology.id) && (
+                {expandedTypologies.has(typology.typologyId?.toString() || typology.id) && (
                   <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3 bg-white">
                     {typology.rules.length > 0 ? (
-                      typology.rules.map((rule, idx) => (
+                      typology.rules.map((rule: any, idx: number) => (
                         <div key={idx} className="flex items-start gap-2">
                           <div className="flex-shrink-0 mt-1">
                             <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                           </div>
                           <div>
-                            <div className="text-sm text-gray-900">{rule.id}</div>
+                            <div className="text-sm text-gray-900">{rule.ruleId || rule.id}</div>
                             <div className="text-xs text-gray-500 mt-0.5">
-                              Weight: {(rule.weight * 100).toFixed(2)}%
+                              Weight: {((rule.ruleWeight ?? rule.weight ?? 0) * 100).toFixed(2)}%
                             </div>
+                            {rule.ruleDesc && (
+                              <div className="text-xs text-gray-500 mt-0.5">{rule.ruleDesc}</div>
+                            )}
                           </div>
                         </div>
                       ))
@@ -237,7 +243,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
             Typologies Triggered
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-gray-900">{data.typologies.length}</span>
+            <span className="text-2xl font-bold text-gray-900">{data.typologies?.length || 0}</span>
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -245,7 +251,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
             Rules Extracted
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-gray-900">{data.rules.length}</span>
+            <span className="text-2xl font-bold text-gray-900">{data.rules?.length || 0}</span>
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -254,8 +260,8 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              {data.typologies.length > 0
-                ? (data.typologies.reduce((sum, t) => sum + t.score, 0) / data.typologies.length).toFixed(0)
+              {data.typologies && data.typologies.length > 0
+                ? (data.typologies.reduce((sum: number, t: any) => sum + (t.typologyScore ?? t.score ?? 0), 0) / data.typologies.length).toFixed(0)
                 : '0'}
             </span>
           </div>
