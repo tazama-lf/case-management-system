@@ -417,7 +417,7 @@ WHERE h.alert_id = ${alertId}
           transactionId: mapField('transaction_id'),
           timestamp: mapField('tx_event_ts'),
           type: mapField('tx_type'),
-          status: 'no mapping found', // explicitly not available
+          status: 'no mapping found',
         },
 
         transactionFlow: {

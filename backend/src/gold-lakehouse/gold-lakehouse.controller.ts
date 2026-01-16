@@ -24,7 +24,7 @@ export class GoldLakehouseController {
   @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
   @ApiResponse({ status: 200 })
   async getTransactionDetailData(@Param('transactionId') transactionId: number, @Query('tenantId') tenantId?: string) {
-    return this.goldLakehouseService.getTransactionDetailData(transactionId, tenantId);
+    return this.goldLakehouseService.getTransactionOverviewUIData(transactionId, tenantId);
   }
 
   @Get('alert-navigator-metrics/:alertId')
