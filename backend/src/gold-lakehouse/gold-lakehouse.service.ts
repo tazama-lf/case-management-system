@@ -404,71 +404,77 @@ WHERE h.alert_id = ${alertId}
       }
 
       const row = this.stripHudiMetadata(rowRaw);
-      const NA = 'no mapping found';
+
+      const mapField = (field: string) => {
+        if (!(field in row)) {
+          return 'no mapping found';
+        }
+        return row[field] === null ? null : row[field];
+      };
 
       return {
         transactionOverview: {
-          transactionId: row.transaction_id ?? NA,
-          timestamp: row.tx_event_ts ?? NA,
-          type: row.tx_type ?? NA,
-          status: NA, // explicitly not available
+          transactionId: mapField('transaction_id'),
+          timestamp: mapField('tx_event_ts'),
+          type: mapField('tx_type'),
+          status: 'no mapping found', // explicitly not available
         },
 
         transactionFlow: {
-          amount: row.interbank_settlement_amount ?? NA,
-          currency: row.interbank_settlement_currency ?? NA,
+          amount: mapField('interbank_settlement_amount'),
+          currency: mapField('interbank_settlement_currency'),
 
           debtor: {
-            name: row.debtor_name ?? NA,
-            account: row.debtor_account_id ?? NA,
-            bank: row.instd_mmb_id ?? NA,
+            name: mapField('debtor_name'),
+            account: mapField('debtor_account_id'),
+            bank: mapField('instd_mmb_id'),
           },
 
           creditor: {
-            name: row.creditor_name ?? NA,
-            account: row.creditor_account_id ?? NA,
-            bank: row.instg_mmb_id ?? NA,
+            name: mapField('creditor_name'),
+            account: mapField('creditor_account_id'),
+            bank: mapField('instg_mmb_id'),
           },
         },
 
         debtorProfile: {
-          name: row.debtor_name ?? NA,
-          accountNumber: row.debtor_account_id ?? NA,
-          accountType: NA,
-          bank: row.instg_mmb_id ?? NA,
-          swiftCode: NA,
-          address: NA,
+          name: mapField('debtor_name'),
+          accountNumber: mapField('debtor_account_id'),
+          accountType: 'no mapping found',
+          bank: mapField('instg_mmb_id'),
+          swiftCode: 'no mapping found',
+          address: 'no mapping found',
         },
 
         creditorProfile: {
-          name: row.creditor_name ?? NA,
-          accountNumber: row.creditor_account_id ?? NA,
-          accountType: NA,
-          bank: row.instd_mmb_id ?? NA,
-          swiftCode: NA,
-          address: NA,
+          name: mapField('creditor_name'),
+          accountNumber: mapField('creditor_account_id'),
+          accountType: 'no mapping found',
+          bank: mapField('instd_mmb_id'),
+          swiftCode: 'no mapping found',
+          address: 'no mapping found',
         },
 
         amountAndCurrency: {
-          originalAmount: row.instructed_amount ?? NA,
-          originalCurrency: row.instructed_currency ?? NA,
-          exchangeRate: row.exchange_rate ?? NA,
-          convertedAmount: NA,
+          originalAmount: mapField('instructed_amount'),
+          originalCurrency: mapField('instructed_currency'),
+          exchangeRate: mapField('exchange_rate'),
+          convertedAmount: 'no mapping found',
         },
 
         charges: {
-          senderCharges: NA,
-          intermediaryCharges: NA,
-          receiverCharges: NA,
-          totalCharges: row.charge_total_amount ?? NA,
-          chargeCurrency: row.charge_currency ?? NA,
+          senderCharges: 'no mapping found',
+          intermediaryCharges: 'no mapping found',
+          receiverCharges: 'no mapping found',
+          totalCharges: mapField('charge_total_amount'),
+          chargeCurrency: mapField('charge_currency'),
         },
 
         settlementDetails: {
-          transactionTimestamp: row.tx_event_ts ?? NA,
-          settlementDate: row.tx_event_date ?? NA,
-          reference: NA,
-          purpose: NA,
+          transactionTimestamp: mapField('tx_event_ts'),
+          settlementDate: mapField('tx_event_date'),
+          reference: 'no mapping found',
+          purpose: 'no mapping found',
         },
 
         meta: {
