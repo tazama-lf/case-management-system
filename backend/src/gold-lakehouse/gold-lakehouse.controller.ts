@@ -32,7 +32,7 @@ export class GoldLakehouseController {
     if (isNaN(transactionIdNum)) {
       throw new BadRequestException('Invalid transactionId: must be a number');
     }
-    return this.goldLakehouseService.getTransactionOverviewUIData(transactionIdNum, tenantId || 'DEFAULT');
+    return this.goldLakehouseService.getTransactionDetailData(transactionIdNum, tenantId || 'DEFAULT');
   }
 
   @Get('alert-navigator-metrics/:alertId')

@@ -367,77 +367,84 @@ WHERE h.alert_id = ${alertId}
       }
 
       const row = this.stripHudiMetadata(rowRaw);
-      const NA = 'no mapping found';
 
+      // Transform to frontend-expected format
       return {
         transactionOverview: {
-          transactionId: row.transaction_id ?? NA,
-          timestamp: row.tx_event_ts ?? NA,
-          type: row.tx_type ?? NA,
-          status: NA,
+          transactionId: row.transaction_id || '',
+          transactionType: row.tx_type || '',
+          timestamp: row.tx_event_ts || '',
         },
-
         transactionFlow: {
-          amount: row.interbank_settlement_amount ?? NA,
-          currency: row.interbank_settlement_currency ?? NA,
-
           debtor: {
-            name: row.debtor_name ?? NA,
-            account: row.debtor_account_id ?? NA,
-            bank: row.instd_mmb_id ?? NA,
+            name: row.debtor_name || '',
+            account: {
+              iban: row.debtor_account_id || '',
+              type: 'CHECKING',
+            },
+            bank: row.instd_mmb_id || '',
           },
-
+          amount: {
+            amount: row.interbank_settlement_amount || 0,
+            currency: row.interbank_settlement_currency || 'USD',
+          },
           creditor: {
-            name: row.creditor_name ?? NA,
-            account: row.creditor_account_id ?? NA,
-            bank: row.instg_mmb_id ?? NA,
+            name: row.creditor_name || '',
+            account: {
+              iban: row.creditor_account_id || '',
+              type: 'CHECKING',
+            },
+            bankName: row.instg_mmb_id || '',
           },
         },
-
         debtorProfile: {
-          name: row.debtor_name ?? NA,
-          accountNumber: row.debtor_account_id ?? NA,
-          accountType: NA,
-          bank: row.instg_mmb_id ?? NA,
-          swiftCode: NA,
-          address: NA,
+          name: row.debtor_name || '',
+          account: {
+            iban: row.debtor_account_id || '',
+            type: 'CHECKING',
+          },
+          bank: row.instd_mmb_id || '',
+          swiftCode: '',
+          address: '',
+          accountType: 'CHECKING',
         },
-
         creditorProfile: {
-          name: row.creditor_name ?? NA,
-          accountNumber: row.creditor_account_id ?? NA,
-          accountType: NA,
-          bank: row.instd_mmb_id ?? NA,
-          swiftCode: NA,
-          address: NA,
+          name: row.creditor_name || '',
+          account: {
+            iban: row.creditor_account_id || '',
+            type: 'CHECKING',
+          },
+          bank: row.instg_mmb_id || '',
+          swiftCode: '',
+          address: '',
+          accountType: 'CHECKING',
         },
-
-        amountAndCurrency: {
-          originalAmount: row.instructed_amount ?? NA,
-          originalCurrency: row.instructed_currency ?? NA,
-          exchangeRate: row.exchange_rate ?? NA,
-          convertedAmount: NA,
-        },
-
-        charges: {
-          senderCharges: NA,
-          intermediaryCharges: NA,
-          receiverCharges: NA,
-          totalCharges: row.charge_total_amount ?? NA,
-          chargeCurrency: row.charge_currency ?? NA,
-        },
-
+        amountAndCurrency: [
+          {
+            originalAmount: row.instructed_amount || 0,
+            exchangeRate: row.exchange_rate || 1,
+            convertedAmount: row.interbank_settlement_amount || 0,
+          },
+          {
+            senderCharges: [],
+            intermediaryCharges: [],
+            receiverCharges: [],
+          },
+          {
+            totalCharges: row.charge_total_amount || 0,
+          },
+        ],
         settlementDetails: {
-          transactionTimestamp: row.tx_event_ts ?? NA,
-          settlementDate: row.tx_event_date ?? NA,
-          reference: NA,
-          purpose: NA,
+          settlementDate: row.tx_event_date || '',
+          reference: row.transaction_id || '',
+          purpose: '',
         },
-
-        meta: {
-          transactionId,
-          tenantId,
-        },
+        links: [
+          {
+            rel: 'self',
+            href: `/api/v1/lakehouse/transaction-detail/${transactionId}?tenantId=${tenantId}`,
+          },
+        ],
       };
     } catch (error) {
       this.logger.error(`Error fetching Transaction Detail data: ${error.message}`, error.stack);
