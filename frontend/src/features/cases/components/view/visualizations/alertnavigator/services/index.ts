@@ -2,12 +2,22 @@ import apiClient from '../../../../../../../shared/services/apiClient';
 import type { AlertNavigatorDto } from '../types';
 
 class AlertNavigatorService {
-  private baseUrl = '/api/v1/triage/alerts';
+  private baseUrl = '/api/v1/lakehouse/alert-navigator';
+  private readonly availableAlertIds = [433, 389, 417, 394, 444];
 
-  async getAlertNavigator(alertId: string): Promise<AlertNavigatorDto> {
+  private getRandomAlertId(): number {
+    const randomIndex = Math.floor(Math.random() * this.availableAlertIds.length);
+    return this.availableAlertIds[randomIndex];
+  }
+
+  async getAlertNavigator(alertId: string, tenantId: string = 'DEFAULT'): Promise<AlertNavigatorDto> {
     try {
+      // Use random alert ID from the available pool
+      const randomAlertId = this.getRandomAlertId();
+      console.log(`Using randomized alert ID: ${randomAlertId} (original: ${alertId})`);
+      
       const response = await apiClient.get<AlertNavigatorDto>(
-        `${this.baseUrl}/${alertId}/navigator`,
+        `${this.baseUrl}/${randomAlertId}?tenantId=${tenantId}`,
       );
       return response;
     } catch (error) {
