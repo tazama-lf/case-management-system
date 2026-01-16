@@ -11,6 +11,9 @@ import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
+import type { Evidence } from '../../types/evidence.types';
+import { evidenceService } from '../../services/evidenceService';
+
 
 // Configure marked to handle line breaks properly (GitHub-flavored markdown)
 marked.setOptions({
@@ -34,6 +37,13 @@ const getUserInfo = () => {
   return { userId: '', tenantId: '' };
 };
 
+interface EvidenceCategory {
+  type: string;
+  count: number;
+  description: string;
+  evidence: Evidence[];
+}
+
 const getUserRole = () => {
   try {
     const token = localStorage.getItem('authToken');
@@ -56,6 +66,7 @@ interface GenerateInvestigationReportModalProps {
   open: boolean;
   onClose: () => void;
   caseId: number;
+  caseStatus?: string;
   caseTitle?: string;
   taskId?: number;
   caseData?: {
@@ -75,13 +86,12 @@ interface GenerateInvestigationReportModalProps {
     user_id?: string;
     created_at?: string;
   }>;
-  evidenceCount?: {
-    [key: string]: number;
-  };
+  evidenceCategory?: EvidenceCategory[];
   investigationNotes?: string;
 }
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
+  caseStatus,
   open,
   onClose,
   caseId,
@@ -90,7 +100,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   caseData,
   caseComments,
   supervisorComments,
-  evidenceCount = {},
+  evidenceCategory,
   investigationNotes,
 }) => {
   const { showSuccess, showError } = useNotifications();
@@ -152,14 +162,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   };
 
   const buildEvidenceSummary = () => {
-    if (!evidenceCount || Object.keys(evidenceCount).length === 0) {
+    if (!evidenceCategory || Object.keys(evidenceCategory).length === 0) {
       return 'No evidence items available for this case.';
     }
-
-    const items = Object.entries(evidenceCount).map(([type, count]) =>
-      `• ${type} (${count} ${count === 1 ? 'document' : 'documents'})`
-    );
-    return items.join('\n') + '\n\nAll evidence items are attached to this case and available for audit review.';
+    return evidenceCategory
+      .map(cat =>
+        `${cat.type}: ${cat.count} ${cat.count === 1 ? 'document' : 'documents'}`
+      )
+      .join('\n');
   };
 
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
@@ -174,7 +184,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   );
   const [evidenceSummary, setEvidenceSummary] = useState(buildEvidenceSummary());
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
-  const [reportOutcome, setReportOutcome] = useState<'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring'>('Confirmed Fraud');
+  const [reportOutcome, setReportOutcome] = useState<string | undefined>('');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [userRole] = useState<string>(getUserRole());
@@ -218,6 +228,34 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   };
 
+  const evidenceList = (evidenceCategory ?? []).map((category) => ({
+    stack: [
+      {
+        text: `${category.type} (${category.count} ${category.description})`,
+        bold: true,
+        margin: [0, 5, 0, 3],
+      },
+      {
+        ul: category.evidence.map((doc) => ({
+          text: [
+            { text: doc.fileName || 'Untitled Document', bold: true },
+            {
+              text: ` (${evidenceService.formatFileSize(doc.fileSize || 0)}`,
+            },
+            doc.uploadedAt
+              ? { text: ` • ${new Date(doc.uploadedAt).toLocaleDateString()})` }
+              : { text: ')' },
+            doc.description
+              ? { text: `\n${doc.description}`, italics: true }
+              : '',
+          ],
+          margin: [0, 0, 0, 3],
+        })),
+      },
+    ],
+  }));
+
+
   const handleDownload = () => {
     try {
       const timestamp = new Date().toLocaleString('en-US', {
@@ -232,12 +270,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       const submittedDate = caseComments?.[0]?.created_at
         ? new Date(caseComments[0].created_at).toLocaleString()
         : 'N/A';
-
-      const evidenceList = Object.entries(evidenceCount || {}).length > 0
-        ? Object.entries(evidenceCount).map(([type, count]) =>
-          `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
-        )
-        : ['No evidence items available for this case.'];
 
       const docDefinition: any = {
         pageSize: 'A4',
@@ -348,7 +380,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             margin: [0, 0, 0, 10],
           },
           {
-            text: reportOutcome,
+            text: caseStatus,
             style: 'outcomeDecision',
             margin: [0, 0, 0, 20],
           },
@@ -447,236 +479,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       showSuccess('Report downloaded successfully!');
     } catch {
       showError('Failed to download report. Please try again.');
-    }
-  };
-
-  const handlePrint = () => {
-    try {
-      const timestamp = new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-
-      const submittedDate = caseComments?.[0]?.created_at
-        ? new Date(caseComments[0].created_at).toLocaleString()
-        : 'N/A';
-
-      const evidenceList2 = Object.entries(evidenceCount || {}).length > 0
-        ? Object.entries(evidenceCount).map(([type, count]) =>
-          `${type} (${count} ${count === 1 ? 'document' : 'documents'})`
-        )
-        : ['No evidence items available for this case.'];
-
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageOrientation: 'portrait',
-        pageMargins: [40, 60, 40, 60],
-        content: [
-          {
-            text: 'CASE INVESTIGATION REPORT',
-            style: 'header',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
-            style: 'subheader',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: `Generated: ${timestamp}`,
-            style: 'timestamp',
-            margin: [0, 0, 0, 20],
-          },
-          {
-            canvas: [
-              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'CASE INFORMATION',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            columns: [
-              {
-                width: '50%',
-                stack: [
-                  { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
-                ]
-              },
-              {
-                width: '50%',
-                stack: [
-                  { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
-                ]
-              }
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'EXECUTIVE SUMMARY',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: executiveSummary,
-            style: 'body',
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'KEY FINDINGS',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: keyFindings,
-            style: 'body',
-            margin: [0, 0, 0, 20],
-          },
-
-          ...(supervisorFeedback ? [
-            {
-              text: 'SUPERVISOR FEEDBACK',
-              style: 'sectionHeader',
-              margin: [0, 0, 0, 10],
-            },
-            {
-              text: supervisorFeedback,
-              style: 'body',
-              margin: [0, 0, 0, 20],
-            },
-          ] : []),
-
-          {
-            text: 'EVIDENCE SUMMARY',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            ul: evidenceList2,
-            style: 'body',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: 'All evidence items are attached to this case and available for audit review.',
-            style: 'italic',
-            margin: [0, 10, 0, 20],
-          },
-
-          {
-            text: 'FINAL OUTCOME DECISION',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: reportOutcome,
-            style: 'outcomeDecision',
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'RECOMMENDATIONS & CONCLUSIONS',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: recommendations,
-            style: 'body',
-            margin: [0, 0, 0, 30],
-          },
-
-          {
-            canvas: [
-              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
-            ],
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: 'Report End',
-            style: 'footer',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: 'This report was generated electronically and contains sensitive information. Handle according to data protection and confidentiality policies.',
-            style: 'disclaimer',
-          },
-        ],
-        styles: {
-          header: {
-            fontSize: 20,
-            bold: true,
-            alignment: 'center',
-            color: '#1f2937',
-          },
-          subheader: {
-            fontSize: 14,
-            bold: true,
-            alignment: 'center',
-            color: '#3b82f6',
-          },
-          timestamp: {
-            fontSize: 10,
-            alignment: 'center',
-            color: '#6b7280',
-            italics: true,
-          },
-          sectionHeader: {
-            fontSize: 14,
-            bold: true,
-            color: '#1f2937',
-            decoration: 'underline',
-            decorationColor: '#3b82f6',
-          },
-          body: {
-            fontSize: 10,
-            color: '#374151',
-            lineHeight: 1.5,
-          },
-          italic: {
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-          },
-          outcomeDecision: {
-            fontSize: 12,
-            bold: true,
-            color: '#059669',
-            alignment: 'center',
-          },
-          footer: {
-            fontSize: 10,
-            bold: true,
-            alignment: 'center',
-            color: '#1f2937',
-          },
-          disclaimer: {
-            fontSize: 8,
-            alignment: 'center',
-            color: '#6b7280',
-            italics: true,
-          },
-        },
-        defaultStyle: {
-          fontSize: 10,
-          color: '#374151',
-        },
-      };
-
-      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
-      pdfDoc.print();
-    } catch {
-      showError('Failed to print report. Please try again.');
     }
   };
 
@@ -1006,35 +808,103 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               {/* Evidence Summary */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">Evidence Summary</h5>
+
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {Object.entries(evidenceCount || {}).map(([type, count]) => (
-                      <li key={type}>• {type} ({count} {count === 1 ? 'document' : 'documents'})</li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-gray-500 mt-3 italic">
-                    All evidence items are attached to this case and available for audit review.
-                  </p>
+                  {evidenceCategory && evidenceCategory.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {evidenceCategory.map((category) => (
+                          <div
+                            key={category.type}
+                            className="border border-gray-200 rounded-lg bg-white p-4"
+                          >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                                <h4 className="text-sm font-semibold text-gray-900">
+                                  {category.type}
+                                </h4>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {category.count} {category.description}
+                              </span>
+                            </div>
+
+                            {/* Evidence list */}
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {category.evidence.map((doc) => (
+                                <div
+                                  key={doc.id}
+                                  className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded p-2"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {doc.fileName || 'Untitled Document'}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                      <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                                      <span>•</span>
+                                      <span>{doc.evidenceType}</span>
+                                      {doc.uploadedAt && (
+                                        <>
+                                          <span>•</span>
+                                          <span>
+                                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {doc.description && (
+                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                        {doc.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-3 italic">
+                        All evidence items are attached to this case and available for audit review.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      No evidence uploaded yet for this case.
+                    </p>
+                  )}
                 </div>
               </div>
 
+
               {/* Report Outcome - for approval */}
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">Final Outcome Decision</h5>
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Final Outcome Decision
+                </h5>
+
                 <select
-                  value={reportOutcome}
+                  value={reportOutcome ?? caseStatus}
                   onChange={(e) => {
-                    setReportOutcome(e.target.value as 'Confirmed Fraud' | 'Refuted Fraud' | 'Under Monitoring');
+                    const value = e.target.value;
+                    setReportOutcome(value);
                     setIsApproved(false);
                   }}
-                  disabled={userRole !== 'CMS_SUPERVISOR'}
-                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  disabled={true}
+                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md
+               focus:ring-2 focus:ring-blue-500 focus:border-transparent
+               disabled:bg-gray-50 disabled:cursor-not-allowed"
                 >
-                  <option value="Confirmed Fraud">Confirmed Fraud</option>
-                  <option value="Refuted Fraud">Refuted Fraud</option>
-                  <option value="Under Monitoring">Under Monitoring</option>
+                  <option value={caseStatus}>
+                    {caseStatus}
+                  </option>
                 </select>
               </div>
+
 
               {/* Monitoring Duration - only shown when Under Monitoring is selected */}
               {reportOutcome === 'Under Monitoring' && (
@@ -1100,19 +970,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     Download Report
-                  </button>
-                  <button
-                    onClick={handlePrint}
-                    disabled={!isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                      }`}
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print
                   </button>
                   <button
                     onClick={handleApproveClick}

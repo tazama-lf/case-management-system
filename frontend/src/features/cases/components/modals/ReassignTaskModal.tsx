@@ -162,31 +162,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               </div>
             ) : (
               <>
-                {/* {investigators.filter(investigator => investigator.id !== task.assignee).length > 0 ? (
-                  <select
-                    value={assignee}
-                    onChange={(e) => {
-                      setAssignee(e.target.value);
-                    }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select Investigator</option>
-                    {investigators
-                      .filter(investigator => investigator.id !== task.assignee)
-                      .map((investigator) => {
-                        return (
-                          <option key={investigator.id} value={investigator.id}>
-                            {investigator.firstName} {investigator.lastName} ({investigator.name})
-                          </option>
-                        );
-                      })}
-                  </select>
-                ) : (
-                  <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                    No other investigators available for reassignment
-                  </div>
-                )} */}
                 {(() => {
                   const isSarTask = task?.name.toLowerCase().includes('sar');
                   const optionsList = isSarTask ? complianceOfficers : investigators;

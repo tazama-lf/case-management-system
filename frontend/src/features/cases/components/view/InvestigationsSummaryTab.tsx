@@ -589,16 +589,14 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         open={showReportModal}
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
+        caseStatus={caseDetails?.status}
         caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
         taskId={currentTaskId || undefined}
         caseData={caseDetails || undefined}
         caseComments={caseComments}
         supervisorComments={supervisorComments}
         investigationNotes={investigationNotes}
-        evidenceCount={evidenceCategories.reduce((acc, category) => {
-          acc[category.type] = category.count;
-          return acc;
-        }, {} as Record<string, number>)}
+        evidenceCategory={evidenceCategories}
       />
 
       {/* Complete Investigation Task Modal */}

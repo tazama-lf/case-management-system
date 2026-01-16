@@ -382,10 +382,15 @@ export class TaskLifecycleService {
         where: { task_id: taskId },
         data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
       });
-      const updatedCase = await tx.case.update({
-        where: { case_id: existingTask.case_id },
-        data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
-      });
+
+      if (updatedTask.name !== 'SAR/STR Filing') {
+        const updatedCase = await tx.case.update({
+          where: { case_id: existingTask.case_id },
+          data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
+        });
+      }
+
+
       await this.flowableService.handleCaseStatusChanged({
         caseId: existingTask.case_id,
         newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -407,7 +412,7 @@ export class TaskLifecycleService {
         },
       });
 
-      return { updatedTask, updatedCase };
+      return { updatedTask };
     });
 
     // const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
