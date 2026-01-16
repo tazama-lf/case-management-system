@@ -21,7 +21,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -138,35 +137,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              { }
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    disabled={loading}
-                  />
-                  <label
-                    htmlFor="remember-me"
-                    className="ml-2 block text-sm text-gray-700"
-                  >
-                    Remember me
-                  </label>
-                </div>
-
-                <a
-                  href="#"
-                  className="text-sm text-blue-600 hover:text-blue-500"
-                >
-                  Forgot password?
-                </a>
-              </div>
-
-              { }
               <button
                 type="submit"
                 disabled={
@@ -192,7 +162,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         { }
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
-            © 2025 Tazama. All rights reserved.
+            © {new Date().getFullYear()} Tazama. Powered by Paysys Labs.
           </p>
         </div>
       </div>

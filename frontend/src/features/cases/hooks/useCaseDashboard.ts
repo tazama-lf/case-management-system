@@ -13,6 +13,7 @@ export interface CaseDashboardFilters {
   sortBy: 'recent' | 'oldest';
   statusFilter: string;
   priorityFilter: string;
+  sarStrStatusFilter: string;
 }
 
 export interface PaginationState {
@@ -55,6 +56,7 @@ export const useCaseDashboard = () => {
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
 
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -83,6 +85,7 @@ export const useCaseDashboard = () => {
       const response = await caseService.getAllCases({
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
+        sarStrStatus: sarStrStatusFilter || undefined,
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         page: currentPage,
@@ -103,7 +106,7 @@ export const useCaseDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sortBy, currentPage, pageSize, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
+  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -263,7 +266,8 @@ export const useCaseDashboard = () => {
     setSearch,
     setSortBy,
     setStatusFilter,
-    setPriorityFilter
+    setPriorityFilter,
+    setSarStrStatusFilter
   };
 
 
@@ -319,7 +323,8 @@ export const useCaseDashboard = () => {
       search,
       sortBy,
       statusFilter,
-      priorityFilter
+      priorityFilter,
+      sarStrStatusFilter
     },
     pagination,
     permissions: {

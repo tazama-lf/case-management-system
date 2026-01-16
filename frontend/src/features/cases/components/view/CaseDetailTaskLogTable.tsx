@@ -65,7 +65,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
   const { hasComplianceOfficerRole } = useAuth();
-  // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();

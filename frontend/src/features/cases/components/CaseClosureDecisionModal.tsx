@@ -215,13 +215,13 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 {!tasks.length ? (
                   <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">No notes provided.</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-40 overflow-y-auto">
                     {tasks.map((c) => (
                       <div key={c.comment_id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <div className="font-medium text-gray-900 whitespace-pre-line">
+                        <div className="font-medium text-gray-900 whitespace-pre-wrap break-words">
                           {c.note}
                         </div>
                       </div>
@@ -334,13 +334,13 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                 </label>
                 {!tasks.length ? (
                   <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">No notes provided.</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">No notes provided.</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-40 overflow-y-auto">
                     {tasks.map((c) => (
                       <div key={c.comment_id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <div className="font-medium text-gray-900 whitespace-pre-line">
+                        <div className="font-medium text-gray-900 whitespace-pre-wrap break-words">
                           {c.note}
                         </div>
                       </div>

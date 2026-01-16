@@ -391,6 +391,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               </button>
             )}
             {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
+              caseDetails?.status === 'STATUS_81_CLOSED_REFUTED' ||
+              caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED' ||
+              caseDetails?.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
+            ) && (
               <button
                 onClick={() => setShowReportModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"

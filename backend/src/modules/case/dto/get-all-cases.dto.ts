@@ -25,6 +25,16 @@ export class GetAllCasesQueryDto {
   priority?: Priority;
 
   @ApiProperty({
+    description: 'Filter by SAR/STR task status',
+    enum: ['STATUS_01_UNASSIGNED', 'STATUS_10_ASSIGNED', 'STATUS_20_IN_PROGRESS', 'STATUS_30_COMPLETED', 'N/A'],
+    required: false,
+    example: 'STATUS_30_COMPLETED',
+  })
+  @IsOptional()
+  @IsString()
+  sarStrStatus?: string;
+
+  @ApiProperty({
     description: 'Filter by case type',
     enum: CaseType,
     required: false,

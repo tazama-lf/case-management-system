@@ -80,10 +80,10 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   if (!open || !caseData) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="w-full max-w-3xl max-h-[90vh] rounded-lg bg-white shadow-xl flex flex-col my-8">
         { }
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               Approve Case Creation
@@ -105,69 +105,70 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         </div>
 
         { }
-        <form onSubmit={handleSubmit} className="p-6">
-          { }
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            { }
 
-          { }
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Case Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Case Type
-                </label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm break-words">{caseData.type}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Current Status
-                </label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm break-words">
-                    {getCaseStatusBadge(caseData.status)}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Priority
-                </label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.priority}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Created On
-                </label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.createdOn}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          { }
-          {caseData.alertId && (
+            { }
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
-                Associated Alert
+                Case Details
               </h4>
-              {loadingAlert ? (
-                <div className="rounded-md border border-gray-300 p-4 bg-gray-50">
-                  <div className="flex items-center justify-center">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
-                    <span className="ml-2 text-sm text-gray-500">
-                      Loading alert details...
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Case Type
+                  </label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm break-words">{caseData.type}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Current Status
+                  </label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm break-words">
+                      {getCaseStatusBadge(caseData.status)}
                     </span>
                   </div>
                 </div>
-              ) : (
-                <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-96 overflow-y-auto space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Priority
+                  </label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm">{caseData.priority}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Created On
+                  </label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm">{caseData.createdOn}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            { }
+            {caseData.alertId && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Associated Alert
+                </h4>
+                {loadingAlert ? (
+                  <div className="rounded-md border border-gray-300 p-4 bg-gray-50">
+                    <div className="flex items-center justify-center">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+                      <span className="ml-2 text-sm text-gray-500">
+                        Loading alert details...
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-64 overflow-y-auto space-y-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -278,36 +279,38 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
-
-          { }
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Approving...
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="h-4 w-4" />
-                  Approve Case Creation
-                </>
-              )}
-            </button>
           </div>
         </form>
+
+        { }
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Approving...
+              </>
+            ) : (
+              <>
+                <CheckCircleIcon className="h-4 w-4" />
+                Approve Case Creation
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
