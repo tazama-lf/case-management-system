@@ -26,45 +26,105 @@ export class GoldLakehouseService {
       this.logger.log(`Request body: ${JSON.stringify(queryRequest)}`);
 
       const response = await firstValueFrom(
-        this.httpService.post<QueryResponseDto>(
-          `${this.apiUrl}/query`,
-          queryRequest,
-          { timeout: this.timeout }
-        )
+        this.httpService.post<QueryResponseDto>(`${this.apiUrl}/query`, queryRequest, { timeout: this.timeout }),
       );
 
       if (response.data.status !== 'success') {
         throw new HttpException(
           `Gold Lakehouse query failed with status: ${response.data.status}`,
-          response.data.code || HttpStatus.INTERNAL_SERVER_ERROR
+          response.data.code || HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
       return response.data;
     } catch (error) {
       this.logger.error(`Error querying Gold Lakehouse: ${error.message}`);
-      
+
       if (error.code === 'ECONNREFUSED') {
         this.logger.error(`Gold Lakehouse API is not reachable at ${this.apiUrl}`);
-        throw new HttpException(
-          `Gold Lakehouse API is not running or not reachable at ${this.apiUrl}`,
-          HttpStatus.SERVICE_UNAVAILABLE
-        );
+        throw new HttpException(`Gold Lakehouse API is not running or not reachable at ${this.apiUrl}`, HttpStatus.SERVICE_UNAVAILABLE);
       }
-      
+
       if (error.response) {
         this.logger.error(`Response status: ${error.response.status}`);
         this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
       }
-      
+
       if (error instanceof HttpException) {
         throw error;
       }
-      
-      throw new HttpException(
-        `Failed to query Gold Lakehouse: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+
+      throw new HttpException(`Failed to query Gold Lakehouse: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async runSqlQuery(sql: string, limit = 1) {
+    try {
+      this.logger.log(`Running raw SQL query on Gold Lakehouse`);
+      this.logger.debug(sql);
+
+      const response = await firstValueFrom(
+        this.httpService.post<any>(
+          `${this.apiUrl}/execute_sql`,
+          {
+            sql_query: sql,
+            limit,
+          },
+          { timeout: this.timeout },
+        ),
       );
+
+      if (response.data.status !== 'success') {
+        throw new HttpException('Gold Lakehouse SQL query failed', response.data.code || HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error running SQL query: ${error.message}`);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException('Failed to run SQL query on Gold Lakehouse', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getAlertNavigatorMetrics(alertId: number, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
+
+      const sql = `
+SELECT
+  COUNT(DISTINCT t.typology_id) AS total_typologies,
+  COUNT(DISTINCT r.rule_id)     AS total_rules,
+  AVG(t.typology_score)         AS avg_typology_score
+FROM alert_navigator_header h
+LEFT JOIN alert_navigator_typologies t
+  ON t.alert_id = h.alert_id
+ AND t.tenant_id = h.tenant_id
+LEFT JOIN alert_navigator_rules r
+  ON r.alert_id = h.alert_id
+ AND r.tenant_id = h.tenant_id
+ AND r.rule_weight > 0
+WHERE h.alert_id = ${alertId}
+  AND h.tenant_id = '${tenantId}'
+`;
+
+      const response = await this.runSqlQuery(sql, 1);
+      const row = response?.data?.[0];
+
+      return {
+        total_typologies: Number(row?.total_typologies ?? 0),
+        total_rules: Number(row?.total_rules ?? 0),
+        avg_typology_score: row?.avg_typology_score !== null ? Number(row.avg_typology_score) : null,
+        alertId,
+        tenantId,
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching Alert Navigator metrics: ${error.message}`, error.stack);
+
+      throw new HttpException('Failed to fetch Alert Navigator metrics', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -97,7 +157,7 @@ export class GoldLakehouseService {
       const alertDetails = alertDetailsResponse.data?.[0] || null;
 
       let transactionSummary: any = null;
-      
+
       if (alertDetails?.tx_msg_id) {
         try {
           const transactionResponse = await this.query({
@@ -120,7 +180,7 @@ export class GoldLakehouseService {
           this.logger.warn(`Could not fetch transaction for tx_msg_id: ${alertDetails.tx_msg_id}`);
         }
       }
-      
+
       if (!transactionSummary && header?.end_to_end_id) {
         try {
           this.logger.log(`Trying to fetch transaction by end_to_end_id: ${header.end_to_end_id}`);
@@ -144,7 +204,7 @@ export class GoldLakehouseService {
           this.logger.warn(`Could not fetch transaction by end_to_end_id: ${header.end_to_end_id}`);
         }
       }
-      
+
       if (!transactionSummary && header?.transaction_id) {
         try {
           this.logger.log(`Trying to fetch transaction by transaction_id: ${header.transaction_id}`);
@@ -168,7 +228,7 @@ export class GoldLakehouseService {
           this.logger.warn(`Could not fetch transaction by transaction_id: ${header.transaction_id}`);
         }
       }
-      
+
       if (!transactionSummary && header?.evaluation_id) {
         try {
           this.logger.log(`Trying to fetch transaction by evaluation_id as end_to_end_id: ${header.evaluation_id}`);
@@ -195,149 +255,247 @@ export class GoldLakehouseService {
 
       return {
         header: header ? this.stripHudiMetadata(header) : null,
-        typologies: typologies.map(t => this.stripRedundantFields(this.stripHudiMetadata(t))),
-        rules: rules.map(r => this.stripRedundantFields(this.stripHudiMetadata(r))),
+        typologies: typologies.map((t) => this.stripRedundantFields(this.stripHudiMetadata(t))),
+        rules: rules.map((r) => this.stripRedundantFields(this.stripHudiMetadata(r))),
         transaction: transactionSummary,
         alertId,
         tenantId,
       };
     } catch (error) {
       this.logger.error(`Error fetching Alert Navigator data: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to fetch Alert Navigator data',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new HttpException('Failed to fetch Alert Navigator data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionDetailData(transactionId: string, tenantId: string = 'DEFAULT') {
+  async getTransactionDetailData(transactionId: number, tenantId: string = 'DEFAULT') {
     try {
-      this.logger.log(`Fetching Transaction Detail data for transaction: ${transactionId}`);
+      this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
-      let transaction: Record<string, any> | null = null;
-      let detail: Record<string, any> | null = null;
+      const response = await this.query({
+        table_name: 'transaction_detail',
+        filters: {
+          transaction_id: transactionId,
+          tenant_id: tenantId,
+        },
+        columns: [
+          'transaction_id',
+          'tx_event_ts',
+          'tx_type',
+          'interbank_settlement_amount',
+          'interbank_settlement_currency',
+          'debtor_name',
+          'debtor_account_id',
+          'creditor_name',
+          'creditor_account_id',
+          'instg_mmb_id',
+          'instd_mmb_id',
+          'instructed_amount',
+          'instructed_currency',
+          'exchange_rate',
+          'charge_total_amount',
+          'charge_currency',
+          'tx_event_date',
+        ],
+      });
 
-      
-      try {
-        
-        let transactionResponse = await this.query({
-          table_name: 'transactions',
-          filters: { end_to_end_id: transactionId, tenant_id: tenantId },
-        });
-        transaction = transactionResponse.data?.[0] || null;
-
-       
-        if (!transaction) {
-          this.logger.log(`Trying to fetch transaction by transaction_id: ${transactionId}`);
-          transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { transaction_id: parseInt(transactionId) || transactionId, tenant_id: tenantId },
-          });
-          transaction = transactionResponse.data?.[0] || null;
-        }
-
-        
-        if (!transaction) {
-          this.logger.log(`Trying to fetch transaction by tx_msg_id: ${transactionId}`);
-          transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { tx_msg_id: transactionId, tenant_id: tenantId },
-          });
-          transaction = transactionResponse.data?.[0] || null;
-        }
-      } catch (error) {
-        this.logger.warn(`Could not fetch transaction from transactions table: ${error.message}`);
+      const rowRaw = response.data?.[0];
+      if (!rowRaw) {
+        throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
       }
 
-     
-      if (transaction) {
-        const txEndToEndId = transaction.end_to_end_id;
-        const txId = transaction.transaction_id;
-
-        
-        try {
-          const detailResponse = await this.query({
-            table_name: 'transaction_detail',
-            filters: { end_to_end_id: txEndToEndId, tenant_id: tenantId },
-          });
-          detail = detailResponse.data?.[0] || null;
-
-          if (!detail && txId) {
-            const detailResponse2 = await this.query({
-              table_name: 'transaction_detail',
-              filters: { transaction_id: txId, tenant_id: tenantId },
-            });
-            detail = detailResponse2.data?.[0] || null;
-          }
-        } catch (error) {
-          this.logger.warn(`transaction_detail table not available or empty`);
-        }
-      }
-
-      
-      let mergedData: Record<string, any> | null = null;
-      if (transaction) {
-        const strippedTransaction = this.stripHudiMetadata(transaction);
-        
-        if (detail) {
-          const strippedDetail = this.stripHudiMetadata(detail);
-          
-          
-          const coreFields = {
-            transaction_id: strippedTransaction.transaction_id,
-            end_to_end_id: strippedTransaction.end_to_end_id,
-            tx_msg_id: strippedTransaction.tx_msg_id,
-            tenant_id: strippedTransaction.tenant_id,
-          };
-          
-          
-          mergedData = { ...strippedTransaction, ...strippedDetail, ...coreFields };
-        } else {
-          mergedData = strippedTransaction;
-        }
-      }
+      const row = this.stripHudiMetadata(rowRaw);
+      const NA = 'no mapping found';
 
       return {
-        transaction: mergedData,
-        transactionId,
-        tenantId,
+        transactionOverview: {
+          transactionId: row.transaction_id ?? NA,
+          timestamp: row.tx_event_ts ?? NA,
+          type: row.tx_type ?? NA,
+          status: NA,
+        },
+
+        transactionFlow: {
+          amount: row.interbank_settlement_amount ?? NA,
+          currency: row.interbank_settlement_currency ?? NA,
+
+          debtor: {
+            name: row.debtor_name ?? NA,
+            account: row.debtor_account_id ?? NA,
+            bank: row.instd_mmb_id ?? NA,
+          },
+
+          creditor: {
+            name: row.creditor_name ?? NA,
+            account: row.creditor_account_id ?? NA,
+            bank: row.instg_mmb_id ?? NA,
+          },
+        },
+
+        debtorProfile: {
+          name: row.debtor_name ?? NA,
+          accountNumber: row.debtor_account_id ?? NA,
+          accountType: NA,
+          bank: row.instg_mmb_id ?? NA,
+          swiftCode: NA,
+          address: NA,
+        },
+
+        creditorProfile: {
+          name: row.creditor_name ?? NA,
+          accountNumber: row.creditor_account_id ?? NA,
+          accountType: NA,
+          bank: row.instd_mmb_id ?? NA,
+          swiftCode: NA,
+          address: NA,
+        },
+
+        amountAndCurrency: {
+          originalAmount: row.instructed_amount ?? NA,
+          originalCurrency: row.instructed_currency ?? NA,
+          exchangeRate: row.exchange_rate ?? NA,
+          convertedAmount: NA,
+        },
+
+        charges: {
+          senderCharges: NA,
+          intermediaryCharges: NA,
+          receiverCharges: NA,
+          totalCharges: row.charge_total_amount ?? NA,
+          chargeCurrency: row.charge_currency ?? NA,
+        },
+
+        settlementDetails: {
+          transactionTimestamp: row.tx_event_ts ?? NA,
+          settlementDate: row.tx_event_date ?? NA,
+          reference: NA,
+          purpose: NA,
+        },
+
+        meta: {
+          transactionId,
+          tenantId,
+        },
       };
     } catch (error) {
       this.logger.error(`Error fetching Transaction Detail data: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to fetch Transaction Detail data',
-        HttpStatus.INTERNAL_SERVER_ERROR
+
+      throw new HttpException('Failed to fetch Transaction Detail data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getTransactionOverviewUIData(transactionId: number, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
+
+      const response = await this.runSqlQuery(
+        `
+      SELECT *
+      FROM transaction_detail
+      WHERE transaction_id = ${transactionId}
+        AND tenant_id = '${tenantId}'
+      LIMIT 1
+      `,
+        1,
       );
+
+      const rowRaw = response?.data?.[0];
+      if (!rowRaw) {
+        throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+      }
+
+      const row = this.stripHudiMetadata(rowRaw);
+      const NA = 'no mapping found';
+
+      return {
+        transactionOverview: {
+          transactionId: row.transaction_id ?? NA,
+          timestamp: row.tx_event_ts ?? NA,
+          type: row.tx_type ?? NA,
+          status: NA, // explicitly not available
+        },
+
+        transactionFlow: {
+          amount: row.interbank_settlement_amount ?? NA,
+          currency: row.interbank_settlement_currency ?? NA,
+
+          debtor: {
+            name: row.debtor_name ?? NA,
+            account: row.debtor_account_id ?? NA,
+            bank: row.instd_mmb_id ?? NA,
+          },
+
+          creditor: {
+            name: row.creditor_name ?? NA,
+            account: row.creditor_account_id ?? NA,
+            bank: row.instg_mmb_id ?? NA,
+          },
+        },
+
+        debtorProfile: {
+          name: row.debtor_name ?? NA,
+          accountNumber: row.debtor_account_id ?? NA,
+          accountType: NA,
+          bank: row.instg_mmb_id ?? NA,
+          swiftCode: NA,
+          address: NA,
+        },
+
+        creditorProfile: {
+          name: row.creditor_name ?? NA,
+          accountNumber: row.creditor_account_id ?? NA,
+          accountType: NA,
+          bank: row.instd_mmb_id ?? NA,
+          swiftCode: NA,
+          address: NA,
+        },
+
+        amountAndCurrency: {
+          originalAmount: row.instructed_amount ?? NA,
+          originalCurrency: row.instructed_currency ?? NA,
+          exchangeRate: row.exchange_rate ?? NA,
+          convertedAmount: NA,
+        },
+
+        charges: {
+          senderCharges: NA,
+          intermediaryCharges: NA,
+          receiverCharges: NA,
+          totalCharges: row.charge_total_amount ?? NA,
+          chargeCurrency: row.charge_currency ?? NA,
+        },
+
+        settlementDetails: {
+          transactionTimestamp: row.tx_event_ts ?? NA,
+          settlementDate: row.tx_event_date ?? NA,
+          reference: NA,
+          purpose: NA,
+        },
+
+        meta: {
+          transactionId,
+          tenantId,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error building Transaction Overview UI data: ${error.message}`, error.stack);
+
+      throw new HttpException('Failed to fetch Transaction Overview data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private stripHudiMetadata(record: Record<string, any>): Record<string, any> {
-    const hudiFields = [
-      '_hoodie_commit_time',
-      '_hoodie_commit_seqno',
-      '_hoodie_record_key',
-      '_hoodie_partition_path',
-      '_hoodie_file_name',
-    ];
+    const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
 
     const cleaned = { ...record };
-    hudiFields.forEach(field => delete cleaned[field]);
+    hudiFields.forEach((field) => delete cleaned[field]);
     return cleaned;
   }
 
   private stripRedundantFields(record: Record<string, any>): Record<string, any> {
-    const redundantFields = [
-      'alert_id',
-      'tenant_id',
-      'tx_msg_id',
-      'alert_timestamp',
-      'pk',
-      'ingested_at_ts',
-    ];
+    const redundantFields = ['alert_id', 'tenant_id', 'tx_msg_id', 'alert_timestamp', 'pk', 'ingested_at_ts'];
 
     const cleaned = { ...record };
-    redundantFields.forEach(field => delete cleaned[field]);
+    redundantFields.forEach((field) => delete cleaned[field]);
     return cleaned;
   }
 }
-

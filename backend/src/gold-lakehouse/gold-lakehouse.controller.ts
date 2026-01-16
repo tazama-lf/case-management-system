@@ -15,10 +15,7 @@ export class GoldLakehouseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Alert Navigator data for visualization' })
   @ApiResponse({ status: 200 })
-  async getAlertNavigatorData(
-    @Param('alertId') alertId: number,
-    @Query('tenantId') tenantId?: string,
-  ) {
+  async getAlertNavigatorData(@Param('alertId') alertId: number, @Query('tenantId') tenantId?: string) {
     return this.goldLakehouseService.getAlertNavigatorData(alertId, tenantId);
   }
 
@@ -26,10 +23,15 @@ export class GoldLakehouseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
   @ApiResponse({ status: 200 })
-  async getTransactionDetailData(
-    @Param('transactionId') transactionId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
+  async getTransactionDetailData(@Param('transactionId') transactionId: number, @Query('tenantId') tenantId?: string) {
     return this.goldLakehouseService.getTransactionDetailData(transactionId, tenantId);
+  }
+
+  @Get('alert-navigator/:alertId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
+  @ApiResponse({ status: 200 })
+  async getAlertNavigatorMetrics(@Param('alertId') alertId: number, @Query('tenantId') tenantId?: string) {
+    return this.goldLakehouseService.getAlertNavigatorMetrics(alertId, tenantId);
   }
 }
