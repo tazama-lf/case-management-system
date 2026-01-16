@@ -27,9 +27,9 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getTransactionDetailData(transactionId, tenantId);
   }
 
-  @Get('alert-navigator/:alertId')
+  @Get('alert-navigator-metrics/:alertId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
+  @ApiOperation({ summary: 'Get Alert Navigator Metrics data for visualization' })
   @ApiResponse({ status: 200 })
   async getAlertNavigatorMetrics(@Param('alertId') alertId: number, @Query('tenantId') tenantId?: string) {
     return this.goldLakehouseService.getAlertNavigatorMetrics(alertId, tenantId);
