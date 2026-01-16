@@ -15,8 +15,8 @@ export class GoldLakehouseService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.apiUrl = this.configService.get<string>('GOLD_LAKEHOUSE_API_URL', 'http://localhost:8000');
-    this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT', 30000);
+    this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
+    this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') || 30000;
   }
 
   async query(queryRequest: QueryRequestDto): Promise<QueryResponseDto> {
@@ -95,21 +95,21 @@ export class GoldLakehouseService {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
       const sql = `
-SELECT
-  COUNT(DISTINCT t.typology_id) AS total_typologies,
-  COUNT(DISTINCT r.rule_id)     AS total_rules,
-  AVG(t.typology_score)         AS avg_typology_score
-FROM alert_navigator_header h
-LEFT JOIN alert_navigator_typologies t
-  ON t.alert_id = h.alert_id
- AND t.tenant_id = h.tenant_id
-LEFT JOIN alert_navigator_rules r
-  ON r.alert_id = h.alert_id
- AND r.tenant_id = h.tenant_id
- AND r.rule_weight > 0
-WHERE h.alert_id = ${alertId}
-  AND h.tenant_id = '${tenantId}'
-`;
+      SELECT
+        COUNT(DISTINCT t.typology_id) AS total_typologies,
+        COUNT(DISTINCT r.rule_id)     AS total_rules,
+        AVG(t.typology_score)         AS avg_typology_score
+      FROM alert_navigator_header h
+      LEFT JOIN alert_navigator_typologies t
+        ON t.alert_id = h.alert_id
+      AND t.tenant_id = h.tenant_id
+      LEFT JOIN alert_navigator_rules r
+        ON r.alert_id = h.alert_id
+      AND r.tenant_id = h.tenant_id
+      AND r.rule_weight > 0
+      WHERE h.alert_id = ${alertId}
+        AND h.tenant_id = '${tenantId}'
+      `;
 
       const response = await this.runSqlQuery(sql, 1);
       const row = response?.data?.[0];
@@ -132,134 +132,132 @@ WHERE h.alert_id = ${alertId}
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
-      const [headerResponse, typologiesResponse, rulesResponse, alertDetailsResponse] = await Promise.all([
-        this.query({
-          table_name: 'alert_navigator_header',
-          filters: { alert_id: alertId, tenant_id: tenantId },
-        }),
+      // Fetch alert with transaction data using SQL JOIN
+      const alertWithTransactionResponse = await this.runSqlQuery(
+        `
+        SELECT 
+          h.*,
+          a.alert_id as alert_alert_id,
+          a.alert_status,
+          a.tx_type as alert_tx_type,
+          a.tx_amount as alert_tx_amount,
+          a.tx_ccy as alert_tx_ccy,
+          a.created_at_ts,
+          t.transaction_id as tx_transaction_id,
+          t.end_to_end_id,
+          t.tx_msg_id,
+          t.tx_amount,
+          t.tx_ccy,
+          t.event_ts,
+          t.tx_status,
+          t.tx_type,
+          t.instg_mmb_id,
+          t.instd_mmb_id
+        FROM alert_navigator_header h
+        LEFT JOIN alerts a ON h.alert_id = a.alert_id AND h.tenant_id = a.tenant_id
+        LEFT JOIN transactions t ON (
+          (a.tx_msg_id IS NOT NULL AND t.tx_msg_id = a.tx_msg_id) OR
+          (h.end_to_end_id IS NOT NULL AND t.end_to_end_id = h.end_to_end_id) OR
+          (h.transaction_id IS NOT NULL AND t.transaction_id = h.transaction_id)
+        ) AND t.tenant_id = h.tenant_id
+        WHERE h.alert_id = ${alertId}
+          AND h.tenant_id = '${tenantId}'
+        LIMIT 1
+        `,
+        1,
+      );
+
+      const [typologiesResponse] = await Promise.all([
         this.query({
           table_name: 'alert_navigator_typologies',
           filters: { alert_id: alertId, tenant_id: tenantId },
         }),
-        this.query({
-          table_name: 'alert_navigator_rules',
-          filters: { alert_id: alertId, tenant_id: tenantId },
-        }),
-        this.query({
-          table_name: 'alerts',
-          filters: { alert_id: alertId, tenant_id: tenantId },
-        }),
       ]);
 
-      const header = headerResponse.data?.[0] || null;
-      const typologies = typologiesResponse.data || [];
-      const rules = rulesResponse.data || [];
-      const alertDetails = alertDetailsResponse.data?.[0] || null;
+      // Fetch rules with rule_weight > 0 using SQL
+      const rulesResponse = await this.runSqlQuery(
+        `
+        SELECT r.*, rules.rule_desc
+        FROM alert_navigator_rules r
+        LEFT JOIN rules ON r.rule_id = rules.rule_id
+        WHERE r.alert_id = ${alertId}
+          AND r.tenant_id = '${tenantId}'
+          AND r.rule_weight > 0
+        `,
+        1000,
+      );
 
-      let transactionSummary: any = null;
+      const combinedRaw = alertWithTransactionResponse?.data?.[0];
 
-      if (alertDetails?.tx_msg_id) {
-        try {
-          const transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { tx_msg_id: alertDetails.tx_msg_id, tenant_id: tenantId },
-            columns: ['end_to_end_id', 'tx_msg_id', 'tx_amount', 'tx_ccy', 'event_ts', 'tx_status', 'transaction_id'],
-          });
-          const txData = transactionResponse.data?.[0];
-          if (txData) {
-            transactionSummary = {
-              transaction_id: txData.end_to_end_id,
-              tx_msg_id: txData.tx_msg_id,
-              amount: txData.tx_amount,
-              currency: txData.tx_ccy,
-              timestamp: txData.event_ts,
-              status: txData.tx_status,
-            };
-          }
-        } catch (error) {
-          this.logger.warn(`Could not fetch transaction for tx_msg_id: ${alertDetails.tx_msg_id}`);
-        }
+      if (!combinedRaw) {
+        throw new HttpException('Alert not found', HttpStatus.NOT_FOUND);
       }
 
-      if (!transactionSummary && header?.end_to_end_id) {
-        try {
-          this.logger.log(`Trying to fetch transaction by end_to_end_id: ${header.end_to_end_id}`);
-          const transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { end_to_end_id: header.end_to_end_id, tenant_id: tenantId },
-            columns: ['end_to_end_id', 'tx_msg_id', 'tx_amount', 'tx_ccy', 'event_ts', 'tx_status', 'transaction_id'],
-          });
-          const txData = transactionResponse.data?.[0];
-          if (txData) {
-            transactionSummary = {
-              transaction_id: txData.end_to_end_id,
-              tx_msg_id: txData.tx_msg_id,
-              amount: txData.tx_amount,
-              currency: txData.tx_ccy,
-              timestamp: txData.event_ts,
-              status: txData.tx_status,
-            };
-          }
-        } catch (error) {
-          this.logger.warn(`Could not fetch transaction by end_to_end_id: ${header.end_to_end_id}`);
-        }
-      }
+      const combined = this.stripHudiMetadata(combinedRaw);
+      const typologiesRaw = typologiesResponse.data || [];
+      const rulesRaw = rulesResponse?.data || [];
 
-      if (!transactionSummary && header?.transaction_id) {
-        try {
-          this.logger.log(`Trying to fetch transaction by transaction_id: ${header.transaction_id}`);
-          const transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { transaction_id: header.transaction_id, tenant_id: tenantId },
-            columns: ['end_to_end_id', 'tx_msg_id', 'tx_amount', 'tx_ccy', 'event_ts', 'tx_status', 'transaction_id'],
-          });
-          const txData = transactionResponse.data?.[0];
-          if (txData) {
-            transactionSummary = {
-              transaction_id: txData.end_to_end_id,
-              tx_msg_id: txData.tx_msg_id,
-              amount: txData.tx_amount,
-              currency: txData.tx_ccy,
-              timestamp: txData.event_ts,
-              status: txData.tx_status,
-            };
-          }
-        } catch (error) {
-          this.logger.warn(`Could not fetch transaction by transaction_id: ${header.transaction_id}`);
-        }
-      }
+      // Alert Metadata 
+      const alertMetadata = {
+        alertId: combined.alert_id,
+        transactionId: combined.tx_transaction_id || combined.end_to_end_id || combined.transaction_id,
+        timestamp: combined.created_at_ts || combined.ingested_at_ts,
+        transactionType: combined.alert_tx_type || combined.tx_type,
+        amount: combined.alert_tx_amount || combined.tx_amount,
+        currency: combined.alert_tx_ccy || combined.tx_ccy,
+        status: combined.alert_status,
+        reason: combined.alert_reason,
+        blockReason: combined.block_or_override_status,
+      };
 
-      if (!transactionSummary && header?.evaluation_id) {
-        try {
-          this.logger.log(`Trying to fetch transaction by evaluation_id as end_to_end_id: ${header.evaluation_id}`);
-          const transactionResponse = await this.query({
-            table_name: 'transactions',
-            filters: { end_to_end_id: header.evaluation_id, tenant_id: tenantId },
-            columns: ['end_to_end_id', 'tx_msg_id', 'tx_amount', 'tx_ccy', 'event_ts', 'tx_status', 'transaction_id'],
-          });
-          const txData = transactionResponse.data?.[0];
-          if (txData) {
-            transactionSummary = {
-              transaction_id: txData.end_to_end_id,
-              tx_msg_id: txData.tx_msg_id,
-              amount: txData.tx_amount,
-              currency: txData.tx_ccy,
-              timestamp: txData.event_ts,
-              status: txData.tx_status,
+      // Typologies 
+      const typologies = typologiesRaw.map((t) => {
+        const typology = this.stripHudiMetadata(t);
+
+        // Find rules that belong to this typology
+        const typologyRules = rulesRaw
+          .filter((r) => {
+            const rule = this.stripHudiMetadata(r);
+            return rule.typology_cfg === typology.typology_cfg;
+          })
+          .map((r) => {
+            const rule = this.stripHudiMetadata(r);
+            return {
+              ruleId: rule.rule_id,
+              ruleDesc: rule.rule_desc,
+              ruleWeight: rule.rule_weight,
+              subRef: rule.rule_sub_ref,
             };
-          }
-        } catch (error) {
-          this.logger.warn(`Could not fetch transaction by evaluation_id: ${header.evaluation_id}`);
-        }
-      }
+          });
+
+        return {
+          typologyId: typology.typology_id,
+          typologyCfg: typology.typology_cfg,
+          typologyScore: typology.typology_score,
+          alertThreshold: typology.alert_threshold,
+          interdictionThreshold: typology.interdiction_threshold,
+          ruleCount: typology.rule_count_in_typology,
+          rules: typologyRules,
+        };
+      });
+
+      // Calculate summary statistics
+      const totalTypologies = typologies.length;
+      const totalRules = rulesRaw.length;
+      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + (t.typologyScore || 0), 0) / totalTypologies : 0;
 
       return {
-        header: header ? this.stripHudiMetadata(header) : null,
-        typologies: typologies.map((t) => this.stripRedundantFields(this.stripHudiMetadata(t))),
-        rules: rules.map((r) => this.stripRedundantFields(this.stripHudiMetadata(r))),
-        transaction: transactionSummary,
-        alertId,
-        tenantId,
+        alertMetadata,
+        typologies,
+        statistics: {
+          totalTypologies,
+          totalRules,
+          avgScore: Math.round(avgScore * 100) / 100,
+        },
+        meta: {
+          alertId,
+          tenantId,
+        },
       };
     } catch (error) {
       this.logger.error(`Error fetching Alert Navigator data: ${error.message}`, error.stack);
