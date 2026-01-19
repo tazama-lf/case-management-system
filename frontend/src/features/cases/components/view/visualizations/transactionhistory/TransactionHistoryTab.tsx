@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import {
   LineChart,
@@ -13,11 +13,26 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from 'recharts';
+import TransactionDetailsService from '../transactiondetails/services/service';
+import TransactionHistoryService from './services/service';
+import type { TransactionHistoryResponse } from './types';
 
-const TransactionHistoryTab: React.FC = () => {
-  const [timeFilter, setTimeFilter] = React.useState('Last Month');
-  const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
-  const [showBenfordsAnalysis, setShowBenfordsAnalysis] = React.useState(false);
+interface TransactionHistoryTabProps {
+  caseId?: string;
+  transactionId?: string;
+}
+
+const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
+  caseId: _caseId,
+  transactionId,
+}) => {
+  const [timeFilter, setTimeFilter] = useState('Last Month');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showBenfordsAnalysis, setShowBenfordsAnalysis] = useState(false);
+  const [data, setData] = useState<TransactionHistoryResponse | null>(null);
+  const [currentIban, setCurrentIban] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const timeFilters = [
     'Last Day',
@@ -27,64 +42,41 @@ const TransactionHistoryTab: React.FC = () => {
     'All History',
   ];
 
-  const chartData = React.useMemo(
-    () => [
-      { day: 0, date: 'Nov 25', amount: 8000, count: 2, alert: false },
-      { day: 1, date: 'Nov 26', amount: 9500, count: 3, alert: false },
-      { day: 2, date: 'Nov 27', amount: 11000, count: 3, alert: false },
-      { day: 3, date: 'Nov 28', amount: 10000, count: 2, alert: false },
-      { day: 4, date: 'Nov 29', amount: 7000, count: 2, alert: false },
-      { day: 5, date: 'Nov 30', amount: 5000, count: 1, alert: false },
-      { day: 6, date: 'Dec 1', amount: 6500, count: 2, alert: false },
-      { day: 7, date: 'Dec 2', amount: 9000, count: 3, alert: true },
-      { day: 8, date: 'Dec 3', amount: 11500, count: 3, alert: false },
-      { day: 9, date: 'Dec 4', amount: 10500, count: 2, alert: false },
-      { day: 10, date: 'Dec 5', amount: 7500, count: 2, alert: false },
-      { day: 11, date: 'Dec 6', amount: 4500, count: 1, alert: false },
-      { day: 12, date: 'Dec 7', amount: 3500, count: 1, alert: false },
-      { day: 13, date: 'Dec 8', amount: 5500, count: 2, alert: false },
-      { day: 14, date: 'Dec 9', amount: 13500, count: 4, alert: true },
-      { day: 15, date: 'Dec 10', amount: 12000, count: 3, alert: false },
-      { day: 16, date: 'Dec 11', amount: 8000, count: 2, alert: false },
-      { day: 17, date: 'Dec 12', amount: 6000, count: 2, alert: false },
-      { day: 18, date: 'Dec 13', amount: 9500, count: 3, alert: false },
-      { day: 19, date: 'Dec 14', amount: 12500, count: 3, alert: false },
-      { day: 20, date: 'Dec 15', amount: 13000, count: 4, alert: false },
-      { day: 21, date: 'Dec 16', amount: 10500, count: 3, alert: false },
-      { day: 22, date: 'Dec 17', amount: 9000, count: 2, alert: false },
-      { day: 23, date: 'Dec 18', amount: 7500, count: 2, alert: false },
-      { day: 24, date: 'Dec 19', amount: 11000, count: 3, alert: false },
-      { day: 25, date: 'Dec 20', amount: 13500, count: 4, alert: true },
-      { day: 26, date: 'Dec 21', amount: 12000, count: 3, alert: false },
-      { day: 27, date: 'Dec 22', amount: 8500, count: 2, alert: false },
-      { day: 28, date: 'Dec 23', amount: 10500, count: 3, alert: false },
-      { day: 29, date: 'Dec 24', amount: 12000, count: 3, alert: false },
-    ],
-    [],
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!transactionId) return;
 
-  const volumeDistribution = [
-    { date: 'Dec 11', value: 5 },
-    { date: 'Dec 12', value: 3 },
-    { date: 'Dec 13', value: 2 },
-    { date: 'Dec 14', value: 8 },
-    { date: 'Dec 15', value: 6 },
-    { date: 'Dec 16', value: 5 },
-    { date: 'Dec 17', value: 3 },
-    { date: 'Dec 18', value: 9 },
-    { date: 'Dec 19', value: 10 },
-    { date: 'Dec 20', value: 6 },
-    { date: 'Dec 21', value: 5 },
-    { date: 'Dec 22', value: 6 },
-  ];
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Get Transaction Details (for IBAN)
+        const details =
+          await TransactionDetailsService.getTransactionDetails(transactionId);
+        const entityId =
+          details.creditorProfile?.account?.iban ||
+          details.debtorProfile?.account?.iban ||
+          'cdtrAcct_3a1f3d24fb2046f2a28dc1fa506d6d69'; // Fallback for testing/missing data
 
-  const cumulativeData = React.useMemo(() => {
-    let sum = 0;
-    return chartData.map((d) => ({
-      date: d.date,
-      cumulative: (sum += d.amount),
-    }));
-  }, [chartData]);
+        if (!entityId) {
+          throw new Error('No entity ID (IBAN) found for this transaction');
+        }
+
+        setCurrentIban(entityId);
+
+        // 2. Get History
+        const response =
+          await TransactionHistoryService.getTransactionHistory(entityId);
+        setData(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load history');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [transactionId]);
 
   const benfordsData = [
     { digit: '1', expected: 30.1, actual: 32 },
@@ -100,6 +92,33 @@ const TransactionHistoryTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 rounded-md bg-red-50 border border-red-200">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Error loading history
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header with Filter */}
       <div className="flex items-center justify-between">
         <div>
@@ -107,7 +126,8 @@ const TransactionHistoryTab: React.FC = () => {
             Transaction History Analysis
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Historical transaction patterns and behavioral analysis for ACC-1234
+            Historical transaction patterns and behavioral analysis for{' '}
+            {currentIban || '...'}
           </p>
         </div>
         <div className="relative">
@@ -147,29 +167,57 @@ const TransactionHistoryTab: React.FC = () => {
           <div className="text-xs font-medium text-gray-500 uppercase mb-1">
             Total Volume
           </div>
-          <div className="text-2xl font-bold text-gray-900">$308,255</div>
-          <div className="text-xs text-gray-500 mt-1">Avg. $1,902/day</div>
+          <div className="text-2xl font-bold text-gray-900">
+            ${data?.summary ? data.summary.totalVolume.toLocaleString() : '0'}
+          </div>
+          {data?.summary && (
+            <div className="text-xs text-gray-500 mt-1">
+              Avg. $
+              {(
+                data.summary.totalVolume / (data.summary.durationDays || 1)
+              ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              /day
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs font-medium text-gray-500 uppercase mb-1">
             Total Transactions
           </div>
-          <div className="text-2xl font-bold text-gray-900">162</div>
-          <div className="text-xs text-gray-500 mt-1">Avg. 5 per day</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {data?.summary?.totalTransactions.toLocaleString() || '0'}
+          </div>
+          {data?.summary && (
+            <div className="text-xs text-gray-500 mt-1">
+              Avg. {data.summary.avgTransactionsPerDay.toFixed(1)} per day
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs font-medium text-gray-500 uppercase mb-1">
             Alerts Triggered
           </div>
-          <div className="text-2xl font-bold text-gray-900">6</div>
-          <div className="text-xs text-gray-500 mt-1">Over last 6 days</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {data?.summary?.alertsTriggered || '0'}
+          </div>
+          {data?.summary && (
+            <div className="text-xs text-gray-500 mt-1">
+              {data.summary.alertsPercentage.toFixed(1)}% of total
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs font-medium text-gray-500 uppercase mb-1">
             Investigated
           </div>
-          <div className="text-2xl font-bold text-gray-900">2</div>
-          <div className="text-xs text-gray-500 mt-1">Cases opened</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {data?.summary?.investigated || '0'}
+          </div>
+          {data?.summary && (
+            <div className="text-xs text-gray-500 mt-1">
+              {data.summary.investigatedPercentage.toFixed(1)}% of total
+            </div>
+          )}
         </div>
       </div>
 
@@ -180,7 +228,7 @@ const TransactionHistoryTab: React.FC = () => {
         </h4>
         <ResponsiveContainer width="100%" height={350}>
           <ComposedChart
-            data={chartData}
+            data={data?.timeline || []}
             margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -188,23 +236,22 @@ const TransactionHistoryTab: React.FC = () => {
               dataKey="date"
               tick={{ fontSize: 12, fill: '#9ca3af' }}
               stroke="#e5e7eb"
+              tickFormatter={(value) =>
+                new Date(value).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }
             />
             <YAxis
               yAxisId="left"
               tick={{ fontSize: 12, fill: '#9ca3af' }}
               stroke="#e5e7eb"
               label={{
-                value: 'Amount ($)',
+                value: 'Amount',
                 angle: -90,
                 position: 'insideLeft',
               }}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 12, fill: '#9ca3af' }}
-              stroke="#e5e7eb"
-              label={{ value: 'Count', angle: 90, position: 'insideRight' }}
             />
             <Tooltip
               contentStyle={{
@@ -213,29 +260,18 @@ const TransactionHistoryTab: React.FC = () => {
                 borderRadius: '6px',
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
               }}
-              formatter={(value) => value}
+              formatter={(value) =>
+                typeof value === 'number' ? value.toLocaleString() : value
+              }
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="line" />
-            <Line
+            <Bar
               yAxisId="left"
-              type="monotone"
               dataKey="amount"
-              stroke="#60a5fa"
-              strokeWidth={2.5}
-              dot={false}
-              isAnimationActive={false}
-              name="Amount ($)"
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="count"
-              stroke="#14b8a6"
-              strokeWidth={2.5}
-              dot={false}
-              isAnimationActive={false}
-              name="Transaction Count"
+              fill="#60a5fa"
+              name="Amount"
+              barSize={20}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -250,7 +286,7 @@ const TransactionHistoryTab: React.FC = () => {
           </h4>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart
-              data={cumulativeData}
+              data={data?.cumulative || []}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f9fafb" />
@@ -258,6 +294,12 @@ const TransactionHistoryTab: React.FC = () => {
                 dataKey="date"
                 tick={{ fontSize: 12, fill: '#9ca3af' }}
                 stroke="#e5e7eb"
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                }
               />
               <YAxis
                 tick={{ fontSize: 12, fill: '#9ca3af' }}
@@ -279,7 +321,7 @@ const TransactionHistoryTab: React.FC = () => {
               />
               <Line
                 type="monotone"
-                dataKey="cumulative"
+                dataKey="cumulativeAmount"
                 stroke="#8b5cf6"
                 strokeWidth={2.5}
                 dot={{ fill: '#8b5cf6', r: 3 }}
@@ -297,7 +339,7 @@ const TransactionHistoryTab: React.FC = () => {
           </h4>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
-              data={volumeDistribution}
+              data={data?.volumeDistribution || []}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f9fafb" />
@@ -305,6 +347,12 @@ const TransactionHistoryTab: React.FC = () => {
                 dataKey="date"
                 tick={{ fontSize: 12, fill: '#9ca3af' }}
                 stroke="#e5e7eb"
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                }
               />
               <YAxis
                 tick={{ fontSize: 12, fill: '#9ca3af' }}
@@ -471,27 +519,70 @@ const TransactionHistoryTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50">
-                <td className="px-5 py-4 text-sm font-medium text-gray-900">
-                  TXN-8921
-                </td>
-                <td className="px-5 py-4 text-sm text-gray-900">2024-01-15</td>
-                <td className="px-5 py-4 text-sm text-gray-900">
-                  Wire Transfer
-                </td>
-                <td className="px-5 py-4 text-sm text-gray-900">ABC Corp</td>
-                <td className="px-5 py-4 text-sm text-gray-900">$12,500</td>
-                <td className="px-5 py-4">
-                  <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-red-200">
-                    Alert
-                  </span>
-                </td>
-                <td className="px-5 py-4">
-                  <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    View Details
-                  </button>
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-5 py-4 text-center text-sm text-gray-500"
+                  >
+                    Loading history...
+                  </td>
+                </tr>
+              ) : !data?.recentTransactions?.length ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-5 py-4 text-center text-sm text-gray-500"
+                  >
+                    No transactions found.
+                  </td>
+                </tr>
+              ) : (
+                data.recentTransactions.map((txn) => (
+                  <tr key={txn.transactionId} className="hover:bg-gray-50">
+                    <td className="px-5 py-4 text-sm font-medium text-gray-900">
+                      {txn.transactionId}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-900">
+                      {new Date(txn.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-900">
+                      {txn.type}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-900">
+                      {txn.counterparty}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-900">
+                      ${txn.amount.toLocaleString()}
+                    </td>
+                    <td className="px-5 py-4">
+                      {/* Status is now an array [] in the sample, adjusting logic */}
+                      {Array.isArray(txn.status) && txn.status.length > 0 ? (
+                        txn.status.map((s) => (
+                          <span
+                            key={s}
+                            className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-50 text-gray-700 ring-1 ring-gray-200 mr-1"
+                          >
+                            {s}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200">
+                          Completed
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <a
+                        href={txn.actions?.viewDetailsLink || '#'}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View Details
+                      </a>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
