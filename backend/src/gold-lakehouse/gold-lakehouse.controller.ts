@@ -55,26 +55,33 @@ export class GoldLakehouseController {
   @ApiResponse({ status: 200 })
   async getConditionsSummary(
     @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('fromDate') fromDate: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('fromDate') fromDate?: string,
   ) {
-    if (!accountId || !tenantId || !fromDate) {
-      throw new BadRequestException('accountId, tenantId and fromDate are required');
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getConditionsSummary(accountId, tenantId, fromDate);
+    return this.goldLakehouseService.getConditionsSummary(
+      accountId,
+      tenantId || 'DEFAULT',
+      fromDate,
+    );
   }
 
   @Get('conditions')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Conditions list (active / expired / future)' })
   @ApiResponse({ status: 200 })
-  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId: string) {
-    if (!accountId || !tenantId) {
-      throw new BadRequestException('accountId and tenantId are required');
+  async getConditionsList(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getConditionsList(accountId, tenantId);
+    return this.goldLakehouseService.getConditionsList(accountId, tenantId || 'DEFAULT');
   }
 
   @Get('conditions/evaluated-transactions')
@@ -85,14 +92,18 @@ export class GoldLakehouseController {
   @ApiResponse({ status: 200 })
   async getEvaluatedTransactions(
     @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('fromDate') fromDate: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('fromDate') fromDate?: string,
   ) {
-    if (!accountId || !tenantId || !fromDate) {
-      throw new BadRequestException('accountId, tenantId and fromDate are required');
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
+    return this.goldLakehouseService.getEvaluatedTransactions(
+      accountId,
+      tenantId || 'DEFAULT',
+      fromDate,
+    );
   }
 
   @Get('transaction-history/:entityId')

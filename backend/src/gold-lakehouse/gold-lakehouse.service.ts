@@ -494,8 +494,10 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsSummary(accountId: string, tenantId: string, fromDate: string) {
+  async getConditionsSummary(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
+      const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+
       const sql = `
       SELECT
         COUNT(DISTINCT cond_condition_id)
@@ -507,7 +509,7 @@ export class GoldLakehouseService {
       FROM conditions_timeline
       WHERE cond_account_id = '${accountId}'
         AND cond_tenant_id = '${tenantId}'
-        AND bucket_start >= '${fromDate}'
+        ${dateFilter}
     `;
 
       const response = await this.runSqlQuery(sql, 1);
@@ -525,7 +527,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsList(accountId: string, tenantId: string) {
+  async getConditionsList(accountId: string, tenantId: string = 'DEFAULT') {
     try {
       const response = await this.query({
         table_name: 'conditions',
@@ -561,8 +563,10 @@ export class GoldLakehouseService {
     }
   }
 
-  async getEvaluatedTransactions(accountId: string, tenantId: string, fromDate: string) {
+  async getEvaluatedTransactions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
+      const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+
       const sql = `
       SELECT
         tx_transaction_id,
@@ -576,7 +580,7 @@ export class GoldLakehouseService {
       FROM conditions_timeline
       WHERE cond_account_id = '${accountId}'
         AND cond_tenant_id = '${tenantId}'
-        AND bucket_start >= '${fromDate}'
+        ${dateFilter}
       ORDER BY tx_event_ts DESC
     `;
 
