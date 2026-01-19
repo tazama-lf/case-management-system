@@ -60,7 +60,7 @@ export class GoldLakehouseService {
 
   async runSqlQuery(sql: string, limit = 1) {
     try {
-      this.logger.log(`Running raw SQL query on Gold Lakehouse`);
+      this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.debug(sql);
 
       const response = await firstValueFrom(
@@ -520,7 +520,7 @@ export class GoldLakehouseService {
         futureConditions: Number(row.future_conditions ?? 0),
       };
     } catch (error) {
-      this.logger.error(`Error fetching conditions summary`, error.stack);
+      this.logger.error('Error fetching conditions summary', error.stack);
       throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -556,7 +556,7 @@ export class GoldLakehouseService {
         };
       });
     } catch (error) {
-      this.logger.error(`Error fetching conditions list`, error.stack);
+      this.logger.error('Error fetching conditions list', error.stack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -594,7 +594,7 @@ export class GoldLakehouseService {
         reason: r.cond_reason ?? 'No conditions triggered',
       }));
     } catch (error) {
-      this.logger.error(`Error fetching evaluated transactions`, error.stack);
+      this.logger.error('Error fetching evaluated transactions', error.stack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -626,9 +626,7 @@ export class GoldLakehouseService {
       this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
 
       // Build date filter if provided
-      const dateFilter = startDate && endDate 
-        ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` 
-        : '';
+      const dateFilter = startDate && endDate ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` : '';
 
       // Query 1: Fetch EVENT rows with transaction details
       const eventsResponse = await this.runSqlQuery(
@@ -662,9 +660,7 @@ export class GoldLakehouseService {
       // Query 2: Fetch AGG rows for volume distribution (if granularity provided)
       let aggregates: any[] = [];
       if (granularity) {
-        const aggDateFilter = startDate && endDate 
-          ? `AND bucket_start BETWEEN '${startDate}' AND '${endDate}'` 
-          : '';
+        const aggDateFilter = startDate && endDate ? `AND bucket_start BETWEEN '${startDate}' AND '${endDate}'` : '';
 
         const aggResponse = await this.runSqlQuery(
           `
@@ -731,7 +727,7 @@ export class GoldLakehouseService {
         durationDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       } else if (events.length > 0) {
         // Calculate from actual data
-        const dates = events.map(e => new Date(e.event_date).getTime()).sort();
+        const dates = events.map((e) => new Date(e.event_date).getTime()).sort();
         durationDays = Math.ceil((dates[dates.length - 1] - dates[0]) / (1000 * 60 * 60 * 24)) + 1;
       }
 
@@ -775,17 +771,12 @@ export class GoldLakehouseService {
       // Transform recent transactions table (top 20)
       const recentTransactions = events.slice(0, 20).map((e) => {
         // Determine counterparty based on entity role
-        const counterparty =
-          e.entity_role === 'DEBTOR' 
-            ? e.creditor_name || 'Unknown Creditor' 
-            : e.debtor_name || 'Unknown Debtor';
+        const counterparty = e.entity_role === 'DEBTOR' ? e.creditor_name || 'Unknown Creditor' : e.debtor_name || 'Unknown Debtor';
 
-        
         const status: string[] = [];
         if (e.is_alerted === 1) status.push('Alert');
         if (e.is_investigated === 1) status.push('Investigated');
 
-        
         return {
           transactionId: e.transaction_id,
           date: e.event_date,
@@ -804,7 +795,7 @@ export class GoldLakehouseService {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
           totalTransactions: totalTransactions,
-          transactionCount: totalTransactions, 
+          transactionCount: totalTransactions,
           alertsTriggered: alertsTriggered,
           alertsPercentage: Math.round(alertsPercentage * 100) / 100,
           investigated: investigated,

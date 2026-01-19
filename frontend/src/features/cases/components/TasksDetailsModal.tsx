@@ -8,7 +8,6 @@ import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
-import CustomerProfileTab from './view/CustomerProfileTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
@@ -165,7 +164,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               [
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
-                { key: 'customer', label: 'Customer Profile' },
                 { key: 'evidence', label: 'Evidence' },
                 { key: 'visualizations', label: 'Visualizations' },
                 { key: 'notes', label: 'Investigation Notes' },
@@ -195,9 +193,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <>
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
                 <TaskDetailsTab row={row} tasks={tasks} loadingTasks={loadingTasks} />
-              </div>
-              <div style={{ display: tab === 'customer' ? 'block' : 'none' }}>
-                <CustomerProfileTab key={transactionId || 'no-txn'} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
