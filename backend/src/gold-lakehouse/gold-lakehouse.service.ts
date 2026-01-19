@@ -509,4 +509,237 @@ export class GoldLakehouseService {
     redundantFields.forEach((field) => delete cleaned[field]);
     return cleaned;
   }
+
+  async getTransactionHistoryData(
+    entityId: string,
+    tenantId: string = 'DEFAULT',
+    startDate?: string,
+    endDate?: string,
+    granularity?: string,
+  ) {
+    try {
+      this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
+
+      // Build date filter if provided
+      const dateFilter = startDate && endDate 
+        ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` 
+        : '';
+
+      // Query 1: Fetch EVENT rows with transaction details
+      const eventsResponse = await this.runSqlQuery(
+        `
+        SELECT 
+          th.transaction_id,
+          th.event_date,
+          th.tx_amount,
+          th.tx_ccy,
+          th.tx_type,
+          th.is_alerted,
+          th.is_investigated,
+          th.cum_tx_count,
+          th.cum_tx_amount,
+          th.entity_role,
+          td.debtor_name,
+          td.creditor_name
+        FROM transaction_history th
+        LEFT JOIN transaction_detail td 
+          ON th.transaction_id = td.transaction_id 
+          AND th.tenant_id = td.tenant_id
+        WHERE th.row_type = 'EVENT'
+          AND th.entity_id = '${entityId}'
+          AND th.tenant_id = '${tenantId}'
+          ${dateFilter}
+        ORDER BY th.event_date DESC
+        `,
+        1000,
+      );
+
+      // Query 2: Fetch AGG rows for volume distribution (if granularity provided)
+      let aggregates: any[] = [];
+      if (granularity) {
+        const aggDateFilter = startDate && endDate 
+          ? `AND bucket_start BETWEEN '${startDate}' AND '${endDate}'` 
+          : '';
+
+        const aggResponse = await this.runSqlQuery(
+          `
+          SELECT 
+            bucket_start,
+            bucket_tx_count,
+            bucket_tx_amount,
+            bucket_granularity
+          FROM transaction_history
+          WHERE row_type = 'AGG'
+            AND entity_id = '${entityId}'
+            AND bucket_granularity = '${granularity}'
+            AND tenant_id = '${tenantId}'
+            ${aggDateFilter}
+          ORDER BY bucket_start ASC
+          `,
+          1000,
+        );
+        aggregates = (aggResponse?.data || []).map((a) => this.stripHudiMetadata(a));
+      }
+
+      const events = (eventsResponse?.data || []).map((e) => this.stripHudiMetadata(e));
+
+      if (events.length === 0) {
+        this.logger.warn(`No transaction history found for entity: ${entityId}`);
+      }
+
+      // Query 3: Fetch baseline data from counterparty_account_links for expected metrics
+      let expectedTxCount: number | null = null;
+      let expectedVolume: number | null = null;
+      try {
+        const baselineResponse = await this.runSqlQuery(
+          `
+          SELECT 
+            SUM(tx_count) as total_tx_count,
+            SUM(total_amount) as total_amount
+          FROM counterparty_account_links
+          WHERE account_id = '${entityId}'
+            AND tenant_id = '${tenantId}'
+          `,
+          100,
+        );
+        const baseline = baselineResponse?.data?.[0];
+        if (baseline) {
+          const baselineData = this.stripHudiMetadata(baseline);
+          expectedTxCount = parseInt(baselineData.total_tx_count) || null;
+          expectedVolume = parseFloat(baselineData.total_amount) || null;
+        }
+      } catch (error) {
+        this.logger.warn(`Could not fetch baseline data for entity: ${entityId}`);
+      }
+
+      // Calculate summary statistics
+      const totalTransactions = events.length;
+      const totalVolume = events.reduce((sum, e) => sum + (parseFloat(e.tx_amount) || 0), 0);
+      const alertsTriggered = events.filter((e) => e.is_alerted === 1).length;
+      const investigated = events.filter((e) => e.is_investigated === 1).length;
+
+      // Calculate time range
+      let durationDays = 30; // default
+      if (startDate && endDate) {
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        durationDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      } else if (events.length > 0) {
+        // Calculate from actual data
+        const dates = events.map(e => new Date(e.event_date).getTime()).sort();
+        durationDays = Math.ceil((dates[dates.length - 1] - dates[0]) / (1000 * 60 * 60 * 24)) + 1;
+      }
+
+      // Calculate aggregates from bucket data
+      const bucketTotalVolume = aggregates.reduce((sum, a) => sum + (parseFloat(a.bucket_tx_amount) || 0), 0);
+      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count) || 0), 0);
+
+      // Calculate percentages and averages
+      const alertsPercentage = totalTransactions > 0 ? (alertsTriggered / totalTransactions) * 100 : 0;
+      const investigatedPercentage = totalTransactions > 0 ? (investigated / totalTransactions) * 100 : 0;
+      const avgTransactionsPerDay = durationDays > 0 ? totalTransactions / durationDays : 0;
+
+      // Transform timeline data with cumulative values
+      const timeline = events.map((e) => ({
+        transactionId: e.transaction_id,
+        date: e.event_date,
+        amount: parseFloat(e.tx_amount) || 0,
+        currency: e.tx_ccy,
+        type: e.tx_type || 'Unknown',
+        isAlerted: e.is_alerted === 1,
+        isInvestigated: e.is_investigated === 1,
+      }));
+
+      // Transform cumulative data (sorted by date ascending)
+      const cumulative = events
+        .map((e) => ({
+          date: e.event_date,
+          cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
+          cumulativeCount: parseInt(e.cum_tx_count) || 0,
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Transform volume distribution
+      const volumeDistribution = aggregates.map((a) => ({
+        bucketStart: a.bucket_start,
+        granularity: a.bucket_granularity,
+        transactionCount: parseInt(a.bucket_tx_count) || 0,
+        totalVolume: parseFloat(a.bucket_tx_amount) || 0,
+      }));
+
+      // Transform recent transactions table (top 20)
+      const recentTransactions = events.slice(0, 20).map((e) => {
+        // Determine counterparty based on entity role
+        const counterparty =
+          e.entity_role === 'DEBTOR' 
+            ? e.creditor_name || 'Unknown Creditor' 
+            : e.debtor_name || 'Unknown Debtor';
+
+        
+        const status: string[] = [];
+        if (e.is_alerted === 1) status.push('Alert');
+        if (e.is_investigated === 1) status.push('Investigated');
+
+        
+        return {
+          transactionId: e.transaction_id,
+          date: e.event_date,
+          type: e.tx_type || 'Unknown',
+          counterparty: counterparty,
+          amount: parseFloat(e.tx_amount) || 0,
+          currency: e.tx_ccy,
+          status: status,
+          actions: {
+            viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
+          },
+        };
+      });
+
+      return {
+        summary: {
+          totalVolume: Math.round(totalVolume * 100) / 100,
+          totalTransactions: totalTransactions,
+          transactionCount: totalTransactions, 
+          alertsTriggered: alertsTriggered,
+          alertsPercentage: Math.round(alertsPercentage * 100) / 100,
+          investigated: investigated,
+          investigatedPercentage: Math.round(investigatedPercentage * 100) / 100,
+          avgTransactionsPerDay: Math.round(avgTransactionsPerDay * 100) / 100,
+          durationDays: durationDays,
+          bucketTotalVolume: Math.round(bucketTotalVolume * 100) / 100,
+          bucketTotalTransactions: bucketTotalTransactions,
+          expected: {
+            transactionCount: expectedTxCount,
+            volume: expectedVolume ? Math.round(expectedVolume * 100) / 100 : null,
+          },
+          actual: {
+            transactionCount: totalTransactions,
+            volume: Math.round(totalVolume * 100) / 100,
+          },
+        },
+        timeline: timeline,
+        cumulative: cumulative,
+        volumeDistribution: volumeDistribution,
+        recentTransactions: recentTransactions,
+        meta: {
+          entityId: entityId,
+          tenantId: tenantId,
+          granularity: granularity || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          eventRowCount: events.length,
+          aggRowCount: aggregates.length,
+          queryTimestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction History data: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private mapTransactionType(txType: string): string {
+    // Return raw transaction type code (e.g., 'pacs.008.001.10')
+    return txType || 'Unknown';
+  }
 }

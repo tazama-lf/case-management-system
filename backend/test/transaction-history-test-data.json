@@ -1,0 +1,374 @@
+{
+  "description": "Test data for Transaction History Analysis endpoint",
+  "endpoint": "/api/v1/lakehouse/transaction-history/:entityId",
+  "baseUrl": "http://localhost:3000",
+  "apiDocumentation": "http://localhost:3000/api",
+  "goldLakehouseUrl": "http://10.10.80.20:8001",
+  
+  "testEntities": [
+    {
+      "name": "Sarah Johnson (Account - Creditor)",
+      "entityId": "cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "entityName": "Sarah Johnson",
+      "entityType": "ACCOUNT",
+      "entityRole": "CREDITOR",
+      "transactionCount": 2,
+      "dateRange": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13"
+      },
+      "recommended": true,
+      "reason": "Best for testing - has 2 transactions"
+    },
+    {
+      "name": "Sarah Johnson (Counterparty - Creditor)",
+      "entityId": "cdtr_eccff463f6ae4680aa0f829affed3096",
+      "entityName": "Sarah Johnson",
+      "entityType": "COUNTERPARTY",
+      "entityRole": "CREDITOR",
+      "transactionCount": 2,
+      "dateRange": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13"
+      },
+      "recommended": true,
+      "reason": "Good for testing counterparty perspective"
+    },
+    {
+      "name": "John Johnson (Counterparty - Debtor)",
+      "entityId": "dbtr_a09dd0b6e64f4c8981981e477e396da3",
+      "entityName": "John Johnson",
+      "entityType": "COUNTERPARTY",
+      "entityRole": "DEBTOR",
+      "transactionCount": 2,
+      "dateRange": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13"
+      },
+      "recommended": true,
+      "reason": "Good for testing debtor perspective"
+    },
+    {
+      "name": "John Johnson (Account - Debtor)",
+      "entityId": "dbtrAcct_1fc4cce058e243039501a169ed7e7e07",
+      "entityName": "John Johnson",
+      "entityType": "ACCOUNT",
+      "entityRole": "DEBTOR",
+      "transactionCount": 2,
+      "dateRange": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13"
+      },
+      "recommended": false,
+      "reason": "Alternative account for testing"
+    },
+    {
+      "name": "Sarah Grant (Counterparty - Debtor)",
+      "entityId": "dbtr_590333b8f3e040a0af6678f0390f8286",
+      "entityName": "Sarah Grant",
+      "entityType": "COUNTERPARTY",
+      "entityRole": "DEBTOR",
+      "transactionCount": 1,
+      "dateRange": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13"
+      },
+      "recommended": false,
+      "reason": "Minimal data - only 1 transaction"
+    }
+  ],
+  
+  "testScenarios": [
+    {
+      "scenario": "Basic Transaction History - Day Granularity",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "queryParameters": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13",
+        "granularity": "day",
+        "tenantId": "DEFAULT"
+      },
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b?startDate=2026-01-13&endDate=2026-01-13&granularity=day&tenantId=DEFAULT",
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>",
+        "Content-Type": "application/json"
+      },
+      "expectedStatus": 200,
+      "expectedResponseStructure": {
+        "summary": {
+          "totalVolume": "number",
+          "totalTransactions": "number",
+          "alertsTriggered": "number",
+          "alertsPercentage": "number",
+          "investigated": "number",
+          "investigatedPercentage": "number",
+          "avgTransactionsPerDay": "number",
+          "entityId": "string",
+          "entityName": "string",
+          "entityType": "string",
+          "entityRole": "string",
+          "timeRange": {
+            "start": "string",
+            "end": "string",
+            "durationDays": "number"
+          }
+        },
+        "timeline": "array",
+        "cumulative": "array",
+        "volumeDistribution": "array",
+        "recentTransactions": "array",
+        "meta": "object"
+      }
+    },
+    {
+      "scenario": "Weekly Granularity",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtr_eccff463f6ae4680aa0f829affed3096",
+      "queryParameters": {
+        "startDate": "2026-01-01",
+        "endDate": "2026-01-31",
+        "granularity": "week",
+        "tenantId": "DEFAULT"
+      },
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtr_eccff463f6ae4680aa0f829affed3096?startDate=2026-01-01&endDate=2026-01-31&granularity=week&tenantId=DEFAULT",
+      "expectedStatus": 200
+    },
+    {
+      "scenario": "Monthly Granularity",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/dbtr_a09dd0b6e64f4c8981981e477e396da3",
+      "queryParameters": {
+        "startDate": "2026-01-01",
+        "endDate": "2026-01-31",
+        "granularity": "month",
+        "tenantId": "DEFAULT"
+      },
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/dbtr_a09dd0b6e64f4c8981981e477e396da3?startDate=2026-01-01&endDate=2026-01-31&granularity=month&tenantId=DEFAULT",
+      "expectedStatus": 200
+    },
+    {
+      "scenario": "Invalid Date Format - Should Fail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "queryParameters": {
+        "startDate": "01/13/2026",
+        "endDate": "01/13/2026",
+        "granularity": "day"
+      },
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b?startDate=01/13/2026&endDate=01/13/2026&granularity=day",
+      "expectedStatus": 400,
+      "expectedError": "Invalid date format. Use YYYY-MM-DD"
+    },
+    {
+      "scenario": "Invalid Granularity - Should Fail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "queryParameters": {
+        "startDate": "2026-01-13",
+        "endDate": "2026-01-13",
+        "granularity": "hour"
+      },
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b?startDate=2026-01-13&endDate=2026-01-13&granularity=hour",
+      "expectedStatus": 400,
+      "expectedError": "Invalid granularity. Must be one of: day, week, month, year"
+    },
+    {
+      "scenario": "Missing Required Parameters - Should Fail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "queryParameters": {},
+      "fullUrl": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "expectedStatus": 400,
+      "expectedError": "startDate and endDate query parameters are required"
+    }
+  ],
+  
+  "curlExamples": [
+    {
+      "description": "Get JWT Token First",
+      "command": "curl -X POST http://localhost:3000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"your_username\",\"password\":\"your_password\"}'"
+    },
+    {
+      "description": "Test Transaction History - Sarah Johnson (Account)",
+      "command": "curl -X GET \"http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b?startDate=2026-01-13&endDate=2026-01-13&granularity=day&tenantId=DEFAULT\" -H \"Authorization: Bearer YOUR_JWT_TOKEN\""
+    },
+    {
+      "description": "Test Transaction History - John Johnson (Debtor)",
+      "command": "curl -X GET \"http://localhost:3000/api/v1/lakehouse/transaction-history/dbtr_a09dd0b6e64f4c8981981e477e396da3?startDate=2026-01-13&endDate=2026-01-13&granularity=day&tenantId=DEFAULT\" -H \"Authorization: Bearer YOUR_JWT_TOKEN\""
+    }
+  ],
+  
+  "postmanCollection": {
+    "info": {
+      "name": "Transaction History API Tests",
+      "description": "Collection for testing Transaction History Analysis endpoint"
+    },
+    "requests": [
+      {
+        "name": "Transaction History - Sarah Johnson Account",
+        "request": {
+          "method": "GET",
+          "url": {
+            "raw": "http://localhost:3000/api/v1/lakehouse/transaction-history/cdtrAcct_9e6fccad1b1b4850a6e90f548207748b?startDate=2026-01-13&endDate=2026-01-13&granularity=day&tenantId=DEFAULT",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "v1", "lakehouse", "transaction-history", "cdtrAcct_9e6fccad1b1b4850a6e90f548207748b"],
+            "query": [
+              {"key": "startDate", "value": "2026-01-13"},
+              {"key": "endDate", "value": "2026-01-13"},
+              {"key": "granularity", "value": "day"},
+              {"key": "tenantId", "value": "DEFAULT"}
+            ]
+          },
+          "header": [
+            {"key": "Authorization", "value": "Bearer {{jwt_token}}"},
+            {"key": "Content-Type", "value": "application/json"}
+          ]
+        }
+      }
+    ]
+  },
+  
+  "sampleSuccessResponse": {
+    "summary": {
+      "totalVolume": 1143.04,
+      "totalTransactions": 2,
+      "alertsTriggered": 0,
+      "alertsPercentage": 0.0,
+      "investigated": 0,
+      "investigatedPercentage": 0.0,
+      "avgTransactionsPerDay": 2.0,
+      "entityId": "cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "entityName": "Sarah Johnson",
+      "entityType": "ACCOUNT",
+      "entityRole": "CREDITOR",
+      "timeRange": {
+        "start": "2026-01-13",
+        "end": "2026-01-13",
+        "durationDays": 1
+      }
+    },
+    "timeline": [
+      {
+        "transactionId": 7,
+        "txMsgId": "9d7e2f2d-fdf1-4d3e-8a9a-999065a09d87",
+        "endToEndId": "2c26a2d9-53c7-490e-92bc-fcc4aabfe93d",
+        "date": "2026-01-13",
+        "timestamp": "2026-01-13T03:35:13.991000",
+        "amount": 571.52,
+        "currency": "XTS",
+        "type": "Wire Transfer",
+        "isAlerted": false,
+        "isInvestigated": false
+      }
+    ],
+    "cumulative": [
+      {
+        "date": "2026-01-13",
+        "timestamp": "2026-01-13T03:35:13.991000",
+        "cumulativeAmount": 571.52,
+        "cumulativeCount": 1
+      },
+      {
+        "date": "2026-01-13",
+        "timestamp": "2026-01-13T03:35:16.676000",
+        "cumulativeAmount": 1143.04,
+        "cumulativeCount": 2
+      }
+    ],
+    "volumeDistribution": [
+      {
+        "bucketStart": "2026-01-12T19:00:00",
+        "granularity": "day",
+        "count": 2,
+        "amount": 1143.04
+      }
+    ],
+    "recentTransactions": [
+      {
+        "transactionId": 7,
+        "txMsgId": "9d7e2f2d-fdf1-4d3e-8a9a-999065a09d87",
+        "endToEndId": "2c26a2d9-53c7-490e-92bc-fcc4aabfe93d",
+        "date": "2026-01-13",
+        "timestamp": "2026-01-13T03:35:13.991000",
+        "type": "Wire Transfer",
+        "counterparty": "Sarah Brown",
+        "amount": 571.52,
+        "currency": "XTS",
+        "isAlerted": false,
+        "isInvestigated": false,
+        "viewDetailsLink": "/triage/transaction-detail/7"
+      }
+    ],
+    "meta": {
+      "entityId": "cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "tenantId": "DEFAULT",
+      "granularity": "day",
+      "eventRowCount": 2,
+      "aggRowCount": 1,
+      "queryTimestamp": "2026-01-16T10:30:00.000Z"
+    }
+  },
+  
+  "howToTest": {
+    "step1": "Start the backend server",
+    "command1": "cd backend && npm run start:dev",
+    
+    "step2": "Open Swagger UI",
+    "url2": "http://localhost:3000/api",
+    
+    "step3": "Authenticate",
+    "description3": "Use the /api/v1/auth/login endpoint to get a JWT token, then click 'Authorize' button and paste the token",
+    
+    "step4": "Find the endpoint",
+    "description4": "Look for 'Gold Lakehouse' section, find 'GET /api/v1/lakehouse/transaction-history/{entityId}'",
+    
+    "step5": "Click 'Try it out'",
+    
+    "step6": "Fill in parameters",
+    "parameters6": {
+      "entityId": "cdtrAcct_9e6fccad1b1b4850a6e90f548207748b",
+      "startDate": "2026-01-13",
+      "endDate": "2026-01-13",
+      "granularity": "day",
+      "tenantId": "DEFAULT"
+    },
+    
+    "step7": "Click 'Execute'",
+    
+    "step8": "Verify response",
+    "expectedSections": [
+      "summary (with statistics)",
+      "timeline (array of transactions)",
+      "cumulative (running totals)",
+      "volumeDistribution (bucketed data)",
+      "recentTransactions (table data)",
+      "meta (metadata)"
+    ]
+  },
+  
+  "troubleshooting": {
+    "error401": {
+      "message": "Unauthorized",
+      "solution": "Make sure you have a valid JWT token. Login first at /api/v1/auth/login"
+    },
+    "error400DateFormat": {
+      "message": "Invalid date format",
+      "solution": "Use YYYY-MM-DD format for startDate and endDate"
+    },
+    "error400Granularity": {
+      "message": "Invalid granularity",
+      "solution": "Use one of: day, week, month, year"
+    },
+    "error500": {
+      "message": "Internal Server Error",
+      "solution": "Check backend logs. Ensure Gold Lakehouse API is running at http://10.10.80.20:8001"
+    },
+    "emptyData": {
+      "message": "Response has empty arrays",
+      "solution": "The entity_id may not have transactions in the specified date range. Try a different entity or date range"
+    }
+  }
+}
