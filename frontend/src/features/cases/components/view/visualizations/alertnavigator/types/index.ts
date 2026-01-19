@@ -40,6 +40,7 @@ export interface RelatedLinksDto {
 }
 
 export interface AlertNavigatorDto {
+  alertMetadata: any;
   alertId: string;
   transactionId: string;
   timestamp: string;

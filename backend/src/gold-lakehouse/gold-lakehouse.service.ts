@@ -197,7 +197,7 @@ export class GoldLakehouseService {
       const typologiesRaw = typologiesResponse.data || [];
       const rulesRaw = rulesResponse?.data || [];
 
-      // Alert Metadata 
+      // Alert Metadata
       const alertMetadata = {
         alertId: combined.alert_id,
         transactionId: combined.tx_transaction_id || combined.end_to_end_id || combined.transaction_id,
@@ -210,7 +210,7 @@ export class GoldLakehouseService {
         blockReason: combined.block_or_override_status,
       };
 
-      // Typologies 
+      // Typologies
       const typologies = typologiesRaw.map((t) => {
         const typology = this.stripHudiMetadata(t);
 
@@ -491,6 +491,111 @@ export class GoldLakehouseService {
       this.logger.error(`Error building Transaction Overview UI data: ${error.message}`, error.stack);
 
       throw new HttpException('Failed to fetch Transaction Overview data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getConditionsSummary(accountId: string, tenantId: string, fromDate: string) {
+    try {
+      const sql = `
+      SELECT
+        COUNT(DISTINCT cond_condition_id)
+        FILTER (WHERE cond_is_active = 1)  AS active_conditions,
+        COUNT(*) FILTER (WHERE tx_block_override_status = 'BLOCKED') AS blocked_transactions,
+        COUNT(*) FILTER (WHERE tx_block_override_status = 'OVERRIDDEN') AS overridden_transactions,
+        COUNT(DISTINCT cond_condition_id)
+          FILTER (WHERE cond_is_active = 0 AND cond_is_expired = 0) AS future_conditions
+      FROM conditions_timeline
+      WHERE cond_account_id = '${accountId}'
+        AND cond_tenant_id = '${tenantId}'
+        AND bucket_start >= '${fromDate}'
+    `;
+
+      const response = await this.runSqlQuery(sql, 1);
+      const row = response.data?.[0] || {};
+
+      return {
+        activeConditions: Number(row.active_conditions ?? 0),
+        blockedTransactions: Number(row.blocked_transactions ?? 0),
+        overriddenTransactions: Number(row.overridden_transactions ?? 0),
+        futureConditions: Number(row.future_conditions ?? 0),
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching conditions summary`, error.stack);
+      throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getConditionsList(accountId: string, tenantId: string) {
+    try {
+      const response = await this.query({
+        table_name: 'conditions',
+        filters: {
+          account_id: accountId,
+          tenant_id: tenantId,
+        },
+      });
+
+      const rows = response.data || [];
+
+      return rows.map((r) => {
+        const row = this.stripHudiMetadata(r);
+
+        let status: 'ACTIVE' | 'EXPIRED' | 'FUTURE' = 'ACTIVE';
+        if (row.is_expired === 1) status = 'EXPIRED';
+        else if (row.is_active === 0) status = 'FUTURE';
+
+        return {
+          conditionId: row.condition_id,
+          conditionType: row.condition_type,
+          conditionReason: row.condition_reason,
+          createdBy: row.created_by_user,
+          startDate: row.condition_inception_ts,
+          endDate: row.condition_expiry_ts,
+          status,
+          notes: row.condition_reason,
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error fetching conditions list`, error.stack);
+      throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getEvaluatedTransactions(accountId: string, tenantId: string, fromDate: string) {
+    try {
+      const sql = `
+      SELECT
+        tx_transaction_id,
+        tx_event_ts,
+        tx_type,
+        tx_amount,
+        tx_ccy,
+        tx_block_override_status,
+        cond_condition_id,
+        cond_reason
+      FROM conditions_timeline
+      WHERE cond_account_id = '${accountId}'
+        AND cond_tenant_id = '${tenantId}'
+        AND bucket_start >= '${fromDate}'
+      ORDER BY tx_event_ts DESC
+    `;
+
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
+
+      return rows.map((r) => ({
+        transactionId: r.tx_transaction_id,
+        date: r.tx_event_ts,
+        type: r.tx_type,
+        amount: r.tx_amount,
+        currency: r.tx_ccy,
+        outcome: r.tx_block_override_status ?? 'PASSED',
+        conditionId: r.cond_condition_id ?? '-',
+        reason: r.cond_reason ?? 'No conditions triggered',
+      }));
+    } catch (error) {
+      this.logger.error(`Error fetching evaluated transactions`, error.stack);
+      throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
