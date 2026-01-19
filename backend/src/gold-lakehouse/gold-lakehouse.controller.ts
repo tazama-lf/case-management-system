@@ -46,4 +46,52 @@ export class GoldLakehouseController {
     }
     return this.goldLakehouseService.getAlertNavigatorMetrics(alertIdNum, tenantId || 'DEFAULT');
   }
+
+  // ---------------- CONDITIONS VIEW ----------------
+
+  @Get('conditions/summary')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get Conditions summary metrics' })
+  @ApiResponse({ status: 200 })
+  async getConditionsSummary(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('fromDate') fromDate: string,
+  ) {
+    if (!accountId || !tenantId || !fromDate) {
+      throw new BadRequestException('accountId, tenantId and fromDate are required');
+    }
+
+    return this.goldLakehouseService.getConditionsSummary(accountId, tenantId, fromDate);
+  }
+
+  @Get('conditions')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get Conditions list (active / expired / future)' })
+  @ApiResponse({ status: 200 })
+  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId: string) {
+    if (!accountId || !tenantId) {
+      throw new BadRequestException('accountId and tenantId are required');
+    }
+
+    return this.goldLakehouseService.getConditionsList(accountId, tenantId);
+  }
+
+  @Get('conditions/evaluated-transactions')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get evaluated transactions for Conditions view',
+  })
+  @ApiResponse({ status: 200 })
+  async getEvaluatedTransactions(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('fromDate') fromDate: string,
+  ) {
+    if (!accountId || !tenantId || !fromDate) {
+      throw new BadRequestException('accountId, tenantId and fromDate are required');
+    }
+
+    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
+  }
 }
