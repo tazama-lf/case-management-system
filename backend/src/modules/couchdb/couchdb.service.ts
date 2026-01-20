@@ -95,9 +95,11 @@ export class CouchdbService implements OnModuleInit {
   async queryDocuments(params: {
     id?: string;
     evidenceId?: string;
+    reportId?: string;
     tenantId?: string;
     uploadedBy?: string;
     taskId?: string;
+    caseId?: number;
     evidenceType?: string;
     verified?: boolean;
     archive?: boolean;
@@ -105,7 +107,7 @@ export class CouchdbService implements OnModuleInit {
     page: number;
     limit: number;
   }) {
-    const { id, evidenceId, tenantId, uploadedBy, taskId, evidenceType, verified, archive, search, page, limit } = params;
+    const { id, evidenceId, reportId, tenantId, uploadedBy, taskId, caseId, evidenceType, verified, archive, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -120,7 +122,9 @@ export class CouchdbService implements OnModuleInit {
     if (tenantId) selector.tenantId = tenantId;
     if (uploadedBy) selector.uploadedBy = uploadedBy;
     if (taskId) selector.taskId = taskId;
+    if (caseId) selector.caseId = caseId;
     if (evidenceId) selector.evidenceId = evidenceId;
+    if (reportId) selector.reportId = reportId;
     if (evidenceType) selector.evidenceType = evidenceType;
     if (archive !== undefined) selector.archive = archive;
     if (verified !== undefined) selector.verified = verified;
