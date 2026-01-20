@@ -15,6 +15,7 @@ import { useToast } from '@/shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
 import type { TaskForSupervisor } from '../../services/taskService';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
@@ -372,7 +373,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 <p className="text-xs text-gray-600 font-medium mb-1">Submitted</p>
                 <p className="text-sm font-semibold text-gray-900">
                   {caseComments?.[0]?.created_at
-                    ? new Date(caseComments[0].created_at).toLocaleString()
+                    ? formatDate(caseComments[0].created_at)
                     : 'N/A'}
                 </p>
               </div>
@@ -395,14 +396,14 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED' ||
               caseDetails?.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
             ) && (
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-              >
-                <DocumentTextIcon className="h-5 w-5" />
-                Generate Report
-              </button>
-            )}
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+                >
+                  <DocumentTextIcon className="h-5 w-5" />
+                  Generate Report
+                </button>
+              )}
           </div>
         </div>
 

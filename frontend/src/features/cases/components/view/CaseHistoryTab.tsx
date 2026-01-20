@@ -14,6 +14,7 @@ import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
 import { caseHistoryService } from '../../services/caseHistoryService';
 import { taskHistoryService } from '../../services/taskHistoryService';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 
 interface CaseHistoryEvent {
@@ -396,21 +397,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return timestamp;
-    }
-  };
+
 
   const sortedHistory = [...history].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -447,7 +434,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                   // Left side layout (date on left, content on right)
                   <div className="flex items-start gap-8">
                     <div className="w-1/2 text-right pr-8">
-                      <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
+                      <div className="text-sm text-gray-500">{formatDate(event.timestamp)}</div>
                     </div>
                     <div className="w-1/2 pl-8">
                       <div className="space-y-1">
@@ -488,7 +475,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                       </div>
                     </div>
                     <div className="w-1/2 pl-8">
-                      <div className="text-sm text-gray-500">{formatTimestamp(event.timestamp)}</div>
+                      <div className="text-sm text-gray-500">{formatDate(event.timestamp)}</div>
                     </div>
                   </div>
                 )}

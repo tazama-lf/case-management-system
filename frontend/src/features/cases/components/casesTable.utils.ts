@@ -1,3 +1,4 @@
+import { formatDate } from '@/shared/utils/dateUtils';
 import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
 export type CaseRow = {
@@ -106,7 +107,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     statusColor: getStatusColor(backendCase.status),
     typologyId: backendCase.alert?.alert_id?.toString().substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
-    createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
+    createdOn: formatDate(backendCase.created_at),
     pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
     assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User', //Check with Umair
