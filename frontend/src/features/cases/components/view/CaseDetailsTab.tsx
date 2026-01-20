@@ -226,30 +226,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         )}
       </div>
 
-      {/* Creditor Information
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-gray-700">Creditor Information</div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">FSP ID</div>
-            <div className="text-gray-900 font-mono">{creditorFsp}</div>
-          </div>
-        </SectionCard>
-      </div> */}
-
-
-
-      {/* Debtor Information */}
-      {/* <div className="space-y-3 col-span-full">
-        <div className="text-sm font-semibold text-gray-700">Debtor Information</div>
-        <SectionCard>
-          <div className="grid grid-cols-2 gap-y-3">
-            <div className="text-gray-500">FSP ID</div>
-            <div className="text-gray-900 font-mono">{debtorFsp}</div>
-          </div>
-        </SectionCard>
-      </div> */}
-
       {/* Transactions */}
       {transactionalData && transactionalData.length > 0 && (
         <div className="space-y-3">

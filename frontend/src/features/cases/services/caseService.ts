@@ -10,6 +10,7 @@ export interface GetUserCasesQueryDto {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  sarStrStatus?: string;
 }
 
 export interface UserTaskDto {
@@ -433,6 +434,7 @@ export class CaseService {
 
       if (query?.status) params.append('status', query.status);
       if (query?.priority) params.append('priority', query.priority);
+      if (query?.sarStrStatus) params.append('sarStrStatus', query.sarStrStatus);
       if (query?.page) params.append('page', String(query.page));
       if (query?.limit) params.append('limit', String(query.limit));
       if (query?.sortBy) params.append('sortBy', query.sortBy);

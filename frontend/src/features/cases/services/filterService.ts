@@ -42,6 +42,11 @@ export class FilterService {
       const response = await apiClient.post<UserFilters>(`${this.baseUrl}/create`, createFilterDTO);
       return this.validateFilterResponse(response);
     } catch (error: any) {
+      // Check for 409 Conflict - duplicate filter
+      if (error.response?.status === 409) {
+        throw new Error('FILTER_ALREADY_EXISTS');
+      }
+      
       throw this.handleError(error, 'create filter');
     }
   }

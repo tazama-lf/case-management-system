@@ -157,6 +157,7 @@ export class CaseQueryService {
         limit = 20,
         sortBy = 'created_at',
         sortOrder = 'desc',
+        sarStrStatus,
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
@@ -169,10 +170,40 @@ export class CaseQueryService {
         if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
       }
+      
+      // Build SAR/STR status filter condition separately
+      let sarStrFilterCondition: any = null;
+      if (sarStrStatus && sarStrStatus !== 'N/A') {
+        // Filter cases that have a SAR/STR task with the specified status
+        sarStrFilterCondition = {
+          tasks: {
+            some: {
+              name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+              status: sarStrStatus,
+            },
+          },
+        };
+      } else if (sarStrStatus === 'N/A') {
+        // Filter cases that don't have any SAR/STR task
+        sarStrFilterCondition = {
+          NOT: {
+            tasks: {
+              some: {
+                name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+              },
+            },
+          },
+        };
+      }
+      
       // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
       if (isComplianceOfficer) {
         baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
         Object.assign(whereClause, baseFilters);
+        // Apply SAR/STR filter if provided
+        if (sarStrFilterCondition) {
+          Object.assign(whereClause, sarStrFilterCondition);
+        }
       }
       // else if (investigatorUserId) {
       //   // For investigators, show cases that are either:
@@ -191,37 +222,35 @@ export class CaseQueryService {
       //   ];
       // }
       else if (investigatorUserId) {
-        whereClause.AND = [
-          baseFilters,
-          {
-            OR: [
-              { case_owner_user_id: investigatorUserId },
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: investigatorUserId,
-                  },
+        const andConditions: any[] = [baseFilters];
+        
+        // Add SAR/STR filter as separate condition if provided
+        if (sarStrFilterCondition) {
+          andConditions.push(sarStrFilterCondition);
+        }
+        
+        andConditions.push({
+          OR: [
+            { case_owner_user_id: investigatorUserId },
+            {
+              tasks: {
+                some: {
+                  assigned_user_id: investigatorUserId,
                 },
               },
-              { case_owner_user_id: null },
-              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
-              // {
-              //   AND: [
-              //     { case_owner_user_id: null },
-              //     {
-              //       OR: [
-              //         { status: CaseStatus.STATUS_00_DRAFT },
-              //         { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
-              //       ],
-              //     }
-              //   ],
-              // },
-            ],
-          },
-        ];
-
+            },
+            { case_owner_user_id: null },
+            { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+          ],
+        });
+        
+        whereClause.AND = andConditions;
       } else {
         Object.assign(whereClause, baseFilters);
+        // Apply SAR/STR filter if provided
+        if (sarStrFilterCondition) {
+          Object.assign(whereClause, sarStrFilterCondition);
+        }
         if (ownerId) whereClause.case_owner_user_id = ownerId;
         if (unassignedOnly) whereClause.case_owner_user_id = null;
       }

@@ -4,6 +4,7 @@ import { filterService } from '../services/filterService';
 import type { CreateUserFilters, UserFilters } from '../services/filterService';
 import authService from '../../auth/services/authService';
 import { useToast } from '@/shared/providers/ToastProvider';
+import { useAuth } from '@/features/auth/components/AuthContext';
 
 interface CaseFiltersProps {
   search: string;
@@ -14,6 +15,8 @@ interface CaseFiltersProps {
   onStatusFilterChange: (value: string) => void;
   priorityFilter: string;
   onPriorityFilterChange: (value: string) => void;
+  sarStrStatusFilter: string;
+  onSarStrStatusFilterChange: (value: string) => void;
 }
 
 export type UserSavedFilter = {
@@ -22,6 +25,7 @@ export type UserSavedFilter = {
   status: string;
   priority: string;
   sortBy: 'recent' | 'oldest';
+  sarStrStatus: string;
 };
 
 const CaseFilters: React.FC<CaseFiltersProps> = ({
@@ -33,11 +37,17 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   onStatusFilterChange,
   priorityFilter,
   onPriorityFilterChange,
+  sarStrStatusFilter,
+  onSarStrStatusFilterChange,
 }) => {
   const { success, error } = useToast();
   const [showFilters, setShowFilters] = React.useState(false);
   const [selectedSavedFilterId, setSelectedSavedFilterId] = React.useState('');
   const [savedFilters, setSavedFilters] = React.useState<UserSavedFilter[]>([]);
+  
+  const { hasComplianceOfficerRole } = useAuth();
+  const isComplianceOfficer = hasComplianceOfficerRole();
+  
   const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'STATUS_99_ABANDONED', label: 'Abandoned' },
@@ -63,8 +73,17 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     { value: 'BREACH', label: 'Breach' },
   ];
 
+  const sarStrStatusOptions = [
+    { value: '', label: 'All SAR/STR Statuses' },
+    { value: 'STATUS_01_UNASSIGNED', label: 'Unassigned' },
+    { value: 'STATUS_10_ASSIGNED', label: 'Assigned' },
+    { value: 'STATUS_20_IN_PROGRESS', label: 'In Progress' },
+    { value: 'STATUS_30_COMPLETED', label: 'Completed' },
+    { value: 'N/A', label: 'No SAR/STR Task' },
+  ];
+
   const hasActiveFilters =
-    !!statusFilter || !!priorityFilter || sortBy !== 'recent';
+    !!statusFilter || !!priorityFilter || !!sarStrStatusFilter || sortBy !== 'recent';
 
   const fetchSavedFilters = React.useCallback(async () => {
     try {
@@ -86,12 +105,14 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
             parsed.sortBy ? parsed.sortBy.toUpperCase() : null,
             parsed.status ? parsed.status.toUpperCase() : null,
             parsed.priority ? parsed.priority.toUpperCase() : null,
+            parsed.sarStrStatus ? parsed.sarStrStatus.toUpperCase() : null,
           ]
             .filter(Boolean) // remove null, undefined, or empty strings
             .join(' - '),
           status: parsed.status ?? '',
           priority: parsed.priority ?? '',
           sortBy: parsed.sortBy ?? 'recent',
+          sarStrStatus: parsed.sarStrStatus ?? '',
         };
       });
 
@@ -115,6 +136,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     onStatusFilterChange(filter.status);
     onPriorityFilterChange(filter.priority);
     onSortChange(filter.sortBy);
+    onSarStrStatusFilterChange(filter.sarStrStatus);
   };
 
   const handleSaveCurrentFilters = async () => {
@@ -130,6 +152,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           status: statusFilter,
           priority: priorityFilter,
           sortBy: sortBy,
+          sarStrStatus: sarStrStatusFilter,
         }),
       };
       const savedFilter = await filterService.createFilter(payload);
@@ -137,11 +160,21 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
       console.log('Saved Filter:', savedFilter);
       success('Filter Created', `Filter created successfully with status: ${statusFilter},
           priority: ${priorityFilter},
-          sortBy: ${sortBy},`);
+          sortBy: ${sortBy},
+          sarStrStatus: ${sarStrStatusFilter}`);
+      
+      // Refresh the saved filters list to show the newly created filter
+      await fetchSavedFilters();
     } catch (err: any) {
       console.error('Error saving filter:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save filter';
-      error('Create Filter Failed', errorMessage);
+      
+      // Check if it's a duplicate filter error
+      if (err instanceof Error && err.message === 'FILTER_ALREADY_EXISTS') {
+        error('Filter Already Exists', 'A filter with the same criteria has already been saved.');
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to save filter';
+        error('Create Filter Failed', errorMessage);
+      }
     }
   };
 
@@ -181,6 +214,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
             onClick={() => {
               onStatusFilterChange('');
               onPriorityFilterChange('');
+              onSarStrStatusFilterChange('');
               onSortChange('recent');
               handleSavedFilterSelect('Select a filter');
 
@@ -211,52 +245,44 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
               <option value="recent">Most Recent</option>
               <option value="oldest">Oldest First</option>
             </select>
-            {/* <div className="mt-2">
+          </div>
+
+          {/* Status or SAR/STR Status (conditional based on role) */}
+          {!isComplianceOfficer ? (
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Saved Filters
+                Status
               </label>
-              {savedFilters.length > 0 ? (
-                <select
-                  value={selectedSavedFilterId}
-                  onChange={(e) => handleSavedFilterSelect(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Select a filter</option>
-                  {savedFilters.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                >
-                  <option>No saved filters available</option>
-                </select>
-              )}
-            </div> */}
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => onStatusFilterChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              {statusOptions.map(o => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-
-          </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {statusOptions.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SAR/STR Status
+              </label>
+              <select
+                value={sarStrStatusFilter}
+                onChange={(e) => onSarStrStatusFilterChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {sarStrStatusOptions.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Priority */}
           <div>
@@ -276,44 +302,6 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
             </select>
 
           </div>
-          {/* Saved Filters — spans Sort + Status */}
-          {/* <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Saved Filters
-            </label>
-
-            {savedFilters.length > 0 ? (
-              <select
-                value={selectedSavedFilterId}
-                onChange={(e) => handleSavedFilterSelect(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Select a filter</option>
-                {savedFilters.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <select
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-              >
-                <option>No saved filters available</option>
-              </select>
-            )}
-          </div>
-          <div className="mt-6 ml-1">
-            {hasActiveFilters && (
-              <button
-                onClick={handleSaveCurrentFilters}
-                className="min-w-[140px] px-4 py-2 rounded-lg bg-indigo-600 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Save
-              </button>
-            )}
-          </div> */}
           {/* Saved Filters & Save Button */}
 
           <div className="sm:col-span-3 flex flex-col sm:flex-row gap-2 items-end">

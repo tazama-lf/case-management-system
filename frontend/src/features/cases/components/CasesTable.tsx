@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CaseRow } from './casesTable.utils';
-import { getScoreColor } from './casesTable.utils';
+import { getScoreColor, getSarStrStatusColor, formatSarStrStatus } from './casesTable.utils';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 import { TablePagination, type TablePaginationInfo } from '@/shared';
 
@@ -8,12 +8,14 @@ interface CasesTableProps {
   rows: CaseRow[];
   onView: (row: CaseRow) => void;
   pagination?: TablePaginationInfo;
+  isComplianceOfficer?: boolean;
 }
 
 const CasesTable: React.FC<CasesTableProps> = ({
   rows,
   onView,
-  pagination
+  pagination,
+  isComplianceOfficer = false,
 }) => {
 
   return (
@@ -41,6 +43,13 @@ const CasesTable: React.FC<CasesTableProps> = ({
                 <span className="sm:hidden">%</span>
               </th>
 
+              {isComplianceOfficer && (
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="hidden lg:inline">SAR/STR Status</span>
+                  <span className="lg:hidden">SAR/STR</span>
+                </th>
+              )}
+
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
@@ -50,7 +59,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={isComplianceOfficer ? 6 : 5} className="px-6 py-12 text-center text-gray-500">
                   No cases available.
                 </td>
               </tr>
@@ -86,6 +95,18 @@ const CasesTable: React.FC<CasesTableProps> = ({
                       {c.score}%
                     </span>
                   </td>
+
+                  {isComplianceOfficer && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-gray-200 ${getSarStrStatusColor(
+                          c.sarStrStatus || 'N/A',
+                        )}`}
+                      >
+                        {formatSarStrStatus(c.sarStrStatus || 'N/A')}
+                      </span>
+                    </td>
+                  )}
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {c.createdOn}

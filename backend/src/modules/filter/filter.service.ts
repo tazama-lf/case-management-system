@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { createFilterDto } from './dto/create-filter.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -26,7 +26,7 @@ export class FilterService {
             });
 
             if (filterAlreadyExists) {
-                throw new BadRequestException('Filter with same criteria already exists');
+                throw new ConflictException('Filter with same criteria already exists');
             }
 
             const filter = await this.filterRepository.createFilter(userId, createFilterDto);
@@ -51,6 +51,9 @@ export class FilterService {
                 outcome: Outcome.FAILURE,
                 performedAt: new Date(),
             });
+            
+            // Re-throw the error so the controller can handle it properly
+            throw error;
         }
     }
 

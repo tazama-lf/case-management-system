@@ -15,6 +15,7 @@ interface CaseDashboardContentProps {
   onSortChange: (sort: 'recent' | 'oldest') => void;
   onStatusFilterChange: (status: string) => void;
   onPriorityFilterChange: (priority: string) => void;
+  onSarStrStatusFilterChange: (sarStrStatus: string) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreateNew: () => void;
@@ -27,6 +28,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onSortChange,
   onStatusFilterChange,
   onPriorityFilterChange,
+  onSarStrStatusFilterChange,
   onPageChange,
   onPageSizeChange,
   onCreateNew,
@@ -74,6 +76,8 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
             statusFilter={filters.statusFilter}
             onStatusFilterChange={onStatusFilterChange}
             priorityFilter={filters.priorityFilter}
+            sarStrStatusFilter={filters.sarStrStatusFilter}
+            onSarStrStatusFilterChange={onSarStrStatusFilterChange}
             onPriorityFilterChange={onPriorityFilterChange}
           />
 
@@ -102,6 +106,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
               <CasesTable
                 rows={cases}
                 onView={onView}
+                isComplianceOfficer={hasComplianceOfficerRole()}
                 pagination={{
                   currentPage: pagination.currentPage,
                   pageSize: pagination.pageSize,

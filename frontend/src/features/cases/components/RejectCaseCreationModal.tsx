@@ -59,10 +59,10 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
   if (!open || !caseData) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="w-full max-w-3xl max-h-[90vh] rounded-lg bg-white shadow-xl flex flex-col my-8">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Reject Case Creation</h3>
             <p className="text-sm text-gray-500">
@@ -82,51 +82,52 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Workflow Information */}
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-red-800 mb-2">Case Creation Rejection</h4>
-            <p className="text-xs text-red-700">
-              Rejecting this case will return it to draft status for the creator to revise with your feedback.
-            </p>
-          </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {/* Workflow Information */}
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+              <h4 className="text-sm font-medium text-red-800 mb-2">Case Creation Rejection</h4>
+              <p className="text-xs text-red-700">
+                Rejecting this case will return it to draft status for the creator to revise with your feedback.
+              </p>
+            </div>
 
-          {/* Case Details */}
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Case Details</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Case Type</label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm break-words">{caseData.type}</span>
+            {/* Case Details */}
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Case Details</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Case Type</label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm break-words">{caseData.type}</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm break-words">{caseData.status}</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Current Status</label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm break-words">{caseData.status}</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.priority}</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Priority</label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm">{caseData.priority}</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Created On</label>
-                <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
-                  <span className="text-sm">{caseData.createdOn}</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Created On</label>
+                  <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50">
+                    <span className="text-sm">{caseData.createdOn}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Alert Information */}
-          {caseData.alertId && (
-            <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Associated Alert</h4>
-              <div className="rounded-md border border-gray-300 p-3 bg-gray-50">
+            {/* Alert Information */}
+            {caseData.alertId && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Associated Alert</h4>
+                <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-64 overflow-y-auto">
                 <div className="flex justify-between">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Alert ID</label>
@@ -188,36 +189,38 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
-
-          { }
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !isReasonValid}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Rejecting...
-                </>
-              ) : (
-                <>
-                  <XCircleIcon className="h-4 w-4" />
-                  Reject Case Creation
-                </>
-              )}
-            </button>
           </div>
         </form>
+
+        { }
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isReasonValid}
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Rejecting...
+              </>
+            ) : (
+              <>
+                <XCircleIcon className="h-4 w-4" />
+                Reject Case Creation
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

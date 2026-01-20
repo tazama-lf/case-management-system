@@ -20,6 +20,7 @@ export type CaseRow = {
   confidencePercent?: number;
   transaction?: unknown;
   tasks?: TaskDTO[];
+  sarStrStatus?: string;
 };
 
 export const getStatusColor = (status: string): string => {
@@ -68,7 +69,35 @@ export const formatStatus = (status: string): string => {
   return status;
 };
 
+export const getSarStrStatusColor = (status: string): string => {
+  const statusColors: Record<string, string> = {
+    STATUS_01_UNASSIGNED: 'bg-gray-100 text-gray-700',
+    STATUS_10_ASSIGNED: 'bg-blue-50 text-blue-700',
+    STATUS_20_IN_PROGRESS: 'bg-yellow-50 text-yellow-700',
+    STATUS_30_COMPLETED: 'bg-green-50 text-green-700',
+    'N/A': 'bg-gray-100 text-gray-500',
+  };
+  return statusColors[status] || 'bg-gray-100 text-gray-700';
+};
+
+export const formatSarStrStatus = (status: string): string => {
+  const statusLabels: Record<string, string> = {
+    STATUS_01_UNASSIGNED: 'Unassigned',
+    STATUS_10_ASSIGNED: 'Assigned',
+    STATUS_20_IN_PROGRESS: 'In Progress',
+    STATUS_30_COMPLETED: 'Completed',
+    'N/A': 'N/A',
+  };
+  return statusLabels[status] || status;
+};
+
 export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow => {
+  // Find SAR/STR Filing task status
+  const sarStrTask = backendCase.tasks?.find(
+    task => task.name === 'SAR_STR_FILING' || task.name === 'SAR/STR Filing' || task.name === 'File SAR/STR Report'
+  );
+  const sarStrStatus = sarStrTask?.status || 'N/A';
+
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
@@ -89,5 +118,6 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     confidencePercent: backendCase.alert?.confidence_per,
     transaction: backendCase.alert?.transaction,
     tasks: backendCase.tasks,
+    sarStrStatus: sarStrStatus,
   };
 };
