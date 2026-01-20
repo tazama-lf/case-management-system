@@ -52,6 +52,27 @@ export class GoldLakehouseController {
   @Get('conditions/summary')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Conditions summary metrics' })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+    example: 'DEFAULT'
+  })
+  @ApiQuery({
+    name: 'fromDate',
+    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
+    required: false,
+    type: String,
+    example: '2026-01-01'
+  })
   @ApiResponse({ status: 200 })
   async getConditionsSummary(
     @Query('accountId') accountId: string,
@@ -72,6 +93,20 @@ export class GoldLakehouseController {
   @Get('conditions')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Conditions list (active / expired / future)' })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+    example: 'DEFAULT'
+  })
   @ApiResponse({ status: 200 })
   async getConditionsList(
     @Query('accountId') accountId: string,
@@ -88,6 +123,27 @@ export class GoldLakehouseController {
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get evaluated transactions for Conditions view',
+  })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+    example: 'DEFAULT'
+  })
+  @ApiQuery({
+    name: 'fromDate',
+    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all transactions.',
+    required: false,
+    type: String,
+    example: '2026-01-01'
   })
   @ApiResponse({ status: 200 })
   async getEvaluatedTransactions(
