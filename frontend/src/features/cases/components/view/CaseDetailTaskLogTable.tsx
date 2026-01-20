@@ -74,13 +74,24 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
-  const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
+  const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } = useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();
     if (user) setCurrentUser(user);
   }, []);
+
+  const filteredTasks = tasks.filter(task => {
+    if (hasSupervisorRole() || hasComplianceOfficerRole()) {
+      return true;
+    } else if (hasInvestigatorRole() &&
+      task.candidateGroup?.toLowerCase() === 'compliance') {
+      return false;
+    }
+
+    return true;
+  });
 
 
   const tableColumns = [
@@ -470,7 +481,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tasks.map((task, index) => {
+            {filteredTasks.map((task, index) => {
               return (
                 <tr key={task.id || `task-${index}`}
                   className={`hover:bg-gray-50`}

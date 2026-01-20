@@ -254,23 +254,24 @@ export class TaskService {
       const isSupervisor = userClaims.includes('CMS_SUPERVISOR');
       const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
 
-      const filteredTasks = tasks.filter((task) => {
 
-        const isComplianceTask =
-          task.candidateGroup?.toLowerCase() === 'compliance';
+      // const filteredTasks = tasks.filter((task) => {
 
-        // Investigator should NOT see compliance tasks
-        if (isSupervisor || isComplianceOfficer) {
-          return true;
-        } else if (isInvestigator) {
-          return !isComplianceTask;
-        }
+      //   const isComplianceTask =
+      //     task.candidateGroup?.toLowerCase() === 'compliance';
 
-        return true;
-      });
+      //   // Investigator should NOT see compliance tasks
+      //   if (isSupervisor || isComplianceOfficer) {
+      //     return true;
+      //   } else if (isInvestigator) {
+      //     return !isComplianceTask;
+      //   }
+
+      //   return true;
+      // });
 
       const enrichedTasks = await Promise.all(
-        filteredTasks.map(async (task) => {
+        tasks.map(async (task) => {
           let assignedUser: { user_id: string; username: string; role?: string } | null = null;
 
           if (task.assigned_user_id) {
