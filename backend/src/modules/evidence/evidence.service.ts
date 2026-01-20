@@ -388,12 +388,16 @@ export class EvidenceService {
     attachmentName?: string,
   ): Promise<{ files: { file: Buffer; attachmentMeta: any }[]; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
-
-    const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
+    let query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
+    if (evidenceId.includes('InvestigationReport')) {
+      query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
+    }
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
+    this.logger.log(`query evidence ${JSON.stringify(query)}`);
     const result = await this.couchdb.queryDocuments(query);
+    this.logger.log(`result evidence ${JSON.stringify(result)}`);
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
@@ -601,31 +605,32 @@ export class EvidenceService {
   }
 
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const tasks = await this.prisma.task.findMany({
-      where: { case_id: caseId },
-      select: { task_id: true },
-    });
 
-    const taskIds = tasks.map((t) => t.task_id).filter(Boolean);
-    if (!taskIds.length) {
-      return { evidence: [], total: 0 };
-    }
+
+
 
     const allDocs: any[] = [];
 
-    for (const taskId of taskIds) {
-      const query: any = { tenantId, taskId: taskId.toString(), page: 1, limit: 100 };
-      if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-      else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
-        throw new UnauthorizedException('Invalid role');
-      }
-      const result = await this.couchdb.queryDocuments(query);
-      const docs = result.data || [];
-      allDocs.push(...docs);
+
+    const query: any = { caseId: caseId, page: 1, limit: 100 };
+
+    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
+      throw new UnauthorizedException('Invalid role');
     }
+    this.logger.log(
+      `role=${role}`
+    );
+    this.logger.log(`query is: ${JSON.stringify(query)}`);
+    const result = await this.couchdb.queryDocuments(query);
+    this.logger.log(`query is: ${JSON.stringify(result)}`);
+    const docs = result.data || [];
+    allDocs.push(...docs);
+
 
     const evidence = allDocs.map((item) => ({
       id: item.evidenceId,
+      reportId: item.reportId,
       taskId: item.taskId,
       fileName: item.fileName,
       originalName: item.originalName,

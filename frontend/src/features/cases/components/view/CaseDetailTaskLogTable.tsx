@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, UserMinusIcon, CheckIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
@@ -15,6 +15,7 @@ import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import { EyeIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/features/auth';
+import type { EvidenceAttachment } from '../../types';
 
 interface CaseDetailTaskLogTableProps {
   alertId?: number;
@@ -39,8 +40,15 @@ interface CaseDetailTaskLogTableProps {
     totalPages: number;
     onPageChange: (page: number) => void;
   };
+  latestReports: Record<string, LatestReport | null>;
+  onViewReport?: (reportId?: string) => void;
   onTaskClick?: (task: UnifiedWorkQueueTask) => void;
 }
+
+type LatestReport = {
+  reportType: string;
+  reportId: string;
+};
 
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   alertId,
@@ -56,6 +64,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onTaskClick,
+  latestReports,
+  onViewReport
 
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -64,7 +74,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
-  const { hasComplianceOfficerRole } = useAuth();
+  const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
@@ -173,6 +183,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       );
     }
   };
+
+
 
   const addReassignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (canReassignTask(task)) {
@@ -319,6 +331,29 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
+  const addViewInvestigationReportAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask
+  ) => {
+    const report = latestReports?.['INVESTIGATION_REPORT'];
+
+    if (
+      task.name === 'SAR/STR Filing' &&
+      report &&
+      onViewReport
+    ) {
+      actions.push(
+        createActionButton(
+          'view-investigation-report',
+          () => onViewReport(report.reportId),
+          <DocumentTextIcon className="h-4 w-4 mr-1" />,
+          'View Investigation Report',
+          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
+        )
+      );
+    }
+  };
+
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions: React.ReactNode[] = [];
 
@@ -343,15 +378,22 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
+    if (task.name === 'SAR/STR Filing' && (hasComplianceOfficerRole() || hasSupervisorRole()) && onViewReport && latestReports?.['INVESTIGATION_REPORT']) {
+      addViewInvestigationReportAction(actions, task);
+    }
+
     if (task.name === 'SAR/STR Filing' && !hasComplianceOfficerRole()) {
       if (task.status === 'UNASSIGNED') {
         return actions;
       } else {
         addViewAction(actions, task);
+
         return actions;
       }
 
     }
+
+
 
 
 
@@ -477,6 +519,20 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                   <td className="px-4 py-3 text-sm font-medium">
                     <div className="flex justify-start space-x-2 items-center">
                       {getAvailableActions(task)}
+                      {/* {task.name === 'SAR/STR Filing' && latestReports?.['INVESTIGATION_REPORT'] && onViewReport && (
+                        <button
+                          onClick={() => {
+                            const report = latestReports['INVESTIGATION_REPORT'];
+                            if (!report) return;
+                            onViewReport(report.reportId);
+                          }}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                          title="View Investigation Report"
+                        >
+
+                          <DocumentTextIcon className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )} */}
                     </div>
                   </td>
                 </tr>

@@ -12,6 +12,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
 import type { Evidence } from '../../types/evidence.types';
+import { reportsService } from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
 
 
@@ -189,45 +190,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [userRole] = useState<string>(getUserRole());
 
-  const handleGenerateReport = async () => {
-    setIsGenerating(true);
-    try {
-      const { userId, tenantId } = getUserInfo();
-      const role = getUserRole();
-
-      const payload = {
-        caseId,
-        investigatorInputs: keyFindings,
-        supervisorRemarks: supervisorFeedback,
-        userId,
-        tenantId,
-        role,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate report');
-      }
-
-      const report = await response.json();
-      setCurrentReportId(report.reportId);
-      showSuccess('Report generated successfully!');
-      setStep('generated');
-    } catch {
-      showError('Failed to generate report. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const evidenceList = (evidenceCategory ?? []).map((category) => ({
     stack: [
       {
@@ -255,223 +217,224 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     ],
   }));
 
+  const timestamp = new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const submittedDate = caseComments?.[0]?.created_at
+    ? new Date(caseComments[0].created_at).toLocaleString()
+    : 'N/A';
+
+  const docDefinition: any = {
+    pageSize: 'A4',
+    pageOrientation: 'portrait',
+    pageMargins: [40, 60, 40, 60],
+    content: [
+      {
+        text: 'CASE INVESTIGATION REPORT',
+        style: 'header',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
+        style: 'subheader',
+        margin: [0, 0, 0, 5],
+      },
+      {
+        text: `Generated: ${timestamp}`,
+        style: 'timestamp',
+        margin: [0, 0, 0, 20],
+      },
+      {
+        canvas: [
+          { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }
+        ],
+        margin: [0, 0, 0, 20],
+      },
+
+      {
+        text: 'CASE INFORMATION',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        columns: [
+          {
+            width: '50%',
+            stack: [
+              { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
+              { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
+            ]
+          },
+          {
+            width: '50%',
+            stack: [
+              { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
+              { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
+            ]
+          }
+        ],
+        margin: [0, 0, 0, 20],
+      },
+
+      {
+        text: 'EXECUTIVE SUMMARY',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: executiveSummary,
+        style: 'body',
+        margin: [0, 0, 0, 20],
+      },
+
+      {
+        text: 'KEY FINDINGS',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: keyFindings,
+        style: 'body',
+        margin: [0, 0, 0, 20],
+      },
+
+      ...(supervisorFeedback ? [
+        {
+          text: 'SUPERVISOR FEEDBACK',
+          style: 'sectionHeader',
+          margin: [0, 0, 0, 10],
+        },
+        {
+          text: supervisorFeedback,
+          style: 'body',
+          margin: [0, 0, 0, 20],
+        },
+      ] : []),
+
+      {
+        text: 'EVIDENCE SUMMARY',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        ul: evidenceList,
+        style: 'body',
+        margin: [0, 0, 0, 5],
+      },
+      {
+        text: 'All evidence items are attached to this case and available for audit review.',
+        style: 'italic',
+        margin: [0, 10, 0, 20],
+      },
+
+      {
+        text: 'FINAL OUTCOME DECISION',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: caseStatus,
+        style: 'outcomeDecision',
+        margin: [0, 0, 0, 20],
+      },
+
+      {
+        text: 'RECOMMENDATIONS & CONCLUSIONS',
+        style: 'sectionHeader',
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: recommendations,
+        style: 'body',
+        margin: [0, 0, 0, 30],
+      },
+
+      {
+        canvas: [
+          { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
+        ],
+        margin: [0, 0, 0, 10],
+      },
+      {
+        text: 'Report End',
+        style: 'footer',
+        margin: [0, 0, 0, 5],
+      },
+      {
+        text: 'This report was generated electronically and contains sensitive information. Handle according to data protection and confidentiality policies.',
+        style: 'disclaimer',
+      },
+    ],
+    styles: {
+      header: {
+        fontSize: 20,
+        bold: true,
+        alignment: 'center',
+        color: '#1f2937',
+      },
+      subheader: {
+        fontSize: 14,
+        bold: true,
+        alignment: 'center',
+        color: '#3b82f6',
+      },
+      timestamp: {
+        fontSize: 10,
+        alignment: 'center',
+        color: '#6b7280',
+        italics: true,
+      },
+      sectionHeader: {
+        fontSize: 14,
+        bold: true,
+        color: '#1f2937',
+        decoration: 'underline',
+        decorationColor: '#3b82f6',
+      },
+      body: {
+        fontSize: 10,
+        color: '#374151',
+        lineHeight: 1.5,
+      },
+      italic: {
+        fontSize: 9,
+        color: '#6b7280',
+        italics: true,
+      },
+      outcomeDecision: {
+        fontSize: 12,
+        bold: true,
+        color: '#059669',
+        alignment: 'center',
+      },
+      footer: {
+        fontSize: 10,
+        bold: true,
+        alignment: 'center',
+        color: '#1f2937',
+      },
+      disclaimer: {
+        fontSize: 8,
+        alignment: 'center',
+        color: '#6b7280',
+        italics: true,
+      },
+    },
+    defaultStyle: {
+      fontSize: 10,
+      color: '#374151',
+    },
+  };
+
 
   const handleDownload = () => {
     try {
-      const timestamp = new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-
-      const submittedDate = caseComments?.[0]?.created_at
-        ? new Date(caseComments[0].created_at).toLocaleString()
-        : 'N/A';
-
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageOrientation: 'portrait',
-        pageMargins: [40, 60, 40, 60],
-        content: [
-          {
-            text: 'CASE INVESTIGATION REPORT',
-            style: 'header',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
-            style: 'subheader',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: `Generated: ${timestamp}`,
-            style: 'timestamp',
-            margin: [0, 0, 0, 20],
-          },
-          {
-            canvas: [
-              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'CASE INFORMATION',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            columns: [
-              {
-                width: '50%',
-                stack: [
-                  { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
-                ]
-              },
-              {
-                width: '50%',
-                stack: [
-                  { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
-                  { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
-                ]
-              }
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'EXECUTIVE SUMMARY',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: executiveSummary,
-            style: 'body',
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'KEY FINDINGS',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: keyFindings,
-            style: 'body',
-            margin: [0, 0, 0, 20],
-          },
-
-          ...(supervisorFeedback ? [
-            {
-              text: 'SUPERVISOR FEEDBACK',
-              style: 'sectionHeader',
-              margin: [0, 0, 0, 10],
-            },
-            {
-              text: supervisorFeedback,
-              style: 'body',
-              margin: [0, 0, 0, 20],
-            },
-          ] : []),
-
-          {
-            text: 'EVIDENCE SUMMARY',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            ul: evidenceList,
-            style: 'body',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: 'All evidence items are attached to this case and available for audit review.',
-            style: 'italic',
-            margin: [0, 10, 0, 20],
-          },
-
-          {
-            text: 'FINAL OUTCOME DECISION',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: caseStatus,
-            style: 'outcomeDecision',
-            margin: [0, 0, 0, 20],
-          },
-
-          {
-            text: 'RECOMMENDATIONS & CONCLUSIONS',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: recommendations,
-            style: 'body',
-            margin: [0, 0, 0, 30],
-          },
-
-          {
-            canvas: [
-              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
-            ],
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: 'Report End',
-            style: 'footer',
-            margin: [0, 0, 0, 5],
-          },
-          {
-            text: 'This report was generated electronically and contains sensitive information. Handle according to data protection and confidentiality policies.',
-            style: 'disclaimer',
-          },
-        ],
-        styles: {
-          header: {
-            fontSize: 20,
-            bold: true,
-            alignment: 'center',
-            color: '#1f2937',
-          },
-          subheader: {
-            fontSize: 14,
-            bold: true,
-            alignment: 'center',
-            color: '#3b82f6',
-          },
-          timestamp: {
-            fontSize: 10,
-            alignment: 'center',
-            color: '#6b7280',
-            italics: true,
-          },
-          sectionHeader: {
-            fontSize: 14,
-            bold: true,
-            color: '#1f2937',
-            decoration: 'underline',
-            decorationColor: '#3b82f6',
-          },
-          body: {
-            fontSize: 10,
-            color: '#374151',
-            lineHeight: 1.5,
-          },
-          italic: {
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-          },
-          outcomeDecision: {
-            fontSize: 12,
-            bold: true,
-            color: '#059669',
-            alignment: 'center',
-          },
-          footer: {
-            fontSize: 10,
-            bold: true,
-            alignment: 'center',
-            color: '#1f2937',
-          },
-          disclaimer: {
-            fontSize: 8,
-            alignment: 'center',
-            color: '#6b7280',
-            italics: true,
-          },
-        },
-        defaultStyle: {
-          fontSize: 10,
-          color: '#374151',
-        },
-      };
 
       const pdfDoc = (pdfMake as any).createPdf(docDefinition);
       pdfDoc.download(`Investigation_Report_${caseId}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -486,74 +449,81 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setShowApprovalConfirm(true);
   };
 
+  const generatePdfFile = (docDefinition: any): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+
+        pdfDoc.getBlob((blob: Blob) => {
+          const file = new File([blob], 'report.pdf', {
+            type: 'application/pdf',
+          });
+          resolve(file);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+
+  const handleGenerateReport = async () => {
+    if (isGenerating) return;
+
+    setIsGenerating(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setStep('generated');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+
   const handleFinalize = async () => {
     setShowApprovalConfirm(false);
     setIsFinalizing(true);
 
     try {
-      if (currentReportId) {
-        const updatePayload = {
-          keyFindings,
-          recommendations,
+      const pdfFile = await generatePdfFile(docDefinition);
+      try {
+        const generateFraudReport = await reportsService.generateFraudReport({
+          file: pdfFile,
+          caseId,
+          investigatorInputs: keyFindings,
           supervisorRemarks: supervisorFeedback,
-          decisions: reportOutcome,
-        };
-
-        const updateResponse = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/edit/${currentReportId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-          },
-          body: JSON.stringify(updatePayload),
+          outcome: reportOutcome,
+          reportType: 'INVESTIGATION_REPORT',
+          description: 'Investigation Report',
         });
 
-        if (!updateResponse.ok) {
-          const errorData = await updateResponse.json().catch(() => ({}));
-          throw new Error(`Failed to update report: ${updateResponse.status} ${updateResponse.statusText} ${JSON.stringify(errorData)}`);
+        if (!generateFraudReport) {
+          throw new Error('Failed to generate report');
         }
-      }
+        setStep('generated');
 
-      const { userId: supervisorUserId } = getUserInfo();
-      const supervisorName = investigatorName || 'Supervisor';
 
-      const approvePayload = {
-        reportId: currentReportId || `${caseId}-v1`,
-        outcome: reportOutcome,
-        supervisor: supervisorName,
-        supervisorUserId,
-        ...(reportOutcome === 'Under Monitoring' && { monitoringDuration }),
-      };
-
-      const approveResponse = await fetch(`${API_BASE_URL}/api/v1/reports/fraud/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-        },
-        body: JSON.stringify(approvePayload),
-      });
-
-      if (!approveResponse.ok) {
-        const errorData = await approveResponse.json().catch(() => ({}));
-        throw new Error(`Failed to approve report: ${approveResponse.status} ${approveResponse.statusText} ${JSON.stringify(errorData)}`);
-      }
-
-      if (taskId && investigationNotes) {
-        try {
-          await taskService.updateTaskForSupervisor(taskId, {
-            investigationNotes: investigationNotes,
-          });
-        } catch {
+        if (taskId && investigationNotes) {
+          try {
+            await taskService.updateTaskForSupervisor(taskId, {
+              investigationNotes: investigationNotes,
+            });
+          } catch {
+          }
         }
-      }
 
-      const outcomeKey = `fraud-report-outcome-${caseId}`;
-      localStorage.setItem(outcomeKey, JSON.stringify({
-        outcome: reportOutcome,
-        approvedAt: new Date().toISOString(),
-        reportId: currentReportId || `${caseId}-v1`,
-      }));
+        const outcomeKey = `fraud-report-outcome-${caseId}`;
+        localStorage.setItem(outcomeKey, JSON.stringify({
+          outcome: reportOutcome,
+          approvedAt: new Date().toISOString(),
+          reportId: generateFraudReport.fileName || `${caseId}-v1`,
+        }));
+
+      } catch {
+        showError('Failed to generate report. Please try again.');
+      } finally {
+        setIsFinalizing(false);
+      }
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');

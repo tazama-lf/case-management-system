@@ -1,11 +1,16 @@
-import { Controller, Get, Query, Req, UseGuards, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Query, Req, MaxFileSizeValidator, UseGuards, Post, Put, Param, Body, UploadedFile, UseInterceptors, ParseFilePipe } from '@nestjs/common';
 import { GenerateFraudReportDto } from './dto/generate-fraud-report.dto';
 import { ApproveFraudReportDto } from './dto/approve-fraud-report.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole, RequireSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { UploadReportDto } from './dto/upload-report.dto';
+import { Outcome } from 'src/utils/types/outcome';
+import { Express } from 'express';
+import { Multer } from 'multer';
 
 @ApiTags('Reports')
 @ApiBearerAuth('jwt')
@@ -17,37 +22,55 @@ export class ReportsController {
   // --- Fraud Report Endpoints ---
 
   @Post('fraud/generate')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireSupervisorRole()
   @ApiOperation({ summary: 'Generate fraud investigation report', description: 'Create a new fraud investigation report for a case.' })
-  @ApiResponse({ status: 201, description: 'Fraud report generated successfully.' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        caseId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4' },
-        investigatorInputs: { type: 'string', example: 'Initial investigation completed. Evidence collected.' },
-        supervisorRemarks: { type: 'string', example: 'Please review findings and recommendations.' },
-        userId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' },
-        tenantId: { type: 'string', example: 'tenant-001' },
-        role: { type: 'string', example: 'CMS_SUPERVISOR' }
-      },
-      required: ['caseId', 'investigatorInputs', 'supervisorRemarks']
-    },
-    examples: {
-      default: {
-        summary: 'Sample request',
-        value: {
-          caseId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4',
-          investigatorInputs: 'Initial investigation completed. Evidence collected.',
-          supervisorRemarks: 'Please review findings and recommendations.',
-          userId: '1d2282cb-5733-4755-bf3f-677074fb9cd6',
-          tenantId: 'tenant-001',
-          role: 'CMS_SUPERVISOR'
+        file: {
+          type: 'any',
+          items: { type: 'string', format: 'binary' },
+        },
+        caseId: {
+          type: 'string',
+          description: 'Case ID',
+        },
+        description: {
+          type: 'string',
+          description: 'Description of the report',
+        },
+        reportType: {
+          type: 'string',
+          enum: ['INVESTIGATION_REPORT'],
+          description: 'Type of evidence',
+        },
+        investigatorInputs: {
+          type: 'string', example: 'Initial investigation completed. Evidence collected.'
+        },
+        supervisorRemarks: {
+          type: 'string', example: 'Please review findings and recommendations.'
+        },
+        outcome: {
+          type: 'string', example: 'Under Monitoring'
         }
-      }
-    }
+      },
+      required: ['file', 'caseId', 'reportType'],
+    },
   })
-  async generateFraudReport(@Req() req: AuthenticatedRequest, @Body() body: any) {
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiResponse({ status: 201, description: 'Fraud report generated successfully.' })
+  async generateFraudReport(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 })],
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
+    @Body() dto: UploadReportDto,
+    @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
@@ -60,9 +83,8 @@ export class ReportsController {
       throw new Error('User does not have a valid investigator or supervisor role');
     }
     return await this.reportsService.generateFraudReport(
-      body.caseId,
-      body.investigatorInputs,
-      body.supervisorRemarks,
+      file,
+      dto,
       userId,
       tenantId,
       role
