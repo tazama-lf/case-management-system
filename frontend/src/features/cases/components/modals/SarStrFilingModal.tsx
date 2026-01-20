@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon, TrashIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, UploadEvidenceDto } from '../../types/evidence.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
@@ -42,6 +42,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const { success, error } = useToast();
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const { hasComplianceOfficerRole } = useAuth();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
@@ -228,15 +229,38 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     }
   };
 
-
   const handleDownloadEvidence = async (evidence: Evidence) => {
     try {
-      await evidenceService.downloadEvidence(evidence.id);
-    } catch (error) {
-      console.error('Failed to download evidence:', error);
-      alert('Failed to download evidence');
+      setDownloadingId(evidence.id.toString());
+
+      const blob = await evidenceService.downloadEvidence(evidence.id);
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = evidence.fileName || 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download evidence:', err);
+      error('Failed to download evidence');
+
+    } finally {
+      setDownloadingId(null);
     }
   };
+
+
+  // const handleDownloadEvidence = async (evidence: Evidence) => {
+  //   try {
+  //     await evidenceService.downloadEvidence(evidence.id);
+  //   } catch (error) {
+  //     console.error('Failed to download evidence:', error);
+  //     alert('Failed to download evidence');
+  //   }
+  // };
 
 
 
@@ -498,9 +522,39 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                               Uploaded: {new Date(evidence.uploadedAt).toLocaleString()} by {evidence.uploadedBy}
                             </p>
                           </div>
-                          <div className="ml-3 flex items-center gap-2">
+                          {/* <div className="ml-3 flex items-center gap-2">
                             <span className="text-xs text-green-600">✓ Uploaded</span>
 
+                            <button
+                              disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
+                              type="button"
+                              onClick={() =>
+                                setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })
+                              }
+                              className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              title="Delete Evidence"
+                            >
+                              <TrashIcon className="h-4.5 w-4.5" />
+                            </button>
+                          </div> */}
+                          <div className="ml-3 flex items-center gap-2">
+
+                            {/* Download */}
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadEvidence(evidence)}
+                              disabled={downloadingId === evidence.id.toString()}
+                              className="rounded-md p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 disabled:opacity-50"
+                              title="Download Evidence"
+                            >
+                              {downloadingId === evidence.id.toString() ? (
+                                <ArrowPathIcon className="h-4.5 w-4.5 animate-spin" />
+                              ) : (
+                                <ArrowDownTrayIcon className="h-4.5 w-4.5" />
+                              )}
+                            </button>
+
+                            {/* Delete */}
                             <button
                               disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
                               type="button"

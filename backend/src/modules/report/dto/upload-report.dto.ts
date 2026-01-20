@@ -5,7 +5,6 @@ import { Transform, Type } from 'class-transformer';
 export class UploadReportDto {
 
   @ApiProperty({ description: 'Case ID this evidence belongs to' })
-  @Type(() => Number)
   caseId: string;
 
   @ApiProperty({ description: 'Type of evidence', example: 'INVESTIGATION_REPORT' })

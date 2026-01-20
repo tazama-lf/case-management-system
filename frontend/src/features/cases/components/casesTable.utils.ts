@@ -109,7 +109,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     createdOn: new Date(backendCase.created_at).toLocaleDateString('en-GB'),
     pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
+    assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User', //Check with Umair
     priority: backendCase.priority,
     userRole: backendCase.user_role,
     totalTasks: backendCase.total_tasks,
