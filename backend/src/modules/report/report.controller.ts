@@ -34,7 +34,7 @@ export class ReportsController {
           items: { type: 'string', format: 'binary' },
         },
         caseId: {
-          type: 'string',
+          type: 'number',
           description: 'Case ID',
         },
         description: {

@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, MaxLength, IsDateString, IsArray, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, MaxLength, IsDateString, IsArray, IsNumber, isNumber } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class UploadReportDto {
 
   @ApiProperty({ description: 'Case ID this evidence belongs to' })
   @Type(() => Number)
-  caseId: string;
+  @IsNumber()
+  caseId: number;
 
   @ApiProperty({ description: 'Type of evidence', example: 'INVESTIGATION_REPORT' })
   @IsOptional()
