@@ -194,7 +194,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getConditionsList(accountId, tenantId || 'DEFAULT');
+    return this.goldLakehouseService.getConditionsList(accountId, tenantId);
   }
 
   @Get('conditions/evaluated-transactions')
@@ -233,7 +233,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId || 'DEFAULT', fromDate);
+    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
   }
 
   @Get('transaction-history/:entityId')

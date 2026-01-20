@@ -494,8 +494,9 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsSummary(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+  async getConditionsSummary(accountId: string, tenantId?: string, fromDate?: string) {
     try {
+      const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
 
       const sql = `
@@ -508,7 +509,7 @@ export class GoldLakehouseService {
           FILTER (WHERE cond_is_active = 0 AND cond_is_expired = 0) AS future_conditions
       FROM conditions_timeline
       WHERE cond_account_id = '${accountId}'
-        AND cond_tenant_id = '${tenantId}'
+        ${tenantFilter}
         ${dateFilter}
     `;
 
@@ -527,14 +528,19 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsList(accountId: string, tenantId: string = 'DEFAULT') {
+  async getConditionsList(accountId: string, tenantId?: string) {
     try {
+      const filters: any = {
+        account_id: accountId,
+      };
+
+      if (tenantId) {
+        filters.tenant_id = tenantId;
+      }
+
       const response = await this.query({
         table_name: 'conditions',
-        filters: {
-          account_id: accountId,
-          tenant_id: tenantId,
-        },
+        filters: filters,
       });
 
       const rows = response.data || [];
@@ -665,6 +671,7 @@ export class GoldLakehouseService {
 
   async getEvaluatedTransactions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
+      const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
 
       const sql = `
@@ -679,7 +686,7 @@ export class GoldLakehouseService {
         cond_reason
       FROM conditions_timeline
       WHERE cond_account_id = '${accountId}'
-        AND cond_tenant_id = '${tenantId}'
+        ${tenantFilter}
         ${dateFilter}
       ORDER BY tx_event_ts DESC
     `;
