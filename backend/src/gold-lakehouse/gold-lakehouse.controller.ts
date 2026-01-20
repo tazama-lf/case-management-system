@@ -85,7 +85,7 @@ export class GoldLakehouseController {
 
     return this.goldLakehouseService.getConditionsSummary(
       accountId,
-      tenantId || 'DEFAULT',
+      tenantId,
       fromDate,
     );
   }
@@ -116,7 +116,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getConditionsList(accountId, tenantId || 'DEFAULT');
+    return this.goldLakehouseService.getConditionsList(accountId, tenantId);
   }
 
   @Get('conditions/evaluated-transactions')
@@ -157,7 +157,7 @@ export class GoldLakehouseController {
 
     return this.goldLakehouseService.getEvaluatedTransactions(
       accountId,
-      tenantId || 'DEFAULT',
+      tenantId,
       fromDate,
     );
   }
