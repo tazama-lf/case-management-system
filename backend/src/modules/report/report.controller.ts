@@ -71,6 +71,9 @@ export class ReportsController {
     file: Express.Multer.File,
     @Body() dto: UploadReportDto,
     @Req() req: AuthenticatedRequest) {
+    if (!dto.caseId) {
+      throw new Error('caseId is required: ' + dto.caseId);
+    }
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
