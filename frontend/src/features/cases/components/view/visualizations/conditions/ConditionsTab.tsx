@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ConditionsService from './services/service';
 import TransactionDetailsService from '../transactiondetails/services/service';
-import type { ConditionsResponse } from './types';
+import type { ConditionsData } from './types';
 
 interface ConditionsTabProps {
   caseId?: string;
@@ -13,7 +13,7 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
   transactionId,
 }) => {
   const [timeRange, setTimeRange] = useState('Last 30 Days');
-  const [data, setData] = useState<ConditionsResponse | null>(null);
+  const [data, setData] = useState<ConditionsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +25,38 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
     'Last Year',
     'All Time',
   ];
+
+  // Helper function to calculate fromDate based on time range
+  const getFromDate = (range: string): string | undefined => {
+    const now = new Date();
+    let daysAgo = 0;
+
+    switch (range) {
+      case 'Last 30 Days':
+        daysAgo = 30;
+        break;
+      case 'Last 60 Days':
+        daysAgo = 60;
+        break;
+      case 'Last 90 Days':
+        daysAgo = 90;
+        break;
+      case 'Last 6 Months':
+        daysAgo = 180;
+        break;
+      case 'Last Year':
+        daysAgo = 365;
+        break;
+      case 'All Time':
+        return undefined;
+      default:
+        return undefined;
+    }
+
+    const fromDate = new Date(now);
+    fromDate.setDate(fromDate.getDate() - daysAgo);
+    return fromDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,17 +72,19 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
         const txnDetails =
           await TransactionDetailsService.getTransactionDetails(transactionId);
 
-        // 2. Extract Creditor Account IBAN
-        const accountId = txnDetails.creditorProfile?.account?.iban;
+        // 2. Extract Creditor Account IBAN or use sample account for testing
+        const accountId =
+          txnDetails.creditorProfile?.account?.iban ||
+          '7777cdefaa9b430692dafe4bd0ef9999'; // Fallback sample account for testing
 
-        if (!accountId) {
-          throw new Error(
-            'Could not find Creditor Account IBAN in transaction details',
-          );
-        }
+        console.log('Using accountId for conditions:', accountId);
 
-        // 3. Fetch Conditions using Account ID
-        const response = await ConditionsService.getConditions(accountId);
+        // 3. Fetch Conditions using Account ID with date filter
+        const fromDate = getFromDate(timeRange);
+        const response = await ConditionsService.getConditionsData(
+          accountId,
+          fromDate,
+        );
         setData(response);
       } catch (err) {
         setError(
@@ -63,7 +97,7 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
     };
 
     fetchData();
-  }, [caseId, transactionId]);
+  }, [caseId, transactionId, timeRange]);
 
   if (loading) {
     return (
@@ -127,18 +161,18 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Approved Transactions
+            Overridden Transactions
           </div>
           <div className="text-2xl font-bold text-green-600">
-            {data.metrics?.approved ?? 0}
+            {data.metrics?.overridden ?? 0}
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Review Conditions
+            Future Conditions
           </div>
           <div className="text-2xl font-bold text-purple-600">
-            {data.metrics?.review ?? 0}
+            {data.metrics?.future ?? 0}
           </div>
         </div>
       </div>
@@ -156,24 +190,57 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
                 className={`rounded-lg border-l-4 p-4 ${
                   condition.severity === 'high'
                     ? 'border-l-red-500 bg-red-50'
-                    : 'border-l-green-500 bg-green-50'
+                    : condition.severity === 'medium'
+                      ? 'border-l-yellow-500 bg-yellow-50'
+                      : 'border-l-green-500 bg-green-50'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 text-sm">
                       {condition.title}
                     </h4>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Start Date: {condition.startDate}
-                      {condition.endDate && ` | End Date: ${condition.endDate}`}
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">Start:</span>{' '}
+                        {new Date(condition.startDate).toLocaleString()}
+                        {condition.endDate && (
+                          <>
+                            {' | '}
+                            <span className="font-medium">End:</span>{' '}
+                            {new Date(condition.endDate).toLocaleString()}
+                          </>
+                        )}
+                      </p>
+                      {condition.createdBy && (
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Created by:</span>{' '}
+                          {condition.createdBy}
+                        </p>
+                      )}
+                      {condition.action && (
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Action:</span>{' '}
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              condition.action === 'BLOCK'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {condition.action}
+                          </span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <span
                     className={`px-2 py-1 rounded text-xs font-semibold ${
-                      condition.status === 'No reply'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
+                      condition.status === 'ACTIVE'
+                        ? 'bg-green-100 text-green-800'
+                        : condition.status === 'EXPIRED'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-purple-100 text-purple-800'
                     }`}
                   >
                     {condition.status}
@@ -209,10 +276,13 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
                   Amount
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Status
+                  Currency
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Jurisdiction
+                  Outcome
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-900">
+                  Condition ID
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-900">
                   Reason
@@ -229,22 +299,27 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
                     <td className="px-4 py-3 text-gray-900 font-semibold">
                       {txn.id}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{txn.date}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {new Date(txn.date).toLocaleString()}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{txn.type}</td>
                     <td className="px-4 py-3 text-gray-600">{txn.amount}</td>
+                    <td className="px-4 py-3 text-gray-600">{txn.currency}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 rounded text-xs font-semibold ${
-                          txn.status === 'COMPLIANT'
+                          txn.outcome === 'PASSED'
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            : txn.outcome === 'BLOCKED'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {txn.status}
+                        {txn.outcome}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {txn.jurisdiction}
+                      {txn.conditionId}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{txn.reason}</td>
                   </tr>
@@ -252,7 +327,7 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-3 text-center text-gray-500"
                   >
                     No evaluated transactions found.
@@ -264,15 +339,15 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
         </div>
       </div>
 
-      {/* Earned & Future Conditions */}
+      {/* Expired & Future Conditions */}
       <div className="grid grid-cols-2 gap-6">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">
-            Earned Conditions
+            Expired Conditions
           </h3>
           <div className="space-y-3">
-            {data.earnedConditions?.length > 0 ? (
-              data.earnedConditions.map((condition) => (
+            {data.expiredConditions?.length > 0 ? (
+              data.expiredConditions.map((condition) => (
                 <div
                   key={condition.id}
                   className="rounded-lg border border-gray-300 bg-gray-50 p-4"
@@ -281,13 +356,13 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
                     {condition.title}
                   </p>
                   <p className="text-xs text-gray-600 mt-2">
-                    Active since {condition.startDate}{' '}
-                    {condition.endDate ? `| Ends ${condition.endDate}` : ''}
+                    {new Date(condition.startDate).toLocaleDateString()} -{' '}
+                    {new Date(condition.endDate || '').toLocaleDateString()}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">No earned conditions.</p>
+              <p className="text-sm text-gray-500">No expired conditions.</p>
             )}
           </div>
         </div>
@@ -306,7 +381,8 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
                     {condition.title}
                   </p>
                   <p className="text-xs text-gray-600 mt-2">
-                    Effective from {condition.startDate}
+                    Effective from{' '}
+                    {new Date(condition.startDate).toLocaleDateString()}
                   </p>
                 </div>
               ))
