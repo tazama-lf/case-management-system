@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseService } from '../case/case.service';
 import { TaskService } from '../task/task.service';
@@ -10,6 +10,8 @@ import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
 import { EvidenceService } from '../evidence/evidence.service';
 import { EventLogService } from '../event_log/eventLog.service';
+import { UploadReportDto } from './dto/upload-report.dto';
+import * as crypto from 'crypto';
 
 
 @Injectable()
@@ -1086,17 +1088,43 @@ export class ReportsService {
     };
   }
 
+  private sha256(buffer: Buffer): string {
+    return crypto.createHash('sha256').update(buffer).digest('hex');
+  }
+
+  private encrypt(buffer: Buffer) {
+    const key = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+    const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    return {
+      encrypted,
+      key: key.toString('base64'),
+      iv: iv.toString('base64'),
+      authTag: authTag.toString('base64'),
+    };
+  }
+
+
   async generateFraudReport(
-    caseId: number,
-    investigatorInputs: string,
-    supervisorRemarks: string,
+    file: any,
+    dto: UploadReportDto,
     userId?: string,
     tenantId?: string,
     role?: string,
   ): Promise<FraudReport> {
+
+    const allowed = 'application/pdf';
+    if (!allowed?.includes(file.mimetype)) {
+      throw new BadRequestException(`File type ${file.mimetype} is not allowed for ${dto.reportType}. File: ${file.originalname}`);
+    }
+
     if (role === 'CMS_SUPERVISOR') {
       const caseTasks = await this.prisma.task.findMany({
-        where: { case_id: caseId },
+        where: { case_id: Number(dto.caseId) },
       });
 
       const investigationTasks = caseTasks.filter(task =>
@@ -1114,38 +1142,66 @@ export class ReportsService {
         );
       }
     }
-    const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
+    const caseData = await this.prisma.case.findUnique({ where: { case_id: Number(dto.caseId) } });
     if (!caseData) throw new Error('Case not found');
     const db = this.couchdbService.getDatabase();
-    const existingReportsResult = await db.find({ selector: { caseId, category: 'report' } });
+    const existingReportsResult = await db.find({ selector: { caseId: dto.caseId, category: 'report' } });
     const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
     const nextVersion = existingReports.length > 0
       ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
       : 1;
-    const reportId = `${caseId}-v${nextVersion}`;
-    const evidenceResult = await this.evidenceService.getEvidenceByCaseId(caseId, userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
+    const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
+    file.originalname = reportId + '.pdf';
+    const evidenceResult = await this.evidenceService.getEvidenceByCaseId(Number(dto.caseId), userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
     const evidenceSummary = evidenceResult.evidence;
-    const report: FraudReport = {
+
+
+    const report: any = {
+      userId: userId,
+      tenantId: tenantId,
+      role: role,
       reportId,
-      caseId,
-      metadata: {
-        caseType: caseData.case_type ?? '',
-        investigator: caseData.case_owner_user_id ?? '',
-        supervisor: '',
-        submittedAt: new Date().toISOString(),
-      },
+      caseId: dto.caseId,
+      reportType: 'INVESTIGATION_REPORT',
+      metadata: [],
       keyFindings: '',
       evidenceSummary,
       decisions: FraudReportOutcome.UNDER_MONITORING,
-      investigatorInputs,
-      supervisorRemarks,
+      investigatorInputs: dto.investigatorInputs,
+      supervisorRemarks: dto.supervisorRemarks,
       recommendations: '',
       archived: false,
       version: nextVersion,
       history: [],
       category: 'report',
     };
-    await this.couchdbService.insertDocument(reportId, report);
+    const insertResult = await this.couchdbService.insertDocument(reportId, report);
+
+    let currentRev = insertResult.rev;
+
+    const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
+    const hash = this.sha256(encrypted);
+
+    const attachmentResult = await this.couchdbService.insertAttachment(reportId, currentRev, file.originalname, encrypted, file.mimetype);
+
+    report.metadata.push({
+      fileName: file.originalname,
+      fileSize: file.size,
+      filePath: attachmentResult.filePath,
+      mimeType: file.mimetype,
+      hash,
+      encryption: { key, iv, authTag },
+      caseType: caseData.case_type ?? '',
+      investigator: caseData.case_owner_user_id ?? '',
+      supervisor: '',
+      description: dto.description || '',
+      submittedAt: new Date().toISOString(),
+    });
+
+    currentRev = attachmentResult.rev;
+
+    await this.couchdbService.updateDocument(reportId, report);
+
     await this.auditLogService.logAction({
       userId: userId ?? '',
       operation: 'CREATE',
@@ -1154,8 +1210,99 @@ export class ReportsService {
       outcome: 'SUCCESS',
       performedAt: new Date(),
     });
+
+    await this.auditLogService.logAction({
+      userId: userId,
+      operation: 'APPROVE',
+      entityName: 'FraudReport',
+      actionPerformed: 'Fraud report approved',
+      outcome: 'SUCCESS',
+      performedAt: new Date(),
+    });
+    // Send notification to Compliance Officer 
+    await this.notificationService.sendGroupNotification({
+      candidateGroup: 'COMPLIANCE_OFFICER',
+      type: 'GENERIC',
+      message: `Fraud report ${reportId} for case ${report.caseId} has been approved. Outcome: ${dto.outcome}`,
+      metadata: { reportId, caseId: report.caseId, outcome: dto.outcome },
+    });
+
     return report;
   }
+
+
+  // async generateFraudReport(
+  //   caseId: number,
+  //   investigatorInputs: string,
+  //   supervisorRemarks: string,
+  //   userId?: string,
+  //   tenantId?: string,
+  //   role?: string,
+  // ): Promise<FraudReport> {
+  //   if (role === 'CMS_SUPERVISOR') {
+  //     const caseTasks = await this.prisma.task.findMany({
+  //       where: { case_id: caseId },
+  //     });
+
+  //     const investigationTasks = caseTasks.filter(task =>
+  //       task.name && task.name.toLowerCase().includes('investigate')
+  //     );
+
+  //     const incompleteTasks = investigationTasks.filter(
+  //       task => task.status !== TaskStatus.STATUS_30_COMPLETED
+  //     );
+
+  //     if (incompleteTasks.length > 0) {
+  //       const taskNames = incompleteTasks.map(t => t.name).join(', ');
+  //       throw new BadRequestException(
+  //         `Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`
+  //       );
+  //     }
+  //   }
+  //   const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
+  //   if (!caseData) throw new Error('Case not found');
+  //   const db = this.couchdbService.getDatabase();
+  //   const existingReportsResult = await db.find({ selector: { caseId, category: 'report' } });
+  //   const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
+  //   const nextVersion = existingReports.length > 0
+  //     ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
+  //     : 1;
+  //   const reportId = `${caseId}-InvestigationReport-v${nextVersion}`;
+  //   const evidenceResult = await this.evidenceService.getEvidenceByCaseId(caseId, userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
+  //   const evidenceSummary = evidenceResult.evidence;
+  //   const report: FraudReport = {
+  //     reportId,
+  //     caseId,
+  //     reportType: 'INVESTIGATION_REPORT',
+  //     metadata: {
+  //       caseType: caseData.case_type ?? '',
+  //       investigator: caseData.case_owner_user_id ?? '',
+  //       supervisor: '',
+  //       submittedAt: new Date().toISOString(),
+  //     },
+  //     keyFindings: '',
+  //     evidenceSummary,
+  //     decisions: FraudReportOutcome.UNDER_MONITORING,
+  //     investigatorInputs,
+  //     supervisorRemarks,
+  //     recommendations: '',
+  //     archived: false,
+  //     version: nextVersion,
+  //     history: [],
+  //     category: 'report',
+  //   };
+  //   const attachmentResult = await this.couchdbService.insertDocument(reportId, report);
+
+  //   await this.auditLogService.logAction({
+  //     userId: userId ?? '',
+  //     operation: 'CREATE',
+  //     entityName: 'FraudReport',
+  //     actionPerformed: `Fraud report generated (v${nextVersion})`,
+  //     outcome: 'SUCCESS',
+  //     performedAt: new Date(),
+  //   });
+  //   return report;
+  // }
 
   async editFraudReport(reportId: string, updates: Partial<FraudReport>, userId?: string): Promise<FraudReport> {
     const existing = await this.couchdbService.getDocument(reportId);
@@ -1241,14 +1388,6 @@ export class ReportsService {
       message: `Fraud report ${reportId} for case ${report.caseId} has been approved. Outcome: ${outcome}`,
       metadata: { reportId, caseId: report.caseId, outcome },
     });
-    let newStatus: CaseStatus = CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
-    if (outcome === FraudReportOutcome.CONFIRMED_FRAUD) {
-      newStatus = CaseStatus.STATUS_82_CLOSED_CONFIRMED;
-    } else if (outcome === FraudReportOutcome.REFUTED_FRAUD) {
-      newStatus = CaseStatus.STATUS_81_CLOSED_REFUTED;
-    }
-    const updateDto: UpdateCaseDto = { status: newStatus };
-    await this.caseService.updateCase(report.caseId, updateDto, supervisorUserId);
     return report;
   }
 

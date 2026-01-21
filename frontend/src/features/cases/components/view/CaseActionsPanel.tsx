@@ -208,12 +208,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     }
 
     // Reopen Case button - show for closed cases
-    if (onReopenCase && hasCompletedStrTask && (
-      caseData.status === 'STATUS_81_CLOSED_REFUTED' ||
-      caseData.status === 'STATUS_82_CLOSED_CONFIRMED' ||
-      caseData.status === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
-      caseData.status.includes('CLOSED')
-    )) {
+    if (onReopenCase && ((hasCompletedStrTask && caseData.status === 'STATUS_82_CLOSED_CONFIRMED') ||
+      (caseData.status === 'STATUS_81_CLOSED_REFUTED' ||
+        caseData.status === 'STATUS_83_CLOSED_INCONCLUSIVE'))) {
       actions.push(
         <button
           key="reopen"

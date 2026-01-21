@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { commentService } from '../../services/commentService';
 import type { CommentsByCaseId } from '../../services/commentService';
 import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface CommentsHistoryTabProps {
   caseId: number;
@@ -117,7 +118,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
               <div>
                 <div className="text-xs text-gray-500 uppercase">Created At</div>
                 <div className="font-medium text-gray-900">
-                  {new Date(c.created_at).toLocaleString()}
+                  {formatDate(c.created_at)}
                 </div>
               </div>
 
@@ -125,7 +126,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
               <div>
                 <div className="text-xs text-gray-500 uppercase">Updated At</div>
                 <div className="font-medium text-gray-900">
-                  {new Date(c.updated_at).toLocaleString()}
+                  {formatDate(c.updated_at)}
                 </div>
               </div>
 
@@ -174,7 +175,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
                 <div>
                   <div className="text-xs text-gray-500 uppercase">Created At</div>
                   <div className="font-medium text-gray-900">
-                    {new Date(c.created_at).toLocaleString()}
+                    {formatDate(c.created_at)}
                   </div>
                 </div>
 
@@ -182,7 +183,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
                 <div>
                   <div className="text-xs text-gray-500 uppercase">Updated At</div>
                   <div className="font-medium text-gray-900">
-                    {new Date(c.updated_at).toLocaleString()}
+                    {formatDate(c.updated_at)}
                   </div>
                 </div>
 

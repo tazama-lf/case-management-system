@@ -142,7 +142,7 @@ export class EvidenceController {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER) ? 'CMS_COMPLIANCE_OFFICER' : 'CMS_INVESTIGATOR';
     return this.evidenceService.getEvidenceByCaseId(caseId, clientId, tenantId, role);
   }
 

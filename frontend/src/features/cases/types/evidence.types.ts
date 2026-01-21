@@ -4,6 +4,7 @@ export interface EvidenceAttachment {
   filePath: string;
   mimeType: string;
   hash: string;
+  submittedAt?: string;
   encryption?: {
     key: string;
     iv: string;
@@ -15,6 +16,7 @@ export interface Evidence {
   id: string; // Evidence ID
   taskId: number; // Task ID this evidence belongs to
   caseId?: number; // Case ID (derived from task)
+  reportId?: string; // Report ID for investigation reports
   fileName: string;
   originalName?: string;
   fileSize: number;
@@ -30,6 +32,7 @@ export interface Evidence {
   verified?: boolean;
   downloadUrl?: string;
   attachments?: EvidenceAttachment[]; // CouchDB attachments array
+
 
   // Sanctions specific fields
   screeningDate?: string;
@@ -65,6 +68,25 @@ export interface EvidenceMetadata {
   keywords?: string[];
   findings?: string;
   [key: string]: string | string[] | number | boolean | undefined;
+}
+
+export interface Attachment {
+  fileName: string;
+  fileSize: number | null;
+  filePath: string;
+  mimeType: string;
+  hash: string;                // unique identifier for the file
+  encryption?: {
+    key: string;
+    iv: string;
+    authTag: string;
+  };
+  caseType?: string;
+  investigator?: string;
+  supervisor?: string;
+  description?: string;
+  submittedAt: string;         // ISO string
+  [key: string]: any;          // allow extra fields if needed
 }
 
 export interface UploadEvidenceDto {

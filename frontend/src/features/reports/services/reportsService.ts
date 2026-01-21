@@ -1,3 +1,4 @@
+import type { UploadReportDto, UploadReportResponse } from '@/features/cases/services/types/report.types';
 import apiClient from '../../../shared/services/apiClient';
 import type {
   ReportsData,
@@ -161,6 +162,30 @@ class ReportsService {
         statusDistribution: [],
         taskDetails: []
       };
+    }
+  }
+
+  async generateFraudReport(
+    data: UploadReportDto,
+  ): Promise<UploadReportResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', data.file);
+      formData.append('caseId', data.caseId.toString());
+      formData.append('reportType', data.reportType);
+      formData.append('investigatorInputs', data.investigatorInputs || '');
+      formData.append('supervisorRemarks', data.supervisorRemarks || '');
+      formData.append('outcome', data.outcome || '');
+      formData.append('description', data.description || '');
+
+      const response = await apiClient.upload<UploadReportResponse>(
+        `/api/v1/reports/fraud/generate`,
+        formData,
+      );
+
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'upload evidence');
     }
   }
 
@@ -489,6 +514,28 @@ class ReportsService {
       return `${safeValue}${unit}`;
     }
     return safeValue.toString();
+  }
+
+  private handleError(error: unknown, operation: string): Error {
+    console.error(`EvidenceService Error - ${operation}:`, error);
+
+    if (error instanceof Error) {
+      return error;
+    }
+
+    const err = error as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
+    if (err?.response?.data) {
+      return new Error(err.response.data.message || `Failed to ${operation}`);
+    }
+
+    if (err?.message) {
+      return new Error(err.message);
+    }
+
+    return new Error(`Failed to ${operation}`);
   }
 
 }

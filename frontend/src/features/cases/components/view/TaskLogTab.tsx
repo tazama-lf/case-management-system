@@ -13,6 +13,7 @@ import { transformBackendCaseToUI } from '../casesTable.utils';
 import type { CaseRow } from '../casesTable.utils';
 import type { CaseWithTasksDto } from '../../services/caseService';
 import { caseService } from '../../services/caseService';
+import { evidenceService } from '../../services/evidenceService';
 
 
 const UnassignTaskModal = lazy(() => import('../modals/UnassignTaskModal'));
@@ -36,6 +37,12 @@ interface TaskLogTabProps {
   onAfterTaskReassign?: () => void;
 
 }
+
+type LatestReport = {
+  reportType: string;
+  reportId: string;
+};
+
 const TaskLogTab: React.FC<TaskLogTabProps> = ({
   caseId,
   onRefreshCases,
@@ -63,10 +70,18 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
-
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  // Check if user is investigator only (no supervisor or admin role)
   const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
- 
+  const [latestReports, setLatestReports] = useState<Record<string, LatestReport | null>>({});
+
+  // Function to trigger task refresh
+  // const refreshTasks = React.useCallback(() => {
+  //   setRefreshTrigger(prev => prev + 1);
+  // }, []);
+
+
   useEffect(() => {
     const fetchData = async () => {
 
@@ -106,6 +121,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 
 
   }, [fetchTasks]);
+
+
+
+
 
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
 
@@ -362,6 +381,138 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     }
   };
 
+
+  const loadReport = React.useCallback(async () => {
+    if (!caseId) return;
+
+    try {
+      const evidenceResponse = await evidenceService.getCaseEvidence(caseId);
+
+      const latestByType: Record<string, LatestReport | null> = {};
+
+      evidenceResponse.evidence.forEach((evidence) => {
+        const reportType = evidence.evidenceType || 'INVESTIGATION_REPORT';
+        const reportId = evidence.reportId;
+
+        const submittedAt =
+          evidence.attachments?.[0]?.submittedAt
+            ? new Date(evidence.attachments[0].submittedAt).getTime()
+            : 0;
+
+        const existing = latestByType[reportType];
+
+        if (!existing) {
+          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+          return;
+        }
+
+        const existingEvidence = evidenceResponse.evidence.find(
+          (e) => e.reportId === existing.reportId
+        );
+
+        const existingDate =
+          existingEvidence?.attachments?.[0]?.submittedAt
+            ? new Date(existingEvidence.attachments[0].submittedAt).getTime()
+            : 0;
+
+        if (submittedAt > existingDate) {
+          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+        }
+      });
+
+      setLatestReports(latestByType);
+    } catch (err) {
+      console.error('Failed to load reports:', err);
+    }
+  }, [caseId]);
+
+
+  React.useEffect(() => {
+    loadReport();
+  }, [loadReport]);
+
+
+  const handleViewReport = async (reportId?: string) => {
+    if (!reportId) {
+      return;
+    }
+    const actualReportId = reportId;
+    setViewingId(actualReportId);
+
+    try {
+      console.log('[Report View] Starting view for:', { actualReportId, reportId });
+      // Fetch the encrypted blob from CouchDB
+      const blob = await evidenceService.viewEvidence(actualReportId);
+
+      console.log('[Report View] Blob received:', { size: blob.size, type: blob.type });
+
+      if (blob.size === 0) {
+        throw new Error('Received empty file');
+      }
+
+      // Determine the best way to preview based on MIME type
+      const mimeType = blob.type || 'application/octet-stream';
+      const isPreviewable = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml',
+        'text/plain',
+        'text/html',
+        'text/csv',
+      ].some(type => mimeType.includes(type));
+
+      // Create blob URL
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (isPreviewable) {
+        // Open in new tab for previewable files
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        console.log('[Report View] Opened in new tab:', blobUrl);
+      } else {
+        // For non-previewable files, inform user and offer download
+        const shouldDownload = confirm(
+          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`
+        );
+
+        if (shouldDownload) {
+          // Trigger download
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = reportId;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          console.log('[Report View] File downloaded:', reportId);
+        }
+
+        // Clean up immediately if not downloading
+        if (!shouldDownload) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      }
+
+      // Clean up blob URL after a delay (for previewable files)
+      if (isPreviewable) {
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          console.log('[Report View] Cleaned up blob URL');
+        }, 30000); // 30 seconds should be enough for the browser to load it
+      }
+    } catch (err) {
+      console.error('[Report View] Error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      alert(`Failed to view Report: ${errorMessage}`);
+    } finally {
+      setViewingId(null);
+    }
+  };
+
+
+
   const handleModalUpdateStatus = (task: UnifiedWorkQueueTask, newStatus: string, notes?: string) =>
     handleTaskOperation('updateStatus', { task, newStatus, notes });
 
@@ -479,6 +630,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           onApproveCaseCreation={onApproveCaseCreation}
           onRejectCaseCreation={onRejectCaseCreation}
           onAbandonCase={onAbandonCase}
+          latestReports={latestReports}
+          onViewReport={handleViewReport}
         />
       )}
 

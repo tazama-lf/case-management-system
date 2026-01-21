@@ -184,14 +184,14 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                 <div className="text-xs text-gray-500 uppercase">Created On</div>
                 <div className="font-medium text-gray-900">{row.createdOn}</div>
               </div>
-              <div>
+              {/* <div>
                 <div className="text-xs text-gray-500 uppercase">Picked On</div>
                 <div className="font-medium text-gray-900">{row.pickedOn}</div>
-              </div>
-              <div>
+              </div> */}
+              {/* <div>
                 <div className="text-xs text-gray-500 uppercase">Assignee</div>
                 <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
-              </div>
+              </div> */}
               <div>
                 <div className="text-xs text-gray-500 uppercase">Total Tasks</div>
                 <div className="font-medium text-gray-900">{row.totalTasks}</div>
