@@ -57,21 +57,21 @@ export class GoldLakehouseController {
     description: 'Account ID - REQUIRED',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
   })
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
     required: false,
     type: String,
-    example: 'DEFAULT'
+    example: 'DEFAULT',
   })
   @ApiQuery({
     name: 'fromDate',
     description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
     required: false,
     type: String,
-    example: '2026-01-01'
+    example: '2026-01-01',
   })
   @ApiResponse({ status: 200 })
   async getConditionsSummary(
@@ -83,11 +83,92 @@ export class GoldLakehouseController {
       throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getConditionsSummary(
-      accountId,
-      tenantId,
-      fromDate,
-    );
+    return this.goldLakehouseService.getConditionsSummary(accountId, tenantId || 'DEFAULT', fromDate);
+  }
+
+  @Get('conditions/active')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get Active Conditions for an account within a time range' })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'fromDate',
+    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
+    required: false,
+    type: String,
+    example: '2026-01-01',
+  })
+  @ApiResponse({ status: 200 })
+  async getActiveConditions(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('fromDate') fromDate?: string,
+  ) {
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
+    }
+
+    return this.goldLakehouseService.getActiveConditions(accountId, tenantId || 'DEFAULT', fromDate);
+  }
+
+  @Get('conditions/expired')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get expired conditions for an account' })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+  })
+  @ApiResponse({ status: 200 })
+  async getExpiredConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
+    }
+
+    return this.goldLakehouseService.getExpiredConditions(accountId, tenantId || 'DEFAULT');
+  }
+
+  @Get('conditions/future')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get future conditions for an account' })
+  @ApiQuery({
+    name: 'accountId',
+    description: 'Account ID - REQUIRED',
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+  })
+  @ApiResponse({ status: 200 })
+  async getFutureConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
+    }
+
+    return this.goldLakehouseService.getFutureConditions(accountId, tenantId || 'DEFAULT');
   }
 
   @Get('conditions')
@@ -98,20 +179,17 @@ export class GoldLakehouseController {
     description: 'Account ID - REQUIRED',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
   })
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
     required: false,
     type: String,
-    example: 'DEFAULT'
+    example: 'DEFAULT',
   })
   @ApiResponse({ status: 200 })
-  async getConditionsList(
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
+  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -129,21 +207,21 @@ export class GoldLakehouseController {
     description: 'Account ID - REQUIRED',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011'
+    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
   })
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
     required: false,
     type: String,
-    example: 'DEFAULT'
+    example: 'DEFAULT',
   })
   @ApiQuery({
     name: 'fromDate',
     description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all transactions.',
     required: false,
     type: String,
-    example: '2026-01-01'
+    example: '2026-01-01',
   })
   @ApiResponse({ status: 200 })
   async getEvaluatedTransactions(
@@ -155,11 +233,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('accountId is required');
     }
 
-    return this.goldLakehouseService.getEvaluatedTransactions(
-      accountId,
-      tenantId,
-      fromDate,
-    );
+    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
   }
 
   @Get('transaction-history/:entityId')

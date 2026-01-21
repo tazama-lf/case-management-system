@@ -533,7 +533,7 @@ export class GoldLakehouseService {
       const filters: any = {
         account_id: accountId,
       };
-      
+
       if (tenantId) {
         filters.tenant_id = tenantId;
       }
@@ -569,7 +569,107 @@ export class GoldLakehouseService {
     }
   }
 
-  async getEvaluatedTransactions(accountId: string, tenantId?: string, fromDate?: string) {
+  async getActiveConditions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+    try {
+      const dateFilter = fromDate ? `AND ct.bucket_start >= '${fromDate}'` : '';
+
+      const sql = `
+      SELECT DISTINCT
+        c.condition_id,
+        c.condition_reason,
+        c.condition_type,
+        c.created_by_user,
+        c.condition_inception_ts,
+        c.condition_expiry_ts
+      FROM conditions_timeline ct
+      JOIN conditions c
+        ON c.condition_id = ct.cond_condition_id
+       AND c.tenant_id = ct.cond_tenant_id
+      WHERE ct.cond_account_id = '${accountId}'
+        AND ct.cond_tenant_id = '${tenantId}'
+        AND ct.cond_is_active = 1
+        ${dateFilter}
+      ORDER BY c.condition_inception_ts DESC
+    `;
+
+      const response = await this.runSqlQuery(sql, 100);
+      const rows = response.data || [];
+
+      return rows.map((r) => ({
+        conditionId: r.condition_id,
+        title: r.condition_reason,
+        createdBy: r.created_by_user,
+        startDate: r.condition_inception_ts,
+        endDate: r.condition_expiry_ts ?? null,
+        notes: r.condition_reason,
+        action: r.condition_type === 'overridable-block' ? 'OVERRIDE' : 'BLOCK',
+      }));
+    } catch (error) {
+      this.logger.error('Error fetching active conditions', error.stack);
+      throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getExpiredConditions(accountId: string, tenantId: string = 'DEFAULT') {
+    try {
+      const sql = `
+      SELECT
+        condition_id,
+        condition_reason,
+        condition_inception_ts,
+        condition_expiry_ts
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        AND tenant_id = '${tenantId}'
+        AND is_expired = 1
+      ORDER BY condition_expiry_ts DESC
+    `;
+
+      const response = await this.runSqlQuery(sql, 100);
+      const rows = response.data || [];
+
+      return rows.map((r) => ({
+        conditionId: r.condition_id,
+        title: r.condition_reason,
+        startDate: r.condition_inception_ts,
+        endDate: r.condition_expiry_ts,
+      }));
+    } catch (error) {
+      this.logger.error('Error fetching expired conditions', error.stack);
+      throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getFutureConditions(accountId: string, tenantId: string = 'DEFAULT') {
+    try {
+      const sql = `
+      SELECT
+        condition_id,
+        condition_reason,
+        condition_inception_ts
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        AND tenant_id = '${tenantId}'
+        AND is_active = 0
+        AND is_expired = 0
+      ORDER BY condition_inception_ts ASC
+    `;
+
+      const response = await this.runSqlQuery(sql, 100);
+      const rows = response.data || [];
+
+      return rows.map((r) => ({
+        conditionId: r.condition_id,
+        title: r.condition_reason,
+        startDate: r.condition_inception_ts,
+      }));
+    } catch (error) {
+      this.logger.error('Error fetching future conditions', error.stack);
+      throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getEvaluatedTransactions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
