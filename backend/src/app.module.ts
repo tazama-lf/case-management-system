@@ -27,7 +27,7 @@ import { FeatureExtractionModule } from './feature-extraction/feature-extraction
 import { CouchdbModule } from './couchdb/couchdb.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { GoldLakehouseModule } from './gold-lakehouse/gold-lakehouse.module';
-
+import { JupyterModule } from './jupyter/jupyter.module';
 
 @Module({
   imports: [
@@ -59,6 +59,7 @@ import { GoldLakehouseModule } from './gold-lakehouse/gold-lakehouse.module';
     CouchdbModule,
     EvidenceModule,
     GoldLakehouseModule,
+    JupyterModule,
   ],
   providers: [
     PrismaService,

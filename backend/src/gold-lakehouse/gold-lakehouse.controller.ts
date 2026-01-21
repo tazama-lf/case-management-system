@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, UseGuards, BadRequestException } from '@
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { GoldLakehouseService } from './gold-lakehouse.service';
-import { RequireInvestigatorOrSupervisorRole } from 'src/auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, Public } from 'src/auth/auth.decorator';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -237,7 +237,7 @@ export class GoldLakehouseController {
   }
 
   @Get('transaction-history/:entityId')
-  @RequireInvestigatorOrSupervisorRole()
+  @Public()
   @ApiOperation({
     summary: 'Get Transaction History data for a specific entity (account/counterparty)',
     description:
