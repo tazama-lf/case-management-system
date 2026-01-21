@@ -16,6 +16,7 @@ import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
+import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
@@ -101,151 +102,190 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     return user.userId === caseDetails.case_owner_user_id;
   };
 
-  const loadEvidence = React.useCallback(async () => {
+  // const loadEvidence = React.useCallback(async () => {
+  //   if (!currentTaskId) return;
+  //   const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
+
+
+  //   const groupedByType = new Map<string, Evidence[]>();
+
+  //   if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
+  //     evidenceResponse.evidence.forEach((evidence) => {
+  //       const type = evidence.evidenceType || 'OTHER';
+  //       if (!groupedByType.has(type)) {
+  //         groupedByType.set(type, []);
+  //       }
+  //       groupedByType.get(type)!.push(evidence);
+  //     });
+  //   }
+
+  //   const EVIDENCE_PRIORITY: Record<string, number> = {
+  //     KYC: 1,
+  //     SANCTIONS: 2,
+  //     ADVERSE_MEDIA: 3,
+  //     SAR_STR_FILING: 4,
+  //     OTHER: 5
+
+  //   };
+
+  //   const getDisplayLabel = (type: string): string => {
+  //     switch (type) {
+  //       case 'KYC':
+  //         return 'KYC/EDD Report';
+  //       case 'SANCTIONS':
+  //         return 'Sanctions Screening';
+  //       case 'ADVERSE_MEDIA':
+  //         return 'Adverse Media Screening';
+  //       case 'SAR_STR_FILING':
+  //         return 'SAR/STR Filing Documentation';
+  //       case 'OTHER':
+  //         return 'Other supporting Documentation and Reference Materials';
+  //       default:
+  //         return type;
+  //     }
+  //   };
+
+  //   const ORDERED_TYPES = [
+  //     'KYC',
+  //     'SANCTIONS',
+  //     'ADVERSE_MEDIA',
+  //     'SAR_STR_FILING',
+  //     'OTHER',
+  //   ];
+  //   const categories: EvidenceCategory[] = [];
+
+  //   ORDERED_TYPES.forEach(type => {
+  //     const items = groupedByType.get(type);
+  //     if (!items) return;
+
+  //     categories.push({
+  //       type: getDisplayLabel(type),
+  //       count: items.length,
+  //       description: items.length === 1 ? 'document' : 'documents',
+  //       evidence: items,
+  //     });
+  //   });
+
+  //   groupedByType.forEach((items, type) => {
+  //     if (ORDERED_TYPES.includes(type)) return;
+
+  //     categories.push({
+  //       type: getDisplayLabel(type),
+  //       count: items.length,
+  //       description: items.length === 1 ? 'document' : 'documents',
+  //       evidence: items,
+  //     });
+  //   });
+
+  //   setEvidenceCategories(categories);
+  // }, [currentTaskId]);
+
+  // React.useEffect(() => {
+  //   loadEvidence();
+  // }, [loadEvidence, refreshKey]);
+
+
+
+
+  // useEffect(() => {
+  //   if (!currentTaskId) return;
+  //   const fetchCaseAndEvidence = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const details = await caseService.getCaseDetails(caseId);
+  //       setCaseDetails(details);
+  //       const comments = await commentService.getCommentsByCase(caseId);
+  //       setCaseComments(comments || []);
+
+
+  //       if (comments && comments.length > 0 && comments[0].user_id) {
+  //         try {
+  //           const userDetails = await userService.getUserDetailsById(comments[0].user_id);
+  //           if (userDetails) {
+  //             const fullName = userService.formatUserName(userDetails);
+  //             setInvestigatorName(fullName);
+  //           }
+  //         } catch (error) {
+  //           console.error('Failed to fetch investigator name:', error);
+  //         }
+  //       }
+
+
+  //       try {
+  //         const tasks = await taskService.getTasksByCaseId(caseId);
+  //         const approvalTask = tasks.find(
+  //           (t) => t.name && t.name.toLowerCase().includes('approve')
+  //         );
+  //         if (approvalTask) {
+  //           const supervisorTaskComments = await commentService.getCommentsByTask(
+  //             approvalTask.task_id
+  //           );
+  //           setSupervisorComments(supervisorTaskComments || []);
+  //         }
+
+  //         const investigationTask = tasks.find(
+  //           (t) => t.task_id === currentTaskId
+  //         );
+  //         if (investigationTask) {
+  //           setInvestigationTask(investigationTask);
+  //           if (investigationTask.investigationNotes) {
+  //             setInvestigationNotes(investigationTask.investigationNotes);
+  //           }
+  //         }
+  //       } catch (error) {
+  //         console.error('Failed to fetch supervisor comments or investigation notes:', error);
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to fetch case details, evidence, or comments:', error);
+  //       setEvidenceCategories([]);
+  //       setCaseComments([]);
+  //       setSupervisorComments([]);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchCaseAndEvidence();
+  // }, [caseId, refreshKey, currentTaskId]);
+
+  const fetchEvidence = React.useCallback(async () => {
     if (!currentTaskId) return;
-    const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
-
-
-    const groupedByType = new Map<string, Evidence[]>();
-
-    if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
-      evidenceResponse.evidence.forEach((evidence) => {
-        const type = evidence.evidenceType || 'OTHER';
-        if (!groupedByType.has(type)) {
-          groupedByType.set(type, []);
-        }
-        groupedByType.get(type)!.push(evidence);
-      });
-    }
-
-    const EVIDENCE_PRIORITY: Record<string, number> = {
-      KYC: 1,
-      SANCTIONS: 2,
-      ADVERSE_MEDIA: 3,
-      SAR_STR_FILING: 4,
-      OTHER: 5
-
-    };
-
-    const getDisplayLabel = (type: string): string => {
-      switch (type) {
-        case 'KYC':
-          return 'KYC/EDD Report';
-        case 'SANCTIONS':
-          return 'Sanctions Screening';
-        case 'ADVERSE_MEDIA':
-          return 'Adverse Media Screening';
-        case 'SAR_STR_FILING':
-          return 'SAR/STR Filing Documentation';
-        case 'OTHER':
-          return 'Other supporting Documentation and Reference Materials';
-        default:
-          return type;
-      }
-    };
-
-    const ORDERED_TYPES = [
-      'KYC',
-      'SANCTIONS',
-      'ADVERSE_MEDIA',
-      'SAR_STR_FILING',
-      'OTHER',
-    ];
-    const categories: EvidenceCategory[] = [];
-
-    ORDERED_TYPES.forEach(type => {
-      const items = groupedByType.get(type);
-      if (!items) return;
-
-      categories.push({
-        type: getDisplayLabel(type),
-        count: items.length,
-        description: items.length === 1 ? 'document' : 'documents',
-        evidence: items,
-      });
-    });
-
-    groupedByType.forEach((items, type) => {
-      if (ORDERED_TYPES.includes(type)) return;
-
-      categories.push({
-        type: getDisplayLabel(type),
-        count: items.length,
-        description: items.length === 1 ? 'document' : 'documents',
-        evidence: items,
-      });
-    });
-
+    const categories = await loadEvidence(currentTaskId);
     setEvidenceCategories(categories);
   }, [currentTaskId]);
 
-  React.useEffect(() => {
-    loadEvidence();
-  }, [loadEvidence, refreshKey]);
-
-
-
-
-  useEffect(() => {
+  // Load case details, comments, supervisor comments, investigation task & notes
+  const fetchCaseData = React.useCallback(async () => {
     if (!currentTaskId) return;
-    const fetchCaseAndEvidence = async () => {
-      try {
-        setLoading(true);
-        const details = await caseService.getCaseDetails(caseId);
-        setCaseDetails(details);
-        const comments = await commentService.getCommentsByCase(caseId);
-        setCaseComments(comments || []);
+    setLoading(true);
+    try {
+      const {
+        caseDetails,
+        caseComments,
+        supervisorComments,
+        investigatorName,
+        investigationTask,
+        investigationNotes,
+      } = await fetchCasesAndEvidence(caseId, currentTaskId);
 
+      setCaseDetails(caseDetails);
+      setCaseComments(caseComments);
+      setSupervisorComments(supervisorComments);
+      setInvestigatorName(investigatorName);
+      setInvestigationTask(investigationTask);
+      setInvestigationNotes(investigationNotes);
+    } catch (err) {
+      console.error('Failed to fetch case data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [caseId, currentTaskId]);
 
-        if (comments && comments.length > 0 && comments[0].user_id) {
-          try {
-            const userDetails = await userService.getUserDetailsById(comments[0].user_id);
-            if (userDetails) {
-              const fullName = userService.formatUserName(userDetails);
-              setInvestigatorName(fullName);
-            }
-          } catch (error) {
-            console.error('Failed to fetch investigator name:', error);
-          }
-        }
-
-
-        try {
-          const tasks = await taskService.getTasksByCaseId(caseId);
-          const approvalTask = tasks.find(
-            (t) => t.name && t.name.toLowerCase().includes('approve')
-          );
-          if (approvalTask) {
-            const supervisorTaskComments = await commentService.getCommentsByTask(
-              approvalTask.task_id
-            );
-            setSupervisorComments(supervisorTaskComments || []);
-          }
-
-          const investigationTask = tasks.find(
-            (t) => t.task_id === currentTaskId
-          );
-          if (investigationTask) {
-            setInvestigationTask(investigationTask);
-            if (investigationTask.investigationNotes) {
-              setInvestigationNotes(investigationTask.investigationNotes);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch supervisor comments or investigation notes:', error);
-        }
-      } catch (error) {
-        console.error('Failed to fetch case details, evidence, or comments:', error);
-        setEvidenceCategories([]);
-        setCaseComments([]);
-        setSupervisorComments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCaseAndEvidence();
-  }, [caseId, refreshKey, currentTaskId]);
+  // Fetch evidence and case data on mount or refresh
+  useEffect(() => {
+    fetchEvidence();
+    fetchCaseData();
+  }, [fetchEvidence, fetchCaseData, refreshKey]);
 
 
 
@@ -391,19 +431,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 Complete Investigation
               </button>
             )}
-            {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
-              caseDetails?.status === 'STATUS_81_CLOSED_REFUTED' ||
-              caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED' ||
-              caseDetails?.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
-            ) && (
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-                >
-                  <DocumentTextIcon className="h-5 w-5" />
-                  Generate Report
-                </button>
-              )}
+            {/* {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+              >
+                <DocumentTextIcon className="h-5 w-5" />
+                Generate Report
+              </button>
+            )} */}
           </div>
         </div>
 
@@ -586,7 +622,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       </div>
 
       {/* Generate Report Modal */}
-      <GenerateInvestigationReportModal
+      {/* <GenerateInvestigationReportModal
         open={showReportModal}
         onClose={() => setShowReportModal(false)}
         caseId={caseId}
@@ -598,7 +634,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         supervisorComments={supervisorComments}
         investigationNotes={investigationNotes}
         evidenceCategory={evidenceCategories}
-      />
+      /> */}
 
       {/* Complete Investigation Task Modal */}
       {showCompleteModal && investigationTask && (

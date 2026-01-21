@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
@@ -6,8 +6,11 @@ import type { TransactionHistoryDto } from '../../../alerts/types/triage.types';
 import triageService from '../../../alerts/services/triageservice';
 import {
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
+import { useAuth } from '@/features/auth/components/AuthContext';
+import { evidenceService } from '../../services/evidenceService';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -51,6 +54,11 @@ const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
+type LatestReport = {
+  reportType: string;
+  reportId: string;
+};
+
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   row,
   canManageSupervisorActions = false,
@@ -70,6 +78,10 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
   const [transactionalData, setTransactionData] = React.useState<TransactionHistoryDto[]>();
   const [openTransactions, setOpenTransactions] = React.useState<Record<string, boolean>>({});
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [latestReports, setLatestReports] = useState<Record<string, LatestReport | null>>({});
+  const lastLoadedCaseId = React.useRef<number | null>(null);
+
   // Extract transaction data
   const getTransactionData = () => {
     if (!row.transaction) return null;
@@ -145,6 +157,138 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     fetchTransactionData();
   }, [row?.alertId]);
 
+  const loadReport = React.useCallback(async () => {
+    setLatestReports({});
+    setViewingId(null);
+    if (!row.id) return;
+    if (lastLoadedCaseId.current === row.id) return;
+
+    lastLoadedCaseId.current = row.id;
+
+    try {
+      const evidenceResponse = await evidenceService.getCaseEvidence(row.id);
+      const latestByType: Record<string, LatestReport | null> = {};
+
+      evidenceResponse.evidence.forEach((evidence) => {
+        const reportType = evidence.evidenceType || 'INVESTIGATION_REPORT';
+        const reportId = evidence.reportId;
+
+        const submittedAt =
+          evidence.attachments?.[0]?.submittedAt
+            ? new Date(evidence.attachments[0].submittedAt).getTime()
+            : 0;
+
+        const existing = latestByType[reportType];
+
+        if (!existing) {
+          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+          return;
+        }
+
+        const existingEvidence = evidenceResponse.evidence.find(
+          (e) => e.reportId === existing.reportId
+        );
+
+        const existingDate =
+          existingEvidence?.attachments?.[0]?.submittedAt
+            ? new Date(existingEvidence.attachments[0].submittedAt).getTime()
+            : 0;
+
+        if (submittedAt > existingDate) {
+          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+        }
+      });
+
+      setLatestReports(latestByType);
+    } catch (err) {
+      console.error('Failed to load reports:', err);
+    }
+  }, [row.id]);
+
+
+  React.useEffect(() => {
+    loadReport();
+  }, [loadReport]);
+
+  const handleViewReport = async (reportId?: string) => {
+    if (!reportId) {
+      return;
+    }
+    const actualReportId = reportId;
+    setViewingId(actualReportId);
+
+    try {
+      console.log('[Report View] Starting view for:', { actualReportId, reportId });
+      // Fetch the encrypted blob from CouchDB
+      const blob = await evidenceService.viewEvidence(actualReportId);
+
+      console.log('[Report View] Blob received:', { size: blob.size, type: blob.type });
+
+      if (blob.size === 0) {
+        throw new Error('Received empty file');
+      }
+
+      // Determine the best way to preview based on MIME type
+      const mimeType = blob.type || 'application/octet-stream';
+      const isPreviewable = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml',
+        'text/plain',
+        'text/html',
+        'text/csv',
+      ].some(type => mimeType.includes(type));
+
+      // Create blob URL
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (isPreviewable) {
+        // Open in new tab for previewable files
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        console.log('[Report View] Opened in new tab:', blobUrl);
+      } else {
+        // For non-previewable files, inform user and offer download
+        const shouldDownload = confirm(
+          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`
+        );
+
+        if (shouldDownload) {
+          // Trigger download
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = reportId;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          console.log('[Report View] File downloaded:', reportId);
+        }
+
+        // Clean up immediately if not downloading
+        if (!shouldDownload) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      }
+
+      // Clean up blob URL after a delay (for previewable files)
+      if (isPreviewable) {
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          console.log('[Report View] Cleaned up blob URL');
+        }, 30000); // 30 seconds should be enough for the browser to load it
+      }
+    } catch (err) {
+      console.error('[Report View] Error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      alert(`Failed to view Report: ${errorMessage}`);
+    } finally {
+      setViewingId(null);
+    }
+  };
+
   const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
   const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
 
@@ -153,7 +297,29 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Case Information */}
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700">Case Information</div>
+          {/* <div className="text-sm font-semibold text-gray-700">Case Information</div> */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-700">
+              Case Information
+            </div>
+
+            <div className="flex items-center gap-2 ml-6">
+              {latestReports?.['INVESTIGATION_REPORT'] &&
+                (
+                  <button
+                    onClick={() => handleViewReport(latestReports['INVESTIGATION_REPORT']?.reportId)}
+                    className="inline-flex items-center gap-2 px-4 py-2
+                     bg-gradient-to-r from-blue-600 to-blue-700
+                     text-white text-sm font-medium rounded-md
+                     hover:from-blue-700 hover:to-blue-800
+                     shadow-sm transition-all"
+                  >
+                    <DocumentTextIcon className="h-5 w-5" />
+                    View Investigation Report
+                  </button>
+                )}
+            </div>
+          </div>
           <SectionCard>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <div>

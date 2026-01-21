@@ -251,6 +251,9 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             else if (operationLower.includes('resumecase')) {
               action = 'Case resumed';
             }
+            else if (operationLower.includes('closecase') && details.toLowerCase().includes('approval')) {
+              action = 'Case closure submitted for approval';
+            }
             else if (operationLower.includes('closecase')) {
               action = 'Case closed';
             }
@@ -459,7 +462,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                   <div className="flex items-start gap-8">
                     <div className="w-1/2 text-right pr-8">
                       <div className="space-y-1">
-                        <div className="font-semibold text-gray-900">{event.action}</div>
+                        <div className="font-semibold text-gray-900">{formatActionText(event.action)}</div>
                         {event.details && (
                           <div className="text-sm text-gray-600">{event.details}</div>
                         )}

@@ -31,6 +31,7 @@ interface ViewCaseModalProps {
   onApproveCaseCreation?: (row: CaseRow) => void;
   onRejectCaseCreation?: (row: CaseRow) => void;
   onAfterTaskReassign?: () => void;
+  generateReport?: (caseId: number) => void;
 }
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({

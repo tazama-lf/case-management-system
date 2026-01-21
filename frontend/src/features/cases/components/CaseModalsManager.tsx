@@ -466,6 +466,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id.toString() : ''}
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           onSubmit={handleCloseCaseSubmit}
+          caseData={modalState.selectedRow}
         />
       </Suspense>
 
@@ -516,6 +517,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           taskList={modalState.selectedRow?.tasks ?? []}
           onApprove={handleApproveSubmit}
           onReject={handleRejectSubmit}
+          caseData={modalState.selectedRow}
         />
       </Suspense>
 

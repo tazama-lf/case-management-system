@@ -15,7 +15,6 @@ import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import { EyeIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/features/auth';
-import type { EvidenceAttachment } from '../../types';
 
 interface CaseDetailTaskLogTableProps {
   alertId?: number;
@@ -40,15 +39,9 @@ interface CaseDetailTaskLogTableProps {
     totalPages: number;
     onPageChange: (page: number) => void;
   };
-  latestReports: Record<string, LatestReport | null>;
-  onViewReport?: (reportId?: string) => void;
   onTaskClick?: (task: UnifiedWorkQueueTask) => void;
 }
 
-type LatestReport = {
-  reportType: string;
-  reportId: string;
-};
 
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   alertId,
@@ -64,8 +57,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onTaskClick,
-  latestReports,
-  onViewReport
 
 }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -342,28 +333,28 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
-  const addViewInvestigationReportAction = (
-    actions: React.ReactNode[],
-    task: UnifiedWorkQueueTask
-  ) => {
-    const report = latestReports?.['INVESTIGATION_REPORT'];
+  // const addViewInvestigationReportAction = (
+  //   actions: React.ReactNode[],
+  //   task: UnifiedWorkQueueTask
+  // ) => {
+  //   const report = latestReports?.['INVESTIGATION_REPORT'];
 
-    if (
-      task.name === 'SAR/STR Filing' &&
-      report &&
-      onViewReport
-    ) {
-      actions.push(
-        createActionButton(
-          'view-investigation-report',
-          () => onViewReport(report.reportId),
-          <DocumentTextIcon className="h-4 w-4 mr-1" />,
-          'View Investigation Report',
-          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
-        )
-      );
-    }
-  };
+  //   if (
+  //     task.name === 'SAR/STR Filing' &&
+  //     report &&
+  //     onViewReport
+  //   ) {
+  //     actions.push(
+  //       createActionButton(
+  //         'view-investigation-report',
+  //         () => onViewReport(report.reportId),
+  //         <DocumentTextIcon className="h-4 w-4 mr-1" />,
+  //         'View Investigation Report',
+  //         'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
+  //       )
+  //     );
+  //   }
+  // };
 
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions: React.ReactNode[] = [];
@@ -389,9 +380,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
-    if (task.name === 'SAR/STR Filing' && (hasComplianceOfficerRole() || hasSupervisorRole()) && onViewReport && latestReports?.['INVESTIGATION_REPORT']) {
-      addViewInvestigationReportAction(actions, task);
-    }
+    // if (task.name === 'SAR/STR Filing' && (hasComplianceOfficerRole() || hasSupervisorRole()) && onViewReport && latestReports?.['INVESTIGATION_REPORT']) {
+    //   addViewInvestigationReportAction(actions, task);
+    // }
 
     if (task.name === 'SAR/STR Filing' && !hasComplianceOfficerRole()) {
       if (task.status === 'UNASSIGNED') {

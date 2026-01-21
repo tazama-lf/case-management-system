@@ -7,13 +7,18 @@ import {
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import userService from '../../services/userService';
-import { taskService } from '../../services/taskService';
+import { taskService, type Task } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
 import type { Evidence } from '../../types/evidence.types';
 import { reportsService } from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
+import type { TaskDTO } from '../../services/caseService';
+import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
+import type { TaskComment } from '../../services/commentService';
+import type { Case } from '@/features/alerts/types/triage.types';
+
 
 
 // Configure marked to handle line breaks properly (GitHub-flavored markdown)
@@ -44,6 +49,23 @@ interface EvidenceCategory {
   description: string;
   evidence: Evidence[];
 }
+
+export const FINAL_OUTCOMES = [
+  {
+    value: 'STATUS_83_CLOSED_INCONCLUSIVE',
+    label: '83 - Closed Inconclusive',
+  },
+  {
+    value: 'STATUS_81_CLOSED_REFUTED',
+    label: '81 - Closed Refuted',
+  },
+  {
+    value: 'STATUS_82_CLOSED_CONFIRMED',
+    label: '82 - Closed Confirmed',
+  },
+] as const;
+
+export type FinalOutcomeType = typeof FINAL_OUTCOMES[number]['value'];
 
 const getUserRole = () => {
   try {
@@ -77,18 +99,9 @@ interface GenerateInvestigationReportModalProps {
     priority?: string;
     created_at?: string;
   };
-  caseComments?: Array<{
-    note?: string;
-    user_id?: string;
-    created_at?: string;
-  }>;
-  supervisorComments?: Array<{
-    note?: string;
-    user_id?: string;
-    created_at?: string;
-  }>;
-  evidenceCategory?: EvidenceCategory[];
-  investigationNotes?: string;
+  tasks?: TaskDTO[];
+  onApproved?: (finalOutcome: FinalOutcomeType) => void;
+
 }
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
@@ -97,12 +110,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   onClose,
   caseId,
   caseTitle = 'Case CASE-2023-0045 - Fraud',
-  taskId,
+  tasks,
   caseData,
-  caseComments,
-  supervisorComments,
-  evidenceCategory,
-  investigationNotes,
+  onApproved,
 }) => {
   const { showSuccess, showError } = useNotifications();
   const [step, setStep] = useState<'initial' | 'generated'>('initial');
@@ -113,6 +123,59 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [tasksCompleted, setTasksCompleted] = useState(false);
   const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
   const [checkingTasks, setCheckingTasks] = useState(false);
+  const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
+  const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
+  const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
+  const [investigationNotes, setInvestigationNotes] = useState<string>('');
+  const [caseDetails, setCaseDetails] = useState<Case | null>(null);
+  const [investigationTask, setInvestigationTask] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>(
+    caseStatus as FinalOutcomeType || ''
+  );
+
+  const filterTasks = tasks ? tasks.filter(task => task.name?.toLowerCase().includes('investigate')) : [];
+
+
+
+  const fetchEvidence = React.useCallback(async () => {
+    if (!filterTasks[0].task_id) return;
+    const categories = await loadEvidence(filterTasks[0].task_id);
+    setEvidenceCategories(categories);
+  }, [filterTasks]);
+
+  // Load case details, comments, supervisor comments, investigation task & notes
+  const fetchCaseData = React.useCallback(async () => {
+    if (!filterTasks[0].task_id) return;
+    setLoading(true);
+    try {
+      const {
+        caseDetails,
+        caseComments,
+        supervisorComments,
+        investigatorName,
+        investigationTask,
+        investigationNotes,
+      } = await fetchCasesAndEvidence(caseId, filterTasks[0].task_id);
+
+      setCaseDetails(caseDetails);
+      setCaseComments(caseComments);
+      setSupervisorComments(supervisorComments);
+      setInvestigatorName(investigatorName);
+      setInvestigationTask(investigationTask);
+      setInvestigationNotes(investigationNotes);
+    } catch (err) {
+      console.error('Failed to fetch case data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [caseId, filterTasks]);
+
+  // Fetch evidence and case data on mount
+  useEffect(() => {
+    fetchEvidence();
+    fetchCaseData();
+  }, []);
 
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
@@ -162,11 +225,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
+
+
   const buildEvidenceSummary = () => {
-    if (!evidenceCategory || Object.keys(evidenceCategory).length === 0) {
+    if (!evidenceCategories || Object.keys(evidenceCategories).length === 0) {
       return 'No evidence items available for this case.';
     }
-    return evidenceCategory
+    return evidenceCategories
       .map(cat =>
         `${cat.type}: ${cat.count} ${cat.count === 1 ? 'document' : 'documents'}`
       )
@@ -183,14 +248,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [supervisorFeedback, setSupervisorFeedback] = useState(
     supervisorComments?.[0]?.note || ""
   );
-  const [evidenceSummary, setEvidenceSummary] = useState(buildEvidenceSummary());
-  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [reportOutcome, setReportOutcome] = useState<string | undefined>('');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [userRole] = useState<string>(getUserRole());
 
-  const evidenceList = (evidenceCategory ?? []).map((category) => ({
+
+  const evidenceList = (evidenceCategories ?? []).map((category) => ({
     stack: [
       {
         text: `${category.type} (${category.count} ${category.description})`,
@@ -339,7 +403,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 10],
       },
       {
-        text: caseStatus,
+        text: finalOutcome as FinalOutcomeType,
         style: 'outcomeDecision',
         margin: [0, 0, 0, 20],
       },
@@ -492,7 +556,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           caseId,
           investigatorInputs: keyFindings,
           supervisorRemarks: supervisorFeedback,
-          outcome: reportOutcome,
+          outcome: finalOutcome,
           reportType: 'INVESTIGATION_REPORT',
           description: 'Investigation Report',
         });
@@ -503,9 +567,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         setStep('generated');
 
 
-        if (taskId && investigationNotes) {
+        if (filterTasks && investigationNotes) {
           try {
-            await taskService.updateTaskForSupervisor(taskId, {
+            await taskService.updateTaskForSupervisor(filterTasks[0].task_id, {
               investigationNotes: investigationNotes,
             });
           } catch {
@@ -527,6 +591,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');
+      onApproved?.(finalOutcome as FinalOutcomeType);
+
+      setTimeout(() => {
+        handleClose();
+      }, 1500);
     } catch {
       showError('Failed to finalize report. Please try again.');
     } finally {
@@ -780,10 +849,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 <h5 className="text-sm font-semibold text-gray-900">Evidence Summary</h5>
 
                 <div className="bg-gray-50 rounded-lg p-4">
-                  {evidenceCategory && evidenceCategory.length > 0 ? (
+                  {evidenceCategories && evidenceCategories.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {evidenceCategory.map((category) => (
+                        {evidenceCategories.map((category) => (
                           <div
                             key={category.type}
                             className="border border-gray-200 rounded-lg bg-white p-4"
@@ -858,20 +927,19 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </h5>
 
                 <select
-                  value={reportOutcome ?? caseStatus}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setReportOutcome(value);
-                    setIsApproved(false);
-                  }}
-                  disabled={true}
-                  className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md
-               focus:ring-2 focus:ring-blue-500 focus:border-transparent
-               disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  value={finalOutcome}
+                  onChange={(e) => setFinalOutcome(e.target.value as FinalOutcomeType)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value={caseStatus}>
-                    {caseStatus}
+                  <option value="" disabled>
+                    Select final outcome
                   </option>
+
+                  {FINAL_OUTCOMES.map((outcome) => (
+                    <option key={outcome.value} value={outcome.value}>
+                      {outcome.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
