@@ -10,6 +10,7 @@ export class GoldLakehouseService {
   private readonly logger = new Logger(GoldLakehouseService.name);
   private readonly apiUrl: string;
   private readonly timeout: number;
+  private readonly alertHistoryFallbackE2EId: string;
 
   constructor(
     private readonly httpService: HttpService,
@@ -17,6 +18,10 @@ export class GoldLakehouseService {
   ) {
     this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
     this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') || 30000;
+    this.alertHistoryFallbackE2EId = this.configService.get<string>(
+      'ALERT_HISTORY_FALLBACK_E2E_ID',
+      '05c7ead85a1343d5a959561523a965fb',
+    );
   }
 
   async query(queryRequest: QueryRequestDto): Promise<QueryResponseDto> {
@@ -952,7 +957,8 @@ export class GoldLakehouseService {
 
   async getAlertHistorySummary(endToEndId?: string, tenantId?: string, dateRange?: string) {
     try {
-      const endToEndFilter = endToEndId ? `AND a.tx_original_e2e_id = '${endToEndId}'` : '';
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
       
       let dateFilter = '';
@@ -1017,7 +1023,8 @@ export class GoldLakehouseService {
 
   async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity: string = 'day') {
     try {
-      const endToEndFilter = endToEndId ? `AND a.tx_original_e2e_id = '${endToEndId}'` : '';
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
       
       let dateFilter = '';
@@ -1098,7 +1105,8 @@ export class GoldLakehouseService {
     limit: number = 20,
   ) {
     try {
-      const endToEndFilter = endToEndId ? `AND a.tx_original_e2e_id = '${endToEndId}'` : '';
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
       
       let dateFilter = '';

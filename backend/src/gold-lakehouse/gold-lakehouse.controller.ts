@@ -376,7 +376,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/summary')
-  @RequireInvestigatorOrSupervisorRole()
+  // Temporarily public for notebook/voila access
+  @Public()
   @ApiOperation({
     summary: 'Get Alert History Summary',
     description: 'Returns summary metrics for alert history including total alerts, user-opened, investigations, cases raised, and total transaction value. Filter by transaction end-to-end ID and date range.',
@@ -428,7 +429,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/timeline')
-  @RequireInvestigatorOrSupervisorRole()
+  // Temporarily public for notebook/voila access
+  @Public()
   @ApiOperation({
     summary: 'Get Alert History Timeline',
     description: 'Returns time-series data for alert history including alert counts, case counts, investigation counts, and total values grouped by date granularity. Filter by transaction end-to-end ID and date range.',
@@ -514,7 +516,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/alerts')
-  @RequireInvestigatorOrSupervisorRole()
+  // Temporarily public for notebook/voila access
+  @Public()
   @ApiOperation({
     summary: 'Get Alert History Alerts',
     description: 'Returns paginated list of alerts with customer names, account IDs, transaction details, and navigation actions. Filter by transaction end-to-end ID and date range.',

@@ -16,8 +16,9 @@ export class JupyterService {
       throw new NotFoundException('Invalid notebook name');
     }
 
-    const notebookMapping = {
+    const notebookMapping: Record<string, string> = {
       'transaction-history': 'transaction-viz.ipynb',
+      'alert-history': 'alert-history.ipynb',
     };
 
     const filename = notebookMapping[notebookName];
