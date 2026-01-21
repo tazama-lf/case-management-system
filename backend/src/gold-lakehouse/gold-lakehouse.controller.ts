@@ -300,4 +300,233 @@ export class GoldLakehouseController {
 
     return this.goldLakehouseService.getTransactionHistoryData(entityId, tenantId || 'DEFAULT', startDate, endDate, granularity);
   }
+
+  @Get('alert-history/summary')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Alert History Summary',
+    description: 'Returns summary metrics for alert history including total alerts, user-opened, investigations, cases raised, and total transaction value. Filter by transaction end-to-end ID and date range.',
+  })
+  @ApiQuery({
+    name: 'endToEndId',
+    description: 'Transaction End-to-End ID - OPTIONAL (filter for specific transaction and all its alerts)',
+    required: false,
+    type: String,
+    example: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'dateRange',
+    description: 'Date range filter - OPTIONAL (default: all)',
+    required: false,
+    enum: ['30days', '90days', '6months', '1year', 'all'],
+    type: String,
+    example: '30days',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Alert history summary metrics',
+    schema: {
+      example: {
+        totalAlerts: 179,
+        casesOpened: 48,
+        investigations: 90,
+        sarFilings: 4,
+        totalValue: 2957437.00,
+      },
+    },
+  })
+  async getAlertHistorySummary(
+    @Query('endToEndId') endToEndId?: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('dateRange') dateRange?: string,
+  ) {
+    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
+      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+    }
+    return this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange || 'all');
+  }
+
+  @Get('alert-history/timeline')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Alert History Timeline',
+    description: 'Returns time-series data for alert history including alert counts, case counts, investigation counts, and total values grouped by date granularity. Filter by transaction end-to-end ID and date range.',
+  })
+  @ApiQuery({
+    name: 'endToEndId',
+    description: 'Transaction End-to-End ID - OPTIONAL (filter for specific transaction and all its alerts)',
+    required: false,
+    type: String,
+    example: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'dateRange',
+    description: 'Date range filter - OPTIONAL (default: all)',
+    required: false,
+    enum: ['30days', '90days', '6months', '1year', 'all'],
+    type: String,
+    example: '30days',
+  })
+  @ApiQuery({
+    name: 'granularity',
+    description: 'Aggregation bucket granularity - OPTIONAL (day, week, month, year)',
+    required: false,
+    enum: ['day', 'week', 'month', 'year'],
+    type: String,
+    example: 'day',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Alert history timeline data with separate alert count and alert value arrays',
+    schema: {
+      example: {
+        alertCountOverTime: [
+          {
+            date: '2026-01-20T00:00:00.000Z',
+            alerts: 25,
+            cases: 5,
+            investigations: 10,
+          },
+          {
+            date: '2026-01-19T00:00:00.000Z',
+            alerts: 30,
+            cases: 8,
+            investigations: 15,
+          },
+        ],
+        alertValueOverTime: [
+          {
+            date: '2026-01-20T00:00:00.000Z',
+            totalValue: 125000.50,
+          },
+          {
+            date: '2026-01-19T00:00:00.000Z',
+            totalValue: 89500.75,
+          },
+        ],
+      },
+    },
+  })
+  async getAlertHistoryTimeline(
+    @Query('endToEndId') endToEndId?: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('dateRange') dateRange?: string,
+    @Query('granularity') granularity: string = 'day',
+  ) {
+    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
+      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+    }
+    if (granularity) {
+      const validGranularities = ['day', 'week', 'month', 'year'];
+      if (!validGranularities.includes(granularity)) {
+        throw new BadRequestException(`Invalid granularity. Must be one of: ${validGranularities.join(', ')}`);
+      }
+    }
+    return this.goldLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange || 'all', granularity);
+  }
+
+  @Get('alert-history/alerts')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Alert History Alerts',
+    description: 'Returns paginated list of alerts with customer names, account IDs, transaction details, and navigation actions. Filter by transaction end-to-end ID and date range.',
+  })
+  @ApiQuery({
+    name: 'endToEndId',
+    description: 'Transaction End-to-End ID - OPTIONAL (filter for specific transaction and all its alerts)',
+    required: false,
+    type: String,
+    example: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'dateRange',
+    description: 'Date range filter - OPTIONAL (default: all)',
+    required: false,
+    enum: ['30days', '90days', '6months', '1year', 'all'],
+    type: String,
+    example: '30days',
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number - OPTIONAL (default: 1)',
+    required: false,
+    type: Number,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Items per page - OPTIONAL (default: 20)',
+    required: false,
+    type: Number,
+    example: 20,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated alert history list',
+    schema: {
+      example: {
+        alerts: [
+          {
+            alertId: 444,
+            date: '2026-01-20T03:26:47.789892',
+            type: 'FRAUD_AND_AML',
+            severity: 'BREACH',
+            status: 'ALRT',
+            caseId: 225,
+            outcome: 'Investigating',
+            actions: {
+              viewAlertNavigator: '/alert-navigator/444',
+              viewTransactionDetails: '/transaction-detail/598777d8-ad56-4af4-8f4d-417a870834f2',
+            },
+          },
+        ],
+        pagination: {
+          total: 21,
+          page: 1,
+          limit: 20,
+          totalPages: 2,
+        },
+      },
+    },
+  })
+  async getAlertHistoryAlerts(
+    @Query('endToEndId') endToEndId?: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('dateRange') dateRange?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
+      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+    }
+    return this.goldLakehouseService.getAlertHistoryAlerts(
+      endToEndId,
+      tenantId,
+      dateRange || 'all',
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 20,
+    );
+  }
 }
+
