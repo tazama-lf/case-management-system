@@ -45,12 +45,6 @@ class AuthService {
             'Failed to fetch user profile, falling back to token decode:',
             error,
           );
-          // Fallback to decoding from token if /me endpoint fails
-          // const user = this.decodeToken(data.token);
-          // if (user) {
-          //   this.setUser(user);
-          //   data.user = user;
-          // }
         }
       }
 

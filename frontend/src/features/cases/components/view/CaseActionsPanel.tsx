@@ -281,19 +281,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Available Actions</h3>
-      </div>
-
       <div className="flex flex-wrap gap-3">
         {availableActions}
       </div>
-
-      <div className="mt-3 text-sm text-gray-500">
-        Actions will be available based on your permissions and the case's current status.
-      </div>
-    </div>
   );
 };
 
