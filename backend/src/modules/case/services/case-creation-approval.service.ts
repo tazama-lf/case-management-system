@@ -479,36 +479,82 @@ export class CaseCreationApprovalService {
         return { case: updatedCase, approvedTask: completedApprovalTask };
       });
 
-      // Create investigation task after approval
-      this.logger.log(`[ApproveCaseCreation] Creating Investigation task for approved case ${caseId}`, CaseCreationApprovalService.name);
-      const investigationTask = await this.taskService.createTask(
-        {
-          caseId: caseId,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: TASK_NAMES.INVESTIGATE_CASE,
-          description: `Investigate case: ${caseId}`,
-          candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        },
-        supervisorId,
-      );
-      this.logger.log(
-        `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`,
-        CaseCreationApprovalService.name,
-      );
+      // Create investigation task(s) after approval based on case type
+      this.logger.log(`[ApproveCaseCreation] Creating Investigation task(s) for approved case ${caseId} with type ${caseData.case_type}`, CaseCreationApprovalService.name);
+      
+      if (caseData.case_type === CaseType.FRAUD_AND_AML) {
+        // Create two separate tasks for FRAUD_AND_AML cases
+        const fraudTask = await this.taskService.createTask(
+          {
+            caseId: caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate Fraud',
+            description: `Fraud Investigation task for case ${caseId}`,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          supervisorId,
+        );
+        
+        const amlTask = await this.taskService.createTask(
+          {
+            caseId: caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate AML',
+            description: `AML Investigation task for case ${caseId}`,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          supervisorId,
+        );
+        
+        this.logger.log(
+          `[ApproveCaseCreation] Two investigation tasks created for FRAUD_AND_AML case ${caseId}: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}`,
+          CaseCreationApprovalService.name,
+        );
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'approveCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
-        outcome: Outcome.SUCCESS,
-      });
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseCreation',
+          entityName: CaseCreationApprovalService.name,
+          actionPerformed: `Approved case creation for case ${caseId}. Investigation tasks created: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}.`,
+          outcome: Outcome.SUCCESS,
+        });
+      } else {
+        // Create single investigation task for FRAUD or AML cases
+        const investigationTask = await this.taskService.createTask(
+          {
+            caseId: caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: TASK_NAMES.INVESTIGATE_CASE,
+            description: `Investigate case: ${caseId}`,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          supervisorId,
+        );
+        
+        this.logger.log(
+          `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`,
+          CaseCreationApprovalService.name,
+        );
+
+        await this.auditLogService.logAction({
+          userId: supervisorId,
+          operation: 'approveCaseCreation',
+          entityName: CaseCreationApprovalService.name,
+          actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+          outcome: Outcome.SUCCESS,
+        });
+      }
+
+      // Use appropriate message based on case type
+      const actionMessage = caseData.case_type === CaseType.FRAUD_AND_AML
+        ? `Approved case creation for case ${caseId}. Investigation tasks created for Fraud and AML.`
+        : `Approved case creation for case ${caseId}. Investigation task created.`;
 
       await this.eventLogService.logEventAction({
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+        actionPerformed: actionMessage,
         outcome: Outcome.SUCCESS,
       });
 
@@ -516,12 +562,12 @@ export class CaseCreationApprovalService {
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+        actionPerformed: actionMessage,
         case_id: caseId,
       });
 
       this.logger.log(
-        `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+        `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. ${caseData.case_type === CaseType.FRAUD_AND_AML ? 'Investigation tasks created for Fraud and AML' : 'Investigation task created'}.`,
         CaseCreationApprovalService.name,
       );
 
@@ -530,7 +576,9 @@ export class CaseCreationApprovalService {
         case: result.case,
         // approvedTask: result.approvedTask,
         // investigationTask: investigationTask,
-        message: 'Case creation approved. Investigation task created.',
+        message: caseData.case_type === CaseType.FRAUD_AND_AML 
+          ? 'Case creation approved. Investigation tasks created for Fraud and AML.'
+          : 'Case creation approved. Investigation task created.',
       };
     } catch (error) {
       this.logger.error(

@@ -65,6 +65,15 @@ export class GetAllCasesQueryDto {
   unassignedOnly?: boolean = false;
 
   @ApiProperty({
+    description: 'Search term to filter cases by case ID, case type, status, or alert message',
+    required: false,
+    example: '244',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({
     description: 'Filter cases created after this date',
     required: false,
     example: '2024-01-01T00:00:00Z',

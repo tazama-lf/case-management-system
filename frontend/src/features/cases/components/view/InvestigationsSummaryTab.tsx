@@ -18,10 +18,9 @@ import type { TaskForSupervisor } from '../../services/taskService';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
-// Configure marked to handle line breaks properly (GitHub-flavored markdown)
 marked.setOptions({
-  breaks: true, // Convert \n to <br>
-  gfm: true, // GitHub-flavored markdown
+  breaks: true, 
+  gfm: true, 
 });
 
 interface InvestigationSummaryTabProps {
@@ -56,16 +55,9 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
-
-
-  useEffect(() => {
-    if (task?.task_id) {
-      setCurrentTaskId(task.task_id);
-    }
-  }, [task?.task_id]);
-
-  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
+   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
     return {
       id: task.task_id,
       taskId: task.task_id,
@@ -86,20 +78,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
   };
 
-
-  useEffect(() => {
-    const user = authService.getUser();
-    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
-    setIsSupervisor(isSupervisor);
-  }, []);
-
-  // Check if the logged-in user is the case owner
-  const isUserCaseOwner = (): boolean => {
-    const user = authService.getUser();
-    if (!user || !caseDetails) return false;
-    return user.userId === caseDetails.case_owner_user_id;
-  };
-
   const loadEvidence = React.useCallback(async () => {
     if (!currentTaskId) return;
     const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
@@ -116,17 +94,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         groupedByType.get(type)!.push(evidence);
       });
     }
-
-    const EVIDENCE_PRIORITY: Record<string, number> = {
-      KYC: 1,
-      SANCTIONS: 2,
-      ADVERSE_MEDIA: 3,
-      SAR_STR_FILING: 4,
-      OTHER: 5
-
-    };
-
-    const getDisplayLabel = (type: string): string => {
+      const getDisplayLabel = (type: string): string => {
       switch (type) {
         case 'KYC':
           return 'KYC/EDD Report';
@@ -177,76 +145,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
     setEvidenceCategories(categories);
   }, [currentTaskId]);
-
-  React.useEffect(() => {
-    loadEvidence();
-  }, [loadEvidence, refreshKey]);
-
-
-
-
-  useEffect(() => {
-    if (!currentTaskId) return;
-    const fetchCaseAndEvidence = async () => {
-      try {
-        setLoading(true);
-        const details = await caseService.getCaseDetails(caseId);
-        setCaseDetails(details);
-        const comments = await commentService.getCommentsByCase(caseId);
-        setCaseComments(comments || []);
-
-
-        if (comments && comments.length > 0 && comments[0].user_id) {
-          try {
-            const userDetails = await userService.getUserDetailsById(comments[0].user_id);
-            if (userDetails) {
-              const fullName = userService.formatUserName(userDetails);
-              setInvestigatorName(fullName);
-            }
-          } catch (error) {
-            console.error('Failed to fetch investigator name:', error);
-          }
-        }
-
-
-        try {
-          const tasks = await taskService.getTasksByCaseId(caseId);
-          const approvalTask = tasks.find(
-            (t) => t.name && t.name.toLowerCase().includes('approve')
-          );
-          if (approvalTask) {
-            const supervisorTaskComments = await commentService.getCommentsByTask(
-              approvalTask.task_id
-            );
-            setSupervisorComments(supervisorTaskComments || []);
-          }
-
-          const investigationTask = tasks.find(
-            (t) => t.task_id === currentTaskId
-          );
-          if (investigationTask) {
-            setInvestigationTask(investigationTask);
-            if (investigationTask.investigationNotes) {
-              setInvestigationNotes(investigationTask.investigationNotes);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch supervisor comments or investigation notes:', error);
-        }
-      } catch (error) {
-        console.error('Failed to fetch case details, evidence, or comments:', error);
-        setEvidenceCategories([]);
-        setCaseComments([]);
-        setSupervisorComments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCaseAndEvidence();
-  }, [caseId, refreshKey, currentTaskId]);
-
-
 
   const getOutcomeLabel = (status: string): string => {
     if (status?.includes('CONFIRMED')) return 'Confirmed Fraud';
@@ -334,9 +232,87 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   };
 
   useEffect(() => {
-    console.log('taskId:', currentTaskId);
-    console.log('investigationTask:', investigationTask);
-  }, [currentTaskId, investigationTask]);
+    if (task?.task_id) {
+      setCurrentTaskId(task.task_id);
+    }
+  }, [task?.task_id]);
+
+   useEffect(() => {
+    const user = authService.getUser();
+    const currentUserId = user?.userId;
+    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+    setIsSupervisor(isSupervisor);
+    setCurrentUserId(currentUserId);
+  }, []);
+
+    useEffect(() => {
+    loadEvidence();
+  }, [loadEvidence, refreshKey]);
+
+  useEffect(() => {
+    if (!currentTaskId) return;
+    const fetchCaseAndEvidence = async () => {
+      try {
+        setLoading(true);
+        const details = await caseService.getCaseDetails(caseId);
+        setCaseDetails(details);
+        const comments = await commentService.getCommentsByCase(caseId);
+        setCaseComments(comments || []);
+
+
+        if (comments && comments.length > 0 && comments[0].user_id) {
+          try {
+            const userDetails = await userService.getUserDetailsById(comments[0].user_id);
+            if (userDetails) {
+              const fullName = userService.formatUserName(userDetails);
+              setInvestigatorName(fullName);
+            }
+          } catch (error) {
+            console.error('Failed to fetch investigator name:', error);
+          }
+        }
+        
+        try {
+          const tasks = await taskService.getTasksByCaseId(caseId);
+          
+          const approvalTask = tasks.find(
+            (t) => t.name && t.name.toLowerCase().includes('approve')
+          );
+          
+          if (approvalTask) {
+            const supervisorTaskComments = await commentService.getCommentsByTask(
+              approvalTask.task_id
+            );
+            setSupervisorComments(supervisorTaskComments || []);
+          }
+
+          const investigationTask = tasks.find(
+            (t) => t.task_id === currentTaskId
+          );
+          
+          if (investigationTask) {
+            setInvestigationTask(investigationTask);
+            if (investigationTask.investigationNotes) {
+              setInvestigationNotes(investigationTask.investigationNotes);
+            }
+          }
+        
+        } catch (error) {
+          console.error('Failed to fetch supervisor comments or investigation notes:', error);
+        }
+      } catch (error) {
+        console.error('Failed to fetch case details, evidence, or comments:', error);
+        setEvidenceCategories([]);
+        setCaseComments([]);
+        setSupervisorComments([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCaseAndEvidence();
+  }, [caseId, refreshKey, currentTaskId]);
+
 
   if (loading) {
     return (
@@ -379,7 +355,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             </div>
           </div>
           <div className="flex items-center gap-2 ml-6">
-            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && isUserCaseOwner() && (
+            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && investigationTask.assigned_user_id === currentUserId && (
               <button
                 onClick={() => setShowCompleteModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"

@@ -38,10 +38,7 @@ export class TaskLifecycleService {
   async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
-    // const previousAssignedUserId = existingTask.assigned_user_id;
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
-    // const previousCaseStatus = existingCase.status;
-
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
     const isInvestigationTask = investigationTasks.includes(existingTask.name || '');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { caseService } from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import { transformBackendCaseToUI } from '@/features/cases/components/casesTable.utils';
@@ -7,6 +7,7 @@ import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useCaseActions } from '@/features/cases/hooks';
 import type { CaseModalState, CaseModalActions } from '../components/CaseModalsManager';
+import useDebounce from '@/shared/hooks/useDebounce';
 
 export interface CaseDashboardFilters {
   search: string;
@@ -58,6 +59,9 @@ export const useCaseDashboard = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
 
+  // Debounce search term to avoid excessive API calls
+  const debouncedSearch = useDebounce(search, 500);
+
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -89,7 +93,8 @@ export const useCaseDashboard = () => {
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         page: currentPage,
-        limit: pageSize
+        limit: pageSize,
+        search: debouncedSearch || undefined
       });
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
@@ -106,7 +111,7 @@ export const useCaseDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole]);
+  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, debouncedSearch]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -132,49 +137,22 @@ export const useCaseDashboard = () => {
   }, [cases, params.caseId, navigate, error]);
 
 
-  // Apply search filter on frontend (since backend doesn't have search yet)
-  const filteredCases = useMemo(() => {
-    if (search === '') return cases;
-    return cases.filter((c) =>
-      [
-        c.id,
-        c.type,
-        c.status,
-        //c.typologyId,
-        String(c.score),
-        c.createdOn,
-        // c.pickedOn,
-        // c.assignee || '',
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes((search.toLowerCase()))
-    );
-  }, [cases, search]);
+  // Backend now handles all filtering and pagination
+  // No need for client-side filtering
+  const totalItems = backendTotalItems;
+  const totalPages = backendTotalPages;
 
-  // Use backend pagination data when available, otherwise calculate from filtered results
-  const totalItems = search === '' ? backendTotalItems : filteredCases.length;
-  const totalPages = search === '' ? backendTotalPages : Math.max(1, Math.ceil(filteredCases.length / pageSize));
-
-  // Reset to page 1 if current page exceeds total pages and we're doing client-side pagination
+  // Reset to page 1 when search changes
   useEffect(() => {
-    if (search !== '' && currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
+    if (debouncedSearch !== search) {
+      // Search is still being typed, don't reset page yet
+      return;
     }
-  }, [totalPages, currentPage, search]);
+    setCurrentPage(1);
+  }, [debouncedSearch, search]);
 
-  // Use filteredCases directly when backend pagination is active (search is empty)
-  // Otherwise use client-side pagination for search results
-  const paginatedCases = useMemo(() => {
-    if (search === '') {
-      return filteredCases; // Backend already paginated the results
-    } else {
-      // Apply client-side pagination for search results
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-      return filteredCases.slice(start, end);
-    }
-  }, [filteredCases, currentPage, pageSize, search]);
+  // Use cases directly from backend (already filtered and paginated)
+  const paginatedCases = cases;
 
   const pagination: PaginationState = {
     currentPage,

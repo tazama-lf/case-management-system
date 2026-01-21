@@ -51,10 +51,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 }) => {
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole, hasInvestigatorRole } = useAuth();
-  // const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [caseData, setCaseData] = useState<CaseRow | null>(null);
-  // const [loading, setLoading] = useState(true);
-  // const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskDetailsModalOpen, setTaskDetailsModalOpen] = useState(false);
@@ -66,15 +63,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(null);
   const [investigators, setInvestigators] = useState<Record<string, string>>({});
-  // Check if user is investigator only (no supervisor or admin role)
+
   const isInvestigatorOnly = hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
-  // Function to trigger task refresh
-  // const refreshTasks = React.useCallback(() => {
-  //   setRefreshTrigger(prev => prev + 1);
-  // }, []);
-
-
+ 
   useEffect(() => {
     const fetchData = async () => {
 
@@ -115,16 +107,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 
   }, [fetchTasks]);
 
-
-
   const transformBackendTaskToWorkQueue = (backendTask: TaskForSupervisor): UnifiedWorkQueueTask => {
 
     let effectiveStatus = backendTask.status;
     if (backendTask.status === 'STATUS_10_ASSIGNED' && !backendTask.assigned_user_id) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
-
-    // Get full name from investigators map, fallback to username or ID
     let assigneeName: string | undefined;
     if (backendTask.assigned_user_id) {
       assigneeName = investigators[backendTask.assigned_user_id] ||
@@ -178,15 +166,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       return tasks;
     }
 
-    // Filter out supervisor-only tasks for investigators
-    // Investigators should see their own tasks (Investigate Case, etc.) but not approval tasks
     const filtered = tasks.filter((task) => {
       const candidateGroup = (task.candidateGroup || '').toLowerCase();
       const taskName = (task.name || '').toLowerCase();
-      const taskDescription = (task.description || '').toLowerCase();
 
-      // Define patterns that identify supervisor-only tasks
-      // Only filter based on candidate group and specific task names, not descriptions
       const supervisorTaskPatterns = [
         // Candidate group patterns
         candidateGroup === 'supervisors',
@@ -201,11 +184,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         taskName.includes('review case closure'),
         taskName.includes('supervisor review'),
         taskName.includes('final approval'),
-
-        // Task description patterns
-        // Pattern based on description is not required.
-        // taskDescription.includes('supervisor'),
-        // taskDescription.includes('approval required'),
 
         // Legacy patterns
         taskName === 'approve case creation',
@@ -392,13 +370,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       const updateData: { status: TaskStatusType; recommendedOutcome?: string; finalNotes?: string } = {
         status: TaskStatus.STATUS_30_COMPLETED
       };
-
-      // Add recommended outcome if provided (for AML/Fraud investigation tasks)
       if (recommendedOutcome) {
         updateData.recommendedOutcome = recommendedOutcome;
       }
-
-      // Add final notes if provided
       if (notes && notes.trim()) {
         updateData.finalNotes = notes.trim();
       }
@@ -408,12 +382,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       // Close modal and refresh tasks
       setCompleteTaskModalOpen(false);
       setSelectedTask(null);
-
-      // const fetchedTasks = await taskService.getTasksByCaseId(caseId);
-      // setTasks(fetchedTasks);
       fetchTasks();
-
-      // Refresh the cases list to show updated case status
       if (onRefreshCases) {
         await onRefreshCases();
       }
@@ -445,15 +414,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const handleViewTaskDetails = (task: UnifiedWorkQueueTask) => {
     setSelectedTask(task);
 
-    // Check if this should open SAR/STR Filing modal instead of Task Details
     const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole()
-    // const isClosedCase = caseStatus === 'STATUS_82_CLOSED_CONFIRMED';
     const isStrTask = task.name === 'SAR/STR Filing';
     if (hasRequiredRole && isStrTask) {
-      // Open SAR/STR Filing modal for closed cases with unassigned tasks
       setSarStrFilingModalOpen(true);
     } else {
-      // Open regular Task Details modal
       setTaskDetailsModalOpen(true);
     }
   };
