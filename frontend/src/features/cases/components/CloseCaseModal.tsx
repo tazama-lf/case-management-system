@@ -136,10 +136,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           <form onSubmit={handleSubmit} className="p-6">
             { }
 
-            { }
+            {/* Recommended Outcome / Final Outcome */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recommended Outcome <span className="text-red-500">*</span>
+                {isSupervisor ? 'Final Outcome' : 'Recommended Outcome'} <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.recommendedOutcome}
@@ -164,7 +164,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 </option>
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                This outcome will be reviewed by the supervisor during approval
+                {isSupervisor 
+                  ? 'This is the final outcome that will be applied to the case'
+                  : 'This outcome will be reviewed by the supervisor during approval'
+                }
               </p>
             </div>
 
@@ -183,9 +186,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 }
                 rows={4}
                 maxLength={500}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Provide detailed notes about your investigation findings..."
-                disabled={isSubmitting}
+                disabled={isSubmitting || reportApproved}
               />
               <div className="mt-1 flex justify-between">
                 <p className="text-xs text-gray-500">
@@ -268,13 +271,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}
           tasks={caseData?.tasks || undefined}
           caseData={caseData || undefined}
-          onApproved={(outcome) => {
+          selectedOutcome={formData.recommendedOutcome}
+          onApproved={() => {
             setReportApproved(true);
-            setFormData((prev) => ({
-              ...prev,
-              recommendedOutcome: outcome,
-            }));
-
             setShowReportModal(false);
           }}
         />

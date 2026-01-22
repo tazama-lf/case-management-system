@@ -100,7 +100,9 @@ interface GenerateInvestigationReportModalProps {
     created_at?: string;
   };
   tasks?: TaskDTO[];
-  onApproved?: (finalOutcome: FinalOutcomeType) => void;
+  selectedOutcome?: string;
+  selectedFinalNotes?: string;
+  onApproved?: () => void;
 
 }
 
@@ -112,6 +114,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   caseTitle = 'Case CASE-2023-0045 - Fraud',
   tasks,
   caseData,
+  selectedOutcome,
+  selectedFinalNotes,
   onApproved,
 }) => {
   const { showSuccess, showError } = useNotifications();
@@ -131,7 +135,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>(
-    caseStatus as FinalOutcomeType || ''
+    (selectedOutcome as FinalOutcomeType) || ''
   );
 
   const filterTasks = tasks ? tasks.filter(task => task.name?.toLowerCase().includes('investigate')) : [];
@@ -176,6 +180,20 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     fetchEvidence();
     fetchCaseData();
   }, []);
+
+  // Update finalOutcome when selectedOutcome prop changes
+  useEffect(() => {
+    if (selectedOutcome) {
+      setFinalOutcome(selectedOutcome as FinalOutcomeType);
+    }
+  }, [selectedOutcome]);
+
+  // Update finalOutcome when selectedOutcome prop changes
+  useEffect(() => {
+    if (selectedOutcome) {
+      setFinalOutcome(selectedOutcome as FinalOutcomeType);
+    }
+  }, [selectedOutcome]);
 
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
@@ -368,14 +386,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 20],
       },
 
-      ...(supervisorFeedback ? [
+      ...((supervisorFeedback || selectedFinalNotes) ? [
         {
           text: 'SUPERVISOR FEEDBACK',
           style: 'sectionHeader',
           margin: [0, 0, 0, 10],
         },
         {
-          text: supervisorFeedback,
+          text: selectedFinalNotes || supervisorFeedback,
           style: 'body',
           margin: [0, 0, 0, 20],
         },
@@ -591,7 +609,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');
-      onApproved?.(finalOutcome as FinalOutcomeType);
+      onApproved?.();
 
       setTimeout(() => {
         handleClose();
@@ -828,19 +846,30 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 )}
               </div>
 
-              {/* Supervisor Feedback - moved next to Key Findings */}
-              {supervisorComments && supervisorComments.length > 0 && (
+              {/* Supervisor Feedback */}
+              {(selectedFinalNotes || (supervisorComments && supervisorComments.length > 0)) && (
                 <div className="space-y-3">
                   <h5 className="text-sm font-semibold text-gray-900">Supervisor Feedback</h5>
-                  <textarea
-                    value={supervisorFeedback}
-                    onChange={(e) => {
-                      setSupervisorFeedback(e.target.value);
-                      setIsApproved(false);
-                    }}
-                    disabled={userRole !== 'CMS_SUPERVISOR'}
-                    className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
+                  {selectedFinalNotes ? (
+                    <>
+                      <div className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md min-h-[6rem] whitespace-pre-wrap">
+                        {selectedFinalNotes}
+                      </div>
+                      <p className="text-xs text-gray-500 italic">
+                        Supervisor comments provided in the previous step
+                      </p>
+                    </>
+                  ) : (
+                    <textarea
+                      value={supervisorFeedback}
+                      onChange={(e) => {
+                        setSupervisorFeedback(e.target.value);
+                        setIsApproved(false);
+                      }}
+                      disabled={userRole !== 'CMS_SUPERVISOR'}
+                      className="w-full h-24 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                    />
+                  )}
                 </div>
               )}
 
@@ -920,27 +949,18 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </div>
 
 
-              {/* Report Outcome - for approval */}
+              {/* Report Outcome - Read-only display */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">
                   Final Outcome Decision
                 </h5>
 
-                <select
-                  value={finalOutcome}
-                  onChange={(e) => setFinalOutcome(e.target.value as FinalOutcomeType)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="" disabled>
-                    Select final outcome
-                  </option>
-
-                  {FINAL_OUTCOMES.map((outcome) => (
-                    <option key={outcome.value} value={outcome.value}>
-                      {outcome.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  {finalOutcome
+                    ? FINAL_OUTCOMES.find(o => o.value === finalOutcome)?.label || 'Not specified'
+                    : 'Not specified'
+                  }
+                </div>
               </div>
 
 

@@ -336,9 +336,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     }))}
                     rows={4}
                     maxLength={500}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Provide any additional comments about your approval decision..."
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || reportApproved}
                   />
                   <div className="mt-1 flex justify-between">
                     <p className="text-xs text-gray-500">
@@ -514,13 +514,10 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}
           tasks={caseData?.tasks || undefined}
           caseData={caseData || undefined}
-          onApproved={(outcome) => {
+          selectedOutcome={formData.finalOutcome}
+          selectedFinalNotes={formData.supervisorComments}
+          onApproved={() => {
             setReportApproved(true);
-            setFormData((prev) => ({
-              ...prev,
-              finalOutcome: outcome,
-            }));
-
             setShowReportModal(false);
           }}
         />
