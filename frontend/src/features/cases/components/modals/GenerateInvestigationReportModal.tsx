@@ -381,7 +381,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 10],
       },
       {
-        text: keyFindings,
+        text: investigationNotes || keyFindings || "No investigation notes available.",
         style: 'body',
         margin: [0, 0, 0, 20],
       },
