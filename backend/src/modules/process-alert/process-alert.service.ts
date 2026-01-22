@@ -47,21 +47,13 @@ export class ProcessAlertService {
       }
 
       case 'MANUAL': {
-        await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
-          maxRetries: 5,
-          delayMs: 50,
-        });
+        await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS);
         break;
       }
 
       case 'DISABLED':
       default: {
         await this.caseSyncService.syncCaseStatusWithFlowable(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
-        // await this.taskSyncService.syncTaskCreationWithFlowable(userId, alert.case_id, CANDIDATE_GROUPS.INVESTIGATIONS, {
-        //   maxRetries: 5,
-        //   delayMs: 50,
-        // });
-        // await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
         break;
       }
     }

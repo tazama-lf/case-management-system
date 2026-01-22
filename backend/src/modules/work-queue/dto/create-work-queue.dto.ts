@@ -42,7 +42,7 @@ export class CreateWorkQueueDto {
     description: 'Task types that will be routed to this queue',
     enum: TaskType,
     isArray: true,
-    example: [TaskType.INVESTIGATION, TaskType.EVIDENCE_COLLECTION],
+    example: [TaskType.INVESTIGATION],
   })
   @IsArray()
   @ArrayMinSize(1)

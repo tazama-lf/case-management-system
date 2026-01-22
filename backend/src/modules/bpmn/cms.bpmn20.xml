@@ -16,6 +16,7 @@
             <extensionElements>
                 <flowable:formProperty id="caseId" name="Case ID" type="string" required="true"/>
                 <flowable:formProperty id="tenantId" name="Tenant ID" type="string" required="true"/>
+                <flowable:formProperty id="caseType" name="Case Type" type="string" required="false"/>
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="STATUS_00_DRAFT"/>
                 <flowable:formProperty id="isTriageDisabled" name="Is Triage Disabled" type="boolean" default="false"/>
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
@@ -28,7 +29,8 @@
 
         <!-- CASE ASSIGNMENT LOGIC -->
         <userTask id="completeCaseCreation" name="Complete New Case"
-                  flowable:candidateGroups="investigations">
+                  flowable:candidateGroups="investigations"
+                  flowable:category="CASE_CREATION">
             <documentation>Complete case creation and prepare for assignment</documentation>
             <extensionElements>
                 <flowable:formProperty id="autoCloseEligible" name="Autoclose Eligible" type="boolean"/>
@@ -43,8 +45,6 @@
                     <flowable:value id="CRITICAL" name="Critical"/>
                     <flowable:value id="BREACH" name="Breach"/>
                 </flowable:formProperty>
-                <flowable:formProperty id="readyForAssignment" name="Ready for Assignment" 
-                                       type="boolean" default="true"/>
             </extensionElements>
         </userTask>
 
@@ -55,7 +55,7 @@
         <exclusiveGateway id="autoCloseGateway" name="Auto Close Check"/>
 
         <!-- Autoclose Task (Manual completion in NestJS) -->
-        <userTask id="performAutoclose" name="Auto Close"
+        <!-- <userTask id="performAutoclose" name="Auto Close"
                   flowable:assignee="system">
             <documentation>System task to handle autoclose - complete via NestJS API</documentation>
             <extensionElements>
@@ -67,9 +67,9 @@
                 </flowable:formProperty>
                 <flowable:formProperty id="autoCloseReason" name="Autoclose Reason" type="string"/>
             </extensionElements>
-        </userTask>
+        </userTask> -->
         
-        <endEvent id="endAutoclose" name="Case Autoclosed"/>
+        <endEvent id="endAutoClose" name="Case Autoclosed"/>
 
         <!-- CASE STATUS GATEWAY -->
         <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/>
@@ -259,13 +259,13 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="performAutoclose">
+        <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="endAutoClose">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autoCloseEligible == true}
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
+        <!-- <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/> -->
 
         <!-- From autoclose to case creation for non-eligible cases -->
         <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigationRoutingGateway">

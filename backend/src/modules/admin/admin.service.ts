@@ -4,13 +4,13 @@ import { Prisma } from '@prisma/client-cms';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly adminRepository: AdminRepository) { }
+  constructor(private readonly adminRepository: AdminRepository) {}
 
-  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput) {
+  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput): Promise<Prisma.ReferenceIdCreateInput> {
     try {
       const referenceId = await this.adminRepository.registerReferenceId(idData);
 
-      return referenceId;
+      return { txTp: referenceId.txTp, referenceIdName: referenceId.referenceIdName };
     } catch (error) {
       throw error;
     }

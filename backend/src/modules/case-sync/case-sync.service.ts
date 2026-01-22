@@ -42,16 +42,7 @@ export class CaseSyncService {
 
       await this.caseRepository.transaction(async (tx) => {
         updatedCase = await this.caseRepository.updateCase(caseId, updateData);
-        await this.taskSyncService.syncTaskCreationWithFlowable(
-          userId,
-          caseId,
-          CANDIDATE_GROUPS.INVESTIGATIONS,
-          {
-            maxRetries: 5,
-            delayMs: 50,
-          },
-          tx,
-        );
+        await this.taskSyncService.syncTaskCreationWithFlowable(userId, caseId, CANDIDATE_GROUPS.INVESTIGATIONS, tx);
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(

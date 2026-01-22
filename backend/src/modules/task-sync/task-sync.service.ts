@@ -2,14 +2,18 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { TaskService } from '../task/task.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CreateTaskDto } from '../../dtos/create-task.dto';
-import { Prisma, Task, TaskStatus } from '@prisma/client-cms';
+import { CreateTaskDto } from '../../dtos/CreateTask.dto';
+import { Prisma, Task, TaskStatus, TaskType } from '@prisma/client-cms';
+import { TaskCompletionDTO } from '../../dtos/TaskCompletion.dto';
+import { IFlowableTask } from './types/IFlowableTask';
+import { FlowableTaskService } from '../flowable/services/flowable-task.service';
 
 @Injectable()
 export class TaskSyncService {
   constructor(
     private readonly taskService: TaskService,
     private readonly flowableService: FlowableService,
+    private readonly flowableTaskService: FlowableTaskService,
     private readonly loggerService: LoggerService,
   ) {}
 
@@ -17,24 +21,24 @@ export class TaskSyncService {
     userId: string,
     caseId: number,
     candidateGroup: string,
-    syncOptions: { maxRetries: number; delayMs: number },
     tx?: Prisma.TransactionClient,
   ): Promise<Task[]> {
     this.loggerService.log(`Start - syncTaskCreationWithFlowable`, TaskSyncService.name);
     try {
-      const flowableProcessTasks = await this.fetchFlowableTasks(caseId, syncOptions.maxRetries, syncOptions.delayMs);
+      const flowableProcessTasks = await this.fetchFlowableTasks(caseId, 5, 80);
       if (flowableProcessTasks.length === 0) {
         this.loggerService.warn(`No tasks retrieved from Flowable for caseId ${caseId}`, TaskSyncService.name);
         return [];
       }
       const createdTasks = await Promise.all(
-        flowableProcessTasks.map(async (task: { name: string; description: string }) => {
+        flowableProcessTasks.map(async (task: { name: string; description: string; category: string }) => {
           const createTaskDto: CreateTaskDto = {
             caseId: caseId,
             status: TaskStatus.STATUS_01_UNASSIGNED,
             name: task.name,
             description: task.description,
             candidateGroup: candidateGroup,
+            taskType: task.category as TaskType,
           };
           try {
             return await this.taskService.createTask(createTaskDto, userId, tx);
@@ -50,9 +54,33 @@ export class TaskSyncService {
     }
   }
 
-  async syncTaskUpdateWithFlowable() {}
+  async syncTaskCompletionWithFlowable(userId: string, caseId: number, taskType: TaskType, taskCompletionDTO: TaskCompletionDTO) {
+    this.loggerService.log(`Start - syncTaskCompletionWithFlowable`, TaskSyncService.name);
+    try {
+      const flowableProcessTasks = await this.fetchFlowableTasks(caseId, 5, 80);
+      const targetFlowableTask = flowableProcessTasks.find((task: IFlowableTask) => task.category === taskType) as IFlowableTask;
+      if (targetFlowableTask.assignee !== userId) {
+        throw new BadRequestException(`User ${userId} is not the assignee of the task ${targetFlowableTask.name}`);
+      }
+
+      const taskCompletionVariables: Record<string, unknown> = {
+        // autocloseEligible: taskCompletionDTO.autocloseEligible,
+        caseType: taskCompletionDTO.caseType,
+        casePriority: taskCompletionDTO.casePriority,
+      };
+
+      await this.flowableTaskService.completeFlowableTask(userId, caseId, taskType, taskCompletionVariables);
+
+      this.loggerService.log(`End - syncTaskCompletionWithFlowable`, TaskSyncService.name);
+      return targetFlowableTask;
+    } catch (error) {
+      this.loggerService.error(`Error in syncTaskCompletionWithFlowable: ${error}`, TaskSyncService.name);
+      throw error;
+    }
+  }
 
   private async fetchFlowableTasks(caseId: number, maxRetries: number, delayMs: number) {
+    this.loggerService.log(`Start - fetchFlowableTasks`, TaskSyncService.name);
     let retries = 0;
     let lastError: Error | null = null;
     let flowableProcessTasks: unknown[] = [];
@@ -60,6 +88,7 @@ export class TaskSyncService {
       try {
         flowableProcessTasks = await this.flowableService.fetchFlowableTasks(caseId);
         if (flowableProcessTasks && flowableProcessTasks.length > 0) {
+          this.loggerService.log(`End Success - fetchFlowableTasks`, TaskSyncService.name);
           return flowableProcessTasks;
         }
 

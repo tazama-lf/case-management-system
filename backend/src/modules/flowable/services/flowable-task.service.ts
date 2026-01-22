@@ -1,10 +1,13 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableApiEndpoints, FlowableDefaults, FlowableTaskActions } from '../../../constants/flowable-api.constants';
-import { CreateFlowableTaskDto, FlowableVariable } from '../dto/flowable.dto';
+import { FlowableApiEndpoints, FlowableTaskActions } from '../../../constants/flowable-api.constants';
+import { CreateFlowableTaskDto } from '../dto/flowable.dto';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
 import { FlowableClientFactory } from './flowable-client.factory';
+import { FlowableProcessService } from './flowable-process.service';
+import { TaskType } from '@prisma/client-cms';
+import { formatVariables } from '../utils/formatVariables';
 
 /**
  * Service responsible for Flowable task operations
@@ -18,6 +21,7 @@ export class FlowableTaskService {
     private readonly logger: LoggerService,
     private readonly utilityService: FlowableUtilitiesService,
     private readonly clientFactory: FlowableClientFactory,
+    private readonly flowableProcessService: FlowableProcessService,
   ) {
     this.flowableClient = this.clientFactory.getClient();
   }
@@ -34,7 +38,7 @@ export class FlowableTaskService {
       };
 
       if (taskData.variables) {
-        payload.variables = this.formatVariables(taskData.variables);
+        payload.variables = formatVariables(taskData.variables);
       }
 
       const response = await this.flowableClient.post(FlowableApiEndpoints.TASKS, payload);
@@ -66,6 +70,7 @@ export class FlowableTaskService {
   /**
    * Get all tasks for a process instance
    */
+  // In-Use
   async getProcessTasks(processInstanceId: string) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
@@ -74,8 +79,7 @@ export class FlowableTaskService {
         },
       });
 
-      const tasks = response.data.data || [];
-
+      const tasks = response.data.data;
       const tasksWithVariables = await Promise.all(
         tasks.map(async (task: any) => {
           try {
@@ -83,34 +87,30 @@ export class FlowableTaskService {
             const variablesArray = variablesResponse.data || [];
             const variablesObject: Record<string, any> = {};
 
-            variablesArray.forEach((v: any) => {
+            variablesArray.forEach((v: { name: string; value: string | boolean }) => {
               variablesObject[v.name] = v.value;
             });
 
             return {
               ...task,
-              variables: variablesArray,
               variablesMap: variablesObject,
             };
           } catch (error) {
             this.logger.warn(`Failed to fetch variables for task ${task.id}: ${error.message}`, FlowableTaskService.name);
             return {
               ...task,
-              variables: [],
               variablesMap: {},
             };
           }
         }),
       );
 
-      this.logger.log(
-        `Retrieved ${tasksWithVariables.length} tasks with variables for process ${processInstanceId}`,
-        FlowableTaskService.name,
-      );
-
+      if (!tasksWithVariables.length) {
+        this.logger.warn(`No tasks found for process ${processInstanceId}`, FlowableTaskService.name);
+        throw new NotFoundException(`No tasks found for process ${processInstanceId}`);
+      }
       return tasksWithVariables;
     } catch (error) {
-      this.logger.error(`Failed to get process tasks: ${error.message}`, error.stack, FlowableTaskService.name);
       throw new HttpException('Failed to get process tasks', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -118,15 +118,41 @@ export class FlowableTaskService {
   /**
    * Complete a task
    */
-  async completeTask(taskId: number, variables?: Record<string, string>) {
+  async completeFlowableTask(userId: string, caseId: number, taskType: TaskType, completionVariables?: Record<string, unknown>) {
     try {
+      // if (event.newStatus !== TaskStatus.STATUS_30_COMPLETED) {
+      //   return;
+      // }
+
+      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+      if (!processInstance) {
+        throw new NotFoundException(`No Flowable process found for case ${caseId}`);
+      }
+
+      const flowableTasks = await this.getProcessTasks(processInstance.id);
+      const task = flowableTasks.find((task: { name: string; category: string; processInstanceId: string }) => {
+        return task.category === taskType && task.processInstanceId === processInstance.id;
+      });
+
+      // let completionVars: Record<string, string> = {};
+      // Object.entries(completionVariables!).forEach(([key, value]) => {
+      //   completionVars[key] = String(value);
+      // });
+
+      // await this.flowableTaskService.completeTask(task.id as number, completionVars);
+
+      // this.logger.log(`Completed Flowable task ${task.id}`, FlowableTaskService.name);
+      // } catch (error) {
+      //   this.logger.error(`[TaskEventListener] ✗ Failed to complete Flowable task: ${error.message}`, error.stack, FlowableTaskService.name);
+      // }
+      // try {
       const payload: Record<string, unknown> = {
         action: FlowableTaskActions.COMPLETE,
-        variables: variables ? this.formatVariables(variables) : [],
+        variables: completionVariables ? formatVariables(completionVariables) : [],
       };
-      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.taskId), payload);
 
-      this.logger.log(`Task completed: ${taskId}`, FlowableTaskService.name);
+      this.logger.log(`End - completeFlowableTask: ${task.taskId}`, FlowableTaskService.name);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to complete task: ${error.message}`, error.stack, FlowableTaskService.name);
@@ -343,7 +369,7 @@ export class FlowableTaskService {
    */
   async setTaskVariables(taskId: number, variables: Record<string, string>) {
     try {
-      const formattedVariables = this.formatVariables(variables);
+      const formattedVariables = formatVariables(variables);
 
       const response = await this.flowableClient.post(FlowableApiEndpoints.TASK_VARIABLES(taskId), formattedVariables);
 
@@ -392,28 +418,5 @@ export class FlowableTaskService {
       this.logger.error(`Failed to delete task variable: ${error.message}`, error.stack, FlowableTaskService.name);
       throw new HttpException('Failed to delete task variable', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  /**
-   * Format variables for Flowable API
-   */
-  private formatVariables(variables: Record<string, string>): FlowableVariable[] {
-    return Object.entries(variables).map(([name, value]) => {
-      if (value === undefined) {
-        throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
-      }
-      if (typeof value === 'boolean') {
-        return {
-          name,
-          value: value,
-          type: 'boolean',
-        };
-      }
-      return {
-        name,
-        value: String(value),
-        type: 'string',
-      };
-    });
   }
 }

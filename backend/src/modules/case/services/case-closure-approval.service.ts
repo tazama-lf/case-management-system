@@ -3,7 +3,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus, Task, TaskStatus, TaskType } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -15,7 +15,7 @@ import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service'
+import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 
 @Injectable()
@@ -32,14 +32,12 @@ export class CaseClosureApprovalService {
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
-
+  ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
 
     try {
-
       const existingSARTask = await this.prismaService.task.findFirst({
         where: {
           case_id: caseId,
@@ -48,10 +46,12 @@ export class CaseClosureApprovalService {
       });
 
       if (existingSARTask) {
-        this.logger.log(`SAR_STR_FILING task already exists for case ${caseId}: ${existingSARTask.task_id}`, CaseClosureApprovalService.name);
+        this.logger.log(
+          `SAR_STR_FILING task already exists for case ${caseId}: ${existingSARTask.task_id}`,
+          CaseClosureApprovalService.name,
+        );
         return;
       }
-
 
       const complianceQueue = await this.prismaService.workQueue.findFirst({
         where: {
@@ -86,7 +86,6 @@ export class CaseClosureApprovalService {
       const sarTask = await this.prismaService.task.create({
         data: taskData,
       });
-
 
       // this.flowableService.createTask({
       //   taskId: sarTask.task_id,
@@ -124,8 +123,11 @@ export class CaseClosureApprovalService {
 
       this.logger.log(`Successfully created SAR_STR_FILING task ${sarTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
     } catch (error) {
-
-      this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+      this.logger.error(
+        `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+        error.stack,
+        CaseClosureApprovalService.name,
+      );
 
       await this.auditLogService.logAction({
         userId,
@@ -136,7 +138,6 @@ export class CaseClosureApprovalService {
       });
     }
   }
-
 
   async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     try {
@@ -256,8 +257,8 @@ export class CaseClosureApprovalService {
           userId,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+              }
             : undefined,
         );
 
@@ -331,7 +332,11 @@ export class CaseClosureApprovalService {
             await this.createSARFilingTask(caseId, tenantId, userId);
             this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
           } catch (error) {
-            this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+            this.logger.error(
+              `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+              error.stack,
+              CaseClosureApprovalService.name,
+            );
           }
         }
 
@@ -354,6 +359,7 @@ export class CaseClosureApprovalService {
           name: TASK_NAMES.APPROVE_CASE_CLOSURE,
           description: `Review and approve case closure for case ${caseId}`,
           candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+          taskType: TaskType.CLOSURE_APPROVAL,
         },
         userId,
       );
@@ -365,9 +371,9 @@ export class CaseClosureApprovalService {
         userId,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+            }
           : undefined,
       );
 
@@ -547,14 +553,17 @@ export class CaseClosureApprovalService {
         supervisorId,
       );
 
-
       // Auto-generate SAR/STR Filing task if case is confirmed
       if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
         try {
           await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
           this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
         } catch (error) {
-          this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+          this.logger.error(
+            `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+            error.stack,
+            CaseClosureApprovalService.name,
+          );
         }
       }
 

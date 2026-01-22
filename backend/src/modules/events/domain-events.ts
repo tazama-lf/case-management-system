@@ -84,7 +84,7 @@ export class TaskCompletedEvent {
     public readonly caseId: number,
     public readonly taskName: string,
     public readonly newStatus: string,
-    public readonly completionVariables?: Record<string, any>,
+    public readonly completionVariables?: Record<string, unknown>,
   ) {}
 }
 

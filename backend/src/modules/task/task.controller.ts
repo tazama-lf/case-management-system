@@ -15,8 +15,8 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { TaskService } from './task.service';
-import { CreateTaskDto } from '../../dtos/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
+import { CreateTaskDto } from '../../dtos/CreateTask.dto';
+import { UpdateTaskDto } from './dto/UpdateTask.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { ReassignTaskDto } from './dto/reassign-task.dto';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';

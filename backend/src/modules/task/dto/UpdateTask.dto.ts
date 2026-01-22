@@ -13,14 +13,15 @@ export class UpdateTaskDto {
   @IsOptional()
   status?: TaskStatus;
 
-    @ApiProperty({
-      description: 'Updated investigation notes for the task',
-      example: 'Updated investigation notes after further review.',
-      required: false,
-    })
-    @IsString()
-    @IsOptional()
-    investigationNotes?: string;
+  @ApiProperty({
+    description: 'Updated investigation notes for the task',
+    example: 'Updated investigation notes after further review.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  investigationNotes?: string;
+
   @ApiProperty({
     description: 'UUID of the user to assign the task to (null to unassign)',
     example: '0e6d70a0-7e4c-41c4-bdd1-50336ea6020f',

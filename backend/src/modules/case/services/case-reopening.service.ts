@@ -4,7 +4,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from 'src/modules/task/task.service';
-import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, TaskType } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';
@@ -27,8 +27,8 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService
-  ) { }
+    private readonly caseHistoryService: CaseHistoryService,
+  ) {}
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
     return determineOriginalClosedStatus(caseData);
@@ -73,6 +73,7 @@ export class CaseReopeningService {
             name: TASK_NAMES.INVESTIGATE_CASE,
             description: `Case reopened by supervisor for additional investigation. Reason: ${reason}`,
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            taskType: TaskType.INVESTIGATION,
           },
           userId,
         );
@@ -136,6 +137,7 @@ export class CaseReopeningService {
             status: TaskStatus.STATUS_01_UNASSIGNED,
             description: `Case reopening approval required. Reason: ${reason}`,
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+            taskType: TaskType.REOPEN_APPROVAL,
           },
           userId,
         );
@@ -304,6 +306,7 @@ export class CaseReopeningService {
           name: TASK_NAMES.INVESTIGATE_CASE,
           description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
           candidateGroup,
+          taskType: TaskType.INVESTIGATION,
         },
         supervisorId,
       );
@@ -494,7 +497,7 @@ export class CaseReopeningService {
               rejectedBy: supervisorId,
               restoredStatus: originalClosedStatus,
               taskTitle: reopeningTask.name,
-            }
+            },
           });
         } catch (notificationError) {
           this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseReopeningService.name);

@@ -21,7 +21,7 @@ export class TaskLifecycleService {
     private readonly notificationService: NotificationService,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
   private async getTaskOrThrow(taskId: number) {
     const task = await this.prisma.task.findUnique({ where: { task_id: taskId } });
@@ -123,7 +123,7 @@ export class TaskLifecycleService {
       entityName: 'TaskService',
       operation: 'assignTaskToInvestigator',
       task_id: taskId,
-      case_id: existingTask.case_id
+      case_id: existingTask.case_id,
     });
 
     await this.auditLogService.logAction({
@@ -143,8 +143,6 @@ export class TaskLifecycleService {
     //   outcome: 'SUCCESS',
     //   performedAt: new Date(),
     // });
-
-
 
     await this.notificationService.sendNotification({
       userId: assignedUserId,
@@ -224,7 +222,6 @@ export class TaskLifecycleService {
       performedAt: new Date(),
     });
 
-
     await this.eventLogSerice.logEventAction({
       userId: actorUserId,
       actionPerformed: isInvestigationTask
@@ -244,12 +241,8 @@ export class TaskLifecycleService {
       entityName: 'TaskService',
       operation: 'reassignTask',
       task_id: taskId,
-      case_id: existingTask.case_id
+      case_id: existingTask.case_id,
     });
-
-
-
-
 
     await this.auditLogService.logAction({
       userId: assignedUserId,
@@ -277,7 +270,6 @@ export class TaskLifecycleService {
     //   task_id: taskId,
     //   case_id: existingTask.case_id
     // });
-
 
     return result.updatedTask;
   }
@@ -361,7 +353,7 @@ export class TaskLifecycleService {
       entityName: 'TaskService',
       operation: 'selfAssignTask',
       task_id: taskId,
-      case_id: existingTask.case_id
+      case_id: existingTask.case_id,
     });
 
     return result.updatedTask;
@@ -467,7 +459,7 @@ export class TaskLifecycleService {
       entityName: 'TaskService',
       operation: 'unassignTask',
       task_id: taskId,
-      case_id: existingTask.case_id
+      case_id: existingTask.case_id,
     });
 
     return {
@@ -501,58 +493,57 @@ export class TaskLifecycleService {
   //   return updatedTask;
   // }
 
-  async completeTask(taskId: number, actorUserId: string) {
-    const existingTask = await this.getTaskOrThrow(taskId);
-    const updatedTask = await this.prisma.task.update({
-      where: { task_id: taskId },
-      data: { status: TaskStatus.STATUS_30_COMPLETED },
-      include: { case: true },
-    });
-    // await this.flowableService.handleTaskCompleted({
-    //   caseId: existingTask.case_id,
-    //   taskName: existingTask.name!,
-    //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-    // });
-    // this.eventEmitter.emit(
-    //   'task.status.changed',
-    //   new TaskStatusChangedEvent(
-    //     taskId,
-    //     updatedTask.case_id,
-    //     updatedTask.name || '',
-    //     TaskStatus.STATUS_30_COMPLETED,
-    //     updatedTask.assigned_user_id || undefined,
-    //   ),
-    // );
-    await this.auditLogService.logAction({
-      userId: actorUserId,
-      actionPerformed: `Completed task ${taskId}`,
-      entityName: 'TaskService',
-      operation: 'completeTask',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
+  // async completeTask(taskId: number, actorUserId: string) {
+  //   const existingTask = await this.getTaskOrThrow(taskId);
+  //   const updatedTask = await this.prisma.task.update({
+  //     where: { task_id: taskId },
+  //     data: { status: TaskStatus.STATUS_30_COMPLETED },
+  //     include: { case: true },
+  // });
+  // await this.flowableService.handleTaskCompleted({
+  //   caseId: existingTask.case_id,
+  //   taskName: existingTask.name!,
+  //   newStatus: TaskStatus.STATUS_30_COMPLETED,
+  // });
+  // this.eventEmitter.emit(
+  //   'task.status.changed',
+  //   new TaskStatusChangedEvent(
+  //     taskId,
+  //     updatedTask.case_id,
+  //     updatedTask.name || '',
+  //     TaskStatus.STATUS_30_COMPLETED,
+  //     updatedTask.assigned_user_id || undefined,
+  //   ),
+  // );
+  //   await this.auditLogService.logAction({
+  //     userId: actorUserId,
+  //     actionPerformed: `Completed task ${taskId}`,
+  //     entityName: 'TaskService',
+  //     operation: 'completeTask',
+  //     outcome: 'SUCCESS',
+  //     performedAt: new Date(),
+  //   });
 
-    await this.eventLogSerice.logEventAction({
-      userId: actorUserId,
-      actionPerformed: `Completed task ${taskId}`,
-      entityName: 'TaskService',
-      operation: 'completeTask',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
+  //   await this.eventLogSerice.logEventAction({
+  //     userId: actorUserId,
+  //     actionPerformed: `Completed task ${taskId}`,
+  //     entityName: 'TaskService',
+  //     operation: 'completeTask',
+  //     outcome: 'SUCCESS',
+  //     performedAt: new Date(),
+  //   });
 
-    await this.taskHistoryService.logTaskHistoryAction({
-      userId: actorUserId,
-      actionPerformed: `Completed task ${taskId}`,
-      entityName: 'TaskService',
-      operation: 'completeTask',
-      task_id: taskId,
-      case_id: existingTask.case_id
-    });
+  //   await this.taskHistoryService.logTaskHistoryAction({
+  //     userId: actorUserId,
+  //     actionPerformed: `Completed task ${taskId}`,
+  //     entityName: 'TaskService',
+  //     operation: 'completeTask',
+  //     task_id: taskId,
+  //     case_id: existingTask.case_id
+  //   });
 
-
-    return updatedTask;
-  }
+  //   return updatedTask;
+  // }
 
   async reassignTaskToWorkQueue(
     taskId: number,
@@ -634,7 +625,7 @@ export class TaskLifecycleService {
         entityName: 'Task',
         operation: `reassignTask`,
         task_id: taskId,
-        case_id: task.case.case_id
+        case_id: task.case.case_id,
       });
 
       this.eventEmitter.emit('task.reassigned', {

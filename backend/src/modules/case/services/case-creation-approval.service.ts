@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, TaskType } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -118,6 +118,7 @@ export class CaseCreationApprovalService {
             name: 'Approve Case Creation',
             description: `Manual Case Creation Approval For Case ${result.case.case_id}`,
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+            taskType: TaskType.CREATION_APPROVAL,
           },
           userId,
         );
@@ -130,6 +131,7 @@ export class CaseCreationApprovalService {
               name: 'Investigate Fraud',
               description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.FRAUD_INVESTIGATION,
             },
             userId,
           );
@@ -140,6 +142,7 @@ export class CaseCreationApprovalService {
               name: 'Investigate AML',
               description: `AML Investigation task for manually created case ${result.case.case_id}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.AML_INVESTIGATION,
             },
             userId,
           );
@@ -153,6 +156,7 @@ export class CaseCreationApprovalService {
               name: 'Investigate Case',
               description: `Investigation task for manually created case ${result.case.case_id}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.INVESTIGATION,
             },
             userId,
           );
@@ -263,6 +267,7 @@ export class CaseCreationApprovalService {
           name: 'Complete New Case',
           description: 'Complete the draft case by providing all required information',
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          taskType: TaskType.CASE_CREATION,
         },
         userId,
       );
@@ -488,6 +493,7 @@ export class CaseCreationApprovalService {
           name: TASK_NAMES.INVESTIGATE_CASE,
           description: `Investigate case: ${caseId}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          taskType: TaskType.INVESTIGATION,
         },
         supervisorId,
       );
@@ -596,6 +602,7 @@ export class CaseCreationApprovalService {
           name: 'Complete New Case',
           description: 'Revise and complete the case as per supervisor feedback',
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          taskType: TaskType.CASE_CREATION,
         },
         supervisorId,
       );
@@ -713,6 +720,7 @@ export class CaseCreationApprovalService {
           name: TASK_NAMES.INVESTIGATE_CASE,
           description: `Task to investigate: ${caseId}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          taskType: TaskType.INVESTIGATION,
         },
         userId,
       );
@@ -767,6 +775,7 @@ export class CaseCreationApprovalService {
                 name: 'Investigate Fraud',
                 description: `Fraud investigation task created for case: ${caseId}`,
                 candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                taskType: TaskType.FRAUD_INVESTIGATION,
               },
               userId,
             );
@@ -777,6 +786,7 @@ export class CaseCreationApprovalService {
                 name: 'Investigate AML',
                 description: `AML investigation task created for case: ${caseId}`,
                 candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                taskType: TaskType.AML_INVESTIGATION,
               },
               userId,
             );
@@ -793,6 +803,7 @@ export class CaseCreationApprovalService {
                 description: `Investigate case: ${caseId}`,
                 status: TaskStatus.STATUS_01_UNASSIGNED,
                 candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+                task_type: TaskType.INVESTIGATION,
               },
               tx,
             );

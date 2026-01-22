@@ -3,7 +3,7 @@
  */
 export interface FlowableVariable {
   name: string;
-  value: string;
+  value: string | boolean | number;
   type: 'string' | 'boolean' | 'integer';
 }
 

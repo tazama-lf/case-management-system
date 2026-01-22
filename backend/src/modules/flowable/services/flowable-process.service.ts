@@ -1,34 +1,26 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableApiEndpoints, FlowableTaskActions } from '../../../constants/flowable-api.constants';
 import { FlowableVariable } from '../dto/flowable.dto';
 import { FlowableClientFactory } from './flowable-client.factory';
+import { formatVariables } from '../utils/formatVariables';
 
-/**
- * Service responsible for Flowable process instance operations
- * Handles starting, querying, updating, and managing process instances
- */
 @Injectable()
 export class FlowableProcessService {
   private readonly flowableClient: AxiosInstance;
-  // private readonly tenantId: string;
 
   constructor(
     private readonly logger: LoggerService,
     private readonly clientFactory: FlowableClientFactory,
   ) {
     this.flowableClient = this.clientFactory.getClient();
-    // this.tenantId = this.clientFactory.tenantId;
   }
 
-  /**
-   * Start a new process instance
-   */
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey: number, tenantId?: string) {
     this.logger.log(`Start - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
     try {
-      const formattedVariables = this.formatVariables(variables);
+      const formattedVariables = formatVariables(variables);
       const payload = {
         processDefinitionKey,
         variables: formattedVariables,
@@ -45,24 +37,7 @@ export class FlowableProcessService {
     }
   }
 
-  /**
-   * Get a process instance by ID
-   */
-  async getProcessInstance(processInstanceId: string) {
-    try {
-      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        return null;
-      }
-      throw new HttpException('Failed to get process instance', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Get a process instance by business key
-   */
+  // In-Use
   async getProcessInstanceByBusinessKey(businessKey: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
@@ -70,16 +45,22 @@ export class FlowableProcessService {
           businessKey,
         },
       });
-      return response.data.data?.[0] || null;
+
+      if (!response || response.data.data.length == 0) {
+        this.logger.log(`No process instance found with business key: ${businessKey}`, FlowableProcessService.name);
+        throw new NotFoundException(`No process instance found with business key: ${businessKey}`);
+      }
+
+      return response.data.data[0];
     } catch (error) {
-      this.logger.error(`Failed to get process by business key: ${error.message}`, error.stack, FlowableProcessService.name);
-      return null;
+      throw error;
     }
   }
 
   /**
    * Update a single process variable
    */
+  // In-Use
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
     try {
       await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
@@ -87,10 +68,7 @@ export class FlowableProcessService {
         value: String(value),
         type: typeof value === 'boolean' ? 'boolean' : 'string',
       });
-
-      this.logger.log(`Updated '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
     } catch (error) {
-      this.logger.error(`Failed to update variable '${variableName}': ${error.message}`, error.stack, FlowableProcessService.name);
       throw new HttpException(`Failed to update process variable: ${variableName}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -98,9 +76,10 @@ export class FlowableProcessService {
   /**
    * Set multiple process variables at once
    */
+  // In-Use
   async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
     try {
-      const formattedVariables = this.formatVariables(variables);
+      const formattedVariables = formatVariables(variables);
 
       const response = await this.flowableClient.put(
         FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLES(processInstanceId),
@@ -236,16 +215,16 @@ export class FlowableProcessService {
   /**
    * Format variables for Flowable API
    */
-  private formatVariables(variables: Record<string, string>): FlowableVariable[] {
-    return Object.entries(variables).map(([name, value]) => {
-      if (value === undefined) {
-        throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
-      }
-      return {
-        name,
-        value: String(value),
-        type: 'string',
-      };
-    });
-  }
+  // private formatVariables(variables: Record<string, string>): FlowableVariable[] {
+  //   return Object.entries(variables).map(([name, value]) => {
+  //     if (value === undefined) {
+  //       throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
+  //     }
+  //     return {
+  //       name,
+  //       value: String(value),
+  //       type: 'string',
+  //     };
+  //   });
+  // }
 }

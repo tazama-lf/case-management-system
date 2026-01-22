@@ -3,8 +3,8 @@ import { Logger } from '@nestjs/common';
 import { TaskService } from '../../src/modules/task/task.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../src/modules/audit/auditLog.service';
-import { CreateTaskDto } from '../../src/dtos/create-task.dto';
-import { UpdateTaskDto } from '../../src/modules/task/dto/update-task.dto';
+import { CreateTaskDto } from '../../src/dtos/CreateTask.dto';
+import { UpdateTaskDto } from '../../src/modules/task/dto/UpdateTask.dto';
 import { TaskStatus } from '@prisma/client-cms';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 

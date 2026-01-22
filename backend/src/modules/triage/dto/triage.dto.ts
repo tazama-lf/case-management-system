@@ -1,14 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsObject, IsString } from 'class-validator';
-
-export class HealthCheckResponseDTO {
-  @ApiProperty({
-    description: 'Health status indicator',
-    example: 'ok',
-    type: 'string',
-  })
-  status: string;
-}
 
 export class AlertTriageResponseDTO {
   @ApiProperty({

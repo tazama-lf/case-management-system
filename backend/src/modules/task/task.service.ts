@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CreateTaskDto } from '../../dtos/create-task.dto';
+import { CreateTaskDto } from '../../dtos/CreateTask.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
-import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskDto } from './dto/UpdateTask.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
@@ -45,6 +45,7 @@ export class TaskService {
             },
           },
           name: taskDTO.name,
+          task_type: taskDTO.taskType,
           description: taskDTO.description,
           candidateGroup: taskDTO.candidateGroup,
           status: taskDTO.status,
@@ -81,20 +82,11 @@ export class TaskService {
     }
   }
 
-  async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
-    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
-  }
-
-  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string) {
+  async updateTask(taskId: number, updateData: UpdateTaskDto, userId: string) {
     this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
 
     try {
       const existingTask = await this.taskRepository.findTaskWithCase(taskId);
-
-      if (!existingTask) {
-        throw new NotFoundException(`Task ${taskId} not found`);
-      }
-
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         description: updateData.description,
@@ -103,9 +95,9 @@ export class TaskService {
         investigationNotes: updateData.investigationNotes,
       };
 
-      const statusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
+      const isStatusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
       const shouldPromoteCaseToInProgress =
-        statusChanged &&
+        isStatusChanged &&
         updateData.status === TaskStatus.STATUS_20_IN_PROGRESS &&
         (existingTask.name === 'Investigate Case' || existingTask.name === 'Investigate Fraud' || existingTask.name === 'Investigate AML');
 
@@ -225,6 +217,8 @@ export class TaskService {
       throw error;
     }
   }
+
+  async completeTask(taskId: number, updatedData: UpdateTaskDto, userId: string) {}
 
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
     this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
@@ -538,9 +532,9 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
-    return this.lifecycle.completeTask(taskId, userId);
-  }
+  // async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
+  //   return this.lifecycle.completeTask(taskId, userId);
+  // }
 
   async getUserTasks(userId: string, includeCompleted: boolean = false) {
     try {
@@ -568,5 +562,9 @@ export class TaskService {
     assignedUserId?: string,
   ) {
     return this.lifecycle.reassignTaskToWorkQueue(taskId, targetWorkQueueId, userId, tenantId, reason, assignedUserId);
+  }
+
+  async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
+    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
 }

@@ -140,7 +140,7 @@ model Task {
   name               String?
   description        String?
   investigationNotes String? @db.Text
-  task_type          TaskType?
+  task_type          TaskType
   candidateGroup     String?    @db.VarChar(50)
   work_queue_id      Int?
   sla_deadline       DateTime?  @db.Timestamp(6)
@@ -306,13 +306,13 @@ enum ReportType {
 }
 
 enum TaskType {
+  CASE_CREATION
+  CREATION_APPROVAL
   INVESTIGATION
-  APPROVAL
-  REVIEW
-  EVIDENCE_COLLECTION
-  REPORT_GENERATION
-  CASE_CLOSURE
-  ESCALATION
+  FRAUD_INVESTIGATION
+  AML_INVESTIGATION
+  CLOSURE_APPROVAL
+  REOPEN_APPROVAL
   SAR_STR_FILING
 }
 

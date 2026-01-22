@@ -29,6 +29,6 @@ import { RepositoryModule } from '../repository/repository.module';
     CaseEventListener,
     TaskEventListener,
   ],
-  exports: [FlowableService],
+  exports: [FlowableService, FlowableTaskService],
 })
 export class FlowableModule {}

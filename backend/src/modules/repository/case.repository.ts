@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task, TaskType } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -507,6 +507,7 @@ export class CaseRepository extends BaseRepository {
         data: {
           case_id: caseId,
           name: taskNames.INVESTIGATE_CASE,
+          task_type: TaskType.INVESTIGATION,
           description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
           status: TaskStatus.STATUS_10_ASSIGNED,
           assigned_user_id: originalInvestigatorId,

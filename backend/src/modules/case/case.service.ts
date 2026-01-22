@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus, CaseType, TaskStatus, TaskType } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -16,13 +16,7 @@ import { CaseCreationApprovalService } from './services/case-creation-approval.s
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
 import { CaseHistoryService } from '../case_history/caseHistory.service';
-import {
-  CloseCaseDto,
-  ManualCreateCaseDto,
-  GetAllCasesQueryDto,
-  GetUserCasesQueryDto,
-  UpdateCaseDto,
-} from './dto';
+import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
 import { EventLogService } from '../event_log/eventLog.service';
@@ -45,7 +39,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
-  ) { }
+  ) {}
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -66,11 +60,7 @@ export class CaseService {
     //   )
     //   .filter((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
 
-
-    const investigateTask = allTasks.filter((task) =>
-      tasksIds.includes(task.task_id)
-    );
-
+    const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
     if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
     // if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
@@ -82,13 +72,7 @@ export class CaseService {
 
         // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
         const updatedTask = await Promise.all(
-          investigateTask.map((task) =>
-            this.taskService.updateTask(
-              task.task_id,
-              { status: TaskStatus.STATUS_21_BLOCKED },
-              userId
-            )
-          )
+          investigateTask.map((task) => this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId)),
         );
         const createCommentDto = new CreateCommentDto();
         //  createCommentDto.taskId = updatedTask.task_id;
@@ -132,9 +116,7 @@ export class CaseService {
       });
 
       try {
-        const caseAssignee = investigateTask
-          .map((t) => t.assigned_user_id?.trim())
-          .filter((id): id is string => !!id);
+        const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
@@ -149,8 +131,8 @@ export class CaseService {
                   actionBy: suspendedBy?.username || suspendedBy?.fullName,
                   reason,
                 },
-              })
-            )
+              }),
+            ),
           );
 
           // await this.notificationService.sendNotification({
@@ -195,12 +177,11 @@ export class CaseService {
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
     this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
-    const investigateTask = allTasks.filter((t) => t.name !== null && (
-      t.name === TASK_NAMES.INVESTIGATE_CASE ||
-      t.name === TASK_NAMES.INVESTIGATE_AML ||
-      t.name === TASK_NAMES.INVESTIGATE_FRAUD
-    ) &&
-      t.status === TaskStatus.STATUS_21_BLOCKED
+    const investigateTask = allTasks.filter(
+      (t) =>
+        t.name !== null &&
+        (t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_AML || t.name === TASK_NAMES.INVESTIGATE_FRAUD) &&
+        t.status === TaskStatus.STATUS_21_BLOCKED,
     );
     this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
@@ -223,13 +204,7 @@ export class CaseService {
         //   userId,
         // );
         const updatedTask = await Promise.all(
-          investigateTask.map((t) =>
-            this.taskService.updateTask(
-              t.task_id,
-              { status: TaskStatus.STATUS_20_IN_PROGRESS },
-              userId
-            )
-          )
+          investigateTask.map((t) => this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId)),
         );
         const createCommentDto = new CreateCommentDto();
         // createCommentDto.taskId = updatedTask.task_id;
@@ -261,15 +236,12 @@ export class CaseService {
           case_id: caseId,
         });
 
-
         return { case: updatedCase, task: updatedTask };
       });
 
       try {
         // const caseAssignee = investigateTask.assigned_user_id;
-        const caseAssignee = investigateTask
-          .map((t) => t.assigned_user_id?.trim())
-          .filter((id): id is string => !!id);
+        const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
@@ -284,8 +256,8 @@ export class CaseService {
                   actionBy: resumedBy?.username || resumedBy?.email,
                   reason,
                 },
-              })
-            )
+              }),
+            ),
           );
         }
       } catch (notificationError) {
@@ -526,6 +498,7 @@ export class CaseService {
             name: TASK_NAMES.APPROVE_CASE_CREATION,
             description: `Review and approve case creation for case ${caseId}`,
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+            taskType: TaskType.CREATION_APPROVAL,
           },
           userId,
         );
@@ -541,6 +514,7 @@ export class CaseService {
               name: TASK_NAMES.INVESTIGATE_FRAUD,
               description: `Task to investigate fraud: ${caseId}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.FRAUD_INVESTIGATION,
             },
             userId,
           );
@@ -552,6 +526,7 @@ export class CaseService {
               name: TASK_NAMES.INVESTIGATE_AML,
               description: `Task to investigate AML: ${caseId}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.AML_INVESTIGATION,
             },
             userId,
           );
@@ -563,6 +538,7 @@ export class CaseService {
               name: TASK_NAMES.INVESTIGATE_CASE,
               description: `Task to investigate: ${caseId}`,
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              taskType: TaskType.INVESTIGATION,
             },
             userId,
           );

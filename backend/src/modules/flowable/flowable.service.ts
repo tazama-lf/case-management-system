@@ -28,7 +28,7 @@ import {
 export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
-  private readonly tenantId: string;
+  // private readonly tenantId: string;
   private readonly maxRetries = FlowableDefaults.MAX_RETRIES;
   private readonly retryDelayMs = FlowableDefaults.RETRY_DELAY_MS;
 
@@ -134,19 +134,19 @@ export class FlowableService implements OnModuleInit {
     }
   }
 
-  /**
-   * Ensure a user is a member of a Flowable identity group
-   */
-  async addUserToGroup(groupId: string, userId: string) {
-    return this.identityService.addUserToGroup(groupId, userId);
-  }
+  // /**
+  //  * Ensure a user is a member of a Flowable identity group
+  //  */
+  // async addUserToGroup(groupId: string, userId: string) {
+  //   return this.identityService.addUserToGroup(groupId, userId);
+  // }
 
-  /**
-   * Remove a user from a Flowable identity group
-   */
-  async removeUserFromGroup(groupId: string, userId: string) {
-    return this.identityService.removeUserFromGroup(groupId, userId);
-  }
+  // /**
+  //  * Remove a user from a Flowable identity group
+  //  */
+  // async removeUserFromGroup(groupId: string, userId: string) {
+  //   return this.identityService.removeUserFromGroup(groupId, userId);
+  // }
 
   async createGroup(groupData: { id: string; name: string; type: string }) {
     return this.identityService.createGroup(groupData);
@@ -160,9 +160,9 @@ export class FlowableService implements OnModuleInit {
     return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
   }
 
-  async getProcessInstance(processInstanceId: string) {
-    return this.processService.getProcessInstance(processInstanceId);
-  }
+  // async getProcessInstance(processInstanceId: string) {
+  //   return this.processService.getProcessInstance(processInstanceId);
+  // }
 
   async getProcessInstanceByBusinessKey(businessKey: number) {
     return this.processService.getProcessInstanceByBusinessKey(businessKey);
@@ -176,9 +176,9 @@ export class FlowableService implements OnModuleInit {
     return this.flowableTaskService.createTask(taskData);
   }
 
-  async completeTask(taskId: number, variables?: Record<string, string>) {
-    return this.flowableTaskService.completeTask(taskId, variables);
-  }
+  // async completeTask(taskId: number, variables?: Record<string, string>) {
+  //   return this.flowableTaskService.completeTask(taskId, variables);
+  // }
 
   async claimTask(taskId: number, userId: string): Promise<void> {
     return this.flowableTaskService.claimTask(taskId, userId);
@@ -260,32 +260,6 @@ export class FlowableService implements OnModuleInit {
     return this.identityService.getAllCandidateGroups(size, start);
   }
 
-  async healthCheck(): Promise<{ status: string; message?: string }> {
-    try {
-      this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
-
-      const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
-        params: { size: 1 },
-      });
-
-      this.logger.log('Flowable health check passed', FlowableService.name);
-      return { status: 'healthy' };
-    } catch (error) {
-      let errorMessage = `Flowable connection failed: ${error.message}`;
-
-      if (error.code === 'ECONNREFUSED') {
-        errorMessage = `Cannot connect to Flowable server at ${this.flowableUrl} - server may not be running`;
-      } else if (error.code === 'ECONNRESET') {
-        errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
-      } else if (error.response?.status === 401) {
-        errorMessage = `Authentication failed for Flowable server - check FLOWABLE_USERNAME and FLOWABLE_PASSWORD`;
-      }
-
-      this.logger.error(`Health check failed: ${errorMessage}`, error.stack, FlowableService.name);
-      throw new Error(errorMessage);
-    }
-  }
-
   async getProcessDefinitions(processDefinitionKey?: string) {
     return this.processService.getProcessDefinitions(processDefinitionKey);
   }
@@ -329,14 +303,39 @@ export class FlowableService implements OnModuleInit {
   }
 
   async fetchFlowableTasks(caseId: number): Promise<unknown[]> {
-    const processInstance = await this.processService.getProcessInstanceByBusinessKey(caseId);
-    if (!processInstance) {
-      throw new NotFoundException(`No Flowable process found for case ${caseId}`);
+    try {
+      const processInstance = await this.processService.getProcessInstanceByBusinessKey(caseId);
+      const processTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
+      return processTasks;
+    } catch (error) {
+      throw error;
     }
+  }
 
-    const processTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
+  async healthCheck(): Promise<{ status: string; message?: string }> {
+    try {
+      this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
 
-    return processTasks;
+      const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
+        params: { size: 1 },
+      });
+
+      this.logger.log('Flowable health check passed', FlowableService.name);
+      return { status: 'healthy' };
+    } catch (error) {
+      let errorMessage = `Flowable connection failed: ${error.message}`;
+
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = `Cannot connect to Flowable server at ${this.flowableUrl} - server may not be running`;
+      } else if (error.code === 'ECONNRESET') {
+        errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
+      } else if (error.response?.status === 401) {
+        errorMessage = `Authentication failed for Flowable server - check FLOWABLE_USERNAME and FLOWABLE_PASSWORD`;
+      }
+
+      this.logger.error(`Health check failed: ${errorMessage}`, error.stack, FlowableService.name);
+      throw new Error(errorMessage);
+    }
   }
 
   private sleep(ms: number): Promise<void> {

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, TaskStatus, CaseStatus } from '@prisma/client-cms';
+import { Prisma, TaskStatus, CaseStatus, Case, Task, Comment } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -13,8 +13,13 @@ export class TaskRepository extends BaseRepository {
     return this.prisma.task.findUnique({ where: { task_id: taskId } });
   }
 
-  async findTaskWithCase(taskId: number) {
-    return this.prisma.task.findUnique({
+  async findTaskWithCase(taskId: number): Promise<
+    Task & {
+      case: { case_id: number; status: CaseStatus; case_owner_user_id: string | null; priority: string; created_at: Date };
+      comments: Comment[];
+    }
+  > {
+    const task = await this.prisma.task.findUnique({
       where: { task_id: taskId },
       include: {
         case: {
@@ -29,6 +34,10 @@ export class TaskRepository extends BaseRepository {
         comments: { orderBy: { created_at: 'desc' } },
       },
     });
+
+    if (!task) throw new NotFoundException(`Task ${taskId} not found`);
+
+    return task;
   }
 
   async findTasks(where: Prisma.TaskWhereInput, includeCase: boolean, skip?: number, take?: number) {
