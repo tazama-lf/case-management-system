@@ -276,9 +276,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   }, [open, caseId, showError]);
 
   const buildExecutiveSummary = () => {
-    const investigatorComment = caseComments?.[0]?.note || '';
     const createdDate = caseData?.created_at ? formatDate(caseData.created_at) : 'N/A';
-    const investigatorId = caseComments?.[0]?.user_id || 'Investigator';
     const caseType = caseData?.case_type || 'Investigation';
     const outcome = caseData?.status || 'Under Review';
 
@@ -744,6 +742,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                       <span className="text-sm font-medium text-gray-900">Evidence Summary: </span>
                       <span className="text-sm text-gray-600">
                         Documentation and evidence collected during investigation
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircleIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">Final Outcome Decision: </span>
+                      <span className="text-sm text-gray-600">
+                        Final determination on case status and disposition
                       </span>
                     </div>
                   </div>

@@ -222,16 +222,6 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     )}
                   </div>
                 </div>
-
-                {/* Description - Full Width */}
-                <div className="col-span-2">
-                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                    Description
-                  </div>
-                  <div className="text-sm text-gray-700">
-                    {task.description || 'No description provided'}
-                  </div>
-                </div>
               </div>
             </div>
           </SectionCard>
