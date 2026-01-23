@@ -17,6 +17,7 @@ import type { TaskForSupervisor } from '../../services/taskService';
 import { TaskStatus } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
 import ConfirmUploadEvidenceModal from '../modals/ConfirmUploadEvidenceModal';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 const evidenceSections: Array<{
   key: string;
@@ -544,7 +545,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               </div>
 
                               <p className="text-xs text-gray-500">
-                                Uploaded {new Date(evidence.uploadedAt).toLocaleString()}
+                                Uploaded {formatDate(evidence.uploadedAt)}
                               </p>
                             </div>
 
@@ -553,6 +554,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               <span className="text-xs text-green-600">✓ Uploaded</span>
 
                               <button
+                                hidden={isTaskCompleted || taskAssignedId !== currentUser?.userId}
                                 disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
                                 type="button"
                                 onClick={() => setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })}

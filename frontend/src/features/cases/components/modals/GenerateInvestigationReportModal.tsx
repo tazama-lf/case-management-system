@@ -18,6 +18,7 @@ import type { TaskDTO } from '../../services/caseService';
 import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
 import type { TaskComment } from '../../services/commentService';
 import type { Case } from '@/features/alerts/types/triage.types';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 
 
@@ -235,7 +236,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
   const buildExecutiveSummary = () => {
     const investigatorComment = caseComments?.[0]?.note || '';
-    const createdDate = caseData?.created_at ? new Date(caseData.created_at).toLocaleDateString() : 'N/A';
+    const createdDate = caseData?.created_at ? formatDate(caseData.created_at) : 'N/A';
     const investigatorId = caseComments?.[0]?.user_id || 'Investigator';
     const caseType = caseData?.case_type || 'Investigation';
     const outcome = caseData?.status || 'Under Review';
@@ -808,7 +809,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                     <span className="font-medium text-gray-700">Submitted:</span>
                     <span className="text-gray-900">
                       {caseComments?.[0]?.created_at
-                        ? new Date(caseComments[0].created_at).toLocaleString()
+                        ? formatDate(caseComments[0].created_at)
                         : 'N/A'}
                     </span>
                   </div>
@@ -918,7 +919,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                                         <>
                                           <span>•</span>
                                           <span>
-                                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                                            {formatDate(doc.uploadedAt)}
                                           </span>
                                         </>
                                       )}

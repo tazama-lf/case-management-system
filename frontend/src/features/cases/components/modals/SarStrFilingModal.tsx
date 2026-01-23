@@ -7,6 +7,7 @@ import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.t
 import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
 import { useAuth } from '@/features/auth';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 interface SarStrFilingModalProps {
@@ -488,7 +489,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                               </p>
                             )}
                             <p className="text-xs text-gray-500 mt-1.5">
-                              Uploaded: {new Date(evidence.uploadedAt).toLocaleString()} by {evidence.uploadedBy}
+                              Uploaded: {formatDate(evidence.uploadedAt)} by {evidence.uploadedBy}
                             </p>
                           </div>
                           {/* <div className="ml-3 flex items-center gap-2">
@@ -525,6 +526,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
                             {/* Delete */}
                             <button
+                              hidden={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
                               disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
                               type="button"
                               onClick={() =>

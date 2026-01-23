@@ -502,7 +502,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                                   <>
                                     <span>•</span>
                                     <span>
-                                      {new Date(doc.uploadedAt).toLocaleDateString()}
+                                      {formatDate(doc.uploadedAt)}
                                     </span>
                                   </>
                                 )}
@@ -551,7 +551,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             <div>
               <span className="font-medium text-gray-700">Created:</span>
               <span className="ml-2 text-gray-900">
-                {caseDetails?.created_at ? new Date(caseDetails.created_at).toLocaleDateString() : 'N/A'}
+                {caseDetails?.created_at ? formatDate(caseDetails.created_at) : 'N/A'}
               </span>
             </div>
           </div>
