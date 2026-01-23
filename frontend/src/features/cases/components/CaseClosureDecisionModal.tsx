@@ -126,22 +126,28 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
   const handleApproveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    approveCase();
+  };
 
-    if (!validateForm()) {
-      return;
-    }
+  const approveCase = async () => {
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
       await onApprove({
         finalOutcome: formData.finalOutcome,
-        supervisorComments: formData.supervisorComments
+        supervisorComments: formData.supervisorComments,
       });
+
       handleClose();
     } catch (error) {
       console.error('Failed to approve case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case closure. Please try again.';
-      setErrors({ submit: errorMessage });
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : 'Failed to approve case closure. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -469,7 +475,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               </button>
             )}
 
-            {activeTab === 'approve' && hasSupervisorRole() && reportApproved && (
+            {/* {activeTab === 'approve' && hasSupervisorRole() && reportApproved && (
               <button
                 type="button"
                 onClick={handleApproveSubmit}
@@ -488,7 +494,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   </>
                 )}
               </button>
-            )}
+            )} */}
 
             {activeTab === 'reject' && (
               <button
@@ -526,7 +532,8 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           caseData={caseData || undefined}
           selectedOutcome={formData.finalOutcome}
           selectedFinalNotes={formData.supervisorComments}
-          onApproved={() => {
+          onApproved={async () => {
+            await approveCase();
             setReportApproved(true);
             setShowReportModal(false);
           }}
