@@ -86,6 +86,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
 
   const tableColumns = [
+    { key: 'taskId', label: 'Task ID', width: 'w-72', align: 'left' },
     { key: 'task', label: 'Task', width: 'w-80' },
     { key: 'case', label: 'Case', width: 'w-72' },
     { key: 'queue', label: 'Queue', width: 'w-32' },
@@ -477,6 +478,11 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <tr key={task.id || `task-${index}`}
                   className={`hover:bg-gray-50`}
                 >
+                  <td className="px-4 py-3">
+                    <div className="text-xs text-gray-900 font-mono break-all" title={task.taskId?.toString() || ''}>
+                      TASK-{task.taskId || ''}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       {task.name && (
