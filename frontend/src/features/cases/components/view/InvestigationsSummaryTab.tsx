@@ -427,14 +427,17 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               Supervisor Approval
             </h3>
             <div className="space-y-4">
-              {supervisorComments.map((comment, index) => (
-                <div key={comment.comment_id || index}>
-                  {/* Notes */}
-                  <div
-                    className="markdown-content text-sm text-gray-700 mb-4"
-                    dangerouslySetInnerHTML={{
-                      __html: marked(comment.note) as string
-                    }}
+              {/* Only show the most recent supervisor comment */}
+              {(() => {
+                const latestComment = supervisorComments[supervisorComments.length - 1];
+                return (
+                  <div key={latestComment.comment_id}>
+                    {/* Notes */}
+                    <div
+                      className="markdown-content text-sm text-gray-700 mb-4"
+                      dangerouslySetInnerHTML={{
+                        __html: marked(latestComment.note) as string
+                      }}
                   />
 
                   {/* Supervisor outcome only */}
@@ -445,7 +448,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })()}
             </div>
           </div>
         )}

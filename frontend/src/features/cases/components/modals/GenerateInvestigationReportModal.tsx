@@ -11,6 +11,7 @@ import { taskService, type Task } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
+import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
 import { reportsService } from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
@@ -26,6 +27,46 @@ marked.setOptions({
   breaks: true, // Convert \n to <br>
   gfm: true, // GitHub-flavored markdown
 });
+
+// Helper function to convert markdown/HTML to pdfMake format
+const convertMarkdownToPdfMake = (markdownText: string): any => {
+  if (!markdownText) return '';
+  
+  try {
+    // First convert markdown to HTML
+    const html = marked(markdownText) as string;
+    
+    // Then convert HTML to pdfMake format
+    const pdfContent = htmlToPdfmake(html, {
+      defaultStyles: {
+        b: { bold: true },
+        strong: { bold: true },
+        u: { decoration: 'underline' },
+        s: { decoration: 'lineThrough' },
+        em: { italics: true },
+        i: { italics: true },
+        h1: { fontSize: 16, bold: true, marginTop: 10, marginBottom: 5 },
+        h2: { fontSize: 14, bold: true, marginTop: 8, marginBottom: 4 },
+        h3: { fontSize: 12, bold: true, marginTop: 6, marginBottom: 3 },
+        h4: { fontSize: 11, bold: true, marginTop: 5, marginBottom: 2 },
+        h5: { fontSize: 10, bold: true, marginTop: 4, marginBottom: 2 },
+        h6: { fontSize: 10, bold: true, marginTop: 3, marginBottom: 2 },
+        a: { color: 'blue', decoration: 'underline' },
+        strike: { decoration: 'lineThrough' },
+        p: { margin: [0, 5, 0, 5] },
+        ul: { margin: [0, 5, 0, 5] },
+        ol: { margin: [0, 5, 0, 5] },
+        li: { margin: [0, 2, 0, 2] },
+      }
+    });
+    
+    return pdfContent;
+  } catch (error) {
+    console.error('Error converting markdown to pdfMake:', error);
+    // Fallback to plain text if conversion fails
+    return markdownText;
+  }
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
@@ -369,22 +410,22 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         style: 'sectionHeader',
         margin: [0, 0, 0, 10],
       },
-      {
-        text: executiveSummary,
-        style: 'body',
-        margin: [0, 0, 0, 20],
-      },
+      ...(Array.isArray(convertMarkdownToPdfMake(executiveSummary))
+        ? convertMarkdownToPdfMake(executiveSummary)
+        : [convertMarkdownToPdfMake(executiveSummary)]
+      ),
+      { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
 
       {
         text: 'KEY FINDINGS',
         style: 'sectionHeader',
         margin: [0, 0, 0, 10],
       },
-      {
-        text: investigationNotes || keyFindings || "No investigation notes available.",
-        style: 'body',
-        margin: [0, 0, 0, 20],
-      },
+      ...(Array.isArray(convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available."))
+        ? convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available.")
+        : [convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available.")]
+      ),
+      { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
 
       ...((supervisorFeedback || selectedFinalNotes) ? [
         {
@@ -392,11 +433,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           style: 'sectionHeader',
           margin: [0, 0, 0, 10],
         },
-        {
-          text: selectedFinalNotes || supervisorFeedback,
-          style: 'body',
-          margin: [0, 0, 0, 20],
-        },
+        ...(Array.isArray(convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || ''))
+          ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
+          : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
+        ),
+        { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
       ] : []),
 
       {
@@ -431,11 +472,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         style: 'sectionHeader',
         margin: [0, 0, 0, 10],
       },
-      {
-        text: recommendations,
-        style: 'body',
-        margin: [0, 0, 0, 30],
-      },
+      ...(Array.isArray(convertMarkdownToPdfMake(recommendations))
+        ? convertMarkdownToPdfMake(recommendations)
+        : [convertMarkdownToPdfMake(recommendations)]
+      ),
+      { text: '', margin: [0, 0, 0, 30] }, // Add spacing after
 
       {
         canvas: [
@@ -935,10 +976,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                           </div>
                         ))}
                       </div>
-
-                      <p className="text-xs text-gray-500 mt-3 italic">
-                        All evidence items are attached to this case and available for audit review.
-                      </p>
                     </>
                   ) : (
                     <p className="text-sm text-gray-500 italic">
