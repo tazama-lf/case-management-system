@@ -9,6 +9,7 @@ import { useNotifications } from '@/shared/providers/NotificationProvider';
 import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TaskStatus } from '../../services/taskService';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
@@ -140,7 +141,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                 {existingComments.map((comment) => (
                   <div key={comment.comment_id} className="text-sm text-gray-700 pb-2 border-b border-gray-200 last:border-0">
                     <div className="text-xs text-gray-500 mb-1">
-                      {new Date(comment.created_at).toLocaleString()}
+                      {formatDate(comment.created_at)}
                     </div>
                     <div className="whitespace-pre-wrap">{comment.note}</div>
                   </div>

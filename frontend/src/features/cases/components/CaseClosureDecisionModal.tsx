@@ -114,28 +114,51 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleApproveSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerateReport = () => {
+    const isValid = validateForm();
 
-    if (!validateForm()) {
+    if (!isValid) {
       return;
     }
+
+    setShowReportModal(true);
+  };
+
+  const handleApproveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    approveCase();
+  };
+
+  const approveCase = async () => {
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
       await onApprove({
         finalOutcome: formData.finalOutcome,
-        supervisorComments: formData.supervisorComments
+        supervisorComments: formData.supervisorComments,
       });
+
       handleClose();
     } catch (error) {
       console.error('Failed to approve case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to approve case closure. Please try again.';
-      setErrors({ submit: errorMessage });
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : 'Failed to approve case closure. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  React.useEffect(() => {
+    if (open) {
+      setShowReportModal(false);
+      setReportApproved(false);
+    }
+  }, [open]);
 
   const handleRejectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,12 +167,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       return;
     }
 
-    React.useEffect(() => {
-      if (open) {
-        setShowReportModal(false);
-        setReportApproved(false);
-      }
-    }, [open]);
+
 
     setIsSubmitting(true);
     try {
@@ -447,19 +465,17 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
             {activeTab === 'approve' && hasSupervisorRole() && !reportApproved && (
               <button
+                disabled={isSubmitting || formData.supervisorComments.trim().length < 4}
                 type="button"
-                onClick={() => setShowReportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2
-                 bg-gradient-to-r from-blue-600 to-blue-700
-                 text-white text-sm font-medium rounded-md
-                 hover:from-blue-700 hover:to-blue-800 shadow-sm"
+                onClick={() => handleGenerateReport()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm disabled:from-blue-400 disabled:to-blue-400 disabled:shadow-none disabled:cursor-not-allowed "
               >
                 <DocumentTextIcon className="h-5 w-5" />
                 Generate Investigation Report
               </button>
             )}
 
-            {activeTab === 'approve' && hasSupervisorRole() && reportApproved && (
+            {/* {activeTab === 'approve' && hasSupervisorRole() && reportApproved && (
               <button
                 type="button"
                 onClick={handleApproveSubmit}
@@ -478,7 +494,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   </>
                 )}
               </button>
-            )}
+            )} */}
 
             {activeTab === 'reject' && (
               <button
@@ -516,7 +532,8 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           caseData={caseData || undefined}
           selectedOutcome={formData.finalOutcome}
           selectedFinalNotes={formData.supervisorComments}
-          onApproved={() => {
+          onApproved={async () => {
+            await approveCase();
             setReportApproved(true);
             setShowReportModal(false);
           }}

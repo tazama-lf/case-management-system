@@ -15,6 +15,7 @@ import userService from '../../cases/services/userService';
 import { taskService, type TaskForSupervisor } from '../../cases/services/taskService';
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -217,7 +218,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
     fetchUsername();
   }, [action.user_id]);
 
-  const displayText = username && action.action_performed.includes(action.user_id) 
+  const displayText = username && action.action_performed.includes(action.user_id)
     ? action.action_performed.replace(action.user_id, username)
     : action.action_performed;
 
@@ -232,18 +233,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       </p>
       <div className="flex items-center space-x-2 text-xs text-gray-500">
         <span>
-          {new Date(action.performed_at).toLocaleString(
-            'en-US',
-            {
-              month: 'numeric',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-            },
-          )}
+          {formatDate(action.performed_at)}
         </span>
         {action.user_id && (
           <>
@@ -328,10 +318,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const completeNewCaseTask = tasks.find(
           (task: TaskForSupervisor) => task.name === 'Complete New Case'
         );
-        
+
         if (completeNewCaseTask) {
           setIsCompleteNewCaseCompleted(
-            completeNewCaseTask.status === 'STATUS_30_COMPLETED' 
+            completeNewCaseTask.status === 'STATUS_30_COMPLETED'
           );
         } else {
           setIsCompleteNewCaseCompleted(false);
@@ -548,7 +538,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Created:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {new Date(alert.created_at).toLocaleString()}
+                          {formatDate(alert.created_at)}
                         </p>
                       </div>
                       <div>
@@ -610,10 +600,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           >
                             <div
                               className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === 'SUCCESS'
-                                  ? 'bg-green-100 text-green-600'
-                                  : action.outcome === 'FAILURE'
-                                    ? 'bg-red-100 text-red-600'
-                                    : 'bg-blue-100 text-blue-600'
+                                ? 'bg-green-100 text-green-600'
+                                : action.outcome === 'FAILURE'
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-blue-100 text-blue-600'
                                 }`}
                             >
                               <ClockIcon className="w-4 h-4" />

@@ -55,15 +55,19 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
       errors.priorityScore = 'Priority score must be between 0 and 1';
     }
 
+    if (!alertType) {
+      errors.alertType = 'Alert type is required';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   React.useEffect(() => {
-    if (note || confidence || priorityScore) {
+    if (note || confidence || priorityScore || alertType) {
       validateForm();
     }
-  }, [note, confidence, priorityScore]);
+  }, [note, confidence, priorityScore, alertType]);
 
   React.useEffect(() => {
     setPriority(alert.priority);
@@ -239,7 +243,8 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
 
                 { }
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alert Type<span className="text-red-500 ml-1">*</span></label>
+
                   <select
                     value={alertType || ''}
                     onChange={e => setAlertType(e.target.value as AlertType)}
@@ -252,6 +257,10 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                     <option value="AML">AML</option>
                     <option value="FRAUD_AND_AML">Fraud and AML</option>
                   </select>
+                  {validationErrors.alertType && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.alertType}</p>
+                  )}
+
                 </div>
 
                 { }
