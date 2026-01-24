@@ -1671,56 +1671,52 @@ export class GoldLakehouseService {
   }
 
   async getCounterpartyNetworkData(
-    transactionId: string,
+    accountId: string,
     tenantId: string = 'DEFAULT',
     timeRange: string = '30d',
   ): Promise<CounterpartyNetworkResponseDto> {
     try {
-      this.logger.log(`Fetching counterparty network for transaction: ${transactionId}`);
+      this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 
-      // Step 1: Get transaction to find involved accounts
-      const transactionSql = `
+      const accountHolderSql = `
         SELECT 
-          transaction_id,
-          debtor_account_id,
-          creditor_account_id,
           debtor_name,
-          creditor_name
+          creditor_name,
+          debtor_account_id,
+          creditor_account_id
         FROM transaction_detail
-        WHERE transaction_id = '${transactionId}'
+        WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
           AND tenant_id = '${tenantId}'
         LIMIT 1
       `;
 
-      const txResponse = await this.runSqlQuery(transactionSql, 1);
-      const txRow = txResponse?.data?.[0];
+      const accountHolderResponse = await this.runSqlQuery(accountHolderSql, 1);
+      const accountRow = accountHolderResponse?.data?.[0];
 
-      if (!txRow) {
-        throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+      if (!accountRow) {
+        throw new HttpException('Account not found in transactions', HttpStatus.NOT_FOUND);
       }
 
-      const tx = this.stripHudiMetadata(txRow);
-      
-      // Step 2: Get counterparty IDs from accounts
+      const account = this.stripHudiMetadata(accountRow);
+      const accountHolder = account.debtor_account_id === accountId ? account.debtor_name : account.creditor_name;
+
       const counterpartyLinksSql = `
         SELECT DISTINCT counterparty_id
         FROM counterparty_account_links
-        WHERE account_id IN ('${tx.debtor_account_id}', '${tx.creditor_account_id}')
+        WHERE account_id = '${accountId}'
           AND tenant_id = '${tenantId}'
+        LIMIT 1
       `;
 
-      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 10);
-      const counterpartyIds = (counterpartyLinksResponse?.data || [])
-        .map(row => this.stripHudiMetadata(row).counterparty_id);
+      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1);
+      const counterpartyIds = (counterpartyLinksResponse?.data || []).map((row) => this.stripHudiMetadata(row).counterparty_id);
 
       if (counterpartyIds.length === 0) {
-        throw new HttpException('No counterparties found for transaction', HttpStatus.NOT_FOUND);
+        throw new HttpException('No counterparties found for account', HttpStatus.NOT_FOUND);
       }
 
-      // Use first counterparty as center
       const centerCounterpartyId = counterpartyIds[0];
 
-      // Step 3: Get 1st degree network edges (direct connections)
       const networkEdgesSql = `
         SELECT 
           from_counterparty_id,
@@ -1738,20 +1734,17 @@ export class GoldLakehouseService {
       `;
 
       const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000);
-      const edges = (edgesResponse?.data || []).map(row => this.stripHudiMetadata(row));
+      const edges = (edgesResponse?.data || []).map((row) => this.stripHudiMetadata(row));
 
-      // Step 4: Collect all counterparty IDs from network
       const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
-      edges.forEach(edge => {
+      edges.forEach((edge) => {
         allCounterpartyIds.add(edge.from_counterparty_id);
         allCounterpartyIds.add(edge.to_counterparty_id);
       });
 
-      // Step 5: Get counterparty names via account links and transaction_detail
       const counterpartyNamesMap = new Map<string, string>();
-      
+
       for (const cpId of allCounterpartyIds) {
-        // Get an account for this counterparty
         const accountSql = `
           SELECT account_id
           FROM counterparty_account_links
@@ -1759,32 +1752,28 @@ export class GoldLakehouseService {
             AND tenant_id = '${tenantId}'
           LIMIT 1
         `;
-        
+
         const accountResponse = await this.runSqlQuery(accountSql, 1);
         const accountId = accountResponse?.data?.[0] ? this.stripHudiMetadata(accountResponse.data[0]).account_id : null;
-        
+
         if (accountId) {
-          // Get name from transaction_detail
           const nameSql = cpId.startsWith('dbtr_')
             ? `SELECT DISTINCT debtor_name as name FROM transaction_detail WHERE debtor_account_id = '${accountId}' LIMIT 1`
             : `SELECT DISTINCT creditor_name as name FROM transaction_detail WHERE creditor_account_id = '${accountId}' LIMIT 1`;
-          
+
           const nameResponse = await this.runSqlQuery(nameSql, 1);
           const name = nameResponse?.data?.[0] ? this.stripHudiMetadata(nameResponse.data[0]).name : cpId;
           counterpartyNamesMap.set(cpId, name);
         } else {
-          counterpartyNamesMap.set(cpId, cpId); 
+          counterpartyNamesMap.set(cpId, cpId);
         }
       }
 
-      // Step 6: Build counterparties list
       const counterpartiesData: CounterpartyDto[] = [];
       const processedCounterparties = new Set<string>([centerCounterpartyId]);
 
-      edges.forEach(edge => {
-        const connectedId = edge.from_counterparty_id === centerCounterpartyId 
-          ? edge.to_counterparty_id 
-          : edge.from_counterparty_id;
+      edges.forEach((edge) => {
+        const connectedId = edge.from_counterparty_id === centerCounterpartyId ? edge.to_counterparty_id : edge.from_counterparty_id;
 
         if (!processedCounterparties.has(connectedId)) {
           processedCounterparties.add(connectedId);
@@ -1794,7 +1783,7 @@ export class GoldLakehouseService {
           counterpartiesData.push({
             counterpartyId: connectedId,
             counterpartyName: counterpartyNamesMap.get(connectedId) || connectedId,
-            degree: 1, // 1st degree connection
+            degree: 1,
             transactionCount: Number(edge.tx_count),
             totalValue: Math.round(Number(edge.total_amount) * 100) / 100,
             averageValue: Math.round((Number(edge.total_amount) / Number(edge.tx_count)) * 100) / 100,
@@ -1807,10 +1796,9 @@ export class GoldLakehouseService {
         }
       });
 
-      // Step 7: Build edges for visualization (deduplicate bidirectional edges)
       const seenEdges = new Set<string>();
       const networkEdges: CounterpartyNetworkEdgeDto[] = [];
-      
+
       edges.forEach((edge, index) => {
         const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
         if (!seenEdges.has(edgeKey)) {
@@ -1827,12 +1815,11 @@ export class GoldLakehouseService {
         }
       });
 
-      // Step 8: Calculate network summary
       const totalCounterparties = counterpartiesData.length;
-      const firstDegreeConnections = counterpartiesData.filter(cp => cp.degree === 1).length;
-      const secondDegreeConnections = counterpartiesData.filter(cp => cp.degree === 2).length;
-      const counterpartiesWithAlerts = counterpartiesData.filter(cp => cp.hasAlert).length;
-      const counterpartiesUnderInvestigation = counterpartiesData.filter(cp => cp.isInvestigated).length;
+      const firstDegreeConnections = counterpartiesData.filter((cp) => cp.degree === 1).length;
+      const secondDegreeConnections = counterpartiesData.filter((cp) => cp.degree === 2).length;
+      const counterpartiesWithAlerts = counterpartiesData.filter((cp) => cp.hasAlert).length;
+      const counterpartiesUnderInvestigation = counterpartiesData.filter((cp) => cp.isInvestigated).length;
       const totalNetworkValue = counterpartiesData.reduce((sum, cp) => sum + cp.totalValue, 0);
 
       const networkSummary: CounterpartyNetworkSummaryDto = {
@@ -1851,7 +1838,8 @@ export class GoldLakehouseService {
       };
 
       return {
-        transactionId,
+        accountId,
+        accountHolder,
         centerCounterparty,
         counterparties: counterpartiesData,
         edges: networkEdges,
@@ -1861,10 +1849,7 @@ export class GoldLakehouseService {
       };
     } catch (error) {
       this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to fetch counterparty network data',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException('Failed to fetch counterparty network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

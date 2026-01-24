@@ -610,7 +610,7 @@ export class GoldLakehouseController {
     );
   }
 
-    // ---------------- TRANSACTION VIEW ----------------
+  // ---------------- TRANSACTION VIEW ----------------
 
   @Get('network-analysis/test-accounts')
   @RequireInvestigatorOrSupervisorRole()
@@ -635,7 +635,7 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getTestAccountIds(tenantId || 'DEFAULT', minConnections ? Number(minConnections) : 1);
   }
 
-    // ---------------- TRANSACTION NETWORK ANALYSIS ----------------  
+  // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
   @Public()
   @ApiOperation({ 
@@ -674,11 +674,7 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getTransactionNetworkData(
-      accountId,
-      tenantId || 'DEFAULT',
-      timeRange || '30d',
-    );
+    return this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 
   @Get('network-analysis/account/:accountId')
@@ -789,19 +785,19 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
   }
 
+  // ---------------- COUNTERPARTY VIEW ----------------
 
-    // ---------------- COUNTERPARTY VIEW ----------------
-
-  @Get('network-analysis/counterparty/:transactionId')
+  @Get('network-analysis/counterparty/:accountId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get Counterparty Network Analysis',
-    description: 'Fetches entity-level network visualization showing relationships between people and organizations involved in transactions. Analyzes counterparty connections, transaction patterns, alert flags, and investigation status to identify potential fraud networks.'
+    description:
+      'Fetches entity-level network visualization showing relationships between people and organizations connected to the specified account. Analyzes counterparty connections, transaction patterns, alert flags, and investigation status to identify potential fraud networks.',
   })
   @ApiParam({
-    name: 'transactionId',
-    description: 'Transaction ID to analyze counterparty network from',
-    example: 'TXN-123456',
+    name: 'accountId',
+    description: 'Account ID to analyze counterparty network from',
+    example: 'cdtrAcct_9e6fccad1b1b4850a6e90f548207748b',
   })
   @ApiQuery({
     name: 'timeRange',
@@ -816,28 +812,24 @@ export class GoldLakehouseController {
     required: false,
     example: 'DEFAULT',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Counterparty network data with center entity, connected counterparties, relationship edges, and comprehensive statistics including alert and investigation flags',
-    type: CounterpartyNetworkResponseDto
+  @ApiResponse({
+    status: 200,
+    description:
+      'Counterparty network data with account details, center entity, connected counterparties, relationship edges, and comprehensive statistics including alert and investigation flags',
+    type: CounterpartyNetworkResponseDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Transaction not found or no counterparties associated with transaction'
+    description: 'Account not found or no counterparties associated with account',
   })
   async getCounterpartyNetworkAnalysis(
-    @Param('transactionId') transactionId: string,
+    @Param('accountId') accountId: string,
     @Query('timeRange') timeRange?: string,
     @Query('tenantId') tenantId?: string,
   ) {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getCounterpartyNetworkData(
-      transactionId,
-      tenantId || 'DEFAULT',
-      timeRange || '30d',
-    );
+    return this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 }
-

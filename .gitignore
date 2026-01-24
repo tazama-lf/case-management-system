@@ -147,19 +147,3 @@ backend/prisma/migrations/
 
 # CouchDB configuration with sensitive credentials
 docker/couchdb/local.ini
-
-# Test scripts for backend verification
-backend/query-counterparty-tables.js
-backend/verify-complete-network-data.js
-backend/test-transaction-network.js
-backend/find-test-accounts.js
-backend/find-simple-test-accounts.js
-backend/explore-counterparty-data.js
-backend/explore-counterparty-tables.js
-backend/find-test-counterparty.js
-backend/test-counterparty-network.js
-backend/counterparty-network-response.json
-backend/COUNTERPARTY_NETWORK_*.md
-backend/query-lakehouse.js
-backend/test-counterparty-endpoint.ps1
-backend/validate-lakehouse-data.ps1
