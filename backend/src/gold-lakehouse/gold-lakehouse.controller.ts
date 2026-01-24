@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery }
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole, Public } from 'src/auth/auth.decorator';
-import { TransactionNetworkResponseDto } from './dto/network-analysis.dto';
+import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -610,6 +610,8 @@ export class GoldLakehouseController {
     );
   }
 
+    // ---------------- TRANSACTION VIEW ----------------
+
   @Get('network-analysis/test-accounts')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
@@ -633,6 +635,7 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getTestAccountIds(tenantId || 'DEFAULT', minConnections ? Number(minConnections) : 1);
   }
 
+    // ---------------- TRANSACTION NETWORK ANALYSIS ----------------  
   @Get('network-analysis/transaction/:accountId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
@@ -671,7 +674,11 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
+    return this.goldLakehouseService.getTransactionNetworkData(
+      accountId,
+      tenantId || 'DEFAULT',
+      timeRange || '30d',
+    );
   }
 
   @Get('network-analysis/account/:accountId')
@@ -722,8 +729,7 @@ export class GoldLakehouseController {
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  // Temporarily public for notebook/voila access
-  @Public()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Apply Benford\'s Law on account transactions',
     description:
@@ -782,4 +788,56 @@ export class GoldLakehouseController {
 
     return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
   }
+
+
+    // ---------------- COUNTERPARTY VIEW ----------------
+
+  @Get('network-analysis/counterparty/:transactionId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get Counterparty Network Analysis',
+    description: 'Fetches entity-level network visualization showing relationships between people and organizations involved in transactions. Analyzes counterparty connections, transaction patterns, alert flags, and investigation status to identify potential fraud networks.'
+  })
+  @ApiParam({
+    name: 'transactionId',
+    description: 'Transaction ID to analyze counterparty network from',
+    example: 'TXN-123456',
+  })
+  @ApiQuery({
+    name: 'timeRange',
+    description: 'Time range for network analysis (applied to filtering, data is pre-aggregated)',
+    required: false,
+    enum: ['7d', '30d', '90d', '1y', 'all'],
+    example: '30d',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Counterparty network data with center entity, connected counterparties, relationship edges, and comprehensive statistics including alert and investigation flags',
+    type: CounterpartyNetworkResponseDto
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Transaction not found or no counterparties associated with transaction'
+  })
+  async getCounterpartyNetworkAnalysis(
+    @Param('transactionId') transactionId: string,
+    @Query('timeRange') timeRange?: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
+      throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
+    }
+    return this.goldLakehouseService.getCounterpartyNetworkData(
+      transactionId,
+      tenantId || 'DEFAULT',
+      timeRange || '30d',
+    );
+  }
 }
+
