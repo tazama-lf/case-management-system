@@ -29,10 +29,7 @@ export class GoldLakehouseService {
   ) {
     this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
     this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') || 30000;
-    this.alertHistoryFallbackE2EId = this.configService.get<string>(
-      'ALERT_HISTORY_FALLBACK_E2E_ID',
-      '05c7ead85a1343d5a959561523a965fb',
-    );
+    this.alertHistoryFallbackE2EId = this.configService.get<string>('ALERT_HISTORY_FALLBACK_E2E_ID', '05c7ead85a1343d5a959561523a965fb');
   }
 
   async query(queryRequest: QueryRequestDto): Promise<QueryResponseDto> {
@@ -971,12 +968,12 @@ export class GoldLakehouseService {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -993,7 +990,7 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
@@ -1037,12 +1034,12 @@ export class GoldLakehouseService {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -1059,7 +1056,7 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
@@ -1108,23 +1105,17 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryAlerts(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    page: number = 1,
-    limit: number = 20,
-  ) {
+  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page: number = 1, limit: number = 20) {
     try {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -1141,12 +1132,12 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
       }
-      
+
       const offset = (page - 1) * limit;
 
       const countSql = `
@@ -1343,17 +1334,12 @@ export class GoldLakehouseService {
 
       const outboundData = (outboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
-      const alertFlags = new Set(
-        (alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id),
-      );
+      const alertFlags = new Set((alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id));
 
       const allConnections = [...outboundData, ...inboundData];
 
       const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
-        const velocity = this.calculateVelocity(
-          Number(conn.total_transactions),
-          Math.max(Number(conn.duration_days), 1),
-        );
+        const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
 
         const hasAlert = alertFlags.has(conn.connected_account_id);
 
@@ -1367,8 +1353,7 @@ export class GoldLakehouseService {
         return {
           accountId: conn.connected_account_id,
           accountHolder: conn.connected_account_name,
-          flowDirection:
-            conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
+          flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
           hasAlert,
           alertMessage: hasAlert ? 'Alert triggered on this account' : undefined,
@@ -1417,8 +1402,6 @@ export class GoldLakehouseService {
     }
   }
 
-
-
   /**
    * Calculate velocity based on transaction frequency
    * @param totalTransactions Total number of transactions
@@ -1458,12 +1441,176 @@ export class GoldLakehouseService {
         startDate = new Date(now.setFullYear(now.getFullYear() - 1));
         break;
       case 'all':
-        startDate = new Date('2000-01-01'); 
+        startDate = new Date('2000-01-01');
         break;
       default:
-        startDate = new Date(now.setDate(now.getDate() - 30)); 
+        startDate = new Date(now.setDate(now.getDate() - 30));
     }
 
     return startDate.toISOString();
+  }
+
+  async getAccountNodeFullData(accountId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+    try {
+      const networkSql = `
+      SELECT
+        from_account_id,
+        to_account_id,
+        tx_count,
+        total_amount,
+        currency_hint,
+        first_event_ts,
+        last_event_ts,
+        is_alerted_edge,
+        is_investigated_edge
+      FROM tx_network_accounts_edges
+      WHERE tenant_id = '${tenantId}'
+        AND bucket_granularity = '${granularity}'
+        AND (
+          from_account_id = '${accountId}'
+          OR to_account_id = '${accountId}'
+        )
+    `;
+
+      const networkResp = await this.runSqlQuery(networkSql, 1000);
+      const networkRows = (networkResp.data || []).map((r) => this.stripHudiMetadata(r));
+
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
+
+      nodesMap.set(accountId, {
+        id: accountId,
+        type: 'ACCOUNT',
+        label: accountId,
+        flags: { alerted: false, investigated: false },
+      });
+
+      for (const r of networkRows) {
+        const fromId = r.from_account_id;
+        const toId = r.to_account_id;
+
+        if (!nodesMap.has(fromId)) {
+          nodesMap.set(fromId, {
+            id: fromId,
+            type: 'ACCOUNT',
+            label: fromId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        if (!nodesMap.has(toId)) {
+          nodesMap.set(toId, {
+            id: toId,
+            type: 'ACCOUNT',
+            label: toId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        const root = nodesMap.get(accountId);
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
+
+        edges.push({
+          source: fromId,
+          target: toId,
+          txCount: Number(r.tx_count ?? 0),
+          totalAmount: Number(r.total_amount ?? 0),
+          currency: r.currency_hint,
+          flags: {
+            alerted: r.is_alerted_edge === 1,
+            investigated: r.is_investigated_edge === 1,
+          },
+        });
+      }
+
+      const metricsSql = `
+      SELECT
+        SUM(tx_count) AS transactions,
+        SUM(total_amount) AS total_value,
+        MAX(is_alerted_edge) AS is_alerted,
+        MAX(is_investigated_edge) AS is_investigated
+      FROM tx_network_accounts_edges
+      WHERE tenant_id = '${tenantId}'
+        AND (
+          from_account_id = '${accountId}'
+          OR to_account_id = '${accountId}'
+        )
+    `;
+
+      const metricsResp = await this.runSqlQuery(metricsSql, 1);
+      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] || {});
+
+      const holderSql = `
+      SELECT debtor_name AS holder_name
+      FROM transaction_detail
+      WHERE tenant_id = '${tenantId}'
+        AND debtor_account_id = '${accountId}'
+      LIMIT 1
+    `;
+
+      const holderResp = await this.runSqlQuery(holderSql, 1);
+      const holderRow = holderResp.data?.[0];
+
+      const alertSql = `
+      SELECT COUNT(*) AS alert_count
+      FROM alerts a
+      JOIN transaction_detail td
+        ON a.tx_original_e2e_id = td.end_to_end_id
+      WHERE td.debtor_account_id = '${accountId}'
+         OR td.creditor_account_id = '${accountId}'
+    `;
+
+      const investigationSql = `
+      SELECT COUNT(*) AS investigation_count
+      FROM cases c
+      JOIN alerts a ON a.case_id = c.case_id
+      JOIN transaction_detail td
+        ON a.tx_original_e2e_id = td.end_to_end_id
+      WHERE c.status NOT IN ('STATUS_00_DRAFT','STATUS_99_COMPLETED')
+        AND (
+          td.debtor_account_id = '${accountId}'
+          OR td.creditor_account_id = '${accountId}'
+        )
+    `;
+
+      const [alertResp, investigationResp] = await Promise.all([this.runSqlQuery(alertSql, 1), this.runSqlQuery(investigationSql, 1)]);
+
+      const txCount = Number(metrics.transactions ?? 0);
+
+      return {
+        network: {
+          rootNodeId: accountId,
+          nodes: Array.from(nodesMap.values()),
+          edges,
+        },
+        accountDetails: {
+          accountId,
+          accountHolder: holderRow?.holder_name ?? 'Unknown',
+          relationship: 'Primary Owner',
+          transactions: txCount,
+          totalValue: Number(metrics.total_value ?? 0),
+          velocity: txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW',
+          flags: {
+            alerted: metrics.is_alerted === 1 || Number(alertResp.data?.[0]?.alert_count ?? 0) > 0,
+            investigated: metrics.is_investigated === 1 || Number(investigationResp.data?.[0]?.investigation_count ?? 0) > 0,
+          },
+        },
+        meta: {
+          tenantId,
+          granularity,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching full account node data: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }

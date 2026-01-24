@@ -3,9 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery }
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole, Public } from 'src/auth/auth.decorator';
-import {
-  TransactionNetworkResponseDto,
-} from './dto/network-analysis.dto';
+import { TransactionNetworkResponseDto } from './dto/network-analysis.dto';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -383,7 +381,8 @@ export class GoldLakehouseController {
   @Public()
   @ApiOperation({
     summary: 'Get Alert History Summary',
-    description: 'Returns summary metrics for alert history including total alerts, user-opened, investigations, cases raised, and total transaction value. Filter by transaction end-to-end ID and date range.',
+    description:
+      'Returns summary metrics for alert history including total alerts, user-opened, investigations, cases raised, and total transaction value. Filter by transaction end-to-end ID and date range.',
   })
   @ApiQuery({
     name: 'endToEndId',
@@ -416,7 +415,7 @@ export class GoldLakehouseController {
         casesOpened: 48,
         investigations: 90,
         sarFilings: 4,
-        totalValue: 2957437.00,
+        totalValue: 2957437.0,
       },
     },
   })
@@ -436,7 +435,8 @@ export class GoldLakehouseController {
   @Public()
   @ApiOperation({
     summary: 'Get Alert History Timeline',
-    description: 'Returns time-series data for alert history including alert counts, case counts, investigation counts, and total values grouped by date granularity. Filter by transaction end-to-end ID and date range.',
+    description:
+      'Returns time-series data for alert history including alert counts, case counts, investigation counts, and total values grouped by date granularity. Filter by transaction end-to-end ID and date range.',
   })
   @ApiQuery({
     name: 'endToEndId',
@@ -490,7 +490,7 @@ export class GoldLakehouseController {
         alertValueOverTime: [
           {
             date: '2026-01-20T00:00:00.000Z',
-            totalValue: 125000.50,
+            totalValue: 125000.5,
           },
           {
             date: '2026-01-19T00:00:00.000Z',
@@ -523,7 +523,8 @@ export class GoldLakehouseController {
   @Public()
   @ApiOperation({
     summary: 'Get Alert History Alerts',
-    description: 'Returns paginated list of alerts with customer names, account IDs, transaction details, and navigation actions. Filter by transaction end-to-end ID and date range.',
+    description:
+      'Returns paginated list of alerts with customer names, account IDs, transaction details, and navigation actions. Filter by transaction end-to-end ID and date range.',
   })
   @ApiQuery({
     name: 'endToEndId',
@@ -609,13 +610,11 @@ export class GoldLakehouseController {
     );
   }
 
-  // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
-
   @Get('network-analysis/test-accounts')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get Test Account IDs',
-    description: 'Fetches account IDs with network activity for testing network analysis endpoints'
+    description: 'Fetches account IDs with network activity for testing network analysis endpoints',
   })
   @ApiQuery({
     name: 'tenantId',
@@ -630,21 +629,16 @@ export class GoldLakehouseController {
     example: 2,
   })
   @ApiResponse({ status: 200, description: 'List of test account IDs with network statistics' })
-  async getTestAccountIds(
-    @Query('tenantId') tenantId?: string,
-    @Query('minConnections') minConnections?: number,
-  ) {
-    return this.goldLakehouseService.getTestAccountIds(
-      tenantId || 'DEFAULT',
-      minConnections ? Number(minConnections) : 1,
-    );
+  async getTestAccountIds(@Query('tenantId') tenantId?: string, @Query('minConnections') minConnections?: number) {
+    return this.goldLakehouseService.getTestAccountIds(tenantId || 'DEFAULT', minConnections ? Number(minConnections) : 1);
   }
 
   @Get('network-analysis/transaction/:accountId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get Transaction Network Analysis',
-    description: 'Fetches network visualization data showing all accounts connected to the specified account through transactions, including transaction statistics, flow directions, and alert flags.'
+    description:
+      'Fetches network visualization data showing all accounts connected to the specified account through transactions, including transaction statistics, flow directions, and alert flags.',
   })
   @ApiParam({
     name: 'accountId',
@@ -664,10 +658,10 @@ export class GoldLakehouseController {
     required: false,
     example: 'DEFAULT',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Network analysis data with center account, connected accounts, edges, and statistics',
-    type: TransactionNetworkResponseDto
+    type: TransactionNetworkResponseDto,
   })
   async getTransactionNetworkAnalysis(
     @Param('accountId') accountId: string,
@@ -677,13 +671,67 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getTransactionNetworkData(
-      accountId,
-      tenantId || 'DEFAULT',
-      timeRange || '30d',
-    );
+    return this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 
+  @Get('lake/analytics/benford/account/:accountId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: "Apply Benford's Law on account transactions",
+    description:
+      'Applies Benford’s Law to successful transaction amounts where the given account appears as debtor or creditor, over a selected date range.',
+  })
+  @ApiParam({
+    name: 'accountId',
+    description: 'Account ID (used as debtor or creditor)',
+    required: true,
+    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
+    required: true,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'from',
+    description: 'Start date (YYYY-MM-DD)',
+    required: true,
+    example: '2026-01-01',
+  })
+  @ApiQuery({
+    name: 'to',
+    description: 'End date (YYYY-MM-DD)',
+    required: true,
+    example: '2026-01-31',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Benford analysis (expected vs actual distribution)',
+  })
+  async benfordByAccount(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('from') fromDate: string,
+    @Query('to') toDate: string,
+  ) {
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
 
+    if (!tenantId || tenantId.trim() === '') {
+      throw new BadRequestException('tenantId is required');
+    }
+
+    if (!fromDate || !toDate) {
+      throw new BadRequestException('from and to dates are required');
+    }
+
+    // Optional but recommended
+    if (new Date(fromDate) > new Date(toDate)) {
+      throw new BadRequestException('from date cannot be after to date');
+    }
+
+    return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
+  }
 }
-
