@@ -1613,4 +1613,70 @@ export class GoldLakehouseService {
       throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
+    try {
+      this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
+
+      const sql = `
+      SELECT
+        ABS(interbank_settlement_amount) AS amount
+      FROM transaction_detail
+      WHERE tenant_id = '${tenantId}'
+        AND interbank_settlement_amount IS NOT NULL
+        AND interbank_settlement_amount > 0
+        AND tx_status = 'SUCCESS'
+        AND (
+          debtor_account_id = '${accountId}'
+          OR creditor_account_id = '${accountId}'
+        )
+        AND tx_event_date BETWEEN '${fromDate}' AND '${toDate}'
+    `;
+
+      const response = await this.runSqlQuery(sql, 100000);
+      const rows = response?.data || [];
+
+      const amounts: number[] = rows.map((r) => Number(r.amount)).filter((v) => !isNaN(v) && v > 0);
+
+      const expected: Record<number, number> = {};
+      for (let d = 1; d <= 9; d++) {
+        expected[d] = Math.log10(1 + 1 / d);
+      }
+
+      const counts = Array(10).fill(0);
+      let total = 0;
+
+      for (const value of amounts) {
+        const s = value.toString().replace('.', '').replace(/^0+/, '');
+        if (!s) continue;
+
+        const digit = parseInt(s[0], 10);
+        if (digit >= 1 && digit <= 9) {
+          counts[digit]++;
+          total++;
+        }
+      }
+
+      const actual: Record<number, number> = {};
+      for (let d = 1; d <= 9; d++) {
+        actual[d] = total > 0 ? counts[d] / total : 0;
+      }
+
+      return {
+        expected,
+        actual,
+        sampleSize: total,
+        meta: {
+          accountId,
+          tenantId,
+          fromDate,
+          toDate,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error running Benford analysis for account ${accountId}: ${error.message}`, error.stack);
+
+      throw new HttpException('Failed to perform Benford analysis', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }
