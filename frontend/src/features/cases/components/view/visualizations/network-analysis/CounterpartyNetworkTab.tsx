@@ -20,13 +20,14 @@ const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
 }) => {
   const nodes = React.useMemo(
     () => generateCounterpartyNetworkNodes(transactionId),
-    [transactionId]
+    [transactionId],
   );
   const edges = React.useMemo(() => generateCounterpartyNetworkEdges(), []);
 
-  const [selectedNode, setSelectedNode] = React.useState<NetworkNodeData | null>(
-    () => nodes.find((n) => n.isCenter) || null
-  );
+  const [selectedNode, setSelectedNode] =
+    React.useState<NetworkNodeData | null>(
+      () => nodes.find((n) => n.isCenter) || null,
+    );
 
   const handleNodeClick = (node: NetworkNodeData) => {
     setSelectedNode(node);
@@ -37,7 +38,7 @@ const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
   const outboundConnections = edges.filter((e) => e.type === 'outbound').length;
   const inboundConnections = edges.filter((e) => e.type === 'inbound').length;
   const highRiskCounterparties = nodes.filter(
-    (n) => n.status === 'alert' || n.status === 'flagged'
+    (n) => n.status === 'alert' || n.status === 'flagged',
   ).length;
 
   const detailFields = selectedNode
@@ -52,28 +53,19 @@ const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
     { label: 'Total Counterparties', value: totalCounterparties },
     { label: 'Outbound Links', value: outboundConnections },
     { label: 'Inbound Links', value: inboundConnections },
-    { label: 'High Risk', value: highRiskCounterparties, highlight: highRiskCounterparties > 0 },
+    {
+      label: 'High Risk',
+      value: highRiskCounterparties,
+      highlight: highRiskCounterparties > 0,
+    },
   ];
 
   return (
-    <div className="flex min-h-[400px] p-4">
-      {/* Graph Area */}
-      <div className="relative flex-1 min-h-[650px]">
-        <NetworkGraph
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={handleNodeClick}
-          selectedNodeId={selectedNode?.id}
-        />
-        <NetworkLegend items={counterpartyNetworkLegend} />
-      </div>
-
-      {/* Details Panel */}
-      <NetworkDetailsPanel
-        title="Counterparty Details"
-        fields={detailFields}
-        summaryTitle="Network Summary"
-        summaryFields={summaryFields}
+    <div className="flex h-[750px] w-full flex-col bg-white p-4">
+      <iframe
+        src={`${import.meta.env.VITE_VOILA_BASE_URL}/voila/render/counterparty-network.ipynb`}
+        className="h-full w-full border-0"
+        title="Counterparty Network Analysis"
       />
     </div>
   );
