@@ -425,7 +425,7 @@ export class GoldLakehouseController {
     @Query('dateRange') dateRange?: string,
   ) {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     return this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange || 'all');
   }
@@ -507,7 +507,7 @@ export class GoldLakehouseController {
     @Query('granularity') granularity: string = 'day',
   ) {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     if (granularity) {
       const validGranularities = ['day', 'week', 'month', 'year'];
@@ -599,7 +599,7 @@ export class GoldLakehouseController {
     @Query('limit') limit?: number,
   ) {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException(`Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all`);
+      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     return this.goldLakehouseService.getAlertHistoryAlerts(
       endToEndId,
@@ -675,7 +675,8 @@ export class GoldLakehouseController {
   }
 
   @Get('network-analysis/account/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  // Temporarily public for notebook/voila access
+  @Public()
   @ApiOperation({
     summary: 'Get Account Network graph + selected account details',
     description:
@@ -724,7 +725,7 @@ export class GoldLakehouseController {
   // Temporarily public for notebook/voila access
   @Public()
   @ApiOperation({
-    summary: "Apply Benford's Law on account transactions",
+    summary: 'Apply Benford\'s Law on account transactions',
     description:
       'Applies Benford’s Law to successful transaction amounts where the given account appears as debtor or creditor, over a selected date range.',
   })
