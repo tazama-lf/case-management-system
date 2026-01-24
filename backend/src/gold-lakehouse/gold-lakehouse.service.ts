@@ -1605,6 +1605,148 @@ export class GoldLakehouseService {
     }
   }
 
+  async getCounterpartyNodeFullData(counterpartyId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+    try {
+      const networkSql = `
+      SELECT
+        from_counterparty_id,
+        to_counterparty_id,
+        tx_count,
+        total_amount,
+        currency_hint,
+        first_event_ts,
+        last_event_ts,
+        is_alerted_edge,
+        is_investigated_edge
+      FROM tx_network_counterparties_edges
+      WHERE tenant_id = '${tenantId}'
+        AND bucket_granularity = '${granularity}'
+        AND (
+          from_counterparty_id = '${counterpartyId}'
+          OR to_counterparty_id = '${counterpartyId}'
+        )
+    `;
+
+      const networkResp = await this.runSqlQuery(networkSql, 1000);
+      const networkRows = (networkResp.data || []).map((r) => this.stripHudiMetadata(r));
+
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
+
+      nodesMap.set(counterpartyId, {
+        id: counterpartyId,
+        type: 'COUNTERPARTY',
+        label: counterpartyId,
+        flags: { alerted: false, investigated: false },
+      });
+
+      for (const r of networkRows) {
+        const fromId = r.from_counterparty_id;
+        const toId = r.to_counterparty_id;
+
+        if (!nodesMap.has(fromId)) {
+          nodesMap.set(fromId, {
+            id: fromId,
+            type: 'COUNTERPARTY',
+            label: fromId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        if (!nodesMap.has(toId)) {
+          nodesMap.set(toId, {
+            id: toId,
+            type: 'COUNTERPARTY',
+            label: toId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        const root = nodesMap.get(counterpartyId);
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
+
+        edges.push({
+          source: fromId,
+          target: toId,
+          txCount: Number(r.tx_count ?? 0),
+          totalAmount: Number(r.total_amount ?? 0),
+          currency: r.currency_hint,
+          flags: {
+            alerted: r.is_alerted_edge === 1,
+            investigated: r.is_investigated_edge === 1,
+          },
+        });
+      }
+
+      const metricsSql = `
+      SELECT
+        SUM(tx_count) AS transactions,
+        SUM(total_amount) AS total_value,
+        MAX(is_alerted_edge) AS is_alerted,
+        MAX(is_investigated_edge) AS is_investigated
+      FROM tx_network_counterparties_edges
+      WHERE tenant_id = '${tenantId}'
+        AND (
+          from_counterparty_id = '${counterpartyId}'
+          OR to_counterparty_id = '${counterpartyId}'
+        )
+    `;
+
+      const metricsResp = await this.runSqlQuery(metricsSql, 1);
+      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] || {});
+
+      // For Name, we search in transaction_detail by any account that links to this counterparty
+      const nameSql = `
+      SELECT DISTINCT debtor_name AS holder_name
+      FROM transaction_detail td
+      JOIN counterparty_account_links cal ON td.debtor_account_id = cal.account_id
+      WHERE td.tenant_id = '${tenantId}'
+        AND cal.counterparty_id = '${counterpartyId}'
+      LIMIT 1
+    `;
+
+      const nameResp = await this.runSqlQuery(nameSql, 1);
+      const nameRow = nameResp.data?.[0];
+
+      const txCount = Number(metrics.transactions ?? 0);
+
+      return {
+        network: {
+          rootNodeId: counterpartyId,
+          nodes: Array.from(nodesMap.values()),
+          edges,
+        },
+        counterpartyDetails: {
+          counterpartyId,
+          name: nameRow?.holder_name ?? counterpartyId,
+          type: 'Business',
+          transactions: txCount,
+          totalValue: Number(metrics.total_value ?? 0),
+          velocity: txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW',
+          flags: {
+            alerted: metrics.is_alerted === 1,
+            investigated: metrics.is_investigated === 1,
+          },
+        },
+        meta: {
+          tenantId,
+          granularity,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error in getCounterpartyNodeFullData: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch counterparty network details', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
@@ -1700,7 +1842,7 @@ export class GoldLakehouseService {
       }
 
       const tx = this.stripHudiMetadata(txRow);
-      
+
       // Step 2: Get counterparty IDs from accounts
       const counterpartyLinksSql = `
         SELECT DISTINCT counterparty_id
@@ -1710,8 +1852,7 @@ export class GoldLakehouseService {
       `;
 
       const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 10);
-      const counterpartyIds = (counterpartyLinksResponse?.data || [])
-        .map(row => this.stripHudiMetadata(row).counterparty_id);
+      const counterpartyIds = (counterpartyLinksResponse?.data || []).map((row) => this.stripHudiMetadata(row).counterparty_id);
 
       if (counterpartyIds.length === 0) {
         throw new HttpException('No counterparties found for transaction', HttpStatus.NOT_FOUND);
@@ -1738,18 +1879,18 @@ export class GoldLakehouseService {
       `;
 
       const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000);
-      const edges = (edgesResponse?.data || []).map(row => this.stripHudiMetadata(row));
+      const edges = (edgesResponse?.data || []).map((row) => this.stripHudiMetadata(row));
 
       // Step 4: Collect all counterparty IDs from network
       const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
-      edges.forEach(edge => {
+      edges.forEach((edge) => {
         allCounterpartyIds.add(edge.from_counterparty_id);
         allCounterpartyIds.add(edge.to_counterparty_id);
       });
 
       // Step 5: Get counterparty names via account links and transaction_detail
       const counterpartyNamesMap = new Map<string, string>();
-      
+
       for (const cpId of allCounterpartyIds) {
         // Get an account for this counterparty
         const accountSql = `
@@ -1759,21 +1900,21 @@ export class GoldLakehouseService {
             AND tenant_id = '${tenantId}'
           LIMIT 1
         `;
-        
+
         const accountResponse = await this.runSqlQuery(accountSql, 1);
         const accountId = accountResponse?.data?.[0] ? this.stripHudiMetadata(accountResponse.data[0]).account_id : null;
-        
+
         if (accountId) {
           // Get name from transaction_detail
           const nameSql = cpId.startsWith('dbtr_')
             ? `SELECT DISTINCT debtor_name as name FROM transaction_detail WHERE debtor_account_id = '${accountId}' LIMIT 1`
             : `SELECT DISTINCT creditor_name as name FROM transaction_detail WHERE creditor_account_id = '${accountId}' LIMIT 1`;
-          
+
           const nameResponse = await this.runSqlQuery(nameSql, 1);
           const name = nameResponse?.data?.[0] ? this.stripHudiMetadata(nameResponse.data[0]).name : cpId;
           counterpartyNamesMap.set(cpId, name);
         } else {
-          counterpartyNamesMap.set(cpId, cpId); 
+          counterpartyNamesMap.set(cpId, cpId);
         }
       }
 
@@ -1781,10 +1922,8 @@ export class GoldLakehouseService {
       const counterpartiesData: CounterpartyDto[] = [];
       const processedCounterparties = new Set<string>([centerCounterpartyId]);
 
-      edges.forEach(edge => {
-        const connectedId = edge.from_counterparty_id === centerCounterpartyId 
-          ? edge.to_counterparty_id 
-          : edge.from_counterparty_id;
+      edges.forEach((edge) => {
+        const connectedId = edge.from_counterparty_id === centerCounterpartyId ? edge.to_counterparty_id : edge.from_counterparty_id;
 
         if (!processedCounterparties.has(connectedId)) {
           processedCounterparties.add(connectedId);
@@ -1810,7 +1949,7 @@ export class GoldLakehouseService {
       // Step 7: Build edges for visualization (deduplicate bidirectional edges)
       const seenEdges = new Set<string>();
       const networkEdges: CounterpartyNetworkEdgeDto[] = [];
-      
+
       edges.forEach((edge, index) => {
         const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
         if (!seenEdges.has(edgeKey)) {
@@ -1829,10 +1968,10 @@ export class GoldLakehouseService {
 
       // Step 8: Calculate network summary
       const totalCounterparties = counterpartiesData.length;
-      const firstDegreeConnections = counterpartiesData.filter(cp => cp.degree === 1).length;
-      const secondDegreeConnections = counterpartiesData.filter(cp => cp.degree === 2).length;
-      const counterpartiesWithAlerts = counterpartiesData.filter(cp => cp.hasAlert).length;
-      const counterpartiesUnderInvestigation = counterpartiesData.filter(cp => cp.isInvestigated).length;
+      const firstDegreeConnections = counterpartiesData.filter((cp) => cp.degree === 1).length;
+      const secondDegreeConnections = counterpartiesData.filter((cp) => cp.degree === 2).length;
+      const counterpartiesWithAlerts = counterpartiesData.filter((cp) => cp.hasAlert).length;
+      const counterpartiesUnderInvestigation = counterpartiesData.filter((cp) => cp.isInvestigated).length;
       const totalNetworkValue = counterpartiesData.reduce((sum, cp) => sum + cp.totalValue, 0);
 
       const networkSummary: CounterpartyNetworkSummaryDto = {
@@ -1861,10 +2000,7 @@ export class GoldLakehouseService {
       };
     } catch (error) {
       this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to fetch counterparty network data',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException('Failed to fetch counterparty network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

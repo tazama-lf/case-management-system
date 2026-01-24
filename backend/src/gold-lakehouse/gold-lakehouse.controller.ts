@@ -610,7 +610,7 @@ export class GoldLakehouseController {
     );
   }
 
-    // ---------------- TRANSACTION VIEW ----------------
+  // ---------------- TRANSACTION VIEW ----------------
 
   @Get('network-analysis/test-accounts')
   @RequireInvestigatorOrSupervisorRole()
@@ -635,7 +635,7 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getTestAccountIds(tenantId || 'DEFAULT', minConnections ? Number(minConnections) : 1);
   }
 
-    // ---------------- TRANSACTION NETWORK ANALYSIS ----------------  
+  // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
@@ -674,11 +674,7 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getTransactionNetworkData(
-      accountId,
-      tenantId || 'DEFAULT',
-      timeRange || '30d',
-    );
+    return this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 
   @Get('network-analysis/account/:accountId')
@@ -728,10 +724,59 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId || 'DEFAULT', (granularity as any) || 'month');
   }
 
+  @Get('network-analysis/counterparty-node/:counterpartyId')
+  @Public()
+  @ApiOperation({
+    summary: 'Get Counterparty Network graph + selected counterparty details',
+    description: 'Returns counterparty network visualization (nodes + edges) along with full details for the selected counterparty node.',
+  })
+  @ApiParam({
+    name: 'counterpartyId',
+    description: 'Root Counterparty ID for network visualization',
+    required: true,
+    example: 'dbtr_abc123',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID (defaults to DEFAULT)',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'granularity',
+    description: 'Network aggregation granularity',
+    required: false,
+    enum: ['day', 'month', 'year'],
+    example: 'month',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Counterparty network graph and selected counterparty detail panel data',
+  })
+  async getCounterpartyNetworkWithDetails(
+    @Param('counterpartyId') counterpartyId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('granularity') granularity?: string,
+  ) {
+    if (!counterpartyId || counterpartyId.trim() === '') {
+      throw new BadRequestException('counterpartyId is required');
+    }
+
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
+    }
+
+    return this.goldLakehouseService.getCounterpartyNodeFullData(
+      counterpartyId,
+      tenantId || 'DEFAULT',
+      (granularity as 'day' | 'month' | 'year') || 'month',
+    );
+  }
+
   @Get('lake/analytics/benford/account/:accountId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
-    summary: 'Apply Benford\'s Law on account transactions',
+    summary: "Apply Benford's Law on account transactions",
     description:
       'Applies Benford’s Law to successful transaction amounts where the given account appears as debtor or creditor, over a selected date range.',
   })
@@ -789,14 +834,14 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
   }
 
-
-    // ---------------- COUNTERPARTY VIEW ----------------
+  // ---------------- COUNTERPARTY VIEW ----------------
 
   @Get('network-analysis/counterparty/:transactionId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get Counterparty Network Analysis',
-    description: 'Fetches entity-level network visualization showing relationships between people and organizations involved in transactions. Analyzes counterparty connections, transaction patterns, alert flags, and investigation status to identify potential fraud networks.'
+    description:
+      'Fetches entity-level network visualization showing relationships between people and organizations involved in transactions. Analyzes counterparty connections, transaction patterns, alert flags, and investigation status to identify potential fraud networks.',
   })
   @ApiParam({
     name: 'transactionId',
@@ -816,14 +861,15 @@ export class GoldLakehouseController {
     required: false,
     example: 'DEFAULT',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Counterparty network data with center entity, connected counterparties, relationship edges, and comprehensive statistics including alert and investigation flags',
-    type: CounterpartyNetworkResponseDto
+  @ApiResponse({
+    status: 200,
+    description:
+      'Counterparty network data with center entity, connected counterparties, relationship edges, and comprehensive statistics including alert and investigation flags',
+    type: CounterpartyNetworkResponseDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Transaction not found or no counterparties associated with transaction'
+    description: 'Transaction not found or no counterparties associated with transaction',
   })
   async getCounterpartyNetworkAnalysis(
     @Param('transactionId') transactionId: string,
@@ -833,11 +879,6 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return this.goldLakehouseService.getCounterpartyNetworkData(
-      transactionId,
-      tenantId || 'DEFAULT',
-      timeRange || '30d',
-    );
+    return this.goldLakehouseService.getCounterpartyNetworkData(transactionId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 }
-
