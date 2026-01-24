@@ -147,24 +147,3 @@ backend/prisma/migrations/
 
 # CouchDB configuration with sensitive credentials
 docker/couchdb/local.ini
-
-# --- Custom workspace docs and scripts to ignore ---
-# Test and analysis scripts
-backend/test-account-to-counterparty.js
-backend/find-accounts-with-counterparties.js
-backend/verify-counterparty-data-completeness.js
-backend/test-updated-counterparty-endpoint.js
-backend/analyze-tables-for-counterparty.js
-
-# Documentation not for git
-backend/ACCOUNT_ID_IMPLEMENTATION.md
-backend/COUNTERPARTY_NETWORK_EXPLAINED.md
-backend/counterparty-network-response.json
-
-# Other generated or local test files
-backend/query-lakehouse.js
-backend/test-counterparty-network.js
-backend/test-counterparty-endpoint.ps1
-backend/validate-lakehouse-data.ps1
-
-# --- End custom ignore ---
