@@ -1625,7 +1625,6 @@ export class GoldLakehouseService {
       WHERE tenant_id = '${tenantId}'
         AND interbank_settlement_amount IS NOT NULL
         AND interbank_settlement_amount > 0
-        AND tx_status = 'SUCCESS'
         AND (
           debtor_account_id = '${accountId}'
           OR creditor_account_id = '${accountId}'
