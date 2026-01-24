@@ -637,8 +637,8 @@ export class GoldLakehouseController {
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
+  @Public()
+  @ApiOperation({ 
     summary: 'Get Transaction Network Analysis',
     description:
       'Fetches network visualization data showing all accounts connected to the specified account through transactions, including transaction statistics, flow directions, and alert flags.',
