@@ -11,9 +11,11 @@ import {
   NetworkSummaryDto,
   TransactionStatsDto,
   NetworkEdgeDto,
-  AccountNetworkResponseDto,
   CounterpartyNetworkResponseDto,
   CounterpartyDto,
+  CenterCounterpartyDto,
+  CounterpartyNetworkSummaryDto,
+  CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
 
 @Injectable()
@@ -29,10 +31,7 @@ export class GoldLakehouseService {
   ) {
     this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
     this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') || 30000;
-    this.alertHistoryFallbackE2EId = this.configService.get<string>(
-      'ALERT_HISTORY_FALLBACK_E2E_ID',
-      '05c7ead85a1343d5a959561523a965fb',
-    );
+    this.alertHistoryFallbackE2EId = this.configService.get<string>('ALERT_HISTORY_FALLBACK_E2E_ID', '05c7ead85a1343d5a959561523a965fb');
   }
 
   async query(queryRequest: QueryRequestDto): Promise<QueryResponseDto> {
@@ -971,12 +970,12 @@ export class GoldLakehouseService {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -993,7 +992,7 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
@@ -1037,12 +1036,12 @@ export class GoldLakehouseService {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -1059,7 +1058,7 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
@@ -1108,23 +1107,17 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryAlerts(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    page: number = 1,
-    limit: number = 20,
-  ) {
+  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page: number = 1, limit: number = 20) {
     try {
       const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
-      
+
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
         const now = new Date();
         let startDate: Date | null = null;
-        
+
         switch (dateRange) {
           case '30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
@@ -1141,12 +1134,12 @@ export class GoldLakehouseService {
           default:
             startDate = null;
         }
-        
+
         if (startDate) {
           dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
         }
       }
-      
+
       const offset = (page - 1) * limit;
 
       const countSql = `
@@ -1343,17 +1336,12 @@ export class GoldLakehouseService {
 
       const outboundData = (outboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
-      const alertFlags = new Set(
-        (alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id),
-      );
+      const alertFlags = new Set((alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id));
 
       const allConnections = [...outboundData, ...inboundData];
 
       const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
-        const velocity = this.calculateVelocity(
-          Number(conn.total_transactions),
-          Math.max(Number(conn.duration_days), 1),
-        );
+        const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
 
         const hasAlert = alertFlags.has(conn.connected_account_id);
 
@@ -1367,8 +1355,7 @@ export class GoldLakehouseService {
         return {
           accountId: conn.connected_account_id,
           accountHolder: conn.connected_account_name,
-          flowDirection:
-            conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
+          flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
           hasAlert,
           alertMessage: hasAlert ? 'Alert triggered on this account' : undefined,
@@ -1417,14 +1404,6 @@ export class GoldLakehouseService {
     }
   }
 
-
-
-  /**
-   * Calculate velocity based on transaction frequency
-   * @param totalTransactions Total number of transactions
-   * @param durationDays Duration in days
-   * @returns Velocity category: HIGH, MEDIUM, or LOW
-   */
   private calculateVelocity(totalTransactions: number, durationDays: number): 'HIGH' | 'MEDIUM' | 'LOW' {
     if (durationDays === 0) return 'LOW';
 
@@ -1435,11 +1414,6 @@ export class GoldLakehouseService {
     return 'LOW';
   }
 
-  /**
-   * Calculate start date based on time range string
-   * @param timeRange Time range string: '7d', '30d', '90d', '1y', 'all'
-   * @returns ISO date string
-   */
   private calculateStartDate(timeRange: string): string {
     const now = new Date();
     let startDate: Date;
@@ -1458,12 +1432,445 @@ export class GoldLakehouseService {
         startDate = new Date(now.setFullYear(now.getFullYear() - 1));
         break;
       case 'all':
-        startDate = new Date('2000-01-01'); 
+        startDate = new Date('2000-01-01');
         break;
       default:
-        startDate = new Date(now.setDate(now.getDate() - 30)); 
+        startDate = new Date(now.setDate(now.getDate() - 30));
     }
 
     return startDate.toISOString();
+  }
+
+  async getAccountNodeFullData(accountId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+    try {
+      const networkSql = `
+      SELECT
+        from_account_id,
+        to_account_id,
+        tx_count,
+        total_amount,
+        currency_hint,
+        first_event_ts,
+        last_event_ts,
+        is_alerted_edge,
+        is_investigated_edge
+      FROM tx_network_accounts_edges
+      WHERE tenant_id = '${tenantId}'
+        AND bucket_granularity = '${granularity}'
+        AND (
+          from_account_id = '${accountId}'
+          OR to_account_id = '${accountId}'
+        )
+    `;
+
+      const networkResp = await this.runSqlQuery(networkSql, 1000);
+      const networkRows = (networkResp.data || []).map((r) => this.stripHudiMetadata(r));
+
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
+
+      nodesMap.set(accountId, {
+        id: accountId,
+        type: 'ACCOUNT',
+        label: accountId,
+        flags: { alerted: false, investigated: false },
+      });
+
+      for (const r of networkRows) {
+        const fromId = r.from_account_id;
+        const toId = r.to_account_id;
+
+        if (!nodesMap.has(fromId)) {
+          nodesMap.set(fromId, {
+            id: fromId,
+            type: 'ACCOUNT',
+            label: fromId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        if (!nodesMap.has(toId)) {
+          nodesMap.set(toId, {
+            id: toId,
+            type: 'ACCOUNT',
+            label: toId,
+            flags: {
+              alerted: r.is_alerted_edge === 1,
+              investigated: r.is_investigated_edge === 1,
+            },
+          });
+        }
+
+        const root = nodesMap.get(accountId);
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
+
+        edges.push({
+          source: fromId,
+          target: toId,
+          txCount: Number(r.tx_count ?? 0),
+          totalAmount: Number(r.total_amount ?? 0),
+          currency: r.currency_hint,
+          flags: {
+            alerted: r.is_alerted_edge === 1,
+            investigated: r.is_investigated_edge === 1,
+          },
+        });
+      }
+
+      const metricsSql = `
+      SELECT
+        SUM(tx_count) AS transactions,
+        SUM(total_amount) AS total_value,
+        MAX(is_alerted_edge) AS is_alerted,
+        MAX(is_investigated_edge) AS is_investigated
+      FROM tx_network_accounts_edges
+      WHERE tenant_id = '${tenantId}'
+        AND (
+          from_account_id = '${accountId}'
+          OR to_account_id = '${accountId}'
+        )
+    `;
+
+      const metricsResp = await this.runSqlQuery(metricsSql, 1);
+      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] || {});
+
+      const holderSql = `
+      SELECT debtor_name AS holder_name
+      FROM transaction_detail
+      WHERE tenant_id = '${tenantId}'
+        AND debtor_account_id = '${accountId}'
+      LIMIT 1
+    `;
+
+      const holderResp = await this.runSqlQuery(holderSql, 1);
+      const holderRow = holderResp.data?.[0];
+
+      const alertSql = `
+      SELECT COUNT(*) AS alert_count
+      FROM alerts a
+      JOIN transaction_detail td
+        ON a.tx_original_e2e_id = td.end_to_end_id
+      WHERE td.debtor_account_id = '${accountId}'
+         OR td.creditor_account_id = '${accountId}'
+    `;
+
+      const investigationSql = `
+      SELECT COUNT(*) AS investigation_count
+      FROM cases c
+      JOIN alerts a ON a.case_id = c.case_id
+      JOIN transaction_detail td
+        ON a.tx_original_e2e_id = td.end_to_end_id
+      WHERE c.status NOT IN ('STATUS_00_DRAFT','STATUS_99_COMPLETED')
+        AND (
+          td.debtor_account_id = '${accountId}'
+          OR td.creditor_account_id = '${accountId}'
+        )
+    `;
+
+      const [alertResp, investigationResp] = await Promise.all([this.runSqlQuery(alertSql, 1), this.runSqlQuery(investigationSql, 1)]);
+
+      const txCount = Number(metrics.transactions ?? 0);
+
+      return {
+        network: {
+          rootNodeId: accountId,
+          nodes: Array.from(nodesMap.values()),
+          edges,
+        },
+        accountDetails: {
+          accountId,
+          accountHolder: holderRow?.holder_name ?? 'Unknown',
+          relationship: 'Primary Owner',
+          transactions: txCount,
+          totalValue: Number(metrics.total_value ?? 0),
+          velocity: txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW',
+          flags: {
+            alerted: metrics.is_alerted === 1 || Number(alertResp.data?.[0]?.alert_count ?? 0) > 0,
+            investigated: metrics.is_investigated === 1 || Number(investigationResp.data?.[0]?.investigation_count ?? 0) > 0,
+          },
+        },
+        meta: {
+          tenantId,
+          granularity,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching full account node data: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
+    try {
+      this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
+
+      const sql = `
+      SELECT
+        ABS(interbank_settlement_amount) AS amount
+      FROM transaction_detail
+      WHERE tenant_id = '${tenantId}'
+        AND interbank_settlement_amount IS NOT NULL
+        AND interbank_settlement_amount > 0
+        AND (
+          debtor_account_id = '${accountId}'
+          OR creditor_account_id = '${accountId}'
+        )
+        AND tx_event_date BETWEEN '${fromDate}' AND '${toDate}'
+    `;
+
+      const response = await this.runSqlQuery(sql, 100000);
+      const rows = response?.data || [];
+
+      const amounts: number[] = rows.map((r) => Number(r.amount)).filter((v) => !isNaN(v) && v > 0);
+
+      const expected: Record<number, number> = {};
+      for (let d = 1; d <= 9; d++) {
+        expected[d] = Math.log10(1 + 1 / d);
+      }
+
+      const counts = Array(10).fill(0);
+      let total = 0;
+
+      for (const value of amounts) {
+        const s = value.toString().replace('.', '').replace(/^0+/, '');
+        if (!s) continue;
+
+        const digit = parseInt(s[0], 10);
+        if (digit >= 1 && digit <= 9) {
+          counts[digit]++;
+          total++;
+        }
+      }
+
+      const actual: Record<number, number> = {};
+      for (let d = 1; d <= 9; d++) {
+        actual[d] = total > 0 ? counts[d] / total : 0;
+      }
+
+      return {
+        expected,
+        actual,
+        sampleSize: total,
+        meta: {
+          accountId,
+          tenantId,
+          fromDate,
+          toDate,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error running Benford analysis for account ${accountId}: ${error.message}`, error.stack);
+
+      throw new HttpException('Failed to perform Benford analysis', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getCounterpartyNetworkData(
+    transactionId: string,
+    tenantId: string = 'DEFAULT',
+    timeRange: string = '30d',
+  ): Promise<CounterpartyNetworkResponseDto> {
+    try {
+      this.logger.log(`Fetching counterparty network for transaction: ${transactionId}`);
+
+      // Step 1: Get transaction to find involved accounts
+      const transactionSql = `
+        SELECT 
+          transaction_id,
+          debtor_account_id,
+          creditor_account_id,
+          debtor_name,
+          creditor_name
+        FROM transaction_detail
+        WHERE transaction_id = '${transactionId}'
+          AND tenant_id = '${tenantId}'
+        LIMIT 1
+      `;
+
+      const txResponse = await this.runSqlQuery(transactionSql, 1);
+      const txRow = txResponse?.data?.[0];
+
+      if (!txRow) {
+        throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+      }
+
+      const tx = this.stripHudiMetadata(txRow);
+      
+      // Step 2: Get counterparty IDs from accounts
+      const counterpartyLinksSql = `
+        SELECT DISTINCT counterparty_id
+        FROM counterparty_account_links
+        WHERE account_id IN ('${tx.debtor_account_id}', '${tx.creditor_account_id}')
+          AND tenant_id = '${tenantId}'
+      `;
+
+      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 10);
+      const counterpartyIds = (counterpartyLinksResponse?.data || [])
+        .map(row => this.stripHudiMetadata(row).counterparty_id);
+
+      if (counterpartyIds.length === 0) {
+        throw new HttpException('No counterparties found for transaction', HttpStatus.NOT_FOUND);
+      }
+
+      // Use first counterparty as center
+      const centerCounterpartyId = counterpartyIds[0];
+
+      // Step 3: Get 1st degree network edges (direct connections)
+      const networkEdgesSql = `
+        SELECT 
+          from_counterparty_id,
+          to_counterparty_id,
+          tx_count,
+          total_amount,
+          is_alerted_edge,
+          is_investigated_edge,
+          first_event_ts,
+          last_event_ts
+        FROM tx_network_counterparties_edges
+        WHERE (from_counterparty_id = '${centerCounterpartyId}' 
+           OR to_counterparty_id = '${centerCounterpartyId}')
+          AND tenant_id = '${tenantId}'
+      `;
+
+      const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000);
+      const edges = (edgesResponse?.data || []).map(row => this.stripHudiMetadata(row));
+
+      // Step 4: Collect all counterparty IDs from network
+      const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
+      edges.forEach(edge => {
+        allCounterpartyIds.add(edge.from_counterparty_id);
+        allCounterpartyIds.add(edge.to_counterparty_id);
+      });
+
+      // Step 5: Get counterparty names via account links and transaction_detail
+      const counterpartyNamesMap = new Map<string, string>();
+      
+      for (const cpId of allCounterpartyIds) {
+        // Get an account for this counterparty
+        const accountSql = `
+          SELECT account_id
+          FROM counterparty_account_links
+          WHERE counterparty_id = '${cpId}'
+            AND tenant_id = '${tenantId}'
+          LIMIT 1
+        `;
+        
+        const accountResponse = await this.runSqlQuery(accountSql, 1);
+        const accountId = accountResponse?.data?.[0] ? this.stripHudiMetadata(accountResponse.data[0]).account_id : null;
+        
+        if (accountId) {
+          // Get name from transaction_detail
+          const nameSql = cpId.startsWith('dbtr_')
+            ? `SELECT DISTINCT debtor_name as name FROM transaction_detail WHERE debtor_account_id = '${accountId}' LIMIT 1`
+            : `SELECT DISTINCT creditor_name as name FROM transaction_detail WHERE creditor_account_id = '${accountId}' LIMIT 1`;
+          
+          const nameResponse = await this.runSqlQuery(nameSql, 1);
+          const name = nameResponse?.data?.[0] ? this.stripHudiMetadata(nameResponse.data[0]).name : cpId;
+          counterpartyNamesMap.set(cpId, name);
+        } else {
+          counterpartyNamesMap.set(cpId, cpId); 
+        }
+      }
+
+      // Step 6: Build counterparties list
+      const counterpartiesData: CounterpartyDto[] = [];
+      const processedCounterparties = new Set<string>([centerCounterpartyId]);
+
+      edges.forEach(edge => {
+        const connectedId = edge.from_counterparty_id === centerCounterpartyId 
+          ? edge.to_counterparty_id 
+          : edge.from_counterparty_id;
+
+        if (!processedCounterparties.has(connectedId)) {
+          processedCounterparties.add(connectedId);
+
+          const frequency = this.calculateFrequency(Number(edge.tx_count));
+
+          counterpartiesData.push({
+            counterpartyId: connectedId,
+            counterpartyName: counterpartyNamesMap.get(connectedId) || connectedId,
+            degree: 1, // 1st degree connection
+            transactionCount: Number(edge.tx_count),
+            totalValue: Math.round(Number(edge.total_amount) * 100) / 100,
+            averageValue: Math.round((Number(edge.total_amount) / Number(edge.tx_count)) * 100) / 100,
+            frequency,
+            hasAlert: edge.is_alerted_edge === 1,
+            isInvestigated: edge.is_investigated_edge === 1,
+            firstTransactionDate: edge.first_event_ts,
+            lastTransactionDate: edge.last_event_ts,
+          });
+        }
+      });
+
+      // Step 7: Build edges for visualization (deduplicate bidirectional edges)
+      const seenEdges = new Set<string>();
+      const networkEdges: CounterpartyNetworkEdgeDto[] = [];
+      
+      edges.forEach((edge, index) => {
+        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
+        if (!seenEdges.has(edgeKey)) {
+          seenEdges.add(edgeKey);
+          networkEdges.push({
+            id: `edge-${networkEdges.length}`,
+            source: edge.from_counterparty_id,
+            target: edge.to_counterparty_id,
+            transactionCount: Number(edge.tx_count),
+            totalValue: Math.round(Number(edge.total_amount) * 100) / 100,
+            hasAlert: edge.is_alerted_edge === 1,
+            isInvestigated: edge.is_investigated_edge === 1,
+          });
+        }
+      });
+
+      // Step 8: Calculate network summary
+      const totalCounterparties = counterpartiesData.length;
+      const firstDegreeConnections = counterpartiesData.filter(cp => cp.degree === 1).length;
+      const secondDegreeConnections = counterpartiesData.filter(cp => cp.degree === 2).length;
+      const counterpartiesWithAlerts = counterpartiesData.filter(cp => cp.hasAlert).length;
+      const counterpartiesUnderInvestigation = counterpartiesData.filter(cp => cp.isInvestigated).length;
+      const totalNetworkValue = counterpartiesData.reduce((sum, cp) => sum + cp.totalValue, 0);
+
+      const networkSummary: CounterpartyNetworkSummaryDto = {
+        totalCounterparties,
+        firstDegreeConnections,
+        secondDegreeConnections,
+        counterpartiesWithAlerts,
+        counterpartiesUnderInvestigation,
+        totalNetworkValue: Math.round(totalNetworkValue * 100) / 100,
+      };
+
+      const centerCounterparty: CenterCounterpartyDto = {
+        counterpartyId: centerCounterpartyId,
+        counterpartyName: counterpartyNamesMap.get(centerCounterpartyId) || centerCounterpartyId,
+        networkSummary,
+      };
+
+      return {
+        transactionId,
+        centerCounterparty,
+        counterparties: counterpartiesData,
+        edges: networkEdges,
+        timeRange,
+        tenantId,
+        queryTimestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
+      throw new HttpException(
+        'Failed to fetch counterparty network data',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private calculateFrequency(transactionCount: number): 'HIGH' | 'MEDIUM' | 'LOW' {
+    if (transactionCount > 10) return 'HIGH';
+    if (transactionCount >= 5) return 'MEDIUM';
+    return 'LOW';
   }
 }
