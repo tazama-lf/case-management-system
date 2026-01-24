@@ -674,6 +674,52 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 
+  @Get('network-analysis/account/:accountId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Account Network graph + selected account details',
+    description:
+      'Returns account network visualization (nodes + edges) along with full details for the selected account node (metrics, alerts, investigation status).',
+  })
+  @ApiParam({
+    name: 'accountId',
+    description: 'Root Account ID for network visualization',
+    required: true,
+    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID (defaults to DEFAULT)',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'granularity',
+    description: 'Network aggregation granularity',
+    required: false,
+    enum: ['day', 'month', 'year'],
+    example: 'month',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account network graph and selected account detail panel data',
+  })
+  async getAccountNetworkWithDetails(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('granularity') granularity?: string,
+  ) {
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
+    }
+
+    return this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId || 'DEFAULT', (granularity as any) || 'month');
+  }
+
   @Get('lake/analytics/benford/account/:accountId')
   // Temporarily public for notebook/voila access
   @Public()
