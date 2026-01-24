@@ -4,6 +4,17 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { QueryRequestDto } from './dto/query-request.dto';
 import { QueryResponseDto } from './dto/query-response.dto';
+import {
+  TransactionNetworkResponseDto,
+  ConnectedAccountDto,
+  CenterAccountDto,
+  NetworkSummaryDto,
+  TransactionStatsDto,
+  NetworkEdgeDto,
+  AccountNetworkResponseDto,
+  CounterpartyNetworkResponseDto,
+  CounterpartyDto,
+} from './dto/network-analysis.dto';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -1209,5 +1220,250 @@ export class GoldLakehouseService {
       this.logger.error(`Error fetching alert history alerts`, error.stack);
       throw new HttpException('Failed to fetch alert history alerts', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  async getTestAccountIds(tenantId: string = 'DEFAULT', minConnections: number = 1) {
+    try {
+      this.logger.log(`Fetching test account IDs from lakehouse (minConnections: ${minConnections})`);
+
+      const sql = `
+        WITH account_stats AS (
+          SELECT 
+            debtor_account_id as account_id,
+            debtor_name as account_name,
+            COUNT(DISTINCT creditor_account_id) as connections,
+            COUNT(*) as total_transactions
+          FROM transaction_detail
+          WHERE tenant_id = '${tenantId}'
+            AND debtor_account_id IS NOT NULL
+            AND creditor_account_id IS NOT NULL
+          GROUP BY debtor_account_id, debtor_name
+          HAVING COUNT(DISTINCT creditor_account_id) >= ${minConnections}
+          ORDER BY total_transactions DESC
+          LIMIT 10
+        )
+        SELECT 
+          account_id,
+          account_name,
+          connections,
+          total_transactions
+        FROM account_stats
+      `;
+
+      const response = await this.runSqlQuery(sql, 10);
+      const accounts = (response?.data || []).map((row) => this.stripHudiMetadata(row));
+
+      return {
+        message: 'Test account IDs with network activity',
+        tenantId,
+        accounts: accounts.map((acc) => ({
+          accountId: acc.account_id,
+          accountName: acc.account_name,
+          connections: Number(acc.connections),
+          totalTransactions: Number(acc.total_transactions),
+          testUrl: `/api/v1/lakehouse/network-analysis/transaction/${acc.account_id}?timeRange=30d`,
+        })),
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching test account IDs: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch test account IDs', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getTransactionNetworkData(
+    accountId: string,
+    tenantId: string = 'DEFAULT',
+    timeRange: string = '30d',
+  ): Promise<TransactionNetworkResponseDto> {
+    try {
+      this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
+
+      const startDate = this.calculateStartDate(timeRange);
+
+      const centerAccountSql = `
+        SELECT DISTINCT 
+          COALESCE(debtor_account_id, creditor_account_id) as account_id,
+          COALESCE(debtor_name, creditor_name) as account_name
+        FROM transaction_detail
+        WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
+          AND tenant_id = '${tenantId}'
+        LIMIT 1
+      `;
+
+      const centerAccountResponse = await this.runSqlQuery(centerAccountSql, 1);
+      const centerAccountRow = centerAccountResponse?.data?.[0];
+
+      if (!centerAccountRow) {
+        throw new HttpException('Account not found in transaction data', HttpStatus.NOT_FOUND);
+      }
+
+      const centerAccountInfo = this.stripHudiMetadata(centerAccountRow);
+
+      const outboundSql = `
+        SELECT 
+          creditor_account_id as connected_account_id,
+          creditor_name as connected_account_name,
+          'OUTBOUND' as flow_direction,
+          COUNT(transaction_id) as total_transactions,
+          SUM(interbank_settlement_amount) as total_value,
+          AVG(interbank_settlement_amount) as avg_value,
+          MIN(tx_event_ts) as first_tx_date,
+          MAX(tx_event_ts) as last_tx_date
+        FROM transaction_detail
+        WHERE debtor_account_id = '${accountId}'
+          AND tenant_id = '${tenantId}'
+        GROUP BY creditor_account_id, creditor_name
+      `;
+
+      const inboundSql = `
+        SELECT 
+          debtor_account_id as connected_account_id,
+          debtor_name as connected_account_name,
+          'INBOUND' as flow_direction,
+          COUNT(transaction_id) as total_transactions,
+          SUM(interbank_settlement_amount) as total_value,
+          AVG(interbank_settlement_amount) as avg_value,
+          MIN(tx_event_ts) as first_tx_date,
+          MAX(tx_event_ts) as last_tx_date
+        FROM transaction_detail
+        WHERE creditor_account_id = '${accountId}'
+          AND tenant_id = '${tenantId}'
+        GROUP BY debtor_account_id, debtor_name
+      `;
+
+      const alertFlagsSql = `
+        SELECT DISTINCT '${accountId}' as account_id WHERE 1=0
+      `;
+
+      const [outboundResponse, inboundResponse, alertFlagsResponse] = await Promise.all([
+        this.runSqlQuery(outboundSql, 1000),
+        this.runSqlQuery(inboundSql, 1000),
+        this.runSqlQuery(alertFlagsSql, 10),
+      ]);
+
+      const outboundData = (outboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
+      const inboundData = (inboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
+      const alertFlags = new Set(
+        (alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id),
+      );
+
+      const allConnections = [...outboundData, ...inboundData];
+
+      const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
+        const velocity = this.calculateVelocity(
+          Number(conn.total_transactions),
+          Math.max(Number(conn.duration_days), 1),
+        );
+
+        const hasAlert = alertFlags.has(conn.connected_account_id);
+
+        const stats: TransactionStatsDto = {
+          totalTransactions: Number(conn.total_transactions),
+          totalValue: Math.round(Number(conn.total_value) * 100) / 100,
+          averageValue: Math.round(Number(conn.avg_value) * 100) / 100,
+          velocity,
+        };
+
+        return {
+          accountId: conn.connected_account_id,
+          accountHolder: conn.connected_account_name,
+          flowDirection:
+            conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
+          transactionStats: stats,
+          hasAlert,
+          alertMessage: hasAlert ? 'Alert triggered on this account' : undefined,
+          firstTransactionDate: conn.first_tx_date,
+          lastTransactionDate: conn.last_tx_date,
+        };
+      });
+
+      const edges: NetworkEdgeDto[] = allConnections.map((conn, index) => ({
+        id: `edge-${index}`,
+        source: conn.flow_direction === 'OUTBOUND' ? accountId : conn.connected_account_id,
+        target: conn.flow_direction === 'OUTBOUND' ? conn.connected_account_id : accountId,
+        type: conn.flow_direction.toLowerCase() as 'inbound' | 'outbound',
+        transactionCount: Number(conn.total_transactions),
+        totalValue: Math.round(Number(conn.total_value) * 100) / 100,
+      }));
+
+      const outboundCount = outboundData.length;
+      const inboundCount = inboundData.length;
+      const accountsWithAlerts = connectedAccounts.filter((acc) => acc.hasAlert).length;
+
+      const networkSummary: NetworkSummaryDto = {
+        connectedAccounts: connectedAccounts.length,
+        outboundConnections: outboundCount,
+        inboundConnections: inboundCount,
+        accountsWithAlerts,
+      };
+
+      const centerAccount: CenterAccountDto = {
+        accountId: accountId,
+        accountHolder: centerAccountInfo.account_name,
+        networkSummary,
+      };
+
+      return {
+        centerAccount,
+        connectedAccounts,
+        edges,
+        timeRange,
+        tenantId,
+        queryTimestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching transaction network data: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch transaction network data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+
+
+  /**
+   * Calculate velocity based on transaction frequency
+   * @param totalTransactions Total number of transactions
+   * @param durationDays Duration in days
+   * @returns Velocity category: HIGH, MEDIUM, or LOW
+   */
+  private calculateVelocity(totalTransactions: number, durationDays: number): 'HIGH' | 'MEDIUM' | 'LOW' {
+    if (durationDays === 0) return 'LOW';
+
+    const txPerDay = totalTransactions / durationDays;
+
+    if (txPerDay > 0.5) return 'HIGH';
+    if (txPerDay >= 0.2) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  /**
+   * Calculate start date based on time range string
+   * @param timeRange Time range string: '7d', '30d', '90d', '1y', 'all'
+   * @returns ISO date string
+   */
+  private calculateStartDate(timeRange: string): string {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case '30d':
+        startDate = new Date(now.setDate(now.getDate() - 30));
+        break;
+      case '90d':
+        startDate = new Date(now.setDate(now.getDate() - 90));
+        break;
+      case '1y':
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        break;
+      case 'all':
+        startDate = new Date('2000-01-01'); 
+        break;
+      default:
+        startDate = new Date(now.setDate(now.getDate() - 30)); 
+    }
+
+    return startDate.toISOString();
   }
 }

@@ -3,6 +3,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery }
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole, Public } from 'src/auth/auth.decorator';
+import {
+  TransactionNetworkResponseDto,
+} from './dto/network-analysis.dto';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -605,5 +608,82 @@ export class GoldLakehouseController {
       limit ? Number(limit) : 20,
     );
   }
+
+  // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
+
+  @Get('network-analysis/test-accounts')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get Test Account IDs',
+    description: 'Fetches account IDs with network activity for testing network analysis endpoints'
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'minConnections',
+    description: 'Minimum number of unique connections required (default: 1)',
+    required: false,
+    example: 2,
+  })
+  @ApiResponse({ status: 200, description: 'List of test account IDs with network statistics' })
+  async getTestAccountIds(
+    @Query('tenantId') tenantId?: string,
+    @Query('minConnections') minConnections?: number,
+  ) {
+    return this.goldLakehouseService.getTestAccountIds(
+      tenantId || 'DEFAULT',
+      minConnections ? Number(minConnections) : 1,
+    );
+  }
+
+  @Get('network-analysis/transaction/:accountId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get Transaction Network Analysis',
+    description: 'Fetches network visualization data showing all accounts connected to the specified account through transactions, including transaction statistics, flow directions, and alert flags.'
+  })
+  @ApiParam({
+    name: 'accountId',
+    description: 'Center account ID for network analysis',
+    example: 'ACC-1234',
+  })
+  @ApiQuery({
+    name: 'timeRange',
+    description: 'Time range for transaction history',
+    required: false,
+    enum: ['7d', '30d', '90d', '1y', 'all'],
+    example: '30d',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Network analysis data with center account, connected accounts, edges, and statistics',
+    type: TransactionNetworkResponseDto
+  })
+  async getTransactionNetworkAnalysis(
+    @Param('accountId') accountId: string,
+    @Query('timeRange') timeRange?: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
+      throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
+    }
+    return this.goldLakehouseService.getTransactionNetworkData(
+      accountId,
+      tenantId || 'DEFAULT',
+      timeRange || '30d',
+    );
+  }
+
+
 }
 
