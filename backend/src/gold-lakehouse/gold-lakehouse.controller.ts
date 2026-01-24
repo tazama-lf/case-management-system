@@ -681,6 +681,114 @@ export class GoldLakehouseController {
     );
   }
 
+  @Get('network-analysis/account/:accountId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Account Network graph + selected account details',
+    description:
+      'Returns account network visualization (nodes + edges) along with full details for the selected account node (metrics, alerts, investigation status).',
+  })
+  @ApiParam({
+    name: 'accountId',
+    description: 'Root Account ID for network visualization',
+    required: true,
+    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID (defaults to DEFAULT)',
+    required: false,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'granularity',
+    description: 'Network aggregation granularity',
+    required: false,
+    enum: ['day', 'month', 'year'],
+    example: 'month',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account network graph and selected account detail panel data',
+  })
+  async getAccountNetworkWithDetails(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('granularity') granularity?: string,
+  ) {
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
+    }
+
+    return this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId || 'DEFAULT', (granularity as any) || 'month');
+  }
+
+  @Get('lake/analytics/benford/account/:accountId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: "Apply Benford's Law on account transactions",
+    description:
+      'Applies Benford’s Law to successful transaction amounts where the given account appears as debtor or creditor, over a selected date range.',
+  })
+  @ApiParam({
+    name: 'accountId',
+    description: 'Account ID (used as debtor or creditor)',
+    required: true,
+    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
+    required: true,
+    example: 'DEFAULT',
+  })
+  @ApiQuery({
+    name: 'from',
+    description: 'Start date (YYYY-MM-DD)',
+    required: true,
+    example: '2026-01-01',
+  })
+  @ApiQuery({
+    name: 'to',
+    description: 'End date (YYYY-MM-DD)',
+    required: true,
+    example: '2026-01-31',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Benford analysis (expected vs actual distribution)',
+  })
+  async benfordByAccount(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('from') fromDate: string,
+    @Query('to') toDate: string,
+  ) {
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+
+    if (!tenantId || tenantId.trim() === '') {
+      throw new BadRequestException('tenantId is required');
+    }
+
+    if (!fromDate || !toDate) {
+      throw new BadRequestException('from and to dates are required');
+    }
+
+    // Optional but recommended
+    if (new Date(fromDate) > new Date(toDate)) {
+      throw new BadRequestException('from date cannot be after to date');
+    }
+
+    return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
+  }
+
+
     // ---------------- COUNTERPARTY VIEW ----------------
 
   @Get('network-analysis/counterparty/:transactionId')
