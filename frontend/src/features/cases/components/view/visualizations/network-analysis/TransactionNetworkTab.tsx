@@ -1,79 +1,39 @@
 import React from 'react';
-import NetworkGraph from './NetworkGraph';
-import type { NetworkNodeData } from './NetworkGraph';
-import NetworkLegend from './NetworkLegend';
-import { transactionNetworkLegend } from './legendConfigs';
-import NetworkDetailsPanel from './NetworkDetailsPanel';
-import {
-  generateTransactionNetworkNodes,
-  generateTransactionNetworkEdges,
-} from './mockData';
+
+const FALLBACK_ACCOUNT_ID = 'dbtrAcct_24a03dafa2c14f6da6bfc195d57c6d21';
 
 interface TransactionNetworkTabProps {
   caseId?: string;
   transactionId?: string;
+  timeRange?: string;
 }
 
 const TransactionNetworkTab: React.FC<TransactionNetworkTabProps> = ({
-  caseId,
+  caseId: _caseId,
   transactionId: _transactionId,
+  timeRange = '30d',
 }) => {
-  const nodes = React.useMemo(
-    () => generateTransactionNetworkNodes(caseId),
-    [caseId]
-  );
-  const edges = React.useMemo(() => generateTransactionNetworkEdges(), []);
-
-  const [selectedNode, setSelectedNode] = React.useState<NetworkNodeData | null>(
-    () => nodes.find((n) => n.isCenter) || null
-  );
-
-  const handleNodeClick = (node: NetworkNodeData) => {
-    setSelectedNode(node);
-  };
-
-  // Calculate network summary
-  const connectedAccounts = nodes.length;
-  const outboundConnections = edges.filter((e) => e.type === 'outbound').length;
-  const inboundConnections = edges.filter((e) => e.type === 'inbound').length;
-  const alertAccounts = nodes.filter(
-    (n) => n.status === 'alert' || n.status === 'flagged'
-  ).length;
-
-  const detailFields = selectedNode
-    ? [
-        { label: 'Account ID', value: selectedNode.id },
-        { label: 'Account Holder', value: selectedNode.label },
-      ]
-    : [];
-
-  const summaryFields = [
-    { label: 'Connected Accounts', value: connectedAccounts },
-    { label: 'Outbound Connections', value: outboundConnections },
-    { label: 'Inbound Connections', value: inboundConnections },
-    { label: 'Accounts with Alerts', value: alertAccounts, highlight: alertAccounts > 0 },
-  ];
+  const iframeUrl = React.useMemo(() => {
+    const baseUrl = (import.meta as any).env?.VITE_VOILA_URL || 'http://localhost:8866';
+    const queryParams = new URLSearchParams({
+      accountId: FALLBACK_ACCOUNT_ID,
+      timeRange,
+    });
+    return `${baseUrl}/voila/render/transaction-network.ipynb?${queryParams.toString()}`;
+  }, [timeRange]);
 
   return (
-    <div className="flex min-h-[400px] p-4">
-      {/* Graph Area */}
-      <div className="relative flex-1 min-h-[650px]">
-        <NetworkGraph
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={handleNodeClick}
-          selectedNodeId={selectedNode?.id}
+    <div className="min-h-[600px] p-4">
+      <div className="relative w-full border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+        <iframe
+          src={iframeUrl}
+          width="100%"
+          height="650px"
+          className="border-0"
+          title="Transaction Network"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
-        <NetworkLegend items={transactionNetworkLegend} />
       </div>
-
-      {/* Details Panel */}
-      <NetworkDetailsPanel
-        title="Center Account"
-        fields={detailFields}
-        summaryTitle="Network Summary"
-        summaryFields={summaryFields}
-      />
     </div>
   );
 };

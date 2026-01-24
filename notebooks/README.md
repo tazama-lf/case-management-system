@@ -24,7 +24,7 @@ This directory contains the Jupyter notebooks used for interactive visualization
 
 3. **Install dependencies:**
    ```bash
-   pip install voila plotly pandas requests papermill
+   pip install voila plotly pandas requests papermill networkx
    ```
 
 ## Configuration
@@ -63,6 +63,7 @@ The notebooks are parameterized to accept data from the frontend. When running v
 ## Notebooks
 
 - **`transaction-viz.ipynb`**: Interactive analysis of transaction history, featuring dual-axis timelines, cumulative value charts, volume distribution, and a recent transactions table.
+- **`transaction-network.ipynb`**: Transaction network diagram. Fetches from the network-analysis API, places the center account in the middle, and shows connected accounts in a circle. Used by the Transaction Network tab.
 
 ## Maintenance
 

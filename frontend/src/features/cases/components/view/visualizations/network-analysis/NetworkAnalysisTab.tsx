@@ -135,6 +135,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           <TransactionNetworkTab
             caseId={caseId}
             transactionId={transactionId}
+            timeRange={timeRange}
           />
         )}
         {activeSubTab === 'account' && (

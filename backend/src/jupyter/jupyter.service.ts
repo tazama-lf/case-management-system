@@ -19,6 +19,7 @@ export class JupyterService {
     const notebookMapping: Record<string, string> = {
       'transaction-history': 'transaction-viz.ipynb',
       'alert-history': 'alert-history.ipynb',
+      'transaction-network': 'transaction-network.ipynb',
     };
 
     const filename = notebookMapping[notebookName];
