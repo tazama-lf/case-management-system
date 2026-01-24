@@ -675,7 +675,8 @@ export class GoldLakehouseController {
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  // Temporarily public for notebook/voila access
+  @Public()
   @ApiOperation({
     summary: "Apply Benford's Law on account transactions",
     description:
