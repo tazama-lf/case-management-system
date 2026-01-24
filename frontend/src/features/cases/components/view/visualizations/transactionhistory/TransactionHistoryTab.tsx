@@ -56,18 +56,6 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
     fetchData();
   }, [transactionId]);
 
-  const benfordsData = [
-    { digit: '1', expected: 30.1, actual: 32 },
-    { digit: '2', expected: 17.6, actual: 18 },
-    { digit: '3', expected: 12.5, actual: 13 },
-    { digit: '4', expected: 9.7, actual: 10 },
-    { digit: '5', expected: 7.9, actual: 8 },
-    { digit: '6', expected: 6.7, actual: 11 },
-    { digit: '7', expected: 5.8, actual: 5 },
-    { digit: '8', expected: 5.1, actual: 9 },
-    { digit: '9', expected: 4.6, actual: 5 },
-  ];
-
   return (
     <div className="space-y-6">
       {error && (
