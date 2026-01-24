@@ -14,7 +14,8 @@ const TransactionNetworkTab: React.FC<TransactionNetworkTabProps> = ({
   timeRange = '30d',
 }) => {
   const iframeUrl = React.useMemo(() => {
-    const baseUrl = (import.meta as any).env?.VITE_VOILA_URL || 'http://localhost:8866';
+    const baseUrl =
+      (import.meta as any).env?.VITE_VOILA_BASE_URL || 'http://localhost:8866';
     const queryParams = new URLSearchParams({
       accountId: FALLBACK_ACCOUNT_ID,
       timeRange,
@@ -23,17 +24,13 @@ const TransactionNetworkTab: React.FC<TransactionNetworkTabProps> = ({
   }, [timeRange]);
 
   return (
-    <div className="min-h-[600px] p-4">
-      <div className="relative w-full border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-        <iframe
-          src={iframeUrl}
-          width="100%"
-          height="650px"
-          className="border-0"
-          title="Transaction Network"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        />
-      </div>
+    <div className="flex h-[750px] w-full flex-col bg-white p-4">
+      <iframe
+        src={iframeUrl}
+        className="h-full w-full border-0"
+        title="Transaction Network"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      />
     </div>
   );
 };
