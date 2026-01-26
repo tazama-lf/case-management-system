@@ -20,6 +20,7 @@ import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 import { CaseCreationService } from './services/case-creation.service';
+import { TaskSyncModule } from '../task-sync/task-sync.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CaseCreationService } from './services/case-creation.service';
     CaseHistoryModule,
     TaskHistoryModule,
     LoggingOrchestrationModule,
+    TaskSyncModule,
   ],
   providers: [
     CaseService,

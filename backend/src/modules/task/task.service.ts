@@ -1,14 +1,11 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Injectable, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from '../../dtos/CreateTask.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/UpdateTask.dto';
 import { TaskStatus, Task, Prisma, CaseStatus, TaskType } from '@prisma/client-cms';
-import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
-import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
@@ -25,8 +22,6 @@ export class TaskService {
     private readonly taskRepository: TaskRepository,
     private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2,
-    private readonly notificationService: NotificationService,
     private readonly lifecycle: TaskLifecycleService,
     private readonly flowableService: FlowableService,
     private readonly authService: AuthService,
@@ -87,7 +82,10 @@ export class TaskService {
   async claimTask(caseId: number, userId: string, taskType: TaskType) {
     this.logger.log('Start - claimTask', TaskService.name);
     try {
-      await this.flowableTaskService.claimTask(caseId, userId, taskType);
+      const flowableResponse = await this.flowableTaskService.claimTask(caseId, userId, taskType);
+      if (flowableResponse !== 200) {
+        throw new HttpException('Failed to claim task in Flowable', flowableResponse);
+      }
 
       const result = await this.taskRepository.transaction(async (tx) => {
         const caseTasks = await this.taskRepository.findTasksByCaseId(caseId, taskType, tx);
@@ -123,6 +121,10 @@ export class TaskService {
       this.logger.log('End - claimTask', TaskService.name);
       return result;
     } catch (error) {
+      if (error instanceof HttpException) {
+        this.logger.error(`Reverting flowable task claim due to error: ${error.message}`, error.stack, TaskService.name);
+        await this.flowableTaskService.unclaimTask(caseId, taskType);
+      }
       this.loggingOrchestrationService.logActions({
         userId,
         actionPerformed: 'Error claiming task',

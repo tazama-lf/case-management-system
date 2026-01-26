@@ -13,18 +13,7 @@ import { TaskSyncModule } from '../task-sync/task-sync.module';
 import { CaseSyncModule } from '../case-sync/case-sync.module';
 
 @Module({
-  imports: [
-    LoggerModule,
-    AuditLogModule,
-    ConfigModule,
-    TriageModule,
-    AlertModule,
-    TaskModule,
-    CaseModule,
-    FlowableModule,
-    TaskSyncModule,
-    CaseSyncModule,
-  ],
+  imports: [LoggerModule, AuditLogModule, ConfigModule, TriageModule, AlertModule, TaskModule, CaseModule, FlowableModule, TaskSyncModule],
   providers: [ProcessAlertService],
   exports: [ProcessAlertService],
   controllers: [ProcessAlertController],

@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseStatus, CaseType, TaskStatus, TaskType } from '@prisma/client-cms';
+import { Case, CaseStatus, CaseType, Priority, TaskStatus, TaskType } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -20,11 +20,19 @@ import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQue
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
 import { EventLogService } from '../event_log/eventLog.service';
+import { FlowableProcessService } from '../flowable/services/flowable-process.service';
+import { CaseRepository } from '../repository/case.repository';
+import { TaskSyncService } from '../task-sync/task-sync.service';
+import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 
 @Injectable()
 export class CaseService {
   constructor(
-    private readonly logger: LoggerService,
+    private readonly loggerService: LoggerService,
+    private readonly flowableProcessService: FlowableProcessService,
+    private readonly caseRepository: CaseRepository,
+    private readonly taskSyncService: TaskSyncService,
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly auditLogService: AuditLogService,
     private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
@@ -40,6 +48,44 @@ export class CaseService {
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
   ) {}
+
+  async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
+    this.loggerService.log(`Start - syncCaseStatusWithFlowable`, CaseService.name);
+    try {
+      let updatedCase: Case;
+      const updateData: Record<string, unknown> = {
+        status,
+        priority,
+        case_type: caseType,
+      };
+
+      await this.flowableProcessService.updateProcessVariable(caseId, 'caseStatus', status);
+
+      await this.caseRepository.transaction(async (tx) => {
+        updatedCase = await this.caseRepository.updateCase(caseId, updateData);
+        await this.taskSyncService.syncTaskCreationWithFlowable(userId, caseId, CANDIDATE_GROUPS.INVESTIGATIONS, tx);
+      });
+
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'updateCaseStatus',
+          entityName: 'CaseService',
+          actionPerformed: `Updated case ${caseId} status to ${status}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
+
+      this.loggerService.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseService.name);
+      return updatedCase!;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Failed to update case status for ${caseId}: ${errorMessage}`, errorStack, CaseService.name);
+      throw error;
+    }
+  }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -117,7 +163,7 @@ export class CaseService {
 
       try {
         const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
-        this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
+        this.loggerService.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
@@ -147,7 +193,7 @@ export class CaseService {
           // })
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
+        this.loggerService.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
       }
 
       return { success: true, ...result };
@@ -160,7 +206,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
 
-      this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
+      this.loggerService.error('suspendCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
     }
   }
@@ -175,7 +221,7 @@ export class CaseService {
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
+    this.loggerService.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
     const investigateTask = allTasks.filter(
       (t) =>
@@ -183,7 +229,7 @@ export class CaseService {
         (t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_AML || t.name === TASK_NAMES.INVESTIGATE_FRAUD) &&
         t.status === TaskStatus.STATUS_21_BLOCKED,
     );
-    this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
+    this.loggerService.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
     // if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
@@ -242,7 +288,7 @@ export class CaseService {
       try {
         // const caseAssignee = investigateTask.assigned_user_id;
         const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
-        this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
+        this.loggerService.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
@@ -261,7 +307,7 @@ export class CaseService {
           );
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
+        this.loggerService.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
       }
 
       return { success: true, ...result };
@@ -274,7 +320,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
 
-      this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
+      this.loggerService.error('resumeCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
     }
   }
@@ -337,7 +383,7 @@ export class CaseService {
 
       return { success: true, ...result };
     } catch (err) {
-      this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
+      this.loggerService.error('abandonCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
     }
   }
@@ -431,7 +477,7 @@ export class CaseService {
     // Determine the target status based on role
     const targetStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
 
-    this.logger.log(
+    this.loggerService.log(
       `[CompleteCaseCreation] Completing draft case ${caseId} by ${role}. Will ${needsApproval ? 'require approval' : 'be auto-approved'}`,
       CaseService.name,
     );
@@ -482,7 +528,7 @@ export class CaseService {
         return { case: updatedCase, completedTask };
       });
 
-      this.logger.log(
+      this.loggerService.log(
         `[CompleteCaseCreation] Case ${caseId} updated to ${targetStatus}, Complete New Case task completed`,
         CaseService.name,
       );
@@ -503,7 +549,7 @@ export class CaseService {
           userId,
         );
 
-        this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
+        this.loggerService.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
       } else {
         // Supervisor: Create investigation task directly
         if (result.case.case_type === CaseType.FRAUD_AND_AML) {
@@ -544,7 +590,7 @@ export class CaseService {
           );
         }
 
-        // this.logger.log(
+        // this.loggerService.log(
         //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
         //   CaseService.name,
         // );
@@ -561,7 +607,7 @@ export class CaseService {
           case_id: caseId,
         };
         await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
-        this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
+        this.loggerService.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
 
       await this.auditLogService.logAction({
@@ -599,7 +645,7 @@ export class CaseService {
         requiresApproval: needsApproval,
       };
     } catch (err) {
-      this.logger.error('completeCaseCreation failed', { error: err, caseId, userId, role });
+      this.loggerService.error('completeCaseCreation failed', { error: err, caseId, userId, role });
 
       await this.auditLogService.logAction({
         userId,

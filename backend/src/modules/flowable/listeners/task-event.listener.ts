@@ -56,53 +56,44 @@ export class TaskEventListener {
 
   @OnEvent('task.assigned')
   async handleTaskAssigned(event: TaskAssignedEvent) {
-    try {
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-      if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
-      }
-
-      const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
-
-      const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
-        return task.name === event.taskName && task.processInstanceId === processInstance.id;
-      });
-
-      if (!task) {
-        throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
-      }
-
-      // await this.flowableTaskService.claimTask(task.id as number, event.assignedUserId);
-
-      this.logger.log(`Successfully assigned Flowable task ${task.id} to user ${event.assignedUserId}`, TaskEventListener.name);
-    } catch (error) {
-      this.logger.error(`Failed to assign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
-    }
+    // try {
+    //   const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
+    //   if (!processInstance) {
+    //     throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
+    //   }
+    //   const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
+    //   const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
+    //     return task.name === event.taskName && task.processInstanceId === processInstance.id;
+    //   });
+    //   if (!task) {
+    //     throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
+    //   }
+    //   // await this.flowableTaskService.claimTask(task.id as number, event.assignedUserId);
+    //   this.logger.log(`Successfully assigned Flowable task ${task.id} to user ${event.assignedUserId}`, TaskEventListener.name);
+    // } catch (error) {
+    //   this.logger.error(`Failed to assign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
+    // }
   }
 
   @OnEvent('task.unassigned')
   async handleTaskUnassigned(event: TaskUnassignedEvent) {
-    this.logger.log(`Start - Handle Task Unassign`, TaskEventListener.name);
-    try {
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
-      if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
-      }
-
-      const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
-
-      const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
-        return task.name === event.taskName && task.processInstanceId === processInstance.id;
-      });
-
-      if (!task) {
-        throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
-      }
-      await this.flowableTaskService.unclaimTask(task.id as number);
-
-      this.logger.log(`End - Successfully unassigned Flowable task ${task.id}`, TaskEventListener.name);
-    } catch (error) {
-      this.logger.error(`Failed to unassign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
-    }
+    // this.logger.log(`Start - Handle Task Unassign`, TaskEventListener.name);
+    // try {
+    //   const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
+    //   if (!processInstance) {
+    //     throw new NotFoundException(`No Flowable process found for case ${event.caseId}`);
+    //   }
+    //   const flowableTasks = await this.flowableTaskService.getProcessTasks(processInstance.id);
+    //   const task = flowableTasks.find((task: { name: string; processInstanceId: string }) => {
+    //     return task.name === event.taskName && task.processInstanceId === processInstance.id;
+    //   });
+    //   if (!task) {
+    //     throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
+    //   }
+    //   await this.flowableTaskService.unclaimTask(task.id as number);
+    //   this.logger.log(`End - Successfully unassigned Flowable task ${task.id}`, TaskEventListener.name);
+    // } catch (error) {
+    //   this.logger.error(`Failed to unassign Flowable task: ${error.message}`, error.stack, TaskEventListener.name);
+    // }
   }
 }

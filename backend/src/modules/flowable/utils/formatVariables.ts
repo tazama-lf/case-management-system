@@ -1,4 +1,4 @@
-import { FlowableVariable } from '../dto/flowable.dto';
+import { FlowableVariable } from '../types/IFlowable';
 
 /**
  * Formats a record of variables into an array of FlowableVariable objects

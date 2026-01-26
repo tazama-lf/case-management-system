@@ -7,6 +7,7 @@ import { FlowableClientFactory } from './flowable-client.factory';
 import { FlowableProcessService } from './flowable-process.service';
 import { TaskType } from '@prisma/client-cms';
 import { formatVariables } from '../utils/formatVariables';
+import { FlowableTask } from '../types/IFlowable';
 
 @Injectable()
 export class FlowableTaskService {
@@ -107,12 +108,12 @@ export class FlowableTaskService {
     }
   }
 
-  async claimTask(caseId: number, assignee: string, taskType: TaskType): Promise<void> {
+  async claimTask(caseId: number, assignee: string, taskType: TaskType): Promise<number> {
     try {
       const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
       const flowableTasks = await this.getProcessTasks(processInstance.id);
 
-      const task = flowableTasks.find((task: { assignee: string; category: string; processInstanceId: string }) => {
+      const task = flowableTasks.find((task: FlowableTask) => {
         return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
       });
       if (!task) {
@@ -124,24 +125,38 @@ export class FlowableTaskService {
         assignee: assignee,
       };
 
-      await this.flowableClient.post(FlowableApiEndpoints.TASK(task.id), payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.id), payload);
+      return response.status;
     } catch (error) {
-      throw new HttpException('Failed to claim task', HttpStatus.INTERNAL_SERVER_ERROR);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new HttpException('Failed to unclaim task', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async unclaimTask(taskId: number): Promise<void> {
+  async unclaimTask(caseId: number, taskType: TaskType): Promise<number> {
     try {
+      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+      const flowableTasks = await this.getProcessTasks(processInstance.id);
+
+      const task = flowableTasks.find((task: FlowableTask) => {
+        return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
+      });
+      if (!task) {
+        throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
+      }
       const payload = {
         action: FlowableTaskActions.CLAIM,
         assignee: null,
       };
 
-      // await this.flowableClient.post(FlowableApiEndpoints.TASK(taskId), payload);
-
-      this.logger.log(`Task ${taskId} unclaimed`, FlowableTaskService.name);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.id), payload);
+      return response.status;
     } catch (error) {
-      this.logger.error(`Failed to unclaim task: ${error.message}`, error.stack, FlowableTaskService.name);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new HttpException('Failed to unclaim task', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

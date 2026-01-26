@@ -154,9 +154,9 @@ export class FlowableService implements OnModuleInit {
   //   return this.flowableTaskService.claimTask(taskId, userId);
   // }
 
-  async unclaimTask(taskId: number): Promise<void> {
-    return this.flowableTaskService.unclaimTask(taskId);
-  }
+  // async unclaimTask(taskId: number): Promise<void> {
+  //   return this.flowableTaskService.unclaimTask(taskId);
+  // }
 
   async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
     return this.flowableTaskService.getCandidateGroupTasks(candidateGroup, includeVariables);
