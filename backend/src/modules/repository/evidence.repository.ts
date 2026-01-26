@@ -22,7 +22,7 @@ export class EvidenceRepository {
                 metadata: createEvidenceDto.metadata,
                 evidence_id: createEvidenceDto.id,
                 task_id: createEvidenceDto.taskId,
-                case_id: createEvidenceDto.case_Id,
+                case_id: createEvidenceDto.caseId,
             },
         });
     }

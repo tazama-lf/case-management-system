@@ -37,7 +37,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const [loading, setLoading] = useState(false);
   const { success, error } = useToast();
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
-  const { hasComplianceOfficerRole } = useAuth();
+  const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
@@ -251,6 +251,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                   Case: {caseName}
                 </p>
               )}
+              {hasSupervisorRole() && (
+                <p className="text-xs text-gray-600 mt-0.5">Only the Compliance Officer is authorized to fill and submit the SAR/STR.</p>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -405,7 +408,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                   value={sarRemarks}
                   onChange={(e) => setSarRemarks(e.target.value)}
                   rows={3}
-                  maxLength={1000}
+                  maxLength={500}
                   placeholder="Add any comments about this SAR/STR filing..."
                   className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -413,15 +416,15 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <div className="mt-1">
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs ${sarRemarks.length === 1000 ? 'text-red-500' : 'text-gray-500'
+                      className={`text-xs ${sarRemarks.length === 500 ? 'text-red-500' : 'text-gray-500'
                         }`}
                     >
-                      {sarRemarks.length}/1000
+                      {sarRemarks.length}/500
                     </span>
                   </div>
 
                   <div className="mt-1">
-                    {sarRemarks.length === 1000 ? (
+                    {sarRemarks.length === 500 ? (
                       <p className="text-red-500 text-xs">
                         Maximum character limit reached
                       </p>

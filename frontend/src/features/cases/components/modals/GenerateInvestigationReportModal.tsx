@@ -32,11 +32,11 @@ marked.setOptions({
 // Helper function to convert markdown/HTML to pdfMake format
 const convertMarkdownToPdfMake = (markdownText: string): any => {
   if (!markdownText) return '';
-  
+
   try {
     // First convert markdown to HTML
     const html = marked(markdownText) as string;
-    
+
     // Then convert HTML to pdfMake format
     const pdfContent = htmlToPdfmake(html, {
       defaultStyles: {
@@ -60,7 +60,7 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
         li: { margin: [0, 2, 0, 2] },
       }
     });
-    
+
     return pdfContent;
   } catch (error) {
     console.error('Error converting markdown to pdfMake:', error);
@@ -139,7 +139,7 @@ interface GenerateInvestigationReportModalProps {
     case_type?: string;
     status?: string;
     priority?: string;
-    created_at?: string;
+    createdOn?: string;
   };
   tasks?: TaskDTO[];
   selectedOutcome?: string;
@@ -230,13 +230,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   }, [selectedOutcome]);
 
-  // Update finalOutcome when selectedOutcome prop changes
-  useEffect(() => {
-    if (selectedOutcome) {
-      setFinalOutcome(selectedOutcome as FinalOutcomeType);
-    }
-  }, [selectedOutcome]);
-
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
       userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
@@ -275,10 +268,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     checkTaskCompletion();
   }, [open, caseId, showError]);
 
+  useEffect(() => {
+    setExecutiveSummary(buildExecutiveSummary());
+  }, [finalOutcome, caseData?.createdOn, caseData?.case_type]);
+
   const buildExecutiveSummary = () => {
-    const createdDate = caseData?.created_at ? formatDate(caseData.created_at) : 'N/A';
+    const createdDate = caseData?.createdOn ? formatDate(caseData.createdOn) : 'N/A';
     const caseType = caseData?.case_type || 'Investigation';
-    const outcome = caseData?.status || 'Under Review';
+    const outcome = finalOutcome || 'Under Review';
 
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };

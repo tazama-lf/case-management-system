@@ -341,7 +341,10 @@ class ReportsService {
           console.warn(`[Evidence Report] Failed to fetch evidence for case ${caseItem.case_id}:`, caseErr);
         }
 
+        caseEvidence = caseEvidence.filter((e: Record<string, unknown>) => !e.reportId)
+
         if (caseEvidence.length > 0) {
+
           totalEvidenceItems += caseEvidence.length;
 
           // Determine conclusion from case status
@@ -367,6 +370,7 @@ class ReportsService {
 
           // Map evidence to include full object with all available fields
           const supportingEvidence = caseEvidence.map((e: Record<string, unknown>) => {
+
             const evidenceId =
               (e.id as string) ||
               (e.evidenceId as string) ||

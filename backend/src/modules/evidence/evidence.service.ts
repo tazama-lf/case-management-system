@@ -189,8 +189,8 @@ export class EvidenceService {
       _id: evidenceId,
       evidenceId,
       tenantId,
-      taskId: String(dto.taskId),
-      case_Id: String(task.case_id),
+      taskId: dto.taskId,
+      caseId: task.case_id,
       uploadedBy: userId,
       uploadedAt: new Date(),
       evidenceType: dto.evidenceType,
@@ -236,7 +236,7 @@ export class EvidenceService {
 
       this.evidenceRepository.createEvidence(userId, {
         id: evidenceId,
-        taskId: Number(dto.taskId),
+        taskId: dto.taskId,
         fileName: file.originalname,
         description: dto.description,
         evidenceType: dto.evidenceType,
@@ -246,7 +246,7 @@ export class EvidenceService {
         mimeType: file.mimetype,
         uploadedAt: metadata.uploadedAt,
         uploadedBy: userId,
-        case_Id: task.case_id,
+        caseId: task.case_id,
         tenant_id: tenantId,
         metadata: metadata,
       } as CreateEvidenceDto);
@@ -567,7 +567,7 @@ export class EvidenceService {
     }
   }
 
-  async getEvidenceByTaskId(taskId: string, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+  async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const query: any = { tenantId, taskId, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
@@ -621,9 +621,9 @@ export class EvidenceService {
     this.logger.log(
       `role=${role}`
     );
-    this.logger.log(`query is: ${JSON.stringify(query)}`);
+
     const result = await this.couchdb.queryDocuments(query);
-    this.logger.log(`query is: ${JSON.stringify(result)}`);
+
     const docs = result.data || [];
     allDocs.push(...docs);
 

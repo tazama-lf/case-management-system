@@ -99,7 +99,7 @@ export class EvidenceController {
     description: 'List of evidence retrieved successfully',
     type: EvidenceListResponseDto,
   })
-  async getEvidenceByTask(@Param('taskId') taskId: string, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
+  async getEvidenceByTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
@@ -141,7 +141,6 @@ export class EvidenceController {
   async getEvidenceByCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER) ? 'CMS_COMPLIANCE_OFFICER' : 'CMS_INVESTIGATOR';
     return this.evidenceService.getEvidenceByCaseId(caseId, clientId, tenantId, role);
   }
