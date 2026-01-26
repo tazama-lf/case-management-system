@@ -53,21 +53,6 @@
 
         <!-- AUTOMATIC CREATION PATH -->
         <exclusiveGateway id="autoCloseGateway" name="Auto Close Check"/>
-
-        <!-- Autoclose Task (Manual completion in NestJS) -->
-        <!-- <userTask id="performAutoclose" name="Auto Close"
-                  flowable:assignee="system">
-            <documentation>System task to handle autoclose - complete via NestJS API</documentation>
-            <extensionElements>
-                <flowable:formProperty id="autoCloseType" name="Autoclose Type" 
-                                       type="enum" readable="false" writable="false">
-                    <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="STATUS_82_CLOSED_CONFIRMED"/>
-                    <flowable:value id="STATUS_81_CLOSED_REFUTED" name="STATUS_81_CLOSED_REFUTED"/>
-                    <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="STATUS_83_CLOSED_INCONCLUSIVE"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="autoCloseReason" name="Autoclose Reason" type="string"/>
-            </extensionElements>
-        </userTask> -->
         
         <endEvent id="endAutoClose" name="Case Autoclosed"/>
 
@@ -261,16 +246,14 @@
 
         <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="endAutoClose">
             <conditionExpression xsi:type="tFormalExpression">
-                ${autoCloseEligible == true}
+                ${caseStatus != 'STATUS_02_READY_FOR_ASSIGNMENT'}
             </conditionExpression>
         </sequenceFlow>
-
-        <!-- <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/> -->
 
         <!-- From autoclose to case creation for non-eligible cases -->
         <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigationRoutingGateway">
             <conditionExpression xsi:type="tFormalExpression">
-                ${autoCloseEligible == false}
+                ${caseStatus == 'STATUS_02_READY_FOR_ASSIGNMENT'}
             </conditionExpression>
         </sequenceFlow>
 

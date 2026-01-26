@@ -894,7 +894,7 @@ export class CaseClosureApprovalService {
     if (shouldAttemptAutoClaim) {
       const approvalTaskId = approvalValidation.approvalTask!.task_id;
       this.logger.log(`Auto-claiming approval task ${approvalTaskId} for supervisor ${supervisorId}`, CaseClosureApprovalService.name);
-      await this.taskService.claimTask(approvalTaskId, supervisorId!, this.auditLogService);
+      // await this.taskService.claimTask(approvalTaskId, supervisorId!);
 
       const taskIndex = caseData.tasks.findIndex((task) => task.task_id === approvalTaskId);
       if (taskIndex >= 0) {

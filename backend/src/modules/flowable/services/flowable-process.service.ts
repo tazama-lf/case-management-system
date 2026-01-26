@@ -1,8 +1,7 @@
 import { Injectable, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableApiEndpoints, FlowableTaskActions } from '../../../constants/flowable-api.constants';
-import { FlowableVariable } from '../dto/flowable.dto';
+import { FlowableApiEndpoints } from '../../../constants/flowable-api.constants';
 import { FlowableClientFactory } from './flowable-client.factory';
 import { formatVariables } from '../utils/formatVariables';
 
@@ -37,7 +36,6 @@ export class FlowableProcessService {
     }
   }
 
-  // In-Use
   async getProcessInstanceByBusinessKey(businessKey: number) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
@@ -57,13 +55,16 @@ export class FlowableProcessService {
     }
   }
 
-  /**
-   * Update a single process variable
-   */
-  // In-Use
-  async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
+  async updateProcessVariable(businessKey: number, variableName: string, value: unknown): Promise<void> {
     try {
-      await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
+      const processInstance = await this.getProcessInstanceByBusinessKey(businessKey);
+
+      if (!processInstance) {
+        this.logger.warn(`No Flowable process found for case ${businessKey}`, FlowableProcessService.name);
+        throw new NotFoundException('Process instance not found');
+      }
+
+      await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstance.id, variableName), {
         name: variableName,
         value: String(value),
         type: typeof value === 'boolean' ? 'boolean' : 'string',
@@ -73,55 +74,48 @@ export class FlowableProcessService {
     }
   }
 
-  /**
-   * Set multiple process variables at once
-   */
-  // In-Use
-  async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
-    try {
-      const formattedVariables = formatVariables(variables);
+  // async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
+  //   try {
+  //     const formattedVariables = formatVariables(variables);
 
-      const response = await this.flowableClient.put(
-        FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLES(processInstanceId),
-        formattedVariables,
-      );
+  //     const response = await this.flowableClient.put(
+  //       FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLES(processInstanceId),
+  //       formattedVariables,
+  //     );
 
-      this.logger.log(`Variables updated successfully for process ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to set process variables: ${error.message}`, error.stack, FlowableProcessService.name);
+  //     this.logger.log(`Variables updated successfully for process ${processInstanceId}`, FlowableProcessService.name);
+  //     return response.data;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to set process variables: ${error.message}`, error.stack, FlowableProcessService.name);
 
-      if (error.response) {
-        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableProcessService.name);
-        this.logger.error(`Status code: ${error.response.status}`, FlowableProcessService.name);
-      }
+  //     if (error.response) {
+  //       this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableProcessService.name);
+  //       this.logger.error(`Status code: ${error.response.status}`, FlowableProcessService.name);
+  //     }
 
-      if (error.response?.status === 409) {
-        this.logger.warn('Conflict detected, attempting to update variables individually', FlowableProcessService.name);
+  //     if (error.response?.status === 409) {
+  //       this.logger.warn('Conflict detected, attempting to update variables individually', FlowableProcessService.name);
 
-        try {
-          for (const [name, value] of Object.entries(variables)) {
-            await this.updateProcessVariable(processInstanceId, name, value);
-          }
-          this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableProcessService.name);
-          return;
-        } catch (retryError) {
-          this.logger.error(
-            `Failed to update variables individually: ${retryError.message}`,
-            retryError.stack,
-            FlowableProcessService.name,
-          );
-          throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-      }
+  //       try {
+  //         for (const [name, value] of Object.entries(variables)) {
+  //           await this.updateProcessVariable(processInstanceId, name, value);
+  //         }
+  //         this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableProcessService.name);
+  //         return;
+  //       } catch (retryError) {
+  //         this.logger.error(
+  //           `Failed to update variables individually: ${retryError.message}`,
+  //           retryError.stack,
+  //           FlowableProcessService.name,
+  //         );
+  //         throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
+  //       }
+  //     }
 
-      throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
+  //     throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
+  //   }
+  // }
 
-  /**
-   * Terminate a process instance
-   */
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
     try {
       const payload = {
@@ -140,91 +134,4 @@ export class FlowableProcessService {
       throw new HttpException('Failed to terminate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  /**
-   * Suspend a process instance
-   */
-  async suspendProcessInstance(processInstanceId: string) {
-    try {
-      const payload = {
-        action: FlowableTaskActions.SUSPEND,
-      };
-
-      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
-
-      this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to suspend process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to suspend process instance', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Activate a process instance
-   */
-  async activateProcessInstance(processInstanceId: string) {
-    try {
-      const payload = {
-        action: FlowableTaskActions.ACTIVATE,
-      };
-
-      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
-
-      this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Failed to activate process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to activate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Get process definitions
-   */
-  async getProcessDefinitions(processDefinitionKey?: string, tenantId?: string) {
-    try {
-      const params: Record<string, unknown> = {};
-      if (processDefinitionKey) {
-        params.key = processDefinitionKey;
-      }
-      params.tenantId = tenantId;
-
-      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
-        params,
-      });
-      return response.data.data || [];
-    } catch (error) {
-      this.logger.error(`Failed to get process definitions: ${error.message}`, error.stack, FlowableProcessService.name);
-      return [];
-    }
-  }
-
-  /**
-   * List all process definition keys
-   */
-  async listProcessDefinitions(): Promise<string> {
-    try {
-      const definitions = await this.getProcessDefinitions();
-      return definitions.map((def: any) => def.key).join(', ');
-    } catch (error) {
-      return 'Unable to list process definitions';
-    }
-  }
-
-  /**
-   * Format variables for Flowable API
-   */
-  // private formatVariables(variables: Record<string, string>): FlowableVariable[] {
-  //   return Object.entries(variables).map(([name, value]) => {
-  //     if (value === undefined) {
-  //       throw new Error(`Variable "${name}" has undefined value. All variables must have string values.`);
-  //     }
-  //     return {
-  //       name,
-  //       value: String(value),
-  //       type: 'string',
-  //     };
-  //   });
-  // }
 }

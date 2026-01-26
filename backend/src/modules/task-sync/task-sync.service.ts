@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { TaskService } from '../task/task.service';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -54,22 +54,34 @@ export class TaskSyncService {
     }
   }
 
+  // async syncTaskAssignmentWithFlowable(userId: string, caseId: number, taskType: TaskType) {
+  //   this.loggerService.log(`Start - syncTaskAssignmentWithFlowable`, TaskSyncService.name);
+  //   try {
+  //     await this.flowableTaskService.claimTask(caseId, userId, taskType);
+  //     await this.taskService.claimTask(caseId, userId, taskType);
+
+  //     this.loggerService.log(`End - syncTaskAssignmentWithFlowable`, TaskSyncService.name);
+  //   } catch (error) {
+  //     this.loggerService.error(`Error in syncTaskAssignmentWithFlowable: ${error}`, TaskSyncService.name);
+  //     throw error;
+  //   }
+  // }
+
   async syncTaskCompletionWithFlowable(userId: string, caseId: number, taskType: TaskType, taskCompletionDTO: TaskCompletionDTO) {
     this.loggerService.log(`Start - syncTaskCompletionWithFlowable`, TaskSyncService.name);
     try {
-      const flowableProcessTasks = await this.fetchFlowableTasks(caseId, 5, 80);
-      const targetFlowableTask = flowableProcessTasks.find((task: IFlowableTask) => task.category === taskType) as IFlowableTask;
+      const targetFlowableTask = await this.fetchFilteredFlowableTask(caseId, taskType);
       if (targetFlowableTask.assignee !== userId) {
         throw new BadRequestException(`User ${userId} is not the assignee of the task ${targetFlowableTask.name}`);
       }
 
       const taskCompletionVariables: Record<string, unknown> = {
-        // autocloseEligible: taskCompletionDTO.autocloseEligible,
         caseType: taskCompletionDTO.caseType,
         casePriority: taskCompletionDTO.casePriority,
       };
 
       await this.flowableTaskService.completeFlowableTask(userId, caseId, taskType, taskCompletionVariables);
+      // const updatedTask = await this.taskService.updateTask();
 
       this.loggerService.log(`End - syncTaskCompletionWithFlowable`, TaskSyncService.name);
       return targetFlowableTask;
@@ -106,6 +118,15 @@ export class TaskSyncService {
       throw lastError;
     }
     return [];
+  }
+
+  private async fetchFilteredFlowableTask(caseId: number, taskType: TaskType) {
+    const flowableProcessTasks = await this.fetchFlowableTasks(caseId, 5, 80);
+    const targetFlowableTask = flowableProcessTasks.find((task: IFlowableTask) => task.category === taskType) as IFlowableTask;
+    if (!targetFlowableTask) {
+      throw new NotFoundException(`No Flowable task found for caseId ${caseId} with taskType ${taskType}`);
+    }
+    return targetFlowableTask;
   }
 
   private sleep(ms: number): Promise<void> {

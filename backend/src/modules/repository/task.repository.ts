@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, TaskStatus, CaseStatus, Case, Task, Comment } from '@prisma/client-cms';
+import { Prisma, TaskStatus, CaseStatus, Case, Task, Comment, TaskType } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -10,7 +10,30 @@ export class TaskRepository extends BaseRepository {
   }
 
   async findTaskById(taskId: number) {
-    return this.prisma.task.findUnique({ where: { task_id: taskId } });
+    try {
+      return this.prisma.task.findUnique({ where: { task_id: taskId } });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findTasksByCaseId(caseId: number, taskType: TaskType, tx?: Prisma.TransactionClient) {
+    try {
+      if (tx) {
+        const tasks = await tx.task.findMany({ where: { case_id: caseId, task_type: taskType } });
+        if (tasks.length === 0) {
+          throw new NotFoundException(`No tasks found for caseId ${caseId} with taskType ${taskType}`);
+        }
+        return tasks;
+      }
+      const tasks = await this.prisma.task.findMany({ where: { case_id: caseId, task_type: taskType } });
+      if (tasks.length === 0) {
+        throw new NotFoundException(`No tasks found for caseId ${caseId} with taskType ${taskType}`);
+      }
+      return tasks;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async findTaskWithCase(taskId: number): Promise<
@@ -69,13 +92,17 @@ export class TaskRepository extends BaseRepository {
   }
 
   async updateTask(taskId: number, data: Prisma.TaskUpdateInput, tx?: Prisma.TransactionClient, includeCase = false) {
-    if (tx)
-      return tx.task.update({
-        where: { task_id: taskId },
-        data,
-        include: includeCase ? { case: true } : undefined,
-      });
-    return this.prisma.task.update({ where: { task_id: taskId }, data, include: includeCase ? { case: true } : undefined });
+    try {
+      if (tx)
+        return tx.task.update({
+          where: { task_id: taskId },
+          data,
+          include: includeCase ? { case: true } : undefined,
+        });
+      return this.prisma.task.update({ where: { task_id: taskId }, data, include: includeCase ? { case: true } : undefined });
+    } catch (error) {
+      throw error;
+    }
   }
 
   /* ------------------------------ Case Queries ------------------------------ */

@@ -1,8 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { BpmnSyncService } from '../services/bpmn-sync.service';
-import { FlowableUtilitiesService } from '../services/flowable-utilities.service';
 import { CaseCreatedEvent, CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
 import { FlowableProcessService } from '../services/flowable-process.service';
 
@@ -11,8 +9,6 @@ export class CaseEventListener {
   constructor(
     private readonly flowableProcessService: FlowableProcessService,
     private readonly logger: LoggerService,
-    // private readonly flowableUtilitiesService: FlowableUtilitiesService,
-    // private readonly bpmnSyncService: BpmnSyncService,
   ) {}
 
   // @OnEvent('case.created')
@@ -65,7 +61,6 @@ export class CaseEventListener {
 
   @OnEvent('case.status.changed')
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
-    this.logger.log(`Start - Update Case Status for case ${event.caseId} to status ${event.newStatus}`, CaseEventListener.name);
     try {
       const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
@@ -74,10 +69,9 @@ export class CaseEventListener {
         throw new NotFoundException('Process instance not found');
       }
 
-      await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'caseStatus', event.newStatus);
-      this.logger.log(`Updated Case Status To ${event.newStatus} For Process ${processInstance.id}`, CaseEventListener.name);
+      await this.flowableProcessService.updateProcessVariable(event.caseId, 'caseStatus', event.newStatus);
     } catch (error) {
-      this.logger.error(`Failed To Update Case Status: ${error.message}`, error.stack, CaseEventListener.name);
+      throw error;
     }
   }
 

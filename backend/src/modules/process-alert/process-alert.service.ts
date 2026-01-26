@@ -4,7 +4,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { IngestAlertDto } from 'src/modules/alert/dto/IngestAlert.dto';
 import { TaskService } from '../task/task.service';
 import { TriageService } from '../triage/triage.service';
-import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus } from '@prisma/client-cms';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { AlertService } from '../alert/alert.service';
 import { FlowableService } from '../flowable/flowable.service';

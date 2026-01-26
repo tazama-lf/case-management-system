@@ -4,10 +4,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableApiEndpoints } from '../../../constants/flowable-api.constants';
 import { FlowableClientFactory } from './flowable-client.factory';
 
-/**
- * Service responsible for Flowable identity and group management
- * Handles users, groups, and work queue statistics
- */
 @Injectable()
 export class FlowableIdentityService {
   private readonly flowableClient: AxiosInstance;

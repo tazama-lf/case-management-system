@@ -5,7 +5,7 @@ import { CreateTaskDto } from '../../dtos/CreateTask.dto';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/UpdateTask.dto';
-import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
+import { TaskStatus, Task, Prisma, CaseStatus, TaskType } from '@prisma/client-cms';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { TaskAssignedEvent } from '../events/domain-events';
@@ -17,6 +17,7 @@ import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { isCaseEligibleForInProgress } from './utils/helperFunctions';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { TaskWithCase } from './types/TaskWithCase';
+import { FlowableTaskService } from '../flowable/services/flowable-task.service';
 
 @Injectable()
 export class TaskService {
@@ -32,6 +33,7 @@ export class TaskService {
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly flowableTaskService: FlowableTaskService,
   ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tx?: Prisma.TransactionClient): Promise<Task> {
@@ -76,6 +78,56 @@ export class TaskService {
         actionPerformed: 'Error creating task',
         entityName: TaskService.name,
         operation: 'createTask',
+        outcome: Outcome.FAILURE,
+      });
+      throw error;
+    }
+  }
+
+  async claimTask(caseId: number, userId: string, taskType: TaskType) {
+    this.logger.log('Start - claimTask', TaskService.name);
+    try {
+      await this.flowableTaskService.claimTask(caseId, userId, taskType);
+
+      const result = await this.taskRepository.transaction(async (tx) => {
+        const caseTasks = await this.taskRepository.findTasksByCaseId(caseId, taskType, tx);
+        const unassignedTask = caseTasks.filter((task) => task.status === TaskStatus.STATUS_01_UNASSIGNED)[0];
+        if (!unassignedTask) {
+          throw new BadRequestException(`No unassigned task of type ${taskType} found for case ${caseId}`);
+        }
+
+        const updatedTask = await this.taskRepository.updateTask(
+          unassignedTask.task_id,
+          {
+            assigned_user_id: userId,
+            status: TaskStatus.STATUS_10_ASSIGNED,
+          },
+          tx,
+        );
+
+        return updatedTask;
+      });
+
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Claimed task ${result.task_id}`,
+          entityName: TaskService.name,
+          operation: 'claimTask',
+          outcome: Outcome.SUCCESS,
+        },
+        result.case_id,
+        result.task_id,
+      );
+
+      this.logger.log('End - claimTask', TaskService.name);
+      return result;
+    } catch (error) {
+      this.loggingOrchestrationService.logActions({
+        userId,
+        actionPerformed: 'Error claiming task',
+        entityName: TaskService.name,
+        operation: 'claimTask',
         outcome: Outcome.FAILURE,
       });
       throw error;
@@ -468,62 +520,6 @@ export class TaskService {
       };
     } catch (error) {
       this.logger.error('Error getting work queue statistics', error, TaskService.name);
-      throw error;
-    }
-  }
-
-  async claimTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
-    this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
-
-    try {
-      const existingTask = await this.taskRepository.findTaskById(taskId);
-      if (!existingTask) {
-        throw new NotFoundException(`Task ${taskId} not found`);
-      }
-
-      const previousAssignedUserId = existingTask.assigned_user_id;
-
-      const updatedTask = await this.taskRepository.updateTask(taskId, {
-        assigned_user_id: userId,
-        status: TaskStatus.STATUS_10_ASSIGNED,
-      });
-
-      this.eventEmitter.emit(
-        'task.assigned',
-        new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId || undefined),
-      );
-
-      const auditService = auditLogService || this.auditLogService;
-      auditService.logAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        task_id: taskId,
-        case_id: updatedTask.case_id,
-      });
-
-      return updatedTask;
-    } catch (error) {
-      this.logger.error(`Error claiming task ${taskId}`, error, TaskService.name);
       throw error;
     }
   }

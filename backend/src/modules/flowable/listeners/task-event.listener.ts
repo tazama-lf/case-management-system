@@ -1,17 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { BpmnSyncService } from '../services/bpmn-sync.service';
-import {
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
-  BpmnTaskCreatedEvent,
-  TaskAssignedEvent,
-  TaskUnassignedEvent,
-  TaskCompletedEvent,
-} from '../../events/domain-events';
+import { TaskAssignedEvent, TaskUnassignedEvent, TaskCompletedEvent } from '../../events/domain-events';
 import { TaskStatus } from '@prisma/client-cms';
-import { FlowableUtilitiesService } from '../services/flowable-utilities.service';
 import { FlowableTaskService } from '../services/flowable-task.service';
 import { FlowableProcessService } from '../services/flowable-process.service';
 
@@ -25,8 +16,6 @@ export class TaskEventListener {
     private readonly flowableTaskService: FlowableTaskService,
     private readonly flowableProcessService: FlowableProcessService,
     private readonly logger: LoggerService,
-    // private readonly bpmnSyncService: BpmnSyncService,
-    private readonly utilityService: FlowableUtilitiesService,
   ) {}
 
   /**
@@ -83,14 +72,7 @@ export class TaskEventListener {
         throw new NotFoundException(`Flowable task not found for PostgreSQL task ${event.taskId}`);
       }
 
-      await this.flowableTaskService.claimTask(task.id as number, event.assignedUserId);
-
-      // const variablesToUpdate = {
-      //   assignedUserId: event.assignedUserId,
-      //   taskStatus: 'STATUS_10_ASSIGNED',
-      // };
-
-      // await this.flowableTaskService.setTaskVariables(task.id as string, variablesToUpdate);
+      // await this.flowableTaskService.claimTask(task.id as number, event.assignedUserId);
 
       this.logger.log(`Successfully assigned Flowable task ${task.id} to user ${event.assignedUserId}`, TaskEventListener.name);
     } catch (error) {

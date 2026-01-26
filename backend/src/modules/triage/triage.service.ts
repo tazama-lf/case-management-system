@@ -1,12 +1,10 @@
 import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
-import { CommentService } from '../comment/comment.service';
 import { Priority, CaseStatus, CaseType, Prisma, TaskStatus, TaskType } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
@@ -23,6 +21,7 @@ import { EventLogService } from '../event_log/eventLog.service';
 import { CaseHistoryService } from '../case_history/caseHistory.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { TaskSyncService } from '../task-sync/task-sync.service';
+import { FlowableProcessService } from '../flowable/services/flowable-process.service';
 
 @Injectable()
 export class TriageService {
@@ -41,7 +40,6 @@ export class TriageService {
     private eventLogService: EventLogService,
     private readonly caseCreationService: CaseCreationApprovalService,
     private taskService: TaskService,
-    private commentService: CommentService,
     private configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
@@ -49,6 +47,7 @@ export class TriageService {
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly syncTaskService: TaskSyncService,
+    private readonly flowableProcessService: FlowableProcessService,
   ) {}
 
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
@@ -80,6 +79,13 @@ export class TriageService {
         throw new BadRequestException(`Task Not Found or Triage Already Completed`);
       }
 
+      if (completeCaseTask.assigned_user_id !== null && completeCaseTask.assigned_user_id !== userId) {
+        throw new BadRequestException(`Task is assigned to another user`);
+      }
+
+      const result = await this.taskService.claimTask(existingCase.case_id, userId, TaskType.CASE_CREATION);
+      this.loggerService.log(`Claimed Task: ${JSON.stringify(result)}`, TriageService.name);
+
       // const targetFlowableTask = await this.syncTaskService.syncTaskCompletionWithFlowable(
       //   userId,
       //   existingCase.case_id,
@@ -91,6 +97,7 @@ export class TriageService {
       //     caseType: alert.alert_type as CaseType,
       //   },
       // );
+      // await this.flowableProcessService.updateProcessVariable(existingCase.case_id, 'caseStatus', updateAlertDto.status);
 
       // this.loggerService.log(`Target Flowable Task: ${JSON.stringify(targetFlowableTask)}`, TriageService.name);
 
