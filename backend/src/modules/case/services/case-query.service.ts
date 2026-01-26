@@ -171,7 +171,7 @@ export class CaseQueryService {
         if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
       }
-      
+
       // Build search filter condition
       let searchFilterCondition: any = null;
       if (search && search.trim() !== '') {
@@ -179,7 +179,7 @@ export class CaseQueryService {
         const searchUpper = searchTerm.toUpperCase();
         const normalizedSearch = searchTerm.toLowerCase().replace(/[\/\s\-_]/g, ''); // Remove slashes, spaces, dashes, underscores
         const orConditions: any[] = [];
-        
+
         // SPECIAL CASE: Handle "N/A" search separately (only search for null values)
         if (normalizedSearch === 'na' || normalizedSearch === 'none' || normalizedSearch === 'null') {
           // Search for cases with null fields or missing data that would display as "N/A" in the UI
@@ -200,21 +200,21 @@ export class CaseQueryService {
               }
             }
           });
-          
+
           searchFilterCondition = { OR: orConditions };
           this.logger.log(`N/A search filter created for null/missing fields: ${JSON.stringify(searchFilterCondition)}`, CaseQueryService.name);
         } else {
           // Normal search (not N/A)
-          
+
           // 1. SEARCH by case_id (exact numeric match only)
           const numericSearch = parseInt(searchTerm, 10);
           if (!isNaN(numericSearch)) {
             orConditions.push({ case_id: numericSearch });
           }
-          
+
           // 2. PARTIAL SEARCH by case_type (e.g., "fr" matches "FRAUD", "fraud_and" matches "FRAUD_AND_AML")
           const caseTypeEnums = ['FRAUD', 'AML', 'FRAUD_AND_AML'];
-          const matchingCaseTypes = caseTypeEnums.filter(type => 
+          const matchingCaseTypes = caseTypeEnums.filter(type =>
             type.includes(searchUpper)
           );
           if (matchingCaseTypes.length > 0) {
@@ -222,7 +222,7 @@ export class CaseQueryService {
               case_type: { in: matchingCaseTypes }
             });
           }
-          
+
           // 3. PARTIAL SEARCH by case status (e.g., "pending" matches all STATUS_*_PENDING_* statuses)
           const statusEnums = [
             'STATUS_00_DRAFT',
@@ -241,7 +241,7 @@ export class CaseQueryService {
             'STATUS_83_CLOSED_INCONCLUSIVE',
             'STATUS_99_ABANDONED'
           ];
-          const matchingStatuses = statusEnums.filter(status => 
+          const matchingStatuses = statusEnums.filter(status =>
             status.includes(searchUpper)
           );
           if (matchingStatuses.length > 0) {
@@ -249,7 +249,7 @@ export class CaseQueryService {
               status: { in: matchingStatuses }
             });
           }
-          
+
           // 4. Search by alert message (string field) - skip for pure numbers
           if (isNaN(numericSearch)) {
             orConditions.push({
@@ -258,7 +258,7 @@ export class CaseQueryService {
               }
             });
           }
-          
+
           // 5. SEARCH by confidence score (alert.confidence_per)
           if (!isNaN(numericSearch)) {
             orConditions.push({
@@ -267,7 +267,7 @@ export class CaseQueryService {
               }
             });
           }
-          
+
           // 6. PARTIAL SEARCH in SAR/STR task status (only for compliance officers)
           if (isComplianceOfficer) {
             const taskStatusEnums = [
@@ -277,7 +277,7 @@ export class CaseQueryService {
               'STATUS_21_BLOCKED',
               'STATUS_30_COMPLETED'
             ];
-            const matchingTaskStatuses = taskStatusEnums.filter(status => 
+            const matchingTaskStatuses = taskStatusEnums.filter(status =>
               status.includes(searchUpper)
             );
             if (matchingTaskStatuses.length > 0) {
@@ -291,7 +291,7 @@ export class CaseQueryService {
               });
             }
           }
-          
+
           // Only add search filter if we have conditions
           if (orConditions.length > 0) {
             searchFilterCondition = { OR: orConditions };
@@ -302,7 +302,7 @@ export class CaseQueryService {
           }
         }
       }
-      
+
       // Build SAR/STR status filter condition separately
       let sarStrFilterCondition: any = null;
       if (sarStrStatus && sarStrStatus !== 'N/A') {
@@ -327,32 +327,32 @@ export class CaseQueryService {
           },
         };
       }
-      
+
       // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
       if (isComplianceOfficer) {
         baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
         const andConditions: any[] = [baseFilters];
-        
+
         // Add SAR/STR filter as separate condition if provided
         if (sarStrFilterCondition) {
           andConditions.push(sarStrFilterCondition);
         }
-        
+
         // Add search filter as separate condition if provided
         if (searchFilterCondition) {
           andConditions.push(searchFilterCondition);
         }
-        
+
         whereClause.AND = andConditions;
       }
       else if (investigatorUserId) {
         const andConditions: any[] = [baseFilters];
-        
+
         // Add SAR/STR filter as separate condition if provided
         if (sarStrFilterCondition) {
           andConditions.push(sarStrFilterCondition);
         }
-        
+
         // For investigators with search: apply search filter within their accessible cases
         if (searchFilterCondition) {
           // Combine search with investigator visibility rules
@@ -392,26 +392,26 @@ export class CaseQueryService {
             ],
           });
         }
-        
+
         whereClause.AND = andConditions;
       } else {
         // Build AND conditions for general users
         const andConditions: any[] = [baseFilters];
-        
+
         // Add SAR/STR filter as separate condition if provided
         if (sarStrFilterCondition) {
           andConditions.push(sarStrFilterCondition);
         }
-        
+
         // Add search filter as separate condition if provided
         if (searchFilterCondition) {
           andConditions.push(searchFilterCondition);
         }
-        
+
         // Apply additional filters to baseFilters if needed
         if (ownerId) baseFilters.case_owner_user_id = ownerId;
         if (unassignedOnly) baseFilters.case_owner_user_id = null;
-        
+
         // Only use AND if we have multiple conditions, otherwise use baseFilters directly
         if (andConditions.length > 1) {
           whereClause.AND = andConditions;
@@ -419,15 +419,15 @@ export class CaseQueryService {
           Object.assign(whereClause, baseFilters);
         }
       }
-      
+
       this.logger.log(`Where clause: ${JSON.stringify(whereClause)}`, CaseQueryService.name);
-      
+
       const skip = (page - 1) * limit;
       const totalCount = await this.prismaService.case.count({ where: whereClause });
       const cases = await this.prismaService.case.findMany({
         where: whereClause,
         include: {
-          tasks: { select: { task_id: true, status: true, assigned_user_id: true, name: true } },
+          tasks: { select: { task_id: true, status: true, assigned_user_id: true, name: true, created_at: true } },
           alert: { select: { alert_id: true, message: true, confidence_per: true, alert_type: true, transaction: true } },
         },
         skip,

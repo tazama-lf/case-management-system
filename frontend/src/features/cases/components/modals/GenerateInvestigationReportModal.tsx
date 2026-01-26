@@ -180,19 +180,30 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     (selectedOutcome as FinalOutcomeType) || ''
   );
 
-  const filterTasks = tasks ? tasks.filter(task => task.name?.toLowerCase().includes('investigate')) : [];
+  const latestInvestigateTask = React.useMemo(() => {
+    if (!tasks?.length) return null;
 
+    return tasks
+      .filter(task =>
+        task.name?.toLowerCase().includes('investigate'),
+      )
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at ?? 0).getTime();
+        const bTime = new Date(b.created_at ?? 0).getTime();
+        return bTime - aTime;
+      })[0] || null;
+  }, [tasks]);
 
 
   const fetchEvidence = React.useCallback(async () => {
-    if (!filterTasks[0].task_id) return;
-    const categories = await loadEvidence(filterTasks[0].task_id);
+    if (!latestInvestigateTask?.task_id) return;
+    const categories = await loadEvidence(latestInvestigateTask?.task_id);
     setEvidenceCategories(categories);
-  }, [filterTasks]);
+  }, [latestInvestigateTask]);
 
   // Load case details, comments, supervisor comments, investigation task & notes
   const fetchCaseData = React.useCallback(async () => {
-    if (!filterTasks[0].task_id) return;
+    if (!latestInvestigateTask?.task_id) return;
     setLoading(true);
     try {
       const {
@@ -202,7 +213,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         investigatorName,
         investigationTask,
         investigationNotes,
-      } = await fetchCasesAndEvidence(caseId, filterTasks[0].task_id);
+      } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
 
       setCaseDetails(caseDetails);
       setCaseComments(caseComments);
@@ -215,7 +226,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     } finally {
       setLoading(false);
     }
-  }, [caseId, filterTasks]);
+  }, [caseId, latestInvestigateTask]);
 
   // Fetch evidence and case data on mount
   useEffect(() => {
@@ -622,9 +633,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         setStep('generated');
 
 
-        if (filterTasks && investigationNotes) {
+        if (latestInvestigateTask && investigationNotes) {
           try {
-            await taskService.updateTaskForSupervisor(filterTasks[0].task_id, {
+            await taskService.updateTaskForSupervisor(latestInvestigateTask.task_id, {
               investigationNotes: investigationNotes,
             });
           } catch {
