@@ -774,7 +774,7 @@ export class GoldLakehouseController {
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  @Public()
   @ApiOperation({
     summary: "Apply Benford's Law on account transactions",
     description:
