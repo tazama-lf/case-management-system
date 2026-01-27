@@ -238,7 +238,7 @@ export class GoldLakehouseController {
   }
 
   @Get('transaction-history/:entityId')
-  @Public()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Transaction History data for a specific entity (account/counterparty)',
     description:
@@ -377,8 +377,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/summary')
-  // Temporarily public for notebook/voila access
-  @Public()
+  // Access restricted: require investigator or supervisor role
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Alert History Summary',
     description:
@@ -431,8 +431,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/timeline')
-  // Temporarily public for notebook/voila access
-  @Public()
+  // Access restricted: require investigator or supervisor role
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Alert History Timeline',
     description:
@@ -519,8 +519,8 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-history/alerts')
-  // Temporarily public for notebook/voila access
-  @Public()
+  // Access restricted: require investigator or supervisor role
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Alert History Alerts',
     description:
@@ -637,8 +637,8 @@ export class GoldLakehouseController {
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
-  @Public()
-  @ApiOperation({ 
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
     summary: 'Get Transaction Network Analysis',
     description:
       'Fetches network visualization data showing all accounts connected to the specified account through transactions, including transaction statistics, flow directions, and alert flags.',
@@ -678,8 +678,8 @@ export class GoldLakehouseController {
   }
 
   @Get('network-analysis/account/:accountId')
-  // Temporarily public for notebook/voila access
-  @Public()
+  // Access restricted: require investigator or supervisor role
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Account Network graph + selected account details',
     description:
@@ -725,7 +725,7 @@ export class GoldLakehouseController {
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
-  @Public()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Counterparty Network graph + selected counterparty details',
     description: 'Returns counterparty network visualization (nodes + edges) along with full details for the selected counterparty node.',
@@ -774,9 +774,9 @@ export class GoldLakehouseController {
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  @Public()
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
-    summary: "Apply Benford's Law on account transactions",
+    summary: 'Apply Benford\'s Law on account transactions',
     description:
       'Applies Benford’s Law to successful transaction amounts where the given account appears as debtor or creditor, over a selected date range.',
   })
@@ -837,8 +837,8 @@ export class GoldLakehouseController {
   // ---------------- COUNTERPARTY VIEW ----------------
 
   @Get('network-analysis/counterparty/:accountId')
-  // Temporarily public for notebook/voila access
-  @Public()
+  // Access restricted: require investigator or supervisor role
+  @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
     summary: 'Get Counterparty Network Analysis',
     description:
