@@ -473,8 +473,7 @@ export class CaseService {
           newStatus: targetStatus,
           reason: `Case creation completed by ${role}`,
         });
-
-        // Find and complete the "Complete New Case" task
+        
         const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
 
@@ -485,10 +484,12 @@ export class CaseService {
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException(`Complete New Case task ${completeNewCaseTask.task_id} is already completed`);
         }
-
         const completedTask = await this.taskService.updateTask(
           completeNewCaseTask.task_id,
-          { status: TaskStatus.STATUS_30_COMPLETED },
+          { 
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assignedUserId: userId 
+          },
           userId,
         );
         await this.flowableService.handleTaskCompleted({

@@ -162,7 +162,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   React.useEffect(() => {
     fetchSavedFilters();
-    console.log('Filters updated:', searchFilters);
     setSelectedSavedFilterId('');
   }, [fetchSavedFilters]);
 
@@ -178,23 +177,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     onFilterChange('type', filter.alertType);
     onFilterChange('priority', filter.priority);
     onFilterChange('source', filter.source);
-    // onFilterChange('timeRange', filter.timeRange);
-    // setShowCustomDatePicker(filter.timeRange === 'custom');
-    // if (filter.timeRange === 'custom') {
-    //   setShowCustomDatePicker(true);
-
-    //   onCustomDateRangeChange({
-    //     startDate: filter.startDate || '',
-    //     endDate: filter.endDate || '',
-    //   });
-    // } else {
-    //   setShowCustomDatePicker(false);
-
-    //   onCustomDateRangeChange({
-    //     startDate: '',
-    //     endDate: '',
-    //   });
-    // }
+  
   };
 
 

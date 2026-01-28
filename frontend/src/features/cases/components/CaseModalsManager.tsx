@@ -209,7 +209,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     priorityScore: number;
     alertType: AlertType;
     assignee?: string;
-    /*Added new fields*/
     status: CaseStatus;
     confidence: number;
     predictionOutcome?: PredictionOutcome;
@@ -220,10 +219,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
     try {
       const updateCaseData = {
-        //status: 'STATUS_02_READY_FOR_ASSIGNMENT' as const,
         priority: payload.priority,
         caseType: payload.alertType,
-        /*Added new fields*/
         confidence: payload.confidence,
         predictionOutcome: payload.predictionOutcome,
         note: payload.note,

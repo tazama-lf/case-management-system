@@ -1,9 +1,7 @@
 import React from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import triageService from '@/features/alerts/services/triageservice';
-//import userService from '@/features/cases/services/userService';
 import type { Alert } from '@/features/alerts/types/triage.types';
-//import type { UserOption } from '@/features/cases/services/userService';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 import authService from '../../auth/services/authService';
 
@@ -88,7 +86,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   existingCaseId,
   initial
 }) => {
-
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
@@ -111,8 +108,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
   const [assignee, setAssignee] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
-  // const [users, setUsers] = React.useState<UserOption[]>([]);
-  // const [loadingUsers, setLoadingUsers] = React.useState(false);
 
   const calculatePriority = (score: number): Priority => {
     if (score >= 1.0) return 'BREACH';
@@ -271,8 +266,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     (mode === 'edit' || selectedAlert)
   );
 
-
-
   const saveAsDraft = (draft = false) => {
     const errors = validateForm();
 
@@ -318,7 +311,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
     if (mode === 'edit' && onUpdate && existingCaseId) {
 
-      const currentUser = authService.getUser(); // returns any | null
+      const currentUser = authService.getUser(); 
       const currentUserId = currentUser?.userId;
 
       onUpdate(existingCaseId, {
@@ -344,7 +337,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       });
     }
   };
-  const completeCase = () => {
+  const completeCase = async () => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {
