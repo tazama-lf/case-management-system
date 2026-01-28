@@ -21,23 +21,44 @@ import type { TaskComment } from '../../services/commentService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import { formatDate } from '@/shared/utils/dateUtils';
 
+interface EvidenceCategory {
+  type: string;
+  count: number;
+  description: string;
+  evidence: Evidence[];
+}
+interface GenerateInvestigationReportModalProps {
+  open: boolean;
+  onClose: () => void;
+  caseId: number;
+  caseStatus?: string;
+  caseTitle?: string;
+  taskId?: number;
+  caseData?: {
+    case_id?: number;
+    case_type?: string;
+    status?: string;
+    priority?: string;
+    createdOn?: string;
+  };
+  tasks?: TaskDTO[];
+  selectedOutcome?: string;
+  selectedFinalNotes?: string;
+  onApproved?: () => void;
 
+}
 
-// Configure marked to handle line breaks properly (GitHub-flavored markdown)
 marked.setOptions({
-  breaks: true, // Convert \n to <br>
-  gfm: true, // GitHub-flavored markdown
+  breaks: true, 
+  gfm: true,
 });
 
-// Helper function to convert markdown/HTML to pdfMake format
 const convertMarkdownToPdfMake = (markdownText: string): any => {
   if (!markdownText) return '';
 
   try {
-    // First convert markdown to HTML
     const html = marked(markdownText) as string;
 
-    // Then convert HTML to pdfMake format
     const pdfContent = htmlToPdfmake(html, {
       defaultStyles: {
         b: { bold: true },
@@ -64,33 +85,9 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
     return pdfContent;
   } catch (error) {
     console.error('Error converting markdown to pdfMake:', error);
-    // Fallback to plain text if conversion fails
     return markdownText;
   }
 };
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
-
-const getUserInfo = () => {
-  try {
-    const user = localStorage.getItem('user');
-    if (user) {
-      const userData = JSON.parse(user);
-      return {
-        userId: userData.userId || '',
-        tenantId: userData.tenantId || '',
-      };
-    }
-  } catch { }
-  return { userId: '', tenantId: '' };
-};
-
-interface EvidenceCategory {
-  type: string;
-  count: number;
-  description: string;
-  evidence: Evidence[];
-}
 
 export const FINAL_OUTCOMES = [
   {
@@ -126,27 +123,6 @@ const getUserRole = () => {
 };
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
-
-interface GenerateInvestigationReportModalProps {
-  open: boolean;
-  onClose: () => void;
-  caseId: number;
-  caseStatus?: string;
-  caseTitle?: string;
-  taskId?: number;
-  caseData?: {
-    case_id?: number;
-    case_type?: string;
-    status?: string;
-    priority?: string;
-    createdOn?: string;
-  };
-  tasks?: TaskDTO[];
-  selectedOutcome?: string;
-  selectedFinalNotes?: string;
-  onApproved?: () => void;
-
-}
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
   caseStatus,
@@ -201,7 +177,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setEvidenceCategories(categories);
   }, [latestInvestigateTask]);
 
-  // Load case details, comments, supervisor comments, investigation task & notes
   const fetchCaseData = React.useCallback(async () => {
     if (!latestInvestigateTask?.task_id) return;
     setLoading(true);
@@ -228,13 +203,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   }, [caseId, latestInvestigateTask]);
 
-  // Fetch evidence and case data on mount
   useEffect(() => {
     fetchEvidence();
     fetchCaseData();
   }, []);
 
-  // Update finalOutcome when selectedOutcome prop changes
   useEffect(() => {
     if (selectedOutcome) {
       setFinalOutcome(selectedOutcome as FinalOutcomeType);
@@ -291,22 +264,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
-
-
-  const buildEvidenceSummary = () => {
-    if (!evidenceCategories || Object.keys(evidenceCategories).length === 0) {
-      return 'No evidence items available for this case.';
-    }
-    return evidenceCategories
-      .map(cat =>
-        `${cat.type}: ${cat.count} ${cat.count === 1 ? 'document' : 'documents'}`
-      )
-      .join('\n');
-  };
-
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
-    investigationNotes || "1. Investigation findings pending.\n\n2. Additional details to be added."
+    investigationNotes || ""
   );
   const [recommendations, setRecommendations] = useState(
     "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
@@ -421,18 +381,26 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? convertMarkdownToPdfMake(executiveSummary)
         : [convertMarkdownToPdfMake(executiveSummary)]
       ),
-      { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
+      { text: '', margin: [0, 0, 0, 12] }, 
 
       {
         text: 'KEY FINDINGS',
         style: 'sectionHeader',
         margin: [0, 0, 0, 10],
       },
-      ...(Array.isArray(convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available."))
-        ? convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available.")
-        : [convertMarkdownToPdfMake(investigationNotes || keyFindings || "No investigation notes available.")]
+      ...(investigationNotes
+        ? (Array.isArray(convertMarkdownToPdfMake(investigationNotes))
+          ? convertMarkdownToPdfMake(investigationNotes)
+          : [convertMarkdownToPdfMake(investigationNotes)])
+        : [{
+            text: 'No investigation notes added.',
+            fontSize: 9,
+            color: '#6b7280',
+            italics: true,
+            margin: [0, 0, 0, 0],
+          }]
       ),
-      { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
+      { text: '', margin: [0, 0, 0, 12] },
 
       ...((supervisorFeedback || selectedFinalNotes) ? [
         {
@@ -444,7 +412,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
           : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
         ),
-        { text: '', margin: [0, 0, 0, 20] }, // Add spacing after
+        { text: '', margin: [0, 0, 0, 12] }, 
       ] : []),
 
       {
@@ -452,16 +420,21 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         style: 'sectionHeader',
         margin: [0, 0, 0, 10],
       },
-      {
-        ul: evidenceList,
-        style: 'body',
-        margin: [0, 0, 0, 5],
-      },
-      {
-        text: 'All evidence items are attached to this case and available for audit review.',
-        style: 'italic',
-        margin: [0, 10, 0, 20],
-      },
+      ...(evidenceList && evidenceList.length > 0
+        ? [{
+            ul: evidenceList,
+            style: 'body',
+            margin: [0, 0, 0, 12],
+          }]
+        : [{
+            text: 'No evidence summary attached.',
+            fontSize: 9,
+            color: '#6b7280',
+            italics: true,
+            margin: [0, 0, 0, 0],
+          }]
+      ),
+      { text: '', margin: [0, 0, 0, 12] },
 
       {
         text: 'FINAL OUTCOME DECISION',
@@ -471,7 +444,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       {
         text: finalOutcome as FinalOutcomeType,
         style: 'outcomeDecision',
-        margin: [0, 0, 0, 20],
+        margin: [0, 0, 0, 12],
       },
 
       {
@@ -483,7 +456,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? convertMarkdownToPdfMake(recommendations)
         : [convertMarkdownToPdfMake(recommendations)]
       ),
-      { text: '', margin: [0, 0, 0, 30] }, // Add spacing after
+      { text: '', margin: [0, 0, 0, 30] },
 
       {
         canvas: [
@@ -898,7 +871,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   />
                 ) : (
                   <div className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded border border-gray-200">
-                    No investigation notes available.
+                    <em>No investigation notes added.</em>
                   </div>
                 )}
               </div>
@@ -995,7 +968,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                     </>
                   ) : (
                     <p className="text-sm text-gray-500 italic">
-                      No evidence uploaded yet for this case.
+                      <em>No evidence summary attached.</em>
                     </p>
                   )}
                 </div>

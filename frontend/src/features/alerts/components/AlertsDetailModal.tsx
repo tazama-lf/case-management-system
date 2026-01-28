@@ -16,6 +16,7 @@ import { taskService, type TaskForSupervisor } from '../../cases/services/taskSe
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -256,6 +257,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onManualTriage,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
+  const queryClient = useQueryClient();
 
   const [alert, setAlert] = useState<TriageAlert | null>(null);
   const [loading, setLoading] = useState(false);
@@ -266,7 +268,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] = useState(false);
 
-  const { data: caseDetails } = useCase(alert?.case_id);
+  const { data: caseDetails, refetch: refetchCase } = useCase(alert?.case_id);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
 
@@ -283,6 +285,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       try {
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
+
+        if (alertDetails.case_id) {
+          queryClient.invalidateQueries({ queryKey: ['case', alertDetails.case_id] });
+        }
 
         setLoadingHistory(true);
         try {
@@ -303,7 +309,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     };
 
     fetchAlertDetails();
-  }, [alertId, isOpen]);
+  }, [alertId, isOpen, queryClient]);
 
   // Check if Complete New Case task is completed
   useEffect(() => {
@@ -333,7 +339,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     };
 
     checkCompleteNewCaseStatus();
-  }, [alert?.case_id]);
+  }, [alert?.case_id, isOpen]);
 
   if (!isOpen) {
     return null;
@@ -420,6 +426,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={() => {
+            if (alert?.case_id) {
+              queryClient.invalidateQueries({ queryKey: ['case', alert.case_id] });
+            }
             onAlertUpdated?.();
             onClose();
           }}
@@ -432,6 +441,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={() => {
+                if (alert?.case_id) {
+                  queryClient.invalidateQueries({ queryKey: ['case', alert.case_id] });
+                }
                 onAlertUpdated?.();
                 onClose();
               }}
