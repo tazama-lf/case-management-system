@@ -51,11 +51,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     fetchData();
   }, [fetchTasks]);
 
-  const hasCompletedStrTask = tasks.some(
-    (task) =>
-      task.name === 'SAR/STR Filing' &&
-      (task.status === TaskStatus.STATUS_30_COMPLETED)
-  );
+  const hasCompletedStrTask = tasks
+    .filter(task => task.name === 'SAR/STR Filing')
+    .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
 
   // Compliance officers cannot perform any case actions
   if (hasComplianceOfficerRole()) {
@@ -208,7 +206,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     }
 
     // Reopen Case button - show for closed cases
-    if (onReopenCase && ((hasCompletedStrTask && caseData.status === 'STATUS_82_CLOSED_CONFIRMED') ||
+    if (onReopenCase && ((hasCompletedStrTask?.status === TaskStatus.STATUS_30_COMPLETED && caseData.status === 'STATUS_82_CLOSED_CONFIRMED') ||
       (caseData.status === 'STATUS_81_CLOSED_REFUTED' ||
         caseData.status === 'STATUS_83_CLOSED_INCONCLUSIVE'))) {
       actions.push(
@@ -281,9 +279,9 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   }
 
   return (
-      <div className="flex flex-wrap gap-3">
-        {availableActions}
-      </div>
+    <div className="flex flex-wrap gap-3">
+      {availableActions}
+    </div>
   );
 };
 

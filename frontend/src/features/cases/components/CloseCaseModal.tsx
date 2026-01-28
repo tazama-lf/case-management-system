@@ -64,7 +64,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    closeCase();
+  };
 
+  const closeCase = async () => {
     if (!validateForm()) {
       return;
     }
@@ -89,6 +92,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+
   };
 
   const handleClose = () => {
@@ -164,7 +168,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 </option>
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                {isSupervisor 
+                {isSupervisor
                   ? 'This is the final outcome that will be applied to the case'
                   : 'This outcome will be reviewed by the supervisor during approval'
                 }
@@ -236,11 +240,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               {isSupervisor && !reportApproved && (
                 <button
                   type="button"
+                  disabled={isSubmitting || formData.finalNotes.trim().length < 4}
                   onClick={() => setShowReportModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2
-                 bg-gradient-to-r from-blue-600 to-blue-700
-                 text-white text-sm font-medium rounded-md
-                 hover:from-blue-700 hover:to-blue-800 shadow-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm disabled:from-blue-400 disabled:to-blue-400 disabled:shadow-none disabled:cursor-not-allowed "
+
                 >
                   <DocumentTextIcon className="h-5 w-5" />
                   Generate Investigation Report
@@ -248,7 +251,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               )}
 
               {/* SUPERVISOR → Close Case (AFTER report) */}
-              {isSupervisor && reportApproved && (
+              {/* {isSupervisor && reportApproved && (
                 <button
                   type="submit"
                   disabled={isSubmitting || !reportApproved}
@@ -256,7 +259,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 >
                   {isSubmitting ? 'Closing Case...' : 'Close Case'}
                 </button>
-              )}
+              )} */}
             </div>
           </form>
         </div>
@@ -271,8 +274,10 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}
           tasks={caseData?.tasks || undefined}
           caseData={caseData || undefined}
+          selectedFinalNotes={formData.finalNotes}
           selectedOutcome={formData.recommendedOutcome}
-          onApproved={() => {
+          onApproved={async () => {
+            await closeCase();
             setReportApproved(true);
             setShowReportModal(false);
           }}

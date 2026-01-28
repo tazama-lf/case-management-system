@@ -585,7 +585,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                     id={`${section.key}-comments`}
                     placeholder={section.commentPlaceholder}
                     rows={4}
-                    maxLength={1000}
+                    maxLength={500}
                     value={sectionComments[section.key] ?? ''}
                     onChange={(e) =>
                       setSectionComments((prev) => ({
@@ -598,7 +598,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
                   {(() => {
                     const length = (sectionComments[section.key] ?? '').length;
-                    const isLimitReached = length === 1000;
+                    const isLimitReached = length === 500;
 
                     return (
                       <div className="mt-1">
@@ -607,7 +607,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             className={`text-xs ${isLimitReached ? 'text-red-500' : 'text-gray-500'
                               }`}
                           >
-                            {length}/1000
+                            {length}/500
                           </span>
                         </div>
 

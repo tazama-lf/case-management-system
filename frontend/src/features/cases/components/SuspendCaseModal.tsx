@@ -129,7 +129,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                       }}
                       className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
                     />
-                    <span>{task.name} ({task.task_id})</span>
+                    <span>{task.name} (Task ID - {task.task_id})</span>
                   </label>
                 ))}
               </div>

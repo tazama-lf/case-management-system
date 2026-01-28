@@ -60,7 +60,10 @@ export const exportToCSV = (
       ...data.map(row =>
         headers.map(header => {
           const value = row[header];
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          if (
+            typeof value === 'string' &&
+            (value.includes(',') || value.includes('"') || value.includes('\n'))
+          ) {
             return `"${value.replace(/"/g, '""')}"`;
           }
           return value || '';

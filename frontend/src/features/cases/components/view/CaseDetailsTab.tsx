@@ -80,7 +80,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   const [openTransactions, setOpenTransactions] = React.useState<Record<string, boolean>>({});
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [latestReports, setLatestReports] = useState<Record<string, LatestReport | null>>({});
-  const lastLoadedCaseId = React.useRef<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLatestReports({});
+    setViewingId(null);
+  }, [row.id]);
 
   // Extract transaction data
   const getTransactionData = () => {
@@ -161,9 +166,16 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     setLatestReports({});
     setViewingId(null);
     if (!row.id) return;
-    if (lastLoadedCaseId.current === row.id) return;
 
-    lastLoadedCaseId.current = row.id;
+
+    const isClosed = row.status.toLowerCase().includes('closed');
+    if (!isClosed) {
+      setLatestReports({});
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const evidenceResponse = await evidenceService.getCaseEvidence(row.id);
@@ -202,13 +214,18 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       setLatestReports(latestByType);
     } catch (err) {
       console.error('Failed to load reports:', err);
+    } finally {
+      setLoading(false);
     }
   }, [row.id]);
 
 
-  React.useEffect(() => {
+  useEffect(() => {
+
     loadReport();
   }, [loadReport]);
+
+
 
   const handleViewReport = async (reportId?: string) => {
     if (!reportId) {
@@ -292,6 +309,19 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
   const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <span className="text-sm text-gray-600">
+            Loading case details…
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -304,10 +334,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2 ml-6">
-              {latestReports?.['INVESTIGATION_REPORT'] &&
-                (
+              {row.status.toLowerCase().includes('closed') &&
+                latestReports['INVESTIGATION_REPORT']?.reportId && (
                   <button
-                    onClick={() => handleViewReport(latestReports['INVESTIGATION_REPORT']?.reportId)}
+                    onClick={() =>
+                      handleViewReport(latestReports['INVESTIGATION_REPORT']!.reportId)
+                    }
                     className="inline-flex items-center gap-2 px-4 py-2
                      bg-gradient-to-r from-blue-600 to-blue-700
                      text-white text-sm font-medium rounded-md

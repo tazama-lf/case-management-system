@@ -32,11 +32,11 @@ marked.setOptions({
 // Helper function to convert markdown/HTML to pdfMake format
 const convertMarkdownToPdfMake = (markdownText: string): any => {
   if (!markdownText) return '';
-  
+
   try {
     // First convert markdown to HTML
     const html = marked(markdownText) as string;
-    
+
     // Then convert HTML to pdfMake format
     const pdfContent = htmlToPdfmake(html, {
       defaultStyles: {
@@ -60,7 +60,7 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
         li: { margin: [0, 2, 0, 2] },
       }
     });
-    
+
     return pdfContent;
   } catch (error) {
     console.error('Error converting markdown to pdfMake:', error);
@@ -139,7 +139,7 @@ interface GenerateInvestigationReportModalProps {
     case_type?: string;
     status?: string;
     priority?: string;
-    created_at?: string;
+    createdOn?: string;
   };
   tasks?: TaskDTO[];
   selectedOutcome?: string;
@@ -180,19 +180,30 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     (selectedOutcome as FinalOutcomeType) || ''
   );
 
-  const filterTasks = tasks ? tasks.filter(task => task.name?.toLowerCase().includes('investigate')) : [];
+  const latestInvestigateTask = React.useMemo(() => {
+    if (!tasks?.length) return null;
 
+    return tasks
+      .filter(task =>
+        task.name?.toLowerCase().includes('investigate'),
+      )
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at ?? 0).getTime();
+        const bTime = new Date(b.created_at ?? 0).getTime();
+        return bTime - aTime;
+      })[0] || null;
+  }, [tasks]);
 
 
   const fetchEvidence = React.useCallback(async () => {
-    if (!filterTasks[0].task_id) return;
-    const categories = await loadEvidence(filterTasks[0].task_id);
+    if (!latestInvestigateTask?.task_id) return;
+    const categories = await loadEvidence(latestInvestigateTask?.task_id);
     setEvidenceCategories(categories);
-  }, [filterTasks]);
+  }, [latestInvestigateTask]);
 
   // Load case details, comments, supervisor comments, investigation task & notes
   const fetchCaseData = React.useCallback(async () => {
-    if (!filterTasks[0].task_id) return;
+    if (!latestInvestigateTask?.task_id) return;
     setLoading(true);
     try {
       const {
@@ -202,7 +213,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         investigatorName,
         investigationTask,
         investigationNotes,
-      } = await fetchCasesAndEvidence(caseId, filterTasks[0].task_id);
+      } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
 
       setCaseDetails(caseDetails);
       setCaseComments(caseComments);
@@ -215,20 +226,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     } finally {
       setLoading(false);
     }
-  }, [caseId, filterTasks]);
+  }, [caseId, latestInvestigateTask]);
 
   // Fetch evidence and case data on mount
   useEffect(() => {
     fetchEvidence();
     fetchCaseData();
   }, []);
-
-  // Update finalOutcome when selectedOutcome prop changes
-  useEffect(() => {
-    if (selectedOutcome) {
-      setFinalOutcome(selectedOutcome as FinalOutcomeType);
-    }
-  }, [selectedOutcome]);
 
   // Update finalOutcome when selectedOutcome prop changes
   useEffect(() => {
@@ -275,10 +279,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     checkTaskCompletion();
   }, [open, caseId, showError]);
 
+  useEffect(() => {
+    setExecutiveSummary(buildExecutiveSummary());
+  }, [finalOutcome, caseData?.createdOn, caseData?.case_type]);
+
   const buildExecutiveSummary = () => {
-    const createdDate = caseData?.created_at ? formatDate(caseData.created_at) : 'N/A';
+    const createdDate = caseData?.createdOn ? formatDate(caseData.createdOn) : 'N/A';
     const caseType = caseData?.case_type || 'Investigation';
-    const outcome = caseData?.status || 'Under Review';
+    const outcome = finalOutcome || 'Under Review';
 
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
@@ -625,9 +633,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         setStep('generated');
 
 
-        if (filterTasks && investigationNotes) {
+        if (latestInvestigateTask && investigationNotes) {
           try {
-            await taskService.updateTaskForSupervisor(filterTasks[0].task_id, {
+            await taskService.updateTaskForSupervisor(latestInvestigateTask.task_id, {
               investigationNotes: investigationNotes,
             });
           } catch {

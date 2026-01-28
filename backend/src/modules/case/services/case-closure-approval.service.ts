@@ -202,7 +202,12 @@ export class CaseClosureApprovalService {
         primaryTask = userTask; // Use the user's assigned task as primary
       } else {
         // Single investigation case
-        const investigationTask = caseData.tasks.find((task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any));
+        const investigationTask = caseData.tasks.filter((task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED).sort((a, b) => {
+          const aTime = new Date(a.created_at ?? 0).getTime();
+          const bTime = new Date(b.created_at ?? 0).getTime();
+          return bTime - aTime;
+        })[0] || null;
+
 
         if (!investigationTask) {
           throw new BadRequestException({
@@ -211,6 +216,8 @@ export class CaseClosureApprovalService {
             missingTask: TASK_NAMES.INVESTIGATE_CASE,
           });
         }
+
+        this.logger.log(`Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`, CaseClosureApprovalService.name);
 
         if (investigationTask.assigned_user_id !== userId) {
           throw new BadRequestException({

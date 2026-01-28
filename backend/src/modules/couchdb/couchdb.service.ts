@@ -98,7 +98,7 @@ export class CouchdbService implements OnModuleInit {
     reportId?: string;
     tenantId?: string;
     uploadedBy?: string;
-    taskId?: string;
+    taskId?: number;
     caseId?: number;
     evidenceType?: string;
     verified?: boolean;

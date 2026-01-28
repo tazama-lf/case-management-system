@@ -26,6 +26,7 @@ export interface TaskDTO {
   name: string;
   status: string;
   assigned_user_id: string;
+  created_at: Date;
 }
 
 export interface AlertInfoDto {

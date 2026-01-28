@@ -56,7 +56,7 @@ export class EvidenceListResponseDto {
   total: number;
 
   @ApiProperty()
-  taskId?: string;
+  taskId?: number;
 
   @ApiProperty()
   evidenceType?: EvidenceType;
@@ -155,6 +155,6 @@ export class CreateEvidenceDto {
   @ApiProperty({
     description: 'Associated case ID',
   })
-  case_Id: number;
+  caseId: number;
 
 }
