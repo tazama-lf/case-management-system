@@ -158,6 +158,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
   const hasFetchedRef = React.useRef(false);
+  const [evidenceLoaded, setEvidenceLoaded] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(false);
+
+  useEffect(() => {
+    hasFetchedRef.current = false;
+  }, [caseId]);
 
   const latestInvestigateTask = React.useMemo(() => {
     if (!tasks?.length) return null;
@@ -173,13 +180,20 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       })[0] || null;
   }, [tasks]);
 
-  const isReportReady = !!latestInvestigateTask?.task_id && evidenceCategories.length > 0 && caseComments.length > 0 && investigationNotes !== '';
-
+  const isReportReady =
+    !!latestInvestigateTask?.task_id &&
+    evidenceLoaded &&
+    commentsLoaded &&
+    notesLoaded;
 
   const fetchEvidence = React.useCallback(async () => {
     if (!latestInvestigateTask?.task_id) return;
-    const categories = await loadEvidence(latestInvestigateTask?.task_id);
-    setEvidenceCategories(categories);
+    try {
+      const categories = await loadEvidence(latestInvestigateTask?.task_id);
+      setEvidenceCategories(categories);
+    } finally {
+      setEvidenceLoaded(true);
+    }
   }, [latestInvestigateTask]);
 
   // Load case details, comments, supervisor comments, investigation task & notes
@@ -202,15 +216,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     } catch (err) {
       console.error('Failed to fetch case data:', err);
     } finally {
-
+      setCommentsLoaded(true);
+      setNotesLoaded(true);
     }
   }, [caseId, latestInvestigateTask]);
-
-  // Fetch evidence and case data on mount
-  // useEffect(() => {
-  //   fetchEvidence();
-  //   fetchCaseData();
-  // }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -324,7 +333,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               text: ` (${evidenceService.formatFileSize(doc.fileSize || 0)}`,
             },
             doc.uploadedAt
-              ? { text: ` • ${new Date(doc.uploadedAt).toLocaleDateString()})` }
+              ? { text: ` • ${formatDate(doc.uploadedAt)})` }
               : { text: ')' },
             doc.description
               ? { text: `\n${doc.description}`, italics: true }
@@ -346,7 +355,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   });
 
   const submittedDate = caseComments?.[0]?.created_at
-    ? new Date(caseComments[0].created_at).toLocaleString()
+    ? formatDate(caseComments[0].created_at)
     : 'N/A';
 
   const docDefinition: any = {
@@ -365,7 +374,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 5],
       },
       {
-        text: `Generated: ${timestamp}`,
+        text: `Generated: ${formatDate(new Date().toISOString())}`,
         style: 'timestamp',
         margin: [0, 0, 0, 20],
       },
