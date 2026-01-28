@@ -47,7 +47,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   canManageSupervisorActions = false,
   caseStatus,
   onAfterTaskReassign,
-  // caseData,
+  caseData,
   onApproveCase,
   onApproveCaseCreation,
   onRejectCaseCreation,
@@ -55,7 +55,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 }) => {
   const { success, error: toastError } = useToast();
   const { hasSupervisorRole, hasCMSAdminRole, hasComplianceOfficerRole, hasInvestigatorRole } = useAuth();
-  const [caseData, setCaseData] = useState<CaseRow | null>(null);
+  const [caseDetails, setCaseDetails] = useState<CaseRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskDetailsModalOpen, setTaskDetailsModalOpen] = useState(false);
@@ -91,11 +91,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       // Transform backend case data to CaseRow format if found
       if (fetchedCase) {
         const transformedCase = transformBackendCaseToUI(fetchedCase);
-        setCaseData(transformedCase);
+        setCaseDetails(transformedCase);
       } else {
         const caseDetails = await caseService.getCaseDetails(caseId)
         const transformedCase = transformBackendCaseToUI(caseDetails as unknown as CaseWithTasksDto);
-        setCaseData(transformedCase);
+        setCaseDetails(transformedCase);
       }
 
       try {
@@ -581,7 +581,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
               setTaskDetailsModalOpen(false);
               setSelectedTask(null);
             }}
-            row={caseData || undefined}
+            row={caseDetails || undefined}
             onRefreshCases={onRefreshCases}
             onTaskUpdate={async () => {
               // Refresh tasks in TaskLogTab when investigation task is completed

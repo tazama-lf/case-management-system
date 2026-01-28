@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import userService from '../../services/userService';
-import { taskService, type Task } from '../../services/taskService';
+import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
@@ -18,7 +18,6 @@ import { evidenceService } from '../../services/evidenceService';
 import type { TaskDTO } from '../../services/caseService';
 import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
 import type { TaskComment } from '../../services/commentService';
-import type { Case } from '@/features/alerts/types/triage.types';
 import { formatDate } from '@/shared/utils/dateUtils';
 
 interface EvidenceCategory {
@@ -89,6 +88,13 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
   }
 };
 
+interface EvidenceCategory {
+  type: string;
+  count: number;
+  description: string;
+  evidence: Evidence[];
+}
+
 export const FINAL_OUTCOMES = [
   {
     value: 'STATUS_83_CLOSED_INCONCLUSIVE',
@@ -149,12 +155,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
-  const [caseDetails, setCaseDetails] = useState<Case | null>(null);
-  const [investigationTask, setInvestigationTask] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>(
-    (selectedOutcome as FinalOutcomeType) || ''
-  );
+  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
+  const hasFetchedRef = React.useRef(false);
+  const [evidenceLoaded, setEvidenceLoaded] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(false);
+
+  useEffect(() => {
+    hasFetchedRef.current = false;
+  }, [caseId]);
 
   const latestInvestigateTask = React.useMemo(() => {
     if (!tasks?.length) return null;
@@ -170,43 +179,56 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       })[0] || null;
   }, [tasks]);
 
+  const isReportReady =
+    !!latestInvestigateTask?.task_id &&
+    evidenceLoaded &&
+    commentsLoaded &&
+    notesLoaded;
 
   const fetchEvidence = React.useCallback(async () => {
     if (!latestInvestigateTask?.task_id) return;
-    const categories = await loadEvidence(latestInvestigateTask?.task_id);
-    setEvidenceCategories(categories);
+    try {
+      const categories = await loadEvidence(latestInvestigateTask?.task_id);
+      setEvidenceCategories(categories);
+    } finally {
+      setEvidenceLoaded(true);
+    }
   }, [latestInvestigateTask]);
 
   const fetchCaseData = React.useCallback(async () => {
     if (!latestInvestigateTask?.task_id) return;
-    setLoading(true);
+
     try {
       const {
-        caseDetails,
+
         caseComments,
         supervisorComments,
         investigatorName,
-        investigationTask,
         investigationNotes,
       } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
 
-      setCaseDetails(caseDetails);
       setCaseComments(caseComments);
       setSupervisorComments(supervisorComments);
       setInvestigatorName(investigatorName);
-      setInvestigationTask(investigationTask);
       setInvestigationNotes(investigationNotes);
     } catch (err) {
       console.error('Failed to fetch case data:', err);
     } finally {
-      setLoading(false);
+      setCommentsLoaded(true);
+      setNotesLoaded(true);
     }
   }, [caseId, latestInvestigateTask]);
 
   useEffect(() => {
+    if (!open) return;
+    if (!latestInvestigateTask?.task_id) return;
+    if (hasFetchedRef.current) return;
+
+    hasFetchedRef.current = true;
+
     fetchEvidence();
     fetchCaseData();
-  }, []);
+  }, [open, latestInvestigateTask?.task_id, fetchEvidence, fetchCaseData]);
 
   useEffect(() => {
     if (selectedOutcome) {
@@ -295,7 +317,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               text: ` (${evidenceService.formatFileSize(doc.fileSize || 0)}`,
             },
             doc.uploadedAt
-              ? { text: ` • ${new Date(doc.uploadedAt).toLocaleDateString()})` }
+              ? { text: ` • ${formatDate(doc.uploadedAt)})` }
               : { text: ')' },
             doc.description
               ? { text: `\n${doc.description}`, italics: true }
@@ -317,7 +339,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   });
 
   const submittedDate = caseComments?.[0]?.created_at
-    ? new Date(caseComments[0].created_at).toLocaleString()
+    ? formatDate(caseComments[0].created_at)
     : 'N/A';
 
   const docDefinition: any = {
@@ -336,7 +358,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 5],
       },
       {
-        text: `Generated: ${timestamp}`,
+        text: `Generated: ${formatDate(new Date().toISOString())}`,
         style: 'timestamp',
         margin: [0, 0, 0, 20],
       },
@@ -535,19 +557,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     },
   };
 
-
-  const handleDownload = () => {
-    try {
-
-      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
-      pdfDoc.download(`Investigation_Report_${caseId}_${new Date().toISOString().split('T')[0]}.pdf`);
-
-      showSuccess('Report downloaded successfully!');
-    } catch {
-      showError('Failed to download report. Please try again.');
-    }
-  };
-
   const handleApproveClick = () => {
     setShowApprovalConfirm(true);
   };
@@ -569,17 +578,28 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     });
   };
 
-  const handleGenerateReport = async () => {
-    if (isGenerating) return;
+  // const handleGenerateReport = async () => {
+  //   if (isGenerating) return;
+
+  //   setIsGenerating(true);
+
+  //   try {
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     setStep('generated');
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // };
+
+  const handleGenerateReport = () => {
+    if (!isReportReady) return;
 
     setIsGenerating(true);
+    setStep('generated');
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setStep('generated');
-    } finally {
+    setTimeout(() => {
       setIsGenerating(false);
-    }
+    }, 300);
   };
 
 
@@ -770,7 +790,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
               <button
                 onClick={handleGenerateReport}
-                disabled={isGenerating || (userRole === 'CMS_SUPERVISOR' && (!tasksCompleted || checkingTasks))}
+                disabled={!isReportReady || (userRole === 'CMS_SUPERVISOR' && (!tasksCompleted || checkingTasks))}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
               >
                 {checkingTasks && userRole === 'CMS_SUPERVISOR' ? (
@@ -1042,19 +1062,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
             <div className="flex items-center gap-3">
               {userRole === 'CMS_SUPERVISOR' && (
                 <>
-                  <button
-                    onClick={handleDownload}
-                    disabled={!isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                      }`}
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download Report
-                  </button>
                   <button
                     onClick={handleApproveClick}
                     disabled={isFinalizing || isApproved}
