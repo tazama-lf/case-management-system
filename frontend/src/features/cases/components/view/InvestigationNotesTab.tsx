@@ -10,12 +10,11 @@ import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRed
 import '@mdxeditor/editor/style.css';
 import { TaskStatus } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
-
+import { authService } from '@/features/auth';
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
   onNotesUpdate?: () => void;
 }
-
 
 const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   task,
@@ -35,20 +34,14 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
         e.preventDefault();
         const href = (target as HTMLAnchorElement).href;
-
-        // Extract the actual URL from the href
         let url = href;
-
-        // If the URL is relative (doesn't have protocol), extract the path and add https://
         if (!href.match(/^https?:\/\//i) && !href.match(/^mailto:/i)) {
-          // Extract the relative path part (e.g., /cases/google.com -> google.com)
           const match = href.match(/\/([^/]+)$/);
           if (match) {
             url = 'https://' + match[1];
           }
         }
 
-        // Open in new tab
         window.open(url, '_blank', 'noopener,noreferrer');
       }
     };
@@ -59,11 +52,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   // Transform markdown to ensure all links have proper protocols
   const transformMarkdownLinks = (markdown: string): string => {
-    // Match markdown links: [text](url)
     return markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-      // If URL doesn't start with protocol or is not a mailto link
       if (!url.match(/^(https?:\/\/|mailto:|#)/i)) {
-        // Add https:// prefix
         return `[${text}](https://${url})`;
       }
       return match;
@@ -75,6 +65,13 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
     const transformedValue = transformMarkdownLinks(value);
     setNotes(transformedValue);
   };
+
+  const isUserAbleToSaveNotes = () => {
+    const user = authService.getUser();
+    return user?.userId===task?.assigned_user_id;
+  }
+
+  const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
 
   React.useEffect(() => {
     const loadComments = async () => {
@@ -155,7 +152,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
-              readOnly={isTaskCompleted}
+              readOnly={isTaskCompleted || !isUserCanEdit}
               className="mdx-editor"
               contentEditableClassName="prose"
               plugins={[
@@ -180,6 +177,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           </div>
 
           {/* Save Button */}
+          {isUserAbleToSaveNotes() && (
           <div className="flex justify-end gap-2">
             <button
               onClick={handleSaveNotes}
@@ -190,6 +188,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
               {saving ? 'Saving...' : 'Save Investigation Notes'}
             </button>
           </div>
+          )}
         </>
       )}
     </div>
