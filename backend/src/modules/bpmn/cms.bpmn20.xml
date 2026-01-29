@@ -251,7 +251,7 @@
         </sequenceFlow>
 
         <!-- From autoclose to case creation for non-eligible cases -->
-        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigationRoutingGateway">
+        <sequenceFlow id="flowAutocloseToInvestigation" sourceRef="autoCloseGateway" targetRef="investigationRoutingGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${caseStatus == 'STATUS_02_READY_FOR_ASSIGNMENT'}
             </conditionExpression>

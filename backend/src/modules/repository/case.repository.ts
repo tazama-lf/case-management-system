@@ -166,7 +166,19 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async findCaseById(caseId: number): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
+  async findCaseById(caseId: number, tx?: Prisma.TransactionClient): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
+    if (tx) {
+      const caseData = await this.prisma.case.findUnique({
+        where: { case_id: caseId },
+        include: { alert: true, tasks: true },
+      });
+
+      if (!caseData) {
+        throw new NotFoundException('Case Not Found');
+      }
+
+      return caseData;
+    }
     const caseData = await this.prisma.case.findUnique({
       where: { case_id: caseId },
       include: { alert: true, tasks: true },

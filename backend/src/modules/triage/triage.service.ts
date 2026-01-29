@@ -20,8 +20,8 @@ import { UpdateAlertDTO } from '../alert/dto';
 import { EventLogService } from '../event_log/eventLog.service';
 import { CaseHistoryService } from '../case_history/caseHistory.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
-import { TaskSyncService } from '../task-sync/task-sync.service';
-import { FlowableProcessService } from '../flowable/services/flowable-process.service';
+import { CaseService } from '../case/case.service';
+import { AlertRepository } from '../repository/alert.repository';
 
 @Injectable()
 export class TriageService {
@@ -33,6 +33,7 @@ export class TriageService {
 
   constructor(
     private readonly loggerService: LoggerService,
+    private readonly alertRepository: AlertRepository,
     private readonly caseRepository: CaseRepository,
     private readonly flowableService: FlowableService,
     private readonly alertService: AlertService,
@@ -46,46 +47,67 @@ export class TriageService {
     private readonly featureExtractionService: FeatureExtractionService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-    private readonly syncTaskService: TaskSyncService,
-    private readonly flowableProcessService: FlowableProcessService,
+    private readonly caseService: CaseService,
   ) {}
 
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
-    this.loggerService.log(`Start - handleManualTriage`, TriageService.name);
     try {
+      this.loggerService.log(`Start - handleManualTriage`, TriageService.name);
+      const priorityScore = updateAlertDto.priorityScore ?? 0.0;
+      const priority = this.casePriorityUtil.determinePriority(priorityScore);
       const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
       if (triageType !== 'MANUAL') {
         throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
       }
 
-      const priorityScore = updateAlertDto.priorityScore ?? 0.0;
-      const priority = this.casePriorityUtil.determinePriority(priorityScore);
       updateAlertDto.priority = priority;
-      const alert = await this.alertService.updateAlert(alertId, userId, {
-        confidencePer: updateAlertDto.confidence_per,
-        priority: updateAlertDto.priority,
-        priority_score: updateAlertDto.priorityScore,
-        predictionOutcome: updateAlertDto.predictionOutcome,
-        alertType: updateAlertDto.alertType,
+      const response = await this.alertRepository.transaction(async (tx) => {
+        const alert = await this.alertRepository.updateAlert(
+          alertId,
+          {
+            confidencePer: updateAlertDto.confidence_per,
+            priority: updateAlertDto.priority,
+            priority_score: updateAlertDto.priorityScore,
+            predictionOutcome: updateAlertDto.predictionOutcome,
+            alertType: updateAlertDto.alertType,
+          },
+          tx,
+        );
+
+        if (!alert.case_id) {
+          throw new InternalServerErrorException('Alert case_id is missing.');
+        }
+
+        const existingCase = await this.caseRepository.findCaseById(alert.case_id, tx);
+
+        const completeCaseTask = existingCase.tasks.find((task) => task.task_type === TaskType.CASE_CREATION);
+
+        if (!completeCaseTask || completeCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
+          throw new BadRequestException(`Task Not Found or Triage Already Completed`);
+        }
+        if (completeCaseTask.assigned_user_id !== null && completeCaseTask.assigned_user_id !== userId) {
+          throw new BadRequestException(`Task is assigned to another user`);
+        }
+
+        // const updateTask = await this.taskService.updateTask(
+        //   completeCaseTask.task_id,
+        //   {
+        //     assignedUserId: userId,
+        //     status: TaskStatus.STATUS_30_COMPLETED,
+        //   },
+        //   userId,
+        // );
+        return { case: existingCase, alert };
       });
-      if (!alert.case_id) {
-        throw new InternalServerErrorException('Alert case_id is missing.');
-      }
 
-      const existingCase = await this.caseRepository.findCaseById(alert.case_id);
-
-      const completeCaseTask = existingCase.tasks.find((task) => task.task_type === TaskType.CASE_CREATION);
-      if (!completeCaseTask || completeCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
-        throw new BadRequestException(`Task Not Found or Triage Already Completed`);
-      }
-
-      if (completeCaseTask.assigned_user_id !== null && completeCaseTask.assigned_user_id !== userId) {
-        throw new BadRequestException(`Task is assigned to another user`);
-      }
-
-      const result = await this.taskService.claimTask(existingCase.case_id, userId, TaskType.CASE_CREATION);
-      this.loggerService.log(`Claimed Task: ${JSON.stringify(result)}`, TriageService.name);
-
+      const claimResult = await this.taskService.claimTask(response.case.case_id, userId, TaskType.CASE_CREATION);
+      // const caseStatusUpdateResult = await this.caseService.updateCaseStatus(
+      //   response.case.case_id,
+      //   updateAlertDto.status!,
+      //   userId,
+      //   priority,
+      //   updateAlertDto.alertType as CaseType,
+      // );
       // const targetFlowableTask = await this.syncTaskService.syncTaskCompletionWithFlowable(
       //   userId,
       //   existingCase.case_id,
@@ -172,7 +194,7 @@ export class TriageService {
       //     );
       //   }
       this.loggerService.log('End - handleManualTriage', TriageService.name);
-      return alert;
+      return response.alert;
     } catch (error) {
       this.loggerService.error(`Manual triage failed for alert ${alertId}: ${error.message}`, error.stack, TriageService.name);
       throw error;
@@ -292,7 +314,7 @@ export class TriageService {
             triageTaskId,
             {
               status: TaskStatus.STATUS_30_COMPLETED,
-              description: 'Triage complete - true positive and case contains both fraud and aml',
+              // description: 'Triage complete - true positive and case contains both fraud and aml',
             },
             userId,
           );
@@ -416,7 +438,7 @@ export class TriageService {
         taskId,
         {
           status: TaskStatus.STATUS_30_COMPLETED,
-          description: customDescription ?? `Auto-closed case with status ${status}`,
+          // description: customDescription ?? `Auto-closed case with status ${status}`,
         },
         userId,
       );
@@ -481,7 +503,7 @@ export class TriageService {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
 
-      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
+      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId);
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(
         caseId,
@@ -562,7 +584,7 @@ export class TriageService {
       const task = await this.taskService.updateTask(
         taskId,
         {
-          description: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
+          // description: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
         },
         userId,
       );

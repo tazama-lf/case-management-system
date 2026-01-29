@@ -1,43 +1,34 @@
-import { useState, useEffect } from 'react';
 import systemConfigService from '../services/systemConfigService';
 import type { SystemConfig, TriageType } from '../services/systemConfigService';
+import { useQuery } from '@tanstack/react-query';
 
 export const useSystemConfig = () => {
-  const [config, setConfig] = useState<SystemConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: config,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['systemConfig', 'current'],
+    queryFn: () => systemConfigService.getSystemConfig(),
+    retry: 1,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-  const fetchConfig = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const systemConfig = await systemConfigService.getSystemConfig();
-      setConfig(systemConfig);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load system configuration');
-      setConfig({
-        triageType: 'MANUAL',
-        confidenceThreshold: 95,
-        interdictionEnabled: true,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchConfig();
-  }, []);
-
-  const refetchConfig = async () => {
-    await fetchConfig();
+  const defaultConfig: SystemConfig = {
+    triageType: 'MANUAL',
+    confidenceThreshold: 95,
+    interdictionEnabled: true,
   };
 
   return {
-    config,
+    config: config || defaultConfig,
     loading,
-    error,
-    refetchConfig,
+    error: queryError instanceof Error ? queryError.message : null,
+    fetchConfig: refetch,
     triageType: config?.triageType || 'MANUAL',
     isAIMode: config?.triageType === 'AI',
     isManualMode: config?.triageType === 'MANUAL',

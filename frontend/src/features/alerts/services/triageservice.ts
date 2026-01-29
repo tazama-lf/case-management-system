@@ -150,17 +150,17 @@ class TriageService {
     }
   }
 
-  async updateAlert(alertId: number, data: UpdateAlertDto): Promise<Alert> {
-    try {
-      const response = await apiClient.patch<Alert>(
-        `${this.baseUrl}/${alertId}`,
-        data,
-      );
-      return this.validateAlertResponse(response);
-    } catch (error) {
-      throw this.handleError(error, 'update alert');
-    }
-  }
+  // async updateAlert(alertId: number, data: UpdateAlertDto): Promise<Alert> {
+  //   try {
+  //     const response = await apiClient.patch<Alert>(
+  //       `${this.baseUrl}/${alertId}`,
+  //       data,
+  //     );
+  //     return this.validateAlertResponse(response);
+  //   } catch (error) {
+  //     throw this.handleError(error, 'update alert');
+  //   }
+  // }
 
   async closeAlert(
     alertId: number,
