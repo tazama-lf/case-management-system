@@ -71,16 +71,17 @@ export class FlowableTaskService {
       // if (event.newStatus !== TaskStatus.STATUS_30_COMPLETED) {
       //   return;
       // }
+      const task = await this.fetchFlowableTask(caseId, taskType);
 
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
-      if (!processInstance) {
-        throw new NotFoundException(`No Flowable process found for case ${caseId}`);
-      }
+      // const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+      // if (!processInstance) {
+      //   throw new NotFoundException(`No Flowable process found for case ${caseId}`);
+      // }
 
-      const flowableTasks = await this.getProcessTasks(processInstance.id);
-      const task = flowableTasks.find((task: { name: string; category: string; processInstanceId: string }) => {
-        return task.category === taskType && task.processInstanceId === processInstance.id;
-      });
+      // const flowableTasks = await this.getProcessTasks(processInstance.id);
+      // const task = flowableTasks.find((task: { name: string; category: string; processInstanceId: string }) => {
+      //   return task.category === taskType && task.processInstanceId === processInstance.id;
+      // });
 
       // let completionVars: Record<string, string> = {};
       // Object.entries(completionVariables!).forEach(([key, value]) => {
@@ -98,9 +99,9 @@ export class FlowableTaskService {
         action: FlowableTaskActions.COMPLETE,
         variables: completionVariables ? formatVariables(completionVariables) : [],
       };
-      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.taskId), payload);
+      const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.id), payload);
 
-      this.logger.log(`End - completeFlowableTask: ${task.taskId}`, FlowableTaskService.name);
+      this.logger.log(`End - completeFlowableTask: ${task.id}`, FlowableTaskService.name);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to complete task: ${error.message}`, error.stack, FlowableTaskService.name);
@@ -110,15 +111,16 @@ export class FlowableTaskService {
 
   async claimTask(caseId: number, assignee: string, taskType: TaskType): Promise<number> {
     try {
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
-      const flowableTasks = await this.getProcessTasks(processInstance.id);
+      const task = await this.fetchFlowableTask(caseId, taskType);
+      // const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+      // const flowableTasks = await this.getProcessTasks(processInstance.id);
 
-      const task = flowableTasks.find((task: FlowableTask) => {
-        return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
-      });
-      if (!task) {
-        throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
-      }
+      // const task = flowableTasks.find((task: FlowableTask) => {
+      //   return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
+      // });
+      // if (!task) {
+      //   throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
+      // }
 
       const payload = {
         action: FlowableTaskActions.CLAIM,
@@ -137,15 +139,16 @@ export class FlowableTaskService {
 
   async unclaimTask(caseId: number, taskType: TaskType): Promise<number> {
     try {
-      const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
-      const flowableTasks = await this.getProcessTasks(processInstance.id);
+      const task = await this.fetchFlowableTask(caseId, taskType);
+      // const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+      // const flowableTasks = await this.getProcessTasks(processInstance.id);
 
-      const task = flowableTasks.find((task: FlowableTask) => {
-        return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
-      });
-      if (!task) {
-        throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
-      }
+      // const task = flowableTasks.find((task: FlowableTask) => {
+      //   return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
+      // });
+      // if (!task) {
+      //   throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
+      // }
       const payload = {
         action: FlowableTaskActions.CLAIM,
         assignee: null,
@@ -194,5 +197,17 @@ export class FlowableTaskService {
       this.logger.error(`Failed to get candidate tasks: ${error.message}`, error.stack, FlowableTaskService.name);
       throw new HttpException('Failed to get candidate tasks', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  private async fetchFlowableTask(caseId: number, taskType: TaskType): Promise<FlowableTask> {
+    const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
+    const flowableTasks = await this.getProcessTasks(processInstance.id);
+    const task = flowableTasks.find((task: FlowableTask) => {
+      return task.category === taskType && task.processInstanceId === processInstance.id;
+    });
+    if (!task) {
+      throw new NotFoundException(`No Flowable task found for case ${caseId} and task type ${taskType}`);
+    }
+    return task;
   }
 }

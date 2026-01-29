@@ -255,6 +255,8 @@ export class TaskService {
 
   async completeTask(userId: string, taskId: number, completeTaskDto: CompleteTaskDTO) {
     this.loggerService.log(`Start - Complete Task: ${taskId}`, TaskService.name);
+    try {
+    } catch (error) {}
   }
 
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
