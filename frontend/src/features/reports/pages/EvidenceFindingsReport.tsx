@@ -2,10 +2,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import {
   ExclamationCircleIcon,
   FunnelIcon,
-  MagnifyingGlassIcon,
-  DocumentIcon,
-  EyeIcon,
-  ArrowDownTrayIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import EvidenceFindingsStatsCards from '../components/EvidenceFindingsStatsCards';
 import { useEvidenceFindings } from '@/features/reports/hooks/useReports';
@@ -20,6 +17,8 @@ import { usePagination } from '@/shared/hooks/usePagination';
 import type { FindingDetail } from '@/features/reports/types/reports.types';
 import { evidenceService } from '../../cases/services/evidenceService';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
+import EvidenceCard from '@/features/reports/components/EvidenceCard';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 const PaginationControls = React.lazy(
   () => import('../../../shared/PaginationControls'),
@@ -48,11 +47,11 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   const [statusFilter, setStatusFilter] = useState<
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'
   >('All');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
-
+  const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -254,13 +253,14 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     }
   };
 
-
   const {
     stats = {
       totalFindings: 0,
       evidenceItems: 0,
       confirmedFindings: 0,
       refutedFindings: 0,
+      inProgressFindings: 0,
+      inconclusiveFindings: 0,
     },
     findings = [],
   } = displayData || {};
@@ -492,214 +492,75 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                 <div className="divide-y divide-gray-200">
                   {paginatedFindings.length > 0 ? (
                     paginatedFindings.map((finding) => {
-                      const uniqueId = getUniqueFindingId(
-                        finding.caseId,
-                        finding.finding,
-                      );
-                      const isExpanded = expandedId === uniqueId;
+                      const caseUniqueId = getUniqueFindingId(finding.caseId, finding.finding);
+                      const isCaseExpanded = expandedCaseId === caseUniqueId;
+
                       return (
-                        <div
-                          key={uniqueId}
-                          className="p-8 hover:bg-gray-50/50 transition-colors"
-                        >
-                          {/* Finding Header */}
+                        <div key={caseUniqueId} className="p-6 hover:bg-gray-50/50 transition-colors">
+                          {/* Case Header */}
                           <div
-                            className="cursor-pointer flex items-start justify-between group hover:opacity-100 opacity-95 transition-opacity"
-                            onClick={() =>
-                              setExpandedId(isExpanded ? null : uniqueId)
-                            }
+                            className="cursor-pointer flex justify-between items-start"
+                            onClick={() => setExpandedCaseId(isCaseExpanded ? null : caseUniqueId)}
                           >
-                            <div className="flex-1">
-                              <div className="flex items-start gap-3 mb-2">
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                                    {finding.finding}
-                                  </h4>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Task:{' '}
-                                    <span className="font-mono">
-                                      {finding.taskId || finding.caseId}
-                                    </span>{' '}
-                                    | Date:{' '}
-                                    <span className="font-mono">
-                                      {new Date(
-                                        finding.dateIdentified,
-                                      ).toLocaleDateString('en-GB')}
-                                    </span>
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(finding.conclusion)}`}
-                                >
-                                  {finding.conclusion}
-                                </span>
-                                <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
-                                  {finding.evidenceCount} evidence items
-                                </span>
-                              </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{finding.finding}</h4>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Date: {formatDate(finding.dateIdentified)}
+                              </p>
+                            </div>
+
+                            <div className="flex gap-4 items-center">
+                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(finding.conclusion)}`}>
+                                {finding.conclusion}
+                              </span>
+                              <span className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">
+                                {finding.evidenceCount} evidence items
+                              </span>
                             </div>
                           </div>
 
-                          {/* Expanded Content */}
-                          {isExpanded && (
-                            <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                              <div className="text-sm text-gray-600 mb-4">
-                                <p>
-                                  <strong>Conclusion:</strong>{' '}
-                                  {finding.conclusion}
-                                </p>
-                              </div>
-                              <div>
-                                <h5 className="text-sm font-semibold text-gray-900 mb-3">
-                                  Supporting Evidence
-                                </h5>
-                                <div className="space-y-3">
-                                  {finding.supportingEvidence.map(
-                                    (evidence: string | {
-                                      id: string;
-                                      fileName: string;
-                                      fileSize?: number;
-                                      mimeType?: string;
-                                      evidenceType?: string;
-                                      uploadedBy?: string;
-                                      uploadedByName?: string;
-                                      uploadedAt?: string;
-                                      description?: string;
-                                      hash?: string;
-                                    }, idx: number) => {
+                          {/* Expanded Case → Tasks */}
+                          {isCaseExpanded && (
+                            <div className="mt-4 space-y-4 border-t border-gray-200 pt-4">
+                              {finding.tasks.map((task) => {
+                                const taskUniqueId = `task-${finding.caseId}-${task.taskId}`;
+                                const isTaskExpanded = expandedTaskId === taskUniqueId;
 
-                                      const evidenceId = typeof evidence === 'string' ? evidence : evidence.id;
-                                      const evidenceName = typeof evidence === 'string' ? evidence : evidence.fileName;
-                                      const evidenceObj = typeof evidence === 'object' ? evidence : null;
+                                return (
+                                  <div key={taskUniqueId} className="space-y-2">
+                                    {/* Task Header */}
+                                    <div
+                                      className="cursor-pointer flex justify-between items-center bg-gray-100 p-2 rounded"
+                                      onClick={() =>
+                                        setExpandedTaskId(isTaskExpanded ? null : taskUniqueId)
+                                      }
+                                    >
+                                      <span className="text-sm font-medium">Task ID: {task.taskId}</span>
+                                      <span className="text-xs font-medium bg-gray-200 px-2 py-1 rounded">
+                                        {task.supportingEvidence.length} evidence
+                                      </span>
+                                    </div>
 
-                                      return (
-                                        <div
-                                          key={idx}
-                                          className="flex flex-col gap-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors"
-                                        >
-                                          <div className="flex items-start gap-3">
-                                            <DocumentIcon className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-gray-900 text-sm break-words">
-                                                {evidenceName}
-                                              </p>
-                                              <p className="text-xs text-gray-500 mt-1">
-                                                ID: <span className="font-mono">{evidenceId}</span>
-                                              </p>
-                                              {evidenceObj?.description && (
-                                                <p className="text-xs text-gray-600 mt-1">
-                                                  {evidenceObj.description}
-                                                </p>
-                                              )}
-                                            </div>
-                                            <div className="flex gap-1 flex-shrink-0">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleViewEvidence(evidenceName, evidenceId);
-                                                }}
-                                                disabled={viewingId === evidenceId || downloadingId === evidenceId}
-                                                className={`inline-flex items-center justify-center p-2 rounded transition-colors ${viewingId === evidenceId
-                                                  ? 'text-blue-400 bg-blue-50 cursor-wait'
-                                                  : downloadingId === evidenceId
-                                                    ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
-                                                    : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-                                                  }`}
-                                                title={viewingId === evidenceId ? 'Loading...' : 'View evidence'}
-                                              >
-                                                {viewingId === evidenceId ? (
-                                                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                  </svg>
-                                                ) : (
-                                                  <EyeIcon className="h-4 w-4" />
-                                                )}
-                                              </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleDownloadEvidence(evidenceId);
-                                                }}
-                                                disabled={downloadingId === evidenceId || viewingId === evidenceId}
-                                                className={`inline-flex items-center justify-center p-2 rounded transition-colors ${downloadingId === evidenceId
-                                                  ? 'text-green-400 bg-green-50 cursor-wait'
-                                                  : viewingId === evidenceId
-                                                    ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
-                                                    : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
-                                                  }`}
-                                                title={downloadingId === evidenceId ? 'Downloading...' : 'Download evidence'}
-                                              >
-                                                {downloadingId === evidenceId ? (
-                                                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                  </svg>
-                                                ) : (
-                                                  <ArrowDownTrayIcon className="h-4 w-4" />
-                                                )}
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          {/* Evidence details grid */}
-                                          {evidenceObj && (
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                              <div>
-                                                <span className="text-gray-500 font-medium">Size:</span>
-                                                <span className="text-gray-700 ml-1">
-                                                  {evidenceService.formatFileSize(evidenceObj.fileSize || 0)}
-                                                </span>
-                                              </div>
-                                              {evidenceObj.mimeType && (
-                                                <div>
-                                                  <span className="text-gray-500 font-medium">Type:</span>
-                                                  <span className="text-gray-700 ml-1">{evidenceObj.mimeType}</span>
-                                                </div>
-                                              )}
-                                              {evidenceObj.evidenceType && (
-                                                <div>
-                                                  <span className="text-gray-500 font-medium">Category:</span>
-                                                  <span className="text-gray-700 ml-1">{evidenceObj.evidenceType}</span>
-                                                </div>
-                                              )}
-                                              {evidenceObj.uploadedAt && (
-                                                <div>
-                                                  <span className="text-gray-500 font-medium">Uploaded:</span>
-                                                  <span className="text-gray-700 ml-1">
-                                                    {new Date(evidenceObj.uploadedAt).toLocaleDateString()}
-                                                  </span>
-                                                </div>
-                                              )}
-                                              {getAssigneeFullName(evidenceObj.uploadedBy) !== '' && (
-                                                <div className="col-span-2">
-                                                  <span className="text-gray-500 font-medium">Uploaded By:</span>
-                                                  <span className="text-gray-700 ml-1">{getAssigneeFullName(evidenceObj.uploadedBy)}</span>
-                                                </div>
-                                              )
-                                              }
-                                              {evidenceObj.uploadedBy && !evidenceObj.uploadedByName && (
-                                                <div className="col-span-2">
-                                                  <span className="text-gray-500 font-medium">Uploaded By (ID):</span>
-                                                  <span className="text-gray-700 ml-1 font-mono">{evidenceObj.uploadedBy}</span>
-                                                </div>
-                                              )}
-                                              {/* {evidenceObj.hash && (
-                                                <div className="col-span-2">
-                                                  <span className="text-gray-500 font-medium">Hash:</span>
-                                                  <span className="text-gray-700 ml-1 font-mono text-xs truncate">{evidenceObj.hash}</span>
-                                                </div>
-                                              )} */}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    }
-                                  )}
-                                </div>
-                              </div>
+                                    {/* Expanded Task → Supporting Evidence */}
+                                    {isTaskExpanded && (
+                                      <div className="mt-2 space-y-3">
+                                        {task.supportingEvidence.map((evidence, idx) => (
+                                          <EvidenceCard
+                                            key={idx}
+                                            evidence={evidence}
+                                            viewingId={viewingId}
+                                            downloadingId={downloadingId}
+                                            handleViewEvidence={handleViewEvidence}
+                                            handleDownloadEvidence={handleDownloadEvidence}
+                                            getAssigneeFullName={getAssigneeFullName}
+                                            formatFileSize={evidenceService.formatFileSize}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

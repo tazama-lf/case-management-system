@@ -237,12 +237,15 @@ export interface EvidenceFindingsStats {
   evidenceItems: number;
   confirmedFindings: number;
   refutedFindings: number;
+  inProgressFindings: number;
+  inconclusiveFindings: number;
 }
 
 export interface FindingStatusDistribution {
   confirmed: number;
   refuted: number;
   inconclusive: number;
+  inProgress: number;
 }
 
 export interface EvidenceItem {
@@ -253,27 +256,30 @@ export interface EvidenceItem {
   status: 'Confirmed' | 'Refuted' | 'Inconclusive';
 }
 
+export interface SupportingEvidence {
+  id: string;
+  fileName: string;
+  fileSize?: number;
+  mimeType?: string;
+  evidenceType?: string;
+  uploadedBy?: string;
+  uploadedByName?: string;
+  uploadedAt?: string;
+  description?: string;
+  hash?: string;
+}
+
+export interface TaskEvidence {
+  taskId?: number;
+  supportingEvidence: SupportingEvidence[];
+}
+
 export interface FindingDetail {
   caseId: number;
-  taskId?: number;
   finding: string;
-  conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive';
+  conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive' | 'InProgress';
   evidenceCount: number;
-  supportingEvidence: (
-    | string
-    | {
-      id: string;
-      fileName: string;
-      fileSize?: number;
-      mimeType?: string;
-      evidenceType?: string;
-      uploadedBy?: string;
-      uploadedByName?: string;
-      uploadedAt?: string;
-      description?: string;
-      hash?: string;
-    }
-  )[];
+  tasks: TaskEvidence[];
   dateIdentified: string;
 }
 

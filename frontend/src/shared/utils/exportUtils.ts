@@ -2,6 +2,8 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import type { Task } from '@/features/cases/services/taskService';
+import type { FindingDetail, SupportingEvidence, TaskEvidence } from '@/features/reports/types/reports.types';
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
 
@@ -92,7 +94,7 @@ export const exportToPDF = async (
 
     // A4 dimensions in points: 841.89 x 595.28 (landscape)
     // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
-    const availableWidth = 700;
+    const availableWidth = 550;
     const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
     const widthScale = availableWidth / totalRequestedWidth;
 
@@ -305,23 +307,29 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
       }));
 
     case 'EVIDENCE_FINDINGS':
-      return data.map(item => ({
-        'Case ID': String(item.caseId || ''),
-        'Task ID': String(item.taskId || ''),
-        'Finding': item.finding || '',
-        'Conclusion': item.conclusion || '',
-        'Evidence Count': item.evidenceCount || 0,
-        'Supporting Evidence': JSON.stringify(item.supportingEvidence) || item.avg_resolution_time || 0,
-        'Comments': Array.isArray(item.supportingEvidence)
-          ? item.supportingEvidence
-            .map((ev: { id?: string; fileName?: string; description?: string }) =>
-              `${ev.id ?? ''} | ${ev.fileName ?? ''} | ${ev.description ?? ''}`
-            )
-            .join('\n')
-          : '',
-        'Date Identified': item.dateIdentified || '',
-
-      }));
+      return (data as FindingDetail[]).reduce<Record<string, string>[]>((rows, caseItem) => {
+        for (const task of caseItem.tasks) {
+          for (const ev of task.supportingEvidence) {
+            rows.push({
+              'Case ID': String(caseItem.caseId),
+              'Task ID': String(task.taskId ?? ''),
+              'Finding': caseItem.finding ?? '',
+              'Conclusion': caseItem.conclusion ?? '',
+              'Supporting Evidence': ev.fileName ?? '',
+              'Comments': [
+                ev.id,
+                ev.description,
+                ev.evidenceType,
+                ev.uploadedByName,
+              ]
+                .filter(Boolean)
+                .join(' | '),
+              'Date Identified': caseItem.dateIdentified ?? '',
+            });
+          }
+        }
+        return rows;
+      }, []);
 
     default:
 
@@ -401,13 +409,12 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
 
     case 'EVIDENCE_FINDINGS':
       return [
-        { key: 'Case ID', label: 'Case ID', width: 80 },
-        { key: 'Task ID', label: 'Task ID', width: 80 },
-        { key: 'Finding', label: 'Finding', width: 100 },
-        { key: 'Conclusion', label: 'Conclusion', width: 110 },
-        { key: 'Evidence Count', label: 'Evidence Count', width: 80 },
-        { key: 'Supporting Evidence', label: 'Supporting Evidence', width: 230 },
-        { key: 'Comments', label: 'Comments', width: 150 },
+        { key: 'Case ID', label: 'Case ID', width: 20 },
+        { key: 'Task ID', label: 'Task ID', width: 20 },
+        { key: 'Finding', label: 'Finding', width: 80 },
+        { key: 'Conclusion', label: 'Conclusion', width: 80 },
+        { key: 'Supporting Evidence', label: 'Supporting Evidence', width: 150 },
+        { key: 'Comments', label: 'Comments', width: 120 },
         { key: 'Date Identified', label: 'Date Identified', width: 100 },
       ];
 

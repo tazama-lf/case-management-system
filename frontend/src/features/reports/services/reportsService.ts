@@ -287,10 +287,13 @@ class ReportsService {
             evidenceItems: 0,
             confirmedFindings: 0,
             refutedFindings: 0,
+            inconclusiveFindings: 0,
+            inProgressFindings: 0,
           },
           statusDistribution: {
             confirmed: 0,
             refuted: 0,
+            inProgress: 0,
             inconclusive: 0,
           },
           evidenceItems: [],
@@ -304,6 +307,7 @@ class ReportsService {
       let confirmedCount = 0;
       let refutedCount = 0;
       let inconclusiveCount = 0;
+      let inprogressCount = 0;
 
       // For each case, fetch all evidence by case ID (the backend should handle finding evidence with any taskId)
       for (const caseItem of cases) {
@@ -346,27 +350,6 @@ class ReportsService {
         if (caseEvidence.length > 0) {
 
           totalEvidenceItems += caseEvidence.length;
-
-          // Determine conclusion from case status
-          let conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive' = 'Inconclusive';
-          const caseStatus = caseItem.status as string;
-          if (
-            caseStatus?.includes('CONFIRMED') ||
-            caseStatus === 'STATUS_82_CLOSED_CONFIRMED' ||
-            caseStatus === 'STATUS_71_AUTOCLOSED_CONFIRMED'
-          ) {
-            conclusion = 'Confirmed';
-            confirmedCount++;
-          } else if (
-            caseStatus?.includes('REFUTED') ||
-            caseStatus === 'STATUS_81_CLOSED_REFUTED' ||
-            caseStatus === 'STATUS_72_AUTOCLOSED_REFUTED'
-          ) {
-            conclusion = 'Refuted';
-            refutedCount++;
-          } else {
-            inconclusiveCount++;
-          }
 
           // Map evidence to include full object with all available fields
           const supportingEvidence = caseEvidence.map((e: Record<string, unknown>) => {
@@ -424,33 +407,64 @@ class ReportsService {
             `[Evidence Report] Created ${supportingEvidence.length} supporting evidence items for case ${String(caseItem.case_id)}`,
           );
 
-          // Get the first task ID from evidence (all evidence in a finding should be from the same task initially)
-          const firstTaskId = (caseEvidence[0]?.taskId as number) ||
-            (caseEvidence[0]?.task_id as number);
-          const caseId =
-            typeof caseItem.case_id === 'number'
-              ? caseItem.case_id
-              : Number(caseItem.case_id);
 
-          const normalizedSupportingEvidence = supportingEvidence.map(e => {
-            if (typeof e === 'string') return e;
-
-            return {
-              ...e,
-              id: typeof e.id === 'string' ? e.id : e.id,
-            };
+          const evidenceByTask: Record<string, Record<string, any>[]> = {};
+          caseEvidence.forEach(e => {
+            const taskId = (e.taskId ?? e.task_id ?? 'unknown_task').toString();
+            if (!evidenceByTask[taskId]) evidenceByTask[taskId] = [];
+            evidenceByTask[taskId].push(e);
           });
 
-          // Create finding entry for each case with evidence
+          const tasks = Object.entries(evidenceByTask).map(
+            ([taskId, evidences]) => ({
+              taskId: taskId === 'unknown_task' ? undefined : Number(taskId),
+              supportingEvidence: evidences.map(e => {
+                const attachments = e.attachments as any[] | undefined;
+                const firstAttachment = attachments?.[0];
+
+                return {
+                  id: e.id?.toString() || e.evidenceId?.toString() || `unknown_${Date.now()}`,
+                  fileName: e.fileName || e.file_name || firstAttachment?.fileName || 'Unknown Document',
+                  fileSize: e.fileSize || firstAttachment?.fileSize,
+                  mimeType: e.mimeType || firstAttachment?.mimeType,
+                  evidenceType: e.evidenceType,
+                  uploadedBy: e.uploadedBy,
+                  uploadedByName: e.uploadedByName,
+                  uploadedAt: e.uploadedAt,
+                  description: e.description,
+                  hash: e.hash || firstAttachment?.hash,
+                };
+
+              }),
+            })
+          );
+
+          let conclusion: 'Confirmed' | 'Refuted' | 'Inconclusive' | 'InProgress';
+          const status = caseItem.status as string;
+
+          if (status === 'STATUS_82_CLOSED_CONFIRMED' || status === 'STATUS_71_AUTOCLOSED_CONFIRMED') {
+            conclusion = 'Confirmed';
+            confirmedCount++;
+          } else if (status === 'STATUS_81_CLOSED_REFUTED' || status === 'STATUS_72_AUTOCLOSED_REFUTED') {
+            conclusion = 'Refuted';
+            refutedCount++;
+          } else if (status === 'STATUS_83_CLOSED_INCONCLUSIVE') {
+            conclusion = 'Inconclusive';
+            inconclusiveCount++;
+          } else {
+            conclusion = 'InProgress';
+          }
+
+          // Push ONE finding per case
           allFindings.push({
-            caseId,
-            taskId: firstTaskId,
-            finding: `Evidence collected for task ${firstTaskId || 'unknown'}`,
+            caseId: Number(caseItem.case_id),
+            finding: `Evidence collected for case ${caseItem.case_id}`,
             conclusion,
             evidenceCount: caseEvidence.length,
-            supportingEvidence: normalizedSupportingEvidence,
+            tasks,
             dateIdentified: (caseItem.created_at as string) || new Date().toISOString(),
           });
+
         } else {
           console.log(`[Evidence Report] No evidence found for case ${String(caseItem.case_id)}`);
         }
@@ -464,11 +478,14 @@ class ReportsService {
           evidenceItems: totalEvidenceItems,
           confirmedFindings: confirmedCount,
           refutedFindings: refutedCount,
+          inconclusiveFindings: inconclusiveCount,
+          inProgressFindings: inprogressCount,
         },
         statusDistribution: {
           confirmed: confirmedCount,
           refuted: refutedCount,
           inconclusive: inconclusiveCount,
+          inProgress: inprogressCount,
         },
         evidenceItems: [],
         findings: allFindings.length > 0 ? allFindings : [],
@@ -484,11 +501,14 @@ class ReportsService {
           evidenceItems: 0,
           confirmedFindings: 0,
           refutedFindings: 0,
+          inconclusiveFindings: 0,
+          inProgressFindings: 0,
         },
         statusDistribution: {
           confirmed: 0,
           refuted: 0,
           inconclusive: 0,
+          inProgress: 0,
         },
         evidenceItems: [],
         findings: [],
