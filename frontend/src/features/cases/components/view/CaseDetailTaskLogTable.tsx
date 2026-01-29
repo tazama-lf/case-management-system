@@ -334,29 +334,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
-  // const addViewInvestigationReportAction = (
-  //   actions: React.ReactNode[],
-  //   task: UnifiedWorkQueueTask
-  // ) => {
-  //   const report = latestReports?.['INVESTIGATION_REPORT'];
-
-  //   if (
-  //     task.name === 'SAR/STR Filing' &&
-  //     report &&
-  //     onViewReport
-  //   ) {
-  //     actions.push(
-  //       createActionButton(
-  //         'view-investigation-report',
-  //         () => onViewReport(report.reportId),
-  //         <DocumentTextIcon className="h-4 w-4 mr-1" />,
-  //         'View Investigation Report',
-  //         'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
-  //       )
-  //     );
-  //   }
-  // };
-
   const getAvailableActions = (task: UnifiedWorkQueueTask) => {
     const actions: React.ReactNode[] = [];
 
@@ -371,6 +348,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
+    if (task.status === 'SUSPENDED' && (caseData.status === 'STATUS_21_SUSPENDED' || caseData.status.includes('SUSPENDED'))) {
+      addViewAction(actions, task);
+      return actions;
+    }
 
 
     if (task.status === 'IN_PROGRESS') {
@@ -381,9 +362,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
-    // if (task.name === 'SAR/STR Filing' && (hasComplianceOfficerRole() || hasSupervisorRole()) && onViewReport && latestReports?.['INVESTIGATION_REPORT']) {
-    //   addViewInvestigationReportAction(actions, task);
-    // }
+
 
     if (task.name === 'SAR/STR Filing' && !hasComplianceOfficerRole()) {
       if (task.status === 'UNASSIGNED') {
@@ -395,6 +374,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       }
 
     }
+
 
 
 

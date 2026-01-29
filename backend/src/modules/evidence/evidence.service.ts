@@ -141,18 +141,6 @@ export class EvidenceService {
     };
 
     const maxSize = 50 * 1024 * 1024; // 50MB
-
-    // if (kycEddTypes.includes(dto.evidenceType) || (dto.tags && kycEddTypes.includes(dto.tags.toUpperCase()))) {
-    //   this.logger.log(`Validating file types for KYC/EDD evidence upload. EvidenceType: ${dto.evidenceType}, Tags: ${dto.tags}`);
-
-    //   for (const file of files) {
-    //     this.logger.log(`successfully updated file: ${file.originalname}, mimetype: ${file.mimetype}`);
-    //     if (!allowedMimeTypes.includes(file.mimetype)) {
-    //       this.logger.error(`File type ${file.mimetype} is not allowed for KYC/EDD evidence. File: ${file.originalname}`);
-    //       throw new BadRequestException(`File type ${file.mimetype} is not allowed for KYC/EDD evidence`);
-    //     }
-    //   }
-    // }
     const sectionKey = dto.evidenceType.toUpperCase() as keyof typeof maxFilesPerSection;
 
     // Check if the number of files in this upload exceeds max allowed

@@ -47,10 +47,15 @@ export class CaseService {
     private readonly caseHistoryService: CaseHistoryService,
   ) { }
 
-  async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any) {
+  async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
-    if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can suspend a case');
+    if (!role.toLowerCase().includes('supervisor')) {
+      if (existingCase.case_owner_user_id !== userId) {
+        throw new BadRequestException('Only Case owner can suspend a case');
+      }
+    }
+
 
     if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
@@ -473,7 +478,7 @@ export class CaseService {
           newStatus: targetStatus,
           reason: `Case creation completed by ${role}`,
         });
-        
+
         const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
 
@@ -486,9 +491,9 @@ export class CaseService {
         }
         const completedTask = await this.taskService.updateTask(
           completeNewCaseTask.task_id,
-          { 
+          {
             status: TaskStatus.STATUS_30_COMPLETED,
-            assignedUserId: userId 
+            assignedUserId: userId
           },
           userId,
         );

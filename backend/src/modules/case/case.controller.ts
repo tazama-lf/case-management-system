@@ -144,8 +144,8 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async suspendCase(@Param('caseId') caseId: number, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
-    const { userId, tenantId, userInfo } = extractUserData(req);
-    return this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo);
+    const { userId, tenantId, userInfo, role } = extractUserData(req);
+    return this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo, role);
   }
 
   @Put(':caseId/resume')

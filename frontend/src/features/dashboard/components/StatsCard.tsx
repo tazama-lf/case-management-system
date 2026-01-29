@@ -4,7 +4,7 @@ interface StatsCardProps {
   title: string;
   value: number | string;
   icon: React.ReactNode;
-  color: 'blue' | 'red' | 'yellow' | 'green' | 'purple';
+  color: 'blue' | 'red' | 'yellow' | 'green' | 'purple' | 'indigo';
   subtitle?: string;
 }
 
@@ -20,6 +20,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
     yellow: 'bg-yellow-500 text-white shadow-yellow-100',
     green: 'bg-green-500 text-white shadow-green-100',
     purple: 'bg-purple-500 text-white shadow-purple-100',
+    indigo: 'bg-indigo-500 text-white shadow-indigo-100'
   };
 
   const bgColorClasses = {
@@ -28,12 +29,13 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
     yellow: 'hover:bg-yellow-50',
     green: 'hover:bg-green-50',
     purple: 'hover:bg-purple-50',
+    indigo: 'hover:bg-indigo-50'
   };
 
   useEffect(() => {
     setIsVisible(true);
 
-        if (isNumeric) {
+    if (isNumeric) {
       const duration = 1000;
       const steps = 60;
       const increment = value / steps;
@@ -67,9 +69,8 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-500 hover:shadow-md hover:scale-105 cursor-pointer ${bgColorClasses[color]} ${
-        isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
-      }`}
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-500 hover:shadow-md hover:scale-105 cursor-pointer ${bgColorClasses[color]} ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+        }`}
       style={{
         animationDelay: '0.1s',
         animationFillMode: 'forwards'
@@ -90,7 +91,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
         </div>
       </div>
 
-      {}
+      { }
       <div className="mt-4 h-1 bg-gray-100 rounded-full overflow-hidden">
         <div
           className={`h-full bg-${color}-500 transition-all duration-1000 ease-out`}

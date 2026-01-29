@@ -4,6 +4,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   DocumentTextIcon,
+  EllipsisHorizontalCircleIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { EvidenceFindingsStats } from '../types/reports.types';
 
@@ -20,33 +22,46 @@ const EvidenceFindingsStatsCards: React.FC<EvidenceFindingsStatsCardsProps> = ({
 }) => {
   const statsCardsConfig = [
     {
-      title: 'Total Findings',
+      title: 'Findings',
       value: stats.totalFindings,
-      icon: <DocumentTextIcon className="h-6 w-6" />,
+      icon: <DocumentTextIcon className="h-4 w-4" />,
       color: 'blue' as const,
     },
     {
-      title: 'Evidence Items',
+      title: 'Evidences',
       value: stats.evidenceItems,
-      icon: <FolderIcon className="h-6 w-6" />,
+      icon: <FolderIcon className="h-4 w-4" />,
       color: 'green' as const,
     },
     {
       title: 'Confirmed',
       value: stats.confirmedFindings,
-      icon: <CheckCircleIcon className="h-6 w-6" />,
+      icon: <CheckCircleIcon className="h-4 w-4" />,
       color: 'purple' as const,
     },
     {
       title: 'Refuted',
       value: stats.refutedFindings,
-      icon: <XCircleIcon className="h-6 w-6" />,
+      icon: <XCircleIcon className="h-4 w-4" />,
       color: 'red' as const,
+    },
+    {
+      title: 'Inconclusive',
+      value: stats.inconclusiveFindings,
+      icon: <QuestionMarkCircleIcon className="h-4 w-4" />,
+      color: 'indigo' as const,
+    },
+    {
+      title: 'In Progress',
+      value: stats.inProgressFindings,
+      icon: <EllipsisHorizontalCircleIcon className="h-4 w-4" />,
+      color: 'yellow' as const,
     },
   ];
 
+
   return (
-    <div className="grid grid-cols-4 gap-8 mb-8">
+    <div className="grid grid-cols-6 gap-8 mb-8">
       {statsCardsConfig.map((card) => (
         <Suspense
           key={card.title}
