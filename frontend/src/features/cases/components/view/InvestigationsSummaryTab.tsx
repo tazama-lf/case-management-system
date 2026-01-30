@@ -10,7 +10,6 @@ import userService from '../../services/userService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import type { Evidence } from '../../types/evidence.types';
 import type { TaskComment } from '../../services/commentService';
-import GenerateInvestigationReportModal from '../modals/GenerateInvestigationReportModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
@@ -50,7 +49,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
-  const [showReportModal, setShowReportModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
@@ -174,19 +172,12 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
   const handleCompleteTask = async (task: any, _notes?: string) => {
     try {
-      // Use task_id instead of id (tasks from getTasksByCaseId use task_id)
       const taskIdToComplete = task.task_id || task.id;
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
         status: TaskStatus.STATUS_30_COMPLETED,
       });
-
-      // Close modal and refresh investigation task data
-      setShowCompleteModal(false);
-
-      // Refetch the tasks to update investigation task status
+      setShowCompleteModal(false)
       const tasks = await taskService.getTasksByCaseId(caseId);
-
-      // Update investigation task
       const updatedInvestigationTask = tasks.find(
         (t) => t.task_id === currentTaskId
       );
@@ -199,7 +190,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         `Investigation task has been completed successfully.`,
       );
 
-      // Notify parent component to refresh task list
       if (onTaskUpdate) {
         onTaskUpdate();
       }
@@ -286,6 +276,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               approvalTask.task_id
             );
             setSupervisorComments(supervisorTaskComments || []);
+            console.log('Fetched supervisor comments:', supervisorTaskComments);
           }
 
           const investigationTask = tasks.find(
@@ -368,15 +359,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 Complete Investigation
               </button>
             )}
-            {/* {isSupervisor && investigationTask && investigationTask.status === 'STATUS_30_COMPLETED' && (
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
-              >
-                <DocumentTextIcon className="h-5 w-5" />
-                Generate Report
-              </button>
-            )} */}
           </div>
         </div>
 
@@ -562,20 +544,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         </div>
       </div>
 
-      {/* Generate Report Modal */}
-      {/* <GenerateInvestigationReportModal
-        open={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        caseId={caseId}
-        caseStatus={caseDetails?.status}
-        caseTitle={`Case ${caseDetails?.case_id || caseId} - ${caseDetails?.case_type || 'Investigation'}`}
-        taskId={currentTaskId || undefined}
-        caseData={caseDetails || undefined}
-        caseComments={caseComments}
-        supervisorComments={supervisorComments}
-        investigationNotes={investigationNotes}
-        evidenceCategory={evidenceCategories}
-      /> */}
+     
 
       {/* Complete Investigation Task Modal */}
       {showCompleteModal && investigationTask && (
