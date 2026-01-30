@@ -556,9 +556,10 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, taskId, archive: false, page: 1, limit: 100 };
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    const query: any = { taskId, archive: false, page: 1, limit: 100 };
+    // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    // else 
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data || [];
