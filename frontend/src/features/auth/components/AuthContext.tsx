@@ -6,6 +6,7 @@ import type {
   User,
   LoginCredentials,
 } from '../types/auth.types';
+import { ACTIVE_SESSION_KEY } from '../services/sessionLock.ts';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -43,6 +44,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     initializeAuth();
   }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Another tab logged out
+      if (e.key === 'ACTIVE_SESSION_KEY' && !e.newValue) {
+        logout();
+      }
+
+      // Token replaced by a different user
+      if (e.key === 'ACTIVE_SESSION_USER' && e.newValue !== e.oldValue) {
+        logout();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   // Token expiration monitoring - logout when token expires
   useEffect(() => {
