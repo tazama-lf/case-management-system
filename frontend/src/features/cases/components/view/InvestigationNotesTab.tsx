@@ -3,13 +3,11 @@ import 'easymde/dist/easymde.min.css';
 import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
-import { commentService, type TaskComment } from '../../services/commentService';
 import { taskService, type TaskForSupervisor } from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TaskStatus } from '../../services/taskService';
-import { formatDate } from '@/shared/utils/dateUtils';
 import { authService } from '@/features/auth';
 interface InvestigationNotesTabProps {
   task?: TaskForSupervisor;
@@ -24,10 +22,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [notes, setNotes] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [existingComments, setExistingComments] = React.useState<TaskComment[]>([]);
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
-  // Handle link clicks to ensure external links work properly
   React.useEffect(() => {
     const handleLinkClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -50,7 +46,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
     return () => document.removeEventListener('click', handleLinkClick);
   }, []);
 
-  // Transform markdown to ensure all links have proper protocols
   const transformMarkdownLinks = (markdown: string): string => {
     return markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
       if (!url.match(/^(https?:\/\/|mailto:|#)/i)) {
@@ -61,7 +56,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   };
 
   const handleNotesChange = (value: string) => {
-    // Transform links to ensure they have proper protocols
     const transformedValue = transformMarkdownLinks(value);
     setNotes(transformedValue);
   };
@@ -72,24 +66,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   }
 
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
-
-  React.useEffect(() => {
-    const loadComments = async () => {
-      if (!task) return;
-      setNotes(task.investigationNotes || '');
-      setLoading(true);
-      try {
-        const comments = await commentService.getCommentsByTask(task.task_id);
-        setExistingComments(comments);
-      } catch (error) {
-        console.error('Failed to load comments:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadComments();
-  }, [task]);
 
   const handleSaveNotes = async () => {
     if (!task?.task_id || !notes.trim()) {
@@ -104,7 +80,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       });
       showSuccess('Investigation notes saved successfully!');
 
-      // Trigger refresh in investigation summary
       if (onNotesUpdate) {
         onNotesUpdate();
       }
@@ -127,26 +102,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           <div className="text-sm text-gray-500">Loading notes...</div>
         </div>
       ) : (
-        <>
-          {/* Show existing comments as read-only */}
-          {existingComments.length > 0 && (
-            <div className="space-y-3 mb-4">
-              <div className="text-xs font-semibold text-gray-500 uppercase">
-                Previous Notes ({existingComments.length})
-              </div>
-              <div className="max-h-48 overflow-y-auto space-y-2 rounded-md border border-gray-200 p-3 bg-gray-50">
-                {existingComments.map((comment) => (
-                  <div key={comment.comment_id} className="text-sm text-gray-700 pb-2 border-b border-gray-200 last:border-0">
-                    <div className="text-xs text-gray-500 mb-1">
-                      {formatDate(comment.created_at)}
-                    </div>
-                    <div className="whitespace-pre-wrap">{comment.note}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <>  
           {/* MDX Editor */}
           <div className="mdx-editor-container min-h-[250px]">
             <MDXEditor
