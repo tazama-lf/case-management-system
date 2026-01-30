@@ -559,7 +559,7 @@ export class EvidenceService {
     const query: any = { taskId, archive: false, page: 1, limit: 100 };
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     // else 
-    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data || [];
