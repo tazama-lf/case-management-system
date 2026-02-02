@@ -353,17 +353,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
-
-    if (task.status === 'IN_PROGRESS') {
-      addReassignAction(actions, task);
-      addUnassignAction(actions, task);
-      addViewAction(actions, task);
-      addApprovalActions(actions, task);
-      return actions;
-    }
-
-
-
     if (task.name === 'SAR/STR Filing' && !hasComplianceOfficerRole()) {
       if (task.status === 'UNASSIGNED') {
         return actions;
@@ -373,6 +362,14 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
         return actions;
       }
 
+    }
+
+    if (task.status === 'IN_PROGRESS') {
+      addReassignAction(actions, task);
+      addUnassignAction(actions, task);
+      addViewAction(actions, task);
+      addApprovalActions(actions, task);
+      return actions;
     }
 
 
