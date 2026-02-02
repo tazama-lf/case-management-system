@@ -62,7 +62,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   const isUserAbleToSaveNotes = () => {
     const user = authService.getUser();
-    return user?.userId===task?.assigned_user_id;
+    return user?.userId === task?.assigned_user_id;
   }
 
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
@@ -102,7 +102,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           <div className="text-sm text-gray-500">Loading notes...</div>
         </div>
       ) : (
-        <>  
+        <>
           {/* MDX Editor */}
           <div className="mdx-editor-container min-h-[250px]">
             <MDXEditor
@@ -134,16 +134,16 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
           {/* Save Button */}
           {isUserAbleToSaveNotes() && (
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={handleSaveNotes}
-              disabled={saving || !notes.trim() || isTaskCompleted}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
-            >
-              <CheckIcon className="h-4 w-4" />
-              {saving ? 'Saving...' : 'Save Investigation Notes'}
-            </button>
-          </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleSaveNotes}
+                disabled={saving || !notes.trim() || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED'}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
+              >
+                <CheckIcon className="h-4 w-4" />
+                {saving ? 'Saving...' : 'Save Investigation Notes'}
+              </button>
+            </div>
           )}
         </>
       )}
