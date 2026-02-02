@@ -166,7 +166,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const canAssignTask = (task: UnifiedWorkQueueTask) =>
     !task.assignee &&
     task.name !== 'Approve Case Closure' &&
-    task.name !== 'Approve Case Creation';
+    task.name !== 'Approve Case Creation' && task.name !== 'Approve Case Reopening';
   /** Check if a task can be reassigned (has assignee + callback exists) */
   const canReassignTask = (task: UnifiedWorkQueueTask) => task.assignee && onReassign;
 
