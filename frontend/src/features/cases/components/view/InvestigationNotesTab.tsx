@@ -108,7 +108,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
-              readOnly={isTaskCompleted || !isUserCanEdit}
+              readOnly={!isUserCanEdit || saving || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED'}
               className="mdx-editor"
               contentEditableClassName="prose"
               plugins={[

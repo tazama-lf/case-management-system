@@ -531,7 +531,7 @@ model EventLog {
   user_id          String   @db.Uuid
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
-  action_performed String   @db.VarChar(255)
+  action_performed String   @db.VarChar(1000)
   outcome          String   @db.VarChar(255)
   performed_at     DateTime @default(now()) @db.Timestamp(6)
 
@@ -543,7 +543,7 @@ model TaskHistory {
   user_id          String   @db.Uuid
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
-  action_performed String   @db.VarChar(255)
+  action_performed String   @db.VarChar(1000)
   case_id          Int
   task_id          Int
   performed_at     DateTime @default(now()) @db.Timestamp(6)
@@ -556,7 +556,7 @@ model CaseHistory {
   user_id          String   @db.Uuid
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
-  action_performed String   @db.VarChar(255)
+  action_performed String   @db.VarChar(1000)
   case_id          Int
   performed_at     DateTime @default(now()) @db.Timestamp(6)
 
