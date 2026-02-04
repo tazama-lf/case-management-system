@@ -68,38 +68,19 @@ export class FlowableTaskService {
 
   async completeFlowableTask(userId: string, caseId: number, taskType: TaskType, completionVariables?: Record<string, unknown>) {
     try {
-      // if (event.newStatus !== TaskStatus.STATUS_30_COMPLETED) {
-      //   return;
-      // }
       const task = await this.fetchFlowableTask(caseId, taskType);
 
-      // const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
-      // if (!processInstance) {
-      //   throw new NotFoundException(`No Flowable process found for case ${caseId}`);
-      // }
+      let completionVars: Record<string, string> = {};
+      Object.entries(completionVariables!).forEach(([key, value]) => {
+        completionVars[key] = String(value);
+      });
 
-      // const flowableTasks = await this.getProcessTasks(processInstance.id);
-      // const task = flowableTasks.find((task: { name: string; category: string; processInstanceId: string }) => {
-      //   return task.category === taskType && task.processInstanceId === processInstance.id;
-      // });
-
-      // let completionVars: Record<string, string> = {};
-      // Object.entries(completionVariables!).forEach(([key, value]) => {
-      //   completionVars[key] = String(value);
-      // });
-
-      // await this.flowableTaskService.completeTask(task.id as number, completionVars);
-
-      // this.logger.log(`Completed Flowable task ${task.id}`, FlowableTaskService.name);
-      // } catch (error) {
-      //   this.logger.error(`[TaskEventListener] ✗ Failed to complete Flowable task: ${error.message}`, error.stack, FlowableTaskService.name);
-      // }
-      // try {
       const payload: Record<string, unknown> = {
         action: FlowableTaskActions.COMPLETE,
         variables: completionVariables ? formatVariables(completionVariables) : [],
       };
       const response = await this.flowableClient.post(FlowableApiEndpoints.TASK(task.id), payload);
+      await this.flowableProcessService.updateProcessVariable(caseId, 'caseStatus', completionVariables!.caseStatus);
 
       this.logger.log(`End - completeFlowableTask: ${task.id}`, FlowableTaskService.name);
       return response.data;
@@ -112,15 +93,6 @@ export class FlowableTaskService {
   async claimTask(caseId: number, assignee: string, taskType: TaskType): Promise<number> {
     try {
       const task = await this.fetchFlowableTask(caseId, taskType);
-      // const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(caseId);
-      // const flowableTasks = await this.getProcessTasks(processInstance.id);
-
-      // const task = flowableTasks.find((task: FlowableTask) => {
-      //   return task.category === taskType && task.assignee === null && task.processInstanceId === processInstance.id;
-      // });
-      // if (!task) {
-      //   throw new NotFoundException(`No unassigned Flowable task found for case ${caseId} and task type ${taskType}`);
-      // }
 
       const payload = {
         action: FlowableTaskActions.CLAIM,

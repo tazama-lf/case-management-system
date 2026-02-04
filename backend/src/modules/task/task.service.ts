@@ -141,19 +141,19 @@ export class TaskService {
   async updateTask(taskId: number, updateData: UpdateTaskDto, userId: string) {
     this.loggerService.log(`Start - Update Task: ${taskId}`, TaskService.name);
     try {
-      const existingTask = await this.taskRepository.findTaskWithCase(taskId);
+      // const existingTask = await this.taskRepository.findTaskWithCase(taskId);
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
       };
 
-      const isStatusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
-      const shouldPromoteCaseToInProgress =
-        isStatusChanged &&
-        updateData.status === TaskStatus.STATUS_20_IN_PROGRESS &&
-        (existingTask.name === 'Investigate Case' || existingTask.name === 'Investigate Fraud' || existingTask.name === 'Investigate AML');
+      // const isStatusChanged = updateData.status !== undefined && updateData.status !== existingTask.status;
+      // const shouldPromoteCaseToInProgress =
+      //   isStatusChanged &&
+      //   updateData.status === TaskStatus.STATUS_20_IN_PROGRESS &&
+      //   (existingTask.name === 'Investigate Case' || existingTask.name === 'Investigate Fraud' || existingTask.name === 'Investigate AML');
 
-      let updatedTask: Task;
-      let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;
+      // let updatedTask: Task;
+      // let caseStatusTransition: { previous: CaseStatus; next: CaseStatus } | null = null;
       // if (shouldPromoteCaseToInProgress) {
       //   const txResult = await this.taskRepository.transaction(async (tx) => {
       //     const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
@@ -186,7 +186,7 @@ export class TaskService {
       //   }
       // } else {
       // update task in db
-      updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
+      const updatedTask = await this.taskRepository.updateTask(taskId, updateInput);
 
       //   // Check if task is being completed and is fraud/AML investigation
       //   if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -253,10 +253,45 @@ export class TaskService {
     }
   }
 
-  async completeTask(userId: string, taskId: number, completeTaskDto: CompleteTaskDTO) {
+  async completeTask(userId: string, caseId: number, taskType: TaskType, taskId: number, completeTaskDto: CompleteTaskDTO) {
     this.loggerService.log(`Start - Complete Task: ${taskId}`, TaskService.name);
     try {
-    } catch (error) {}
+      const updateTaskRes = await this.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId);
+      if (!updateTaskRes || updateTaskRes.status !== TaskStatus.STATUS_30_COMPLETED) {
+        throw new BadRequestException('Failed to complete task in DB');
+      }
+      const flowableRes = await this.flowableTaskService.completeFlowableTask(userId, caseId, taskType, {
+        ...completeTaskDto.completionVariables,
+      });
+      if (!flowableRes || flowableRes.status === 200) {
+        throw new HttpException('Failed to complete task in Flowable', flowableRes.status);
+      }
+
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Completed task: ${taskId}`,
+          entityName: TaskService.name,
+          operation: 'completeTask',
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+        taskId,
+      );
+      this.loggerService.log(`End - Complete Task: ${taskId}`, TaskService.name);
+      return { updateTaskRes, flowableRes };
+    } catch (error) {
+      this.loggerService.error(`Error completing task ${taskId}`, error, TaskService.name);
+      this.auditLogService.logAction({
+        userId,
+        actionPerformed: `Error completing task ${taskId}`,
+        entityName: TaskService.name,
+        operation: 'completeTask',
+        outcome: Outcome.FAILURE,
+        performedAt: new Date(),
+      });
+      throw error;
+    }
   }
 
   async getTasksByCandidateGroup(candidateGroup: string, userId: string) {

@@ -101,6 +101,19 @@ export class TriageService {
       });
 
       const claimResult = await this.taskService.claimTask(response.case.case_id, userId, TaskType.CASE_CREATION);
+      const isClosable = response.case.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true;
+      const completeTaskRes = await this.taskService.completeTask(
+        userId,
+        response.case.case_id,
+        TaskType.CASE_CREATION,
+        claimResult.task_id,
+        {
+          status: TaskStatus.STATUS_30_COMPLETED,
+          completionVariables: {
+            autoCloseEligible: isClosable,
+          },
+        },
+      );
       // const caseStatusUpdateResult = await this.caseService.updateCaseStatus(
       //   response.case.case_id,
       //   updateAlertDto.status!,
