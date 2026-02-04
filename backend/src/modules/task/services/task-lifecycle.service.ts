@@ -4,7 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { CaseStatus, TaskStatus, Prisma, WorkQueue } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, Prisma } from '@prisma/client-cms';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
@@ -554,120 +554,6 @@ export class TaskLifecycleService {
 
 
     return updatedTask;
-  }
-
-  async reassignTaskToWorkQueue(
-    taskId: number,
-    targetWorkQueueId: number,
-    userId: string,
-    tenantId: string,
-    reason?: string,
-    assignedUserId?: string,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.findUnique({
-        where: { task_id: taskId },
-        include: {
-          workQueue: { select: { work_queue_id: true, name: true } },
-          case: { select: { case_id: true, tenant_id: true, status: true } },
-        },
-      });
-      if (!task) throw new NotFoundException(`Task ${taskId} not found`);
-      if (task.case.tenant_id !== tenantId) throw new ForbiddenException('Task does not belong to your organization');
-      if (task.status === TaskStatus.STATUS_20_IN_PROGRESS && task.assigned_user_id)
-        throw new BadRequestException('Cannot reassign in-progress task');
-
-      const targetQueue = await tx.workQueue.findUnique({
-        where: { work_queue_id: targetWorkQueueId },
-        select: { work_queue_id: true, name: true, tenant_id: true, is_active: true },
-      });
-      if (!targetQueue) throw new NotFoundException(`Target work queue ${targetWorkQueueId} not found`);
-      if (targetQueue.tenant_id !== tenantId) throw new ForbiddenException('Target work queue does not belong to your organization');
-      if (!targetQueue.is_active) throw new BadRequestException(`Target work queue '${targetQueue.name}' is not active`);
-      if (task.work_queue_id === targetWorkQueueId) throw new BadRequestException(`Task is already in work queue '${targetQueue.name}'`);
-
-      if (assignedUserId) {
-        const memberAssignment = await tx.workQueueMember.findUnique({
-          where: { work_queue_id_user_id: { work_queue_id: targetWorkQueueId, user_id: assignedUserId } },
-        });
-        if (!memberAssignment)
-          throw new BadRequestException(`User ${assignedUserId} is not assigned to target work queue '${targetQueue.name}'`);
-      }
-
-      const oldWorkQueueId = task.work_queue_id;
-      const oldWorkQueueName = task.workQueue?.name || null;
-      const previousAssignedUserId = task.assigned_user_id || undefined;
-
-      const updateData: any = { work_queue_id: targetWorkQueueId, updated_at: new Date() };
-      if (assignedUserId) {
-        updateData.assigned_user_id = assignedUserId;
-        updateData.status = TaskStatus.STATUS_10_ASSIGNED;
-      } else if (task.assigned_user_id) {
-        updateData.assigned_user_id = null;
-        updateData.status = TaskStatus.STATUS_01_UNASSIGNED;
-      }
-
-      const updatedTask = await tx.task.update({ where: { task_id: taskId }, data: updateData });
-
-      const auditDescription = reason
-        ? `Reassigned task from '${oldWorkQueueName || 'unassigned'}' to '${targetQueue.name}'. Reason: ${reason}`
-        : `Reassigned task from '${oldWorkQueueName || 'unassigned'}' to '${targetQueue.name}'`;
-      await this.auditLogService.logAction({
-        userId,
-        actionPerformed: auditDescription,
-        entityName: 'Task',
-        operation: 'REASSIGN_TASK',
-        outcome: 'SUCCESS',
-        performedAt: new Date(),
-      });
-
-      await this.eventLogSerice.logEventAction({
-        userId,
-        actionPerformed: auditDescription,
-        entityName: 'Task',
-        operation: `REASSIGN_TASK`,
-        outcome: 'SUCCESS',
-        performedAt: new Date(),
-      });
-
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        actionPerformed: auditDescription,
-        entityName: 'Task',
-        operation: `reassignTask`,
-        task_id: taskId,
-        case_id: task.case.case_id
-      });
-
-      this.eventEmitter.emit('task.reassigned', {
-        taskId: task.task_id,
-        caseId: task.case_id,
-        taskName: task.name || 'Unnamed Task',
-        oldWorkQueueId,
-        newWorkQueueId: targetWorkQueueId,
-        oldWorkQueueName,
-        newWorkQueueName: targetQueue.name,
-        reassignedBy: userId,
-        tenantId,
-        reason,
-        assignedUserId,
-        previousAssignedUserId,
-        timestamp: new Date(),
-      });
-
-      return {
-        taskId: updatedTask.task_id,
-        oldWorkQueueId,
-        oldWorkQueueName,
-        newWorkQueueId: targetQueue.work_queue_id,
-        newWorkQueueName: targetQueue.name,
-        status: updatedTask.status,
-        assignedUserId: updatedTask.assigned_user_id || undefined,
-        reason,
-        reassignedAt: updatedTask.updated_at,
-        reassignedBy: userId,
-      };
-    });
   }
 
   private emitAssignment(taskId: number, caseId: number, assignedUserId: string, previousAssignedUserId?: string) {

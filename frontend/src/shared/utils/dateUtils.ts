@@ -1,5 +1,9 @@
 
-export const formatDate = (dateString: string | Date): string => {
+export const formatDate = (dateString: string | Date | undefined | null): string => {
+  if (!dateString) {
+    return '-';
+  }
+  
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
   if (isNaN(date.getTime())) {
@@ -15,7 +19,11 @@ export const formatDate = (dateString: string | Date): string => {
 };
 
 
-export const formatDateFull = (dateString: string | Date): string => {
+export const formatDateFull = (dateString: string | Date | undefined | null): string => {
+  if (!dateString) {
+    return '-';
+  }
+  
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
   if (isNaN(date.getTime())) {
@@ -32,7 +40,11 @@ export const formatDateFull = (dateString: string | Date): string => {
 };
 
 
-export const formatTime = (dateString: string | Date): string => {
+export const formatTime = (dateString: string | Date | undefined | null): string => {
+  if (!dateString) {
+    return '-';
+  }
+  
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
   if (isNaN(date.getTime())) {
@@ -46,7 +58,11 @@ export const formatTime = (dateString: string | Date): string => {
 };
 
 
-export const formatDateOnly = (dateString: string | Date): string => {
+export const formatDateOnly = (dateString: string | Date | undefined | null): string => {
+  if (!dateString) {
+    return '-';
+  }
+  
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
   if (isNaN(date.getTime())) {
@@ -66,7 +82,11 @@ export const formatDateOnly = (dateString: string | Date): string => {
  * @param endDate - End date string or Date object (defaults to now)
  * @returns Human readable time difference (e.g., "2 hours ago", "3 days ago")
  */
-export const getTimeAgo = (startDate: string | Date, endDate: string | Date = new Date()): string => {
+export const getTimeAgo = (startDate: string | Date | undefined | null, endDate: string | Date = new Date()): string => {
+  if (!startDate) {
+    return '-';
+  }
+  
   const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
   

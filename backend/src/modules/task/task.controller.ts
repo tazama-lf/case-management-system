@@ -849,59 +849,6 @@ export class TaskController {
     return this.taskService.getTaskById(taskId);
   }
 
-  @Post(':taskId/reassign-queue')
-  @RequireSupervisorRole()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Reassign task to a different work queue',
-    description:
-      'Reassigns a task from its current work queue to a target work queue. Only supervisors can perform cross-queue reassignment. The task cannot be reassigned if it is currently in progress (claimed by an investigator). The reassignment is logged in the audit trail and notifications are sent to both queues.',
-  })
-  @ApiParam({
-    name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to reassign',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @ApiBody({
-    type: ReassignTaskDto,
-    description: 'Work queue reassignment details including target queue, optional reason, and optional immediate assignment',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Task successfully reassigned to target work queue.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad Request - Task is in progress, already in target queue, or invalid data.',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing token.',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - Requires CMS_SUPERVISOR role or task belongs to different tenant.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - Task or target work queue not found.',
-  })
-  async reassignTaskToWorkQueue(@Param('taskId') taskId: number, @Body() dto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-
-    if (!tenantId) {
-      throw new BadRequestException('Tenant ID is required');
-    }
-
-    if (!dto.targetWorkQueueId) {
-      throw new BadRequestException('targetWorkQueueId is required');
-    }
-
-    return this.taskService.reassignTaskToWorkQueue(taskId, dto.targetWorkQueueId, userId, tenantId, dto.reason, dto.assignedUserId);
-  }
-
   @Get('statistics')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({

@@ -1,4 +1,4 @@
-import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import React from 'react';
 import { CheckIcon } from '@heroicons/react/24/outline';
 

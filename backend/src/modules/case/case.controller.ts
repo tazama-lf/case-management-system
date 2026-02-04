@@ -46,7 +46,7 @@ import {
   ReturnCaseForReviewResponseDto,
 } from './dto';
 import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
-import { UserWorkloadResponseDto } from 'src/modules/work-queue/dto/user-workload-response.dto';
+import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')

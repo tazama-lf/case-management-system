@@ -240,21 +240,6 @@ export const handlers = [
   http.get('/api/v1/triage/alerts/timeout-test', () => {
     return new Promise(() => { });
   }),
-
-  // Work queues used by admin views/tests
-  http.get('/api/v1/work-queues', ({ request }) => {
-    const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
-    const response = {
-      data: [],
-      page,
-      limit,
-      total: 0,
-      totalPages: 0,
-    };
-    return HttpResponse.json(response);
-  }),
 ];
 
 export const server = setupServer(...handlers, ...caseHandlers);

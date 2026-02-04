@@ -1,4 +1,4 @@
-import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import React, { useEffect, useState } from 'react';
 import authService from '../../../auth/services/authService';
 import type { Investigator } from '../../../auth/types/auth.types';

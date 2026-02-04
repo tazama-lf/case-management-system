@@ -542,17 +542,6 @@ export class TaskService {
     }
   }
 
-  async reassignTaskToWorkQueue(
-    taskId: number,
-    targetWorkQueueId: number,
-    userId: string,
-    tenantId: string,
-    reason?: string,
-    assignedUserId?: string,
-  ) {
-    return this.lifecycle.reassignTaskToWorkQueue(taskId, targetWorkQueueId, userId, tenantId, reason, assignedUserId);
-  }
-
   private isCaseEligibleForInProgress(status: CaseStatus): boolean {
     const eligibleStatuses: CaseStatus[] = [
       CaseStatus.STATUS_10_ASSIGNED,

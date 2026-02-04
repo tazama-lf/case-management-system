@@ -17,7 +17,6 @@ import { NatsModule } from './modules/nats/nats.module';
 import { PrismaDWHService } from '../prismaDWH/prismaDWH.service';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './modules/flowable/flowable.module';
-import { WorkQueueModule } from './modules/work-queue/work-queue.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
@@ -28,7 +27,6 @@ import { UserModule } from './modules/user/user.module';
 import { FeatureExtractionModule } from './modules/feature-extraction/feature-extraction.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { AlertModule } from './modules/alert/alert.module';
-import { WorkqueueModule } from './modules/workqueue/workqueue.module';
 import { CouchdbModule } from './modules/couchdb/couchdb.module';
 import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
@@ -61,8 +59,6 @@ import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
     TaskModule,
     AuthModule,
     SystemConfigModule,
-    WorkQueueModule,
-    WorkqueueModule,
     AsyncTaskModule,
     NotificationModule,
     NotificationPreferencesModule,

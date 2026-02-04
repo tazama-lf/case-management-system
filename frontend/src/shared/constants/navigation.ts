@@ -5,7 +5,6 @@ import {
   FolderIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
-  QueueListIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItem } from '../types/navigation.types';
 export const NAVIGATION_ITEMS: NavItem[] = [
@@ -26,12 +25,6 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     href: '/cases',
     icon: FolderIcon,
     roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER', 'alert-triage'],
-  },
-  {
-    name: 'Work Queues',
-    href: '/work-queue',
-    icon: QueueListIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'alert-triage'],
   },
   {
     name: 'Reports',
@@ -61,7 +54,6 @@ export const ROUTES = {
   REPORTS: '/reports',
   ALERTS: '/alerts',
   CASES: '/cases',
-  WORK_QUEUE: '/work-queue',
   ADMIN: '/admin',
   LOGIN: '/login',
   REFERENCE_ID: '/reference_id',

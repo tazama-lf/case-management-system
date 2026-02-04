@@ -13,7 +13,6 @@ export const useDynamicRoute = () => {
 
     goToCaseDetail: (caseId: number) => navigate(`/cases/${caseId}`),
     goToAlertDetail: (alertId: number) => navigate(`/alerts/${alertId}`),
-    goToWorkQueueTask: (taskId: number) => navigate(`/work-queue/${taskId}`),
     goToReport: (reportType: string) => navigate(`/reports/${reportType}`),
     goBack: () => navigate(-1),
 
@@ -83,8 +82,6 @@ export const ROUTES = {
   CASE_DETAIL: '/cases/:caseId',
   ALERTS: '/alerts',
   ALERT_DETAIL: '/alerts/:alertId',
-  WORK_QUEUE: '/work-queue',
-  WORK_QUEUE_TASK: '/work-queue/:taskId',
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
   ADMIN: '/admin',

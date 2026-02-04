@@ -51,50 +51,6 @@ export class CaseClosureApprovalService {
         userId,
       );
 
-      // const complianceQueue = await this.prismaService.workQueue.findFirst({
-      //   where: {
-      //     tenant_id: tenantId,
-      //     is_active: true,
-      //     name: {
-      //       contains: 'compliance',
-      //       mode: 'insensitive',
-      //     },
-      //   },
-      // });
-
-      // const taskData: any = {
-      //   case: {
-      //     connect: { case_id: caseId },
-      //   },
-      //   status: TaskStatus.STATUS_01_UNASSIGNED,
-      //   name: 'SAR_STR_FILING',
-      //   description:
-      //     'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
-      //   task_type: 'SAR_STR_FILING',
-      //   candidateGroup: 'compliance',
-      //   sla_duration_hours: 48,
-      // };
-
-      // if (complianceQueue) {
-      //   taskData.workQueue = {
-      //     connect: { work_queue_id: complianceQueue.work_queue_id },
-      //   };
-      // }
-
-      // const sarTask = await this.prismaService.task.create({
-      //   data: taskData,
-      // });
-
-
-      // this.flowableService.createTask({
-      //   taskId: sarTask.task_id,
-      //   caseId: caseId,
-      //   taskName: sarTask.name || 'SAR_STR_FILING',
-      //   candidateGroup: sarTask.candidateGroup || 'compliance',
-      //   status: sarTask.status,
-      //   description: sarTask.description || 'Upload SAR/STR acknowledgment from FIU',
-      // });
-
       await this.auditLogService.logAction({
         userId,
         operation: 'createSARTask',

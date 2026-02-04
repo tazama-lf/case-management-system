@@ -42,7 +42,6 @@ export class TaskRepository {
             case: {
               select: { case_id: true, status: true, priority: true, created_at: true, case_type: true },
             },
-            workQueue: { include: { roles: true } },
           }
         : undefined,
       skip,
@@ -176,41 +175,6 @@ export class TaskRepository {
     const task = await this.findTaskById(taskId);
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return this.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, undefined, true);
-  }
-
-  async reassignToWorkQueue(taskId: number, targetWorkQueueId: number, tenantId: string, reason?: string, assignedUserId?: string) {
-    return this.transaction(async (tx) => {
-      const task = await tx.task.findUnique({
-        where: { task_id: taskId },
-        include: {
-          workQueue: { select: { work_queue_id: true, name: true } },
-          case: { select: { case_id: true, tenant_id: true, status: true } },
-        },
-      });
-      if (!task) throw new NotFoundException(`Task ${taskId} not found`);
-      if (task.case.tenant_id !== tenantId) throw new ForbiddenException('Task does not belong to your organization');
-      if (task.status === TaskStatus.STATUS_20_IN_PROGRESS && task.assigned_user_id)
-        throw new BadRequestException('Cannot reassign in-progress task');
-      const targetQueue = await this.findWorkQueue(targetWorkQueueId, tx);
-      if (!targetQueue) throw new NotFoundException(`Target work queue ${targetWorkQueueId} not found`);
-      if (targetQueue.tenant_id !== tenantId) throw new ForbiddenException('Target work queue does not belong to your organization');
-      if (!targetQueue.is_active) throw new BadRequestException(`Target work queue '${targetQueue.name}' is not active`);
-      if (task.work_queue_id === targetWorkQueueId) throw new BadRequestException(`Task already in '${targetQueue.name}'`);
-      if (assignedUserId) {
-        const membership = await this.findWorkQueueMember(targetWorkQueueId, assignedUserId, tx);
-        if (!membership) throw new BadRequestException(`User ${assignedUserId} not in target work queue '${targetQueue.name}'`);
-      }
-      const updateData: any = { work_queue_id: targetWorkQueueId, updated_at: new Date() };
-      if (assignedUserId) {
-        updateData.assigned_user_id = assignedUserId;
-        updateData.status = TaskStatus.STATUS_10_ASSIGNED;
-      } else if (task.assigned_user_id) {
-        updateData.assigned_user_id = null;
-        updateData.status = TaskStatus.STATUS_01_UNASSIGNED;
-      }
-      const updatedTask = await this.updateTask(taskId, updateData, tx);
-      return { task, updatedTask, targetQueue, reason };
-    });
   }
 
   /* ---------------------------- Creation Workflow --------------------------- */

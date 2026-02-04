@@ -142,7 +142,6 @@ model Task {
   investigationNotes String? @db.Text
   task_type          TaskType?
   candidateGroup     String?    @db.VarChar(50)
-  work_queue_id      Int?
   sla_deadline       DateTime?  @db.Timestamp(6)
   sla_duration_hours Int?
   completed_at       DateTime?  @db.Timestamp(6)
@@ -152,9 +151,7 @@ model Task {
   evidence           Evidence[]
   reports            Report[]
   case               Case       @relation(fields: [case_id], references: [case_id])
-  workQueue          WorkQueue? @relation(fields: [work_queue_id], references: [work_queue_id])
 
-  @@index([work_queue_id])
   @@index([status])
   @@index([sla_deadline])
   @@index([assigned_user_id])
@@ -321,102 +318,6 @@ enum UserRole {
   INVESTIGATOR
   SUPERVISOR
   ANALYST
-}
-
-enum AssignmentRuleType {
-  PRIORITY_BASED
-  CASE_TYPE_BASED
-  ROUND_ROBIN
-  LOAD_BALANCED
-  MANUAL
-}
-
-model WorkQueue {
-  work_queue_id      Int                       @id @default(autoincrement())
-  name               String                    @db.VarChar(100)
-  description        String?                   @db.Text
-  tenant_id          String
-  is_active          Boolean                   @default(true)
-  created_by_user_id String                    @db.Uuid
-  created_at         DateTime                  @default(now()) @db.Timestamp(6)
-  updated_at         DateTime                  @updatedAt @db.Timestamp(6)
-  roles              WorkQueueRole[]
-  taskTypes          WorkQueueTaskType[]
-  assignmentRules    WorkQueueAssignmentRule[]
-  members            WorkQueueMember[]
-  tasks              Task[]
-
-  @@unique([tenant_id, name])
-  @@index([tenant_id])
-  @@index([is_active])
-  @@map("work_queues")
-}
-
-model WorkQueueRole {
-  work_queue_role_id Int       @id @default(autoincrement())
-  work_queue_id      Int
-  role               UserRole
-  created_at         DateTime  @default(now()) @db.Timestamp(6)
-  workQueue          WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
-
-  @@unique([work_queue_id, role])
-  @@index([work_queue_id])
-  @@map("work_queue_roles")
-}
-
-model WorkQueueTaskType {
-  work_queue_task_type_id Int       @id @default(autoincrement())
-  work_queue_id           Int
-  task_type               TaskType
-  created_at              DateTime  @default(now()) @db.Timestamp(6)
-  workQueue               WorkQueue @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
-
-  @@unique([work_queue_id, task_type])
-  @@index([work_queue_id])
-  @@map("work_queue_task_types")
-}
-
-model WorkQueueAssignmentRule {
-  assignment_rule_id Int                @id @default(autoincrement())
-  work_queue_id      Int
-  rule_name          String             @default("Legacy Rule") @db.VarChar(255)
-  rule_type          AssignmentRuleType
-  rule_config        Json
-  trigger_type       String?            @db.VarChar(50)
-  conditions         Json?
-  actions            Json?
-  stop_on_match      Boolean            @default(false)
-  priority_order     Int                @default(0)
-  is_active          Boolean            @default(true)
-  application_count  Int                @default(0)
-  last_applied_at    DateTime?          @db.Timestamp(6)
-  created_by         String             @default("00000000-0000-0000-0000-000000000000") @db.Uuid
-  updated_by         String?            @db.Uuid
-  created_at         DateTime           @default(now()) @db.Timestamp(6)
-  updated_at         DateTime           @updatedAt @db.Timestamp(6)
-  workQueue          WorkQueue          @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
-
-  @@index([work_queue_id])
-  @@index([is_active])
-  @@index([priority_order])
-  @@index([trigger_type])
-  @@map("work_queue_assignment_rules")
-}
-
-model WorkQueueMember {
-  work_queue_member_id Int            @id @default(autoincrement())
-  work_queue_id        Int
-  user_id              String         @db.Uuid
-  assignment_type      AssignmentType @default(MANUAL)
-  assigned_by_user_id  String?        @db.Uuid
-  assigned_at          DateTime       @default(now()) @db.Timestamp(6)
-  updated_at           DateTime       @updatedAt @db.Timestamp(6)
-  workQueue            WorkQueue      @relation(fields: [work_queue_id], references: [work_queue_id], onDelete: Cascade)
-
-  @@unique([work_queue_id, user_id])
-  @@index([work_queue_id])
-  @@index([user_id])
-  @@map("work_queue_members")
 }
 
 enum AssignmentType {

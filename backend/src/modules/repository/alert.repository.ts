@@ -32,6 +32,7 @@ export class AlertRepository {
 
       if (!createdAlert) {
         throw new Error('Failed to create alert');
+        
       }
 
       return createdAlert;

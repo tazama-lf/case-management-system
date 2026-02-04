@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { UserPlusIcon, UserMinusIcon, CheckIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
-import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 import { transformBackendAlertToUI, convertToTriageAlert } from '@/features/alerts/utils/alertTransformers';
 import triageService from '@/features/alerts/services/triageservice';
@@ -490,7 +490,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center text-sm text-gray-500">
-                      {formatDate(task.createdAt)}
+                      {formatDate(task.created || task.createdAt)}
                     </div>
                   </td>
                   <td className="px-4 py-3">

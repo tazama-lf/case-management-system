@@ -20,9 +20,6 @@ const AdminDashboard = lazy(
 const ReferenceIdDashboard = lazy(
   () => import('@/features/admin/pages/ReferenceIdDashboard'),
 );
-const WorkQueueDashboard = lazy(
-  () => import('@/features/workqueue/pages/WorkQueueDashboard'),
-);
 
 // Loading fallback component
 const PageLoadingFallback = () => (
@@ -131,19 +128,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'work-queue/:taskId?',
-        element: (
-          <ProtectedRoute
-            requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
-          >
-            <Suspense fallback={<PageLoadingFallback />}>
-              <WorkQueueDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: 'reports/:reportType?',
         element: (
           <ProtectedRoute
@@ -152,19 +136,6 @@ export const router = createBrowserRouter([
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <Reports />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'work-queue',
-        element: (
-          <ProtectedRoute
-            requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
-          >
-            <Suspense fallback={<PageLoadingFallback />}>
-              <WorkQueueDashboard />
             </Suspense>
           </ProtectedRoute>
         ),

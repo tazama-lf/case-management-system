@@ -12,7 +12,7 @@ import type { Evidence } from '../../types/evidence.types';
 import type { TaskComment } from '../../services/commentService';
 import { useToast } from '@/shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
-import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
@@ -68,11 +68,9 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       candidateGroup: task.candidateGroup || 'investigations',
       status: task.status,
       priority: caseDetails?.priority || 'NEW',
-      createdAt: task.created_at,
+      created: task.created_at,
       dueDate: task.sla_deadline || undefined,
-      processInstanceId: '',
       caseId: task.case_id,
-      flowableData: task,
 
     };
 

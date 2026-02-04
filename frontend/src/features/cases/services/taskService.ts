@@ -92,21 +92,6 @@ export interface SupervisorTasksResponse {
   totalPages?: number;
 }
 
-export interface WorkQueueFilters {
-  role?: string;
-  candidateGroup?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface WorkQueueResponse {
-  tasks: TaskForSupervisor[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
 export class TaskService {
   private baseUrl = '/api/v1/task';
 
@@ -246,24 +231,6 @@ export class TaskService {
       return this.validateTaskResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'create task');
-    }
-  }
-
-  async getWorkQueue(filters?: WorkQueueFilters): Promise<WorkQueueResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            params.append(key, value.toString());
-          }
-        });
-      }
-
-      const response = await apiClient.get<WorkQueueResponse>(`${this.baseUrl}/work-queue?${params}`);
-      return response;
-    } catch (error: any) {
-      throw this.handleError(error, 'get work queue');
     }
   }
 
