@@ -5,7 +5,6 @@ import {
   ChevronUpIcon,
   XMarkIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { User } from '@/shared/interfaces/user.interface';
@@ -88,7 +87,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [noEvidenceError, setNoEvidenceError] = React.useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
-  const [validationErrors, setValidationErrors] = React.useState<{ [key: string]: string }>({});
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
@@ -399,7 +397,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           type="button"
           // onClick={UploadEvidence}
           onClick={() => setShowUploadConfirm(true)}
-          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted || taskAssignedId !== currentUser?.userId}
+          disabled={saving || !Object.values(sectionFiles).some(files => files.length > 0) || isTaskCompleted || taskAssignedId !== currentUser?.userId || task.status === 'STATUS_21_BLOCKED'}
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
         ${saving || !Object.values(sectionFiles).some(files => files.length > 0)
               ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
@@ -480,7 +478,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-400">Ready to upload</span>
                               <button
-                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
+                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId || task.status === 'STATUS_21_BLOCKED'}
                                 type="button"
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 title="Remove Upload"
@@ -554,8 +552,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               <span className="text-xs text-green-600">✓ Uploaded</span>
 
                               <button
-                                hidden={isTaskCompleted || taskAssignedId !== currentUser?.userId}
-                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
+                                hidden={isTaskCompleted || taskAssignedId !== currentUser?.userId || task.status === 'STATUS_21_BLOCKED'}
+                                disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId || task.status === 'STATUS_21_BLOCKED'}
                                 type="button"
                                 onClick={() => setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })}
                                 className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
@@ -630,7 +628,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId}
+                      disabled={isTaskCompleted || taskAssignedId !== currentUser?.userId || task.status === 'STATUS_21_BLOCKED'}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

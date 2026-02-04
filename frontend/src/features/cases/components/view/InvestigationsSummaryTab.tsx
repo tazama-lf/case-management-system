@@ -348,6 +348,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           <div className="flex items-center gap-2 ml-6">
             {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && investigationTask.assigned_user_id === currentUserId && (
               <button
+                hidden={task.status === 'STATUS_21_BLOCKED'}
                 onClick={() => setShowCompleteModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
               >
@@ -418,16 +419,16 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                       dangerouslySetInnerHTML={{
                         __html: marked(latestComment.note) as string
                       }}
-                  />
+                    />
 
-                  {/* Supervisor outcome only */}
-                  <div className="p-3 bg-green-50 border border-green-200 rounded">
-                    <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
-                    <p className="text-sm font-semibold text-green-900">
-                      {caseDetails?.status || 'N/A'}
-                    </p>
+                    {/* Supervisor outcome only */}
+                    <div className="p-3 bg-green-50 border border-green-200 rounded">
+                      <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
+                      <p className="text-sm font-semibold text-green-900">
+                        {caseDetails?.status || 'N/A'}
+                      </p>
+                    </div>
                   </div>
-                </div>
                 );
               })()}
             </div>
@@ -542,7 +543,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         </div>
       </div>
 
-     
+
 
       {/* Complete Investigation Task Modal */}
       {showCompleteModal && investigationTask && (

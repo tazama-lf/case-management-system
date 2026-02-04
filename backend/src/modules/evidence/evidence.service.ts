@@ -380,12 +380,10 @@ export class EvidenceService {
     if (evidenceId.includes('InvestigationReport')) {
       query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
     }
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
-
-    this.logger.log(`query evidence ${JSON.stringify(query)}`);
+    // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
     const result = await this.couchdb.queryDocuments(query);
-    this.logger.log(`result evidence ${JSON.stringify(result)}`);
+
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
@@ -556,9 +554,10 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { tenantId, taskId, archive: false, page: 1, limit: 100 };
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    const query: any = { taskId, archive: false, page: 1, limit: 100 };
+    // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
+    // else 
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data || [];

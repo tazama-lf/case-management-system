@@ -40,6 +40,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const activeSession = localStorage.getItem('ACTIVE_AUTH_SESSION');
+    if (activeSession) {
+      alert('Another user is already logged in in this browser.');
+      return;
+    }
+
     try {
       await login(credentials);
 

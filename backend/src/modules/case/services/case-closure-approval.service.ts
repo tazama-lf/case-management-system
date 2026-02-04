@@ -67,14 +67,14 @@ export class CaseClosureApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        operation: 'createSARTask',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
-        case_id: caseId,
-        task_id: createSARFilingTask.task_id,
-      });
+      // await this.taskHistoryService.logTaskHistoryAction({
+      //   userId,
+      //   operation: 'createSARTask',
+      //   entityName: CaseClosureApprovalService.name,
+      //   actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
+      //   case_id: caseId,
+      //   task_id: createSARFilingTask.task_id,
+      // });
 
       this.logger.log(`Successfully created SAR_STR_FILING task ${createSARFilingTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
     } catch (error) {

@@ -18,11 +18,15 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   task,
   onNotesUpdate,
 }) => {
+  const CHAR_LIMIT = 32000;
+  const getCharCount = (text: string) => text.length;
+
   const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
+
 
   React.useEffect(() => {
     const handleLinkClick = (e: MouseEvent) => {
@@ -62,7 +66,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   const isUserAbleToSaveNotes = () => {
     const user = authService.getUser();
-    return user?.userId===task?.assigned_user_id;
+    return user?.userId === task?.assigned_user_id;
   }
 
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
@@ -72,6 +76,13 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       showError('Please add investigation notes before saving.');
       return;
     }
+
+    const charCount = getCharCount(notes);
+    if (charCount > CHAR_LIMIT) {
+      showError(`Character limit exceeded (${CHAR_LIMIT} max).`);
+      return;
+    }
+
 
     setSaving(true);
     try {
@@ -102,13 +113,13 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           <div className="text-sm text-gray-500">Loading notes...</div>
         </div>
       ) : (
-        <>  
+        <>
           {/* MDX Editor */}
           <div className="mdx-editor-container min-h-[250px]">
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
-              readOnly={isTaskCompleted || !isUserCanEdit}
+              readOnly={!isUserCanEdit || saving || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED'}
               className="mdx-editor"
               contentEditableClassName="prose"
               plugins={[
@@ -133,17 +144,28 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           </div>
 
           {/* Save Button */}
-          {isUserAbleToSaveNotes() && (
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={handleSaveNotes}
-              disabled={saving || !notes.trim() || isTaskCompleted}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
+          <div className="flex justify-between text-sm mt-1">
+            <span
+              className={
+                getCharCount(notes) >= CHAR_LIMIT
+                  ? 'text-red-600 font-medium'
+                  : 'text-gray-500'
+              }
             >
-              <CheckIcon className="h-4 w-4" />
-              {saving ? 'Saving...' : 'Save Investigation Notes'}
-            </button>
+              Character count: {getCharCount(notes)} / {CHAR_LIMIT}
+            </span>
           </div>
+          {isUserAbleToSaveNotes() && (
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleSaveNotes}
+                disabled={saving || !notes.trim() || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED' || getCharCount(notes) >= CHAR_LIMIT}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
+              >
+                <CheckIcon className="h-4 w-4" />
+                {saving ? 'Saving...' : 'Save Investigation Notes'}
+              </button>
+            </div>
           )}
         </>
       )}
