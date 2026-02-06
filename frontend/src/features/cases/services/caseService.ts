@@ -12,6 +12,9 @@ export interface GetUserCasesQueryDto {
   sortOrder?: 'asc' | 'desc';
   sarStrStatus?: string;
   search?: string;
+  excludeDraft?: boolean;
+  excludeClosed?: boolean;
+  closedOnly?: boolean;
 }
 
 export interface UserTaskDto {
@@ -442,6 +445,10 @@ export class CaseService {
       if (query?.limit) params.append('limit', String(query.limit));
       if (query?.sortBy) params.append('sortBy', query.sortBy);
       if (query?.sortOrder) params.append('sortOrder', query.sortOrder);
+      // Only send boolean parameters when they are true
+      if (query?.excludeDraft === true) params.append('excludeDraft', 'true');
+      if (query?.excludeClosed === true) params.append('excludeClosed', 'true');
+      if (query?.closedOnly === true) params.append('closedOnly', 'true');
 
       const queryString = params.toString();
       const url = `${this.baseUrl}/all${queryString ? `?${queryString}` : ''}`;

@@ -159,10 +159,38 @@ export class CaseQueryService {
         sortOrder = 'desc',
         sarStrStatus,
         search,
+        excludeDraft = false,
+        excludeClosed = false,
+        closedOnly = false,
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
-      if (status) baseFilters.status = status;
+      
+      // Handle status filtering with new exclusion/inclusion options
+      if (closedOnly) {
+        // Show only closed cases
+        baseFilters.status = {
+          in: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE']
+        };
+      } else if (status) {
+        // Single status filter takes precedence
+        baseFilters.status = status;
+      } else {
+        // Handle exclusions
+        const excludedStatuses: string[] = [];
+        if (excludeDraft) {
+          excludedStatuses.push('STATUS_00_DRAFT');
+        }
+        if (excludeClosed) {
+          excludedStatuses.push('STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE');
+        }
+        if (excludedStatuses.length > 0) {
+          baseFilters.status = {
+            notIn: excludedStatuses
+          };
+        }
+      }
+      
       if (priority) baseFilters.priority = priority;
       if (caseType) baseFilters.case_type = caseType;
       if (tenantId) baseFilters.tenant_id = tenantId;

@@ -35,6 +35,39 @@ export class GetAllCasesQueryDto {
   sarStrStatus?: string;
 
   @ApiProperty({
+    description: 'Exclude draft cases from results',
+    required: false,
+    default: false,
+    example: false,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  excludeDraft?: boolean = false;
+
+  @ApiProperty({
+    description: 'Exclude closed cases from results',
+    required: false,
+    default: false,
+    example: false,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  excludeClosed?: boolean = false;
+
+  @ApiProperty({
+    description: 'Show only closed cases (Closed Confirmed, Closed Refuted, Closed Inconclusive)',
+    required: false,
+    default: false,
+    example: false,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  closedOnly?: boolean = false;
+
+  @ApiProperty({
     description: 'Filter by case type',
     enum: CaseType,
     required: false,

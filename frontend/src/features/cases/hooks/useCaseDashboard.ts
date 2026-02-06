@@ -15,6 +15,7 @@ export interface CaseDashboardFilters {
   statusFilter: string;
   priorityFilter: string;
   sarStrStatusFilter: string;
+  caseTypeFilter: 'all' | 'draft' | 'closed';
 }
 
 export interface PaginationState {
@@ -58,6 +59,7 @@ export const useCaseDashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
+  const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'draft' | 'closed'>('all');
 
   // Debounce search term to avoid excessive API calls
   const debouncedSearch = useDebounce(search, 500);
@@ -86,15 +88,38 @@ export const useCaseDashboard = () => {
     setErrorState(null);
 
     try {
+      // Determine backend filter parameters based on caseTypeFilter
+      let finalStatusFilter = statusFilter;
+      let excludeDraft = false;
+      let excludeClosed = false;
+      let closedOnly = false;
+
+      if (caseTypeFilter === 'draft') {
+        // Show only draft cases
+        finalStatusFilter = 'STATUS_00_DRAFT';
+      } else if (caseTypeFilter === 'closed') {
+        // Show only closed cases - use backend closedOnly parameter
+        closedOnly = true;
+        finalStatusFilter = '';
+      } else if (caseTypeFilter === 'all') {
+        // Show all cases except draft and closed - use backend exclusion parameters
+        excludeDraft = true;
+        excludeClosed = true;
+        finalStatusFilter = '';
+      }
+
       const response = await caseService.getAllCases({
-        status: statusFilter || undefined,
+        status: finalStatusFilter || undefined,
         priority: priorityFilter || undefined,
         sarStrStatus: sarStrStatusFilter || undefined,
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         page: currentPage,
         limit: pageSize,
-        search: debouncedSearch || undefined
+        search: debouncedSearch || undefined,
+        excludeDraft: excludeDraft,
+        excludeClosed: excludeClosed,
+        closedOnly: closedOnly,
       });
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
@@ -111,7 +136,7 @@ export const useCaseDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, debouncedSearch]);
+  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, debouncedSearch, caseTypeFilter]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -131,14 +156,10 @@ export const useCaseDashboard = () => {
       } else {
 
         navigate('/cases');
-        // error('Case Not Found', `Case with ID ${caseId} was not found or you don't have permission to view it.`);
       }
     }
   }, [cases, params.caseId, navigate, error]);
 
-
-  // Backend now handles all filtering and pagination
-  // No need for client-side filtering
   const totalItems = backendTotalItems;
   const totalPages = backendTotalPages;
 
@@ -151,7 +172,6 @@ export const useCaseDashboard = () => {
     setCurrentPage(1);
   }, [debouncedSearch, search]);
 
-  // Use cases directly from backend (already filtered and paginated)
   const paginatedCases = cases;
 
   const pagination: PaginationState = {
@@ -245,7 +265,8 @@ export const useCaseDashboard = () => {
     setSortBy,
     setStatusFilter,
     setPriorityFilter,
-    setSarStrStatusFilter
+    setSarStrStatusFilter,
+    setCaseTypeFilter
   };
 
 
@@ -302,7 +323,8 @@ export const useCaseDashboard = () => {
       sortBy,
       statusFilter,
       priorityFilter,
-      sarStrStatusFilter
+      sarStrStatusFilter,
+      caseTypeFilter
     },
     pagination,
     permissions: {

@@ -17,6 +17,8 @@ interface CaseFiltersProps {
   onPriorityFilterChange: (value: string) => void;
   sarStrStatusFilter: string;
   onSarStrStatusFilterChange: (value: string) => void;
+  caseTypeFilter: 'all' | 'draft' | 'closed';
+  onCaseTypeFilterChange: (value: 'all' | 'draft' | 'closed') => void;
 }
 
 export type UserSavedFilter = {
@@ -39,6 +41,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   onPriorityFilterChange,
   sarStrStatusFilter,
   onSarStrStatusFilterChange,
+  caseTypeFilter,
+  onCaseTypeFilterChange,
 }) => {
   const { success, error } = useToast();
   const [showFilters, setShowFilters] = React.useState(false);
@@ -83,7 +87,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   ];
 
   const hasActiveFilters =
-    !!statusFilter || !!priorityFilter || !!sarStrStatusFilter || sortBy !== 'recent';
+    !!statusFilter || !!priorityFilter || !!sarStrStatusFilter || sortBy !== 'recent' || caseTypeFilter !== 'all';
 
   const fetchSavedFilters = React.useCallback(async () => {
     try {
@@ -194,6 +198,19 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           />
         </div>
 
+        {/* Case Type Filter Dropdown */}
+        <div className="w-48">
+          <select
+            value={caseTypeFilter}
+            onChange={(e) => onCaseTypeFilterChange(e.target.value as 'all' | 'draft' | 'closed')}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Cases</option>
+            <option value="draft">Draft Cases</option>
+            <option value="closed">Closed Cases</option>
+          </select>
+        </div>
+
         {/* Filter button */}
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -216,6 +233,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
               onPriorityFilterChange('');
               onSarStrStatusFilterChange('');
               onSortChange('recent');
+              onCaseTypeFilterChange('all');
               handleSavedFilterSelect('Select a filter');
 
             }}
