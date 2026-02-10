@@ -5,17 +5,21 @@ import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
 import { JsonValue } from './utils/types/JsonValue';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class AlertRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AlertRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
-  async createAlert(alertData: CreateAlertDTO) {
+  async createAlert(alertData: CreateAlertDTO, tx?: Prisma.TransactionClient) {
     try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
       const alert_data = JSON.parse(JSON.stringify(alertData.report));
       const transaction = JSON.parse(JSON.stringify(alertData.transaction));
       const network_map = JSON.parse(JSON.stringify(alertData.networkMap));
-      const createdAlert = await this.prisma.alert.create({
+      const createdAlert = await client.alert.create({
         data: {
           tenant_id: alertData.tenantId,
           priority: Priority.NEW,
@@ -32,7 +36,6 @@ export class AlertRepository {
 
       if (!createdAlert) {
         throw new Error('Failed to create alert');
-        
       }
 
       return createdAlert;
@@ -41,8 +44,9 @@ export class AlertRepository {
     }
   }
 
-  async createTransaction(tenantId: string, transactionData: TransactionDTO) {
+  async createTransaction(tenantId: string, transactionData: TransactionDTO, tx?: Prisma.TransactionClient) {
     try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
       if (!transactionData || typeof transactionData !== 'object') {
         throw new Error('Invalid transaction data');
       }
@@ -56,7 +60,7 @@ export class AlertRepository {
         throw new Error('ReferenceId not found in transaction data');
       }
 
-      const transactionRecord = await this.prisma.transactionData.create({
+      const transactionRecord = await client.transactionData.create({
         data: {
           tenantId,
           endToEndId: referenceId,
@@ -72,36 +76,44 @@ export class AlertRepository {
     }
   }
 
-  async getAlertById(alertId: number) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { alert_id: alertId },
-    });
+  async getAlertById(alertId: number, tx?: Prisma.TransactionClient) {
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const alert = await client.alert.findUnique({
+        where: { alert_id: alertId },
+      });
 
-    if (!alert) {
-      throw new NotFoundException(`Alert with ID ${alertId} not found`);
+      if (!alert) {
+        throw new NotFoundException(`Alert with ID ${alertId} not found`);
+      }
+
+      return alert;
+    } catch (error) {
+      throw error;
     }
-
-    return alert;
   }
 
-  async getAlertByCaseId(caseId: number) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { case_id: caseId },
-    });
+  async getAlertByCaseId(caseId: number, tx?: Prisma.TransactionClient) {
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const alert = await client.alert.findUnique({
+        where: { case_id: caseId },
+      });
 
-    if (!alert) {
-      throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+      if (!alert) {
+        throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+      }
+
+      return alert.alert_id;
+    } catch (error) {
+      throw error;
     }
-
-    return alert.alert_id;
   }
 
   async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
-      if (!tx) {
-        tx = this.prisma;
-      }
-      const updatedAlert = await tx.alert.update({
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const updatedAlert = await client.alert.update({
         where: { alert_id: alertId },
         data: {
           priority_score: updateData.priority_score,
@@ -124,17 +136,21 @@ export class AlertRepository {
     }
   }
 
-  async findMany(options: {
-    where?: Prisma.AlertWhereInput;
-    sortOrder?: 'asc' | 'desc';
-    sortBy?: keyof Alert;
-    page?: number;
-    limit?: number;
-  }) {
+  async findMany(
+    options: {
+      where?: Prisma.AlertWhereInput;
+      sortOrder?: 'asc' | 'desc';
+      sortBy?: keyof Alert;
+      page?: number;
+      limit?: number;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
     try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
       const { where: whereClause = {}, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 10 } = options;
 
-      const alerts = await this.prisma.alert.findMany({
+      const alerts = await client.alert.findMany({
         where: whereClause,
         orderBy: { [sortBy]: sortOrder },
         skip: (page - 1) * limit,
@@ -158,19 +174,21 @@ export class AlertRepository {
     }
   }
 
-  async count(options: { where?: Prisma.AlertWhereInput }) {
+  async count(options: { where?: Prisma.AlertWhereInput }, tx?: Prisma.TransactionClient) {
     try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
       const { where: whereClause = {} } = options;
-      const totalCount = await this.prisma.alert.count({ where: whereClause });
+      const totalCount = await client.alert.count({ where: whereClause });
       return totalCount;
     } catch (error) {
       throw new Error(`Failed to count alerts: ${error.message}`);
     }
   }
 
-  async getReferenceId(txTp: string) {
+  async getReferenceId(txTp: string, tx?: Prisma.TransactionClient) {
     try {
-      const referenceId = await this.prisma.referenceId.findUnique({
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const referenceId = await client.referenceId.findUnique({
         where: {
           txTp,
         },

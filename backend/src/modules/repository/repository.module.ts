@@ -8,11 +8,34 @@ import { CommentRepository } from './comment.repository';
 import { FilterRepository } from './filter.repository';
 import { EvidenceRepository } from './evidence.repository';
 import { AdminRepository } from './admin.repository';
-import { TransactionDataRespository } from './transactionalData.respository'
+import { TransactionDataRespository } from './transactionalData.respository';
+import { BaseRepository } from './base.repository';
 
 @Module({
   imports: [PrismaModule],
-  providers: [AlertRepository, CaseRepository, TaskRepository, AsyncTaskRepository, CommentRepository, EvidenceRepository, AdminRepository, FilterRepository, TransactionDataRespository],
-  exports: [AlertRepository, CaseRepository, TaskRepository, AsyncTaskRepository, CommentRepository, EvidenceRepository, AdminRepository, FilterRepository, TransactionDataRespository],
+  providers: [
+    BaseRepository,
+    AlertRepository,
+    CaseRepository,
+    TaskRepository,
+    AsyncTaskRepository,
+    CommentRepository,
+    EvidenceRepository,
+    AdminRepository,
+    FilterRepository,
+    TransactionDataRespository,
+  ],
+  exports: [
+    BaseRepository,
+    AlertRepository,
+    CaseRepository,
+    TaskRepository,
+    AsyncTaskRepository,
+    CommentRepository,
+    EvidenceRepository,
+    AdminRepository,
+    FilterRepository,
+    TransactionDataRespository,
+  ],
 })
-export class RepositoryModule { }
+export class RepositoryModule {}

@@ -1,14 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client-cms';
 import { PrismaService } from 'prisma/prisma.service';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class AdminRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AdminRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
-  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput) {
+  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput, tx?: Prisma.TransactionClient) {
     try {
-      const referenceId = await this.prisma.referenceId.create({
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const referenceId = await client.referenceId.create({
         data: idData,
       });
 
@@ -25,9 +29,10 @@ export class AdminRepository {
     }
   }
 
-  async getReferenceId() {
+  async getReferenceId(tx?: Prisma.TransactionClient) {
     try {
-      const referenceIds = await this.prisma.referenceId.findMany();
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const referenceIds = await client.referenceId.findMany();
 
       if (!referenceIds) {
         throw new NotFoundException('No ReferenceIds found');

@@ -1,13 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Prisma } from '@prisma/client-cms';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class TransactionDataRespository {
-  constructor(private readonly prisma: PrismaService) { }
+export class TransactionDataRespository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
   async getTransactionalData(endToEndId: string) {
-    const transactionalData = await this.prisma.transactionData.findMany({
+    const client: Prisma.TransactionClient | PrismaService = this.prisma;
+    const transactionalData = await client.transactionData.findMany({
       where: { endToEndId: endToEndId },
     });
 
@@ -17,6 +21,4 @@ export class TransactionDataRespository {
 
     return transactionalData;
   }
-
-
 }
