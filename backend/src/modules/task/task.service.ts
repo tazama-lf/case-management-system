@@ -6,19 +6,11 @@ import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
-import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
-import {
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
-  TaskAssignedEvent,
-  TaskUnassignedEvent,
-  CaseStatusChangedEvent,
-} from '../events/domain-events';
+import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
-import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
@@ -68,7 +60,7 @@ export class TaskService {
         {
           userId,
           actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-          entityName: TaskBridgeService.name,
+          entityName: TaskService.name,
           operation: 'createTask',
           outcome: Outcome.SUCCESS,
         },
@@ -78,11 +70,11 @@ export class TaskService {
 
       return { ...createdTask, candidateGroup: taskDTO.candidateGroup };
     } catch (error) {
-      this.logger.error('Error creating task', error, TaskBridgeService.name);
+      this.logger.error('Error creating task', error, TaskService.name);
       this.loggingOrchestrationService.logActions({
         userId,
         actionPerformed: `Error creating task with candidateGroup: ${taskDTO.candidateGroup} - ${error.message}`,
-        entityName: TaskBridgeService.name,
+        entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
       });

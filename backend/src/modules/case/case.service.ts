@@ -2,8 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -15,25 +14,16 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
-import { CaseHistoryService } from '../case_history/caseHistory.service';
-import {
-  CloseCaseDto,
-  ManualCreateCaseDto,
-  GetAllCasesQueryDto,
-  GetUserCasesQueryDto,
-  UpdateCaseDto,
-} from './dto';
-import { UserService } from '../user/user.service';
+import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
-import { EventLogService } from '../event_log/eventLog.service';
 import { CaseRepository } from '../repository/case.repository';
 import { CaseCreationService } from './services/case-creation.service';
+import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 
 @Injectable()
 export class CaseService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
     private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
     private readonly commentService: CommentService,
@@ -45,11 +35,11 @@ export class CaseService {
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
-    private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService,
+    // private readonly caseHistoryService: CaseHistoryService,
     private readonly caseRepository: CaseRepository,
     private readonly caseCreationService: CaseCreationService,
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -60,30 +50,15 @@ export class CaseService {
       }
     }
 
-
     if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    // const investigateTask = allTasks.find(
-    //   (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
-    // );
-    // const investigateTask = allTasks
-    //   .filter(
-    //     (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
-    //   )
-    //   .filter((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
 
-
-    const investigateTask = allTasks.filter((task) =>
-      tasksIds.includes(task.task_id)
-    );
-
+    const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
     if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
-    // if (investigateTask.status !== TaskStatus.STATUS_20_IN_PROGRESS)
-    //   throw new BadRequestException(`Cannot suspend as Investigate case task ${investigateTask.task_id} is not in progress`);
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -91,13 +66,7 @@ export class CaseService {
 
         // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
         const updatedTask = await Promise.all(
-          investigateTask.map((task) =>
-            this.taskService.updateTask(
-              task.task_id,
-              { status: TaskStatus.STATUS_21_BLOCKED },
-              userId
-            )
-          )
+          investigateTask.map((task) => this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId)),
         );
         const createCommentDto = new CreateCommentDto();
         //  createCommentDto.taskId = updatedTask.task_id;
@@ -105,29 +74,16 @@ export class CaseService {
         createCommentDto.note = `Case suspended: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'suspendCase',
-          entityName: CaseService.name,
-          actionPerformed: `Suspend case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.eventLogService.logEventAction({
-          userId,
-          operation: 'suspendCase',
-          entityName: CaseService.name,
-          actionPerformed: `Suspend case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.caseHistoryService.logCaseHistoryAction({
-          userId,
-          operation: 'suspendCase',
-          entityName: CaseService.name,
-          actionPerformed: `Suspend case ${caseId}`,
-          case_id: caseId,
-        });
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'suspendCase',
+            entityName: CaseService.name,
+            actionPerformed: `Suspend case ${caseId}`,
+            outcome: Outcome.SUCCESS,
+          },
+          caseId,
+        );
 
         return { case: updatedCase, task: updatedTask };
       });
@@ -141,9 +97,7 @@ export class CaseService {
       });
 
       try {
-        const caseAssignee = investigateTask
-          .map((t) => t.assigned_user_id?.trim())
-          .filter((id): id is string => !!id);
+        const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
@@ -158,8 +112,8 @@ export class CaseService {
                   actionBy: suspendedBy?.username || suspendedBy?.fullName,
                   reason,
                 },
-              })
-            )
+              }),
+            ),
           );
 
           // await this.notificationService.sendNotification({
@@ -176,17 +130,15 @@ export class CaseService {
       } catch (notificationError) {
         this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
       }
-
       return { success: true, ...result };
     } catch (err) {
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'suspendCase',
         entityName: CaseService.name,
         actionPerformed: `Attempted to suspend case ${caseId}`,
         outcome: Outcome.FAILURE,
       });
-
       this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
     }
@@ -204,12 +156,11 @@ export class CaseService {
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
     this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
-    const investigateTask = allTasks.filter((t) => t.name !== null && (
-      t.name === TASK_NAMES.INVESTIGATE_CASE ||
-      t.name === TASK_NAMES.INVESTIGATE_AML ||
-      t.name === TASK_NAMES.INVESTIGATE_FRAUD
-    ) &&
-      t.status === TaskStatus.STATUS_21_BLOCKED
+    const investigateTask = allTasks.filter(
+      (t) =>
+        t.name !== null &&
+        (t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_AML || t.name === TASK_NAMES.INVESTIGATE_FRAUD) &&
+        t.status === TaskStatus.STATUS_21_BLOCKED,
     );
     this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
@@ -232,13 +183,7 @@ export class CaseService {
         //   userId,
         // );
         const updatedTask = await Promise.all(
-          investigateTask.map((t) =>
-            this.taskService.updateTask(
-              t.task_id,
-              { status: TaskStatus.STATUS_20_IN_PROGRESS },
-              userId
-            )
-          )
+          investigateTask.map((t) => this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId)),
         );
         const createCommentDto = new CreateCommentDto();
         // createCommentDto.taskId = updatedTask.task_id;
@@ -246,39 +191,23 @@ export class CaseService {
         createCommentDto.note = `Case resumed: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'resumeCase',
-          entityName: CaseService.name,
-          actionPerformed: `Resume case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.eventLogService.logEventAction({
-          userId,
-          operation: 'resumeCase',
-          entityName: CaseService.name,
-          actionPerformed: `Resume case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.caseHistoryService.logCaseHistoryAction({
-          userId,
-          operation: 'resumeCase',
-          entityName: CaseService.name,
-          actionPerformed: `Resume case ${caseId}`,
-          case_id: caseId,
-        });
-
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'resumeCase',
+            entityName: CaseService.name,
+            actionPerformed: `Resume case ${caseId}`,
+            outcome: Outcome.SUCCESS,
+          },
+          caseId,
+        );
 
         return { case: updatedCase, task: updatedTask };
       });
 
       try {
         // const caseAssignee = investigateTask.assigned_user_id;
-        const caseAssignee = investigateTask
-          .map((t) => t.assigned_user_id?.trim())
-          .filter((id): id is string => !!id);
+        const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
         if (caseAssignee) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
@@ -293,8 +222,8 @@ export class CaseService {
                   actionBy: resumedBy?.username || resumedBy?.email,
                   reason,
                 },
-              })
-            )
+              }),
+            ),
           );
         }
       } catch (notificationError) {
@@ -303,7 +232,7 @@ export class CaseService {
 
       return { success: true, ...result };
     } catch (err) {
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'resumeCase',
         entityName: CaseService.name,
@@ -345,29 +274,16 @@ export class CaseService {
 
         this.flowableService.handleCaseAbandoned({ caseId, reason });
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'abandonCase',
-          entityName: CaseService.name,
-          actionPerformed: `Abandon case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.eventLogService.logEventAction({
-          userId,
-          operation: 'abandonCase',
-          entityName: CaseService.name,
-          actionPerformed: `Abandon case ${caseId}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.caseHistoryService.logCaseHistoryAction({
-          userId,
-          operation: 'abandonCase',
-          entityName: CaseService.name,
-          actionPerformed: `Abandon case ${caseId}`,
-          case_id: caseId,
-        });
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'abandonCase',
+            entityName: CaseService.name,
+            actionPerformed: `Abandon case ${caseId}`,
+            outcome: Outcome.SUCCESS,
+          },
+          caseId,
+        );
 
         return { case: updatedCase, task: updatedTask };
       });
@@ -497,7 +413,7 @@ export class CaseService {
           completeNewCaseTask.task_id,
           {
             status: TaskStatus.STATUS_30_COMPLETED,
-            assignedUserId: userId
+            assignedUserId: userId,
           },
           userId,
         );
@@ -544,10 +460,20 @@ export class CaseService {
       } else {
         // Supervisor: Create investigation task directly
         if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-          await this.caseCreationService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, existingCase.tenant_id, caseId, result.case.priority);
-          await this.caseCreationService.createCaseWithInvestigationTask(CaseType.AML, userId, existingCase.tenant_id, caseId, result.case.priority);
-
-
+          await this.caseCreationService.createCaseWithInvestigationTask(
+            CaseType.FRAUD,
+            userId,
+            existingCase.tenant_id,
+            caseId,
+            result.case.priority,
+          );
+          await this.caseCreationService.createCaseWithInvestigationTask(
+            CaseType.AML,
+            userId,
+            existingCase.tenant_id,
+            caseId,
+            result.case.priority,
+          );
         } else {
           nextTask = await this.taskService.createTask(
             {
@@ -581,29 +507,16 @@ export class CaseService {
         this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'completeCaseCreation',
-        entityName: CaseService.name,
-        actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'completeCaseCreation',
-        entityName: CaseService.name,
-        actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'completeCaseCreation',
-        entityName: CaseService.name,
-        actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'completeCaseCreation',
+          entityName: CaseService.name,
+          actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       return {
         success: true,
@@ -618,7 +531,7 @@ export class CaseService {
     } catch (err) {
       this.logger.error('completeCaseCreation failed', { error: err, caseId, userId, role });
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'completeCaseCreation',
         entityName: CaseService.name,
