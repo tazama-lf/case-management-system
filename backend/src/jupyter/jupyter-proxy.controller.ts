@@ -36,6 +36,26 @@ export class JupyterProxyController {
     return this.proxyService.getCounterpartyNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
   }
 
+  @Get('network-analysis/counterparty-node/:counterpartyId')
+  @ApiOperation({ summary: 'Proxy: Get Counterparty Node Network Analysis with Full Details' })
+  @ApiQuery({ name: 'granularity', required: false, example: 'month' })
+  @ApiQuery({ name: 'tenantId', required: false, example: 'DEFAULT' })
+  async getCounterpartyNodeNetwork(
+    @Param('counterpartyId') counterpartyId: string,
+    @Query('granularity') granularity?: string,
+    @Query('tenantId') tenantId?: string,
+    @Headers() headers?: Record<string, any>,
+  ) {
+    this.validateSecret(headers || {});
+    if (!counterpartyId || counterpartyId.trim() === '') {
+      throw new BadRequestException('counterpartyId is required');
+    }
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
+    }
+    return this.proxyService.getCounterpartyNodeFullData(counterpartyId, tenantId || 'DEFAULT', (granularity as 'day' | 'month' | 'year') || 'month');
+  }
+
   @Get('alert-history/summary')
   @ApiOperation({ summary: 'Proxy: Get Alert History Summary' })
   @ApiQuery({ name: 'endToEndId', required: false })

@@ -9,6 +9,10 @@ export class JupyterProxyService {
     return this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange);
   }
 
+  async getCounterpartyNodeFullData(counterpartyId: string, tenantId: string, granularity: 'day' | 'month' | 'year' = 'month') {
+    return this.goldLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity);
+  }
+
   async getAlertHistorySummary(endToEndId?: string, tenantId?: string, dateRange?: string) {
     return this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange || 'all');
   }
