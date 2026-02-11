@@ -61,7 +61,33 @@ export class TaskLifecycleService {
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
           reason: `Case assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`,
         });
+
+        if (updatedCase.parent_id) {
+          const subCase = await tx.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
+
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
+            });
+
+          }
+
+        }
+
       }
+
+
+
+
       await this.flowableService.handleTaskAssigned({
         taskId,
         caseId: existingTask.case_id,
@@ -182,6 +208,28 @@ export class TaskLifecycleService {
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
           reason: `Case assigned to investigator ${assignedUserId}`,
         });
+
+        if (updatedCase.parent_id) {
+          const subCase = await tx.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
+
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
+            });
+
+          }
+
+        }
+
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -309,6 +357,28 @@ export class TaskLifecycleService {
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
           reason: `Case self-assigned by investigator ${investigatorUserId}`,
         });
+
+        if (updatedCase.parent_id) {
+          const subCase = await tx.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
+
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
+            });
+
+          }
+
+        }
+
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -385,6 +455,28 @@ export class TaskLifecycleService {
           where: { case_id: existingTask.case_id },
           data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
         });
+
+        if (updatedCase.parent_id) {
+          const subCase = await tx.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && subCase?.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, updated_at: new Date() },
+            });
+
+          }
+
+        }
+
       }
 
 

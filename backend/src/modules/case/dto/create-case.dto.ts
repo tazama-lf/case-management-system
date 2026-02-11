@@ -9,7 +9,7 @@ export class CreateCaseDto {
   })
   @IsUUID()
   @IsOptional()
-  parentId?: string;
+  parentId?: Number;
 
   @ApiProperty({
     description: 'Tenant ID associated with the case',

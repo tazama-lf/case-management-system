@@ -156,13 +156,13 @@ export class CaseRepository {
         return await this.prismaService.case.findUnique({
             where: { case_id: caseId },
             include: {
-             tasks: {
-                orderBy: {
-                created_at: 'desc',
+                tasks: {
+                    orderBy: {
+                        created_at: 'desc',
+                    },
+                },
             },
-        },
-        },
-    });
+        });
     }
 
     async findCaseById(caseId: number): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
@@ -358,6 +358,7 @@ export class CaseRepository {
                 priority: caseDetail.priority,
                 case_type: caseDetail.caseType,
                 case_creation_type: caseDetail.caseCreationType,
+                parent_id: caseDetail.parentId,
             },
         });
     }

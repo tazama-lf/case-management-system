@@ -7,7 +7,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { CommentService } from '../comment/comment.service';
-import { Priority, CaseStatus, CaseType, Prisma, TaskStatus } from '@prisma/client-cms';
+import { Priority, CaseStatus, CaseType, Prisma, TaskStatus, CaseCreationType } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
@@ -23,6 +23,7 @@ import { UpdateAlertDTO } from '../alert/dto';
 import { EventLogService } from '../event_log/eventLog.service';
 import { CaseHistoryService } from '../case_history/caseHistory.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
+import { CaseCreationService } from '../case/services/case-creation.service';
 
 @Injectable()
 export class TriageService {
@@ -49,6 +50,7 @@ export class TriageService {
         private readonly featureExtractionService: FeatureExtractionService,
         private readonly caseHistoryService: CaseHistoryService,
         private readonly taskHistoryService: TaskHistoryService,
+        private readonly caseCreateService: CaseCreationService,
     ) { }
 
     async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
@@ -136,13 +138,25 @@ export class TriageService {
                     TriageService.name,
                 );
             } else {
-                await this.caseCreationService.updateCaseStatus(
-                    alert.case_id,
-                    CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-                    userId,
-                    priority,
-                    updateAlertDto.alertType as CaseType,
-                );
+
+                if (alert.alert_type)
+
+                    await this.caseCreationService.updateCaseStatus(
+                        alert.case_id,
+                        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+                        userId,
+                        priority,
+                        updateAlertDto.alertType as CaseType,
+                    );
+
+                if (alert.alert_type === CaseType.FRAUD_AND_AML) {
+                    await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
+                    await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
+                } else {
+                    //do Nothing   
+                }
+
+
 
                 await this.flowableService.handleTaskCompleted({
                     caseId: existingCase.case_id,
@@ -318,6 +332,7 @@ export class TriageService {
 
             if (predictedTruePositive) {
                 if (predictedAlertType === CaseType.FRAUD_AND_AML) {
+                    this.logger.log(`Case predicted with both aml and fraud creating child FRAUD & AML cases for case ${caseId}`);
                     await this.taskService.updateTask(
                         triageTaskId,
                         {
@@ -345,6 +360,9 @@ export class TriageService {
                         priority,
                         predictedAlertType,
                     );
+                    await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, caseId, priority);
+                    await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, caseId, priority);
+
                     return;
                 }
 
@@ -414,6 +432,7 @@ export class TriageService {
                     );
                 }
             }
+
         } catch (error) {
             this.logger.error(`Triage failed for alert ${alertId}`, error.stack);
             await this.audit.logAction({

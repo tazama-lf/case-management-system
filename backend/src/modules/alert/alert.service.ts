@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, BadRequestException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, Priority } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
@@ -12,6 +12,7 @@ import { EventLogService } from '../event_log/eventLog.service';
 import { TransactionDataRespository } from '../repository/transactionalData.respository'
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
+import { CaseCreationService } from '../case/services/case-creation.service';
 
 
 @Injectable()
@@ -24,6 +25,7 @@ export class AlertService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly eventLogService: EventLogService,
     private readonly transactionDataRespository: TransactionDataRespository,
+    private readonly caseCreateService: CaseCreationService,
   ) { }
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
@@ -95,8 +97,13 @@ export class AlertService {
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
-
       const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
+      this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`)
+      if (caseDetail.caseType === CaseType.FRAUD_AND_AML) {
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, createdCase.case_id, createdCase.priority);
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, createdCase.case_id, createdCase.priority);
+
+      }
       const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
       return createdAlert;
     }

@@ -81,6 +81,15 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
     setValidationErrors({});
   }, [alert, isOpen]);
 
+  const isStatusLocked =
+    alertType === 'AML' || alertType === 'FRAUD_AND_AML';
+
+  React.useEffect(() => {
+    if (isStatusLocked) {
+      setStatus('STATUS_02_READY_FOR_ASSIGNMENT');
+    }
+  }, [alertType]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -290,9 +299,9 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                   <select
                     value={status}
                     onChange={e => setStatus(e.target.value as CaseStatus)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading || isStatusLocked ? 'bg-gray-50 cursor-not-allowed' : ''
                       }`}
-                    disabled={loading}
+                    disabled={loading || isStatusLocked}
                   >
                     <option value="STATUS_02_READY_FOR_ASSIGNMENT">Ready for Assignment (Investigation)</option>
                     <option value="STATUS_82_CLOSED_CONFIRMED">Closed - Confirmed</option>

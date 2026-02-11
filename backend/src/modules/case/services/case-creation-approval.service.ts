@@ -16,6 +16,7 @@ import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
+import { CaseCreationService } from './case-creation.service';
 
 @Injectable()
 export class CaseCreationApprovalService {
@@ -33,6 +34,7 @@ export class CaseCreationApprovalService {
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
+    private readonly caseCreateService: CaseCreationService,
   ) { }
 
   private validateCaseCompletionFields(existingCase: any): string[] {
@@ -123,26 +125,29 @@ export class CaseCreationApprovalService {
         );
       } else {
         if (caseType === CaseType.FRAUD_AND_AML) {
-          await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Fraud',
-              description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-          );
-          await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate AML',
-              description: `AML Investigation task for manually created case ${result.case.case_id}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-          );
+          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
+          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
+
+          // await this.taskService.createTask(
+          //   {
+          //     caseId: result.case.case_id,
+          //     status: TaskStatus.STATUS_01_UNASSIGNED,
+          //     name: 'Investigate Fraud',
+          //     description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
+          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          //   },
+          //   userId,
+          // );
+          // await this.taskService.createTask(
+          //   {
+          //     caseId: result.case.case_id,
+          //     status: TaskStatus.STATUS_01_UNASSIGNED,
+          //     name: 'Investigate AML',
+          //     description: `AML Investigation task for manually created case ${result.case.case_id}`,
+          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          //   },
+          //   userId,
+          // );
 
           // Flowable here
         } else {
@@ -481,44 +486,47 @@ export class CaseCreationApprovalService {
 
       // Create investigation task(s) after approval based on case type
       this.logger.log(`[ApproveCaseCreation] Creating Investigation task(s) for approved case ${caseId} with type ${caseData.case_type}`, CaseCreationApprovalService.name);
-      
-      if (caseData.case_type === CaseType.FRAUD_AND_AML) {
-        // Create two separate tasks for FRAUD_AND_AML cases
-        const fraudTask = await this.taskService.createTask(
-          {
-            caseId: caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Fraud',
-            description: `Fraud Investigation task for case ${caseId}`,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          },
-          supervisorId,
-        );
-        
-        const amlTask = await this.taskService.createTask(
-          {
-            caseId: caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate AML',
-            description: `AML Investigation task for case ${caseId}`,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          },
-          supervisorId,
-        );
-        
-        this.logger.log(
-          `[ApproveCaseCreation] Two investigation tasks created for FRAUD_AND_AML case ${caseId}: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}`,
-          CaseCreationApprovalService.name,
-        );
 
-        await this.auditLogService.logAction({
-          userId: supervisorId,
-          operation: 'approveCaseCreation',
-          entityName: CaseCreationApprovalService.name,
-          actionPerformed: `Approved case creation for case ${caseId}. Investigation tasks created: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}.`,
-          outcome: Outcome.SUCCESS,
-        });
+      if (caseData.case_type === CaseType.FRAUD_AND_AML) {
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, result.case.case_creator_user_id, tenantId, result.case.case_id, result.case.priority);
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, result.case.case_creator_user_id, tenantId, result.case.case_id, result.case.priority);
       } else {
+        //   // Create two separate tasks for FRAUD_AND_AML cases
+        //   const fraudTask = await this.taskService.createTask(
+        //     {
+        //       caseId: caseId,
+        //       status: TaskStatus.STATUS_01_UNASSIGNED,
+        //       name: 'Investigate Fraud',
+        //       description: `Fraud Investigation task for case ${caseId}`,
+        //       candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+        //     },
+        //     supervisorId,
+        //   );
+
+        //   const amlTask = await this.taskService.createTask(
+        //     {
+        //       caseId: caseId,
+        //       status: TaskStatus.STATUS_01_UNASSIGNED,
+        //       name: 'Investigate AML',
+        //       description: `AML Investigation task for case ${caseId}`,
+        //       candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+        //     },
+        //     supervisorId,
+        //   );
+
+        //   this.logger.log(
+        //     `[ApproveCaseCreation] Two investigation tasks created for FRAUD_AND_AML case ${caseId}: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}`,
+        //     CaseCreationApprovalService.name,
+        //   );
+
+        //   await this.auditLogService.logAction({
+        //     userId: supervisorId,
+        //     operation: 'approveCaseCreation',
+        //     entityName: CaseCreationApprovalService.name,
+        //     actionPerformed: `Approved case creation for case ${caseId}. Investigation tasks created: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}.`,
+        //     outcome: Outcome.SUCCESS,
+        //   });
+        // } else {
         // Create single investigation task for FRAUD or AML cases
         const investigationTask = await this.taskService.createTask(
           {
@@ -530,7 +538,7 @@ export class CaseCreationApprovalService {
           },
           supervisorId,
         );
-        
+
         this.logger.log(
           `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`,
           CaseCreationApprovalService.name,
@@ -576,7 +584,7 @@ export class CaseCreationApprovalService {
         case: result.case,
         // approvedTask: result.approvedTask,
         // investigationTask: investigationTask,
-        message: caseData.case_type === CaseType.FRAUD_AND_AML 
+        message: caseData.case_type === CaseType.FRAUD_AND_AML
           ? 'Case creation approved. Investigation tasks created for Fraud and AML.'
           : 'Case creation approved. Investigation task created.',
       };
@@ -870,27 +878,29 @@ export class CaseCreationApprovalService {
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
           if (caseType === CaseType.FRAUD_AND_AML) {
+
+
             // Create separate tasks for Fraud and AML investigations
-            await this.taskService.createTask(
-              {
-                caseId: caseId,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Investigate Fraud',
-                description: `Fraud investigation task created for case: ${caseId}`,
-                candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-              },
-              userId,
-            );
-            await this.taskService.createTask(
-              {
-                caseId: caseId,
-                status: TaskStatus.STATUS_01_UNASSIGNED,
-                name: 'Investigate AML',
-                description: `AML investigation task created for case: ${caseId}`,
-                candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-              },
-              userId,
-            );
+            // await this.taskService.createTask(
+            //   {
+            //     caseId: caseId,
+            //     status: TaskStatus.STATUS_01_UNASSIGNED,
+            //     name: 'Investigate Fraud',
+            //     description: `Fraud investigation task created for case: ${caseId}`,
+            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            //   },
+            //   userId,
+            // );
+            // await this.taskService.createTask(
+            //   {
+            //     caseId: caseId,
+            //     status: TaskStatus.STATUS_01_UNASSIGNED,
+            //     name: 'Investigate AML',
+            //     description: `AML investigation task created for case: ${caseId}`,
+            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            //   },
+            //   userId,
+            // );
 
             //FLowable here
           } else {

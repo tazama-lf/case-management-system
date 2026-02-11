@@ -18,6 +18,7 @@ import { SharedModule } from '../shared/shared.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import { CaseCreationService } from './services/case-creation.service';
 
 @Module({
 	imports: [PrismaModule, AuditLogModule, LoggerModule, TaskModule, CommentModule, NotificationModule, RepositoryModule, FlowableModule, UserModule, SharedModule, EventLogModule, CaseHistoryModule, TaskHistoryModule],
@@ -26,14 +27,16 @@ import { TaskHistoryModule } from '../task_history/taskHistory.module';
 		CaseQueryService,
 		CaseClosureApprovalService,
 		CaseCreationApprovalService,
-		CaseReopeningService
+		CaseReopeningService,
+		CaseCreationService,
 	],
 	exports: [
 		CaseService,
 		CaseQueryService,
 		CaseClosureApprovalService,
 		CaseCreationApprovalService,
-		CaseReopeningService
+		CaseReopeningService,
+		CaseCreationService,
 	],
 	controllers: [CaseController],
 })

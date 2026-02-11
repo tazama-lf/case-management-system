@@ -3,7 +3,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
 import { AuditLogService } from '../../../src/modules/audit/auditLog.service';
-import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -26,6 +26,8 @@ import {
 import { UserService } from '../user/user.service';
 import { CacheService } from '../shared/cache.service';
 import { EventLogService } from '../event_log/eventLog.service';
+import { CaseRepository } from '../repository/case.repository';
+import { CaseCreationService } from './services/case-creation.service';
 
 @Injectable()
 export class CaseService {
@@ -45,6 +47,8 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly eventLogService: EventLogService,
     private readonly caseHistoryService: CaseHistoryService,
+    private readonly caseRepository: CaseRepository,
+    private readonly caseCreationService: CaseCreationService,
   ) { }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
@@ -540,27 +544,10 @@ export class CaseService {
       } else {
         // Supervisor: Create investigation task directly
         if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-          const fraudInvestigationTask = await this.taskService.createTask(
-            {
-              caseId,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: TASK_NAMES.INVESTIGATE_FRAUD,
-              description: `Task to investigate fraud: ${caseId}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-          );
+          await this.caseCreationService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, existingCase.tenant_id, caseId, result.case.priority);
+          await this.caseCreationService.createCaseWithInvestigationTask(CaseType.AML, userId, existingCase.tenant_id, caseId, result.case.priority);
 
-          const amlInvestigationTask = await this.taskService.createTask(
-            {
-              caseId,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: TASK_NAMES.INVESTIGATE_AML,
-              description: `Task to investigate AML: ${caseId}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-          );
+
         } else {
           nextTask = await this.taskService.createTask(
             {
@@ -642,6 +629,7 @@ export class CaseService {
       throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
     }
   }
+
   async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
     return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
   }
