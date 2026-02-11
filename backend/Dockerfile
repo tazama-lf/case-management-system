@@ -22,7 +22,7 @@ RUN npm install --ignore-scripts
 COPY . .
 
 RUN npx prisma generate
-RUN  npx prisma generate --schema=prismaDWH/schema.dwh.prisma
+
 # Build the application
 RUN npm run build
 # Expose port

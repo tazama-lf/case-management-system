@@ -741,7 +741,28 @@ export class GoldLakehouseService {
     return cleaned;
   }
 
-  async getTransactionHistoryData(
+  async getTransactionHistoryData(id: string, tenantId: string = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
+    try {
+      // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isEndToEndId = uuidRegex.test(id);
+
+      if (isEndToEndId) {
+        // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
+        this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
+        return this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
+      } else {
+        // Query by entity_id - returns transaction history for entity
+        this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
+        return this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
+      }
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction History data: ${(error as any).message}`, (error as any).stack);
+      throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private async getTransactionHistoryByEntityId(
     entityId: string,
     tenantId: string = 'DEFAULT',
     startDate?: string,
@@ -955,8 +976,306 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching Transaction History data: ${error.message}`, error.stack);
-      throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error(`Error fetching Transaction History by entity_id: ${(error as any).message}`, (error as any).stack);
+      throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private async getTransactionHistoryByEndToEndId(
+    endToEndId: string,
+    tenantId: string = 'DEFAULT',
+    startDate?: string,
+    endDate?: string,
+    granularity?: string,
+  ) {
+    try {
+      this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
+
+      // Build date filter if provided (though typically not used with end_to_end_id queries)
+      const dateFilter = startDate && endDate ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` : '';
+
+      // Query transaction_history for all entity perspectives with row_type='EVENT'
+      const eventsResponse = await this.runSqlQuery(
+        `
+        SELECT 
+          th.transaction_id,
+          th.end_to_end_id,
+          th.entity_type,
+          th.entity_role,
+          th.entity_id,
+          th.entity_name,
+          th.event_date,
+          th.event_ts,
+          th.tx_amount,
+          th.tx_ccy,
+          th.tx_type,
+          th.is_alerted,
+          th.is_investigated,
+          td.debtor_name,
+          td.creditor_name,
+          td.debtor_account_id,
+          td.creditor_account_id
+        FROM transaction_history th
+        LEFT JOIN transaction_detail td 
+          ON th.transaction_id = td.transaction_id 
+          AND th.tenant_id = td.tenant_id
+        WHERE th.row_type = 'EVENT'
+          AND th.end_to_end_id = '${endToEndId}'
+          AND th.tenant_id = '${tenantId}'
+          ${dateFilter}
+        ORDER BY th.entity_type, th.entity_role
+        `,
+        10,
+      );
+
+      const events = (eventsResponse?.data || []).map((e) => this.stripHudiMetadata(e));
+
+      if (events.length === 0) {
+        this.logger.warn(`No transaction found for end_to_end_id: ${endToEndId}`);
+        return {
+          summary: {
+            totalVolume: 0,
+            totalTransactions: 0,
+            transactionCount: 0,
+            alertsTriggered: 0,
+            alertsPercentage: 0,
+            investigated: 0,
+            investigatedPercentage: 0,
+            avgTransactionsPerDay: 0,
+            durationDays: 0,
+          },
+          timeline: [],
+          cumulative: [],
+          volumeDistribution: [],
+          recentTransactions: [],
+          entityPerspectives: [],
+          meta: {
+            endToEndId,
+            tenantId,
+            queryType: 'end_to_end_id',
+            message: 'No transaction found with this end_to_end_id',
+            queryTimestamp: new Date().toISOString(),
+          },
+        };
+      }
+
+      // Build entity perspectives array (using snake_case to match database schema)
+      const entityPerspectives = events.map((e) => ({
+        entity_type: e.entity_type,
+        entity_role: e.entity_role,
+        entity_id: e.entity_id,
+        entity_name: e.entity_name || 'Unknown Entity',
+        transaction_id: e.transaction_id,
+        tx_amount: parseFloat(e.tx_amount) || 0,
+        tx_ccy: e.tx_ccy,
+        event_ts: e.event_ts,
+      }));
+
+      // Process all events to build summary metrics
+      let totalVolume = 0;
+      let alertsTriggered = 0;
+      let investigatedCount = 0;
+
+      const timeline = events.map((e) => {
+        const amount = parseFloat(e.tx_amount) || 0;
+        const isAlert = e.is_alerted === 1;
+        const isInvest = e.is_investigated === 1;
+
+        totalVolume += amount;
+        if (isAlert) alertsTriggered++;
+        if (isInvest) investigatedCount++;
+
+        return {
+          transactionId: e.transaction_id,
+          date: e.event_ts,
+          amount: amount,
+          currency: e.tx_ccy,
+          type: e.tx_type || 'Unknown',
+          isAlerted: isAlert,
+          isInvestigated: isInvest,
+          entityRole: e.entity_role,
+          entityType: e.entity_type,
+        };
+      });
+
+      // Build cumulative data
+      let runningAmount = 0;
+      const cumulative = events.map((e, index) => {
+        const amount = parseFloat(e.tx_amount) || 0;
+        runningAmount += amount;
+        return {
+          date: e.event_ts,
+          cumulativeAmount: runningAmount,
+          cumulativeCount: index + 1,
+        };
+      });
+
+      // Build recent transactions table with all perspectives
+      const recentTransactions = events.map((e) => {
+        const amount = parseFloat(e.tx_amount) || 0;
+        const isAlert = e.is_alerted === 1;
+        const isInvest = e.is_investigated === 1;
+        
+        return {
+          transactionId: e.transaction_id,
+          date: e.event_ts,
+          type: e.tx_type || 'Unknown',
+          counterparty: e.entity_name || 'Unknown',
+          role: `${e.entity_type} (${e.entity_role})`,
+          amount: amount,
+          currency: e.tx_ccy,
+          status: [...(isAlert ? ['Alert'] : []), ...(isInvest ? ['Investigated'] : [])],
+          actions: {
+            viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
+          },
+        };
+      });
+
+      const firstEvent = events[0];
+
+      return {
+        summary: {
+          totalVolume: Math.round(totalVolume * 100) / 100,
+          totalTransactions: events.length,
+          transactionCount: events.length,
+          alertsTriggered: alertsTriggered,
+          alertsPercentage: (alertsTriggered / events.length) * 100,
+          investigated: investigatedCount,
+          investigatedPercentage: (investigatedCount / events.length) * 100,
+          avgTransactionsPerDay: events.length, // Since it's one day effectively
+          durationDays: 1,
+          perspectiveCount: events.length,
+        },
+        timeline,
+        cumulative,
+        volumeDistribution: [],
+        recentTransactions,
+        entityPerspectives,
+        meta: {
+          endToEndId,
+          tenantId,
+          queryType: 'end_to_end_id',
+          transactionId: firstEvent.transaction_id,
+          perspectiveCount: events.length,
+          debtorName: firstEvent.debtor_name,
+          creditorName: firstEvent.creditor_name,
+          debtorAccountId: firstEvent.debtor_account_id,
+          creditorAccountId: firstEvent.creditor_account_id,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          queryTimestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction History by end_to_end_id (${endToEndId}): ${errorMessage}`, errorStack);
+
+      // Log additional context for debugging
+      this.logger.error(`Query parameters - tenantId: ${tenantId}, startDate: ${startDate}, endDate: ${endDate}`);
+
+      throw new HttpException(`Failed to fetch Transaction History by end_to_end_id: ${errorMessage}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching Transaction Perspectives for end_to_end_id: ${endToEndId}`);
+
+      // Query transaction_history for all entity perspectives with row_type='EVENT'
+      const response = await this.runSqlQuery(
+        `
+        SELECT 
+          th.entity_type,
+          th.entity_role,
+          th.entity_id,
+          th.entity_name,
+          th.transaction_id,
+          th.end_to_end_id,
+          th.tx_amount,
+          th.tx_ccy,
+          th.tx_type,
+          th.event_date,
+          th.event_ts,
+          th.is_alerted,
+          th.is_investigated,
+          td.debtor_name,
+          td.creditor_name,
+          td.debtor_account_id,
+          td.creditor_account_id
+        FROM transaction_history th
+        LEFT JOIN transaction_detail td 
+          ON th.transaction_id = td.transaction_id 
+          AND th.tenant_id = td.tenant_id
+        WHERE th.row_type = 'EVENT'
+          AND th.end_to_end_id = '${endToEndId}'
+          AND th.tenant_id = '${tenantId}'
+        ORDER BY th.entity_type, th.entity_role
+        `,
+        10,
+      );
+
+      const perspectives = (response?.data || []).map((row) => this.stripHudiMetadata(row));
+
+      if (perspectives.length === 0) {
+        this.logger.warn(`No transaction perspectives found for end_to_end_id: ${endToEndId}`);
+        return {
+          endToEndId,
+          tenantId,
+          perspectives: [],
+          perspectiveCount: 0,
+          transactionDetails: null,
+          meta: {
+            queryTimestamp: new Date().toISOString(),
+            message: 'No transaction found with this end_to_end_id',
+          },
+        };
+      }
+
+      // Extract common transaction details from first perspective
+      const firstPerspective = perspectives[0];
+      const transactionDetails = {
+        transactionId: firstPerspective.transaction_id,
+        endToEndId: firstPerspective.end_to_end_id,
+        amount: parseFloat(firstPerspective.tx_amount) || 0,
+        currency: firstPerspective.tx_ccy,
+        type: firstPerspective.tx_type || 'Unknown',
+        date: firstPerspective.event_date,
+        timestamp: firstPerspective.event_ts,
+        isAlerted: firstPerspective.is_alerted === 1,
+        isInvestigated: firstPerspective.is_investigated === 1,
+        debtorName: firstPerspective.debtor_name,
+        creditorName: firstPerspective.creditor_name,
+        debtorAccountId: firstPerspective.debtor_account_id,
+        creditorAccountId: firstPerspective.creditor_account_id,
+      };
+
+      // Transform perspectives array (using snake_case to match database schema)
+      const entityPerspectives = perspectives.map((p) => ({
+        entity_type: p.entity_type,
+        entity_role: p.entity_role,
+        entity_id: p.entity_id,
+        entity_name: p.entity_name || 'Unknown Entity',
+        transaction_id: p.transaction_id,
+        tx_amount: parseFloat(p.tx_amount) || 0,
+        tx_ccy: p.tx_ccy,
+        event_ts: p.event_ts,
+      }));
+
+      return {
+        endToEndId,
+        tenantId,
+        perspectiveCount: perspectives.length,
+        transactionDetails,
+        perspectives: entityPerspectives,
+        meta: {
+          queryTimestamp: new Date().toISOString(),
+          message: `Retrieved ${perspectives.length} entity perspective(s) for transaction`,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch Transaction Perspectives', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
