@@ -3,27 +3,56 @@ import type { AlertNavigatorDto } from '../types';
 
 class AlertNavigatorService {
   private baseUrl = '/api/v1/lakehouse/alert-navigator';
-  private readonly availableAlertIds = [433, 389, 417, 394, 444];
+  private readonly fallbackAlertIds = [389, 394, 444];
 
-  private getRandomAlertId(): number {
-    const randomIndex = Math.floor(Math.random() * this.availableAlertIds.length);
-    return this.availableAlertIds[randomIndex];
+  private getFallbackAlertId(): number {
+    const randomIndex = Math.floor(Math.random() * this.fallbackAlertIds.length);
+    return this.fallbackAlertIds[randomIndex];
   }
 
   async getAlertNavigator(alertId: string, tenantId: string = 'DEFAULT'): Promise<AlertNavigatorDto> {
     try {
-      // Use random alert ID from the available pool
-      const randomAlertId = this.getRandomAlertId();
-      console.log(`Using randomized alert ID: ${randomAlertId} (original: ${alertId})`);
+      // First, try to fetch data for the requested alert ID
+      console.log(`Fetching alert navigator data for alert ID: ${alertId}`);
       
       const response = await apiClient.get<AlertNavigatorDto>(
-        `${this.baseUrl}/${randomAlertId}?tenantId=${tenantId}`,
+        `${this.baseUrl}/${alertId}?tenantId=${tenantId}`,
       );
+      
+      console.log(`✓ Successfully loaded alert navigator for alert ID: ${alertId}`);
       return response;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch alert navigator';
-      console.error('AlertNavigatorService Error:', message);
-      throw new Error(message);
+      // If the requested alert ID fails, try a fallback
+      console.warn(`⚠ Alert navigator data not found for alert ID: ${alertId}`);
+      
+      try {
+        const fallbackId = this.getFallbackAlertId();
+        console.log(`→ Attempting fallback with alert ID: ${fallbackId}`);
+        
+        const fallbackResponse = await apiClient.get<AlertNavigatorDto>(
+          `${this.baseUrl}/${fallbackId}?tenantId=${tenantId}`,
+        );
+        
+        console.log(`✓ Loaded fallback alert navigator data (ID: ${fallbackId})`);
+        console.warn(`Note: Showing sample data. Alert ID ${alertId} has no alert navigator data available.`);
+        
+        return fallbackResponse;
+      } catch (fallbackError) {
+        // Both attempts failed
+        const message = fallbackError instanceof Error 
+          ? fallbackError.message 
+          : 'Failed to fetch alert navigator data';
+        
+        console.error('AlertNavigatorService Error:', {
+          requestedAlertId: alertId,
+          error: message,
+          details: 'No data available for requested alert or fallback alerts'
+        });
+        
+        throw new Error(
+          `Alert navigator data unavailable for alert ID ${alertId}. ${message}`
+        );
+      }
     }
   }
 }
