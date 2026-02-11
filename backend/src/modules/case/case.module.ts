@@ -24,6 +24,7 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
 @Module({
   imports: [
     PrismaModule,
+    AuditLogModule,
     LoggerModule,
     LoggingOrchestrationModule,
     TaskModule,
@@ -33,6 +34,9 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
     FlowableModule,
     UserModule,
     SharedModule,
+    EventLogModule,
+    CaseHistoryModule,
+    TaskHistoryModule,
   ],
   providers: [
     CaseService,
