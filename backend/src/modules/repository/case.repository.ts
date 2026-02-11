@@ -1,21 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client-cms';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class CaseRepository {
-    constructor(
-        private readonly prismaService: PrismaService,
-    ) { }
+export class CaseRepository extends BaseRepository {
+    constructor(private readonly prisma: PrismaService) {
+        super(prisma);
+    }
 
-    async findAlert(alertId: number) {
-        return await this.prismaService.alert.findUnique({
+    async findAlert(alertId: number, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.alert.findUnique({
             where: { alert_id: alertId },
         });
     }
 
-    async updateAlertByAlertId(dto, priorityScore, createdCase, priority) {
-        return await this.prismaService.alert.update({
+    async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await this.prisma.alert.update({
             where: { alert_id: dto.alertId },
             data: {
                 priority,
@@ -26,8 +29,9 @@ export class CaseRepository {
         });
     }
 
-    async findCaseWithApprovalTask(caseId: number) {
-        return await this.prismaService.case.findUnique({
+    async findCaseWithApprovalTask(caseId: number, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.case.findUnique({
             where: { case_id: caseId },
             include: {
                 tasks: {
@@ -45,8 +49,9 @@ export class CaseRepository {
         });
     }
 
-    async findCaseBasicInfo(caseId: number) {
-        return await this.prismaService.case.findUnique({
+    async findCaseBasicInfo(caseId: number, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.case.findUnique({
             where: { case_id: caseId },
             select: {
                 case_id: true,
@@ -59,8 +64,9 @@ export class CaseRepository {
     }
 
     // Task finder methods - using specific implementations for type safety
-    async findTaskByNameAndStatus(caseId: number, taskName: string, status: TaskStatus) {
-        return await this.prismaService.task.findFirst({
+    async findTaskByNameAndStatus(caseId: number, taskName: string, status: TaskStatus, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.task.findFirst({
             where: {
                 case_id: caseId,
                 name: taskName,
@@ -69,8 +75,9 @@ export class CaseRepository {
         });
     }
 
-    async findTaskByNames(caseId: number, names: string[], status: TaskStatus) {
-        return await this.prismaService.task.findFirst({
+    async findTaskByNames(caseId: number, names: string[], status: TaskStatus, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.task.findFirst({
             where: {
                 case_id: caseId,
                 name: { in: names },
@@ -80,8 +87,9 @@ export class CaseRepository {
     }
 
     // Reopening task queries - all return task with comments
-    async findReopeningTaskWithComments(caseId: number) {
-        return await this.prismaService.task.findFirst({
+    async findReopeningTaskWithComments(caseId: number, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.task.findFirst({
             where: {
                 case_id: caseId,
                 name: 'Approve Case Reopening',
@@ -96,16 +104,17 @@ export class CaseRepository {
         });
     }
 
-    async findUnassignedTaskForReopening(caseId: number) {
-        return this.findReopeningTaskWithComments(caseId);
+    async findUnassignedTaskForReopening(caseId: number, tx?: Prisma.TransactionClient) {
+        return this.findReopeningTaskWithComments(caseId, tx);
     }
 
-    async findReopeningTaskForRejection(caseId: number) {
-        return this.findReopeningTaskWithComments(caseId);
+    async findReopeningTaskForRejection(caseId: number, tx?: Prisma.TransactionClient) {
+        return this.findReopeningTaskWithComments(caseId, tx);
     }
 
-    async findCaseWithPermissionCheck(caseId: number, userId: string) {
-        return await this.prismaService.case.findFirst({
+    async findCaseWithPermissionCheck(caseId: number, userId: string, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await client.case.findFirst({
             where: {
                 case_id: caseId,
                 OR: [
@@ -121,12 +130,13 @@ export class CaseRepository {
         });
     }
 
-    async createComment(data: { user_id: string; task_id?: number; case_id?: number; note: string }) {
-        return await this.prismaService.comment.create({ data });
+    async createComment(data: { user_id: string; task_id?: number; case_id?: number; note: string }, tx?: Prisma.TransactionClient) {
+        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        return await this.prisma.comment.create({ data });
     }
 
     async findCaseForReopening(caseId: number) {
-        return await this.prismaService.case.findUnique({
+        return await this.prisma.case.findUnique({
             where: { case_id: caseId },
             include: {
                 tasks: {
@@ -139,7 +149,7 @@ export class CaseRepository {
     }
 
     async findCaseForClosureApproval(caseId: number) {
-        return await this.prismaService.case.findUnique({
+        return await this.prisma.case.findUnique({
             where: { case_id: caseId },
             include: {
                 tasks: true,
@@ -153,7 +163,7 @@ export class CaseRepository {
     }
 
     async findCaseForReview(caseId: number) {
-        return await this.prismaService.case.findUnique({
+        return await this.prisma.case.findUnique({
             where: { case_id: caseId },
             include: {
                 tasks: {
@@ -166,7 +176,7 @@ export class CaseRepository {
     }
 
     async findCaseById(caseId: number): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
-        const caseData = await this.prismaService.case.findUnique({
+        const caseData = await this.prisma.case.findUnique({
             where: { case_id: caseId },
             include: { alert: true, tasks: true },
         });
@@ -179,22 +189,22 @@ export class CaseRepository {
     }
 
     async updateCase(caseId: number, data: Prisma.CaseUpdateInput) {
-        return await this.prismaService.case.update({
+        return await this.prisma.case.update({
             where: { case_id: caseId },
             data,
         });
     }
 
     async executeTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-        return await this.prismaService.$transaction(fn);
+        return await this.prisma.$transaction(fn);
     }
 
     getTransactionClient() {
-        return this.prismaService;
+        return this.prisma;
     }
 
     async findUnassignedAndInProgressTasksByUser(userId: string) {
-        return this.prismaService.task.findMany({
+        return this.prisma.task.findMany({
             where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } },
             select: { task_id: true, name: true, case_id: true, created_at: true },
             orderBy: { created_at: 'asc' },
@@ -203,7 +213,7 @@ export class CaseRepository {
     }
 
     async findOldestUnassignedCase() {
-        return this.prismaService.case.findFirst({
+        return this.prisma.case.findFirst({
             where: { case_owner_user_id: null },
             orderBy: { created_at: 'asc' },
             select: { case_id: true, created_at: true },
@@ -211,14 +221,14 @@ export class CaseRepository {
     }
 
     async countCasesWithFilters(whereClause: Prisma.CaseWhereInput): Promise<number> {
-        return await this.prismaService.case.count({ where: whereClause });
+        return await this.prisma.case.count({ where: whereClause });
     }
 
     async findCasesWithFilters(
         whereClause: Prisma.CaseWhereInput,
         options: { skip: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' },
     ) {
-        return await this.prismaService.case.findMany({
+        return await this.prisma.case.findMany({
             where: whereClause,
             include: {
                 tasks: { select: { task_id: true, status: true, assigned_user_id: true, name: true } },
@@ -231,14 +241,14 @@ export class CaseRepository {
     }
 
     async CountWithOrConditions(whereConditions: Prisma.CaseWhereInput[]) {
-        return await this.prismaService.case.count({ where: { OR: whereConditions } });
+        return await this.prisma.case.count({ where: { OR: whereConditions } });
     }
 
     async findCasesWithOrConditions(
         whereConditions: Prisma.CaseWhereInput[],
         options: { skip: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' },
     ) {
-        return await this.prismaService.case.findMany({
+        return await this.prisma.case.findMany({
             where: { OR: whereConditions },
             include: {
                 tasks: { orderBy: { created_at: 'desc' } },
@@ -253,7 +263,7 @@ export class CaseRepository {
 
     // Generic count method
     async countCases(whereClause: Prisma.CaseWhereInput) {
-        return await this.prismaService.case.count({ where: whereClause });
+        return await this.prisma.case.count({ where: whereClause });
     }
 
     // Specialized count methods for common queries
@@ -272,7 +282,7 @@ export class CaseRepository {
     // Generic groupBy method
     async groupCasesBy(field: 'status' | 'priority' | 'case_type', whereClause?: Prisma.CaseWhereInput | Prisma.CaseWhereInput[]) {
         const where = Array.isArray(whereClause) ? { OR: whereClause } : whereClause;
-        return await this.prismaService.case.groupBy({
+        return await this.prisma.case.groupBy({
             by: [field],
             where,
             _count: { case_id: true },
@@ -293,7 +303,7 @@ export class CaseRepository {
     }
 
     async findCaseWithCompletedInvestigation(caseId: number) {
-        return await this.prismaService.case.findUnique({
+        return await this.prisma.case.findUnique({
             where: { case_id: caseId },
             include: {
                 tasks: {
@@ -308,7 +318,7 @@ export class CaseRepository {
     }
 
     async countActiveCases(userId: string) {
-        return await this.prismaService.case.count({
+        return await this.prisma.case.count({
             where: {
                 OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
                 status: {
@@ -324,13 +334,13 @@ export class CaseRepository {
     }
 
     async countPendingTasks(userId: string) {
-        return await this.prismaService.task.count({
+        return await this.prisma.task.count({
             where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } },
         });
     }
 
     async findAllUserActiveCases(userId: string) {
-        return await this.prismaService.case.findMany({
+        return await this.prisma.case.findMany({
             where: {
                 OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
                 status: {
@@ -348,7 +358,7 @@ export class CaseRepository {
     }
 
     async createCase(caseDetail: any, tx?: Prisma.TransactionClient) {
-        const prisma = tx || this.prismaService;
+        const prisma = tx || this.prisma;
         return await prisma.case.create({
             data: {
                 tenant_id: caseDetail.tenantId,
@@ -364,7 +374,7 @@ export class CaseRepository {
     }
 
     async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any) {
-        return await this.prismaService.$transaction(async (prisma) => {
+        return await this.prisma.$transaction(async (prisma) => {
             // Create case in PostgreSQL only (no BPMN workflow)
             const createdCase = await prisma.case.create({
                 data: {
@@ -400,7 +410,7 @@ export class CaseRepository {
         userId: string,
         comment?: { note: string; taskId?: number },
     ) {
-        return await this.prismaService.$transaction(async (tx) => {
+        return await this.prisma.$transaction(async (tx) => {
             const updatedCase = await tx.case.update({
                 where: { case_id: caseId },
                 data: { status, updated_at: new Date() },
@@ -426,14 +436,8 @@ export class CaseRepository {
         });
     }
 
-    async approveClosureTask(
-        caseId: number,
-        taskId: number,
-        status: CaseStatus,
-        supervisorId: string,
-        comments?: string,
-    ) {
-        return await this.prismaService.$transaction(async (tx) => {
+    async approveClosureTask(caseId: number, taskId: number, status: CaseStatus, supervisorId: string, comments?: string) {
+        return await this.prisma.$transaction(async (tx) => {
             const updatedCase = await tx.case.update({
                 where: { case_id: caseId },
                 data: { status, updated_at: new Date() },
@@ -469,7 +473,7 @@ export class CaseRepository {
         comments: string,
         taskNames: { APPROVE_CASE_CLOSURE: string; APPROVE_CASE_CLOSURE_LOWER: string; INVESTIGATE_CASE: string },
     ) {
-        return await this.prismaService.$transaction(async (tx) => {
+        return await this.prisma.$transaction(async (tx) => {
             // Find approval task first
             const approvalTask = await tx.task.findFirst({
                 where: {

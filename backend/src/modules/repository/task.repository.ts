@@ -1,23 +1,23 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Prisma, TaskStatus, CaseStatus } from '@prisma/client-cms';
+import { BaseRepository } from './base.repository';
 
 @Injectable()
-export class TaskRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /* ----------------------------- Generic Helpers ---------------------------- */
-  async transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
+export class TaskRepository extends BaseRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma);
   }
 
   /* ------------------------------ Task Queries ------------------------------ */
-  async findTaskById(taskId: number) {
-    return this.prisma.task.findUnique({ where: { task_id: taskId } });
+  async findTaskById(taskId: number, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return client.task.findUnique({ where: { task_id: taskId } });
   }
 
-  async findTaskWithCase(taskId: number) {
-    return this.prisma.task.findUnique({
+  async findTaskWithCase(taskId: number, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return client.task.findUnique({
       where: { task_id: taskId },
       include: {
         case: {
@@ -34,8 +34,9 @@ export class TaskRepository {
     });
   }
 
-  async findTasks(where: Prisma.TaskWhereInput, includeCase: boolean, skip?: number, take?: number) {
-    return this.prisma.task.findMany({
+  async findTasks(where: Prisma.TaskWhereInput, includeCase: boolean, skip?: number, take?: number, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return client.task.findMany({
       where,
       include: includeCase
         ? {
@@ -50,30 +51,26 @@ export class TaskRepository {
     });
   }
 
-  async countTasks(where: Prisma.TaskWhereInput) {
-    return this.prisma.task.count({ where });
+  async countTasks(where: Prisma.TaskWhereInput, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return client.task.count({ where });
   }
 
   async createTask(data: Prisma.TaskCreateInput, tx?: Prisma.TransactionClient) {
-    if (tx) return tx.task.create({ data });
-    const createdTask = await this.prisma.task.create({ data });
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const createdTask = await client.task.create({ data });
     if (!createdTask) throw new Error('Failed to create task');
     return createdTask;
   }
 
   async updateTask(taskId: number, data: Prisma.TaskUpdateInput, tx?: Prisma.TransactionClient, includeCase = false) {
-    if (tx)
-      return tx.task.update({
-        where: { task_id: taskId },
-        data,
-        include: includeCase ? { case: true } : undefined,
-      });
-    return this.prisma.task.update({ where: { task_id: taskId }, data, include: includeCase ? { case: true } : undefined });
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return client.task.update({ where: { task_id: taskId }, data, include: includeCase ? { case: true } : undefined });
   }
 
   /* ------------------------------ Case Queries ------------------------------ */
-  async findCaseBasic(caseId: string, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
+  async findCaseBasic(caseId: number, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return client.case.findUnique({
       where: { case_id: caseId },
       select: { tenant_id: true, priority: true, status: true },
@@ -81,55 +78,55 @@ export class TaskRepository {
   }
 
   async findCaseStatus(caseId: number, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return client.case.findUnique({ where: { case_id: caseId }, select: { status: true, case_owner_user_id: true } });
   }
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return client.case.update({ where: { case_id: caseId }, data });
   }
 
   /* --------------------------- Work Queue / Groups -------------------------- */
-  async findMatchingWorkQueue(tenantId: string, candidateGroup: string, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
-    return client.workQueue.findFirst({
-      where: {
-        tenant_id: tenantId,
-        is_active: true,
-        OR: [
-          { name: { contains: candidateGroup, mode: 'insensitive' } },
-          {
-            roles: {
-              some: {
-                role: candidateGroup.toUpperCase() as any,
-              },
-            },
-          },
-        ],
-      },
-    });
-  }
+  // async findMatchingWorkQueue(tenantId: string, candidateGroup: string, tx?: Prisma.TransactionClient) {
+  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  //   return client.workQueue.findFirst({
+  //     where: {
+  //       tenant_id: tenantId,
+  //       is_active: true,
+  //       OR: [
+  //         { name: { contains: candidateGroup, mode: 'insensitive' } },
+  //         {
+  //           roles: {
+  //             some: {
+  //               role: candidateGroup.toUpperCase() as any,
+  //             },
+  //           },
+  //         },
+  //       ],
+  //     },
+  //   });
+  // }
 
-  async findWorkQueue(queueId: number, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
-    return client.workQueue.findUnique({
-      where: { work_queue_id: queueId },
-      select: { work_queue_id: true, name: true, tenant_id: true, is_active: true },
-    });
-  }
+  // async findWorkQueue(queueId: number, tx?: Prisma.TransactionClient) {
+  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  //   return client.workQueue.findUnique({
+  //     where: { work_queue_id: queueId },
+  //     select: { work_queue_id: true, name: true, tenant_id: true, is_active: true },
+  //   });
+  // }
 
-  async findWorkQueueMember(workQueueId: number, userId: string, tx?: Prisma.TransactionClient) {
-    const client: any = tx || this.prisma;
-    return client.workQueueMember.findUnique({
-      where: { work_queue_id_user_id: { work_queue_id: workQueueId, user_id: userId } },
-    });
-  }
+  // async findWorkQueueMember(workQueueId: number, userId: string, tx?: Prisma.TransactionClient) {
+  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  //   return client.workQueueMember.findUnique({
+  //     where: { work_queue_id_user_id: { work_queue_id: workQueueId, user_id: userId } },
+  //   });
+  // }
 
   /* -------------------------- Lifecycle Transactions ------------------------ */
   async assignTaskAndUpdateCase(taskId: number, assignedUserId: string) {
     return this.transaction(async (tx) => {
-      const task = await this.findTaskById(taskId);
+      const task = await this.findTaskById(taskId, tx);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
       const caseRecord = await this.findCaseStatus(task.case_id, tx);
       if (!caseRecord) throw new NotFoundException(`Case ${task.case_id} not found`);
@@ -176,43 +173,4 @@ export class TaskRepository {
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return this.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, undefined, true);
   }
-
-  /* ---------------------------- Creation Workflow --------------------------- */
-  // async createTaskWithAutoAssign(dto: { caseId: string; name: string; description?: string; candidateGroup?: string; status?: TaskStatus; assignedUserId?: string }) {
-  // 	return this.transaction(async (tx) => {
-  // 		const caseData = await this.findCaseBasic(dto.caseId, tx);
-  // 		if (!caseData) throw new NotFoundException(`Case ${dto.caseId} not found`);
-  // 		let workQueueId: string | undefined;
-  // 		let matchingQueue: any = null;
-  // 		let derivedFlowableGroupId: string | undefined;
-  // 		if (dto.candidateGroup) {
-  // 			try {
-  // 				matchingQueue = await this.findMatchingWorkQueue(caseData.tenant_id, dto.candidateGroup, tx);
-  // 				if (matchingQueue) {
-  // 					workQueueId = matchingQueue.work_queue_id;
-  // 					const normalizedQueueName = matchingQueue.name
-  // 						.trim()
-  // 						.toLowerCase()
-  // 						.replace(/[^a-z0-9]+/g, '-')
-  // 						.replace(/^-+|-+$/g, '')
-  // 						.slice(0, 50);
-  // 					derivedFlowableGroupId = `tenant-${caseData.tenant_id}__queue-${normalizedQueueName}`;
-  // 				}
-  // 			} catch (e) {
-  // 				// swallow; logging handled at service layer
-  // 			}
-  // 		}
-  // 		const taskData: Prisma.TaskCreateInput = {
-  // 			case: { connect: { case_id: dto.caseId } },
-  // 			status: dto.status || TaskStatus.STATUS_01_UNASSIGNED,
-  // 			name: dto.name,
-  // 			description: dto.description,
-  // 			candidateGroup: dto.candidateGroup,
-  // 		};
-  // 		if (dto.assignedUserId) taskData.assigned_user_id = dto.assignedUserId;
-  // 		if (workQueueId) taskData.workQueue = { connect: { work_queue_id: workQueueId } };
-  // 		const task = await this.createTask(taskData, tx);
-  // 		return { task, tenantId: caseData.tenant_id, caseData, workQueueId, matchingQueue, derivedFlowableGroupId };
-  // 	});
-  // }
 }

@@ -21,6 +21,7 @@ import { FlowableService } from '../flowable/flowable.service';
 import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
+import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 
 export interface TaskWithCase extends Task {
   case: {
@@ -38,17 +39,55 @@ export class TaskService {
     private readonly logger: LoggerService,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly notificationService: NotificationService,
     private readonly lifecycle: TaskLifecycleService,
     private readonly flowableService: FlowableService,
-    private readonly taskBridgeService: TaskBridgeService,
     private readonly authService: AuthService,
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
-    return this.taskBridgeService.createTask(taskDTO, userId);
+    this.logger.log('Start - createTask', TaskService.name);
+    try {
+      const createdTask = await this.taskRepository.createTask({
+        case: {
+          connect: {
+            case_id: taskDTO.caseId,
+          },
+        },
+        name: taskDTO.name,
+        description: taskDTO.description,
+        candidateGroup: taskDTO.candidateGroup,
+        status: taskDTO.status,
+        assigned_user_id: taskDTO.assignedUserId,
+        investigationNotes: taskDTO.investigationNotes,
+      });
+
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
+          entityName: TaskBridgeService.name,
+          operation: 'createTask',
+          outcome: Outcome.SUCCESS,
+        },
+        createdTask.case_id,
+        createdTask.task_id,
+      );
+
+      return { ...createdTask, candidateGroup: taskDTO.candidateGroup };
+    } catch (error) {
+      this.logger.error('Error creating task', error, TaskBridgeService.name);
+      this.loggingOrchestrationService.logActions({
+        userId,
+        actionPerformed: `Error creating task with candidateGroup: ${taskDTO.candidateGroup} - ${error.message}`,
+        entityName: TaskBridgeService.name,
+        operation: 'createTask',
+        outcome: Outcome.FAILURE,
+      });
+      throw error;
+    }
   }
   async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
     return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
@@ -67,7 +106,8 @@ export class TaskService {
       const updateInput: Prisma.TaskUpdateInput = {
         status: updateData.status,
         description: updateData.description,
-        assigned_user_id: updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+        assigned_user_id:
+          updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
         investigationNotes: updateData.investigationNotes,
       };
 
@@ -149,37 +189,30 @@ export class TaskService {
           });
         }
       }
-      this.logger.log(`Task updated: ${updatedTask.task_id}`, TaskService.name);
-
-      this.auditLogService.logAction({
-        userId,
-        actionPerformed: `Updated task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'updateTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      this.eventLogService.logEventAction({
-        userId,
-        actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
-        entityName: TaskService.name,
-        operation: 'updateTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
 
       if (existingTask.status !== updatedTask.status) {
-        await this.taskHistoryService.logTaskHistoryAction({
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
+            entityName: TaskService.name,
+            operation: 'updateTask',
+            outcome: Outcome.SUCCESS,
+          },
+          updatedTask.case_id,
+          updatedTask.task_id,
+        );
+      } else {
+        await this.loggingOrchestrationService.logActions({
           userId,
-          actionPerformed: `Updated task ${taskId} from ${existingTask.status} to ${updatedTask.status}`,
+          actionPerformed: `Updated task ${taskId}`,
           entityName: TaskService.name,
           operation: 'updateTask',
-          task_id: taskId,
-          case_id: updatedTask.case_id
+          outcome: Outcome.SUCCESS,
         });
       }
 
+      this.logger.log(`End - Task updated: ${updatedTask.task_id}`, TaskService.name);
       return updatedTask;
     } catch (error) {
       this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
@@ -208,7 +241,7 @@ export class TaskService {
         true,
       )) as TaskWithCase[];
 
-      this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'getTasksByCandidateGroup',
         entityName: TaskService.name,
@@ -219,7 +252,7 @@ export class TaskService {
       return dbTasks;
     } catch (error) {
       this.logger.error(`Error retrieving tasks for candidateGroup: ${candidateGroup}`, error, TaskService.name);
-      this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'getTasksByCandidateGroup',
         entityName: TaskService.name,
@@ -253,7 +286,6 @@ export class TaskService {
       const isInvestigator = userClaims.includes('CMS_INVESTIGATOR');
       const isSupervisor = userClaims.includes('CMS_SUPERVISOR');
       const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
-
 
       // const filteredTasks = tasks.filter((task) => {
 
@@ -299,15 +331,13 @@ export class TaskService {
         }),
       );
 
-
       if (userId) {
-        this.auditLogService.logAction({
+        await this.loggingOrchestrationService.logActions({
           userId,
           operation: 'getTasksByCaseId',
           entityName: TaskService.name,
           actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
           outcome: Outcome.SUCCESS,
-          performedAt: new Date(),
         });
       }
 
@@ -315,13 +345,12 @@ export class TaskService {
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
       if (userId) {
-        this.auditLogService.logAction({
+        await this.loggingOrchestrationService.logActions({
           userId,
           operation: 'getTasksByCaseId',
           entityName: TaskService.name,
           actionPerformed: `Error retrieving tasks for case: ${caseId}`,
           outcome: Outcome.FAILURE,
-          performedAt: new Date(),
         });
       }
       throw error;
@@ -478,33 +507,17 @@ export class TaskService {
         new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId || undefined),
       );
 
-      const auditService = auditLogService || this.auditLogService;
-      auditService.logAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
-      await this.taskHistoryService.logTaskHistoryAction({
-        userId,
-        actionPerformed: `Claimed task ${taskId}`,
-        entityName: TaskService.name,
-        operation: 'claimTask',
-        task_id: taskId,
-        case_id: updatedTask.case_id
-      });
+      this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Claimed task ${taskId}`,
+          entityName: TaskService.name,
+          operation: 'claimTask',
+          outcome: Outcome.SUCCESS,
+        },
+        updatedTask.case_id,
+        taskId,
+      );
 
       return updatedTask;
     } catch (error) {
@@ -517,10 +530,6 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  // async releaseTask(taskId: string, userId: string, auditLogService?: AuditLogService) {
-  //   return this.lifecycle.releaseTask(taskId, userId);
-  // }
-
   async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
     return this.lifecycle.completeTask(taskId, userId);
   }
@@ -530,10 +539,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {

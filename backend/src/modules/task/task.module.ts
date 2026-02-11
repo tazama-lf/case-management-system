@@ -13,24 +13,25 @@ import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
-
+import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 
 @Module({
-	imports: [
-		PrismaModule,
-		AuditLogModule,
-		LoggerModule,
-		AuthModule,
-		NotificationModule,
-		FlowableModule,
-		RepositoryModule,
-		TaskBridgeModule,
-		EventLogModule,
-		TaskHistoryModule,
-		CaseHistoryModule,
-	],
-	providers: [TaskService, TaskLifecycleService],
-	exports: [TaskService],
-	controllers: [TaskController],
+  imports: [
+    PrismaModule,
+    AuditLogModule,
+    LoggerModule,
+    AuthModule,
+    NotificationModule,
+    FlowableModule,
+    RepositoryModule,
+    TaskBridgeModule,
+    EventLogModule,
+    TaskHistoryModule,
+    CaseHistoryModule,
+    LoggingOrchestrationModule,
+  ],
+  providers: [TaskService, TaskLifecycleService],
+  exports: [TaskService],
+  controllers: [TaskController],
 })
-export class TaskModule { }
+export class TaskModule {}
