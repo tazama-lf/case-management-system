@@ -237,19 +237,19 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
   }
 
-  @Get('transaction-history/:entityId')
+  @Get('transaction-history/:endToEndId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
-    summary: 'Get Transaction History data for a specific entity (account/counterparty)',
+    summary: 'Get Transaction History data by End-to-End ID or Entity ID',
     description:
-      'Returns historical timeline, cumulative data, volume distribution, and recent transactions for an entity. Shows multiple transactions over time. Optional filters: startDate, endDate, granularity. If no filters provided, returns ALL transaction history.',
+      'Returns transaction data based on the provided ID. Accepts either end_to_end_id (UUID format) for single transaction with all entity perspectives, or entity_id (account/counterparty) for historical timeline showing multiple transactions over time. Auto-detects ID type. Optional filters: startDate, endDate, granularity.',
   })
   @ApiParam({
-    name: 'entityId',
-    description: 'Entity ID (account or counterparty identifier from transaction_history table) - REQUIRED',
+    name: 'endToEndId',
+    description: 'Transaction End-to-End ID (UUID) or Entity ID (account/counterparty identifier) - REQUIRED. Auto-detects type.',
     required: true,
     type: String,
-    example: 'cdtrAcct_9e6fccad1b1b4850a6e90f548207748b',
+    example: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
   })
   @ApiQuery({
     name: 'tenantId',
@@ -339,17 +339,17 @@ export class GoldLakehouseController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Invalid entity ID or date format' })
+  @ApiResponse({ status: 400, description: 'Invalid ID or date format' })
   async getTransactionHistoryData(
-    @Param('entityId') entityId: string,
+    @Param('endToEndId') endToEndId: string,
     @Query('tenantId') tenantId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('granularity') granularity?: string,
   ) {
-    // Validate entity ID
-    if (!entityId || entityId.trim() === '') {
-      throw new BadRequestException('Entity ID is required');
+    // Validate ID
+    if (!endToEndId || endToEndId.trim() === '') {
+      throw new BadRequestException('Transaction ID or Entity ID is required');
     }
 
     // Validate date format if provided
@@ -373,7 +373,117 @@ export class GoldLakehouseController {
       }
     }
 
-    return this.goldLakehouseService.getTransactionHistoryData(entityId, tenantId || 'DEFAULT', startDate, endDate, granularity);
+    return this.goldLakehouseService.getTransactionHistoryData(endToEndId, tenantId || 'DEFAULT', startDate, endDate, granularity);
+  }
+
+  @Get('transaction-perspectives/:endToEndId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'Get Transaction Perspectives by End-to-End ID',
+    description:
+      'Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity\'s viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.',
+  })
+  @ApiParam({
+    name: 'endToEndId',
+    description: 'Transaction End-to-End ID (UUID) - REQUIRED',
+    required: true,
+    type: String,
+    example: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction perspectives data showing all entity views of the transaction',
+    schema: {
+      example: {
+        endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
+        tenantId: 'DEFAULT',
+        perspectiveCount: 4,
+        transactionDetails: {
+          transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+          endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
+          amount: 1500.0,
+          currency: 'USD',
+          type: 'pacs.008.001.10',
+          date: '2026-01-20',
+          timestamp: '2026-01-20T10:30:00Z',
+          isAlerted: true,
+          isInvestigated: false,
+          debtorName: 'John Smith',
+          creditorName: 'Jane Doe',
+          debtorAccountId: 'dbtrAcct_abc123',
+          creditorAccountId: 'cdtrAcct_def456',
+        },
+        perspectives: [
+          {
+            entityType: 'ACCOUNT',
+            entityRole: 'DEBTOR',
+            entityId: 'dbtrAcct_abc123',
+            entityName: 'John Smith Account',
+            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+            amount: 1500.0,
+            currency: 'USD',
+            timestamp: '2026-01-20T10:30:00Z',
+          },
+          {
+            entityType: 'ACCOUNT',
+            entityRole: 'CREDITOR',
+            entityId: 'cdtrAcct_def456',
+            entityName: 'Jane Doe Account',
+            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+            amount: 1500.0,
+            currency: 'USD',
+            timestamp: '2026-01-20T10:30:00Z',
+          },
+          {
+            entityType: 'COUNTERPARTY',
+            entityRole: 'DEBTOR',
+            entityId: 'dbtr_xyz789',
+            entityName: 'John Smith',
+            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+            amount: 1500.0,
+            currency: 'USD',
+            timestamp: '2026-01-20T10:30:00Z',
+          },
+          {
+            entityType: 'COUNTERPARTY',
+            entityRole: 'CREDITOR',
+            entityId: 'cdtr_uvw321',
+            entityName: 'Jane Doe',
+            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
+            amount: 1500.0,
+            currency: 'USD',
+            timestamp: '2026-01-20T10:30:00Z',
+          },
+        ],
+        meta: {
+          queryTimestamp: '2026-02-10T12:00:00.000Z',
+          message: 'Retrieved 4 entity perspective(s) for transaction',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid end-to-end ID format' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  async getTransactionPerspectives(@Param('endToEndId') endToEndId: string, @Query('tenantId') tenantId?: string) {
+    // Validate end-to-end ID
+    if (!endToEndId || endToEndId.trim() === '') {
+      throw new BadRequestException('End-to-End ID is required');
+    }
+
+    // Basic UUID format validation (optional but recommended)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(endToEndId)) {
+      throw new BadRequestException('Invalid end-to-end ID format. Must be a valid UUID.');
+    }
+
+    return this.goldLakehouseService.getTransactionPerspectivesByEndToEndId(endToEndId, tenantId || 'DEFAULT');
   }
 
   @Get('alert-history/summary')
