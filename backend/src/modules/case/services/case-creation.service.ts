@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
@@ -14,7 +14,6 @@ export class CaseCreationService {
     private readonly logger: LoggerService,
     private readonly caseRepository: CaseRepository,
     private readonly taskService: TaskService,
-    private readonly auditLogService: AuditLogService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 

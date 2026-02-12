@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
@@ -13,8 +12,6 @@ import { FlowableService } from '../..//flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 import { CaseCreationService } from './case-creation.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
@@ -23,7 +20,6 @@ import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/l
 export class CaseCreationApprovalService {
   constructor(
     private readonly logger: LoggerService,
-    // private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly alertRepository: AlertRepository,
@@ -32,9 +28,6 @@ export class CaseCreationApprovalService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
     private readonly caseQueryService: CaseQueryService,
-    // private readonly eventLogService: EventLogService,
-    // private readonly caseHistoryService: CaseHistoryService,
-    private readonly taskHistoryService: TaskHistoryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}

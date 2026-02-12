@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
@@ -14,9 +13,6 @@ import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.uti
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
-import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 
 @Injectable()
@@ -24,15 +20,11 @@ export class CaseClosureApprovalService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly logger: LoggerService,
-    // private readonly auditLogService: AuditLogService,
     private readonly caseRepository: CaseRepository,
     private readonly taskService: TaskService,
     private readonly notificationService: NotificationService,
     private readonly flowableService: FlowableService,
     private readonly commentService: CommentService,
-    // private readonly eventLogService: EventLogService,
-    // private readonly caseHistoryService: CaseHistoryService,
-    // private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
