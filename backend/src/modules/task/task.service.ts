@@ -478,7 +478,7 @@ export class TaskService {
     }
   }
 
-  async claimTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
+  async claimTask(taskId: number, userId: string) {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
     try {

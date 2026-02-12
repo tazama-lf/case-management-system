@@ -15,31 +15,31 @@ import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service'
+import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
+import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 
 @Injectable()
 export class CaseClosureApprovalService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
+    // private readonly auditLogService: AuditLogService,
     private readonly caseRepository: CaseRepository,
     private readonly taskService: TaskService,
     private readonly notificationService: NotificationService,
     private readonly flowableService: FlowableService,
     private readonly commentService: CommentService,
-    private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService,
-    private readonly taskHistoryService: TaskHistoryService,
-  ) { }
-
+    // private readonly eventLogService: EventLogService,
+    // private readonly caseHistoryService: CaseHistoryService,
+    // private readonly taskHistoryService: TaskHistoryService,
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
-    this.logger.log(`Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
+    this.logger.log(`Start - Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
 
     try {
-
       const createSARFilingTask = await this.taskService.createTask(
         {
           caseId,
@@ -51,7 +51,7 @@ export class CaseClosureApprovalService {
         userId,
       );
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
@@ -59,29 +59,18 @@ export class CaseClosureApprovalService {
         outcome: Outcome.SUCCESS,
       });
 
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'createSARTask',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      // await this.taskHistoryService.logTaskHistoryAction({
-      //   userId,
-      //   operation: 'createSARTask',
-      //   entityName: CaseClosureApprovalService.name,
-      //   actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
-      //   case_id: caseId,
-      //   task_id: createSARFilingTask.task_id,
-      // });
-
-      this.logger.log(`Successfully created SAR_STR_FILING task ${createSARFilingTask.task_id} for case ${caseId}`, CaseClosureApprovalService.name);
+      this.logger.log(
+        `End - Successfully created SAR_STR_FILING task ${createSARFilingTask.task_id} for case ${caseId}`,
+        CaseClosureApprovalService.name,
+      );
     } catch (error) {
+      this.logger.error(
+        `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+        error.stack,
+        CaseClosureApprovalService.name,
+      );
 
-      this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
-
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
@@ -90,7 +79,6 @@ export class CaseClosureApprovalService {
       });
     }
   }
-
 
   async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     try {
@@ -158,12 +146,16 @@ export class CaseClosureApprovalService {
         primaryTask = userTask; // Use the user's assigned task as primary
       } else {
         // Single investigation case
-        const investigationTask = caseData.tasks.filter((task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED).sort((a, b) => {
-          const aTime = new Date(a.created_at ?? 0).getTime();
-          const bTime = new Date(b.created_at ?? 0).getTime();
-          return bTime - aTime;
-        })[0] || null;
-
+        const investigationTask =
+          caseData.tasks
+            .filter(
+              (task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED,
+            )
+            .sort((a, b) => {
+              const aTime = new Date(a.created_at ?? 0).getTime();
+              const bTime = new Date(b.created_at ?? 0).getTime();
+              return bTime - aTime;
+            })[0] || null;
 
         if (!investigationTask) {
           throw new BadRequestException({
@@ -173,7 +165,10 @@ export class CaseClosureApprovalService {
           });
         }
 
-        this.logger.log(`Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`, CaseClosureApprovalService.name);
+        this.logger.log(
+          `Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`,
+          CaseClosureApprovalService.name,
+        );
 
         if (investigationTask.assigned_user_id !== userId) {
           throw new BadRequestException({
@@ -217,8 +212,8 @@ export class CaseClosureApprovalService {
           userId,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+              }
             : undefined,
         );
 
@@ -262,29 +257,16 @@ export class CaseClosureApprovalService {
           });
         }
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'closeCase',
-          entityName: CaseClosureApprovalService.name,
-          actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.eventLogService.logEventAction({
-          userId,
-          operation: 'closeCase',
-          entityName: CaseClosureApprovalService.name,
-          actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.caseHistoryService.logCaseHistoryAction({
-          userId,
-          operation: 'closeCase',
-          entityName: CaseClosureApprovalService.name,
-          actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
-          case_id: caseId,
-        });
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'closeCase',
+            entityName: CaseClosureApprovalService.name,
+            actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
+            outcome: Outcome.SUCCESS,
+          },
+          caseId,
+        );
 
         // Auto-generate SAR_STR_FILING task if case is confirmed
         if (finalStatus === CaseStatus.STATUS_82_CLOSED_CONFIRMED) {
@@ -292,7 +274,18 @@ export class CaseClosureApprovalService {
             await this.createSARFilingTask(caseId, tenantId, userId);
             this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
           } catch (error) {
-            this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+            this.logger.error(
+              `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+              error.stack,
+              CaseClosureApprovalService.name,
+            );
+            await this.loggingOrchestrationService.logActions({
+              userId,
+              operation: 'closeCase',
+              entityName: CaseClosureApprovalService.name,
+              actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
+              outcome: Outcome.SUCCESS,
+            });
           }
         }
 
@@ -326,9 +319,9 @@ export class CaseClosureApprovalService {
         userId,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+            }
           : undefined,
       );
 
@@ -378,29 +371,16 @@ export class CaseClosureApprovalService {
         reason: `Case closure requested with outcome: ${dto.recommendedOutcome}`,
       });
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'closeCase',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'closeCase',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'closeCase',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'closeCase',
+          entityName: CaseClosureApprovalService.name,
+          actionPerformed: `Case ${caseId} submitted for approval with outcome: ${dto.recommendedOutcome}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       return {
         message: 'Case closed and submitted for approval',
@@ -413,7 +393,7 @@ export class CaseClosureApprovalService {
     } catch (error) {
       this.logger.error(`Case closure failed: ${error.message}`, error.stack, CaseClosureApprovalService.name);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'closeCase',
         entityName: CaseClosureApprovalService.name,
@@ -508,14 +488,17 @@ export class CaseClosureApprovalService {
         supervisorId,
       );
 
-
       // Auto-generate SAR/STR Filing task if case is confirmed
       if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
         try {
           await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
           this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
         } catch (error) {
-          this.logger.error(`Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+          this.logger.error(
+            `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+            error.stack,
+            CaseClosureApprovalService.name,
+          );
         }
       }
 
@@ -542,29 +525,16 @@ export class CaseClosureApprovalService {
         }
       }
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'approveCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'approveCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'approveCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'approveCaseClosure',
+          entityName: CaseClosureApprovalService.name,
+          actionPerformed: `Case ${caseId} closure approved with final outcome ${finalOutcome}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       this.logger.log(
         `[ApproveCaseClosure] Case ${caseId} closure approved successfully with outcome ${finalOutcome}`,
@@ -592,7 +562,7 @@ export class CaseClosureApprovalService {
         CaseClosureApprovalService.name,
       );
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'approveCaseClosure',
         entityName: CaseClosureApprovalService.name,
@@ -676,29 +646,16 @@ export class CaseClosureApprovalService {
         this.logger.warn(`Failed to send notification to requesting user: ${notificationError.message}`, CaseClosureApprovalService.name);
       }
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'rejectCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'rejectCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'rejectCaseClosure',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'rejectCaseClosure',
+          entityName: CaseClosureApprovalService.name,
+          actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       this.logger.log(
         `Case ${caseId} closure rejected successfully. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
@@ -726,7 +683,7 @@ export class CaseClosureApprovalService {
     } catch (error) {
       this.logger.error(`Failed to reject case closure: ${error.message}`, error.stack, CaseClosureApprovalService.name);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseClosure',
         entityName: CaseClosureApprovalService.name,
@@ -781,29 +738,16 @@ export class CaseClosureApprovalService {
         reason: `Case returned for review by supervisor: ${comments}`,
       });
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'returnCaseForReview',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} returned for additional review`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'returnCaseForReview',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} returned for additional review`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'returnCaseForReview',
-        entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Case ${caseId} returned for additional review`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'returnCaseForReview',
+          entityName: CaseClosureApprovalService.name,
+          actionPerformed: `Case ${caseId} returned for additional review`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       return {
         message: 'Case returned for additional review',
@@ -811,6 +755,13 @@ export class CaseClosureApprovalService {
       };
     } catch (error) {
       this.logger.error(`Failed to return case for review: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+      await this.loggingOrchestrationService.logActions({
+        userId: supervisorId,
+        operation: 'returnCaseForReview',
+        entityName: CaseClosureApprovalService.name,
+        actionPerformed: `Failed to return case ${caseId} for review: ${error.message}`,
+        outcome: Outcome.FAILURE,
+      });
       throw error;
     }
   }
@@ -846,7 +797,7 @@ export class CaseClosureApprovalService {
     if (shouldAttemptAutoClaim) {
       const approvalTaskId = approvalValidation.approvalTask!.task_id;
       this.logger.log(`Auto-claiming approval task ${approvalTaskId} for supervisor ${supervisorId}`, CaseClosureApprovalService.name);
-      await this.taskService.claimTask(approvalTaskId, supervisorId!, this.auditLogService);
+      await this.taskService.claimTask(approvalTaskId, supervisorId!);
 
       const taskIndex = caseData.tasks.findIndex((task) => task.task_id === approvalTaskId);
       if (taskIndex >= 0) {

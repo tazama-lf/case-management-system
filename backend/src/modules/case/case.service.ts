@@ -546,8 +546,4 @@ export class CaseService {
   async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
     return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
   }
-
-  async getCaseActionHistory(caseId: number, tenantId: string, userId: string) {
-    return this.caseQueryService.getCaseActionHistory(caseId, tenantId, userId);
-  }
 }

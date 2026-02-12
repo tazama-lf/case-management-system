@@ -17,12 +17,13 @@ import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 import { CaseCreationService } from './case-creation.service';
+import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 
 @Injectable()
 export class CaseCreationApprovalService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
+    // private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly alertRepository: AlertRepository,
@@ -31,11 +32,12 @@ export class CaseCreationApprovalService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
     private readonly caseQueryService: CaseQueryService,
-    private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService,
+    // private readonly eventLogService: EventLogService,
+    // private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly caseCreateService: CaseCreationService,
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -169,29 +171,16 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'createManualCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'createManualCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'createManualCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
-        case_id: result.case.case_id,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
+          entityName: CaseCreationApprovalService.name,
+          operation: 'createManualCase',
+          outcome: Outcome.SUCCESS,
+        },
+        result.case.case_id,
+      );
 
       return {
         success: true,
@@ -278,29 +267,39 @@ export class CaseCreationApprovalService {
         assignedUserId: userId,
       });
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'saveCaseAsDraft',
-        entityName: 'CaseCreation',
-        actionPerformed: `Draft case ${result.case.case_id} created`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'saveCaseAsDraft',
+          entityName: 'CaseCreation',
+          actionPerformed: `Draft case ${result.case.case_id} created`,
+          outcome: Outcome.SUCCESS,
+        },
+        result.case.case_id,
+      );
+      // await this.auditLogService.logAction({
+      //   userId,
+      //   operation: 'saveCaseAsDraft',
+      //   entityName: 'CaseCreation',
+      //   actionPerformed: `Draft case ${result.case.case_id} created`,
+      //   outcome: Outcome.SUCCESS,
+      // });
 
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'saveCaseAsDraft',
-        entityName: 'CaseCreation',
-        actionPerformed: `Draft case ${result.case.case_id} created`,
-        outcome: Outcome.SUCCESS,
-      });
+      // await this.eventLogService.logEventAction({
+      //   userId,
+      //   operation: 'saveCaseAsDraft',
+      //   entityName: 'CaseCreation',
+      //   actionPerformed: `Draft case ${result.case.case_id} created`,
+      //   outcome: Outcome.SUCCESS,
+      // });
 
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'saveCaseAsDraft',
-        entityName: 'CaseCreation',
-        actionPerformed: `Draft case ${result.case.case_id} created`,
-        case_id: result.case.case_id,
-      });
+      // await this.caseHistoryService.logCaseHistoryAction({
+      //   userId,
+      //   operation: 'saveCaseAsDraft',
+      //   entityName: 'CaseCreation',
+      //   actionPerformed: `Draft case ${result.case.case_id} created`,
+      //   case_id: result.case.case_id,
+      // });
 
       this.logger.log(`Draft saved: case ${result.case.case_id}`, CaseCreationApprovalService.name);
 
@@ -314,7 +313,7 @@ export class CaseCreationApprovalService {
       this.logger.error('[DraftCase] Failed to save case as draft', { error: err, dto, userId, tenantId });
 
       // Log failure for audit trail
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'saveCaseAsDraft',
         entityName: 'CaseCreation',
@@ -385,7 +384,7 @@ export class CaseCreationApprovalService {
         const errorMsg = `Case ${caseId} was already approved (created by supervisor). Current status: ${caseData.status}`;
         this.logger.warn(`[ApproveCaseCreation] ${errorMsg}`, CaseCreationApprovalService.name);
 
-        await this.auditLogService.logAction({
+        await this.loggingOrchestrationService.logActions({
           userId: supervisorId,
           operation: 'approveCaseCreation',
           entityName: CaseCreationApprovalService.name,
@@ -432,7 +431,7 @@ export class CaseCreationApprovalService {
         const errorMsg = 'Approve Case Creation task not found';
         this.logger.error(`[ApproveCaseCreation] ${errorMsg} for case ${caseId}`, null, CaseCreationApprovalService.name);
 
-        await this.auditLogService.logAction({
+        await this.loggingOrchestrationService.logActions({
           userId: supervisorId,
           operation: 'approveCaseCreation',
           entityName: CaseCreationApprovalService.name,
@@ -485,11 +484,26 @@ export class CaseCreationApprovalService {
       });
 
       // Create investigation task(s) after approval based on case type
-      this.logger.log(`[ApproveCaseCreation] Creating Investigation task(s) for approved case ${caseId} with type ${caseData.case_type}`, CaseCreationApprovalService.name);
+      this.logger.log(
+        `[ApproveCaseCreation] Creating Investigation task(s) for approved case ${caseId} with type ${caseData.case_type}`,
+        CaseCreationApprovalService.name,
+      );
 
       if (caseData.case_type === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, result.case.case_creator_user_id, tenantId, result.case.case_id, result.case.priority);
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, result.case.case_creator_user_id, tenantId, result.case.case_id, result.case.priority);
+        await this.caseCreateService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          result.case.case_creator_user_id,
+          tenantId,
+          result.case.case_id,
+          result.case.priority,
+        );
+        await this.caseCreateService.createCaseWithInvestigationTask(
+          CaseType.FRAUD,
+          result.case.case_creator_user_id,
+          tenantId,
+          result.case.case_id,
+          result.case.priority,
+        );
       } else {
         //   // Create two separate tasks for FRAUD_AND_AML cases
         //   const fraudTask = await this.taskService.createTask(
@@ -544,35 +558,31 @@ export class CaseCreationApprovalService {
           CaseCreationApprovalService.name,
         );
 
-        await this.auditLogService.logAction({
-          userId: supervisorId,
-          operation: 'approveCaseCreation',
-          entityName: CaseCreationApprovalService.name,
-          actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
-          outcome: Outcome.SUCCESS,
-        });
+        // await this.loggingOrchestrationService.logActions({
+        //   userId: supervisorId,
+        //   operation: 'approveCaseCreation',
+        //   entityName: CaseCreationApprovalService.name,
+        //   actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
+        //   outcome: Outcome.SUCCESS,
+        // });
       }
 
       // Use appropriate message based on case type
-      const actionMessage = caseData.case_type === CaseType.FRAUD_AND_AML
-        ? `Approved case creation for case ${caseId}. Investigation tasks created for Fraud and AML.`
-        : `Approved case creation for case ${caseId}. Investigation task created.`;
+      const actionMessage =
+        caseData.case_type === CaseType.FRAUD_AND_AML
+          ? `Approved case creation for case ${caseId}. Investigation tasks created for Fraud and AML.`
+          : `Approved case creation for case ${caseId}. Investigation task created.`;
 
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'approveCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: actionMessage,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'approveCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: actionMessage,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'approveCaseCreation',
+          entityName: CaseCreationApprovalService.name,
+          actionPerformed: actionMessage,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       this.logger.log(
         `[ApproveCaseCreation] Case creation approved successfully for case ${caseId}. ${caseData.case_type === CaseType.FRAUD_AND_AML ? 'Investigation tasks created for Fraud and AML' : 'Investigation task created'}.`,
@@ -584,9 +594,10 @@ export class CaseCreationApprovalService {
         case: result.case,
         // approvedTask: result.approvedTask,
         // investigationTask: investigationTask,
-        message: caseData.case_type === CaseType.FRAUD_AND_AML
-          ? 'Case creation approved. Investigation tasks created for Fraud and AML.'
-          : 'Case creation approved. Investigation task created.',
+        message:
+          caseData.case_type === CaseType.FRAUD_AND_AML
+            ? 'Case creation approved. Investigation tasks created for Fraud and AML.'
+            : 'Case creation approved. Investigation task created.',
       };
     } catch (error) {
       this.logger.error(
@@ -595,7 +606,7 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseCreationApprovalService.name,
@@ -673,29 +684,32 @@ export class CaseCreationApprovalService {
         reason: `Case creation rejected: ${reason}`,
       });
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'rejectCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'rejectCaseCreation',
+          entityName: CaseCreationApprovalService.name,
+          actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'rejectCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
+      // await this.eventLogService.logEventAction({
+      //   userId: supervisorId,
+      //   operation: 'rejectCaseCreation',
+      //   entityName: CaseCreationApprovalService.name,
+      //   actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
+      //   outcome: Outcome.SUCCESS,
+      // });
 
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'rejectCaseCreation',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
-        case_id: caseId,
-      });
+      // await this.caseHistoryService.logCaseHistoryAction({
+      //   userId: supervisorId,
+      //   operation: 'rejectCaseCreation',
+      //   entityName: CaseCreationApprovalService.name,
+      //   actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
+      //   case_id: caseId,
+      // });
 
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
@@ -704,7 +718,7 @@ export class CaseCreationApprovalService {
         error.stack,
         CaseCreationApprovalService.name,
       );
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseCreation',
         entityName: CaseCreationApprovalService.name,
@@ -723,7 +737,7 @@ export class CaseCreationApprovalService {
     const missingFields = this.validateCaseCompletionFields(existingCase);
     if (missingFields.length > 0) {
       const msg = `Missing or invalid fields: ${missingFields.join(', ')}`;
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'completeCase',
         entityName: CaseCreationApprovalService.name,
@@ -773,29 +787,32 @@ export class CaseCreationApprovalService {
         userId,
       );
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'completeCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'completeCase',
+          entityName: CaseCreationApprovalService.name,
+          actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'completeCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-        outcome: Outcome.SUCCESS,
-      });
+      // await this.eventLogService.logEventAction({
+      //   userId,
+      //   operation: 'completeCase',
+      //   entityName: CaseCreationApprovalService.name,
+      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+      //   outcome: Outcome.SUCCESS,
+      // });
 
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'completeCase',
-        entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-        case_id: caseId,
-      });
+      // await this.caseHistoryService.logCaseHistoryAction({
+      //   userId,
+      //   operation: 'completeCase',
+      //   entityName: CaseCreationApprovalService.name,
+      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
+      //   case_id: caseId,
+      // });
 
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
@@ -834,29 +851,33 @@ export class CaseCreationApprovalService {
         `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
         CaseCreationApprovalService.name,
       );
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        outcome: Outcome.SUCCESS,
-      });
 
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'createCase',
+          entityName: 'CaseCreationApprovalService',
+          actionPerformed: `Case ${createdCase.case_id} created successfully`,
+          outcome: Outcome.SUCCESS,
+        },
+        createdCase.case_id,
+      );
 
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'createCase',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Case ${createdCase.case_id} created successfully`,
-        case_id: createdCase.case_id,
-      });
+      // await this.eventLogService.logEventAction({
+      //   userId,
+      //   operation: 'createCase',
+      //   entityName: 'CaseCreationApprovalService',
+      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
+      //   outcome: Outcome.SUCCESS,
+      // });
+
+      // await this.caseHistoryService.logCaseHistoryAction({
+      //   userId,
+      //   operation: 'createCase',
+      //   entityName: 'CaseCreationApprovalService',
+      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
+      //   case_id: createdCase.case_id,
+      // });
 
       return createdCase;
     } catch (error) {
@@ -878,8 +899,6 @@ export class CaseCreationApprovalService {
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
           if (caseType === CaseType.FRAUD_AND_AML) {
-
-
             // Create separate tasks for Fraud and AML investigations
             // await this.taskService.createTask(
             //   {
@@ -901,7 +920,6 @@ export class CaseCreationApprovalService {
             //   },
             //   userId,
             // );
-
             //FLowable here
           } else {
             // Otherwise create a single task for other case types
@@ -929,29 +947,32 @@ export class CaseCreationApprovalService {
         reason: 'Case status updated',
       });
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'updateCaseStatus',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Updated case ${caseId} status to ${status}`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'updateCaseStatus',
+          entityName: 'CaseCreationApprovalService',
+          actionPerformed: `Updated case ${caseId} status to ${status}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'updateCaseStatus',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Updated case ${caseId} status to ${status}`,
-        outcome: Outcome.SUCCESS,
-      });
+      // await this.eventLogService.logEventAction({
+      //   userId,
+      //   operation: 'updateCaseStatus',
+      //   entityName: 'CaseCreationApprovalService',
+      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
+      //   outcome: Outcome.SUCCESS,
+      // });
 
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'updateCaseStatus',
-        entityName: 'CaseCreationApprovalService',
-        actionPerformed: `Updated case ${caseId} status to ${status}`,
-        case_id: caseId,
-      });
+      // await this.caseHistoryService.logCaseHistoryAction({
+      //   userId,
+      //   operation: 'updateCaseStatus',
+      //   entityName: 'CaseCreationApprovalService',
+      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
+      //   case_id: caseId,
+      // });
 
       this.logger.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
       return updatedCase;
