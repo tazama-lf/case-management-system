@@ -248,7 +248,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-            Rules Extracted
+            Rules Passed
           </div>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-gray-900">{data.rules?.length || 0}</span>
