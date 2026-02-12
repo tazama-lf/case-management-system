@@ -179,47 +179,6 @@ export class TriageService {
     }
   }
 
-  async getAlertDetails(alertId: number, tenantId: string, userId: string) {
-    try {
-      const alert = await this.alertRepository.getAlertById(alertId);
-
-      if (!alert) {
-        throw new NotFoundException(`Alert ${alertId} not found`);
-      }
-
-      if (alert.tenant_id !== tenantId) {
-        throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
-      }
-
-      this.logger.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, TriageService.name);
-
-      const { tenant_id, ...sanitizedAlert } = alert;
-      return sanitizedAlert;
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-
-      this.logger.error(`Failed to fetch alert ${alertId}: ${error.message}`, TriageService.name);
-      throw new InternalServerErrorException('Unable to retrieve alert details');
-    }
-  }
-
-  async getAlertActionHistory(alertId: number, tenantId: string, userId: string) {
-    const alert = await this.alertRepository.getAlertById(alertId);
-
-    if (!alert) {
-      throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
-    }
-
-    const history = await this.audit.getActionHistoryForAlert(alertId);
-    // await this.eventLogService.getActionHistoryForAlert(alertId)
-    return {
-      alertId,
-      tenantId,
-      userId,
-      history,
-    };
-  }
-
   async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string) {
     this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
     try {

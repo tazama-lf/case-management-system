@@ -11,7 +11,7 @@ import { EventLogModule } from '../event_log/eventLog.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 
 @Module({
-  imports: [LoggerModule, LoggingOrchestrationModule, ConfigModule, RepositoryModule, CaseModule],
+  imports: [LoggerModule, LoggingOrchestrationModule, ConfigModule, RepositoryModule, CaseModule, AuditLogModule],
   providers: [AlertService, AlertStatisticsService],
   exports: [AlertService, AlertStatisticsService],
   controllers: [AlertController],

@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
@@ -13,6 +13,7 @@ import { JsonValue } from '../repository/utils/types/JsonValue';
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
+import { AuditLogService } from '../audit/auditLog.service';
 
 @Injectable()
 export class AlertService {
@@ -23,6 +24,7 @@ export class AlertService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly transactionDataRespository: TransactionDataRespository,
     private readonly caseCreateService: CaseCreationService,
+    private readonly auditLogService: AuditLogService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
@@ -135,5 +137,46 @@ export class AlertService {
     } else {
       throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
     }
+  }
+
+  async getAlertDetails(alertId: number, tenantId: string, userId: string) {
+    try {
+      const alert = await this.alertRepository.getAlertById(alertId);
+
+      if (!alert) {
+        throw new NotFoundException(`Alert ${alertId} not found`);
+      }
+
+      if (alert.tenant_id !== tenantId) {
+        throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
+      }
+
+      this.loggerService.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, AlertService.name);
+
+      const { tenant_id, ...sanitizedAlert } = alert;
+      return sanitizedAlert;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+
+      this.loggerService.error(`Failed to fetch alert ${alertId}: ${error.message}`, AlertService.name);
+      throw new InternalServerErrorException('Unable to retrieve alert details');
+    }
+  }
+
+  async getAlertActionHistory(alertId: number, tenantId: string, userId: string) {
+    const alert = await this.alertRepository.getAlertById(alertId);
+
+    if (!alert) {
+      throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
+    }
+
+    const history = await this.auditLogService.getActionHistoryForAlert(alertId);
+    // await this.eventLogService.getActionHistoryForAlert(alertId)
+    return {
+      alertId,
+      tenantId,
+      userId,
+      history,
+    };
   }
 }
