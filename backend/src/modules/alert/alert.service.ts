@@ -13,7 +13,7 @@ import { JsonValue } from '../repository/utils/types/JsonValue';
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
-import { AuditLogService } from '../audit/auditLog.service';
+import { EventLogService } from '../event_log/eventLog.service';
 
 @Injectable()
 export class AlertService {
@@ -24,8 +24,8 @@ export class AlertService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly transactionDataRespository: TransactionDataRespository,
     private readonly caseCreateService: CaseCreationService,
-    private readonly auditLogService: AuditLogService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly eventLogService: EventLogService,
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
@@ -170,8 +170,7 @@ export class AlertService {
       throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
     }
 
-    const history = await this.auditLogService.getActionHistoryForAlert(alertId);
-    // await this.eventLogService.getActionHistoryForAlert(alertId)
+    const history = await this.eventLogService.getActionHistoryForAlert(alertId);
     return {
       alertId,
       tenantId,
