@@ -12,6 +12,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
+import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 
@@ -19,6 +20,7 @@ import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service
 export class CaseReopeningService {
   constructor(
     private readonly caseRepository: CaseRepository,
+    private readonly commentRepository: CommentRepository,
     private readonly auditLogService: AuditLogService,
     private readonly notificationService: NotificationService,
     private readonly prismaService: PrismaService,
@@ -140,11 +142,10 @@ export class CaseReopeningService {
           userId,
         );
 
-        await tx.comment.create({
-          data: {
-            user_id: userId,
-            //  task_id: approvalTask.task_id,
-            case_id: caseId,
+        await this.commentRepository.createComment(
+          userId,
+          {
+            caseId: caseId,
             note: JSON.stringify({
               requestedBy: userId,
               requesterRole: role || 'UNKNOWN',
@@ -152,8 +153,10 @@ export class CaseReopeningService {
               previousStatus: existingCase.status,
               requestedAt: new Date().toISOString(),
             }),
+            tenantId: tenantId,
           },
-        });
+          tx,
+        );
 
         return { case: updatedCase, approvalTask };
       });
@@ -284,14 +287,15 @@ export class CaseReopeningService {
           },
         });
 
-        await tx.comment.create({
-          data: {
-            user_id: supervisorId,
-            case_id: caseId,
-            // task_id: reopeningTask.task_id,
+        await this.commentRepository.createComment(
+          supervisorId,
+          {
+            caseId: caseId,
             note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
+            tenantId: tenantId,
           },
-        });
+          tx,
+        );
 
         return { updatedCase, completedTask };
       });
@@ -464,14 +468,15 @@ export class CaseReopeningService {
           },
         });
 
-        await tx.comment.create({
-          data: {
-            user_id: supervisorId,
-            case_id: caseId,
-            //  task_id: reopeningTask.task_id,
+        await this.commentRepository.createComment(
+          supervisorId,
+          {
+            caseId: caseId,
             note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
+            tenantId: tenantId,
           },
-        });
+          tx,
+        );
 
         return { updatedCase, completedTask };
       });

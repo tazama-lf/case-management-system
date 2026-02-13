@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
+import { CommentRepository } from './comment.repository';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly commentRepository: CommentRepository,
+  ) {
     super(prisma);
   }
 
@@ -128,11 +132,6 @@ export class CaseRepository extends BaseRepository {
         comments: true,
       },
     });
-  }
-
-  async createComment(data: { user_id: string; task_id?: number; case_id?: number; note: string }, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return await this.prisma.comment.create({ data });
   }
 
   async findCaseForReopening(caseId: number) {
@@ -407,7 +406,7 @@ export class CaseRepository extends BaseRepository {
     status: CaseStatus,
     investigationTaskId: number,
     userId: string,
-    comment?: { note: string; taskId?: number },
+    comment?: { note: string; taskId?: number; tenantId: string },
   ) {
     return await this.prisma.$transaction(async (tx) => {
       const updatedCase = await tx.case.update({
@@ -421,21 +420,23 @@ export class CaseRepository extends BaseRepository {
       });
 
       if (comment) {
-        await tx.comment.create({
-          data: {
-            user_id: userId,
-            case_id: caseId,
-            task_id: comment.taskId,
+        await this.commentRepository.createComment(
+          userId,
+          {
+            caseId: caseId,
+            taskId: comment.taskId,
             note: comment.note,
+            tenantId: comment.tenantId,
           },
-        });
+          tx,
+        );
       }
 
       return { updatedCase };
     });
   }
 
-  async approveClosureTask(caseId: number, taskId: number, status: CaseStatus, supervisorId: string, comments?: string) {
+  async approveClosureTask(caseId: number, taskId: number, status: CaseStatus, supervisorId: string, tenantId: string, comments?: string) {
     return await this.prisma.$transaction(async (tx) => {
       const updatedCase = await tx.case.update({
         where: { case_id: caseId },
@@ -451,15 +452,18 @@ export class CaseRepository extends BaseRepository {
         },
       });
 
-      await tx.comment.create({
-        data: {
-          user_id: supervisorId,
-          task_id: taskId,
+      await this.commentRepository.createComment(
+        supervisorId,
+        {
+          caseId: caseId,
+          taskId: taskId,
           note: comments
             ? `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${status}`
             : `Case closure approved with outcome: ${status}`,
+          tenantId: tenantId,
         },
-      });
+        tx,
+      );
 
       return { updatedCase, completedTask };
     });
@@ -471,6 +475,7 @@ export class CaseRepository extends BaseRepository {
     originalInvestigatorId: string,
     comments: string,
     taskNames: { APPROVE_CASE_CLOSURE: string; APPROVE_CASE_CLOSURE_LOWER: string; INVESTIGATE_CASE: string },
+    tenantId: string,
   ) {
     return await this.prisma.$transaction(async (tx) => {
       // Find approval task first
@@ -498,20 +503,10 @@ export class CaseRepository extends BaseRepository {
           updated_at: new Date(),
         },
       });
-
-      // await tx.comment.create({
-      //     data: {
-      //         user_id: supervisorId,
-      //         task_id: approvalTask.task_id,
-      //         case_id: caseId,
-      //         note: `Case closure rejected by supervisor: ${comments}`,
-      //     },
-      // });
-
-      // Create new investigation task assigned to the user who requested approval
       const newInvestigationTask = await tx.task.create({
         data: {
           case_id: caseId,
+          tenant_id: tenantId,
           name: taskNames.INVESTIGATE_CASE,
           description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
           status: TaskStatus.STATUS_10_ASSIGNED,
@@ -522,14 +517,16 @@ export class CaseRepository extends BaseRepository {
       });
 
       // Add supervisor feedback as comment on new investigation task
-      await tx.comment.create({
-        data: {
-          user_id: supervisorId,
-          case_id: caseId,
-          task_id: newInvestigationTask.task_id,
+      await this.commentRepository.createComment(
+        supervisorId,
+        {
+          caseId: caseId,
+          taskId: newInvestigationTask.task_id,
           note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
+          tenantId: tenantId,
         },
-      });
+        tx,
+      );
 
       // Update case status LAST to prevent BPMN from overriding it
       const updatedCase = await tx.case.update({

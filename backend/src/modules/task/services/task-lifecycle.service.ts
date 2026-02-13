@@ -6,6 +6,7 @@ import { NotificationService } from 'src/modules/notification/notification.servi
 import { CaseStatus, TaskStatus, Prisma } from '@prisma/client-cms';
 import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
+import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
 
@@ -13,6 +14,7 @@ import { Outcome } from 'src/utils/types/outcome';
 export class TaskLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly commentRepository: CommentRepository,
     private readonly logger: LoggerService,
     private readonly flowableService: FlowableService,
     private readonly eventEmitter: EventEmitter2,
@@ -66,14 +68,16 @@ export class TaskLifecycleService {
         assignedUserId,
       });
       if (note && note.trim().length > 0) {
-        await tx.comment.create({
-          data: {
-            user_id: assignedUserId,
-            case_id: existingTask.case_id,
-            task_id: taskId,
+        await this.commentRepository.createComment(
+          assignedUserId,
+          {
+            caseId: existingTask.case_id,
+            taskId: taskId,
             note: note,
+            tenantId: tenantId,
           },
-        });
+          tx,
+        );
       }
 
       return { updatedTask, updatedCase };
@@ -149,14 +153,16 @@ export class TaskLifecycleService {
         assignedUserId,
       });
 
-      await tx.comment.create({
-        data: {
-          user_id: actorUserId,
-          case_id: existingTask.case_id,
-          task_id: taskId,
+      await this.commentRepository.createComment(
+        actorUserId,
+        {
+          caseId: existingTask.case_id,
+          taskId: taskId,
           note: note,
+          tenantId: tenantId,
         },
-      });
+        tx,
+      );
       return { updatedTask, updatedCase };
     });
 
@@ -284,14 +290,16 @@ export class TaskLifecycleService {
         assignedUser: null,
       });
 
-      await tx.comment.create({
-        data: {
-          user_id: actorUserId,
-          case_id: existingTask.case_id,
-          task_id: taskId,
+      await this.commentRepository.createComment(
+        actorUserId,
+        {
+          caseId: existingTask.case_id,
+          taskId: taskId,
           note: reason,
+          tenantId: tenantId,
         },
-      });
+        tx,
+      );
 
       return { updatedTask };
     });

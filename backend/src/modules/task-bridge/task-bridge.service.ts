@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditLogService } from '../audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
@@ -21,12 +21,19 @@ export class TaskBridgeService {
     async createTask(taskDTO: CreateTaskDto, userId: string) {
         this.logger.log('Creating task', TaskBridgeService.name);
         try {
+            // Fetch the case to get the tenant_id
+            const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId);
+            if (!caseRecord) {
+                throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
+            }
+
             const createdTask = await this.taskRepository.createTask({
                 case: {
                     connect: {
                         case_id: taskDTO.caseId,
                     },
                 },
+                tenant_id: caseRecord.tenant_id,
                 name: taskDTO.name,
                 description: taskDTO.description,
                 candidateGroup: taskDTO.candidateGroup,

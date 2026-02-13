@@ -135,6 +135,7 @@ model Case {
 model Task {
   task_id            Int        @id @default(autoincrement())
   case_id            Int
+  tenant_id          String
   status             TaskStatus @default(STATUS_01_UNASSIGNED)
   assigned_user_id   String?    @db.Uuid
   name               String?
@@ -161,6 +162,7 @@ model Task {
 model Comment {
   comment_id Int      @id @default(autoincrement())
   user_id    String   @db.Uuid
+  tenant_id  String
   note       String
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @updatedAt @db.Timestamp(6)

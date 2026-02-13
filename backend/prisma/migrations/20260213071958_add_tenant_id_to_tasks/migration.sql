@@ -169,6 +169,7 @@ CREATE TABLE "cases" (
 CREATE TABLE "tasks" (
     "task_id" SERIAL NOT NULL,
     "case_id" INTEGER NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "status" "TaskStatus" NOT NULL DEFAULT 'STATUS_01_UNASSIGNED',
     "assigned_user_id" UUID,
     "name" TEXT,
@@ -189,6 +190,7 @@ CREATE TABLE "tasks" (
 CREATE TABLE "comments" (
     "comment_id" SERIAL NOT NULL,
     "user_id" UUID NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "note" TEXT NOT NULL,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(6) NOT NULL,

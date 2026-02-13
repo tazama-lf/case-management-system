@@ -62,16 +62,7 @@ export class CaseService {
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    // const investigateTask = allTasks.find(
-    //   (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
-    // );
-    // const investigateTask = allTasks
-    //   .filter(
-    //     (t) => t.name === TASK_NAMES.INVESTIGATE_CASE || t.name === TASK_NAMES.INVESTIGATE_FRAUD || t.name === TASK_NAMES.INVESTIGATE_AML,
-    //   )
-    //   .filter((t) => (t.status = TaskStatus.STATUS_20_IN_PROGRESS));
-
-
+    
     const investigateTask = allTasks.filter((task) =>
       tasksIds.includes(task.task_id)
     );
@@ -157,17 +148,6 @@ export class CaseService {
               })
             )
           );
-
-          // await this.notificationService.sendNotification({
-          //   userId: caseAssignee,
-          //   type: 'CASE_SUSPENDED',
-          //   message: `Case ${caseId} has been suspended by ${caseAssignee}`,
-          //   metadata: {
-          //     caseId,
-          //     actionBy: suspendedBy?.username || suspendedBy?.fullName,
-          //     reason,
-          //   },
-          // })
         }
       } catch (notificationError) {
         this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
@@ -222,11 +202,6 @@ export class CaseService {
 
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        // const updatedTask = await this.taskService.updateTask(
-        //   investigateTask.task_id,
-        //   { status: TaskStatus.STATUS_20_IN_PROGRESS },
-        //   userId,
-        // );
         const updatedTask = await Promise.all(
           investigateTask.map((t) =>
             this.taskService.updateTask(
@@ -237,7 +212,6 @@ export class CaseService {
           )
         );
         const createCommentDto = new CreateCommentDto();
-        // createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.caseId = caseId;
         createCommentDto.note = `Case resumed: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);

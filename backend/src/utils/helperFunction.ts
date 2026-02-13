@@ -3,10 +3,6 @@ import { CaseStatus } from '@prisma/client-cms';
 import { CASE_CLOSURE_OUTCOMES, CLOSED_CASE_STATUSES, VALIDATION_LENGTHS } from '../constants/case.constants';
 import { CloseCaseDto } from 'src/modules/case/dto/close-case.dto';
 
-/**
- * Simple function to extract common user data from request
- * Use this in any controller method
- */
 export function extractUserData(req: AuthenticatedRequest) {
     const { clientId, tenantId, claims, email, fullName } = req.user.token;
     const bearerToken = req.headers.authorization?.replace('Bearer ', '');

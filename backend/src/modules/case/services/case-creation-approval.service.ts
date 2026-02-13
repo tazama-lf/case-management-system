@@ -13,6 +13,7 @@ import { FlowableService } from '../..//flowable/flowable.service';
 import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
+import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
 import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
@@ -27,6 +28,7 @@ export class CaseCreationApprovalService {
     private readonly alertRepository: AlertRepository,
     private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
+    private readonly commentRepository: CommentRepository,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
     private readonly caseQueryService: CaseQueryService,
@@ -652,12 +654,15 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
 
-      await this.caseRepository.createComment({
-        user_id: supervisorId,
-        case_id: caseId,
-        task_id: completeNewCaseTask.task_id,
-        note: `Case creation rejected. Reason: ${reason}`,
-      });
+      await this.commentRepository.createComment(
+        supervisorId,
+        {
+          caseId: caseId,
+          taskId: completeNewCaseTask.task_id,
+          note: `Case creation rejected. Reason: ${reason}`,
+          tenantId: tenantId,
+        },
+      );
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -869,6 +874,12 @@ export class CaseCreationApprovalService {
       };
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
+          // Fetch the case to get the tenant_id
+          const caseRecord = await this.taskRepository.findCaseBasic(caseId, tx);
+          if (!caseRecord) {
+            throw new NotFoundException(`Case ${caseId} not found`);
+          }
+
           if (caseType === CaseType.FRAUD_AND_AML) {
             // Create separate tasks for Fraud and AML investigations
             await this.taskService.createTask(
@@ -900,6 +911,7 @@ export class CaseCreationApprovalService {
                 case: {
                   connect: { case_id: caseId },
                 },
+                tenant_id: caseRecord.tenant_id,
                 name: TASK_NAMES.INVESTIGATE_CASE,
                 description: `Investigate case: ${caseId}`,
                 status: TaskStatus.STATUS_01_UNASSIGNED,

@@ -15,6 +15,7 @@ export class CommentRepository extends BaseRepository {
     return await client.comment.create({
       data: {
         user_id: userId,
+        tenant_id: createCommentDto.tenantId,
         case_id: createCommentDto.caseId,
         task_id: createCommentDto.taskId ?? null,
         note: createCommentDto.note,

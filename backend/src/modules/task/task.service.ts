@@ -50,12 +50,19 @@ export class TaskService {
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
     try {
+      // Fetch the case to get the tenant_id
+      const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId);
+      if (!caseRecord) {
+        throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
+      }
+
       const createdTask = await this.taskRepository.createTask({
         case: {
           connect: {
             case_id: taskDTO.caseId,
           },
         },
+        tenant_id: caseRecord.tenant_id,
         name: taskDTO.name,
         description: taskDTO.description,
         candidateGroup: taskDTO.candidateGroup,
