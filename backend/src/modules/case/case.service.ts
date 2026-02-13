@@ -89,6 +89,25 @@ export class CaseService {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
+        if (updatedCase.parent_id) {
+          const subCase = await prisma.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_21_SUSPENDED && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
+
+            await prisma.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
+            });
+          }
+        }
+
         // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
         const updatedTask = await Promise.all(
           investigateTask.map((task) =>
@@ -231,6 +250,26 @@ export class CaseService {
         //   { status: TaskStatus.STATUS_20_IN_PROGRESS },
         //   userId,
         // );
+
+        if (updatedCase.parent_id) {
+          const subCase = await prisma.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
+
+            await prisma.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+            });
+          }
+        }
+
         const updatedTask = await Promise.all(
           investigateTask.map((t) =>
             this.taskService.updateTask(
@@ -632,6 +671,10 @@ export class CaseService {
 
   async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
     return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
+  }
+
+  async getSubCasesDetails(caseId: number) {
+    return this.caseQueryService.getSubCasesDetails(caseId);
   }
 
   async getCaseActionHistory(caseId: number, tenantId: string, userId: string) {

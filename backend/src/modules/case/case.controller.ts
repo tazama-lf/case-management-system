@@ -353,6 +353,18 @@ export class CaseController {
     return this.caseService.retrieveCase(caseId, isComplianceOfficer);
   }
 
+  @Get('parentId/:caseId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({ summary: 'Retrieve sub case by parent ID', description: 'Get detailed information about sub cases associated with a parent case' })
+  @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only relevant users can only access cases information' })
+  async getSubCasesDetails(@Param('caseId') caseId: number) {
+    return this.caseService.getSubCasesDetails(caseId);
+  }
+
+
+
   @Put(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({

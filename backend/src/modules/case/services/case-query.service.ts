@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -165,7 +165,7 @@ export class CaseQueryService {
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
-      
+
       // Handle status filtering with new exclusion/inclusion options
       if (closedOnly) {
         // Show only closed cases
@@ -190,7 +190,7 @@ export class CaseQueryService {
           };
         }
       }
-      
+
       if (priority) baseFilters.priority = priority;
       if (caseType) baseFilters.case_type = caseType;
       if (tenantId) baseFilters.tenant_id = tenantId;
@@ -480,6 +480,7 @@ export class CaseQueryService {
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert,
+          parent_id: caseItem?.parent_id,
           assigned_to:
             assignedUsers.length > 0
               ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length }
@@ -612,6 +613,18 @@ export class CaseQueryService {
     }
 
     return retrievedCase;
+  }
+
+  async getSubCasesDetails(caseId: number) {
+    const subCases = await this.prismaService.case.findMany({
+      where: {
+        parent_id: caseId,
+      },
+    });
+    if (!subCases) {
+      throw new BadRequestException(`SubCases for Parent Case : ${caseId} does not exist.`);
+    }
+    return subCases;
   }
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {

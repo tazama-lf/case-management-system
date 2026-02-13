@@ -45,7 +45,7 @@ export class TaskService {
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
@@ -130,7 +130,7 @@ export class TaskService {
             const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
             const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
             if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
-            await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+            const updatedCase = await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
 
             await this.flowableService.handleTaskAssigned({
               taskId: taskRecord.task_id,
@@ -138,6 +138,25 @@ export class TaskService {
               assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
               taskName: existingTask.name!,
             });
+
+            if (updatedCase.parent_id) {
+              const subCase = await tx.case.findFirst({
+                where: {
+                  parent_id: updatedCase.parent_id,
+                  NOT: {
+                    case_id: updatedCase.case_id,
+                  },
+                },
+              });
+
+              if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS) {
+
+                await tx.case.update({
+                  where: { case_id: updatedCase.parent_id },
+                  data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+                });
+              }
+            }
 
             return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS };
           }
@@ -155,31 +174,34 @@ export class TaskService {
 
         // Check if task is being completed and is fraud/AML investigation
         if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
-          if (existingTask.name === 'Investigate Fraud') {
-            await this.flowableService.handleTaskCompleted({
-              caseId: updatedTask.case_id,
-              taskName: 'Investigate Fraud',
-              newStatus: TaskStatus.STATUS_30_COMPLETED,
-              completionVariables: {
-                fraudInvestigationAction: 'complete',
-                fraudRecommendedOutcome: updateData.recommendedOutcome,
-                fraudInvestigationNotes: updateData.finalNotes,
-              },
-            });
-          }
 
-          if (existingTask.name === 'Investigate AML') {
-            await this.flowableService.handleTaskCompleted({
-              caseId: updatedTask.case_id,
-              taskName: 'Investigate AML',
-              newStatus: TaskStatus.STATUS_30_COMPLETED,
-              completionVariables: {
-                amlInvestigationAction: 'complete',
-                amlRecommendedOutcome: updateData.recommendedOutcome,
-                amlInvestigationNotes: updateData.finalNotes,
-              },
-            });
-          }
+
+
+          // if (existingTask.name === 'Investigate Fraud') {
+          //   await this.flowableService.handleTaskCompleted({
+          //     caseId: updatedTask.case_id,
+          //     taskName: 'Investigate Fraud',
+          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
+          //     completionVariables: {
+          //       fraudInvestigationAction: 'complete',
+          //       fraudRecommendedOutcome: updateData.recommendedOutcome,
+          //       fraudInvestigationNotes: updateData.finalNotes,
+          //     },
+          //   });
+          // }
+
+          // if (existingTask.name === 'Investigate AML') {
+          //   await this.flowableService.handleTaskCompleted({
+          //     caseId: updatedTask.case_id,
+          //     taskName: 'Investigate AML',
+          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
+          //     completionVariables: {
+          //       amlInvestigationAction: 'complete',
+          //       amlRecommendedOutcome: updateData.recommendedOutcome,
+          //       amlInvestigationNotes: updateData.finalNotes,
+          //     },
+          //   });
+          // }
         } else {
           await this.flowableService.handleTaskAssigned({
             taskId: updatedTask.task_id,
@@ -539,10 +561,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+          status: {
+            not: TaskStatus.STATUS_30_COMPLETED,
+          },
+        };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {

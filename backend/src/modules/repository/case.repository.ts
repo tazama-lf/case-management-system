@@ -114,14 +114,62 @@ export class CaseRepository extends BaseRepository {
 
     async findCaseWithPermissionCheck(caseId: number, userId: string, tx?: Prisma.TransactionClient) {
         const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+        // return await client.case.findFirst({
+        //     where: {
+        //         case_id: caseId,
+        //         OR: [
+        //             { case_owner_user_id: userId },
+        //             { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case', 'investigate case'] } } } },
+        //         ],
+        //     },
+        //     include: {
+        //         tasks: true,
+        //         alert: true,
+        //         comments: true,
+        //     },
+        // });
+
         return await client.case.findFirst({
             where: {
                 case_id: caseId,
+
                 OR: [
-                    { case_owner_user_id: userId },
-                    { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case', 'investigate case'] } } } },
+                    {
+                        case_type: {
+                            in: ['FRAUD_AND_AML'],
+                        },
+                    },
+                    {
+                        AND: [
+                            {
+                                case_type: {
+                                    notIn: ['FRAUD_AND_AML'],
+                                },
+                            },
+                            {
+                                OR: [
+                                    { case_owner_user_id: userId },
+                                    {
+                                        tasks: {
+                                            some: {
+                                                assigned_user_id: userId,
+                                                name: {
+                                                    in: [
+                                                        'Investigate Case',
+                                                        'Investigate case',
+                                                        'investigate case',
+                                                    ],
+                                                },
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
                 ],
             },
+
             include: {
                 tasks: true,
                 alert: true,
@@ -406,8 +454,8 @@ export class CaseRepository extends BaseRepository {
     async updateCaseStatusAndCompleteTask(
         caseId: number,
         status: CaseStatus,
-        investigationTaskId: number,
         userId: string,
+        investigationTaskId?: number,
         comment?: { note: string; taskId?: number },
     ) {
         return await this.prisma.$transaction(async (tx) => {
@@ -416,10 +464,13 @@ export class CaseRepository extends BaseRepository {
                 data: { status, updated_at: new Date() },
             });
 
-            await tx.task.update({
-                where: { task_id: investigationTaskId },
-                data: { status: TaskStatus.STATUS_30_COMPLETED, updated_at: new Date() },
-            });
+            if (investigationTaskId) {
+                await tx.task.update({
+                    where: { task_id: investigationTaskId },
+                    data: { status: TaskStatus.STATUS_30_COMPLETED, updated_at: new Date() },
+                });
+            }
+
 
             if (comment) {
                 await tx.comment.create({

@@ -204,6 +204,7 @@ export class ReportsService {
       [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
       [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
       [CaseStatus.STATUS_99_ABANDONED]: 'closed',
+      [CaseStatus.STATUS_84_COMPLETED]: 'closed',
     };
 
     const closedStatuses = [

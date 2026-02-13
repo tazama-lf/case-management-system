@@ -6,7 +6,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../../../constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS, CLOSED_CASE_STATUSES } from '../../../constants/case.constants';
 import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { validateClosureData } from 'src/utils/helperFunction';
@@ -109,53 +109,46 @@ export class CaseClosureApprovalService {
 
       // Check case type for FRAUD_AND_AML parallel investigation logic
       const isFraudAndAmlCase = caseData.case_type === 'FRAUD_AND_AML';
-      const fraudTask = isFraudAndAmlCase ? caseData.tasks.find((task) => task.name === 'Investigate Fraud') : null;
-      const amlTask = isFraudAndAmlCase ? caseData.tasks.find((task) => task.name === 'Investigate AML') : null;
 
       let investigationTasks: Task[] = [];
       let primaryTask: Task | null = null;
 
       if (isFraudAndAmlCase) {
-        // Validate both tasks exist for FRAUD_AND_AML cases
-        if (!fraudTask || !amlTask) {
+        // Validate both child cases exist for FRAUD_AND_AML cases
+        if (role === 'CMS_SUPERVISOR') {
+          const subCase = await this.prismaService.case.findMany({
+            where: {
+              parent_id: caseId,
+            },
+          });
+
+          if (subCase && subCase.length > 0) {
+            const areSubCasesClosable = subCase.every(c =>
+
+              CLOSED_CASE_STATUSES.includes(c.status)
+            );
+            this.logger.log(`areSubCasesClosable: ${areSubCasesClosable}`)
+            if (!areSubCasesClosable) {
+
+              throw new ConflictException({
+                message: 'Either of the Sub Case is not in closable state for parent case closure',
+                caseId: caseId,
+              });
+
+            }
+          } else {
+            throw new BadRequestException({
+              message: 'Sub Cases does not exist for this FRAUD_AND_AML Case',
+              caseId
+            });
+          }
+
+        } else {
           throw new BadRequestException({
-            message: 'Both Fraud and AML investigation tasks must exist for FRAUD_AND_AML cases',
-            caseId,
-            caseType: caseData.case_type,
-            foundTasks: caseData.tasks.filter((t) => t.name?.includes('Investigate')).map((t) => t.name),
+            message: 'Only a Supervisor can close FRAUD_AND_AML Case',
+            caseId
           });
         }
-
-        // FRAUD_AND_AML case - check both tasks
-        investigationTasks = [fraudTask, amlTask];
-
-        // Check if both tasks are completed
-        const fraudCompleted = fraudTask.status === TaskStatus.STATUS_30_COMPLETED;
-        const amlCompleted = amlTask.status === TaskStatus.STATUS_30_COMPLETED;
-
-        if (!fraudCompleted || !amlCompleted) {
-          throw new ConflictException({
-            message: 'Both Fraud and AML investigation tasks must be completed before closing FRAUD_AND_AML case',
-            caseId,
-            fraudTaskStatus: fraudTask.status,
-            amlTaskStatus: amlTask.status,
-            requiredStatus: TaskStatus.STATUS_30_COMPLETED,
-          });
-        }
-
-        // For user assignment check, use the task assigned to the current user
-        const userTask = [fraudTask, amlTask].find((task) => task.assigned_user_id === userId);
-        if (!userTask) {
-          throw new BadRequestException({
-            message: 'Neither Fraud nor AML investigation task is assigned to you',
-            caseId,
-            fraudTaskAssignedTo: fraudTask.assigned_user_id,
-            amlTaskAssignedTo: amlTask.assigned_user_id,
-            userId,
-          });
-        }
-
-        primaryTask = userTask; // Use the user's assigned task as primary
       } else {
         // Single investigation case
         const investigationTask = caseData.tasks.filter((task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED).sort((a, b) => {
@@ -213,41 +206,15 @@ export class CaseClosureApprovalService {
         const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
           caseId,
           finalStatus,
-          primaryTask.task_id,
           userId,
+          primaryTask?.task_id,
           dto.finalNotes
             ? {
               note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
             }
             : undefined,
         );
-
-        if (isFraudAndAmlCase) {
-          // Handle both fraud and AML tasks separately
-          await this.flowableService.handleTaskCompleted({
-            caseId,
-            taskName: 'Investigate Fraud',
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            completionVariables: {
-              fraudInvestigationAction: 'complete',
-              amlInvestigationAction: 'complete',
-              fraudRecommendedOutcome: dto.recommendedOutcome,
-              fraudInvestigationNotes: dto.finalNotes,
-            },
-          });
-
-          await this.flowableService.handleTaskCompleted({
-            caseId,
-            taskName: 'Investigate AML',
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            completionVariables: {
-              fraudInvestigationAction: 'complete',
-              amlInvestigationAction: 'complete',
-              amlRecommendedOutcome: dto.recommendedOutcome,
-              amlInvestigationNotes: dto.finalNotes,
-            },
-          });
-        } else {
+        if (!isFraudAndAmlCase) {
           await this.flowableService.handleTaskCompleted({
             caseId,
             taskName: 'Investigate Case',
@@ -322,8 +289,8 @@ export class CaseClosureApprovalService {
       const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
         caseId,
         CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        primaryTask.task_id,
         userId,
+        primaryTask?.task_id,
         dto.finalNotes
           ? {
             note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
@@ -332,32 +299,7 @@ export class CaseClosureApprovalService {
           : undefined,
       );
 
-      if (isFraudAndAmlCase) {
-        // Handle both fraud and AML tasks separately
-        await this.flowableService.handleTaskCompleted({
-          caseId,
-          taskName: 'Investigate Fraud',
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          completionVariables: {
-            fraudInvestigationAction: 'requestClosure',
-            amlInvestigationAction: 'requestClosure',
-            fraudRecommendedOutcome: dto.recommendedOutcome,
-            fraudInvestigationNotes: dto.finalNotes,
-          },
-        });
-
-        await this.flowableService.handleTaskCompleted({
-          caseId,
-          taskName: 'Investigate AML',
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          completionVariables: {
-            fraudInvestigationAction: 'requestClosure',
-            amlInvestigationAction: 'requestClosure',
-            amlRecommendedOutcome: dto.recommendedOutcome,
-            amlInvestigationNotes: dto.finalNotes,
-          },
-        });
-      } else {
+      if (!isFraudAndAmlCase) {
         await this.flowableService.handleTaskCompleted({
           caseId,
           taskName: 'Investigate Case',

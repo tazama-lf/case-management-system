@@ -14,6 +14,8 @@ import { evidenceService } from '../../services/evidenceService';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
+  subCasesDetails: CaseRow[] | undefined;
+  parentCaseDetails: CaseRow | null;
   canManageSupervisorActions?: boolean;
   showActions?: boolean;
   onComplete?: (row: CaseRow) => void;
@@ -61,6 +63,8 @@ type LatestReport = {
 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   row,
+  subCasesDetails,
+  parentCaseDetails,
   canManageSupervisorActions = false,
   showActions = true,
   onComplete,
@@ -306,9 +310,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     }
   };
 
-  const creditorFsp = getNestedValue(transactionData, ['InstdAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
-  const debtorFsp = getNestedValue(transactionData, ['InstgAgt', 'FinInstnId', 'ClrSysMmbId', 'MmbId']);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -397,6 +398,64 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
             </div>
           </SectionCard>
         </div>
+
+        {/* Parent Case Information */}
+        {row?.parentId && parentCaseDetails && (
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-gray-700">Parent Case Information</div>
+            <SectionCard>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Parent ID</div>
+                  <div className="font-medium text-gray-900">{parentCaseDetails.id}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase">Status</div>
+                  <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${parentCaseDetails.statusColor}`}>
+                    {getCaseStatusBadge(parentCaseDetails.status)}
+                  </span>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+        )}
+
+        {/* Sub Cases Information */}
+        {row?.type === 'FRAUD_AND_AML' && subCasesDetails && (
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-gray-700">Sub Case Information</div>
+            <SectionCard>
+              {subCasesDetails.map(subCases => (
+                <div key={subCases.id} className="mb-4">
+
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase">SubCase ID</div>
+                      <div className="font-medium text-gray-900">{subCases.id}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase">SubCase Type</div>
+                      <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${subCases.typeColor}`}>
+                        {subCases.type || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase">Status</div>
+                      <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${subCases.statusColor}`}>
+                        {getCaseStatusBadge(subCases.status)}
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+              ))}
+
+            </SectionCard>
+          </div>
+        )}
 
         {/* Alert Information */}
         {row.alertId && (
@@ -489,6 +548,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         <div className="col-span-full">
           <CaseActionsPanel
             caseData={row}
+            subCasesDetails={subCasesDetails}
+            parentCaseDetails={parentCaseDetails}
             canManageSupervisorActions={canManageSupervisorActions}
             onComplete={onComplete}
             onCloseCase={onCloseCase}
