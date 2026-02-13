@@ -9,7 +9,6 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from 'src/modules/notification/notification.module';
 import { FlowableModule } from '../flowable/flowable.module';
 import { RepositoryModule } from '../repository/repository.module';
-import { TaskBridgeModule } from '../task-bridge/task-bridge.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
@@ -24,7 +23,6 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
     NotificationModule,
     FlowableModule,
     RepositoryModule,
-    TaskBridgeModule,
     EventLogModule,
     TaskHistoryModule,
     CaseHistoryModule,

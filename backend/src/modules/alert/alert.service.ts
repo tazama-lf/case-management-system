@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
@@ -7,33 +7,33 @@ import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
-import { AuditLogService } from '../audit/auditLog.service';
-import { EventLogService } from '../event_log/eventLog.service';
-import { TransactionDataRespository } from '../repository/transactionalData.respository'
+import { TransactionDataRespository } from '../repository/transactionalData.respository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { CaseCreationService } from '../case/services/case-creation.service';
-
+import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { Outcome } from 'src/utils/types/outcome';
+import { EventLogService } from '../event_log/eventLog.service';
 
 @Injectable()
 export class AlertService {
   constructor(
     private readonly loggerService: LoggerService,
-    private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationApprovalService,
-    private readonly eventLogService: EventLogService,
     private readonly transactionDataRespository: TransactionDataRespository,
     private readonly caseCreateService: CaseCreationService,
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly eventLogService: EventLogService,
+  ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
     this.loggerService.log(`Start - Alert Creation`, AlertService.name);
     const txtp = alert.transaction.TxTp;
     alert.message = alert.message ?? 'Suspicious activity detected';
     try {
-      const transactionRecord = await this.alertRepository.createTransaction(tenantId, alert.transaction);
+      await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({
         tenantId,
         priority: Priority.NEW,
@@ -60,20 +60,12 @@ export class AlertService {
     try {
       const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'ALERT_UPDATED',
         entityName: AlertService.name,
         actionPerformed: `${alertId} - Triaged by user ${userId}`,
-        outcome: `Alert ${alertId} updated successfully`,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'Alert updated',
-        entityName: AlertService.name,
-        actionPerformed: `${alertId} - Triaged by user ${userId}`,
-        outcome: `Alert with Alert ID: ${alertId} updated successfully`,
+        outcome: Outcome.SUCCESS,
       });
 
       this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
@@ -98,11 +90,22 @@ export class AlertService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
       const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
-      this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`)
+      this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`);
       if (caseDetail.caseType === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, createdCase.case_id, createdCase.priority);
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, createdCase.case_id, createdCase.priority);
-
+        await this.caseCreateService.createCaseWithInvestigationTask(
+          CaseType.FRAUD,
+          userId,
+          tenantId,
+          createdCase.case_id,
+          createdCase.priority,
+        );
+        await this.caseCreateService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          tenantId,
+          createdCase.case_id,
+          createdCase.priority,
+        );
       }
       const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
       return createdAlert;
@@ -128,18 +131,51 @@ export class AlertService {
       this.loggerService.log(`referenceId: ${referenceId}`, AlertService.name);
       const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
       this.loggerService.log(`transactionData:  ${JSON.stringify(transactionData)}`, AlertService.name);
-      if (!transactionData)
-        throw new InternalServerErrorException(
-          `transactionData not found for AlertId ${alertId}`,
-        );
+      if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
 
       return transactionData;
-
-
-
     } else {
       throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
     }
   }
 
+  async getAlertDetails(alertId: number, tenantId: string, userId: string) {
+    try {
+      const alert = await this.alertRepository.getAlertById(alertId);
+
+      if (!alert) {
+        throw new NotFoundException(`Alert ${alertId} not found`);
+      }
+
+      if (alert.tenant_id !== tenantId) {
+        throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
+      }
+
+      this.loggerService.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, AlertService.name);
+
+      const { tenant_id, ...sanitizedAlert } = alert;
+      return sanitizedAlert;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+
+      this.loggerService.error(`Failed to fetch alert ${alertId}: ${error.message}`, AlertService.name);
+      throw new InternalServerErrorException('Unable to retrieve alert details');
+    }
+  }
+
+  async getAlertActionHistory(alertId: number, tenantId: string, userId: string) {
+    const alert = await this.alertRepository.getAlertById(alertId);
+
+    if (!alert) {
+      throw new NotFoundException(`Alert with ID ${alertId} was not found for tenant ${tenantId}.`);
+    }
+
+    const history = await this.eventLogService.getActionHistoryForAlert(alertId);
+    return {
+      alertId,
+      tenantId,
+      userId,
+      history,
+    };
+  }
 }

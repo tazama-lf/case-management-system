@@ -27,12 +27,11 @@ import {
   RequireSupervisorRole,
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
-  RequireInvestigatorOrSupervisorRoleOrComplianceRole
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { FlowableService } from '../flowable/flowable.service';
-import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
@@ -57,7 +56,6 @@ export class TaskController {
     private readonly auditLogService: AuditLogService,
     private readonly loggerService: LoggerService,
     private readonly flowableService: FlowableService,
-    private readonly taskBridgeService: TaskBridgeService,
   ) {}
 
   @Post()
@@ -125,7 +123,7 @@ export class TaskController {
   })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskBridgeService.createTask(createTaskDto, userId);
+    return this.taskService.createTask(createTaskDto, userId);
   }
 
   @Patch(':taskId/reassign')
@@ -201,7 +199,7 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note); ;
+    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
   }
 
   @Patch(':taskId/unassign')
@@ -370,7 +368,13 @@ export class TaskController {
     const supervisorId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
 
-    const result = await this.taskService.assignTaskToInvestigator(taskId, assignTaskDto.assignedUserId, supervisorId, tenantId, assignTaskDto.note);
+    const result = await this.taskService.assignTaskToInvestigator(
+      taskId,
+      assignTaskDto.assignedUserId,
+      supervisorId,
+      tenantId,
+      assignTaskDto.note,
+    );
 
     return {
       success: true,
@@ -573,7 +577,8 @@ export class TaskController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get tasks for a specific case',
-    description: 'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
+    description:
+      'Retrieves all tasks associated with a given case ID. Compliance queue tasks are only visible to users with CMS_COMPLIANCE_OFFICER role.',
   })
   @ApiParam({
     name: 'caseId',
