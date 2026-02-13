@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -6,11 +6,9 @@ import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
 import { CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
-import { AuditLogService } from '../../audit/auditLog.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
+import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 
 @Injectable()
 export class CaseQueryService {
@@ -18,10 +16,8 @@ export class CaseQueryService {
     private readonly prismaService: PrismaService,
     private readonly logger: LoggerService,
     private readonly caseRepository: CaseRepository,
-    private readonly auditLogService: AuditLogService,
-    private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService,
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
     try {
@@ -100,11 +96,11 @@ export class CaseQueryService {
           total_tasks: caseItem.tasks.length,
           alert: caseItem.alert
             ? {
-              alert_id: caseItem.alert.alert_id,
-              message: caseItem.alert.message,
-              confidence_per: caseItem.alert.confidence_per,
-              transaction: caseItem.alert.transaction,
-            }
+                alert_id: caseItem.alert.alert_id,
+                message: caseItem.alert.message,
+                confidence_per: caseItem.alert.confidence_per,
+                transaction: caseItem.alert.transaction,
+              }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -117,15 +113,21 @@ export class CaseQueryService {
         this.prismaService.case.groupBy({ by: ['priority'], where: { OR: whereConditions }, _count: { case_id: true } }),
       ]);
 
-      const statusCounts = casesByStatus.reduce((acc, item) => {
-        acc[item.status] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const statusCounts = casesByStatus.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
-      const priorityCounts = casesByPriority.reduce((acc, item) => {
-        acc[item.priority] = item._count.case_id;
-        return acc;
-      }, {} as Record<string, number>);
+      const priorityCounts = casesByPriority.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       return {
         cases: processedCases,
@@ -165,12 +167,12 @@ export class CaseQueryService {
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
-      
+
       // Handle status filtering with new exclusion/inclusion options
       if (closedOnly) {
         // Show only closed cases
         baseFilters.status = {
-          in: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE']
+          in: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'],
         };
       } else if (status) {
         // Single status filter takes precedence
@@ -186,11 +188,11 @@ export class CaseQueryService {
         }
         if (excludedStatuses.length > 0) {
           baseFilters.status = {
-            notIn: excludedStatuses
+            notIn: excludedStatuses,
           };
         }
       }
-      
+
       if (priority) baseFilters.priority = priority;
       if (caseType) baseFilters.case_type = caseType;
       if (tenantId) baseFilters.tenant_id = tenantId;
@@ -213,24 +215,27 @@ export class CaseQueryService {
           // Search for cases with null fields or missing data that would display as "N/A" in the UI
           orConditions.push({
             alert: {
-              alert_type: null
-            }
+              alert_type: null,
+            },
           });
           orConditions.push({
-            case_type: null
+            case_type: null,
           });
           orConditions.push({
             NOT: {
               tasks: {
                 some: {
-                  name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] }
-                }
-              }
-            }
+                  name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                },
+              },
+            },
           });
 
           searchFilterCondition = { OR: orConditions };
-          this.logger.log(`N/A search filter created for null/missing fields: ${JSON.stringify(searchFilterCondition)}`, CaseQueryService.name);
+          this.logger.log(
+            `N/A search filter created for null/missing fields: ${JSON.stringify(searchFilterCondition)}`,
+            CaseQueryService.name,
+          );
         } else {
           // Normal search (not N/A)
 
@@ -242,12 +247,10 @@ export class CaseQueryService {
 
           // 2. PARTIAL SEARCH by case_type (e.g., "fr" matches "FRAUD", "fraud_and" matches "FRAUD_AND_AML")
           const caseTypeEnums = ['FRAUD', 'AML', 'FRAUD_AND_AML'];
-          const matchingCaseTypes = caseTypeEnums.filter(type =>
-            type.includes(searchUpper)
-          );
+          const matchingCaseTypes = caseTypeEnums.filter((type) => type.includes(searchUpper));
           if (matchingCaseTypes.length > 0) {
             orConditions.push({
-              case_type: { in: matchingCaseTypes }
+              case_type: { in: matchingCaseTypes },
             });
           }
 
@@ -267,14 +270,12 @@ export class CaseQueryService {
             'STATUS_81_CLOSED_REFUTED',
             'STATUS_82_CLOSED_CONFIRMED',
             'STATUS_83_CLOSED_INCONCLUSIVE',
-            'STATUS_99_ABANDONED'
+            'STATUS_99_ABANDONED',
           ];
-          const matchingStatuses = statusEnums.filter(status =>
-            status.includes(searchUpper)
-          );
+          const matchingStatuses = statusEnums.filter((status) => status.includes(searchUpper));
           if (matchingStatuses.length > 0) {
             orConditions.push({
-              status: { in: matchingStatuses }
+              status: { in: matchingStatuses },
             });
           }
 
@@ -282,8 +283,8 @@ export class CaseQueryService {
           if (isNaN(numericSearch)) {
             orConditions.push({
               alert: {
-                message: { contains: searchTerm, mode: 'insensitive' }
-              }
+                message: { contains: searchTerm, mode: 'insensitive' },
+              },
             });
           }
 
@@ -291,8 +292,8 @@ export class CaseQueryService {
           if (!isNaN(numericSearch)) {
             orConditions.push({
               alert: {
-                confidence_per: numericSearch
-              }
+                confidence_per: numericSearch,
+              },
             });
           }
 
@@ -303,19 +304,17 @@ export class CaseQueryService {
               'STATUS_10_ASSIGNED',
               'STATUS_20_IN_PROGRESS',
               'STATUS_21_BLOCKED',
-              'STATUS_30_COMPLETED'
+              'STATUS_30_COMPLETED',
             ];
-            const matchingTaskStatuses = taskStatusEnums.filter(status =>
-              status.includes(searchUpper)
-            );
+            const matchingTaskStatuses = taskStatusEnums.filter((status) => status.includes(searchUpper));
             if (matchingTaskStatuses.length > 0) {
               orConditions.push({
                 tasks: {
                   some: {
                     name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
-                    status: { in: matchingTaskStatuses }
-                  }
-                }
+                    status: { in: matchingTaskStatuses },
+                  },
+                },
               });
             }
           }
@@ -372,8 +371,7 @@ export class CaseQueryService {
         }
 
         whereClause.AND = andConditions;
-      }
-      else if (investigatorUserId) {
+      } else if (investigatorUserId) {
         const andConditions: any[] = [baseFilters];
 
         // Add SAR/STR filter as separate condition if provided
@@ -386,7 +384,7 @@ export class CaseQueryService {
           // Combine search with investigator visibility rules
           andConditions.push({
             AND: [
-              searchFilterCondition,  // Must match search
+              searchFilterCondition, // Must match search
               {
                 OR: [
                   { case_owner_user_id: investigatorUserId },
@@ -480,6 +478,7 @@ export class CaseQueryService {
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert,
+          parent_id: caseItem?.parent_id,
           assigned_to:
             assignedUsers.length > 0
               ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length }
@@ -492,9 +491,27 @@ export class CaseQueryService {
         this.prismaService.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
         this.prismaService.case.count({ where: { case_owner_user_id: null } }),
       ]);
-      const casesByStatus = statusStats.reduce((acc, item) => { acc[item.status] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByPriority = priorityStats.reduce((acc, item) => { acc[item.priority] = item._count.case_id; return acc; }, {} as Record<string, number>);
-      const casesByType = typeStats.reduce((acc, item) => { if (item.case_type) acc[item.case_type] = item._count.case_id; return acc; }, {} as Record<string, number>);
+      const casesByStatus = statusStats.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByPriority = priorityStats.reduce(
+        (acc, item) => {
+          acc[item.priority] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+      const casesByType = typeStats.reduce(
+        (acc, item) => {
+          if (item.case_type) acc[item.case_type] = item._count.case_id;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
       let oldestUnassignedCase: { case_id: number; created_at: Date; days_old: number } | undefined;
@@ -534,15 +551,15 @@ export class CaseQueryService {
       const statusFilter = isComplianceOfficer
         ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
         : {
-          status: {
-            notIn: [
-              CaseStatus.STATUS_81_CLOSED_REFUTED,
-              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-              CaseStatus.STATUS_99_ABANDONED,
-            ],
-          },
-        };
+            status: {
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED,
+              ],
+            },
+          };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {
@@ -550,7 +567,9 @@ export class CaseQueryService {
             ...statusFilter,
           },
         }),
-        this.prismaService.task.count({ where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } } }),
+        this.prismaService.task.count({
+          where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } },
+        }),
         this.prismaService.case.findMany({
           where: {
             OR: [{ case_owner_user_id: userId }, { tasks: { some: { assigned_user_id: userId } } }],
@@ -567,7 +586,9 @@ export class CaseQueryService {
         const oldest = allUserCases[0];
         const daysOld = Math.floor((now.getTime() - oldest.created_at.getTime()) / (1000 * 60 * 60 * 24));
         oldestCase = { case_id: oldest.case_id, created_at: oldest.created_at, days_old: daysOld };
-        allUserCases.forEach((c) => { totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24); });
+        allUserCases.forEach((c) => {
+          totalAge += (now.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24);
+        });
       }
       const casesByStatus: Record<string, number> = {};
       const casesByPriority: Record<string, number> = {};
@@ -614,6 +635,18 @@ export class CaseQueryService {
     return retrievedCase;
   }
 
+  async getSubCasesDetails(caseId: number) {
+    const subCases = await this.prismaService.case.findMany({
+      where: {
+        parent_id: caseId,
+      },
+    });
+    if (!subCases) {
+      throw new BadRequestException(`SubCases for Parent Case : ${caseId} does not exist.`);
+    }
+    return subCases;
+  }
+
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
     try {
       const updatedCase = await this.caseRepository.updateCase(caseId, {
@@ -623,55 +656,21 @@ export class CaseQueryService {
         case_owner_user_id: updateData.caseOwnerUserId,
       });
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'updateCase',
-        entityName: CaseQueryService.name,
-        actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      this.eventLogService.logEventAction({
-        userId,
-        operation: 'updateCase',
-        entityName: CaseQueryService.name,
-        actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'updateCase',
-        entityName: CaseQueryService.name,
-        actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
-        case_id: updatedCase.case_id,
-      });
+      this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'updateCase',
+          entityName: CaseQueryService.name,
+          actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       return updatedCase;
     } catch (error) {
       this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseQueryService.name);
       throw error;
     }
-  }
-
-  async getCaseActionHistory(caseId: number, tenantId: string, userId: string) {
-    const caseHistory = await this.prismaService.case.findFirst({
-      where: {
-        case_id: caseId,
-        tenant_id: tenantId,
-      },
-    });
-
-    if (!caseHistory) {
-      throw new NotFoundException(`Case with ID ${caseId} was not found for tenant ${tenantId}.`);
-    }
-
-    const history = await this.auditLogService.getActionHistoryForCase(caseId);
-    return {
-      caseId,
-      tenantId,
-      userId,
-      history,
-    };
   }
 }

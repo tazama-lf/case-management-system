@@ -102,6 +102,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       navigate('/cases');
     }
   };
+  const [subCasesDetails, setSubCasesDetails] = React.useState<CaseRow[]>();
 
   const handleCreate = async (payload: {
     alertId?: number;
@@ -397,6 +398,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         onRefreshCases={onRefreshCases}
         onAfterTaskReassign={closeViewCaseModal}
         canManageSupervisorActions={permissions.canManageSupervisorActions}
+        setSubCasesDetails={setSubCasesDetails}
         onComplete={(row) => {
           modalActions.setSelectedRow(row);
           modalActions.setIsCreateOpen(true);
@@ -464,6 +466,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
           onSubmit={handleCloseCaseSubmit}
           caseData={modalState.selectedRow}
+          subCasesDetails={
+            modalState.selectedRow?.type === 'FRAUD_AND_AML' ? subCasesDetails : undefined
+          }
         />
       </Suspense>
 

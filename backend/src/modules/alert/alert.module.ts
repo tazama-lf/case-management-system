@@ -8,11 +8,12 @@ import { AuditLogModule } from '../audit/auditLog.module';
 import { AlertController } from './alert.controller';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { EventLogModule } from '../event_log/eventLog.module';
+import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 
 @Module({
-  imports: [LoggerModule, AuditLogModule, ConfigModule, RepositoryModule, CaseModule, EventLogModule],
+  imports: [LoggerModule, LoggingOrchestrationModule, ConfigModule, RepositoryModule, CaseModule, EventLogModule],
   providers: [AlertService, AlertStatisticsService],
   exports: [AlertService, AlertStatisticsService],
   controllers: [AlertController],
 })
-export class AlertModule { }
+export class AlertModule {}

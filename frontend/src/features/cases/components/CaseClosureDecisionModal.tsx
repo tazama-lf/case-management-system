@@ -360,9 +360,6 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   />
                   <div className="mt-1 flex justify-between">
                     <p className="text-xs text-gray-500">
-                      {formData.supervisorComments.length}/4 characters minimum
-                    </p>
-                    <p className="text-xs text-gray-500">
                       {formData.supervisorComments.length}/500 characters
                     </p>
                   </div>

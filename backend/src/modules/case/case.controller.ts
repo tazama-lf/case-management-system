@@ -53,46 +53,46 @@ import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) { }
+  constructor(private readonly caseService: CaseService) {}
 
-  @Get(':caseId/action-history')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get case action history',
-    description: 'Retrieve all actions taken on a specific case',
-  })
-  @ApiParam({
-    name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Action history retrieved successfully',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          action_id: { type: 'string', format: 'uuid' },
-          action_type: { type: 'string' },
-          user_id: { type: 'string', format: 'uuid' },
-          note: { type: 'string' },
-          created_at: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getCaseActionHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
-    if (!tenantId) throw new BadRequestException('Missing tenantId');
-    if (!userId) throw new BadRequestException('Missing userId');
-    return this.caseService.getCaseActionHistory(caseId, tenantId, userId);
-  }
+  // @Get(':caseId/action-history')
+  // @RequireInvestigatorOrSupervisorRole()
+  // @ApiOperation({
+  //   summary: 'Get case action history',
+  //   description: 'Retrieve all actions taken on a specific case',
+  // })
+  // @ApiParam({
+  //   name: 'caseId',
+  //   type: 'string',
+  //   description: 'UUID of the case',
+  //   example: '123e4567-e89b-12d3-a456-426614174000',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Action history retrieved successfully',
+  //   schema: {
+  //     type: 'array',
+  //     items: {
+  //       type: 'object',
+  //       properties: {
+  //         action_id: { type: 'string', format: 'uuid' },
+  //         action_type: { type: 'string' },
+  //         user_id: { type: 'string', format: 'uuid' },
+  //         note: { type: 'string' },
+  //         created_at: { type: 'string', format: 'date-time' },
+  //       },
+  //     },
+  //   },
+  // })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiResponse({ status: 404, description: 'Alert not found' })
+  // async getCaseActionHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  //   const userId = req.user.token.clientId;
+  //   const tenantId = req.user.token.tenantId;
+  //   if (!tenantId) throw new BadRequestException('Missing tenantId');
+  //   if (!userId) throw new BadRequestException('Missing userId');
+  //   return this.caseService.getCaseActionHistory(caseId, tenantId, userId);
+  // }
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -276,7 +276,11 @@ export class CaseController {
     const { userId, tenantId, claims } = extractUserData(req);
 
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator = claims.includes('CMS_INVESTIGATOR') && !claims.includes('CMS_SUPERVISOR') && !claims.includes('CMS_ADMIN') && !claims.includes('CMS_COMPLIANCE_OFFICER');
+    const isInvestigator =
+      claims.includes('CMS_INVESTIGATOR') &&
+      !claims.includes('CMS_SUPERVISOR') &&
+      !claims.includes('CMS_ADMIN') &&
+      !claims.includes('CMS_COMPLIANCE_OFFICER');
     const isComplianceOfficer = claims.includes('CMS_COMPLIANCE_OFFICER');
 
     return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined, isComplianceOfficer);
@@ -352,6 +356,18 @@ export class CaseController {
     const { isComplianceOfficer } = extractUserData(req);
     return this.caseService.retrieveCase(caseId, isComplianceOfficer);
   }
+
+  @Get('parentId/:caseId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({ summary: 'Retrieve sub case by parent ID', description: 'Get detailed information about sub cases associated with a parent case' })
+  @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only relevant users can only access cases information' })
+  async getSubCasesDetails(@Param('caseId') caseId: number) {
+    return this.caseService.getSubCasesDetails(caseId);
+  }
+
+
 
   @Put(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()

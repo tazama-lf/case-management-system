@@ -13,7 +13,6 @@ import { EventLogService } from '../event_log/eventLog.service';
 import { UploadReportDto } from './dto/upload-report.dto';
 import * as crypto from 'crypto';
 
-
 @Injectable()
 export class ReportsService {
   constructor(
@@ -25,8 +24,7 @@ export class ReportsService {
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
     private readonly eventLogService: EventLogService,
-
-  ) { }
+  ) {}
 
   private getDateRange(dateRange?: string): { startDate: Date; endDate: Date } {
     const now = new Date();
@@ -183,9 +181,9 @@ export class ReportsService {
     const avgResolutionTime =
       allClosedCasesWithTimes.length > 0
         ? allClosedCasesWithTimes.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / allClosedCasesWithTimes.length
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / allClosedCasesWithTimes.length
         : 0;
 
     const statusMap: Record<CaseStatus, string> = {
@@ -204,6 +202,7 @@ export class ReportsService {
       [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
       [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
       [CaseStatus.STATUS_99_ABANDONED]: 'closed',
+      [CaseStatus.STATUS_84_COMPLETED]: 'closed',
     };
 
     const closedStatuses = [
@@ -393,9 +392,9 @@ export class ReportsService {
       const avgResolutionTimeMonth =
         monthClosedCases.length > 0
           ? monthClosedCases.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / monthClosedCases.length
+              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              return sum + resolutionTime;
+            }, 0) / monthClosedCases.length
           : 0;
 
       resolutionTrend.push({
@@ -512,9 +511,9 @@ export class ReportsService {
         const avgResolutionDays =
           cases.length > 0
             ? cases.reduce((sum, case_) => {
-              const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-              return sum + resolutionTime;
-            }, 0) / cases.length
+                const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
+                return sum + resolutionTime;
+              }, 0) / cases.length
             : 0;
 
         return {
@@ -638,9 +637,9 @@ export class ReportsService {
         const avgResolutionTime =
           closedCasesWithTimes.length > 0
             ? closedCasesWithTimes.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-              return sum + resolutionTime;
-            }, 0) / closedCasesWithTimes.length
+                const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+                return sum + resolutionTime;
+              }, 0) / closedCasesWithTimes.length
             : 0;
 
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
@@ -746,14 +745,14 @@ export class ReportsService {
         outcome: log.outcome ? log.outcome.toString() : '',
         performed_at: log.performed_at
           ? log.performed_at.toLocaleString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-          })
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+            })
           : '',
         type: this.getAuditLogType(log.outcome || ''),
       };
@@ -791,14 +790,14 @@ export class ReportsService {
         outcome: log.outcome ? log.outcome.toString() : '',
         performed_at: log.performed_at
           ? log.performed_at.toLocaleString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-          })
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+            })
           : '',
         type: this.getAuditLogType(log.outcome || ''),
       };
@@ -849,9 +848,9 @@ export class ReportsService {
     const avgResolutionTime =
       closedCasesWithTimes.length > 0
         ? closedCasesWithTimes.reduce((sum, case_) => {
-          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-          return sum + resolutionTime;
-        }, 0) / closedCasesWithTimes.length
+            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + resolutionTime;
+          }, 0) / closedCasesWithTimes.length
         : 0;
 
     const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
@@ -1108,15 +1107,7 @@ export class ReportsService {
     };
   }
 
-
-  async generateFraudReport(
-    file: any,
-    dto: UploadReportDto,
-    userId?: string,
-    tenantId?: string,
-    role?: string,
-  ): Promise<FraudReport> {
-
+  async generateFraudReport(file: any, dto: UploadReportDto, userId?: string, tenantId?: string, role?: string): Promise<FraudReport> {
     const allowed = 'application/pdf';
     if (!allowed?.includes(file.mimetype)) {
       throw new BadRequestException(`File type ${file.mimetype} is not allowed for ${dto.reportType}. File: ${file.originalname}`);
@@ -1127,19 +1118,13 @@ export class ReportsService {
         where: { case_id: Number(dto.caseId) },
       });
 
-      const investigationTasks = caseTasks.filter(task =>
-        task.name && task.name.toLowerCase().includes('investigate')
-      );
+      const investigationTasks = caseTasks.filter((task) => task.name && task.name.toLowerCase().includes('investigate'));
 
-      const incompleteTasks = investigationTasks.filter(
-        task => task.status !== TaskStatus.STATUS_30_COMPLETED
-      );
+      const incompleteTasks = investigationTasks.filter((task) => task.status !== TaskStatus.STATUS_30_COMPLETED);
 
       if (incompleteTasks.length > 0) {
-        const taskNames = incompleteTasks.map(t => t.name).join(', ');
-        throw new BadRequestException(
-          `Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`
-        );
+        const taskNames = incompleteTasks.map((t) => t.name).join(', ');
+        throw new BadRequestException(`Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`);
       }
     }
     const caseData = await this.prisma.case.findUnique({ where: { case_id: Number(dto.caseId) } });
@@ -1147,14 +1132,16 @@ export class ReportsService {
     const db = this.couchdbService.getDatabase();
     const existingReportsResult = await db.find({ selector: { caseId: dto.caseId, category: 'report' } });
     const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
-    const nextVersion = existingReports.length > 0
-      ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
-      : 1;
+    const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version ?? 1)) + 1 : 1;
     const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
     file.originalname = reportId + '.pdf';
-    const evidenceResult = await this.evidenceService.getEvidenceByCaseId(Number(dto.caseId), userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
+    const evidenceResult = await this.evidenceService.getEvidenceByCaseId(
+      Number(dto.caseId),
+      userId ?? '',
+      tenantId ?? '',
+      role ?? 'CMS_SUPERVISOR',
+    );
     const evidenceSummary = evidenceResult.evidence;
-
 
     const report: any = {
       userId: userId,
@@ -1219,7 +1206,7 @@ export class ReportsService {
       outcome: 'SUCCESS',
       performedAt: new Date(),
     });
-    // Send notification to Compliance Officer 
+    // Send notification to Compliance Officer
     await this.notificationService.sendGroupNotification({
       candidateGroup: 'COMPLIANCE_OFFICER',
       type: 'GENERIC',
@@ -1229,7 +1216,6 @@ export class ReportsService {
 
     return report;
   }
-
 
   // async generateFraudReport(
   //   caseId: number,
@@ -1381,7 +1367,7 @@ export class ReportsService {
       outcome: 'SUCCESS',
       performedAt: new Date(),
     });
-    // Send notification to Compliance Officer 
+    // Send notification to Compliance Officer
     await this.notificationService.sendGroupNotification({
       candidateGroup: 'COMPLIANCE_OFFICER',
       type: 'GENERIC',

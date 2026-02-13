@@ -6,19 +6,11 @@ import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
-import { NotificationService } from 'src/modules/notification/notification.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
-import {
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
-  TaskAssignedEvent,
-  TaskUnassignedEvent,
-  CaseStatusChangedEvent,
-} from '../events/domain-events';
+import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
-import { TaskBridgeService } from '../task-bridge/task-bridge.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
@@ -45,7 +37,7 @@ export class TaskService {
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
@@ -75,7 +67,7 @@ export class TaskService {
         {
           userId,
           actionPerformed: `Created task ${createdTask.task_id} with candidateGroup: ${taskDTO.candidateGroup}`,
-          entityName: TaskBridgeService.name,
+          entityName: TaskService.name,
           operation: 'createTask',
           outcome: Outcome.SUCCESS,
         },
@@ -85,11 +77,11 @@ export class TaskService {
 
       return { ...createdTask, candidateGroup: taskDTO.candidateGroup };
     } catch (error) {
-      this.logger.error('Error creating task', error, TaskBridgeService.name);
+      this.logger.error('Error creating task', error, TaskService.name);
       this.loggingOrchestrationService.logActions({
         userId,
         actionPerformed: `Error creating task with candidateGroup: ${taskDTO.candidateGroup} - ${error.message}`,
-        entityName: TaskBridgeService.name,
+        entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
       });
@@ -137,7 +129,7 @@ export class TaskService {
             const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
             const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
             if (assigneeId && caseRecord.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
-            await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+            const updatedCase = await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
 
             await this.flowableService.handleTaskAssigned({
               taskId: taskRecord.task_id,
@@ -145,6 +137,25 @@ export class TaskService {
               assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
               taskName: existingTask.name!,
             });
+
+            if (updatedCase.parent_id) {
+              const subCase = await tx.case.findFirst({
+                where: {
+                  parent_id: updatedCase.parent_id,
+                  NOT: {
+                    case_id: updatedCase.case_id,
+                  },
+                },
+              });
+
+              if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS) {
+
+                await tx.case.update({
+                  where: { case_id: updatedCase.parent_id },
+                  data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+                });
+              }
+            }
 
             return { taskRecord, previousCaseStatus: caseRecord.status, updatedCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS };
           }
@@ -162,31 +173,34 @@ export class TaskService {
 
         // Check if task is being completed and is fraud/AML investigation
         if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
-          if (existingTask.name === 'Investigate Fraud') {
-            await this.flowableService.handleTaskCompleted({
-              caseId: updatedTask.case_id,
-              taskName: 'Investigate Fraud',
-              newStatus: TaskStatus.STATUS_30_COMPLETED,
-              completionVariables: {
-                fraudInvestigationAction: 'complete',
-                fraudRecommendedOutcome: updateData.recommendedOutcome,
-                fraudInvestigationNotes: updateData.finalNotes,
-              },
-            });
-          }
 
-          if (existingTask.name === 'Investigate AML') {
-            await this.flowableService.handleTaskCompleted({
-              caseId: updatedTask.case_id,
-              taskName: 'Investigate AML',
-              newStatus: TaskStatus.STATUS_30_COMPLETED,
-              completionVariables: {
-                amlInvestigationAction: 'complete',
-                amlRecommendedOutcome: updateData.recommendedOutcome,
-                amlInvestigationNotes: updateData.finalNotes,
-              },
-            });
-          }
+
+
+          // if (existingTask.name === 'Investigate Fraud') {
+          //   await this.flowableService.handleTaskCompleted({
+          //     caseId: updatedTask.case_id,
+          //     taskName: 'Investigate Fraud',
+          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
+          //     completionVariables: {
+          //       fraudInvestigationAction: 'complete',
+          //       fraudRecommendedOutcome: updateData.recommendedOutcome,
+          //       fraudInvestigationNotes: updateData.finalNotes,
+          //     },
+          //   });
+          // }
+
+          // if (existingTask.name === 'Investigate AML') {
+          //   await this.flowableService.handleTaskCompleted({
+          //     caseId: updatedTask.case_id,
+          //     taskName: 'Investigate AML',
+          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
+          //     completionVariables: {
+          //       amlInvestigationAction: 'complete',
+          //       amlRecommendedOutcome: updateData.recommendedOutcome,
+          //       amlInvestigationNotes: updateData.finalNotes,
+          //     },
+          //   });
+          // }
         } else {
           await this.flowableService.handleTaskAssigned({
             taskId: updatedTask.task_id,
@@ -493,7 +507,7 @@ export class TaskService {
     }
   }
 
-  async claimTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
+  async claimTask(taskId: number, userId: string) {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
     try {
@@ -546,10 +560,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+          status: {
+            not: TaskStatus.STATUS_30_COMPLETED,
+          },
+        };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {

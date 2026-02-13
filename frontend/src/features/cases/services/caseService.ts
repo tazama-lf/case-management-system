@@ -54,6 +54,7 @@ export interface CaseWithTasksDto {
     user_id: string;
     task_count: number;
   };
+  parent_id?: number;
   case_owner_user_id?: string;
   completed_tasks?: number;
   pending_tasks?: number;
@@ -104,7 +105,7 @@ export interface AuditLogEntry {
 }
 
 export interface CloseCaseDto {
-  recommendedOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE';
+  recommendedOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE' | 'STATUS_84_COMPLETED';
   finalNotes: string;
   recommendations?: string;
 }
@@ -234,6 +235,15 @@ export class CaseService {
     try {
       const response = await apiClient.get<Case>(`${this.baseUrl}/${caseId}`);
       return this.validateCaseResponse(response);
+    } catch (error: any) {
+      throw this.handleError(error, 'get case details');
+    }
+  }
+
+  async getSubCasesDetails(caseId: number): Promise<Case[]> {
+    try {
+      const response = await apiClient.get<Case[]>(`${this.baseUrl}/parentId/${caseId}`);
+      return this.validateCaseArrayResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'get case details');
     }
@@ -408,6 +418,38 @@ export class CaseService {
     }
 
     throw new Error('Case ID is missing from response');
+  }
+
+  private validateCaseArrayResponse(data: unknown): Case[] {
+    if (!data) {
+      throw new Error('Invalid case data received');
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.validateCaseResponse(item));
+    }
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'cases' in data &&
+      Array.isArray((data as any).cases)
+    ) {
+      return (data as any).cases.map((item: unknown) =>
+        this.validateCaseResponse(item)
+      );
+    }
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'data' in data &&
+      Array.isArray((data as any).data)
+    ) {
+      return (data as any).data.map((item: unknown) =>
+        this.validateCaseResponse(item)
+      );
+    }
+
+    throw new Error('Invalid case array response structure');
   }
 
   async getUserAssignedCases(query?: GetUserCasesQueryDto): Promise<{ cases: CaseWithTasksDto[]; pagination?: any }> {

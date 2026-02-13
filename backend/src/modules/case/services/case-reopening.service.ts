@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -13,9 +12,8 @@ import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
-
+import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
+import { AuditLogService } from 'src/modules/audit/auditLog.service';
 @Injectable()
 export class CaseReopeningService {
   constructor(
@@ -28,9 +26,8 @@ export class CaseReopeningService {
     private readonly logger: LoggerService,
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
-    private readonly eventLogService: EventLogService,
-    private readonly caseHistoryService: CaseHistoryService
-  ) { }
+    private readonly loggingOrchestrationService: LoggingOrchestrationService,
+  ) {}
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
     return determineOriginalClosedStatus(caseData);
@@ -44,6 +41,13 @@ export class CaseReopeningService {
 
       if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
+      }
+
+      if (existingCase.parent_id) {
+        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id);
+        if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
+          throw new BadRequestException(`SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`);
+        }
       }
 
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
@@ -64,6 +68,25 @@ export class CaseReopeningService {
             },
           });
 
+          if (updatedCase.parent_id) {
+            const subCase = await tx.case.findFirst({
+              where: {
+                parent_id: updatedCase.parent_id,
+                NOT: {
+                  case_id: updatedCase.case_id,
+                },
+              },
+            });
+
+            if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED || subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)) {
+
+              await tx.case.update({
+                where: { case_id: updatedCase.parent_id },
+                data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+              });
+            }
+          }
+
           return { case: updatedCase };
         });
 
@@ -79,35 +102,24 @@ export class CaseReopeningService {
           userId,
         );
 
+
+
         this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           reason: `Case reopening requested: ${reason}`,
         });
 
-        await this.auditLogService.logAction({
-          userId,
-          operation: 'reopenCase',
-          entityName: CaseReopeningService.name,
-          actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.eventLogService.logEventAction({
-          userId,
-          operation: 'reopenCase',
-          entityName: CaseReopeningService.name,
-          actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
-          outcome: Outcome.SUCCESS,
-        });
-
-        await this.caseHistoryService.logCaseHistoryAction({
-          userId,
-          operation: 'reopenCase',
-          entityName: CaseReopeningService.name,
-          actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
-          case_id: caseId,
-        });
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'reopenCase',
+            entityName: CaseReopeningService.name,
+            actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
+            outcome: Outcome.SUCCESS,
+          },
+          caseId,
+        );
 
         return {
           success: true,
@@ -167,29 +179,16 @@ export class CaseReopeningService {
         reason: `Case reopening requested: ${reason}`,
       });
 
-      await this.auditLogService.logAction({
-        userId,
-        operation: 'reopenCase',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId,
-        operation: 'reopenCase',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId,
-        operation: 'reopenCase',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId,
+          operation: 'reopenCase',
+          entityName: CaseReopeningService.name,
+          actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       return {
         success: true,
@@ -200,7 +199,7 @@ export class CaseReopeningService {
     } catch (error) {
       this.logger.error(`Failed to reopen case ${caseId}: ${error.message}`, error.stack, CaseReopeningService.name);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'reopenCase',
         entityName: CaseReopeningService.name,
@@ -278,6 +277,25 @@ export class CaseReopeningService {
           },
         });
 
+        if (updatedCase.parent_id) {
+          const subCase = await tx.case.findFirst({
+            where: {
+              parent_id: updatedCase.parent_id,
+              NOT: {
+                case_id: updatedCase.case_id,
+              },
+            },
+          });
+
+          if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED || subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)) {
+
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
+            });
+          }
+        }
+
         const completedTask = await tx.task.update({
           where: { task_id: reopeningTask.task_id },
           data: {
@@ -352,29 +370,17 @@ export class CaseReopeningService {
         }
       }
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'approveCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
-        outcome: Outcome.SUCCESS,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'approveCaseReopening',
+          entityName: CaseReopeningService.name,
+          actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'approveCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'approveCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created`,
-        case_id: caseId,
-      });
       this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
 
       return {
@@ -401,7 +407,7 @@ export class CaseReopeningService {
     } catch (error) {
       this.logger.error(`Failed to approve case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'approveCaseReopening',
         entityName: CaseReopeningService.name,
@@ -419,7 +425,7 @@ export class CaseReopeningService {
 
       if (!rejectionReason || rejectionReason.trim().length < VALIDATION_LENGTHS.MIN_REJECTION_REASON) {
         const errorMsg = `Rejection reason must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`;
-        await this.auditLogService.logAction({
+        await this.loggingOrchestrationService.logActions({
           userId: supervisorId,
           operation: 'rejectCaseReopening',
           entityName: CaseReopeningService.name,
@@ -499,36 +505,23 @@ export class CaseReopeningService {
               rejectedBy: supervisorId,
               restoredStatus: originalClosedStatus,
               taskTitle: reopeningTask.name,
-            }
+            },
           });
         } catch (notificationError) {
           this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseReopeningService.name);
         }
       }
 
-      await this.auditLogService.logAction({
-        userId: supervisorId,
-        operation: 'rejectCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.eventLogService.logEventAction({
-        userId: supervisorId,
-        operation: 'rejectCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
-        outcome: Outcome.SUCCESS,
-      });
-
-      await this.caseHistoryService.logCaseHistoryAction({
-        userId: supervisorId,
-        operation: 'rejectCaseReopening',
-        entityName: CaseReopeningService.name,
-        actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
-        case_id: caseId,
-      });
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: supervisorId,
+          operation: 'rejectCaseReopening',
+          entityName: CaseReopeningService.name,
+          actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
+          outcome: Outcome.SUCCESS,
+        },
+        caseId,
+      );
 
       this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);
 
@@ -549,7 +542,7 @@ export class CaseReopeningService {
     } catch (error) {
       this.logger.error(`Failed to reject case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
 
-      await this.auditLogService.logAction({
+      await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseReopening',
         entityName: CaseReopeningService.name,

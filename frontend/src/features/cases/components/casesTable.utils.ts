@@ -21,6 +21,7 @@ export type CaseRow = {
   confidencePercent?: number;
   transaction?: unknown;
   tasks?: TaskDTO[];
+  parentId?: number;
   sarStrStatus?: string;
 };
 
@@ -35,6 +36,7 @@ export const getStatusColor = (status: string): string => {
     STATUS_81_CLOSED_REFUTED: 'bg-red-50 text-red-700',
     STATUS_82_CLOSED_CONFIRMED: 'bg-green-50 text-green-700',
     STATUS_83_CLOSED_INCONCLUSIVE: 'bg-gray-50 text-gray-700',
+    STATUS_84_COMPLETED: 'bg-green-50 text-green-700',
   };
   return statusColors[status] || 'bg-gray-100 text-gray-700';
 };
@@ -119,6 +121,7 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     confidencePercent: backendCase.alert?.confidence_per,
     transaction: backendCase.alert?.transaction,
     tasks: backendCase.tasks,
+    parentId: backendCase?.parent_id,
     sarStrStatus: sarStrStatus,
   };
 };

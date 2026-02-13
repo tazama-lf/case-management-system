@@ -5,6 +5,7 @@ import { authService } from '@/features/auth';
 import { DocumentTextIcon } from '@heroicons/react/24/solid';
 import GenerateInvestigationReportModal from '../components/modals/GenerateInvestigationReportModal';
 import type { CaseRow } from './casesTable.utils';
+import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 
 
 interface CloseCaseModalProps {
@@ -14,6 +15,7 @@ interface CloseCaseModalProps {
   caseName?: string;
   onSubmit: (data: CloseCaseDto) => Promise<void>;
   caseData?: CaseRow | null;
+  subCasesDetails?: CaseRow[] | undefined;
 }
 
 const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
@@ -22,7 +24,8 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   caseId,
   caseName,
   onSubmit,
-  caseData
+  caseData,
+  subCasesDetails
 }) => {
   const [formData, setFormData] = useState<CloseCaseDto>({
     recommendedOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
@@ -95,6 +98,18 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
 
   };
 
+  useEffect(() => {
+    if (caseData?.type === 'FRAUD_AND_AML') {
+      const combined = 'STATUS_84_COMPLETED';
+
+      setFormData(prev => ({
+        ...prev,
+        recommendedOutcome:
+          combined as CloseCaseDto['recommendedOutcome'],
+      }));
+    }
+  }, [caseData?.type, subCasesDetails]);
+
   const handleClose = () => {
     if (!isSubmitting) {
       onClose();
@@ -139,41 +154,103 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           { }
           <form onSubmit={handleSubmit} className="p-6">
             { }
+            {/* SUB CASES – Only for FRAUD_AND_AML */}
+            {caseData?.type === 'FRAUD_AND_AML' &&
+              subCasesDetails &&
+              subCasesDetails.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="block text-sm font-medium text-gray-700 mb-2">
+                    Sub-Cases Closure Status
+                  </h4>
+
+                  <div className="space-y-3">
+                    {subCasesDetails.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 grid grid-cols-3 gap-4"
+                      >
+                        {/* Case ID */}
+                        <div>
+                          <div className="text-xs text-gray-500 uppercase">
+                            Case ID
+                          </div>
+                          <div className="font-medium text-gray-900">
+                            {sub.id}
+                          </div>
+                        </div>
+
+                        {/* Case Type */}
+                        <div>
+                          <div className="text-xs text-gray-500 uppercase">
+                            Type
+                          </div>
+                          <div className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${sub.typeColor}`}>
+                            {sub.type || 'N/A'}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs text-gray-500 uppercase">Status</div>
+                          <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${sub.statusColor}`}>
+                            {getCaseStatusBadge(sub.status)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             {/* Recommended Outcome / Final Outcome */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {isSupervisor ? 'Final Outcome' : 'Recommended Outcome'} <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.recommendedOutcome}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    recommendedOutcome: e.target.value as CloseCaseDto['recommendedOutcome'],
-                  }))
-                }
-                disabled={isSubmitting || reportApproved}
-                className="w-full rounded-md border border-gray-300 px-3 py-2
+            {caseData?.type === 'FRAUD_AND_AML' ? (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Final Outcome
+                </label>
+
+                <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900">
+                  COMPLETED
+                </div>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Outcome is auto-generated from Fraud & AML sub-case closures.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {isSupervisor ? 'Final Outcome' : 'Recommended Outcome'} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.recommendedOutcome}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      recommendedOutcome: e.target.value as CloseCaseDto['recommendedOutcome'],
+                    }))
+                  }
+                  disabled={isSubmitting || reportApproved}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2
              disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="STATUS_83_CLOSED_INCONCLUSIVE">
-                  83 - Closed Inconclusive
-                </option>
-                <option value="STATUS_81_CLOSED_REFUTED">
-                  81 - Closed Refuted
-                </option>
-                <option value="STATUS_82_CLOSED_CONFIRMED">
-                  82 - Closed Confirmed
-                </option>
-              </select>
-              <p className="mt-1 text-xs text-gray-500">
-                {isSupervisor
-                  ? 'This is the final outcome that will be applied to the case'
-                  : 'This outcome will be reviewed by the supervisor during approval'
-                }
-              </p>
-            </div>
+                >
+                  <option value="STATUS_83_CLOSED_INCONCLUSIVE">
+                    83 - Closed Inconclusive
+                  </option>
+                  <option value="STATUS_81_CLOSED_REFUTED">
+                    81 - Closed Refuted
+                  </option>
+                  <option value="STATUS_82_CLOSED_CONFIRMED">
+                    82 - Closed Confirmed
+                  </option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  {isSupervisor
+                    ? 'This is the final outcome that will be applied to the case'
+                    : 'This outcome will be reviewed by the supervisor during approval'
+                  }
+                </p>
+              </div>
+            )}
 
             { }
             <div className="mb-6">
@@ -237,7 +314,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               )}
 
               {/* SUPERVISOR → Generate Report */}
-              {isSupervisor && !reportApproved && (
+              {isSupervisor && !reportApproved && caseData?.type !== 'FRAUD_AND_AML' && (
                 <button
                   type="button"
                   disabled={isSubmitting || formData.finalNotes.trim().length < 4}
@@ -251,15 +328,15 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               )}
 
               {/* SUPERVISOR → Close Case (AFTER report) */}
-              {/* {isSupervisor && reportApproved && (
+              {isSupervisor && caseData?.type === 'FRAUD_AND_AML' && (
                 <button
                   type="submit"
-                  disabled={isSubmitting || !reportApproved}
+                  disabled={isSubmitting}
                   className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Closing Case...' : 'Close Case'}
                 </button>
-              )} */}
+              )}
             </div>
           </form>
         </div>
