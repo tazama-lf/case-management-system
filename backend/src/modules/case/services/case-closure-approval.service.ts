@@ -195,8 +195,8 @@ export class CaseClosureApprovalService {
         const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
           caseId,
           finalStatus,
-          userId,
           primaryTask?.task_id,
+          userId,
           dto.finalNotes
             ? {
               note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
@@ -277,8 +277,8 @@ export class CaseClosureApprovalService {
       const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
         caseId,
         CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        userId,
         primaryTask?.task_id,
+        userId,
         dto.finalNotes
           ? {
             note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,

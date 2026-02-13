@@ -156,10 +156,6 @@ export class CaseRepository extends BaseRepository {
                         ],
                     },
                 ],
-        OR: [
-          { case_owner_user_id: userId },
-          { tasks: { some: { assigned_user_id: userId, name: { in: ['Investigate Case', 'Investigate case', 'investigate case'] } } } },
-        ],
       },
       include: {
         tasks: true,
@@ -438,22 +434,10 @@ export class CaseRepository extends BaseRepository {
         });
     }
 
-    async updateCaseStatusAndCompleteTask(
-        caseId: number,
-        status: CaseStatus,
-        userId: string,
-        investigationTaskId?: number,
-        comment?: { note: string; taskId?: number },
-    ) {
-        return await this.prisma.$transaction(async (tx) => {
-            const updatedCase = await tx.case.update({
-                where: { case_id: caseId },
-                data: { status, updated_at: new Date() },
-            });
   async updateCaseStatusAndCompleteTask(
     caseId: number,
     status: CaseStatus,
-    investigationTaskId: number,
+    investigationTaskId: number | undefined,
     userId: string,
     comment?: { note: string; taskId?: number; tenantId: string },
   ) {
@@ -483,7 +467,6 @@ export class CaseRepository extends BaseRepository {
           tx,
         );
       }
-
             return { updatedCase };
         });
     }
@@ -507,6 +490,7 @@ export class CaseRepository extends BaseRepository {
             await tx.comment.create({
                 data: {
                     user_id: supervisorId,
+                    tenant_id: tenantId,
                     task_id: taskId,
                     note: comments
                         ? `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${status}`
@@ -590,4 +574,4 @@ export class CaseRepository extends BaseRepository {
             return { updatedCase, completedTask, newInvestigationTask };
         });
     }
-}
+  }
