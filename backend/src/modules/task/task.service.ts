@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
@@ -29,13 +28,10 @@ export class TaskService {
   constructor(
     private readonly taskRepository: TaskRepository,
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly lifecycle: TaskLifecycleService,
     private readonly flowableService: FlowableService,
     private readonly authService: AuthService,
-    private readonly eventLogService: EventLogService,
-    private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
@@ -235,13 +231,12 @@ export class TaskService {
     } catch (error) {
       this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
 
-      this.auditLogService.logAction({
+      this.loggingOrchestrationService.logActions({
         userId,
         actionPerformed: `Error updating task ${taskId}: ${JSON.stringify(updateData)}`,
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.FAILURE,
-        performedAt: new Date(),
       });
       throw error;
     }
@@ -548,7 +543,7 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
+  async completeTask(taskId: number, userId: string) {
     return this.lifecycle.completeTask(taskId, userId);
   }
 

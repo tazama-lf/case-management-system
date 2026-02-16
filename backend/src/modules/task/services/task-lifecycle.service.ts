@@ -3,8 +3,8 @@ import { PrismaService } from 'prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { CaseStatus, TaskStatus, Prisma } from '@prisma/client-cms';
-import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
+import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { TaskAssignedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
@@ -35,7 +35,6 @@ export class TaskLifecycleService {
   }
 
   async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
-    this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
     // Define investigation task names that should update case status
@@ -135,7 +134,6 @@ export class TaskLifecycleService {
   }
 
   async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
-    this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId);
     const previousAssignedUserId = existingTask.assigned_user_id;
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
@@ -435,29 +433,6 @@ export class TaskLifecycleService {
     };
   }
 
-  // async releaseTask(taskId: string, actorUserId: string) {
-  //   const existingTask = await this.getTaskOrThrow(taskId);
-  //   const previousAssignedUserId = existingTask.assigned_user_id;
-  //   const updatedTask = await this.prisma.task.update({
-  //     where: { task_id: taskId },
-  //     data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
-  //     include: { case: true },
-  //   });
-  //   this.eventEmitter.emit(
-  //     'task.unassigned',
-  //     new TaskUnassignedEvent(taskId, updatedTask.case_id, previousAssignedUserId || undefined, existingTask.candidateGroup || undefined),
-  //   );
-  //   await this.auditLogService.logAction({
-  //     userId: actorUserId,
-  //     actionPerformed: `Released task ${taskId}`,
-  //     entityName: 'TaskService',
-  //     operation: 'releaseTask',
-  //     outcome: 'SUCCESS',
-  //     performedAt: new Date(),
-  //   });
-  //   return updatedTask;
-  // }
-
   async completeTask(taskId: number, actorUserId: string) {
     const existingTask = await this.getTaskOrThrow(taskId);
     const updatedTask = await this.prisma.task.update({
@@ -501,9 +476,5 @@ export class TaskLifecycleService {
 
   private emitCaseStatusChange(caseId: number, prev: CaseStatus, next: CaseStatus, reason: string) {
     this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, next, reason));
-  }
-
-  private validateAssignee(id: string) {
-    if (!id) throw new BadRequestException('Assigned user ID cannot be null or undefined');
   }
 }
