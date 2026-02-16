@@ -11,7 +11,8 @@ import { TaskStatus } from '../../services/taskService';
 const CLOSED_STATUSES = [
   'STATUS_81_CLOSED_REFUTED',
   'STATUS_82_CLOSED_CONFIRMED',
-  'STATUS_83_CLOSED_INCONCLUSIVE'
+  'STATUS_83_CLOSED_INCONCLUSIVE',
+  'STATUS_84_COMPLETED'
 ];
 
 interface CaseActionsPanelProps {
